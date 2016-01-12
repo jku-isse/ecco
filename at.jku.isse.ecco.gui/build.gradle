@@ -1,0 +1,18 @@
+ext {
+	eccoModule = true
+}
+
+dependencies {
+	compile 'org.graphstream:gs-core:1.3'
+	compile 'org.graphstream:gs-algo:1.3'
+	compile 'org.graphstream:gs-ui:1.3'
+
+	compile fileTree(dir: 'lib', include: '*.jar')
+
+	compile project(':at.jku.isse.ecco.base')
+	compile project(':at.jku.isse.ecco.perst')
+
+	testCompile project(':at.jku.isse.ecco.file')
+	testCompile project(':at.jku.isse.ecco.text')
+	testCompile project(':at.jku.isse.ecco.image')
+}

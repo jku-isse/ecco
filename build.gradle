@@ -1,0 +1,232 @@
+plugins {
+	id "nebula.os-package" version "2.2.6"
+}
+
+allprojects {
+	apply plugin: 'idea'
+	apply plugin: 'eclipse'
+	group = 'at.jku.isse'
+	version = '0.1.3'
+	ext {
+		eccoModule = false
+	}
+}
+
+task listModules << {
+	String header = "\n---------- ECCO " + version + " ----------\n"
+	String subprojects = "Searching for ECCO modules...\n"
+	println header + subprojects
+}
+
+subprojects {
+	apply plugin: 'nebula.os-package'
+	apply plugin: 'java'
+
+	sourceCompatibility = 1.8
+	targetCompatibility = 1.8
+
+	repositories {
+		mavenCentral()
+	}
+
+	dependencies {
+		compile 'com.google.guava:guava:18.0'
+		compile 'com.google.inject:guice:4.0'
+		compile 'com.google.inject.extensions:guice-multibindings:4.0'
+		compile 'org.slf4j:slf4j-api:1.7.12'
+		compile 'ch.qos.logback:logback-classic:1.1.3'
+		testCompile 'org.assertj:assertj-core:3.1.0'
+		testCompile 'org.mockito:mockito-core:2.0.28-beta'
+		testCompile 'org.testng:testng:6.9.6'
+	}
+
+	jar {
+		manifest {
+			attributes("Implementation-Title": project.name, "Implementation-Version": project.version, "Implementation-Vendor": project.group)
+		}
+	}
+
+	sourceSets {
+		main {
+			resources {
+				exclude '**/*.java'
+			}
+		}
+		integrationTest {
+			java {
+				compileClasspath += main.output + test.output
+				runtimeClasspath += main.output + test.output
+				srcDir file('src/integration-test/java')
+			}
+			resources {
+				srcDir file('src/integration-test/resources')
+				exclude '**/*.java'
+			}
+		}
+	}
+
+	configurations {
+		integrationTestCompile.extendsFrom testCompile
+		integrationTestRuntime.extendsFrom testRuntime
+	}
+
+	test {
+		useTestNG() {
+			suites 'src/test/resources/testng.xml'
+		}
+		workingDir = 'src/test/'
+		outputs.upToDateWhen { false }
+	}
+	test.onlyIf {
+		new File(getProjectDir(), 'src/test/resources/testng.xml').exists()
+	}
+
+	task integrationTest(type: Test, group: 'verification', description: 'Runs the integration tests.') {
+		useTestNG() {
+			suites 'src/integration-test/resources/testng.xml'
+		}
+		workingDir = 'src/integration-test/'
+		testClassesDir = sourceSets.integrationTest.output.classesDir
+		classpath = sourceSets.integrationTest.runtimeClasspath
+		outputs.upToDateWhen { false }
+	}
+	integrationTest.onlyIf {
+		new File(getProjectDir(), 'src/integration-test/resources/testng.xml').exists()
+	}
+	check.dependsOn -= integrationTest
+
+	tasks.withType(Test) {
+		reports.html.destination = file("${reporting.baseDir}/${name}")
+	}
+
+	idea {
+		module {
+			testSourceDirs += file('src/integration-test/java')
+			scopes.TEST.plus += [configurations.integrationTestCompile]
+			downloadJavadoc = true
+			downloadSources = true
+		}
+	}
+
+	eclipse {
+		classpath {
+			downloadSources = true
+			downloadJavadoc = true
+		}
+	}
+
+	// # PACKAGING
+	ospackage {
+		packageName = project.name
+		version = project.version
+		release = 1
+		arch = NOARCH
+		os = LINUX
+
+		requires('logback')
+
+		prefix '/usr/'
+
+		directory('/usr/share/java/ecco')
+		directory('/usr/share/java/ecco/lib')
+
+		into('/usr/share/java/') {
+			from(project.jar) {
+				addParentDirs false
+				into 'ecco/'
+			}
+
+			from({
+				def temp = project.configurations.runtime;
+				project.configurations.findAll { it.name.equals("runtime") }.collectMany {
+					it.allDependencies
+				}.findAll { it instanceof ProjectDependency }.collect {
+					it.dependencyProject.configurations.runtime
+				}.each { temp = temp - it };
+				project.configurations.findAll { it.name.equals("runtime") }.collectMany {
+					it.allDependencies
+				}.findAll { it instanceof ProjectDependency }.collect { it.dependencyProject.jar.outputs.files }.each {
+					temp = temp - it;
+				};
+				return temp;
+			}) {
+				addParentDirs false
+				into 'ecco/lib/'
+			}
+		}
+	}
+
+	buildRpm {
+	}
+
+	buildDeb {
+	}
+
+	task createRPM(type: Rpm) {
+	}
+
+	task createDeb(type: Deb) {
+	}
+
+	task createLinuxInstallers(dependsOn: [createRPM, createDeb])
+
+	task packageLinux(type: Zip) {
+		classifier = 'linux'
+		into(archiveName - ('.' + extension)) {
+			from project.jar
+			from project.configurations.runtime
+		}
+	}
+
+	task packageSource(type: Zip) {
+		//compression = Compression.GZIP
+		classifier = 'src'
+		from projectDir
+		include 'src/**/*'
+		include 'build.gradle'
+	}
+
+	task packageWindows(type: Zip) {
+		classifier = 'windows'
+		into(archiveName - ('.' + extension)) {
+			from project.jar
+			from project.configurations.runtime
+		}
+	}
+
+	// # BUNDLING
+	task copyJars(type: Copy, dependsOn: project.build) {
+		from(project.jar)
+		into project.file('build/bundle/')
+	}
+	task copyDependencies(type: Copy) {
+		from(project.configurations.runtime)
+		into project.file('build/bundle/lib/')
+	}
+	task bundle(dependsOn: [copyJars, copyDependencies])
+
+	// # INFORMATION TASKS
+	task listModules << {
+		task -> println "Found module -> $task.project.name"
+	}
+	listModules.onlyIf {
+		eccoModule
+	}
+
+	task depTest << {
+		def temp = project.configurations.runtime
+		project.configurations.findAll { it.name.equals("runtime"); }.collectMany { it.allDependencies }.findAll {
+			it instanceof ProjectDependency
+		}.collect { it.dependencyProject.jar.outputs.files }.each { println it };
+	}
+}
+
+idea {
+	project {
+		languageLevel = '1.8'
+	}
+}
+
+task wrapper(type: Wrapper) {
+	gradleVersion = '2.4'
+}

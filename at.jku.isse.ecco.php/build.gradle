@@ -1,0 +1,8 @@
+ext {
+	eccoModule = true
+}
+
+dependencies {
+	compile project(':at.jku.isse.ecco.base')
+	compile project(':at.jku.isse.ecco.perst')
+}

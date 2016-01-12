@@ -1,0 +1,9 @@
+include 'at.jku.isse.ecco.base',
+		'at.jku.isse.ecco.cli',
+		'at.jku.isse.ecco.perst',
+		'at.jku.isse.ecco.file',
+		'at.jku.isse.ecco.text',
+		'at.jku.isse.ecco.image',
+		'at.jku.isse.ecco.php',
+		'at.jku.isse.ecco.uml',
+		'at.jku.isse.ecco.gui'

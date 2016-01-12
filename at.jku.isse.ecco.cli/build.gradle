@@ -1,0 +1,57 @@
+ext {
+	eccoModule = true
+}
+
+dependencies {
+	compile 'org.perf4j:perf4j:0.9.16'
+
+	compile 'net.sf.jopt-simple:jopt-simple:4.9'
+	compile 'net.sourceforge.argparse4j:argparse4j:0.6.0'
+
+	compile project(':at.jku.isse.ecco.base')
+	compile project(':at.jku.isse.ecco.perst')
+
+	testCompile project(':at.jku.isse.ecco.file')
+	testCompile project(':at.jku.isse.ecco.text')
+	testCompile project(':at.jku.isse.ecco.image')
+}
+
+ospackage {
+	summary 'CLI (Command Line Interface) for ECCO.'
+	packageDescription 'This package provides a CLI (Command Line Interface) for ECCO.'
+
+	requires('at.jku.isse.ecco.base', version, EQUAL)
+	requires('at.jku.isse.ecco.perst', version, EQUAL)
+
+	requires('javapackages-tools')
+
+	into('/usr/bin/') {
+		from(project.file('ecco')) {
+			addParentDirs false
+			into ''
+		}
+	}
+}
+
+packageLinux {
+	into(archiveName - ('.' + extension)) {
+		from 'ecco'
+	}
+}
+
+packageSource {
+	include 'ecco'
+	include 'ecco.bat'
+}
+
+packageWindows {
+	into(archiveName - ('.' + extension)) {
+		from 'ecco.bat'
+	}
+}
+
+task copyScripts(type: Copy) {
+	from 'ecco', 'ecco.bat'
+	into project.file('build/bundle/')
+}
+bundle.dependsOn += copyScripts
