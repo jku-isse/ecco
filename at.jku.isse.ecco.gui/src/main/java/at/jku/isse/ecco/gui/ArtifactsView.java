@@ -10,10 +10,7 @@ import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.application.Platform;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -53,6 +50,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		Button compositionButton = new Button("Compose");
 		toolBar.getItems().add(compositionButton);
 
+		Button selectAllButton = new Button("Select All");
+		toolBar.getItems().add(selectAllButton);
+
 
 		// associations table
 		TableView<AssociationInfo> associationsTable = new TableView<>();
@@ -62,19 +62,22 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		TableColumn<AssociationInfo, Integer> idAssociationsCol = new TableColumn<>("Id");
 		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
+		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 		TableColumn<AssociationInfo, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, selectedAssocationCol);
+		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 		nameAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("name"));
 		conditionAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("condition"));
+		numArtifactsAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("numArtifacts"));
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getAssociation().getId()));
 		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
 		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getPresenceCondition().toString()));
+		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 
 
 		selectedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("selected"));
@@ -146,7 +149,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
 
-				Task commitTask = new Task<Void>() {
+				Task composeTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
 						Collection<Association> selectedAssociations = new ArrayList<>();
@@ -175,7 +178,20 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 					}
 				};
 
-				new Thread(commitTask).start();
+				new Thread(composeTask).start();
+			}
+		});
+
+		selectAllButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent e) {
+				toolBar.setDisable(true);
+
+				for (AssociationInfo assocInfo : ArtifactsView.this.associationsData) {
+					assocInfo.setSelected(true);
+				}
+
+				toolBar.setDisable(false);
 			}
 		});
 
@@ -222,9 +238,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		private BooleanProperty selected;
 
+		private IntegerProperty numArtifacts;
+
 		public AssociationInfo(Association association) {
 			this.association = association;
 			this.selected = new SimpleBooleanProperty(false);
+			this.numArtifacts = new SimpleIntegerProperty(association.countArtifacts());
 		}
 
 		public Association getAssociation() {
@@ -241,6 +260,18 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		public BooleanProperty selectedProperty() {
 			return this.selected;
+		}
+
+		public int getNumArtifacts() {
+			return this.numArtifacts.get();
+		}
+
+		public void setNumArtifacts(int numArtifacts) {
+			this.numArtifacts.set(numArtifacts);
+		}
+
+		public IntegerProperty numArtifactsProperty() {
+			return this.numArtifacts;
 		}
 	}
 

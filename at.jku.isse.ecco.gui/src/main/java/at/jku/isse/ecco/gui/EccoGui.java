@@ -16,7 +16,7 @@ public class EccoGui extends Application {
 	@Override
 	public void start(Stage primaryStage) {
 		// ECCO Service
-		EccoService eccoService = new EccoService(); // create ecco service
+		EccoService eccoService = new EccoService(Paths.get(".").toAbsolutePath()); // create ecco service
 		eccoService.detectRepository(Paths.get("")); // detect any existing repository
 
 

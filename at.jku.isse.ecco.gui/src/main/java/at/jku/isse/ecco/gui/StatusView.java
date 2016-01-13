@@ -12,12 +12,10 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * TODO: avoid rebuilding the whole scene with every event!
@@ -65,10 +63,19 @@ public class StatusView extends BorderPane implements EccoListener {
 				gridPane.setVgap(10);
 				gridPane.setPadding(new Insets(10, 10, 10, 10));
 
+				ColumnConstraints col1constraint = new ColumnConstraints();
+				ColumnConstraints col2constraint = new ColumnConstraints();
+				col2constraint.setFillWidth(true);
+				col2constraint.setHgrow(Priority.ALWAYS);
+				gridPane.getColumnConstraints().addAll(col1constraint, col2constraint);
+
 				TitledPane titledPane = new TitledPane("Status", gridPane);
 				titledPane.setContent(gridPane);
 				titledPane.setAnimated(false);
 				titledPane.setCollapsible(false);
+
+				titledPane.prefWidthProperty().bind(flowPane.widthProperty().subtract(20));
+				gridPane.prefWidthProperty().bind(titledPane.widthProperty().subtract(20));
 
 				flowPane.getChildren().add(titledPane);
 
@@ -77,16 +84,16 @@ public class StatusView extends BorderPane implements EccoListener {
 				Label baseDirLabel = new Label("Base Directory: ");
 				gridPane.add(baseDirLabel, 0, row, 1, 1);
 				TextField baseDirUrl = new TextField(service.getBaseDir().toString());
-				baseDirUrl.setEditable(false);
-				baseDirUrl.setDisable(true);
+				//baseDirUrl.setEditable(false);
+				//baseDirUrl.setDisable(true);
 				gridPane.add(baseDirUrl, 1, row, 1, 1);
 				row++;
 
 				Label repositoryDirLabel = new Label("Repository Directory: ");
 				gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 				TextField repositoryDirUrl = new TextField(service.getRepositoryDir().toString());
-				repositoryDirUrl.setEditable(false);
-				repositoryDirUrl.setDisable(true);
+				//repositoryDirUrl.setEditable(false);
+				//repositoryDirUrl.setDisable(true);
 				gridPane.add(repositoryDirUrl, 1, row, 1, 1);
 				row++;
 
@@ -128,11 +135,16 @@ public class StatusView extends BorderPane implements EccoListener {
 							@Override
 							public void handle(ActionEvent e) {
 								createRepositoryButton.setDisable(true);
+								StatusView.this.service.setBaseDir(Paths.get(baseDirUrl.getText()));
+								StatusView.this.service.setRepositoryDir(Paths.get(repositoryDirUrl.getText()));
 								// detect repository from current location
 								new Thread(new Task<Void>() {
 									@Override
 									public Void call() {
-										StatusView.this.service.createRepository();
+										if (StatusView.this.service.repositoryDirectoryExists())
+											StatusView.this.service.init();
+										else
+											StatusView.this.service.createRepository();
 										return null;
 									}
 								}).start();
@@ -145,6 +157,11 @@ public class StatusView extends BorderPane implements EccoListener {
 					Label inintializedLabel = new Label("The ECCO Service is initialized.");
 					gridPane.add(inintializedLabel, 0, row, 2, 1);
 					row++;
+
+					baseDirUrl.setEditable(false);
+					baseDirUrl.setDisable(true);
+					repositoryDirUrl.setEditable(false);
+					repositoryDirUrl.setDisable(true);
 				}
 			} // end status
 		});

@@ -1,10 +1,8 @@
 package at.jku.isse.ecco.cli;
 
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.service.ClientService;
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.service.ServerService;
+import at.jku.isse.ecco.feature.Configuration;
 import com.google.inject.Inject;
 import org.perf4j.LoggingStopWatch;
 import org.perf4j.StopWatch;
@@ -19,7 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /*
@@ -34,29 +31,13 @@ public class CLI {
 
 	// # SERVICES #########################################
 
-	private EccoService eccoService = new EccoService();
-
-	private ClientService clientService;
-	private ServerService serverService;
-
-	// # UTILS #########################################
-
-	private boolean checkRepository() {
-		if (!this.eccoService.repositoryDirectoryExists()) {
-			System.err.println("ERROR: There is no repository at the current location or any parent location.");
-			System.exit(1);
-			return false;
-		} else {
-			return true;
-		}
-	}
+	private EccoService eccoService;
 
 	// # CLI #########################################
 
 	@Inject
-	public CLI(ClientService clientService, ServerService serverService) {
-		this.clientService = clientService;
-		this.serverService = serverService;
+	public CLI(EccoService service) {
+		this.eccoService = service;
 	}
 
 	// client
@@ -77,17 +58,18 @@ public class CLI {
 	}
 
 	public void status() {
-		if (!this.checkRepository())
+		if (!this.eccoService.repositoryExists())
 			return;
 
-		this.clientService.init();
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
 		StringBuffer output = new StringBuffer();
 
 		// configuration
 		output.append("Current configuration: ");
 
-		Configuration configuration = this.clientService.getCurrentConfiguration();
+		Configuration configuration = null;
 
 		output.append(this.eccoService.createConfigurationString(configuration));
 		output.append("\n");
@@ -108,22 +90,23 @@ public class CLI {
 		System.out.println(output.toString());
 	}
 
-	public void setProperty(String clientProperty, String value) {
-		if (!this.checkRepository())
+	public void setProperty(String clientProperty, String value) throws EccoException {
+		if (!this.eccoService.repositoryExists())
 			return;
 
-		this.clientService.init();
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
 		switch (clientProperty.toLowerCase()) {
 			case "configuration":
 				Configuration configuration = this.eccoService.parseConfigurationString(value);
-				this.clientService.setCurrentConfiguration(configuration);
+//				this.clientService.setCurrentConfiguration(configuration);
 				System.out.println("SUCCESS: SET configuration=" + configuration.getFeatureInstances().size());
 				break;
 			case "remote":
 				try {
 					URL remoteUrl = new URL(value);
-					this.clientService.setRemote(remoteUrl);
+//					this.clientService.setRemote(remoteUrl);
 					System.out.println("SUCCESS: SET remote=" + remoteUrl.toString());
 				} catch (MalformedURLException e) {
 					System.err.println("ERROR: Remote URL is malformed.");
@@ -131,7 +114,7 @@ public class CLI {
 				break;
 			case "maxorder":
 				int maxOrder = Integer.parseInt(value);
-				this.clientService.setMaxOrder(maxOrder);
+//				this.clientService.setMaxOrder(maxOrder);
 				System.out.println("SUCCESS: SET maxOrder=" + maxOrder);
 				break;
 			default:
@@ -141,20 +124,21 @@ public class CLI {
 	}
 
 	public void getProperty(String clientProperty) {
-		if (!this.checkRepository())
+		if (!this.eccoService.repositoryExists())
 			return;
 
-		this.clientService.init();
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
 		switch (clientProperty.toLowerCase()) {
 			case "configuration":
-				System.out.println("SUCCESS: GET configuration=" + this.eccoService.createConfigurationString(this.clientService.getCurrentConfiguration()));
+//				System.out.println("SUCCESS: GET configuration=" + this.eccoService.createConfigurationString(this.clientService.getCurrentConfiguration()));
 				break;
 			case "remote":
-				System.out.println("SUCCESS: GET remote=" + this.clientService.getRemote());
+//				System.out.println("SUCCESS: GET remote=" + this.clientService.getRemote());
 				break;
 			case "maxorder":
-				System.out.println("SUCCESS: GET maxOrder=" + this.clientService.getMaxOrder());
+//				System.out.println("SUCCESS: GET maxOrder=" + this.clientService.getMaxOrder());
 				break;
 			default:
 				System.out.println("ERROR: No property named \"" + clientProperty + "\".");
@@ -163,11 +147,11 @@ public class CLI {
 	}
 
 	public void addFiles(String pathString) {
-		if (!this.checkRepository())
+		if (!this.eccoService.repositoryExists())
 			return;
 
+		this.eccoService.detectRepository();
 		this.eccoService.init();
-		this.clientService.init();
 
 		// NOTE: maybe to this in the client service and not in the CLI.
 		try {
@@ -183,10 +167,10 @@ public class CLI {
 				// ignore directories
 				accept = accept && !Files.isDirectory(path);
 				// ignore all files on the ignore list
-				accept = accept && !this.clientService.getIgnoredFiles().contains(path);
+//				accept = accept && !this.clientService.getIgnoredFiles().contains(path);
 				return accept;
 			}).forEach(path -> {
-				this.clientService.addTrackedFile(path);
+//				this.clientService.addTrackedFile(path);
 				System.out.println("ADDED: " + path.toString());
 			});
 		} catch (IOException e) {
@@ -205,9 +189,12 @@ public class CLI {
 
 	// server
 
-	public void checkout(String configurationString) {
-		if (!this.checkRepository())
+	public void checkout(String configurationString) throws EccoException {
+		if (!this.eccoService.repositoryExists())
 			return;
+
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
 		Configuration configuration = this.eccoService.parseConfigurationString(configurationString);
 
@@ -215,49 +202,41 @@ public class CLI {
 	}
 
 	public void update() {
-		if (!this.checkRepository())
+		if (!this.eccoService.repositoryExists())
 			return;
+
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
 	}
 
 	public void commit() {
-		if (!this.checkRepository())
+		if (!this.eccoService.repositoryExists())
 			return;
 
-		this.clientService.init();
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
-		this.commit(this.clientService.getCurrentConfiguration());
+//		this.commit(this.clientService.getCurrentConfiguration());
 	}
 
-	public void commit(String configurationString) {
-		if (!this.checkRepository())
+	public void commit(String configurationString) throws EccoException {
+		if (!this.eccoService.repositoryExists())
 			return;
+
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
 		this.commit(this.eccoService.parseConfigurationString(configurationString));
 	}
 
 	public void commit(Configuration configuration) {
-		if (!this.checkRepository())
+		if (!this.eccoService.repositoryExists())
 			return;
 
-		this.clientService.init();
-		this.serverService.init();
+		this.eccoService.detectRepository();
+		this.eccoService.init();
 
-		// Configuration configuration = this.parseConfigurationString(configurationString);
-		// Set<Node> nodes = this.reader.read(this.clientService.getTracked());
-		// NOTE: the previous two lines are not needed here, the clientService takes care of this when creating the associations
-
-		/*
-		 * get associations representing the current client state (i.e. based on the current configuration and the tracked artifacts/files). this will usually be just one single
-		 * association representing what used to be a product/variant.
-		 */
-		List<Association> associations = this.clientService.getAssociations(configuration);
-
-		/*
-		 * commit the associations to the server where the usual diffing is done. here the server also has to make sure that the feature references match. and that the modules are
-		 * correctly updated.
-		 */
-		this.serverService.commit(associations);
 	}
 
 	// remote

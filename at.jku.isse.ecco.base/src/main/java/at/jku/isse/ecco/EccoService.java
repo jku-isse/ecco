@@ -52,6 +52,10 @@ public class EccoService {
 		this.detectRepository();
 	}
 
+	public EccoService(Path baseDir) {
+		this(baseDir, baseDir.resolve(REPOSITORY_DIR_NAME));
+	}
+
 	public EccoService(Path baseDir, Path repositoryDir) {
 		this.baseDir = baseDir;
 		this.repositoryDir = repositoryDir;
@@ -63,7 +67,7 @@ public class EccoService {
 		return this.baseDir;
 	}
 
-	private void setBaseDir(Path baseDir) {
+	public void setBaseDir(Path baseDir) {
 		if (!this.baseDir.equals(baseDir)) {
 			this.baseDir = baseDir;
 			this.fireStatusChangedEvent();
@@ -74,7 +78,7 @@ public class EccoService {
 		return this.repositoryDir;
 	}
 
-	private void setRepositoryDir(Path repositoryDir) {
+	public void setRepositoryDir(Path repositoryDir) {
 		if (!this.repositoryDir.equals(repositoryDir)) {
 			this.repositoryDir = repositoryDir;
 			this.fireStatusChangedEvent();
@@ -316,7 +320,7 @@ public class EccoService {
 	public Configuration parseConfigurationString(String value) throws EccoException {
 		if (value == null || value.isEmpty()) throw new EccoException("No configuration string provided.");
 
-		if (!value.matches("(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?)(|,[a-zA-Z]+('?|(\\.([0-9])+)?))"))
+		if (!value.matches("(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?))*"))
 			throw new EccoException("Invalid configuration string provided.");
 
 		Configuration configuration = this.entityFactory.createConfiguration();
