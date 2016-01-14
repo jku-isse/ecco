@@ -6,9 +6,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.OrderedNode;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 // TODO: order resolve strategy! default strategy simply picks a random / the first order and stores it in the ordered children.
 
@@ -16,10 +14,10 @@ public class BaseCompOrderedNode extends BaseOrderedNode implements OrderedNode,
 
 	private boolean activated = false;
 
-	private Set<Node> origNodes;
+	private List<Node> origNodes;
 
 	public BaseCompOrderedNode() {
-		this.origNodes = new HashSet<Node>();
+		this.origNodes = new ArrayList<>();
 		this.activated = false;
 	}
 
@@ -74,6 +72,7 @@ public class BaseCompOrderedNode extends BaseOrderedNode implements OrderedNode,
 
 		// TODO: this is a dummy implementation. use a strategy pattern for this!
 		super.getOrderedChildren().addAll(allChildren);
+		super.setSequenced(true);
 	}
 
 

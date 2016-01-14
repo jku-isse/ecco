@@ -6,18 +6,16 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.OrderedNode;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class BaseCompNode extends BaseNode implements Node, CompNode {
 
 	private boolean activated = false;
 
-	private Set<Node> origNodes;
+	private List<Node> origNodes;
 
 	public BaseCompNode() {
-		this.origNodes = new HashSet<Node>();
+		this.origNodes = new ArrayList<>();
 		this.activated = false;
 	}
 

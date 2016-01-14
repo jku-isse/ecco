@@ -164,8 +164,7 @@ public class BaseNode implements Node {
 	 * @return True if the parent is unsequenced and contains this node.
 	 */
 	private boolean orderedParentUniquenessPredicate() {
-		assert parent != null : "Expected parent to be non-null";
-		if (!(parent instanceof OrderedNode)) return false;
+		if (parent == null || !(parent instanceof OrderedNode)) return false;
 
 		OrderedNode parent = (OrderedNode) this.parent;
 		return !parent.isSequenced() && parent.getOrderedChildren().contains(this);
@@ -222,7 +221,7 @@ public class BaseNode implements Node {
 		if (this.sequenceNumber != -1)
 			return this.sequenceNumber;
 
-		return Objects.hash(artifact);
+		return Objects.hash(this.artifact);
 	}
 
 	@Override

@@ -167,6 +167,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 							}
 						}
 						final RootNode finalRootNode = rootNode;
+						//final RootNode finalRootNode = selectedAssociations.iterator().next().getArtifactTreeRoot();
 						Platform.runLater(() -> {
 							artifactTreeView.setRootNode(finalRootNode);
 						});
