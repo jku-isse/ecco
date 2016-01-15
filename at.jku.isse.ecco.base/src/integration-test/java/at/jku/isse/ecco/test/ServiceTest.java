@@ -3,8 +3,6 @@ package at.jku.isse.ecco.test;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.PerstAssociation;
-import at.jku.isse.ecco.feature.Configuration;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -16,7 +14,7 @@ import java.nio.file.Paths;
 public class ServiceTest {
 
 	@Test(groups = {"integration", "service", "init"})
-	public void Service_Init_Test() {
+	public void Service_Init_Test() throws EccoException {
 		EccoService service = new EccoService(Paths.get("data/input"), Paths.get("data/repository/.ecco"));
 
 		service.createRepository();

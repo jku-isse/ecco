@@ -148,7 +148,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 
 		this.graph.addAttribute("ui.stylesheet",
 				"edge { size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
-						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: 6px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } " +
+						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: 10px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } " +
 						"edge.A1 { fill-color: #ffaaaa; } " +
 						"edge.A2 { fill-color: #aaffaa; } " +
 						"edge.A3 { fill-color: #aaaaff; } " +
@@ -218,7 +218,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 			} else {
 				if (eccoNode.getAllChildren().size() >= CHILD_COUNT_LIMIT)
 					graphNode.addAttribute("ui.style", "size: " + Math.min(200, eccoNode.getAllChildren().size()) + "px;");
-				graphNode.addAttribute("ui.class", "A" + eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId());
+				graphNode.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
 			}
 
 			if (eccoNode.getArtifact().getData() instanceof PluginArtifactData) {
@@ -239,7 +239,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 						edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
 					else
 						//edge.addAttribute("ui.class", "A" + assocId);
-						edge.addAttribute("ui.class", "A" + eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId());
+						edge.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
 				}
 			}
 		}

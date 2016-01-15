@@ -97,7 +97,7 @@ public class BaseNode implements Node {
 		return intersection;
 	}
 
-	protected Node createNode() {
+	public Node createNode() {
 		return new BaseNode();
 	}
 

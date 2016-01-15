@@ -19,7 +19,7 @@ public class PerstNode extends BaseNode implements Node, IPersistent, ICloneable
 
 
 	@Override
-	protected Node createNode() {
+	public Node createNode() {
 		return new PerstNode();
 	}
 

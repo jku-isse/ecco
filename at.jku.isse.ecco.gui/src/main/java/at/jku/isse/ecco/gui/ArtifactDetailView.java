@@ -4,8 +4,10 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.OrderedNode;
 import com.google.inject.Inject;
 import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -24,9 +26,13 @@ public class ArtifactDetailView extends BorderPane {
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
 
+	private SequenceGraphView sequenceGraphView;
+
 
 	public ArtifactDetailView(EccoService service) {
 		this.service = service;
+
+		this.sequenceGraphView = new SequenceGraphView();
 	}
 
 	public void showTree(Node node) {
@@ -36,46 +42,55 @@ public class ArtifactDetailView extends BorderPane {
 		this.setTop(detailView);
 
 
+		SplitPane splitPane = new SplitPane();
+		this.setCenter(splitPane);
+
+
+		// if node is an ordered node display its sequence graph
+		if (node instanceof OrderedNode && ((OrderedNode) node).getSequenceGraph() != null) {
+			splitPane.getItems().add(this.sequenceGraphView);
+			this.sequenceGraphView.showGraph(((OrderedNode) node).getSequenceGraph());
+		}
+
+
 		if (!this.initialized && this.service.isInitialized()) {
 			this.service.getInjector().injectMembers(this);
 
 			this.initialized = true;
 		}
 
-		//service.getInjector().injectMembers(this);
-		//Set<ArtifactViewer> tempArtifactViewers = new HashSet<ArtifactViewer>();
-		//Set<ArtifactViewer> artifactViewers = this.service.getInjector().getInstance(tempArtifactViewers.getClass());
+		if (this.initialized) {
+			// select artifact viewer
+			ArtifactViewer artifactViewer = null;
+			for (ArtifactViewer tempArtifactViewer : artifactViewers) {
+				if (tempArtifactViewer instanceof Pane) {
+					if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData) {
+						PluginArtifactData pad = (PluginArtifactData) node.getArtifact().getData();
+						if (tempArtifactViewer.getPluginId().equals(pad.getPluginId()))
+							artifactViewer = tempArtifactViewer;
+					}
+				}
+			}
 
-		// TODO: pick appropriate artifact view from list also if a child node of an plugin artifact is selected.
-		ArtifactViewer artifactViewer = null;
-		for (ArtifactViewer tempArtifactViewer : artifactViewers) {
-			if (tempArtifactViewer instanceof Pane) {
-				if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData) {
-					PluginArtifactData pad = (PluginArtifactData) node.getArtifact().getData();
-					if (tempArtifactViewer.getPluginId().equals(pad.getPluginId()))
-						artifactViewer = tempArtifactViewer;
+			// if an artifact viewer was found display it
+			if (artifactViewer != null && artifactViewer instanceof Pane) {
+				try {
+					splitPane.getItems().add((Pane) artifactViewer);
+					artifactViewer.showTree(node);
+				} catch (Exception ex) {
+					TextArea exceptionTextArea = new TextArea();
+					exceptionTextArea.setEditable(false);
+
+					StringWriter sw = new StringWriter();
+					PrintWriter pw = new PrintWriter(sw);
+					ex.printStackTrace(pw);
+					String exceptionText = sw.toString();
+
+					exceptionTextArea.setText(exceptionText);
+					splitPane.getItems().add(exceptionTextArea);
 				}
 			}
 		}
-
-		if (artifactViewer != null && artifactViewer instanceof Pane) {
-			try {
-				this.setCenter((Pane) artifactViewer);
-				artifactViewer.showTree(node);
-			} catch (Exception ex) {
-				TextArea exceptionTextArea = new TextArea();
-				exceptionTextArea.setEditable(false);
-
-				StringWriter sw = new StringWriter();
-				PrintWriter pw = new PrintWriter(sw);
-				ex.printStackTrace(pw);
-				String exceptionText = sw.toString();
-
-				exceptionTextArea.setText(exceptionText);
-				this.setCenter(exceptionTextArea);
-			}
-		} else
-			this.setCenter(null);
 
 	}
 

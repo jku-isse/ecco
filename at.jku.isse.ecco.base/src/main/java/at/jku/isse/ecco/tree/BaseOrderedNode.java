@@ -49,7 +49,7 @@ public class BaseOrderedNode extends BaseNode implements OrderedNode {
 	}
 
 	@Override
-	protected Node createNode() {
+	public Node createNode() {
 		return new BaseOrderedNode();
 	}
 
@@ -92,7 +92,7 @@ public class BaseOrderedNode extends BaseNode implements OrderedNode {
 	@Override
 	public void sequence() {
 		if (!this.isSequenced()) {
-			sequenceGraph = new BaseSequenceGraph();
+			sequenceGraph = this.createSequenceGraph();
 			sequenceGraph.sequence(this);
 		}
 	}

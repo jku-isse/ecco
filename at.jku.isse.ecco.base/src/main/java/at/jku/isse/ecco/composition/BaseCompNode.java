@@ -38,10 +38,12 @@ public class BaseCompNode extends BaseNode implements Node, CompNode {
 			for (Node origChildNode : origNode.getAllChildren()) {
 				if (!allChildren.contains(origChildNode)) {
 					CompNode newChildNode = null;
-					if (origChildNode instanceof OrderedNode)
+					if (origChildNode instanceof OrderedNode) {
 						newChildNode = new BaseCompOrderedNode();
-					else if (origChildNode instanceof Node)
+						((OrderedNode) newChildNode).setSequenceGraph(((OrderedNode) origChildNode).getSequenceGraph());
+					} else if (origChildNode instanceof Node) {
 						newChildNode = new BaseCompNode();
+					}
 
 					newChildNode.setParent(this);
 					newChildNode.setSequenceNumber(origChildNode.getSequenceNumber());

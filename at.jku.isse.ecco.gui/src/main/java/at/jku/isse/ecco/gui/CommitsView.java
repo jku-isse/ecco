@@ -114,6 +114,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 			});
 			Collection<Commit> commits = service.getCommits();
 			Platform.runLater(() -> {
+				this.commitsData.clear();
 				for (Commit commit : commits) {
 					this.commitsData.add(new CommitInfo(String.valueOf(commit.getId()), commit.getCommiter(), commit.getAssociations()));
 				}

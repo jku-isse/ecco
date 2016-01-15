@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.listener.EccoListener;
@@ -79,22 +80,32 @@ public class StatusView extends BorderPane implements EccoListener {
 
 				flowPane.getChildren().add(titledPane);
 
+
 				int row = 0;
 
 				Label baseDirLabel = new Label("Base Directory: ");
 				gridPane.add(baseDirLabel, 0, row, 1, 1);
 				TextField baseDirUrl = new TextField(service.getBaseDir().toString());
-				//baseDirUrl.setEditable(false);
-				//baseDirUrl.setDisable(true);
 				gridPane.add(baseDirUrl, 1, row, 1, 1);
 				row++;
+
+				Button setBaseDirButton = new Button("Set Base Directory");
+				setBaseDirButton.setOnAction(new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent e) {
+						StatusView.this.service.setBaseDir(Paths.get(baseDirUrl.getText()));
+					}
+				});
+				gridPane.add(setBaseDirButton, 0, row, 2, 1);
+				row++;
+
 
 				Label repositoryDirLabel = new Label("Repository Directory: ");
 				gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 				TextField repositoryDirUrl = new TextField(service.getRepositoryDir().toString());
-				//repositoryDirUrl.setEditable(false);
-				//repositoryDirUrl.setDisable(true);
 				gridPane.add(repositoryDirUrl, 1, row, 1, 1);
+//				Label repositoryDirNameLabel = new Label("/.ecco");
+//				gridPane.add(repositoryDirNameLabel, 2, row, 1, 1);
 				row++;
 
 				if (!service.isInitialized()) {
@@ -110,37 +121,37 @@ public class StatusView extends BorderPane implements EccoListener {
 						Label alreadyExistsLabel = new Label("An existing repository was detected.");
 						gridPane.add(alreadyExistsLabel, 0, row, 2, 1);
 						row++;
-
-						Button initializeButton = new Button("Initialize ECCO Service");
-						initializeButton.setOnAction(new EventHandler<ActionEvent>() {
-							@Override
-							public void handle(ActionEvent e) {
-								initializeButton.setDisable(true);
-								// detect repository from current location
-								new Thread(new Task<Void>() {
-									@Override
-									public Void call() {
-										StatusView.this.service.init();
-										return null;
-									}
-								}).start();
-							}
-						});
-						gridPane.add(initializeButton, 0, row, 2, 1);
-						row++;
 					} else {
+//						Button initializeButton = new Button("Initialize ECCO Service");
+//						initializeButton.setOnAction(new EventHandler<ActionEvent>() {
+//							@Override
+//							public void handle(ActionEvent e) {
+//								initializeButton.setDisable(true);
+//								StatusView.this.service.setRepositoryDir(Paths.get(repositoryDirUrl.getText()));
+//								// detect repository from current location
+//								new Thread(new Task<Void>() {
+//									@Override
+//									public Void call() throws EccoException {
+//										StatusView.this.service.init();
+//										return null;
+//									}
+//								}).start();
+//							}
+//						});
+//						gridPane.add(initializeButton, 0, row, 2, 1);
+//						row++;
+
 						// show button for creating repository
-						Button createRepositoryButton = new Button("Create Repository");
+						Button createRepositoryButton = new Button("Create / Load Repository");
 						createRepositoryButton.setOnAction(new EventHandler<ActionEvent>() {
 							@Override
 							public void handle(ActionEvent e) {
 								createRepositoryButton.setDisable(true);
-								StatusView.this.service.setBaseDir(Paths.get(baseDirUrl.getText()));
 								StatusView.this.service.setRepositoryDir(Paths.get(repositoryDirUrl.getText()));
 								// detect repository from current location
 								new Thread(new Task<Void>() {
 									@Override
-									public Void call() {
+									public Void call() throws EccoException {
 										if (StatusView.this.service.repositoryDirectoryExists())
 											StatusView.this.service.init();
 										else
@@ -158,8 +169,6 @@ public class StatusView extends BorderPane implements EccoListener {
 					gridPane.add(inintializedLabel, 0, row, 2, 1);
 					row++;
 
-					baseDirUrl.setEditable(false);
-					baseDirUrl.setDisable(true);
 					repositoryDirUrl.setEditable(false);
 					repositoryDirUrl.setDisable(true);
 				}

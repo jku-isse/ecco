@@ -18,7 +18,7 @@ public class PerstOrderedNode extends BaseOrderedNode implements OrderedNode, IP
 
 
 	@Override
-	protected Node createNode() {
+	public Node createNode() {
 		return new PerstOrderedNode();
 	}
 

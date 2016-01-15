@@ -39,29 +39,15 @@ public class EccoService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
+
 	public static final Path REPOSITORY_DIR_NAME = Paths.get(".ecco");
-	public static final Path DEFAULT_BASE_DIR = Paths.get(".");
+	public static final Path DEFAULT_BASE_DIR = Paths.get("");
 	public static final Path DEFAULT_REPOSITORY_DIR = DEFAULT_BASE_DIR.resolve(REPOSITORY_DIR_NAME);
+	public static final Path CONFIG_FILE_NAME = Paths.get(".config");
 
 	private Path baseDir;
 	private Path repositoryDir;
 
-	public EccoService() {
-		this(DEFAULT_BASE_DIR, DEFAULT_REPOSITORY_DIR);
-
-		this.detectRepository();
-	}
-
-	public EccoService(Path baseDir) {
-		this(baseDir, baseDir.resolve(REPOSITORY_DIR_NAME));
-	}
-
-	public EccoService(Path baseDir, Path repositoryDir) {
-		this.baseDir = baseDir;
-		this.repositoryDir = repositoryDir;
-
-		this.ignoredFiles.add(REPOSITORY_DIR_NAME);
-	}
 
 	public Path getBaseDir() {
 		return this.baseDir;
@@ -85,6 +71,42 @@ public class EccoService {
 		}
 	}
 
+
+	/**
+	 * Creates the service and tries to detect an existing repository automatically using {@link #detectRepository(Path path) detectRepository}. If no existing repository was found the base directory (directory from which files are committed and checked out) and repository directory (directory at which the repository data is stored) are set to their defaults:
+	 * <p>
+	 * <br/>Base Directory (baseDir) Default: current directory
+	 * <br/>Repository Directory (repoDir) Default: .ecco
+	 */
+	public EccoService() {
+		this(DEFAULT_BASE_DIR, DEFAULT_REPOSITORY_DIR);
+
+		this.detectRepository();
+	}
+
+	/**
+	 * Creates the service and sets the base directory to {@code baseDir} and the repository dir to "&lt;baseDir&gt;/.ecco".
+	 *
+	 * @param baseDir The base directory.
+	 */
+	public EccoService(Path baseDir) {
+		this(baseDir, baseDir.resolve(REPOSITORY_DIR_NAME));
+	}
+
+	/**
+	 * Creates the service and sets the base directory to {@code baseDir} and the repository dir to {@code repositoryDir}.
+	 *
+	 * @param baseDir       The base directory.
+	 * @param repositoryDir The repository directory.
+	 */
+	public EccoService(Path baseDir, Path repositoryDir) {
+		this.baseDir = baseDir;
+		this.repositoryDir = repositoryDir;
+
+		this.ignoredFiles.add(REPOSITORY_DIR_NAME);
+	}
+
+
 	private Injector injector;
 
 	private boolean initialized = false;
@@ -93,7 +115,7 @@ public class EccoService {
 		return this.initialized;
 	}
 
-	Set<Path> ignoredFiles = new HashSet<Path>(); // TODO: set this in dao
+	private Set<Path> ignoredFiles = new HashSet<Path>(); // TODO: set this in dao
 
 	// TODO: set these in dao
 	//private int maxOrder = 4;
@@ -152,9 +174,9 @@ public class EccoService {
 	// # REPOSITORY SERVICES #########################################
 
 	/**
-	 * Checks if the repository directory (either given as a constructor parameter or detected using {@link #detectRepository(Path current) detectRepository}) exists.
+	 * Checks if the repository directory (either given as a constructor parameter or detected using {@link #detectRepository(Path path) detectRepository}) exists.
 	 *
-	 * @return True if a repository exists, false otherwise.
+	 * @return True if the repository directory exists, false otherwise.
 	 */
 	public boolean repositoryDirectoryExists() {
 		if (!Files.exists(this.repositoryDir))
@@ -164,15 +186,15 @@ public class EccoService {
 	}
 
 	/**
-	 * Checks if a repository exists at the current directory or any of its parents.
+	 * Checks if a repository exists at the given path or any of its parents.
 	 *
-	 * @param current The current directory.
+	 * @param path The path at which to start looking for a repository.
 	 * @return True if a repository was found, false otherwise.
 	 */
-	public boolean repositoryExists(Path current) {
-		if (!Files.exists(current.resolve(REPOSITORY_DIR_NAME))) { // repository was not found
+	public boolean repositoryExists(Path path) {
+		if (!Files.exists(path.resolve(REPOSITORY_DIR_NAME))) { // repository was not found
 			try {
-				Path parent = current.toRealPath().getParent();
+				Path parent = path.toRealPath().getParent();
 				if (parent != null) // if the current directory has a parent
 					return this.repositoryExists(parent); // try to find a repository in the parent
 			} catch (IOException e) {
@@ -184,21 +206,27 @@ public class EccoService {
 		}
 	}
 
+	/**
+	 * Checks if a repository exists at the current path (the working directory from which ecco was started) or any of its parents.
+	 *
+	 * @return True if a repository was found, false otherwise.
+	 */
 	public boolean repositoryExists() {
 		return this.repositoryExists(Paths.get(""));
 	}
 
 	/**
-	 * Detects the repository directory automatically by checking the current directory and all its parents for the existence of a repository.
+	 * Detects the repository directory automatically by checking the given path and all its parents for the existence of a repository.
+	 * If a repository was found the repository directory is set accordingly, otherwise the current repository directory is left untouched.
 	 *
-	 * @param current The current directory.
+	 * @param path The path at which to start looking for a repository.
 	 * @return True if a repository was found, false otherwise.
 	 */
-	public boolean detectRepository(Path current) {
-		if (!Files.exists(current.resolve(REPOSITORY_DIR_NAME))) { // repository was not found
+	public boolean detectRepository(Path path) {
+		if (!Files.exists(path.resolve(REPOSITORY_DIR_NAME))) { // repository was not found
 			//Path parent = current.normalize().getParent();
 			try {
-				Path parent = current.toRealPath().getParent();
+				Path parent = path.toRealPath().getParent();
 				if (parent != null) // if the current directory has a parent
 					return this.detectRepository(parent); // try to find a repository in the parent
 			} catch (IOException e) {
@@ -207,13 +235,19 @@ public class EccoService {
 			return false;
 		} else { // repository was found
 			//this.baseDir = current;
-			this.setBaseDir(current);
+			this.setBaseDir(path);
 			//this.repositoryDir = current.resolve(REPOSITORY_DIR_NAME);
-			this.setRepositoryDir(current.resolve(REPOSITORY_DIR_NAME));
+			this.setRepositoryDir(path.resolve(REPOSITORY_DIR_NAME));
 			return true;
 		}
 	}
 
+	/**
+	 * Detects the repository directory automatically by checking the current path (the working directory from which ecco was started) and all its parents for the existence of a repository.
+	 * If a repository was found the repository directory is set accordingly, otherwise the current repository directory is left untouched.
+	 *
+	 * @return True if a repository was found, false otherwise.
+	 */
 	public boolean detectRepository() {
 		return this.detectRepository(Paths.get(""));
 	}
@@ -223,14 +257,14 @@ public class EccoService {
 	 *
 	 * @return True if the repository was created, false otherwise.
 	 */
-	public boolean createRepository() {
+	public boolean createRepository() throws EccoException {
 		try {
 			if (!this.repositoryDirectoryExists())
 				Files.createDirectory(this.repositoryDir);
 
 			this.init();
 
-			// TODO: do some initialization in database like generating root object, creating noArtifactAssoc, etc.?
+			// TODO: do some initialization in database like generating root object, etc.?
 
 			return true;
 		} catch (IOException e) {
@@ -242,15 +276,17 @@ public class EccoService {
 	/**
 	 * Initializes the service.
 	 */
-	public void init() {
+	public void init() throws EccoException {
 		synchronized (this) {
 			if (!this.repositoryDirectoryExists()) {
 				LOGGER.debug("Repository does not exist.");
-				return;
+				throw new EccoException("Repository does not exist.");
+				//return;
 			}
 			if (this.isInitialized()) {
 				LOGGER.debug("Repository is already initialized.");
-				return;
+				throw new EccoException("Repository is already initialized.");
+				//return;
 			}
 
 			LOGGER.debug("BASE_DIR: " + this.baseDir);
@@ -258,7 +294,7 @@ public class EccoService {
 
 			Properties properties = new Properties();
 			properties.setProperty("module.dal", "at.jku.isse.ecco.perst");
-			properties.setProperty("baseDir", this.baseDir.toString());
+			//properties.setProperty("baseDir", this.baseDir.toString());
 			properties.setProperty("repositoryDir", this.repositoryDir.toString());
 			properties.setProperty("connectionString", this.repositoryDir.resolve("ecco.db").toString());
 			properties.setProperty("clientConnectionString", this.repositoryDir.resolve("client.db").toString());
@@ -268,7 +304,7 @@ public class EccoService {
 			final Module settingsModule = new AbstractModule() {
 				@Override
 				protected void configure() {
-					bind(String.class).annotatedWith(Names.named("baseDir")).toInstance(properties.getProperty("baseDir"));
+					//bind(String.class).annotatedWith(Names.named("baseDir")).toInstance(properties.getProperty("baseDir"));
 					bind(String.class).annotatedWith(Names.named("repositoryDir")).toInstance(properties.getProperty("repositoryDir"));
 
 					bind(String.class).annotatedWith(Names.named("connectionString")).toInstance(properties.getProperty("connectionString"));
@@ -317,15 +353,23 @@ public class EccoService {
 
 	// # UTILS #########################################
 
-	public Configuration parseConfigurationString(String value) throws EccoException {
-		if (value == null || value.isEmpty()) throw new EccoException("No configuration string provided.");
+	/**
+	 * Creates a configuration from a given configuration string.
+	 *
+	 * @param configurationString The configuration string.
+	 * @return The configuration object.
+	 * @throws EccoException
+	 */
+	public Configuration parseConfigurationString(String configurationString) throws EccoException {
+		if (configurationString == null || configurationString.isEmpty())
+			throw new EccoException("No configuration string provided.");
 
-		if (!value.matches("(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?))*"))
+		if (!configurationString.matches("(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?))*"))
 			throw new EccoException("Invalid configuration string provided.");
 
 		Configuration configuration = this.entityFactory.createConfiguration();
 
-		String[] featureInstanceStrings = value.split(",");
+		String[] featureInstanceStrings = configurationString.split(",");
 		for (String featureInstanceString : featureInstanceStrings) {
 			if (featureInstanceString.contains(".")) {
 				String[] pair = featureInstanceString.split("\\.");
@@ -358,6 +402,12 @@ public class EccoService {
 		return configuration;
 	}
 
+	/**
+	 * Creates the configuration string for the given configuration.
+	 *
+	 * @param configuration The configuration object.
+	 * @return The configuration string.
+	 */
 	public String createConfigurationString(Configuration configuration) {
 		String configurationString = configuration.getFeatureInstances().stream().map((FeatureInstance fi) -> {
 			StringBuffer sb = new StringBuffer();
@@ -379,12 +429,39 @@ public class EccoService {
 
 	// COMMIT
 
+	/**
+	 * Commits the files in the base directory using the configuration string given in {@link #CONFIG_FILE_NAME}.
+	 *
+	 * @return The resulting commit object.
+	 * @throws EccoException When the configuration file does not exist or cannot be read.
+	 */
+	public Commit commit() throws EccoException {
+		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
+		if (!Files.exists(configFile)) {
+			throw new EccoException("No configuration string was given and no configuration file (" + CONFIG_FILE_NAME.toString() + ") exists in base directory.");
+		} else {
+			try {
+				String configurationString = new String(Files.readAllBytes(configFile));
+				return this.commit(configurationString);
+			} catch (IOException e) {
+				throw new EccoException(e.getMessage());
+			}
+		}
+	}
+
+	/**
+	 * Commits the files in the base directory using the given configuration string.
+	 *
+	 * @param configurationString The configuration string.
+	 * @return The resulting commit object.
+	 * @throws EccoException
+	 */
 	public Commit commit(String configurationString) throws EccoException {
 		return this.commit(this.parseConfigurationString(configurationString));
 	}
 
 	/**
-	 * Commits the set of artifacts residing in the base directory as the given configuration and returns the resulting commit object, or null in case of an error.
+	 * Commits the files in the base directory as the given configuration and returns the resulting commit object, or null in case of an error.
 	 *
 	 * @param configuration The configuration to be commited.
 	 * @return The resulting commit object or null in case of an error.
@@ -439,6 +516,7 @@ public class EccoService {
 	 * @return
 	 */
 	public Commit commit(Association association) throws EccoException {
+		checkNotNull(association);
 		List<Association> associations = new ArrayList<Association>(1);
 		associations.add(association);
 		return this.commit(associations);
@@ -451,6 +529,8 @@ public class EccoService {
 	 * @return
 	 */
 	public Commit commit(List<Association> inputAs) throws EccoException {
+		// TODO: make sure the feature instances used in the given associations are the ones from the repository
+
 		synchronized (this) {
 			checkNotNull(inputAs);
 
@@ -480,16 +560,19 @@ public class EccoService {
 					if (intA.getArtifactTreeRoot().getAllChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
 						toAdd.add(intA);
 					}
+
+					EccoUtil.checkConsistency(origA.getArtifactTreeRoot());
+					EccoUtil.checkConsistency(intA.getArtifactTreeRoot());
 				}
 				originalAssociations.addAll(toAdd); // add new associations to original associations so that they can be sliced with the next input association
 				newAssociations.addAll(toAdd);
 
 				// if the remainder is not empty store it
 				if (inputA.getArtifactTreeRoot().getAllChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
-					// TODO: update references to features and artifacts here!
-					// update artifact references
-//					UpdateReferences updateReferences = new UpdateReferences();
-//					updateReferences.apply(inputA.getArtifactTreeRoot());
+					EccoUtil.sequenceOrderedNodes(inputA.getArtifactTreeRoot());
+					EccoUtil.updateArtifactReferences(inputA.getArtifactTreeRoot());
+					EccoUtil.checkConsistency(inputA.getArtifactTreeRoot());
+
 					originalAssociations.add(inputA);
 					newAssociations.add(inputA);
 				}
@@ -588,6 +671,12 @@ public class EccoService {
 
 	// CHECKOUT
 
+	/**
+	 * Checks out the implementation of the configuration (given as configuration string) into the base directory.
+	 *
+	 * @param configurationString The configuration string representing the configuration that shall be checked out.
+	 * @throws EccoException
+	 */
 	public void checkout(String configurationString) throws EccoException {
 		this.checkout(this.parseConfigurationString(configurationString));
 	}
@@ -599,7 +688,10 @@ public class EccoService {
 	 */
 	public void checkout(Configuration configuration) {
 		synchronized (this) {
+			checkNotNull(configuration);
+
 			System.out.println("CHECKOUT");
+
 			BaseCompRootNode compRootNode = new BaseCompRootNode();
 			for (Association association : this.getAssociations()) {
 				System.out.println("Checking: " + association.getId());
@@ -617,6 +709,11 @@ public class EccoService {
 
 	// OTHERS
 
+	/**
+	 * Get all commit objects.
+	 *
+	 * @return Collection containing all commit objects.
+	 */
 	public Collection<Commit> getCommits() {
 		this.commitDao.init();
 		return this.commitDao.loadAllCommits();
@@ -626,17 +723,33 @@ public class EccoService {
 		// TODO
 	}
 
+	/**
+	 * Get all associations.
+	 *
+	 * @return Collection containing all associations.
+	 */
 	public Collection<Association> getAssociations() {
 		this.associationDao.init();
 		return this.associationDao.loadAllAssociations();
 	}
 
+	/**
+	 * Get all features.
+	 *
+	 * @return Collection containing all features.
+	 */
 	public Collection<Feature> getFeatures() {
 		this.featureDao.init();
 		return this.featureDao.loadAllFeatures();
 	}
 
 
+	/**
+	 * Get the injector that can be used to retreive arbitrary artifact readers, writers, viewers, etc.
+	 * This is a lower level functionality that should not be used if not really necessary.
+	 *
+	 * @return The injector object.
+	 */
 	public Injector getInjector() {
 		return this.injector;
 	}

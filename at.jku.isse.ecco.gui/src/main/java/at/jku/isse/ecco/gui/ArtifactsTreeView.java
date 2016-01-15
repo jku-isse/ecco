@@ -54,6 +54,10 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 		);
 
 
+		TreeTableColumn<Node, String> artifactTreeCol = new TreeTableColumn<>("Artifact Tree");
+		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol);
+
+
 		uniqueNodeCol.setCellFactory(new Callback<TreeTableColumn<Node, Boolean>, TreeTableCell<Node, Boolean>>() {
 			public TreeTableCell call(TreeTableColumn param) {
 				return new TreeTableCell<Node, Boolean>() {
@@ -75,7 +79,7 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 		});
 
 
-		this.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol);
+		this.getColumns().setAll(artifactTreeCol);
 
 		this.setTableMenuButtonVisible(true);
 		this.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);

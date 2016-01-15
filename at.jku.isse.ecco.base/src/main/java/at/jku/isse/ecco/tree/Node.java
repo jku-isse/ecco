@@ -15,6 +15,8 @@ import java.util.List;
  */
 public interface Node {
 
+	public Node createNode();
+
 	<T extends Node> T slice(T other) throws EccoException;
 
 	Association getContainingAssociation();

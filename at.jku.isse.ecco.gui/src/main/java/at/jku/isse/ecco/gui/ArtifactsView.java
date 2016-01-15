@@ -63,8 +63,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
 		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
-		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
+
 		TableColumn<AssociationInfo, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
+
+		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
 		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
@@ -88,12 +90,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		associationsTable.setItems(this.associationsData);
 
 
-		// vertical split pane
-		SplitPane verticalSplitPane = new SplitPane();
-		verticalSplitPane.setOrientation(Orientation.HORIZONTAL);
-
 		ArtifactsTreeView artifactTreeView = new ArtifactsTreeView();
-		verticalSplitPane.getItems().add(artifactTreeView);
 
 
 		artifactTreeView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
@@ -103,16 +100,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		});
 
 
-		// add custom node view here
-		verticalSplitPane.getItems().add(this.artifactDetailView);
-
-
 		// horizontal split pane
 		SplitPane horizontalSplitPane = new SplitPane();
 		horizontalSplitPane.setOrientation(Orientation.VERTICAL);
 
 		horizontalSplitPane.getItems().add(associationsTable);
-		horizontalSplitPane.getItems().add(verticalSplitPane);
+		horizontalSplitPane.getItems().add(artifactTreeView);
+		horizontalSplitPane.getItems().add(this.artifactDetailView);
 
 
 		this.setCenter(horizontalSplitPane);

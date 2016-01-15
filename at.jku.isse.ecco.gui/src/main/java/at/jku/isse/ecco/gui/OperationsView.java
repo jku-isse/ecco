@@ -44,10 +44,15 @@ public class OperationsView extends BorderPane implements EccoListener {
 				OperationsView.this.logData.clear();
 				OperationsView.this.service.getReader().addListener(OperationsView.this);
 
+				final String configurationString = configurationStringInput.getText();
+
 				Task commitTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						OperationsView.this.service.commit(configurationStringInput.getText());
+						if (configurationString == null || configurationString.isEmpty())
+							OperationsView.this.service.commit();
+						else
+							OperationsView.this.service.commit(configurationString);
 						return null;
 					}
 
@@ -149,6 +154,7 @@ public class OperationsView extends BorderPane implements EccoListener {
 
 		TableView<FileInfo> fileTable = new TableView<FileInfo>();
 		fileTable.setEditable(false);
+		fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<FileInfo, String> actionCol = new TableColumn<FileInfo, String>("Action");
 		TableColumn<FileInfo, String> pathCol = new TableColumn<FileInfo, String>("Path");
