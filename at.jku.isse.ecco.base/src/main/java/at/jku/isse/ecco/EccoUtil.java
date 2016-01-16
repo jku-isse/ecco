@@ -7,7 +7,9 @@ import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.OrderedNode;
 
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 public class EccoUtil {
 
@@ -236,6 +238,39 @@ public class EccoUtil {
 
 	public static void checkConsistency(Node node) {
 		// TODO
+	}
+
+
+	public static Map<Integer, Integer> computeArtifactsPerDepth(Node node) {
+		Map<Integer, Integer> artifactsPerDepth = new HashMap<>();
+		computeArtifactsPerDepthRecursion(node, artifactsPerDepth, 0);
+
+		return artifactsPerDepth;
+	}
+
+	private static void computeArtifactsPerDepthRecursion(Node node, Map<Integer, Integer> map, int depth) {
+		if (node.getArtifact() != null && node.isUnique()) {
+			Integer count = map.get(depth);
+			if (count == null) {
+				map.put(depth, 1);
+			} else {
+				map.put(depth, count + 1);
+			}
+		}
+		for (Node child : node.getAllChildren()) {
+			computeArtifactsPerDepthRecursion(child, map, depth + 1);
+		}
+	}
+
+
+	/**
+	 * Adds the right node to the left node. The right node remains unmodified.
+	 *
+	 * @param left  The left node to which is added.
+	 * @param right The right node which is assed.
+	 */
+	public static void addNodes(Node left, Node right) {
+
 	}
 
 
