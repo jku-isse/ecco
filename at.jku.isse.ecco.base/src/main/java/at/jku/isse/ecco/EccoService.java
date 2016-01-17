@@ -701,9 +701,13 @@ public class EccoService {
 				}
 			}
 
-			Set<Node> nodes = new HashSet<>(compRootNode.getAllChildren());
-			this.writer.write(this.baseDir, nodes);
+			this.checkout(compRootNode);
 		}
+	}
+
+	public void checkout(Node node) {
+		Set<Node> nodes = new HashSet<>(node.getAllChildren());
+		this.writer.write(this.baseDir, nodes);
 	}
 
 

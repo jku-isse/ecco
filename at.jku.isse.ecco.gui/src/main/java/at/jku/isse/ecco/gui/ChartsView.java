@@ -138,6 +138,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 			centerBox.getChildren().add(artifactsPerAssociationPane);
 		}
 
+
 		{ // artifacts per depth
 			TitledPane artifactsPerDepthPane = new TitledPane();
 			artifactsPerDepthPane.setAnimated(false);

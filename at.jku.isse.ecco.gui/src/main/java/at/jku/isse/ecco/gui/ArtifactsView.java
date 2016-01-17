@@ -53,6 +53,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		Button selectAllButton = new Button("Select All");
 		toolBar.getItems().add(selectAllButton);
 
+		Button checkoutSelectedButton = new Button("Checkout Selected");
+		toolBar.getItems().add(checkoutSelectedButton);
+
 
 		// associations table
 		TableView<AssociationInfo> associationsTable = new TableView<>();
@@ -152,7 +155,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 								selectedAssociations.add(associationInfo.getAssociation());
 						}
 
-						// use composition here to merge a selected associations
+						// use composition here to merge selected associations
 						BaseCompRootNode rootNode = null;
 						if (!selectedAssociations.isEmpty()) {
 							rootNode = new BaseCompRootNode();
@@ -184,6 +187,72 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 				for (AssociationInfo assocInfo : ArtifactsView.this.associationsData) {
 					assocInfo.setSelected(true);
+				}
+
+				toolBar.setDisable(false);
+			}
+		});
+
+		checkoutSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent e) {
+				toolBar.setDisable(true);
+
+				Collection<Association> selectedAssociations = new ArrayList<>();
+				for (AssociationInfo associationInfo : ArtifactsView.this.associationsData) {
+					if (associationInfo.isSelected())
+						selectedAssociations.add(associationInfo.getAssociation());
+				}
+
+				// use composition here to merge selected associations
+				if (!selectedAssociations.isEmpty()) {
+					final BaseCompRootNode rootNode = new BaseCompRootNode();
+					for (Association association : selectedAssociations) {
+						rootNode.addOrigNode(association.getArtifactTreeRoot());
+					}
+
+					Task checkoutTask = new Task<Void>() {
+						@Override
+						public Void call() throws EccoException {
+							ArtifactsView.this.service.checkout(rootNode);
+							return null;
+						}
+
+						public void finished() {
+							//toolBar.setDisable(false);
+						}
+
+						@Override
+						public void succeeded() {
+							super.succeeded();
+							this.finished();
+
+							Alert alert = new Alert(Alert.AlertType.INFORMATION);
+							alert.setTitle("Checkout Successful");
+							alert.setHeaderText("Checkout Successful");
+							alert.setContentText("Checkout Successful!");
+
+							alert.showAndWait();
+						}
+
+						@Override
+						public void cancelled() {
+							super.cancelled();
+						}
+
+						@Override
+						public void failed() {
+							super.failed();
+							this.finished();
+
+							ExceptionAlert alert = new ExceptionAlert(this.getException());
+							alert.setTitle("Checkout Error");
+							alert.setHeaderText("Checkout Error");
+
+							alert.showAndWait();
+						}
+					};
+					new Thread(checkoutTask).start();
 				}
 
 				toolBar.setDisable(false);
