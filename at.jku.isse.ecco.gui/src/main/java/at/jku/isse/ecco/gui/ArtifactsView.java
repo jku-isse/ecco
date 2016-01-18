@@ -11,8 +11,12 @@ import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.application.Platform;
 import javafx.beans.property.*;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -57,6 +61,23 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		toolBar.getItems().add(checkoutSelectedButton);
 
 
+		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
+
+		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
+		toolBar.getItems().add(showEmptyAssociationsCheckBox);
+		showEmptyAssociationsCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldValue, Boolean newValue) {
+				filteredData.setPredicate(associationInfo -> {
+					if (newValue) {
+						return true;
+					} else {
+						return (associationInfo.getNumArtifacts() > 0);
+					}
+				});
+			}
+		});
+
+
 		// associations table
 		TableView<AssociationInfo> associationsTable = new TableView<>();
 		associationsTable.setEditable(true);
@@ -74,10 +95,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
-		idAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("id"));
-		nameAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-		conditionAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("condition"));
-		numArtifactsAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("numArtifacts"));
+//		idAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+//		nameAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+//		conditionAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("condition"));
+//		numArtifactsAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("numArtifacts"));
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getAssociation().getId()));
 		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
@@ -90,7 +111,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		selectedAssocationCol.setEditable(true);
 
 
-		associationsTable.setItems(this.associationsData);
+		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
+		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
+
+		//associationsTable.setItems(this.associationsData);
+		associationsTable.setItems(sortedData);
 
 
 		ArtifactsTreeView artifactTreeView = new ArtifactsTreeView();
@@ -258,6 +283,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 				toolBar.setDisable(false);
 			}
 		});
+
+
+		showEmptyAssociationsCheckBox.setSelected(true);
 
 
 		// ecco service

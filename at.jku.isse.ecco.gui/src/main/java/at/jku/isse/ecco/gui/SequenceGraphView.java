@@ -4,6 +4,8 @@ import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraphNode;
 import at.jku.isse.ecco.tree.Node;
 import javafx.embed.swing.SwingNode;
+import javafx.event.EventHandler;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class SequenceGraphView extends BorderPane {
 
 	private Graph graph;
+	private ViewPanel view;
 
 	public SequenceGraphView() {
 
@@ -37,7 +40,7 @@ public class SequenceGraphView extends BorderPane {
 
 		Viewer viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
 		viewer.enableAutoLayout(layout);
-		ViewPanel view = viewer.addDefaultView(false); // false indicates "no JFrame"
+		this.view = viewer.addDefaultView(false); // false indicates "no JFrame"
 
 		SwingNode swingNode = new SwingNode();
 
@@ -47,6 +50,15 @@ public class SequenceGraphView extends BorderPane {
 				swingNode.setContent(view);
 			}
 		});
+
+
+		this.setOnScroll(new EventHandler<ScrollEvent>() {
+			@Override
+			public void handle(ScrollEvent event) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
+
 
 		this.setCenter(swingNode);
 	}
@@ -59,10 +71,13 @@ public class SequenceGraphView extends BorderPane {
 		this.graph.addAttribute("ui.quality");
 		this.graph.addAttribute("ui.antialias");
 		this.graph.addAttribute("ui.stylesheet",
-				" ");
+				" node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } ");
+
+		this.view.getCamera().resetView();
 
 
 		org.graphstream.graph.Node root = this.graph.addNode("N");
+		root.setAttribute("ui.class", "start");
 
 		this.traverseSequenceGraph(sg.getRoot(), root, "", new HashSet<Node>());
 	}
@@ -74,6 +89,8 @@ public class SequenceGraphView extends BorderPane {
 			newNodeSet.add(entry.getKey());
 
 			org.graphstream.graph.Node child = this.graph.addNode("N" + this.getStringForPath(newNodeSet));
+			if (entry.getValue().getChildren().isEmpty())
+				child.setAttribute("ui.class", "end");
 
 			String newPath = currentPath + "," + entry.getKey().getSequenceNumber();
 			Edge edge = this.graph.addEdge("E" + newPath, parent, child, true);

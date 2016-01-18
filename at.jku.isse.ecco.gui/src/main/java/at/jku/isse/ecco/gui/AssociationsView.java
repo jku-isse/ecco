@@ -8,17 +8,20 @@ import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.scene.control.Button;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.ToolBar;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 
 import java.nio.file.Path;
@@ -28,7 +31,9 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 	private EccoService service;
 
-	final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
+	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
+
+	private boolean showEmptyAssociations = false;
 
 	public AssociationsView(EccoService service) {
 		this.service = service;
@@ -49,9 +54,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 					public Void call() throws EccoException {
 						Collection<Association> associations = AssociationsView.this.service.getAssociations();
 						Platform.runLater(() -> {
-							for (Association association : associations) {
-								AssociationsView.this.associationsData.add(new AssociationInfo(String.valueOf(association.getId()), association.getName(), association.getPresenceCondition().toString()));
-							}
+							AssociationsView.this.updateAssociations(associations);
 						});
 						Platform.runLater(() -> {
 							toolBar.setDisable(false);
@@ -67,24 +70,52 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		toolBar.getItems().add(refreshButton);
 
 
+		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
+
+		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
+		toolBar.getItems().add(showEmptyAssociationsCheckBox);
+		showEmptyAssociationsCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldValue, Boolean newValue) {
+				AssociationsView.this.showEmptyAssociations = newValue;
+				filteredData.setPredicate(associationInfo -> {
+					if (newValue) {
+						return true;
+					} else {
+						return (associationInfo.getNumArtifacts() > 0);
+					}
+				});
+			}
+		});
+
+
 		// list of associations
 		TableView<AssociationInfo> associationsTable = new TableView<AssociationInfo>();
 		associationsTable.setEditable(false);
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<AssociationInfo, String>("Id");
+		TableColumn<AssociationInfo, Integer> idAssociationsCol = new TableColumn<AssociationInfo, Integer>("Id");
 		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<AssociationInfo, String>("Name");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<AssociationInfo, String>("Condition");
+		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<AssociationInfo, String>("Associations");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol);
+		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
-		idAssociationsCol.setCellValueFactory(new PropertyValueFactory<AssociationInfo, String>("id"));
-		nameAssociationsCol.setCellValueFactory(new PropertyValueFactory<AssociationInfo, String>("name"));
-		conditionAssociationsCol.setCellValueFactory(new PropertyValueFactory<AssociationInfo, String>("condition"));
+		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getAssociation().getId()));
+		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getPresenceCondition().toString()));
+		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 
-		associationsTable.setItems(this.associationsData);
+
+		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
+		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
+
+		//associationsTable.setItems(this.associationsData);
+		associationsTable.setItems(sortedData);
+
+
+		showEmptyAssociationsCheckBox.setSelected(true);
 
 
 		this.setCenter(associationsTable);
@@ -96,6 +127,15 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			this.setDisable(true);
 	}
 
+
+	private void updateAssociations(Collection<Association> associations) {
+		for (Association association : associations) {
+			//if (this.showEmptyAssociations || association.getArtifactTreeRoot().getAllChildren().size() > 0)
+			this.associationsData.add(new AssociationInfo(association));
+		}
+	}
+
+
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
@@ -104,9 +144,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			});
 			Collection<Association> associations = service.getAssociations();
 			Platform.runLater(() -> {
-				for (Association association : associations) {
-					this.associationsData.add(new AssociationInfo(String.valueOf(association.getId()), association.getName(), association.getPresenceCondition().toString()));
-				}
+				this.updateAssociations(associations);
 			});
 		} else {
 			Platform.runLater(() -> {
@@ -128,9 +166,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 	// TODO: add new associations
 	public void associationsChangedEvent(Collection<Association> associations) {
 		Platform.runLater(() -> {
-			for (Association association : associations) {
-				this.associationsData.add(new AssociationInfo(String.valueOf(association.getId()), association.getName(), association.getPresenceCondition().toString()));
-			}
+			this.updateAssociations(associations);
 		});
 	}
 
@@ -140,38 +176,29 @@ public class AssociationsView extends BorderPane implements EccoListener {
 	}
 
 	public static class AssociationInfo {
-		private final SimpleStringProperty id;
-		private final SimpleStringProperty name;
-		private final SimpleStringProperty condition;
+		private Association association;
 
-		private AssociationInfo(String id, String name, String condition) {
-			this.id = new SimpleStringProperty(id);
-			this.name = new SimpleStringProperty(name);
-			this.condition = new SimpleStringProperty(condition);
+		private IntegerProperty numArtifacts;
+
+		public AssociationInfo(Association association) {
+			this.association = association;
+			this.numArtifacts = new SimpleIntegerProperty(association.countArtifacts());
 		}
 
-		public String getId() {
-			return this.id.get();
+		public Association getAssociation() {
+			return this.association;
 		}
 
-		public void setId(String id) {
-			this.id.set(id);
+		public int getNumArtifacts() {
+			return this.numArtifacts.get();
 		}
 
-		public String getName() {
-			return this.name.get();
+		public void setNumArtifacts(int numArtifacts) {
+			this.numArtifacts.set(numArtifacts);
 		}
 
-		public void setName(String id) {
-			this.name.set(id);
-		}
-
-		public String getCondition() {
-			return this.condition.get();
-		}
-
-		public void setCommitter(String committer) {
-			this.condition.set(committer);
+		public IntegerProperty numArtifactsProperty() {
+			return this.numArtifacts;
 		}
 	}
 

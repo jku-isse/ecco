@@ -80,6 +80,7 @@ public class InitView extends BorderPane implements EccoListener {
 		this.initButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
+				InitView.this.setDisable(true);
 				new Thread(new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
@@ -88,6 +89,9 @@ public class InitView extends BorderPane implements EccoListener {
 						} else {
 							InitView.this.eccoService.createRepository();
 						}
+						Platform.runLater(() -> {
+							InitView.this.setDisable(false);
+						});
 						return null;
 					}
 				}).start();

@@ -2,6 +2,7 @@ package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureInstance;
+import at.jku.isse.ecco.feature.FeatureVersion;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -24,12 +25,25 @@ public class BaseModule implements Module {
 	@Override
 	public boolean holds(Configuration configuration) {
 		/**
-		 * A module holds in a configuration when all the module's feature instances are contained in the configuration.
+		 * A module holds in a configuration when all the module's features are contained in the configuration.
 		 */
 
 		Set<FeatureInstance> featureInstances = configuration.getFeatureInstances();
 		for (ModuleFeature mf : this) {
-			if (!featureInstances.contains(mf))
+
+			boolean atLeastOneVersionMatched = false;
+			for (FeatureVersion fv : mf) {
+				for (FeatureInstance fi : featureInstances) {
+					if (fi.getFeatureVersion().equals(fv)) {
+						atLeastOneVersionMatched = true;
+						break;
+					}
+				}
+				if (atLeastOneVersionMatched)
+					break;
+			}
+
+			if (!atLeastOneVersionMatched)
 				return false;
 		}
 
@@ -57,7 +71,7 @@ public class BaseModule implements Module {
 			return mf.toString();
 		}).collect(Collectors.joining(", "));
 
-		return result;
+		return "d^" + this.getOrder() + "(" + result + ")";
 	}
 
 

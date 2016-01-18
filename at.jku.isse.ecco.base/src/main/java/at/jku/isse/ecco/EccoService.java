@@ -104,6 +104,7 @@ public class EccoService {
 		this.repositoryDir = repositoryDir;
 
 		this.ignoredFiles.add(REPOSITORY_DIR_NAME);
+		this.ignoredFiles.add(CONFIG_FILE_NAME);
 	}
 
 
@@ -371,6 +372,7 @@ public class EccoService {
 
 		String[] featureInstanceStrings = configurationString.split(",");
 		for (String featureInstanceString : featureInstanceStrings) {
+			featureInstanceString = featureInstanceString.trim();
 			if (featureInstanceString.contains(".")) {
 				String[] pair = featureInstanceString.split("\\.");
 				//String featureName = pair[0].replace("!", "").replace("+", "").replace("-", "");
@@ -695,7 +697,7 @@ public class EccoService {
 			BaseCompRootNode compRootNode = new BaseCompRootNode();
 			for (Association association : this.getAssociations()) {
 				System.out.println("Checking: " + association.getId());
-				if (true || association.getPresenceCondition().holds(configuration)) { // TODO: the "hold" method seems to not work correctly!
+				if (association.getPresenceCondition().holds(configuration)) { // TODO: the "hold" method seems to not work correctly!
 					compRootNode.addOrigNode(association.getArtifactTreeRoot());
 					System.out.println("Selected: " + association.getId());
 				}

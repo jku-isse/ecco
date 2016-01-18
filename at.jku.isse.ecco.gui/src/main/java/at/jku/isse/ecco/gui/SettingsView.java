@@ -28,6 +28,7 @@ public class SettingsView extends BorderPane implements EccoListener {
 	private TextField repositoryDirUrl;
 	private Label statusLabel;
 	private TextField settingsBaseDirUrl;
+	private Button setBaseDirButton;
 
 	public SettingsView(EccoService service) {
 		this.service = service;
@@ -74,7 +75,7 @@ public class SettingsView extends BorderPane implements EccoListener {
 			gridPane.add(baseDirLabel, 0, row, 1, 1);
 			this.baseDirUrl = new TextField(service.getBaseDir().toString());
 			this.baseDirUrl.setEditable(false);
-			this.baseDirUrl.setDisable(true);
+			//this.baseDirUrl.setDisable(true);
 			gridPane.add(baseDirUrl, 1, row, 1, 1);
 			row++;
 
@@ -82,7 +83,7 @@ public class SettingsView extends BorderPane implements EccoListener {
 			gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 			this.repositoryDirUrl = new TextField(service.getRepositoryDir().toString());
 			this.repositoryDirUrl.setEditable(false);
-			this.repositoryDirUrl.setDisable(true);
+			//this.repositoryDirUrl.setDisable(true);
 			gridPane.add(repositoryDirUrl, 1, row, 1, 1);
 			row++;
 
@@ -126,11 +127,12 @@ public class SettingsView extends BorderPane implements EccoListener {
 			gridPane.add(this.settingsBaseDirUrl, 1, row, 1, 1);
 			row++;
 
-			Button setBaseDirButton = new Button("Set Base Directory");
+			this.setBaseDirButton = new Button("Set Base Directory");
 			setBaseDirButton.setOnAction(new EventHandler<ActionEvent>() {
 				@Override
 				public void handle(ActionEvent e) {
-					SettingsView.this.service.setBaseDir(Paths.get(baseDirUrl.getText()));
+					SettingsView.this.service.setBaseDir(Paths.get(SettingsView.this.settingsBaseDirUrl.getText()));
+					SettingsView.this.updateValues();
 				}
 			});
 			gridPane.add(setBaseDirButton, 0, row, 2, 1);
@@ -138,10 +140,10 @@ public class SettingsView extends BorderPane implements EccoListener {
 
 
 			this.settingsBaseDirUrl.textProperty().addListener((observableValue, oldValue, newValue) -> {
-				if (!newValue.equals(SettingsView.this.service.getBaseDir().toString())) {
-					setBaseDirButton.setDisable(false);
+				if (!Paths.get(newValue).equals(SettingsView.this.service.getBaseDir())) {
+					SettingsView.this.setBaseDirButton.setDisable(false);
 				} else {
-					setBaseDirButton.setDisable(true);
+					SettingsView.this.setBaseDirButton.setDisable(true);
 				}
 			});
 		}
@@ -152,19 +154,31 @@ public class SettingsView extends BorderPane implements EccoListener {
 		this.statusChangedEvent(service);
 	}
 
+
+	private void updateValues() {
+		if (service.isInitialized()) {
+			this.statusLabel.setText("The ECCO Service is initialized.");
+		} else {
+			this.statusLabel.setText("The ECCO Service has not been initialized yet.");
+		}
+		this.baseDirUrl.setText(service.getBaseDir().toString());
+		this.repositoryDirUrl.setText(service.getRepositoryDir().toString());
+		this.settingsBaseDirUrl.setText(service.getBaseDir().toString());
+
+		if (!Paths.get(this.settingsBaseDirUrl.getText()).equals(SettingsView.this.service.getBaseDir())) {
+			setBaseDirButton.setDisable(false);
+		} else {
+			setBaseDirButton.setDisable(true);
+		}
+	}
+
+
 	// ECCO EVENTS
 
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		Platform.runLater(() -> {
-			if (service.isInitialized()) {
-				this.statusLabel.setText("The ECCO Service is initialized.");
-			} else {
-				this.statusLabel.setText("The ECCO Service has not been initialized yet.");
-			}
-			this.baseDirUrl.setText(service.getBaseDir().toString());
-			this.repositoryDirUrl.setText(service.getRepositoryDir().toString());
-			this.settingsBaseDirUrl.setText(service.getBaseDir().toString());
+			this.updateValues();
 
 
 //			// show initialization view

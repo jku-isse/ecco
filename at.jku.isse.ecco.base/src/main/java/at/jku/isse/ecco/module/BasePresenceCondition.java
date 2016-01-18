@@ -154,12 +154,15 @@ public class BasePresenceCondition implements PresenceCondition {
 	public boolean holds(Configuration configuration) {
 		// A presence condition holds in a configuration when at least one of the modules in minModules or maxModules holds. A module holds if all its feature instances are contained in a configuration.
 		for (Module module : minModules) {
-			if (module.holds(configuration))
+			if (module.holds(configuration)) {
 				return true;
+			}
 		}
-		for (Module module : maxModules) {
-			if (module.holds(configuration))
-				return true;
+		if (minModules.isEmpty()) {
+			for (Module module : maxModules) {
+				if (module.holds(configuration))
+					return true;
+			}
 		}
 		return false;
 	}

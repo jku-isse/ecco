@@ -14,6 +14,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
@@ -33,6 +34,7 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 	private Graph graph;
 	private Layout layout;
+	private ViewPanel view;
 
 	public CommitGraphView(EccoService service) {
 		this.service = service;
@@ -47,11 +49,9 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 			@Override
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
-				SwingUtilities.invokeLater(new Runnable() {
-					@Override
-					public void run() {
-						CommitGraphView.this.updateGraph();
-					}
+				//SwingUtilities.invokeLater(() -> {
+				Platform.runLater(() -> {
+					CommitGraphView.this.updateGraph();
 				});
 				Task refreshTask = new Task<Void>() {
 					@Override
@@ -87,7 +87,7 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 		Viewer viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
 		viewer.enableAutoLayout(this.layout);
-		ViewPanel view = viewer.addDefaultView(false); // false indicates "no JFrame"
+		this.view = viewer.addDefaultView(false); // false indicates "no JFrame"
 
 		SwingNode swingNode = new SwingNode();
 
@@ -101,6 +101,14 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 		this.setCenter(swingNode);
 
 
+		swingNode.setOnScroll(new EventHandler<ScrollEvent>() {
+			@Override
+			public void handle(ScrollEvent event) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
+
+
 		service.addListener(this);
 
 		if (!service.isInitialized())
@@ -110,6 +118,7 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 	private void updateGraph() {
 
 		this.graph.clear();
+		this.view.getCamera().resetView();
 
 		this.graph.addAttribute("ui.quality");
 		this.graph.addAttribute("ui.antialias");
