@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.feature.Configuration;
 
 import java.util.List;
 
@@ -16,6 +17,12 @@ public interface Commit extends Persistable {
 
 	public void setId(int id);
 
+
+	public Configuration getConfiguration();
+
+	public void setConfiguration(Configuration configuration);
+
+
 	/**
 	 * The list of associations that were committed.
 	 */
@@ -25,6 +32,7 @@ public interface Commit extends Persistable {
 	 * Adds an association to the commit.
 	 */
 	public void addAssociation(Association association);
+
 
 	/**
 	 * The name of the committer, usually a person's name or email address.

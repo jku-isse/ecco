@@ -34,6 +34,7 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 	private Graph graph;
 	private Layout layout;
+	private Viewer viewer;
 	private ViewPanel view;
 
 	public CommitGraphView(EccoService service) {
@@ -49,14 +50,14 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 			@Override
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
-				//SwingUtilities.invokeLater(() -> {
-				Platform.runLater(() -> {
-					CommitGraphView.this.updateGraph();
-				});
+//				//SwingUtilities.invokeLater(() -> {
+//				Platform.runLater(() -> {
+//					CommitGraphView.this.updateGraph();
+//				});
 				Task refreshTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						//CommitGraphView.this.updateGraph();
+						CommitGraphView.this.updateGraph();
 						Platform.runLater(() -> {
 							toolBar.setDisable(false);
 						});
@@ -85,8 +86,8 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 		this.graph.addSink(this.layout);
 		this.layout.addAttributeSink(this.graph);
 
-		Viewer viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-		viewer.enableAutoLayout(this.layout);
+		this.viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+		//viewer.enableAutoLayout(this.layout);
 		this.view = viewer.addDefaultView(false); // false indicates "no JFrame"
 
 		SwingNode swingNode = new SwingNode();
@@ -117,8 +118,15 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 	private void updateGraph() {
 
+		this.viewer.disableAutoLayout();
+
+		this.graph.removeSink(this.layout);
+		this.layout.removeAttributeSink(this.graph);
+		this.layout.clear();
 		this.graph.clear();
+
 		this.view.getCamera().resetView();
+
 
 		this.graph.addAttribute("ui.quality");
 		this.graph.addAttribute("ui.antialias");
@@ -168,6 +176,18 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 				associationEdge.setAttribute("ui.class", "assoc");
 			}
 		}
+
+
+		while (this.layout.getStabilization() < 0.9) {
+			System.out.println(this.layout.getStabilization());
+			this.layout.compute();
+		}
+
+
+		this.graph.addSink(this.layout);
+		this.layout.addAttributeSink(this.graph);
+
+		this.viewer.enableAutoLayout(this.layout);
 	}
 
 	@Override

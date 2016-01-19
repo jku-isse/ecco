@@ -508,7 +508,11 @@ public class EccoService {
 
 		Association association = this.entityFactory.createAssociation(presenceCondition, nodes);
 
-		return this.commit(association);
+		// TODO: set the correct configuration (i.e. the one with the replaced feature instances) here!
+		Commit commit = this.commit(association);
+		commit.setConfiguration(configuration);
+
+		return commit;
 	}
 
 	/**

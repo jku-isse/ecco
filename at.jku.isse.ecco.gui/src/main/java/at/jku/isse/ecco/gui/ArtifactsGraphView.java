@@ -20,6 +20,7 @@ import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
@@ -40,6 +41,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 	private Graph graph;
 	private Layout layout;
 	private Viewer viewer;
+	private ViewPanel view;
 
 	private boolean depthFade = false;
 	private boolean showLabels = true;
@@ -116,7 +118,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 
 		this.viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
 		//this.viewer.enableAutoLayout(this.layout);
-		ViewPanel view = this.viewer.addDefaultView(false); // false indicates "no JFrame"
+		this.view = this.viewer.addDefaultView(false); // false indicates "no JFrame"
 
 		SwingNode swingNode = new SwingNode();
 
@@ -126,6 +128,15 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 				swingNode.setContent(view);
 			}
 		});
+
+
+		this.setOnScroll(new EventHandler<ScrollEvent>() {
+			@Override
+			public void handle(ScrollEvent event) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
+
 
 		this.setCenter(swingNode);
 
@@ -166,10 +177,15 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 	}
 
 	private void updateGraph(boolean depthFade, boolean showLabels) {
+		this.viewer.disableAutoLayout();
 
-//		this.viewer.disableAutoLayout();
-
+		this.graph.removeSink(this.layout);
+		this.layout.removeAttributeSink(this.graph);
+		this.layout.clear();
 		this.graph.clear();
+
+		this.view.getCamera().resetView();
+
 
 		this.graph.addAttribute("ui.quality");
 		this.graph.addAttribute("ui.antialias");
@@ -194,7 +210,11 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 		}
 		System.out.println(this.layout.getStabilization());
 
-//		this.viewer.enableAutoLayout(this.layout);
+
+		this.graph.addSink(this.layout);
+		this.layout.addAttributeSink(this.graph);
+
+		this.viewer.enableAutoLayout(this.layout);
 	}
 
 

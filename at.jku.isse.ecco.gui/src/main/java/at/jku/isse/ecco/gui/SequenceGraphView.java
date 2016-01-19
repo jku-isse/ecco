@@ -24,7 +24,10 @@ import java.util.stream.Collectors;
 public class SequenceGraphView extends BorderPane {
 
 	private Graph graph;
+	private Layout layout;
+	private Viewer viewer;
 	private ViewPanel view;
+
 
 	public SequenceGraphView() {
 
@@ -34,12 +37,12 @@ public class SequenceGraphView extends BorderPane {
 
 		this.graph = new SingleGraph("SequenceGraph");
 
-		Layout layout = new SpringBox(false);
+		this.layout = new SpringBox(false);
 		this.graph.addSink(layout);
 		layout.addAttributeSink(this.graph);
 
-		Viewer viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-		viewer.enableAutoLayout(layout);
+		this.viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+		//viewer.enableAutoLayout(layout);
 		this.view = viewer.addDefaultView(false); // false indicates "no JFrame"
 
 		SwingNode swingNode = new SwingNode();
@@ -64,7 +67,15 @@ public class SequenceGraphView extends BorderPane {
 	}
 
 	public void showGraph(SequenceGraph sg) {
+		this.viewer.disableAutoLayout();
+
+		this.graph.removeSink(this.layout);
+		this.layout.removeAttributeSink(this.graph);
+		this.layout.clear();
 		this.graph.clear();
+
+		this.view.getCamera().resetView();
+
 
 		this.graph.setStrict(false);
 
@@ -80,6 +91,18 @@ public class SequenceGraphView extends BorderPane {
 		root.setAttribute("ui.class", "start");
 
 		this.traverseSequenceGraph(sg.getRoot(), root, "", new HashSet<Node>());
+
+
+		while (this.layout.getStabilization() < 0.9) {
+			System.out.println(this.layout.getStabilization());
+			this.layout.compute();
+		}
+
+
+		this.graph.addSink(this.layout);
+		this.layout.addAttributeSink(this.graph);
+
+		this.viewer.enableAutoLayout(this.layout);
 	}
 
 
