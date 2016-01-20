@@ -43,7 +43,7 @@ public class CLI {
 	// client
 
 	@Profiled // this annotation requires aspectj or spring aop to work.
-	public void init() {
+	public void init() throws EccoException {
 		StopWatch stopWatch = new LoggingStopWatch();
 		if (this.eccoService.repositoryDirectoryExists()) {
 			System.err.println("ERROR: Repository already exists at this location.");
@@ -57,7 +57,7 @@ public class CLI {
 		stopWatch.stop();
 	}
 
-	public void status() {
+	public void status() throws EccoException {
 		if (!this.eccoService.repositoryExists())
 			return;
 
@@ -123,7 +123,7 @@ public class CLI {
 		}
 	}
 
-	public void getProperty(String clientProperty) {
+	public void getProperty(String clientProperty) throws EccoException {
 		if (!this.eccoService.repositoryExists())
 			return;
 
@@ -146,7 +146,7 @@ public class CLI {
 		}
 	}
 
-	public void addFiles(String pathString) {
+	public void addFiles(String pathString) throws EccoException {
 		if (!this.eccoService.repositoryExists())
 			return;
 
@@ -201,7 +201,7 @@ public class CLI {
 		this.eccoService.checkout(configuration);
 	}
 
-	public void update() {
+	public void update() throws EccoException {
 		if (!this.eccoService.repositoryExists())
 			return;
 
@@ -210,7 +210,7 @@ public class CLI {
 
 	}
 
-	public void commit() {
+	public void commit() throws EccoException {
 		if (!this.eccoService.repositoryExists())
 			return;
 
@@ -230,7 +230,7 @@ public class CLI {
 		this.commit(this.eccoService.parseConfigurationString(configurationString));
 	}
 
-	public void commit(Configuration configuration) {
+	public void commit(Configuration configuration) throws EccoException {
 		if (!this.eccoService.repositoryExists())
 			return;
 

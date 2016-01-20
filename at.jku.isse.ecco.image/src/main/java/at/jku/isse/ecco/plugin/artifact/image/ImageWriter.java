@@ -94,22 +94,31 @@ public class ImageWriter implements ArtifactWriter<Set<Node>, Path> {
 							int green = 0;
 							int blue = 0;
 
+							int relevantChildren = 0;
 							for (Node colorNode : posNode.getAllChildren()) {
 								ImageArtifactData colorArtifact = (ImageArtifactData) colorNode.getArtifact().getData();
+								int pixelColor = (colorArtifact.getValues()[3] & 0x000000ff) | ((colorArtifact.getValues()[2] << 8) & 0x0000ff00) | ((colorArtifact.getValues()[1] << 16) & 0x00ff0000) | ((colorArtifact.getValues()[0] << 24) & 0xff000000);
 
-								alpha += colorArtifact.getValues()[0];
-								red += colorArtifact.getValues()[1];
-								green += colorArtifact.getValues()[2];
-								blue += colorArtifact.getValues()[3];
+								// TODO: store the actual background color of the image as image metadata nodes in the artifact tree and make use of it here!
+								if (this.backgroundColor != pixelColor) {
+									relevantChildren++;
+
+									alpha += colorArtifact.getValues()[0];
+									red += colorArtifact.getValues()[1];
+									green += colorArtifact.getValues()[2];
+									blue += colorArtifact.getValues()[3];
+								}
 
 								if (!this.enableBlending)
 									break;
 							}
 
-							alpha = alpha / posNode.getAllChildren().size();
-							red = red / posNode.getAllChildren().size();
-							green = green / posNode.getAllChildren().size();
-							blue = blue / posNode.getAllChildren().size();
+							if (this.enableBlending && relevantChildren > 0) {
+								alpha = alpha / relevantChildren;
+								red = red / relevantChildren;
+								green = green / relevantChildren;
+								blue = blue / relevantChildren;
+							}
 
 							color = 0;
 							color = (blue & 0x000000ff) | ((green << 8) & 0x0000ff00) | ((red << 16) & 0x00ff0000) | ((alpha << 24) & 0xff000000);

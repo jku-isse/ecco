@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.listener.EccoListener;
@@ -149,6 +150,7 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 					associationNode = this.graph.addNode("A" + association.getId());
 					associationNode.addAttribute("ui.class", "association");
 					associationNode.addAttribute("label", associationNode.getId());
+					associationNode.addAttribute("ui.style", "size: " + Math.max(24.0, Math.min(100.0, 100.0 * ((double) EccoUtil.countArtifactsInAssociation(association) / 1000.0))) + "px;");
 				}
 
 				Edge commitEdge = this.graph.addEdge(commitNode.getId() + associationNode.getId(), commitNode, associationNode, true);
@@ -162,6 +164,7 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 				associationNode = this.graph.addNode("A" + association.getId());
 				associationNode.addAttribute("ui.class", "association");
 				associationNode.addAttribute("label", associationNode.getId());
+				associationNode.addAttribute("ui.style", "size: " + Math.max(24.0, Math.min(100.0, 100.0 * ((double) EccoUtil.countArtifactsInAssociation(association) / 1000.0))) + "px;");
 			}
 
 			for (Association parent : association.getParents()) {
