@@ -63,17 +63,32 @@ public class BaseCompOrderedNode extends BaseOrderedNode implements OrderedNode,
 			}
 		}
 
+
+		// now that we have the children, pick an order from the sequence graph and store them in the ordered children
+		// TODO: this is a dummy implementation. use a strategy pattern for this!
+//		this.computeAnyOrder(this.getSequenceGraph().getRoot(), super.getOrderedChildren(), super.getAllChildren());
+		super.getOrderedChildren().addAll(allChildren);
+		super.setSequenced(true);
+
+
 		super.getAllChildren().addAll(allChildren);
 		super.getUniqueChildren().addAll(uniqueChildren);
 
 		this.activated = true;
 
-		// now that we have the children, pick an order from the sequence graph and store them in the ordered children
-
-		// TODO: this is a dummy implementation. use a strategy pattern for this!
-		super.getOrderedChildren().addAll(allChildren);
-		super.setSequenced(true);
 	}
+
+
+//	private void computeAnyOrder(SequenceGraphNode sgn, List<Node> orderedNodes, List<Node> allNodes) {
+//		if (!sgn.getChildren().isEmpty()) {
+//			SequenceGraphNode child = sgn.getChildren().keySet().iterator().next();
+//			int i = allNodes.indexOf();
+//			if (i != -1) {
+//				orderedNodes.add(allNodes.get(i));
+//			}
+//			this.computeAnyOrder();
+//		}
+//	}
 
 
 	@Override

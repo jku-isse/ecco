@@ -44,12 +44,14 @@ public class BaseModuleFeature implements ModuleFeature {
 
 	@Override
 	public boolean getSign() {
-		return false;
+		return this.sign;
 	}
 
 	@Override
 	public int hashCode() {
-		return this.featureVersions.hashCode();
+		int result = featureVersions.hashCode();
+		result = 31 * result + (sign ? 1 : 0);
+		return result;
 	}
 
 	@Override
@@ -59,7 +61,8 @@ public class BaseModuleFeature implements ModuleFeature {
 
 		BaseModuleFeature that = (BaseModuleFeature) o;
 
-		return this.featureVersions.equals(that.featureVersions);
+		if (sign != that.sign) return false;
+		return featureVersions.equals(that.featureVersions);
 	}
 
 	@Override

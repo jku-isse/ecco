@@ -3,6 +3,14 @@ ext {
 }
 
 dependencies {
+	compile fileTree(dir: 'lib', include: '*.jar')
+
 	compile project(':at.jku.isse.ecco.base')
-	compile project(':at.jku.isse.ecco.perst')
+
+	testCompile project(':at.jku.isse.ecco.perst')
+}
+
+ospackage {
+	requires('at.jku.isse.ecco.base', version, EQUAL)
+	requires('at.jku.isse.ecco.perst', version, EQUAL)
 }

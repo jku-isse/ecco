@@ -14,6 +14,7 @@ dependencies {
 	testCompile project(':at.jku.isse.ecco.file')
 	testCompile project(':at.jku.isse.ecco.text')
 	testCompile project(':at.jku.isse.ecco.image')
+	testCompile project(':at.jku.isse.ecco.php')
 }
 
 ospackage {

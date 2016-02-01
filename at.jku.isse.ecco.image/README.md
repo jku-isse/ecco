@@ -1,0 +1,1 @@
+# ecco image adapter

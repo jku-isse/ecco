@@ -4,5 +4,6 @@ ext {
 
 dependencies {
 	compile project(':at.jku.isse.ecco.base')
-	compile project(':at.jku.isse.ecco.perst')
+
+	testCompile project(':at.jku.isse.ecco.perst')
 }

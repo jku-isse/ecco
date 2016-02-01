@@ -2,7 +2,6 @@ package at.jku.isse.ecco.plugin.artifact;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;

@@ -128,6 +128,8 @@ public class BaseOrderedNode extends BaseNode implements OrderedNode {
 	}
 
 
+	// TODO: the following is probably a bad idea because the behaviour is hard to predict
+
 //	@Override
 //	public List<Node> getAllChildren() {
 //		if (!this.sequenced)

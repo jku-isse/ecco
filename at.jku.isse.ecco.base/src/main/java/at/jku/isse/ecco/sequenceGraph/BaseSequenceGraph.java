@@ -56,6 +56,12 @@ public class BaseSequenceGraph implements SequenceGraph {
 //			System.out.println("done sequencing");
 		}
 
+
+		// TODO: this is necessary because of the way ordered nodes treat their children... figure out better solution
+
+		node.setSequenced(true);
+		node.setSequenceGraph(this);
+
 		// add ordered_nodes to all and unique nodes...
 		for (Node n : node.getOrderedChildren()) {
 			node.getAllChildren().add(n);

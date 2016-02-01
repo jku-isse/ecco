@@ -34,7 +34,7 @@ public class BaseModule implements Module {
 			boolean atLeastOneVersionMatched = false;
 			for (FeatureVersion fv : mf) {
 				for (FeatureInstance fi : featureInstances) {
-					if (fi.getFeatureVersion().equals(fv)) {
+					if (fi.getFeatureVersion().equals(fv) && fi.getSign() == mf.getSign()) {
 						atLeastOneVersionMatched = true;
 						break;
 					}
