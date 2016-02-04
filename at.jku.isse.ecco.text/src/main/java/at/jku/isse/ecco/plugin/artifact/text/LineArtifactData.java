@@ -1,10 +1,8 @@
 package at.jku.isse.ecco.plugin.artifact.text;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-
 import java.util.Objects;
 
-public class LineArtifactData implements ArtifactData {
+public class LineArtifactData {
 
 	private String line;
 

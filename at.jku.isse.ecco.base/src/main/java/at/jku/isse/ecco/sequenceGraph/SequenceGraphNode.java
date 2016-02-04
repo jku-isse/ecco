@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.sequenceGraph;
 
-import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.artifact.Artifact;
 
 import java.util.Map;
 
@@ -10,6 +10,6 @@ public interface SequenceGraphNode {
 
 	public void setPol(boolean pol);
 
-	public Map<Node, SequenceGraphNode> getChildren();
+	public Map<Artifact<?>, SequenceGraphNode> getChildren();
 
 }

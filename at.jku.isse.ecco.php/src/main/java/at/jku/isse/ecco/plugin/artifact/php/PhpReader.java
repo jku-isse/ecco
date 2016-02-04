@@ -146,11 +146,11 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 				((PhpArtifactData) paramNode.getArtifact().getData()).concatToValue("-parameters-");
 				constructParamList(paramNode, paramNode, child);
 				//fix mixed up order due to recursivity
-				Collections.reverse(paramNode.getAllChildren());
+				Collections.reverse(paramNode.getChildren());
 			} else if (child.getName() == "switch_case_list") {
 				constructorHelper(myNode, myNode, child);
 				//fix mixed up order due to recursivity
-				Collections.reverse(myNode.getAllChildren());
+				Collections.reverse(myNode.getChildren());
 			} else if (child.getNumChildren() > 0 && child.getChild(0).getName() == "T_IF") {
 				//initial node, parent for all if-related and connected nodes
 				PhpArtifactData newArtifactData = createIfBaseArtifact();
@@ -162,7 +162,7 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 				constructorHelper(ifNode, myNode, child);
 				myNode = ifNode;
 				//fix mixed up order due to recursivity
-				orderTheIfChildren(ifNode.getAllChildren());
+				orderTheIfChildren(ifNode.getChildren());
 				//remove initial node so that its children are connected directly to upper level
 				skipIfNode(ifNode);
 			} else if (checkIfChildPotentialNode(child)) {
@@ -173,7 +173,7 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 
 	private void skipIfNode(Node ifNode) {
 		Node parent = ifNode.getParent();
-		for (Node child : ifNode.getAllChildren()) {
+		for (Node child : ifNode.getChildren()) {
 			parent.addChild(child);
 		}
 		parent.removeChild(ifNode);
@@ -251,7 +251,7 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 //				@Override
 //				public String toString() {
 //					String s = "\n" + this.getData() + " { ";
-//					for (Node child : this.getContainingNode().getAllChildren()) {
+//					for (Node child : this.getContainingNode().getChildren()) {
 //						s += " " + child.getArtifact().toString();
 //					}
 //					s += "\n }";
@@ -270,7 +270,7 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 //				public String toString() {
 //					String s = "\n" + this.getData().replace("( )", "");
 //					boolean parameters = true;
-//					for (Node child : this.getContainingNode().getAllChildren()) {
+//					for (Node child : this.getContainingNode().getChildren()) {
 //						if (parameters) {
 //							s += " " + child.getArtifact().toString() + " \n{ ";
 //							parameters = false;
@@ -292,8 +292,8 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 //				@Override
 //				public String toString() {
 //					String s = "(";
-//					if (this.getContainingNode().getAllChildren().size() > 0) {
-//						for (Node child : this.getContainingNode().getAllChildren()) {
+//					if (this.getContainingNode().getChildren().size() > 0) {
+//						for (Node child : this.getContainingNode().getChildren()) {
 //							s += child.getArtifact().getData() + ",";
 //						}
 //						s = s.substring(0, s.length() - 1);
@@ -320,7 +320,7 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 //			@Override
 //			public String toString() {
 //				String s = "";
-//				for (Node child : this.getContainingNode().getAllChildren()) {
+//				for (Node child : this.getContainingNode().getChildren()) {
 //					s += child.getArtifact().toString();
 //				}
 //				s += "\n ";

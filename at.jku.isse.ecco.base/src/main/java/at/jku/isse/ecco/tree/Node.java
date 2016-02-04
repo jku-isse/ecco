@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.tree;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 
@@ -17,9 +16,16 @@ public interface Node {
 
 	public Node createNode();
 
-	<T extends Node> T slice(T other) throws EccoException;
+	public boolean isAtomic();
 
-	Association getContainingAssociation();
+
+	/**
+	 * Returns the association that contains this node.
+	 *
+	 * @return The association that contains this node.
+	 */
+	public Association getContainingAssociation();
+
 
 	/**
 	 * Returns the artifact stored in the node.
@@ -36,20 +42,6 @@ public interface Node {
 	void setArtifact(Artifact<?> artifact);
 
 	/**
-	 * Returns the sequence number that describes the order in the statement was found.
-	 *
-	 * @return The sequence number.
-	 */
-	int getSequenceNumber();
-
-	/**
-	 * Sets the sequence number that describes the order in the statement was found.
-	 *
-	 * @param sequenceNumber of this node
-	 */
-	void setSequenceNumber(int sequenceNumber);
-
-	/**
 	 * Returns the parent node.
 	 *
 	 * @return The parent.
@@ -64,25 +56,13 @@ public interface Node {
 	void setParent(Node parent);
 
 	/**
-	 * Returns whether the node is a leaf node.
-	 *
-	 * @return True if the node is a leaf node, false otherwise.
-	 */
-	boolean isAtomic();
-
-	/**
-	 * Sets whether the node is a leaf node.
-	 *
-	 * @param atomic true if it is a leaf node, false otherwise
-	 */
-	void setAtomic(boolean atomic);
-
-	/**
 	 * Returns whether this node is unique or not describing if it was uniquely or shared within a product.
 	 *
 	 * @return The node is unique or not.
 	 */
 	boolean isUnique();
+
+	void setUnique(boolean unique);
 
 	/**
 	 * Adds a new child node to this node.
@@ -103,14 +83,8 @@ public interface Node {
 	 *
 	 * @return all children
 	 */
-	List<Node> getAllChildren();
+	List<Node> getChildren();
 
-	/**
-	 * Returns the unique children that where not found in other products.
-	 *
-	 * @return The unique children.
-	 */
-	List<Node> getUniqueChildren();
 
 	@Override
 	int hashCode();

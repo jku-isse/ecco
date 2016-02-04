@@ -1,13 +1,19 @@
 package at.jku.isse.ecco.dao;
 
-import at.jku.isse.ecco.artifact.*;
+import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactReference;
+import at.jku.isse.ecco.artifact.PerstArtifact;
+import at.jku.isse.ecco.artifact.PerstArtifactReference;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.PerstModule;
 import at.jku.isse.ecco.module.PerstPresenceCondition;
 import at.jku.isse.ecco.module.PresenceCondition;
-import at.jku.isse.ecco.tree.*;
+import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.PerstNode;
+import at.jku.isse.ecco.tree.PerstRootNode;
+import at.jku.isse.ecco.tree.RootNode;
 
 import java.util.Set;
 
@@ -54,8 +60,8 @@ public class PerstEntityFactory implements EntityFactory {
 	// # ARTIFACTS ################################################################
 
 	@Override
-	public Artifact createArtifact(ArtifactData data) {
-		return new PerstArtifact<ArtifactData>(data);
+	public <T> Artifact<T> createArtifact(T data) {
+		return new PerstArtifact<T>(data);
 	}
 
 	@Override
@@ -105,8 +111,6 @@ public class PerstEntityFactory implements EntityFactory {
 		for (Node node : nodes) {
 			rootNode.addChild(node);
 		}
-		//rootNode.getAllChildren().addAll(nodes);
-		//rootNode.getUniqueChildren().addAll(nodes);
 
 		association.setPresenceCondition(presenceCondition);
 		association.setArtifactRoot(rootNode);
@@ -186,17 +190,14 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public OrderedNode createOrderedNode() {
-		return new PerstOrderedNode();
-	}
-
-	@Override
-	public OrderedNode createOrderedNode(final Artifact artifact) {
+	public Node createOrderedNode(final Artifact artifact) {
 		checkNotNull(artifact);
 
-		final OrderedNode node = new PerstOrderedNode();
+		final Node node = new PerstNode();
 		node.setArtifact(artifact);
 		artifact.setContainingNode(node);
+
+		artifact.setOrdered(true);
 
 		return node;
 	}

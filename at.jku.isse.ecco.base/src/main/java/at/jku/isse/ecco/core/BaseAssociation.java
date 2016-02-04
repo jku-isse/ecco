@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.core;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -35,28 +34,12 @@ public class BaseAssociation implements Association {
 		if (node.getArtifact() != null && node.isUnique()) {
 			currentCount++;
 		}
-		for (Node child : node.getAllChildren()) {
+		for (Node child : node.getChildren()) {
 			currentCount = this.countRecursively(child, currentCount);
 		}
 		return currentCount;
 	}
 
-
-	@Override
-	public Association slice(Association other) throws EccoException {
-		BaseAssociation intersection = new BaseAssociation();
-		this.slice(other, intersection);
-		return intersection;
-	}
-
-	protected void slice(Association other, Association intersection) throws EccoException {
-		intersection.setPresenceCondition(this.getPresenceCondition().slice(other.getPresenceCondition()));
-		intersection.setArtifactRoot((this.getArtifactTreeRoot().slice(other.getArtifactTreeRoot())));
-
-		// set parents for association
-		intersection.addParent(this);
-		intersection.addParent(other);
-	}
 
 	@Override
 	public PresenceCondition getPresenceCondition() {

@@ -44,11 +44,11 @@ public class ImageWriter implements ArtifactWriter<Set<Node>, Path> {
 				Path outputPath = base.resolve(fileArtifact.getPath());
 				output.add(outputPath);
 
-				if (fileNode.getAllChildren().size() != 1 || !(((Node) fileNode.getAllChildren().iterator().next()).getArtifact().getData() instanceof ImageArtifactData)
-						|| !((ImageArtifactData) ((Node) fileNode.getAllChildren().iterator().next()).getArtifact().getData()).getType().equals("IMAGE")) {
+				if (fileNode.getChildren().size() != 1 || !(((Node) fileNode.getChildren().iterator().next()).getArtifact().getData() instanceof ImageArtifactData)
+						|| !((ImageArtifactData) ((Node) fileNode.getChildren().iterator().next()).getArtifact().getData()).getType().equals("IMAGE")) {
 					System.out.println("There must be exactly one image node!");
 				} else {
-					Node imageNode = (Node) fileNode.getAllChildren().iterator().next();
+					Node imageNode = (Node) fileNode.getChildren().iterator().next();
 					// ImageArtifact imageArtifact = (ImageArtifact) fileNode.getAllChildren().iterator().next().getArtifact();
 					ImageArtifactData imageArtifact = (ImageArtifactData) imageNode.getArtifact().getData();
 					int width = imageArtifact.getValues()[0];
@@ -74,18 +74,18 @@ public class ImageWriter implements ArtifactWriter<Set<Node>, Path> {
 						}
 					}
 
-					for (Node posNode : imageNode.getAllChildren()) {
+					for (Node posNode : imageNode.getChildren()) {
 						ImageArtifactData posArtifact = (ImageArtifactData) posNode.getArtifact().getData();
 						int x = posArtifact.getValues()[0];
 						int y = posArtifact.getValues()[1];
 
 						int color = 0;
-						if (posNode.getAllChildren().size() <= 0) {
+						if (posNode.getChildren().size() <= 0) {
 							System.out.println("There is no color for pos (" + x + ", " + y + ").");
 							// color = 0;
 							color = defaultColor;
 						} else {
-							if (posNode.getAllChildren().size() > 1) {
+							if (posNode.getChildren().size() > 1) {
 								System.out.println("There is more than one color for pos (" + x + ", " + y + "). Picking the first one.");
 							}
 
@@ -95,7 +95,7 @@ public class ImageWriter implements ArtifactWriter<Set<Node>, Path> {
 							int blue = 0;
 
 							int relevantChildren = 0;
-							for (Node colorNode : posNode.getAllChildren()) {
+							for (Node colorNode : posNode.getChildren()) {
 								ImageArtifactData colorArtifact = (ImageArtifactData) colorNode.getArtifact().getData();
 								int pixelColor = (colorArtifact.getValues()[3] & 0x000000ff) | ((colorArtifact.getValues()[2] << 8) & 0x0000ff00) | ((colorArtifact.getValues()[1] << 16) & 0x00ff0000) | ((colorArtifact.getValues()[0] << 24) & 0xff000000);
 

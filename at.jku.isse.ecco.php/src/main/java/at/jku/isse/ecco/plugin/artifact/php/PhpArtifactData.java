@@ -1,13 +1,11 @@
 package at.jku.isse.ecco.plugin.artifact.php;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-
 import java.util.Objects;
 
 /**
  * @author Timea Kovacs
  */
-public class PhpArtifactData implements ArtifactData {
+public class PhpArtifactData {
 
 	private Type type = Type.NONE;
 

@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.gui;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraphNode;
-import at.jku.isse.ecco.tree.Node;
 import javafx.embed.swing.SwingNode;
 import javafx.event.EventHandler;
 import javafx.scene.input.ScrollEvent;
@@ -90,7 +90,7 @@ public class SequenceGraphView extends BorderPane {
 		org.graphstream.graph.Node root = this.graph.addNode("N");
 		root.setAttribute("ui.class", "start");
 
-		this.traverseSequenceGraph(sg.getRoot(), root, "", new HashSet<Node>());
+		this.traverseSequenceGraph(sg.getRoot(), root, "", new HashSet<Artifact<?>>());
 
 
 		while (this.layout.getStabilization() < 0.9) {
@@ -106,9 +106,9 @@ public class SequenceGraphView extends BorderPane {
 	}
 
 
-	private void traverseSequenceGraph(SequenceGraphNode sgn, org.graphstream.graph.Node parent, String currentPath, Set<Node> nodeSet) {
-		for (Map.Entry<Node, SequenceGraphNode> entry : sgn.getChildren().entrySet()) {
-			Set<Node> newNodeSet = new HashSet<Node>(nodeSet);
+	private void traverseSequenceGraph(SequenceGraphNode sgn, org.graphstream.graph.Node parent, String currentPath, Set<Artifact<?>> nodeSet) {
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : sgn.getChildren().entrySet()) {
+			Set<Artifact<?>> newNodeSet = new HashSet<>(nodeSet);
 			newNodeSet.add(entry.getKey());
 
 			org.graphstream.graph.Node child = this.graph.addNode("N" + this.getStringForPath(newNodeSet));
@@ -128,7 +128,7 @@ public class SequenceGraphView extends BorderPane {
 
 	}
 
-	private String getStringForPath(Set<Node> path) {
+	private String getStringForPath(Set<Artifact<?>> path) {
 		return path.stream()
 				.sorted((n1, n2) -> Integer.compare(n1.getSequenceNumber(), n2.getSequenceNumber()))
 				.map(v -> String.valueOf(v.getSequenceNumber()))

@@ -97,13 +97,15 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 
 		base = base.normalize();
 
-		// this reader itself is responsible for the directory tree structure
+		Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap = new HashMap<ArtifactReader<Path, Set<Node>>, ArrayList<Path>>();
+
+		// this reader itself is responsible for the directory tree structure (unless there is an adapter that deals with a directory)
 		Set<Path> directories = new HashSet<Path>();
 		Set<Path> files = new HashSet<Path>();
 		for (Path path : input) {
 			path = path.normalize();
 			Path resolvedPath = base.resolve(path);
-			if (Files.isDirectory(resolvedPath)) {
+			if (Files.isDirectory(resolvedPath) && this.getReaderForFile(base, base.relativize(resolvedPath)) == null) {
 				directories.add(base.relativize(resolvedPath));
 				this.fireReadEvent(base.relativize(resolvedPath), this);
 			} else {
@@ -115,7 +117,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 		nodes.add(baseDirectoryNode);
 
 		// assign files to readers
-		Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap = new HashMap<ArtifactReader<Path, Set<Node>>, ArrayList<Path>>();
 		for (Path file : files) {
 			ArtifactReader<Path, Set<Node>> reader = this.getReaderForFile(base, file);
 

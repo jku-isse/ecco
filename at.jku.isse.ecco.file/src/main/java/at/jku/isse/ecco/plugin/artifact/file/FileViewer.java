@@ -14,7 +14,7 @@ public class FileViewer extends BorderPane implements ArtifactViewer {
 		VBox box = new VBox();
 		box.setPadding(new Insets(10, 10, 10, 10));
 
-		FileArtifactData fad = (FileArtifactData) node.getAllChildren().get(0).getArtifact().getData();
+		FileArtifactData fad = (FileArtifactData) node.getChildren().get(0).getArtifact().getData();
 
 		box.getChildren().add(new Label("Identifier: " + fad.getIdentifier()));
 		box.getChildren().add(new Label("Checksum: " + fad.getHexChecksum()));

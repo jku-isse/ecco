@@ -1,13 +1,11 @@
 package at.jku.isse.ecco.plugin.artifact.image;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-
 import java.util.Arrays;
 import java.util.Objects;
 
 // TODO: preserve image type (and settings like global background color, and metadata!)
 
-public class ImageArtifactData implements ArtifactData {
+public class ImageArtifactData {
 
 	private final int[] values;
 

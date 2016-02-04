@@ -39,10 +39,10 @@ public class FileWriter implements ArtifactWriter<Set<Node>, Path> {
 			Path outputPath = base.resolve(pluginArtifact.getPath()); // TODO: this resolve might not be necessary as the artifact stores the relative path anyway.
 			output.add(outputPath);
 
-			if (node.getAllChildren().size() != 1) {
+			if (node.getChildren().size() != 1) {
 				// TODO: ERROR
 			} else {
-				FileArtifactData fileArtifact = (FileArtifactData) node.getAllChildren().get(0).getArtifact().getData(); // TODO: node type must have Type parameter for artifact type it contains?
+				FileArtifactData fileArtifact = (FileArtifactData) node.getChildren().get(0).getArtifact().getData(); // TODO: node type must have Type parameter for artifact type it contains?
 
 				try {
 					// Path path = Files.write(artifact.getPath(), artifact.getData());

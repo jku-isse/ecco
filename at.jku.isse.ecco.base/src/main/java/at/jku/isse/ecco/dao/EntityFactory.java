@@ -1,19 +1,17 @@
 package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.core.Variant;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.OrderedNode;
 import at.jku.isse.ecco.tree.RootNode;
 
 import java.util.Set;
@@ -72,7 +70,7 @@ public interface EntityFactory {
 	 * @return
 	 */
 	//public Artifact createArtifact(ArtifactData data);
-	public <T extends ArtifactData> Artifact<T> createArtifact(T data);
+	public <T> Artifact<T> createArtifact(T data);
 
 	/**
 	 * Creates a new artifact reference with the given source and target that is referenced.
@@ -172,26 +170,13 @@ public interface EntityFactory {
 	public Node createNode(final Artifact artifact);
 
 	/**
-	 * Creates a new empty {@link OrderedNode}.
-	 *
-	 * @return A new empty node.
-	 */
-	public OrderedNode createOrderedNode();
-
-	/**
-	 * Creates a new {@link OrderedNode} containing the given artifact.
-	 *
-	 * @param artifact that the node contains
-	 * @return A new initialized node containing the artifact.
-	 */
-	public OrderedNode createOrderedNode(final Artifact artifact);
-
-	/**
 	 * Creates a new empty root node.
 	 *
 	 * @return A new empty root node.
 	 */
 	public RootNode createRootNode();
+
+	public Node createOrderedNode(final Artifact artifact);
 
 	/**
 	 * Creates a new empty root node that is contained in the given association.

@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.sequenceGraph.BaseSequenceGraph;
+import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
@@ -7,22 +9,43 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class BaseArtifact<DataType extends ArtifactData> implements Artifact<DataType> {
+public class BaseArtifact<DataType> implements Artifact<DataType> {
 
+	// fields
 	private DataType data;
 
-	public BaseArtifact(DataType data) {
-		this.data = data;
+	private boolean atomic;
+
+	private boolean ordered;
+
+	private SequenceGraph sequenceGraph;
+
+	private int sequenceNumber;
+
+
+	// constructors
+	public BaseArtifact() {
+		this(null);
 	}
 
-	@Override
-	public DataType getData() {
-		return this.data;
+	public BaseArtifact(DataType data) {
+		this(data, false);
 	}
+
+	public BaseArtifact(DataType data, boolean ordered) {
+		this.data = data;
+		this.ordered = ordered;
+		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
+	}
+
 
 	@Override
 	public int hashCode() {
-		return data.hashCode();
+		int result = data.hashCode();
+		result = 31 * result + (ordered ? 1 : 0);
+		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
+			result = 31 * result + sequenceNumber;
+		return result;
 	}
 
 	@Override
@@ -30,16 +53,77 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		BaseArtifact that = (BaseArtifact) o;
+		BaseArtifact<?> that = (BaseArtifact<?>) o;
 
+		if (ordered != that.ordered) return false;
+		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.sequenceNumber != that.sequenceNumber)
+			return false;
 		return data.equals(that.data);
-
 	}
 
 	@Override
 	public String toString() {
 		return this.data.toString();
 	}
+
+
+	@Override
+	public DataType getData() {
+		return this.data;
+	}
+
+
+	@Override
+	public boolean isAtomic() {
+		return this.atomic;
+	}
+
+	@Override
+	public void setAtomic(boolean atomic) {
+		this.atomic = atomic;
+	}
+
+	@Override
+	public boolean isOrdered() {
+		return this.ordered;
+	}
+
+	@Override
+	public void setOrdered(boolean ordered) {
+		this.ordered = ordered;
+	}
+
+	@Override
+	public SequenceGraph getSequenceGraph() {
+		return this.sequenceGraph;
+	}
+
+	@Override
+	public void setSequenceGraph(SequenceGraph sequenceGraph) {
+		this.sequenceGraph = sequenceGraph;
+	}
+
+	@Override
+	public int getSequenceNumber() {
+		return this.sequenceNumber;
+	}
+
+	@Override
+	public void setSequenceNumber(int sequenceNumber) {
+		this.sequenceNumber = sequenceNumber;
+	}
+
+	@Override
+	public boolean isSequenced() {
+		return this.sequenceGraph != null;
+	}
+
+
+	@Override
+	public SequenceGraph createSequenceGraph() {
+		return new BaseSequenceGraph();
+	}
+
 
 	// FIELDS #####################################################
 

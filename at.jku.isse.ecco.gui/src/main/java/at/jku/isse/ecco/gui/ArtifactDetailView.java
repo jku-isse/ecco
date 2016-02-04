@@ -4,7 +4,6 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.OrderedNode;
 import com.google.inject.Inject;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
@@ -47,9 +46,9 @@ public class ArtifactDetailView extends BorderPane {
 
 
 		// if node is an ordered node display its sequence graph
-		if (node instanceof OrderedNode && ((OrderedNode) node).getSequenceGraph() != null) {
+		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
 			splitPane.getItems().add(this.sequenceGraphView);
-			this.sequenceGraphView.showGraph(((OrderedNode) node).getSequenceGraph());
+			this.sequenceGraphView.showGraph(node.getArtifact().getSequenceGraph());
 		}
 
 

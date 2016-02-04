@@ -231,13 +231,13 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 
 			graphNode = this.graph.addNode(String.valueOf(artifactCount));
 			if (depthFade) {
-				if (eccoNode.getAllChildren().size() < CHILD_COUNT_LIMIT)
+				if (eccoNode.getChildren().size() < CHILD_COUNT_LIMIT)
 					graphNode.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
 				else
-					graphNode.addAttribute("ui.style", "size: " + Math.min(200, eccoNode.getAllChildren().size()) + "px; fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
+					graphNode.addAttribute("ui.style", "size: " + Math.min(200, eccoNode.getChildren().size()) + "px; fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
 			} else {
-				if (eccoNode.getAllChildren().size() >= CHILD_COUNT_LIMIT)
-					graphNode.addAttribute("ui.style", "size: " + Math.min(200, eccoNode.getAllChildren().size()) + "px;");
+				if (eccoNode.getChildren().size() >= CHILD_COUNT_LIMIT)
+					graphNode.addAttribute("ui.style", "size: " + Math.min(200, eccoNode.getChildren().size()) + "px;");
 				graphNode.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
 			}
 
@@ -249,8 +249,8 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 		}
 
 
-		if (eccoNode.getAllChildren().size() < CHILD_COUNT_LIMIT) {
-			for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getAllChildren()) {
+		if (eccoNode.getChildren().size() < CHILD_COUNT_LIMIT) {
+			for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
 				Node graphChildNode = this.traverseTree(eccoChildNode, depth + 1, depthFade, showLabels);
 
 				if (graphChildNode != null && graphNode != null) {

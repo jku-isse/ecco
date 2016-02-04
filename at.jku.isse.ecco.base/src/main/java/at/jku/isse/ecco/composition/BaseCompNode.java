@@ -1,9 +1,7 @@
 package at.jku.isse.ecco.composition;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.tree.BaseNode;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.OrderedNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,63 +29,42 @@ public class BaseCompNode extends BaseNode implements Node, CompNode {
 
 		// compute the children of this node, but do not activate them!
 
-		List<CompNode> uniqueChildren = new ArrayList<>();
 		List<CompNode> allChildren = new ArrayList<>();
 
 		for (Node origNode : this.origNodes) {
-			for (Node origChildNode : origNode.getAllChildren()) {
+			for (Node origChildNode : origNode.getChildren()) {
+				CompNode newChildNode = null;
 				if (!allChildren.contains(origChildNode)) {
-					CompNode newChildNode = null;
-					if (origChildNode instanceof OrderedNode) {
-						newChildNode = new BaseCompOrderedNode();
-						((OrderedNode) newChildNode).setSequenceGraph(((OrderedNode) origChildNode).getSequenceGraph());
-					} else if (origChildNode instanceof Node) {
-						newChildNode = new BaseCompNode();
-					}
+					newChildNode = new BaseCompNode();
 
 					newChildNode.setParent(this);
-					newChildNode.setSequenceNumber(origChildNode.getSequenceNumber());
-					newChildNode.setAtomic(origChildNode.isAtomic());
 					newChildNode.setArtifact(origChildNode.getArtifact());
+					newChildNode.setUnique(origChildNode.isUnique());
 
 					newChildNode.addOrigNode(origChildNode);
 
 					allChildren.add(newChildNode);
 				} else {
-					CompNode newChildNode = allChildren.get(allChildren.indexOf(origChildNode));
+					newChildNode = allChildren.get(allChildren.indexOf(origChildNode));
 					newChildNode.addOrigNode(origChildNode);
 				}
-				if (origChildNode.isUnique() && !uniqueChildren.contains(origChildNode)) {
-					uniqueChildren.add(allChildren.get(allChildren.indexOf(origChildNode)));
+				if (origChildNode.isUnique()) {
+					newChildNode.setUnique(true);
 				}
 			}
 		}
 
-		super.getAllChildren().addAll(allChildren);
-		super.getUniqueChildren().addAll(uniqueChildren);
+		super.getChildren().addAll(allChildren);
 
 		this.activated = true;
 	}
 
 
 	@Override
-	public Node slice(Node other) throws EccoException {
-		throw new EccoException("Not supported!"); // TODO: another reason to move the slice operation out of the tree nodes
-	}
-
-
-	@Override
-	public List<Node> getAllChildren() {
+	public List<Node> getChildren() {
 		this.activate();
 
-		return super.getAllChildren();
-	}
-
-	@Override
-	public List<Node> getUniqueChildren() {
-		this.activate();
-
-		return super.getUniqueChildren();
+		return super.getChildren();
 	}
 
 }

@@ -45,7 +45,7 @@ public class PhpWriter implements ArtifactWriter<Set<Node>, Path> {
 			output.add(outputPath);
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath)) {
-				for (Node lineNode : fileNode.getAllChildren()) {
+				for (Node lineNode : fileNode.getChildren()) {
 					PhpArtifactData phpArtifactData = (PhpArtifactData) lineNode.getArtifact().getData();
 
 					bw.write("<?php");
@@ -68,20 +68,20 @@ public class PhpWriter implements ArtifactWriter<Set<Node>, Path> {
 		PhpArtifactData phpArtifactData = (PhpArtifactData) node.getArtifact().getData();
 
 		if (phpArtifactData.getType() == PhpArtifactData.Type.BASE) {
-			for (Node child : node.getAllChildren()) {
+			for (Node child : node.getChildren()) {
 				this.recursiveToString(child, sb);
 			}
 			sb.append("\n");
 		} else if (phpArtifactData.getType() == PhpArtifactData.Type.BLOCK) {
 			sb.append("\n" + phpArtifactData.getValue() + " { ");
-			for (Node child : node.getAllChildren()) {
+			for (Node child : node.getChildren()) {
 				this.recursiveToString(child, sb);
 			}
 			sb.append("\n }");
 		} else if (phpArtifactData.getType() == PhpArtifactData.Type.FUNCTION_OR_CLASS) {
 			sb.append("\n" + phpArtifactData.getValue().replace("( )", ""));
 			boolean parameters = true;
-			for (Node child : node.getAllChildren()) {
+			for (Node child : node.getChildren()) {
 				if (parameters) {
 					sb.append(" ");
 					this.recursiveToString(child, sb);
@@ -94,8 +94,8 @@ public class PhpWriter implements ArtifactWriter<Set<Node>, Path> {
 			sb.append("\n }");
 		} else if (phpArtifactData.getType() == PhpArtifactData.Type.PARAMETERS) {
 			sb.append("(");
-			if (node.getAllChildren().size() > 0) {
-				for (Node child : node.getAllChildren()) {
+			if (node.getChildren().size() > 0) {
+				for (Node child : node.getChildren()) {
 					sb.append(((PhpArtifactData) child.getArtifact().getData()).getValue() + ",");
 				}
 				sb.deleteCharAt(sb.length() - 1);
@@ -103,7 +103,7 @@ public class PhpWriter implements ArtifactWriter<Set<Node>, Path> {
 			sb.append(")");
 		} else {
 			sb.append("\n " + phpArtifactData.getValue());
-			for (Node child : node.getAllChildren()) {
+			for (Node child : node.getChildren()) {
 				this.recursiveToString(child, sb);
 			}
 		}

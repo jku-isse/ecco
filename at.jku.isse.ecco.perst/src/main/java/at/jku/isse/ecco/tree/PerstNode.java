@@ -76,15 +76,9 @@ public class PerstNode extends BaseNode implements Node, IPersistent, ICloneable
 	}
 
 	@Override
-	public List<Node> getAllChildren() {
+	public List<Node> getChildren() {
 		this.loadNode();
-		return super.getAllChildren();
-	}
-
-	@Override
-	public List<Node> getUniqueChildren() {
-		this.loadNode();
-		return super.getUniqueChildren();
+		return super.getChildren();
 	}
 
 	// # PERST ################################################

@@ -31,7 +31,7 @@ public class TextStringWriter implements ArtifactWriter<Set<Node>, String> {
 
 		for (Node fileNode : input) {
 			StringBuffer sb = new StringBuffer();
-			for (Node lineNode : fileNode.getAllChildren()) {
+			for (Node lineNode : fileNode.getChildren()) {
 				LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
 
 				sb.append(lineArtifactData.getLine());

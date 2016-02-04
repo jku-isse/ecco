@@ -1,7 +1,5 @@
 package at.jku.isse.ecco.plugin.artifact.file;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -11,7 +9,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class FileArtifactData implements ArtifactData {
+public class FileArtifactData {
 
 	private static byte[] getSHADigest(Path path) throws IOException, NoSuchAlgorithmException {
 		//InputStream fis = new FileInputStream(path.toFile());

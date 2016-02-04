@@ -92,7 +92,7 @@ public class DispatchWriter implements ArtifactWriter<Set<Node>, Path> {
 			try {
 				Files.createDirectory(path);
 				output.add(path);
-				for (Node child : node.getAllChildren()) {
+				for (Node child : node.getChildren()) {
 					this.writeDirectories(base, child, output);
 				}
 			} catch (IOException e) {
@@ -111,7 +111,7 @@ public class DispatchWriter implements ArtifactWriter<Set<Node>, Path> {
 					Files.createDirectory(path);
 				output.add(path);
 				this.fireWriteEvent(path, this);
-				for (Node child : node.getAllChildren()) {
+				for (Node child : node.getChildren()) {
 					this.writeRec(base, child, output);
 				}
 			} catch (IOException e) {

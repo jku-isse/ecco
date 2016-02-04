@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.List;
@@ -7,27 +8,52 @@ import java.util.Optional;
 
 /**
  * A generic artifact that stores the actual data and references to other artifacts.
- * <p>
- * This interface is part of the {@link at.jku.isse.ecco.plugin.CorePlugin#EXTENSION_POINT_DAL}.
  *
  * @author JKU, ISSE
  * @author Hannes Thaller
  * @version 1.0
  */
-public interface Artifact<DataType extends ArtifactData> {
+public interface Artifact<DataType> {
 
 	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
 
-	DataType getData();
+	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
+
 
 	@Override
-	int hashCode();
+	public int hashCode();
 
 	@Override
-	boolean equals(Object obj);
+	public boolean equals(Object obj);
 
 	@Override
 	public String toString();
+
+
+	public DataType getData();
+
+
+	public boolean isAtomic();
+
+	public void setAtomic(boolean atomic);
+
+	public boolean isOrdered();
+
+	public void setOrdered(boolean ordered);
+
+	public SequenceGraph getSequenceGraph();
+
+	public void setSequenceGraph(SequenceGraph sequenceGraph);
+
+	public int getSequenceNumber();
+
+	public void setSequenceNumber(int sequenceNumber);
+
+	public boolean isSequenced();
+
+
+	public SequenceGraph createSequenceGraph();
+
 
 	/**
 	 * Returns the containing node from the artifact tree.

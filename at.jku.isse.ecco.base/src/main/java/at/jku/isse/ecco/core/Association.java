@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.core;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.RootNode;
@@ -15,8 +14,6 @@ public interface Association extends Persistable {
 
 	public int countArtifacts();
 
-
-	public Association slice(Association other) throws EccoException;
 
 	public PresenceCondition getPresenceCondition();
 

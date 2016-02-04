@@ -1,12 +1,10 @@
 package at.jku.isse.ecco.plugin.artifact;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-
 import java.nio.file.Path;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class DirectoryArtifactData implements ArtifactData {
+public class DirectoryArtifactData {
 
 	private Path path;
 

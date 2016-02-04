@@ -9,7 +9,7 @@ import org.garret.perst.impl.StorageImpl;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstArtifact<DataType extends ArtifactData> extends BaseArtifact<DataType> implements Artifact<DataType>, IPersistent, ICloneable {
+public class PerstArtifact<DataType> extends BaseArtifact<DataType> implements Artifact<DataType>, IPersistent, ICloneable {
 
 	public PerstArtifact(DataType data) {
 		super(data);

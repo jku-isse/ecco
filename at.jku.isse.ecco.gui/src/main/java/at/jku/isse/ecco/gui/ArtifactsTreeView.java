@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.OrderedNode;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -28,7 +27,7 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 		labelNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<Node, String> param) -> new ReadOnlyStringWrapper(param.getValue().getValue().toString()));
 
 		TreeTableColumn<Node, Boolean> orderedNodeCol = new TreeTableColumn<>("Ordered");
-		orderedNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<Node, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue() instanceof OrderedNode));
+		orderedNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<Node, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().getArtifact() != null && param.getValue().getValue().getArtifact().isOrdered()));
 
 		TreeTableColumn<Node, Boolean> atomicNodeCol = new TreeTableColumn<>("Atomic");
 		atomicNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<Node, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().isAtomic()));
@@ -37,7 +36,7 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 		uniqueNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<Node, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().isUnique()));
 
 		TreeTableColumn<Node, Integer> snNodeCol = new TreeTableColumn<>("Sequence Number");
-		snNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<Node, Integer> param) -> new ReadOnlyObjectWrapper<Integer>(param.getValue().getValue().getSequenceNumber()));
+		snNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<Node, Integer> param) -> new ReadOnlyObjectWrapper<Integer>(param.getValue().getValue().getArtifact() == null ? -1 : param.getValue().getValue().getArtifact().getSequenceNumber()));
 
 		TreeTableColumn<Node, String> associationNodeCol = new TreeTableColumn<>("Association");
 		associationNodeCol.setCellValueFactory(
@@ -111,7 +110,7 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 			if (this.firstTimeChildren) {
 				this.firstTimeChildren = false;
 
-				for (Node child : this.getValue().getAllChildren()) {
+				for (Node child : this.getValue().getChildren()) {
 					super.getChildren().add(new NodeTreeItem(child));
 				}
 			}
@@ -120,7 +119,7 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 
 		@Override
 		public boolean isLeaf() {
-			return this.getValue().getAllChildren().isEmpty();
+			return this.getValue().getChildren().isEmpty();
 		}
 	}
 

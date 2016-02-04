@@ -44,7 +44,7 @@ public class TextWriter implements ArtifactWriter<Set<Node>, Path> {
 			output.add(outputPath);
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath)) {
-				for (Node lineNode : fileNode.getAllChildren()) { // TODO: the order in which to write lines needs to be determined!
+				for (Node lineNode : fileNode.getChildren()) { // TODO: the order in which to write lines needs to be determined!
 					LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
 
 					bw.write(lineArtifactData.getLine());

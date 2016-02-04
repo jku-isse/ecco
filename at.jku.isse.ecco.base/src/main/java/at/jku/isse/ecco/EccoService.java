@@ -17,6 +17,7 @@ import at.jku.isse.ecco.plugin.CoreModule;
 import at.jku.isse.ecco.plugin.artifact.*;
 import at.jku.isse.ecco.plugin.data.DataPlugin;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.RootNode;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import org.slf4j.Logger;
@@ -523,7 +524,7 @@ public class EccoService {
 	 */
 	public Commit commit(Association association) throws EccoException {
 		checkNotNull(association);
-		List<Association> associations = new ArrayList<Association>(1);
+		List<Association> associations = new ArrayList<>(1);
 		associations.add(association);
 		return this.commit(associations);
 	}
@@ -543,11 +544,11 @@ public class EccoService {
 			System.out.println("COMMIT");
 
 			List<Association> originalAssociations = this.associationDao.loadAllAssociations();
-			List<Association> newAssociations = new ArrayList<Association>();
+			List<Association> newAssociations = new ArrayList<>();
 
 			// process each new association individually
 			for (Association inputA : inputAs) {
-				List<Association> toAdd = new ArrayList<Association>();
+				List<Association> toAdd = new ArrayList<>();
 
 				// slice new association with every original association
 				for (Association origA : originalAssociations) {
@@ -555,15 +556,16 @@ public class EccoService {
 					// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
 					//Association intA = origA.slice(inputA);
 					Association intA = this.entityFactory.createAssociation();
-					intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition()));
-					intA.setArtifactRoot((origA.getArtifactTreeRoot().slice(inputA.getArtifactTreeRoot())));
+					intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition())); // TODO: do this in module util
+					//intA.setArtifactRoot((origA.getArtifactTreeRoot().slice(inputA.getArtifactTreeRoot())));
+					intA.setArtifactRoot((RootNode) EccoUtil.sliceNodes(origA.getArtifactTreeRoot(), inputA.getArtifactTreeRoot()));
 					// set parents for intersection association
 					intA.addParent(origA);
 					intA.addParent(inputA);
 					intA.setName(origA.getId() + " INT " + inputA.getId());
 
 					// if the intersection association has artifacts or a not empty presence condition store it
-					if (intA.getArtifactTreeRoot().getAllChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
+					if (intA.getArtifactTreeRoot().getChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
 						toAdd.add(intA);
 					}
 
@@ -574,7 +576,7 @@ public class EccoService {
 				newAssociations.addAll(toAdd);
 
 				// if the remainder is not empty store it
-				if (inputA.getArtifactTreeRoot().getAllChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
+				if (inputA.getArtifactTreeRoot().getChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
 					EccoUtil.sequenceOrderedNodes(inputA.getArtifactTreeRoot());
 					EccoUtil.updateArtifactReferences(inputA.getArtifactTreeRoot());
 					EccoUtil.checkConsistency(inputA.getArtifactTreeRoot());
@@ -712,7 +714,7 @@ public class EccoService {
 	}
 
 	public void checkout(Node node) {
-		Set<Node> nodes = new HashSet<>(node.getAllChildren());
+		Set<Node> nodes = new HashSet<>(node.getChildren());
 		this.writer.write(this.baseDir, nodes);
 	}
 
