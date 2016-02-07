@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;

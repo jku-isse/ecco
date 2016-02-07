@@ -1,9 +1,11 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -34,6 +36,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
 
 	private boolean showEmptyAssociations = false;
+
 
 	public AssociationsView(EccoService service) {
 		this.service = service;
@@ -88,6 +91,10 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		});
 
 
+		SplitPane splitPane = new SplitPane();
+		this.setCenter(splitPane);
+
+
 		// list of associations
 		TableView<AssociationInfo> associationsTable = new TableView<AssociationInfo>();
 		associationsTable.setEditable(false);
@@ -111,14 +118,27 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
 		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
-		//associationsTable.setItems(this.associationsData);
 		associationsTable.setItems(sortedData);
 
 
 		showEmptyAssociationsCheckBox.setSelected(true);
 
 
-		this.setCenter(associationsTable);
+		// details view
+		AssociationDetailView associationDetailView = new AssociationDetailView(service);
+
+
+		associationsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
+			if (newValue != null) {
+				associationDetailView.showAssociation(newValue.getAssociation());
+			} else {
+				associationDetailView.showAssociation(null);
+			}
+		});
+
+
+		// add to split pane
+		splitPane.getItems().addAll(associationsTable, associationDetailView);
 
 
 		service.addListener(this);
@@ -130,7 +150,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 	private void updateAssociations(Collection<Association> associations) {
 		for (Association association : associations) {
-			//if (this.showEmptyAssociations || association.getArtifactTreeRoot().getAllChildren().size() > 0)
 			this.associationsData.add(new AssociationInfo(association));
 		}
 	}
@@ -182,7 +201,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 		public AssociationInfo(Association association) {
 			this.association = association;
-			this.numArtifacts = new SimpleIntegerProperty(association.countArtifacts());
+			this.numArtifacts = new SimpleIntegerProperty(EccoUtil.countArtifactsInAssociation(association));
 		}
 
 		public Association getAssociation() {

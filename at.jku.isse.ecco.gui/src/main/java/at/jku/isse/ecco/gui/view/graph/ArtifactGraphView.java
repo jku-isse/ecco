@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
@@ -34,7 +34,7 @@ import org.graphstream.ui.view.Viewer;
 import javax.swing.*;
 import java.nio.file.Path;
 
-public class ArtifactsGraphView extends BorderPane implements EccoListener {
+public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 	private EccoService service;
 
@@ -46,7 +46,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 	private boolean depthFade = false;
 	private boolean showLabels = true;
 
-	public ArtifactsGraphView(EccoService service) {
+	public ArtifactGraphView(EccoService service) {
 		this.service = service;
 
 
@@ -62,7 +62,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 				SwingUtilities.invokeLater(new Runnable() {
 					@Override
 					public void run() {
-						ArtifactsGraphView.this.updateGraph(ArtifactsGraphView.this.depthFade, ArtifactsGraphView.this.showLabels);
+						ArtifactGraphView.this.updateGraph(ArtifactGraphView.this.depthFade, ArtifactGraphView.this.showLabels);
 					}
 				});
 				Task refreshTask = new Task<Void>() {
@@ -92,7 +92,7 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 		toolBar.getItems().add(depthFadeCheckBox);
 		depthFadeCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
 			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
-				ArtifactsGraphView.this.depthFade = new_val;
+				ArtifactGraphView.this.depthFade = new_val;
 			}
 		});
 
@@ -100,8 +100,8 @@ public class ArtifactsGraphView extends BorderPane implements EccoListener {
 		toolBar.getItems().add(showLabelsCheckbox);
 		showLabelsCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
 			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
-				ArtifactsGraphView.this.showLabels = new_val;
-				ArtifactsGraphView.this.updateGraphStylehseet(new_val);
+				ArtifactGraphView.this.showLabels = new_val;
+				ArtifactGraphView.this.updateGraphStylehseet(new_val);
 			}
 		});
 

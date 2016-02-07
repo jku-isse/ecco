@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.plugin.artifact.image;
 
-import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
+import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Module;
 
 import java.nio.file.Path;
@@ -26,12 +26,12 @@ public class ImagePlugin extends ArtifactPlugin {
 
 	@Override
 	public String getName() {
-		return "FileArtifactPlugin";
+		return "ImageArtifactPlugin";
 	}
 
 	@Override
 	public String getDescription() {
-		return "File Artifact Plugin";
+		return "Image Artifact Plugin";
 	}
 
 	@Override

@@ -1,6 +1,10 @@
 package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.gui.view.*;
+import at.jku.isse.ecco.gui.view.graph.ArtifactGraphView;
+import at.jku.isse.ecco.gui.view.graph.CommitGraphView;
+import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
@@ -80,8 +84,17 @@ public class MainView extends BorderPane {
 		artifactsGraphTab.setClosable(false);
 		tabPane.getTabs().add(artifactsGraphTab);
 
-		ArtifactsGraphView artifactsGraphView = new ArtifactsGraphView(eccoService);
+		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService);
 		artifactsGraphTab.setContent(artifactsGraphView);
+
+		// dependency graph
+		Tab dependencyGraphTab = new Tab();
+		dependencyGraphTab.setText("Dependency Graph");
+		dependencyGraphTab.setClosable(false);
+		tabPane.getTabs().add(dependencyGraphTab);
+
+		DependencyGraphView dependencyGraphView = new DependencyGraphView(eccoService);
+		dependencyGraphTab.setContent(dependencyGraphView);
 
 		// charts
 		Tab chartsTab = new Tab();

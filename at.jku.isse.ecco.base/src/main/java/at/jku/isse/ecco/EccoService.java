@@ -2,6 +2,7 @@ package at.jku.isse.ecco;
 
 import at.jku.isse.ecco.composition.BaseCompRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.AssociationDao;
 import at.jku.isse.ecco.dao.CommitDao;
@@ -108,6 +109,8 @@ public class EccoService {
 		this.ignoredFiles.add(CONFIG_FILE_NAME);
 	}
 
+
+	private Collection<ArtifactPlugin> artifactPlugins;
 
 	private Injector injector;
 
@@ -316,8 +319,10 @@ public class EccoService {
 			};
 			// artifact modules
 			List<Module> artifactModules = new ArrayList<Module>();
+			this.artifactPlugins = new ArrayList<>();
 			for (ArtifactPlugin ap : ArtifactPlugin.getArtifactPlugins()) {
 				artifactModules.add(ap.getModule());
+				this.artifactPlugins.add(ap);
 			}
 			LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
 			// data modules
@@ -412,6 +417,7 @@ public class EccoService {
 	 * @return The configuration string.
 	 */
 	public String createConfigurationString(Configuration configuration) {
+		// TODO: put this into Configuration.toString()
 		String configurationString = configuration.getFeatureInstances().stream().map((FeatureInstance fi) -> {
 			StringBuffer sb = new StringBuffer();
 			if (fi.getSign())
@@ -685,8 +691,8 @@ public class EccoService {
 	 * @param configurationString The configuration string representing the configuration that shall be checked out.
 	 * @throws EccoException
 	 */
-	public void checkout(String configurationString) throws EccoException {
-		this.checkout(this.parseConfigurationString(configurationString));
+	public Checkout checkout(String configurationString) throws EccoException {
+		return this.checkout(this.parseConfigurationString(configurationString));
 	}
 
 	/**
@@ -694,7 +700,7 @@ public class EccoService {
 	 *
 	 * @param configuration The configuration to be checked out.
 	 */
-	public void checkout(Configuration configuration) {
+	public Checkout checkout(Configuration configuration) {
 		synchronized (this) {
 			checkNotNull(configuration);
 
@@ -709,13 +715,17 @@ public class EccoService {
 				}
 			}
 
-			this.checkout(compRootNode);
+			return this.checkout(compRootNode);
 		}
 	}
 
-	public void checkout(Node node) {
+	public Checkout checkout(Node node) {
+		Checkout checkout = this.entityFactory.createCheckout();
+
 		Set<Node> nodes = new HashSet<>(node.getChildren());
 		this.writer.write(this.baseDir, nodes);
+
+		return checkout;
 	}
 
 
@@ -764,6 +774,15 @@ public class EccoService {
 	 */
 	public Injector getInjector() {
 		return this.injector;
+	}
+
+	/**
+	 * Gets the list of loaded artifact plugins.
+	 *
+	 * @return The list of artifact plugins.
+	 */
+	public Collection<ArtifactPlugin> getArtifactPlugins() {
+		return new ArrayList<ArtifactPlugin>(this.artifactPlugins);
 	}
 
 }

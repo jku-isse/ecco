@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;

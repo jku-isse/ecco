@@ -1,3 +1,4 @@
+
 # ecco release history
 
 
@@ -9,7 +10,15 @@
   * moved several concepts from node to artifact to remove redundancies
   * added release history (this file)
   * added dispatch for folders
-  * (in progress) made gui improvements (feature detail view: description/edit/search, commit/checkout result detail view, artifact detail view, dependency graph view, association detail view: new table, ...)
+  * made gui improvements
+    * feature detail view: description/edit/search
+    * commit/checkout result detail view
+    * (in progress) artifact detail view
+    * (in progress) dependency graph view
+    * (in progress) association detail view: containment table, modules table
+    * (in progress) artifact graph view: group children where count above limit separately by association and not in parent
+    * ...
+
 
 
 * 0.1.3

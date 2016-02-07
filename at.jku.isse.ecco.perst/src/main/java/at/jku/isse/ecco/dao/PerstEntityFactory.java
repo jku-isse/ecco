@@ -47,6 +47,11 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
+	public Checkout createCheckout() {
+		return new BaseCheckout();
+	}
+
+	@Override
 	public PresenceCondition createPresenceCondition() {
 		return new PerstPresenceCondition();
 	}

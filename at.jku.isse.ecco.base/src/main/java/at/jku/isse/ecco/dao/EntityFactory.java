@@ -3,6 +3,7 @@ package at.jku.isse.ecco.dao;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
@@ -44,6 +45,13 @@ public interface EntityFactory {
 	 * @return
 	 */
 	public Commit createCommit();
+
+	/**
+	 * Creates an empty checkout.
+	 *
+	 * @return
+	 */
+	public Checkout createCheckout();
 
 	/**
 	 * Creates an empty presence condition.

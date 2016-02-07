@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;

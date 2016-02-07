@@ -1,10 +1,12 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.gui.view.graph.SequenceGraphView;
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
+import javafx.geometry.Orientation;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextArea;
@@ -35,19 +37,21 @@ public class ArtifactDetailView extends BorderPane {
 	}
 
 	public void showTree(Node node) {
-		// TODO: show some general info, like sequence graph if it is an ordered node.
-		HBox detailView = new HBox(new Label("Detail View"));
-
-		this.setTop(detailView);
-
-
 		SplitPane splitPane = new SplitPane();
 		this.setCenter(splitPane);
 
 
+		SplitPane detailsSplitPane = new SplitPane();
+		detailsSplitPane.setOrientation(Orientation.VERTICAL);
+		splitPane.getItems().add(detailsSplitPane);
+
+		// TODO: show some general info, like sequence graph if it is an ordered node.
+		HBox detailView = new HBox(new Label("Detail View"));
+		detailsSplitPane.getItems().add(detailView);
+
 		// if node is an ordered node display its sequence graph
 		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
-			splitPane.getItems().add(this.sequenceGraphView);
+			detailsSplitPane.getItems().add(this.sequenceGraphView);
 			this.sequenceGraphView.showGraph(node.getArtifact().getSequenceGraph());
 		}
 

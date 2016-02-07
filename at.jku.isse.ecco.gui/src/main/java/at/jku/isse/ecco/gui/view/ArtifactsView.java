@@ -1,10 +1,12 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.BaseCompRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -95,11 +97,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
-//		idAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("id"));
-//		nameAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-//		conditionAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("condition"));
-//		numArtifactsAssociationsCol.setCellValueFactory(new PropertyValueFactory<>("numArtifacts"));
-
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getAssociation().getId()));
 		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
 		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getPresenceCondition().toString()));
@@ -114,7 +111,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
 		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
-		//associationsTable.setItems(this.associationsData);
 		associationsTable.setItems(sortedData);
 
 

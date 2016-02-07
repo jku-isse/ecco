@@ -1,18 +1,25 @@
-package at.jku.isse.ecco.gui;
+package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
+import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Orientation;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
@@ -25,9 +32,18 @@ public class OperationsView extends BorderPane implements EccoListener {
 
 	final ObservableList<FileInfo> logData = FXCollections.observableArrayList();
 
+
+	SplitPane splitPane;
+	CommitDetailView commitDetailView;
+	CheckoutDetailView checkoutDetailView;
+	TableView<FileInfo> fileTable;
+
+
 	public OperationsView(EccoService service) {
 		this.service = service;
 
+
+		// toolbar
 		Label configurationStringLabel = new Label("Configuration:");
 		TextField configurationStringInput = new TextField();
 		Button commitButton = new Button("Commit");
@@ -46,14 +62,15 @@ public class OperationsView extends BorderPane implements EccoListener {
 
 				final String configurationString = configurationStringInput.getText();
 
-				Task commitTask = new Task<Void>() {
+				Task commitTask = new Task<Commit>() {
 					@Override
-					public Void call() throws EccoException {
+					public Commit call() throws EccoException {
+						Commit commit;
 						if (configurationString == null || configurationString.isEmpty())
-							OperationsView.this.service.commit();
+							commit = OperationsView.this.service.commit();
 						else
-							OperationsView.this.service.commit(configurationString);
-						return null;
+							commit = OperationsView.this.service.commit(configurationString);
+						return commit;
 					}
 
 					public void finished() {
@@ -92,6 +109,18 @@ public class OperationsView extends BorderPane implements EccoListener {
 					}
 				};
 
+				commitTask.valueProperty().addListener(new ChangeListener<Commit>() {
+					@Override
+					public void changed(ObservableValue<? extends Commit> obs, Commit oldValue, Commit newValue) {
+						if (newValue != null) {
+							OperationsView.this.commitDetailView.showCommit(newValue);
+
+							OperationsView.this.splitPane.getItems().setAll(OperationsView.this.commitDetailView, OperationsView.this.fileTable);
+							OperationsView.this.setCenter(OperationsView.this.splitPane);
+						}
+					}
+				});
+
 				new Thread(commitTask).start();
 			}
 		});
@@ -103,11 +132,11 @@ public class OperationsView extends BorderPane implements EccoListener {
 				OperationsView.this.logData.clear();
 				OperationsView.this.service.getWriter().addListener(OperationsView.this);
 
-				Task commitTask = new Task<Void>() {
+				Task checkoutTask = new Task<Checkout>() {
 					@Override
-					public Void call() throws EccoException {
-						OperationsView.this.service.checkout(configurationStringInput.getText());
-						return null;
+					public Checkout call() throws EccoException {
+						Checkout checkout = OperationsView.this.service.checkout(configurationStringInput.getText());
+						return checkout;
 					}
 
 					public void finished() {
@@ -146,13 +175,36 @@ public class OperationsView extends BorderPane implements EccoListener {
 					}
 				};
 
-				new Thread(commitTask).start();
+				checkoutTask.valueProperty().addListener(new ChangeListener<Checkout>() {
+					@Override
+					public void changed(ObservableValue<? extends Checkout> obs, Checkout oldValue, Checkout newValue) {
+						if (newValue != null) {
+							OperationsView.this.checkoutDetailView.showCheckout(newValue);
+
+							OperationsView.this.splitPane.getItems().setAll(OperationsView.this.checkoutDetailView, OperationsView.this.fileTable);
+							OperationsView.this.setCenter(OperationsView.this.splitPane);
+						}
+					}
+				});
+
+				new Thread(checkoutTask).start();
 			}
 		});
 
+
+		this.splitPane = new SplitPane();
+		this.splitPane.setOrientation(Orientation.VERTICAL);
+		this.setCenter(splitPane);
+
+
+		// details view
+		this.commitDetailView = new CommitDetailView(service);
+		this.checkoutDetailView = new CheckoutDetailView(service);
+
+
 		// TABLE VIEW
 
-		TableView<FileInfo> fileTable = new TableView<FileInfo>();
+		this.fileTable = new TableView<FileInfo>();
 		fileTable.setEditable(false);
 		fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -168,7 +220,8 @@ public class OperationsView extends BorderPane implements EccoListener {
 
 		fileTable.setItems(this.logData);
 
-		this.setCenter(fileTable);
+		splitPane.getItems().add(fileTable);
+
 
 		service.addListener(this);
 
