@@ -86,6 +86,16 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 		return currentReader;
 	}
 
+	private Set<Path> ignoredFiles = new HashSet<Path>();
+
+	public void setIgnoredFiles(Set<Path> ignoredFiles) {
+		this.ignoredFiles = ignoredFiles;
+	}
+
+	public Set<Path> getIgnoredFiles() {
+		return this.ignoredFiles;
+	}
+
 	@Override
 	public Set<Node> read(Path[] input) {
 		return this.read(Paths.get("."), input);
@@ -93,83 +103,87 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 
 	@Override
 	public Set<Node> read(Path base, Path[] input) {
-		Set<Node> nodes = new HashSet<Node>();
+		Set<Node> nodes = new HashSet<>();
 
 		base = base.normalize();
 
-		Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap = new HashMap<ArtifactReader<Path, Set<Node>>, ArrayList<Path>>();
-
-		// this reader itself is responsible for the directory tree structure (unless there is an adapter that deals with a directory)
-		Set<Path> directories = new HashSet<Path>();
-		Set<Path> files = new HashSet<Path>();
 		for (Path path : input) {
-			path = path.normalize();
-			Path resolvedPath = base.resolve(path);
-			if (Files.isDirectory(resolvedPath) && this.getReaderForFile(base, base.relativize(resolvedPath)) == null) {
-				directories.add(base.relativize(resolvedPath));
-				this.fireReadEvent(base.relativize(resolvedPath), this);
-			} else {
-				files.add(base.relativize(resolvedPath));
-			}
-		}
-		Map<Path, Node> directoryNodes = new HashMap<Path, Node>();
-		Node baseDirectoryNode = this.readDirectories(base, base, directories, directoryNodes);
-		nodes.add(baseDirectoryNode);
 
-		// assign files to readers
-		for (Path file : files) {
-			ArtifactReader<Path, Set<Node>> reader = this.getReaderForFile(base, file);
+			Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap = new HashMap<>();
 
-			if (reader != null) {
-				ArrayList<Path> fileList = readerToFilesMap.get(reader);
-				if (fileList == null)
-					fileList = new ArrayList<Path>();
-				fileList.add(file);
-				readerToFilesMap.put(reader, fileList);
-				this.fireReadEvent(file, reader);
-			}
-		}
+			// this reader itself is responsible for the directory tree structure (unless there is an adapter that deals with a directory)
+			Map<Path, Node> directoryNodes = new HashMap<>();
+			Node baseDirectoryNode = this.readDirectories(base, base.resolve(path), readerToFilesMap, directoryNodes);
+			nodes.add(baseDirectoryNode);
 
-		// let readers read the assigned files
-		for (ArtifactReader<Path, Set<Node>> reader : this.readers) {
-			ArrayList<Path> filesList = readerToFilesMap.get(reader);
+			// let readers read the assigned files
+			for (ArtifactReader<Path, Set<Node>> reader : this.readers) {
+				ArrayList<Path> filesList = readerToFilesMap.get(reader);
 
-			if (filesList != null) {
-				Path[] pluginInput = filesList.toArray(new Path[filesList.size()]);
+				if (filesList != null) {
+					Path[] pluginInput = filesList.toArray(new Path[filesList.size()]);
 
-				Set<Node> pluginNodes = reader.read(base, pluginInput);
-				for (Node pluginNode : pluginNodes) {
-					PluginArtifactData pluginArtifactData = (PluginArtifactData) pluginNode.getArtifact().getData();
-					Path parent = pluginArtifactData.getPath().getParent();
-					if (parent == null)
-						parent = Paths.get(".").normalize();
-					directoryNodes.get(parent).addChild(pluginNode);
+					Set<Node> pluginNodes = reader.read(base, pluginInput);
+					for (Node pluginNode : pluginNodes) {
+						PluginArtifactData pluginArtifactData = (PluginArtifactData) pluginNode.getArtifact().getData();
+						Path parent = pluginArtifactData.getPath().getParent();
+						if (parent == null)
+							parent = Paths.get(".").normalize();
+						directoryNodes.get(parent).addChild(pluginNode);
+					}
 				}
 			}
+
 		}
 
 		// return produced nodes
 		return nodes;
 	}
 
-	private Node readDirectories(Path base, Path current, Set<Path> directories, Map<Path, Node> directoryNodes) {
+	private Node readDirectories(Path base, Path current, Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap, Map<Path, Node> directoryNodes) {
 		Path relativeCurrent = base.relativize(current);
-		Artifact directoryArtifact = entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
-		Node directoryNode = entityFactory.createNode(directoryArtifact);
-		directoryNodes.put(relativeCurrent, directoryNode);
 
 		try {
-			Files.list(current).filter(d -> {
-				return directories.contains(base.relativize(d));
-			}).forEach(d -> {
-				directories.remove(d);
-				directoryNode.addChild(this.readDirectories(base, d, directories, directoryNodes));
-			});
+			if (Files.isDirectory(current) && this.getReaderForFile(base, relativeCurrent) == null) { // deal with directories that cannot be dispatched
+				if (!this.ignoredFiles.contains(relativeCurrent)) { // if directory is not ignored add it to directories
+					Artifact directoryArtifact = entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
+					Node directoryNode = entityFactory.createNode(directoryArtifact);
+					directoryNodes.put(relativeCurrent, directoryNode);
+
+					this.fireReadEvent(base.relativize(current), this);
+
+
+					// go into sub directories
+					Files.list(current).forEach(d -> {
+						Node child = this.readDirectories(base, d, readerToFilesMap, directoryNodes);
+						if (child != null)
+							directoryNode.addChild(child);
+					});
+
+					return directoryNode;
+				}
+			} else { // deal with files and directories that can be dispatched
+				if (!this.ignoredFiles.contains(relativeCurrent)) { // if file is not ignored add it to readerToFilesMap
+					// assign file to reader
+					ArtifactReader<Path, Set<Node>> reader = this.getReaderForFile(base, relativeCurrent);
+
+					if (reader != null) {
+						ArrayList<Path> fileList = readerToFilesMap.get(reader);
+						if (fileList == null)
+							fileList = new ArrayList<Path>();
+						fileList.add(relativeCurrent);
+						readerToFilesMap.put(reader, fileList);
+						this.fireReadEvent(relativeCurrent, reader);
+					}
+
+					return null;
+				}
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		return directoryNode;
+		return null;
 	}
 
 }

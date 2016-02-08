@@ -349,6 +349,8 @@ public class EccoService {
 			this.commitDao.init();
 			this.featureDao.init();
 
+			this.reader.setIgnoredFiles(this.ignoredFiles);
+
 			this.initialized = true;
 
 			this.fireStatusChangedEvent();
@@ -476,28 +478,8 @@ public class EccoService {
 	 * @return The resulting commit object or null in case of an error.
 	 */
 	public Commit commit(Configuration configuration) throws EccoException {
-		Set<Path> files = new HashSet<Path>();
-		this.addAllFiles(this.baseDir, this.baseDir, files);
-		files.removeAll(this.ignoredFiles);
-		System.out.println(this.ignoredFiles);
-		System.out.println(files);
-
-		Set<Node> nodes = this.reader.read(this.baseDir, files.toArray(new Path[files.size()]));
+		Set<Node> nodes = this.reader.read(this.baseDir, new Path[]{Paths.get("")});
 		return this.commit(configuration, nodes);
-	}
-
-	private void addAllFiles(Path base, Path dir, Set<Path> files) {
-		try {
-			Files.list(dir).forEach(p -> {
-				Path file = base.relativize(p);
-				if (!this.ignoredFiles.contains(file)) {
-					files.add(file);
-					if (Files.isDirectory(p)) this.addAllFiles(base, p, files);
-				}
-			});
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	/**

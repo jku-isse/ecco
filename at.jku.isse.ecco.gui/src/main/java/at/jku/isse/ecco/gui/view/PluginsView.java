@@ -22,6 +22,8 @@ public class PluginsView extends TableView<PluginsView.PluginInfo> implements Ec
 
 	private ObservableList<PluginInfo> pluginsData = FXCollections.observableArrayList();
 
+	private boolean initialized = false;
+
 
 	public PluginsView(EccoService service) {
 		this.service = service;
@@ -45,10 +47,11 @@ public class PluginsView extends TableView<PluginsView.PluginInfo> implements Ec
 		this.setItems(this.pluginsData);
 
 
+		this.initialized = false;
+
 		service.addListener(this);
 
-		if (!service.isInitialized())
-			this.setDisable(true);
+		this.statusChangedEvent(service);
 	}
 
 
@@ -58,12 +61,15 @@ public class PluginsView extends TableView<PluginsView.PluginInfo> implements Ec
 			Platform.runLater(() -> {
 				this.setDisable(false);
 			});
-			Collection<ArtifactPlugin> plugins = service.getArtifactPlugins();
-			Platform.runLater(() -> {
-				for (ArtifactPlugin ap : plugins) {
-					this.pluginsData.add(new PluginInfo(ap.getPluginId(), ap.getName(), ap.getDescription()));
-				}
-			});
+			if (!this.initialized) {
+				Collection<ArtifactPlugin> plugins = service.getArtifactPlugins();
+				Platform.runLater(() -> {
+					for (ArtifactPlugin ap : plugins) {
+						this.pluginsData.add(new PluginInfo(ap.getPluginId(), ap.getName(), ap.getDescription()));
+						this.initialized = true;
+					}
+				});
+			}
 		} else {
 			Platform.runLater(() -> {
 				this.setDisable(true);
