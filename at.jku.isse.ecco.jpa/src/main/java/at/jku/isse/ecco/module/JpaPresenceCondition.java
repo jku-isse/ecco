@@ -5,21 +5,27 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-/**
- * A basic in memory implementation of a presence condition without a database backend.
- */
-public class BasePresenceCondition implements PresenceCondition {
+@Entity
+public class JpaPresenceCondition implements PresenceCondition {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private int id;
 
 	// each of these is a list of "modules", i.e. a "module expression", i.e. an expression composed of modules
-	protected Set<Module> minModules = new HashSet<Module>();
-	protected Set<Module> maxModules = new HashSet<Module>();
-	protected Set<Module> allModules = new HashSet<Module>();
-	protected Set<Module> notModules = new HashSet<Module>();
+	protected HashSet<Module> minModules = new HashSet<Module>();
+	protected HashSet<Module> maxModules = new HashSet<Module>();
+	protected HashSet<Module> allModules = new HashSet<Module>();
+	protected HashSet<Module> notModules = new HashSet<Module>();
 
 //	/**
 //	 * The following describe sets of features that have never appeared without each other and whose modules have not explicitly been computed.
@@ -30,11 +36,11 @@ public class BasePresenceCondition implements PresenceCondition {
 //	private Set<Set<Feature>> allFeatureExpressions;
 //	private Set<Set<Feature>> notFeatureExpressions;
 
-	public BasePresenceCondition() {
+	public JpaPresenceCondition() {
 		super();
 	}
 
-	public BasePresenceCondition(Configuration configuration) {
+	public JpaPresenceCondition(Configuration configuration) {
 		super();
 
 		// TODO: in the configuration there must not be different versions of the same feature! this is only allowed for checkout!

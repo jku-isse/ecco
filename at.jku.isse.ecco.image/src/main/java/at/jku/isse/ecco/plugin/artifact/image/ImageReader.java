@@ -68,13 +68,12 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 			Path resolvedPath = base.resolve(path);
 
 			try {
-				Artifact<PluginArtifactData> fileArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-				Node fileNode = this.entityFactory.createOrderedNode(fileArtifact);
-				nodes.add(fileNode);
+				Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+				Node pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+				nodes.add(pluginNode);
 
 				final BufferedImage image = ImageIO.read(resolvedPath.toFile());
-				// nodes.add(parseImage(image));
-				fileNode.addChild(parseImage(image));
+				pluginNode.addChild(parseImage(image));
 
 				System.out.println(image.getColorModel());
 				System.out.println(image.getType());

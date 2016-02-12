@@ -59,13 +59,13 @@ public class FileReader implements ArtifactReader<Path, Set<Node>> {
 		Set<Node> nodes = new HashSet<Node>();
 		for (Path path : input) {
 			try {
-				Artifact<PluginArtifactData> artifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-				Node node = this.entityFactory.createNode(artifact);
-				nodes.add(node);
+				Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+				Node pluginNode = this.entityFactory.createNode(pluginArtifact);
+				nodes.add(pluginNode);
 
 				FileArtifactData fileArtifactData = new FileArtifactData(base, path);
 				Node fileNode = this.entityFactory.createNode(this.entityFactory.createArtifact(fileArtifactData));
-				node.addChild(fileNode);
+				pluginNode.addChild(fileNode);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

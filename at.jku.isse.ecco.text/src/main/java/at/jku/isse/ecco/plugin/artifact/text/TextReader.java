@@ -59,16 +59,16 @@ public class TextReader implements ArtifactReader<Path, Set<Node>> {
 		Set<Node> nodes = new HashSet<Node>();
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
-			Artifact<PluginArtifactData> fileArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-			Node fileNode = this.entityFactory.createOrderedNode(fileArtifact);
-			nodes.add(fileNode);
+			Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+			Node pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+			nodes.add(pluginNode);
 
 			try (Stream<String> lines = Files.lines(resolvedPath)) {
 				Iterator<String> it = lines.iterator();
 				while (it.hasNext()) {
 					String line = it.next();
 					Artifact<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
-					fileNode.addChild(this.entityFactory.createNode(lineArtifact));
+					pluginNode.addChild(this.entityFactory.createNode(lineArtifact));
 				}
 			} catch (IOException e) {
 				e.printStackTrace();

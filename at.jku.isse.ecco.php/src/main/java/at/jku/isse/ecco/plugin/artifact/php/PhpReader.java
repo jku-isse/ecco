@@ -75,9 +75,8 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 		Set<Node> nodes = new HashSet<Node>();
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
-			Artifact<PluginArtifactData> fileArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-			Node fileNode = this.entityFactory.createOrderedNode(fileArtifact);
-			//nodes.add(fileNode);
+			Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+			Node pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
 
 			try {
 				FileReader fr = new FileReader(resolvedPath.toFile());
@@ -88,9 +87,8 @@ public class PhpReader implements ArtifactReader<Path, Set<Node>> {
 				ParseNode rootNode = (ParseNode) parser.parse().value;
 				ParseTree parseTree = new ParseTree(rootNode);
 
-				constructMyTree(fileNode, parseTree);
-				nodes.add(fileNode);
-
+				constructMyTree(pluginNode, parseTree);
+				nodes.add(pluginNode);
 			} catch (FileNotFoundException e) {
 				System.err.println("File not found: " + e.getMessage());
 				System.exit(1);

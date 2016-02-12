@@ -152,7 +152,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 
 					this.fireReadEvent(base.relativize(current), this);
 
-
 					// go into sub directories
 					Files.list(current).forEach(d -> {
 						Node child = this.readDirectories(base, d, readerToFilesMap, directoryNodes);
@@ -174,6 +173,13 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 						fileList.add(relativeCurrent);
 						readerToFilesMap.put(reader, fileList);
 						this.fireReadEvent(relativeCurrent, reader);
+
+//						// add artifact plugin node
+//						Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(reader.getPluginId(), relativeCurrent));
+//						Node pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+//						directoryNodes.put(relativeCurrent, pluginNode);
+//
+//						return pluginNode;
 					}
 
 					return null;

@@ -1,7 +1,5 @@
 package at.jku.isse.ecco.feature;
 
-import at.jku.isse.ecco.feature.FeatureInstance;
-
 import java.util.Set;
 
 public interface Configuration {

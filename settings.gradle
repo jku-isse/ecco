@@ -6,4 +6,5 @@ include 'at.jku.isse.ecco.base',
 		'at.jku.isse.ecco.image',
 		'at.jku.isse.ecco.php',
 		'at.jku.isse.ecco.uml',
-		'at.jku.isse.ecco.gui'
+		'at.jku.isse.ecco.gui',
+		'at.jku.isse.ecco.jpa'

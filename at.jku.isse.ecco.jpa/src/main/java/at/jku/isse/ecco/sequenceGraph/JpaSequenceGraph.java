@@ -2,15 +2,22 @@ package at.jku.isse.ecco.sequenceGraph;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.JpaArtifact;
 import at.jku.isse.ecco.tree.Node;
 
+import javax.persistence.*;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-public class BaseSequenceGraph implements SequenceGraph {
+@Entity
+public class JpaSequenceGraph implements SequenceGraph {
 
-	public BaseSequenceGraph() {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private int id;
+
+
+	public JpaSequenceGraph() {
 		this.pol = true;
 		this.root = (BaseSequenceGraphNode) this.createSequenceGraphNode(this.pol);
 		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
@@ -23,6 +30,7 @@ public class BaseSequenceGraph implements SequenceGraph {
 		return this.cur_seq_number++;
 	}
 
+	@OneToOne(targetEntity = JpaSequenceGraphNode.class)
 	private SequenceGraphNode root = null;
 
 	public SequenceGraphNode getRoot() {
@@ -37,7 +45,9 @@ public class BaseSequenceGraph implements SequenceGraph {
 
 	private int cur_best_cost = Integer.MAX_VALUE;
 
-	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
+
+
+	private HashMap<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
 
 	private boolean pol = true;
 
@@ -148,7 +158,7 @@ public class BaseSequenceGraph implements SequenceGraph {
 
 		// first do the match
 		if (node_right_index < artifacts.size() && left.getChildren().size() > 0) {
-			for (Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
 				// compare artifacts of nodes. this is necessary because left node is already using a sequence number and right is not.
 				if (entry.getKey().equals(artifacts.get(node_right_index))) {
 					found_match = true;
@@ -166,7 +176,7 @@ public class BaseSequenceGraph implements SequenceGraph {
 			if (cost + i - node_right_index >= cur_min_cost || cost + i - node_right_index > this.cur_best_cost)
 				break;
 			if (i < artifacts.size() && left.getChildren().size() > 0) {
-				for (Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
+				for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
 					// compare artifacts of nodes. this is necessary because left node is already using a sequence number and right is not.
 					if (entry.getKey().equals(artifacts.get(i))) {
 						found_match = true;
@@ -187,7 +197,7 @@ public class BaseSequenceGraph implements SequenceGraph {
 		}
 
 		if (left.getChildren().size() > 0 && (skipped_right || !found_match)) { // skip left (only if for this left we skipped a right previously for a match)
-			for (Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
 				int temp_cost = this.align_rec_fast(entry.getValue(), artifacts, node_right_index, alignment, cost + 1);
 				if (temp_cost < cur_min_cost) {
 					cur_min_cost = temp_cost;
@@ -238,9 +248,9 @@ public class BaseSequenceGraph implements SequenceGraph {
 		// gn.children.putAll(new_children); // NOTE: can this cause a concurrent modification exception?
 
 		// for every left child (this is the cutting part)
-		Iterator<Entry<Artifact<?>, SequenceGraphNode>> it = node.getChildren().entrySet().iterator();
+		Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> it = node.getChildren().entrySet().iterator();
 		while (it.hasNext()) {
-			Entry<Artifact<?>, SequenceGraphNode> entry = it.next();
+			Map.Entry<Artifact<?>, SequenceGraphNode> entry = it.next();
 			// if left child unshared we can take it
 			if (!shared_symbols.contains(entry.getKey())) {
 				// compute new path
