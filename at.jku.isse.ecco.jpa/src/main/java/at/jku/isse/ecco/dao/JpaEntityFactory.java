@@ -2,125 +2,192 @@ package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.core.Variant;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.artifact.JpaArtifact;
+import at.jku.isse.ecco.artifact.JpaArtifactReference;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.module.JpaModule;
+import at.jku.isse.ecco.module.JpaPresenceCondition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.tree.JpaNode;
+import at.jku.isse.ecco.tree.JpaRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 import java.util.Set;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public class JpaEntityFactory implements EntityFactory {
 
 	@Override
 	public Configuration createConfiguration() {
-		return null;
+		return new JpaConfiguration();
 	}
 
 	@Override
 	public Variant createVariant() {
-		return null;
+		return new JpaVariant();
 	}
 
 	@Override
 	public Commit createCommit() {
-		return null;
+		return new JpaCommit();
 	}
 
 	@Override
 	public Checkout createCheckout() {
-		return null;
+		return new BaseCheckout();
 	}
 
 	@Override
 	public PresenceCondition createPresenceCondition() {
-		return null;
+		return new JpaPresenceCondition();
 	}
 
 	@Override
 	public PresenceCondition createPresenceCondition(Configuration configuration) {
-		return null;
+		return new JpaPresenceCondition(configuration);
 	}
 
 	@Override
 	public <T> Artifact<T> createArtifact(T data) {
-		return null;
+		return new JpaArtifact<T>(data);
 	}
 
 	@Override
 	public ArtifactReference createArtifactReference(Artifact source, Artifact target) {
-		return null;
+		checkNotNull(source);
+		checkNotNull(target);
+
+		final ArtifactReference reference = new JpaArtifactReference();
+		reference.setSource(source);
+		reference.setTarget(target);
+
+		return reference;
 	}
 
 	@Override
 	public ArtifactReference createArtifactReference(Artifact source, Artifact target, String type) {
-		return null;
+		checkNotNull(source);
+		checkNotNull(target);
+		checkNotNull(type);
+
+		final ArtifactReference reference = new JpaArtifactReference(type);
+		reference.setSource(source);
+		reference.setTarget(target);
+
+		return reference;
 	}
 
 	@Override
 	public Association createAssociation() {
-		return null;
+		return new JpaAssociation();
 	}
 
 	@Override
 	public Association createAssociation(PresenceCondition presenceCondition, Set<Node> nodes) {
-		return null;
+		checkNotNull(presenceCondition);
+		checkNotNull(nodes);
+
+		final Association association = new JpaAssociation();
+
+		RootNode rootNode = this.createRootNode();
+		rootNode.setContainingAssociation(association);
+
+		for (Node node : nodes) {
+			rootNode.addChild(node);
+		}
+
+		association.setPresenceCondition(presenceCondition);
+		association.setArtifactRoot(rootNode);
+
+		return association;
 	}
 
 	@Override
 	public Feature createFeature(String name) {
-		return null;
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
+
+		return new JpaFeature(name);
 	}
 
 	@Override
 	public Feature createFeature(String name, String description) {
-		return null;
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
+		checkNotNull(description);
+
+		final Feature feature = new JpaFeature(name);
+		feature.setDescription(description);
+
+		return feature;
 	}
 
 	@Override
 	public FeatureVersion createFeatureVersion(Feature feature, int version) {
-		return null;
+		return new JpaFeatureVersion(feature, version);
 	}
 
 	@Override
 	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
-		return null;
+		checkNotNull(feature);
+		checkNotNull(featureVersion);
+
+		JpaFeatureInstance featureInstance = new JpaFeatureInstance(feature, featureVersion, sign);
+		return featureInstance;
 	}
 
 	@Override
 	public Module createModule() {
-		return null;
+		return new JpaModule();
 	}
 
 	@Override
 	public Node createNode() {
-		return null;
+		return new JpaNode();
 	}
 
 	@Override
 	public Node createNode(Artifact artifact) {
-		return null;
+		checkNotNull(artifact);
+
+		final Node node = new JpaNode();
+		node.setArtifact(artifact);
+		artifact.setContainingNode(node);
+
+		return node;
 	}
 
 	@Override
 	public RootNode createRootNode() {
-		return null;
+		return new JpaRootNode();
 	}
 
 	@Override
 	public Node createOrderedNode(Artifact artifact) {
-		return null;
+		checkNotNull(artifact);
+
+		final Node node = new JpaNode();
+		node.setArtifact(artifact);
+		artifact.setContainingNode(node);
+
+		artifact.setOrdered(true);
+
+		return node;
 	}
 
 	@Override
 	public RootNode createRootNode(Association association) {
-		return null;
+		checkNotNull(association);
+
+		final RootNode root = new JpaRootNode();
+		root.setContainingAssociation(association);
+
+		return root;
 	}
+
 }

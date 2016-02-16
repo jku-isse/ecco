@@ -4,9 +4,13 @@ import java.nio.file.Path;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class DirectoryArtifactData {
+public class DirectoryArtifactData implements ArtifactData {
 
 	private Path path;
+
+	protected DirectoryArtifactData() {
+		this.path = null;
+	}
 
 	public DirectoryArtifactData(Path path) {
 		checkNotNull(path);

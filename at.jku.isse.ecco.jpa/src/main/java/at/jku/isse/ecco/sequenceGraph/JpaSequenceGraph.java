@@ -2,15 +2,15 @@ package at.jku.isse.ecco.sequenceGraph;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.JpaArtifact;
 import at.jku.isse.ecco.tree.Node;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
-public class JpaSequenceGraph implements SequenceGraph {
+public class JpaSequenceGraph implements SequenceGraph, Serializable {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,7 +19,7 @@ public class JpaSequenceGraph implements SequenceGraph {
 
 	public JpaSequenceGraph() {
 		this.pol = true;
-		this.root = (BaseSequenceGraphNode) this.createSequenceGraphNode(this.pol);
+		this.root = (JpaSequenceGraphNode) this.createSequenceGraphNode(this.pol);
 		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
 	}
 
@@ -46,14 +46,13 @@ public class JpaSequenceGraph implements SequenceGraph {
 	private int cur_best_cost = Integer.MAX_VALUE;
 
 
-
 	private HashMap<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
 
 	private boolean pol = true;
 
 
 	public SequenceGraphNode createSequenceGraphNode(boolean pol) {
-		return new BaseSequenceGraphNode(pol);
+		return new JpaSequenceGraphNode(pol);
 	}
 
 
@@ -216,7 +215,7 @@ public class JpaSequenceGraph implements SequenceGraph {
 		SequenceGraphNode gn = this.nodes.get(path);
 		if (gn == null) {
 			//gn = new SequenceGraphNode(!new_pol);
-			gn = (BaseSequenceGraphNode) this.createSequenceGraphNode(!new_pol);
+			gn = (SequenceGraphNode) this.createSequenceGraphNode(!new_pol);
 			this.nodes.put(path, gn);
 			new_node = true;
 		}

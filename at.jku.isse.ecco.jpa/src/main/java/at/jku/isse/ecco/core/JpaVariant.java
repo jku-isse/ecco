@@ -6,9 +6,10 @@ import at.jku.isse.ecco.feature.JpaConfiguration;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.OneToOne;
+import java.io.Serializable;
 
 @Entity
-public class JpaVariant implements Variant {
+public class JpaVariant implements Variant, Serializable {
 
 	@Id
 	private String name;

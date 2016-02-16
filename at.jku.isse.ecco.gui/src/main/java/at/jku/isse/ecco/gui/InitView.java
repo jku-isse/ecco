@@ -94,6 +94,17 @@ public class InitView extends BorderPane implements EccoListener {
 						});
 						return null;
 					}
+
+					@Override
+					public void failed() {
+						super.failed();
+
+						ExceptionAlert alert = new ExceptionAlert(this.getException());
+						alert.setTitle("Init Error");
+						alert.setHeaderText("Init Error");
+
+						alert.showAndWait();
+					}
 				}).start();
 			}
 		});

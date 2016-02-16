@@ -4,17 +4,20 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.JpaConfiguration;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-public class JpaCommit implements Commit {
+public class JpaCommit implements Commit, Serializable {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private int id;
 
-	private ArrayList<Association> associations;
+	@OneToMany(targetEntity = JpaAssociation.class)
+	private List<Association> associations;
+
 	private String committer;
 
 	@OneToOne(targetEntity = JpaConfiguration.class)

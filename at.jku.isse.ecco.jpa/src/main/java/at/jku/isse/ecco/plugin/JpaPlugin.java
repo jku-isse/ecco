@@ -10,7 +10,7 @@ public class JpaPlugin extends DataPlugin {
 
 	@Override
 	public String getPluginId() {
-		return "at.jku.isse.ecco.perst";
+		return "at.jku.isse.ecco.jpa";
 	}
 
 	@Override

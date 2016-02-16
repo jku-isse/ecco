@@ -1,9 +1,15 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.JpaAssociation;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 
+import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,12 +26,11 @@ public class JpaAssociationDao extends JpaAbstractGenericDao<Association> implem
 	 * a path to a database file or the path where a new database should be
 	 * created.
 	 *
-	 * @param connectionString path to the database
-	 * @param entityFactory    The factory which is used to create new entities.
+	 * @param entityFactory The factory which is used to create new entities.
 	 */
 	@Inject
-	public JpaAssociationDao(@Named("connectionString") final String connectionString, final JpaEntityFactory entityFactory) {
-		super(connectionString);
+	public JpaAssociationDao(JpaTransactionStrategy transactionStrategy, final JpaEntityFactory entityFactory) {
+		super(transactionStrategy);
 
 		checkNotNull(entityFactory);
 
@@ -33,77 +38,67 @@ public class JpaAssociationDao extends JpaAbstractGenericDao<Association> implem
 	}
 
 	@Override
-	public List<Association> loadAllAssociations() {
-		try {
-			entityManager.getTransaction().begin();
-			List<Association> associations = entityManager.createQuery("from Association").getResultList();
-			entityManager.getTransaction().commit();
-			return associations;
-		} catch (Exception e) {
-			entityManager.getTransaction().rollback();
-		}
-		return new ArrayList<>();
+	public List<Association> loadAllAssociations() throws EccoException {
+		// obtain entity manager from transaction strategy
+		EntityManager entityManager = this.transactionStrategy.getEntityManager();
+
+		// do query
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<JpaAssociation> cq = cb.createQuery(JpaAssociation.class);
+		Root<JpaAssociation> rootEntry = cq.from(JpaAssociation.class);
+		CriteriaQuery<JpaAssociation> all = cq.select(rootEntry);
+		TypedQuery<JpaAssociation> allQuery = entityManager.createQuery(all);
+
+		List<Association> associations = new ArrayList<>(allQuery.getResultList());
+
+		// return result
+		return associations;
 	}
 
 	@Override
-	public Association load(final String id) {
+	public Association load(final String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non empty id.");
 
-		try {
-			entityManager.getTransaction().begin();
-			Association association = (Association) entityManager.find(Association.class, Integer.valueOf(id));
-			entityManager.getTransaction().commit();
-			return association;
-		} catch (Exception e) {
-			entityManager.getTransaction().rollback();
-		}
-		return null;
+		EntityManager entityManager = this.transactionStrategy.getEntityManager();
+
+		Association association = (Association) entityManager.find(Association.class, Integer.valueOf(id));
+
+		return association;
 	}
 
 	@Override
-	public void remove(final Association entity) {
+	public void remove(final Association entity) throws EccoException {
 		checkNotNull(entity);
 
-		try {
-			entityManager.getTransaction().begin();
-			Association association = (Association) entityManager.find(Association.class, entity.getId());
-			entityManager.remove(association);
-			entityManager.getTransaction().commit();
-		} catch (Exception e) {
-			entityManager.getTransaction().rollback();
-		}
+		EntityManager entityManager = this.transactionStrategy.getEntityManager();
+
+		Association association = (Association) entityManager.find(Association.class, entity.getId());
+		entityManager.remove(association);
 	}
 
 	@Override
-	public void remove(final String id) {
+	public void remove(final String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non empty id.");
 
-		try {
-			entityManager.getTransaction().begin();
-			Association association = (Association) entityManager.find(Association.class, Integer.valueOf(id));
-			entityManager.remove(association);
-			entityManager.getTransaction().commit();
-		} catch (Exception e) {
-			entityManager.getTransaction().rollback();
-		}
+		EntityManager entityManager = this.transactionStrategy.getEntityManager();
+
+		Association association = (Association) entityManager.find(Association.class, Integer.valueOf(id));
+		entityManager.remove(association);
 	}
 
 	@Override
-	public Association save(final Association entity) {
+	public Association save(final Association entity) throws EccoException {
 		checkNotNull(entity);
 
-		try {
-			entityManager.getTransaction().begin();
-			Association association = entityManager.merge(entity);
-			entityManager.getTransaction().commit();
-			return association;
-		} catch (Exception e) {
-			entityManager.getTransaction().rollback();
-		}
-		return null;
+		EntityManager entityManager = this.transactionStrategy.getEntityManager();
+
+		Association association = entityManager.merge(entity);
+
+		return association;
 	}
+
 
 	@Override
 	public Map<Association, Map<Association, Integer>> loadDependencyMap() {

@@ -206,7 +206,7 @@ public class BaseSequenceGraph implements SequenceGraph {
 		SequenceGraphNode gn = this.nodes.get(path);
 		if (gn == null) {
 			//gn = new SequenceGraphNode(!new_pol);
-			gn = (BaseSequenceGraphNode) this.createSequenceGraphNode(!new_pol);
+			gn = (SequenceGraphNode) this.createSequenceGraphNode(!new_pol);
 			this.nodes.put(path, gn);
 			new_node = true;
 		}

@@ -12,6 +12,12 @@ public class ImageArtifactData {
 	private String identifier;
 	private String type;
 
+	protected ImageArtifactData() {
+		this.values = null;
+		this.identifier = null;
+		this.type = null;
+	}
+
 	public ImageArtifactData(final int[] values, final String type) {
 		this.values = values;
 		this.identifier = Arrays.toString(values);

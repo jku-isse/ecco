@@ -7,13 +7,14 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @Entity
-public class JpaAssociation implements Association {
+public class JpaAssociation implements Association, Serializable {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +25,7 @@ public class JpaAssociation implements Association {
 	@OneToOne(targetEntity = JpaRootNode.class, mappedBy = "containingAssociation")
 	private RootNode artifactTreeRoot;
 
-	@OneToOne(targetEntity = JpaPresenceCondition.class)
+	@OneToOne(targetEntity = JpaPresenceCondition.class, cascade = CascadeType.ALL)
 	private PresenceCondition presenceCondition;
 
 	@OneToMany(targetEntity = JpaAssociation.class)

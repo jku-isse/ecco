@@ -24,7 +24,6 @@ public class JpaFeature implements Feature, Serializable {
 	private List<FeatureVersion> versions = new ArrayList<FeatureVersion>();
 
 	public JpaFeature() {
-
 	}
 
 	public JpaFeature(String name) {
@@ -84,7 +83,7 @@ public class JpaFeature implements Feature, Serializable {
 	@Override
 	public boolean equals(final Object obj) {
 		if (this == obj) return true;
-		if (!(obj instanceof BaseFeature)) return false;
+		if (!(obj instanceof Feature)) return false;
 
 		final Feature other = (Feature) obj;
 		return name.equals(other.getName());

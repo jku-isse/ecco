@@ -2,10 +2,15 @@ package at.jku.isse.ecco.plugin.artifact;
 
 import java.nio.file.Path;
 
-public class PluginArtifactData {
+public class PluginArtifactData implements ArtifactData {
 
 	private String pluginId;
 	private Path path;
+
+	protected PluginArtifactData() {
+		this.pluginId = null;
+		this.path = null;
+	}
 
 	public PluginArtifactData(String pluginId, Path path) {
 		this.pluginId = pluginId;

@@ -4,8 +4,11 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -13,16 +16,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Entity
-public class JpaModule implements Module {
+public class JpaModule implements Module, Serializable {
 
 	@Id
-	protected HashSet<ModuleFeature> moduleFeatures;
+	@OneToMany(targetEntity = JpaModuleFeature.class, cascade = CascadeType.ALL)
+	protected Set<ModuleFeature> moduleFeatures = new HashSet<ModuleFeature>();
 
 	public JpaModule() {
 		this.moduleFeatures = new HashSet<ModuleFeature>();
 	}
 
-	public JpaModule(BaseModule module) {
+	public JpaModule(JpaModule module) {
 		this.moduleFeatures = new HashSet<ModuleFeature>(module.moduleFeatures);
 	}
 
@@ -64,7 +68,7 @@ public class JpaModule implements Module {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		BaseModule that = (BaseModule) o;
+		JpaModule that = (JpaModule) o;
 
 		return this.moduleFeatures.equals(that.moduleFeatures);
 	}

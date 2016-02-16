@@ -19,7 +19,7 @@ public class JpaFeatureInstance implements FeatureInstance, Serializable {
 	@Id
 	private boolean sign;
 
-	protected JpaFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
+	public JpaFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
 		checkNotNull(feature);
 		checkNotNull(featureVersion);
 

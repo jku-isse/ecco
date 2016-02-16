@@ -26,7 +26,7 @@ public class JpaRootNode extends JpaNode implements RootNode, Serializable {
 
 	@Override
 	public Node createNode() {
-		return new BaseRootNode();
+		return new JpaRootNode();
 	}
 
 

@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.EccoException;
+
 /**
  * A data access object that handles {@link Persistable}s of a certain type.
- * <p>
- * This interface is part of the {@link at.jku.isse.ecco.plugin.CorePlugin#EXTENSION_POINT_DAL}.
  *
  * @param <T> type that should be persisted
  * @author Hannes Thaller
@@ -12,11 +12,11 @@ package at.jku.isse.ecco.dao;
  */
 public interface GenericDao<T extends Persistable> {
 
-	public void open();
+	public void open() throws EccoException;
 
-	public void close();
+	public void close() throws EccoException;
 
-	public void init();
+	public void init() throws EccoException;
 
 	/**
 	 * Returns the entity with the given id.
@@ -25,7 +25,7 @@ public interface GenericDao<T extends Persistable> {
 	 * @return The entity with that has the given id.
 	 * @throws IllegalArgumentException If the id does not exist.
 	 */
-	T load(String id);
+	T load(String id) throws EccoException;
 
 	/**
 	 * Removes the entity with the specified id.
@@ -33,14 +33,14 @@ public interface GenericDao<T extends Persistable> {
 	 * @param id of the entity that should be removed
 	 * @throws IllegalArgumentException If the id does not exist.
 	 */
-	void remove(String id);
+	void remove(String id) throws EccoException;
 
 	/**
 	 * Removes the given entity from the storage.
 	 *
 	 * @param entity that should be removed
 	 */
-	void remove(T entity);
+	void remove(T entity) throws EccoException;
 
 	/**
 	 * Persists the given entity.
@@ -49,6 +49,6 @@ public interface GenericDao<T extends Persistable> {
 	 * @return The saved entity which may be a different instance with the updated id.
 	 * @see Persistable The updated id.
 	 */
-	T save(T entity);
+	T save(T entity) throws EccoException;
 
 }

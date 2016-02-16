@@ -42,7 +42,7 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 		this.entityFactory = entityFactory;
 	}
 
-	@Override
+	//@Override
 	public boolean exists(final String featureName) {
 		checkNotNull(featureName);
 		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");
@@ -56,7 +56,7 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 		return result;
 	}
 
-	@Override
+	//@Override
 	public Optional<FeatureVersion> find(String featureName, int version) {
 		checkNotNull(featureName);
 		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");
@@ -77,7 +77,7 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 		return Optional.ofNullable(result);
 	}
 
-	@Override
+	//@Override
 	public Optional<Set<FeatureVersion>> loadAllVersions(final String featureName) {
 		checkNotNull(featureName);
 		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");
@@ -91,7 +91,7 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 		return Optional.ofNullable(result);
 	}
 
-	@Override
+	//@Override
 	public Set<String> loadAllFeatureNames() {
 
 
@@ -155,7 +155,7 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 		closeDatabase();
 	}
 
-	@Override
+	//@Override
 	public void removeWithAllVersions(final String featureName) {
 		checkNotNull(featureName);
 		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");

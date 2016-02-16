@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public interface AssociationDao extends GenericDao<Association> {
 	 *
 	 * @return Returns all stored associations.
 	 */
-	List<Association> loadAllAssociations();
+	List<Association> loadAllAssociations() throws EccoException;
 
 	/**
 	 * Loads a map containing the depending associations.

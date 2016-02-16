@@ -1,12 +1,13 @@
 package at.jku.isse.ecco.feature;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Entity
-public class JpaConfiguration implements Configuration {
+public class JpaConfiguration implements Configuration, Serializable {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

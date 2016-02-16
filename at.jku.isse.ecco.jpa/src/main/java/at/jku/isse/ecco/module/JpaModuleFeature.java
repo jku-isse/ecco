@@ -3,25 +3,26 @@ package at.jku.isse.ecco.module;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.feature.JpaFeature;
+import at.jku.isse.ecco.feature.JpaFeatureVersion;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.ManyToOne;
+import javax.persistence.*;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Entity
 public class JpaModuleFeature implements ModuleFeature, Serializable {
 
 	@Id
-	protected HashSet<FeatureVersion> featureVersions;
+	@OneToMany(targetEntity = JpaFeatureVersion.class, cascade = CascadeType.ALL)
+	protected Set<FeatureVersion> featureVersions = new HashSet<FeatureVersion>();
 
 	@Id
 	@ManyToOne(targetEntity = JpaFeature.class)
-	private Feature feature;
+	private Feature feature = new JpaFeature();
 	@Id
 	private boolean sign;
 

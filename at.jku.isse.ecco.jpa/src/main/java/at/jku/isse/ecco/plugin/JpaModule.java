@@ -18,6 +18,21 @@ public class JpaModule extends AbstractModule {
 
 		requireBinding(Key.get(String.class, Names.named("clientConnectionString")));
 		requireBinding(Key.get(String.class, Names.named("serverConnectionString")));
+
+		bind(TransactionStrategy.class).to(JpaTransactionStrategy.class);
 	}
+
+//	/**
+//	 * Every DAO created from this module must have the same transaction strategy.
+//	 */
+//	private JpaTransactionStrategy transactionStrategy = null;
+//
+//	@Provides
+//	TransactionStrategy provideTransactionStrategy(@Named("connectionString") String connectionString) {
+//		if (this.transactionStrategy == null) {
+//			this.transactionStrategy = new JpaTransactionStrategy(connectionString);
+//		}
+//		return this.transactionStrategy;
+//	}
 
 }

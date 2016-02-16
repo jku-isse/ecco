@@ -4,10 +4,7 @@ import at.jku.isse.ecco.composition.BaseCompRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.dao.AssociationDao;
-import at.jku.isse.ecco.dao.CommitDao;
-import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.dao.FeatureDao;
+import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
@@ -25,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -41,6 +39,9 @@ public class EccoService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
+	public static final String ECCO_PROPERTIES = "ecco.properties";
+	public static final String ECCO_PROPERTIES_DATA = "plugin.data";
+	public static final String ECCO_PROPERTIES_ARTIFACT = "plugin.artifact";
 
 	public static final Path REPOSITORY_DIR_NAME = Paths.get(".ecco");
 	public static final Path DEFAULT_BASE_DIR = Paths.get("");
@@ -111,6 +112,7 @@ public class EccoService {
 
 
 	private Collection<ArtifactPlugin> artifactPlugins;
+	private Collection<DataPlugin> dataPlugins;
 
 	private Injector injector;
 
@@ -141,6 +143,9 @@ public class EccoService {
 
 	@Inject
 	private EntityFactory entityFactory;
+
+	@Inject
+	private TransactionStrategy transactionStrategy;
 
 	// DAOs
 	@Inject
@@ -297,8 +302,31 @@ public class EccoService {
 			LOGGER.debug("BASE_DIR: " + this.baseDir);
 			LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
 
+
+			// load properties file
+			InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES);
+			Properties eccoProperties = new Properties();
+			List<String> artifactPluginsList = null;
+			if (inputStream != null) {
+				try {
+					eccoProperties.load(inputStream);
+				} catch (IOException e) {
+					throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES + "'.");
+				}
+			} else {
+				throw new EccoException("Property file '" + ECCO_PROPERTIES + "' not found in the classpath.");
+			}
+			LOGGER.debug("PROPERTIES: " + eccoProperties);
+			if (eccoProperties.getProperty(ECCO_PROPERTIES_DATA) == null) {
+				throw new EccoException("No data plugin specified.");
+			}
+			if (eccoProperties.contains(ECCO_PROPERTIES_ARTIFACT)) {
+				artifactPluginsList = Arrays.asList(eccoProperties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
+			}
+
+
 			Properties properties = new Properties();
-			properties.setProperty("module.dal", "at.jku.isse.ecco.perst");
+			//properties.setProperty("module.data", "at.jku.isse.ecco.perst");
 			//properties.setProperty("baseDir", this.baseDir.toString());
 			properties.setProperty("repositoryDir", this.repositoryDir.toString());
 			properties.setProperty("connectionString", this.repositoryDir.resolve("ecco.db").toString());
@@ -309,7 +337,6 @@ public class EccoService {
 			final Module settingsModule = new AbstractModule() {
 				@Override
 				protected void configure() {
-					//bind(String.class).annotatedWith(Names.named("baseDir")).toInstance(properties.getProperty("baseDir"));
 					bind(String.class).annotatedWith(Names.named("repositoryDir")).toInstance(properties.getProperty("repositoryDir"));
 
 					bind(String.class).annotatedWith(Names.named("connectionString")).toInstance(properties.getProperty("connectionString"));
@@ -319,19 +346,27 @@ public class EccoService {
 			};
 			// artifact modules
 			List<Module> artifactModules = new ArrayList<Module>();
+			List<Module> allArtifactModules = new ArrayList<Module>();
 			this.artifactPlugins = new ArrayList<>();
 			for (ArtifactPlugin ap : ArtifactPlugin.getArtifactPlugins()) {
-				artifactModules.add(ap.getModule());
-				this.artifactPlugins.add(ap);
+				if (artifactPluginsList == null || artifactPluginsList.contains(ap.getPluginId())) {
+					artifactModules.add(ap.getModule());
+					this.artifactPlugins.add(ap);
+				}
+				allArtifactModules.add(ap.getModule());
 			}
 			LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
+			LOGGER.debug("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
 			// data modules
 			List<Module> dataModules = new ArrayList<Module>();
-			for (DataPlugin ap : DataPlugin.getDataPlugins()) {
-				if (ap.getPluginId().equals(properties.get("module.dal")))
-					dataModules.add(ap.getModule());
+			List<Module> allDataModules = new ArrayList<Module>();
+			for (DataPlugin dataPlugin : DataPlugin.getDataPlugins()) {
+				if (dataPlugin.getPluginId().equals(eccoProperties.get(ECCO_PROPERTIES_DATA)))
+					dataModules.add(dataPlugin.getModule());
+				allDataModules.add(dataPlugin.getModule());
 			}
 			LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
+			LOGGER.debug("ALL DATA PLUGINS: " + allDataModules.toString());
 			// put them together
 			List<Module> modules = new ArrayList<Module>();
 			modules.addAll(Arrays.asList(new CoreModule(), settingsModule));
@@ -344,6 +379,8 @@ public class EccoService {
 			this.injector = injector;
 
 			injector.injectMembers(this);
+
+			this.transactionStrategy.init();
 
 			this.associationDao.init();
 			this.commitDao.init();
@@ -529,6 +566,8 @@ public class EccoService {
 		synchronized (this) {
 			checkNotNull(inputAs);
 
+			this.transactionStrategy.begin();
+
 			System.out.println("COMMIT");
 
 			List<Association> originalAssociations = this.associationDao.loadAllAssociations();
@@ -587,6 +626,8 @@ public class EccoService {
 			}
 			Commit persistedCommit = this.commitDao.save(commit);
 
+			this.transactionStrategy.commit();
+
 			// fire event
 			this.fireCommitsChangedEvent(persistedCommit);
 
@@ -602,7 +643,7 @@ public class EccoService {
 	 * @param configuration
 	 * @return
 	 */
-	public void addConfiguration(Configuration configuration) {
+	public void addConfiguration(Configuration configuration) throws EccoException {
 //		// first replace features and feature versions in configuration with existing ones in repository (and add negative features)
 //		Configuration newConfiguration = this.entityFactory.createConfiguration();
 //		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
@@ -682,7 +723,7 @@ public class EccoService {
 	 *
 	 * @param configuration The configuration to be checked out.
 	 */
-	public Checkout checkout(Configuration configuration) {
+	public Checkout checkout(Configuration configuration) throws EccoException {
 		synchronized (this) {
 			checkNotNull(configuration);
 
@@ -719,8 +760,13 @@ public class EccoService {
 	 * @return Collection containing all commit objects.
 	 */
 	public Collection<Commit> getCommits() {
-		this.commitDao.init();
-		return this.commitDao.loadAllCommits();
+		try {
+			this.commitDao.init();
+			return this.commitDao.loadAllCommits();
+		} catch (EccoException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	public void deleteCommit(Commit commit) {
@@ -733,8 +779,13 @@ public class EccoService {
 	 * @return Collection containing all associations.
 	 */
 	public Collection<Association> getAssociations() {
-		this.associationDao.init();
-		return this.associationDao.loadAllAssociations();
+		try {
+			this.associationDao.init();
+			return this.associationDao.loadAllAssociations();
+		} catch (EccoException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	/**
@@ -743,8 +794,13 @@ public class EccoService {
 	 * @return Collection containing all features.
 	 */
 	public Collection<Feature> getFeatures() {
-		this.featureDao.init();
-		return this.featureDao.loadAllFeatures();
+		try {
+			this.featureDao.init();
+			return this.featureDao.loadAllFeatures();
+		} catch (EccoException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 

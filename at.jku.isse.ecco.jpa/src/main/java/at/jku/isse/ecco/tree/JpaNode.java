@@ -20,7 +20,7 @@ public class JpaNode implements Node, Serializable {
 
 	private boolean isUnique = true;
 
-	@ManyToOne(targetEntity = JpaNode.class)
+	@OneToMany(targetEntity = JpaNode.class)
 	private final List<Node> children = new ArrayList<>();
 
 	@ManyToOne(targetEntity = JpaArtifact.class)
@@ -32,7 +32,7 @@ public class JpaNode implements Node, Serializable {
 
 	@Override
 	public Node createNode() {
-		return new BaseNode();
+		return new JpaNode();
 	}
 
 
@@ -118,12 +118,12 @@ public class JpaNode implements Node, Serializable {
 		if (o == null) return false;
 		if (!(o instanceof Node)) return false;
 
-		JpaNode baseNode = (JpaNode) o;
+		JpaNode jpaNode = (JpaNode) o;
 
 		if (artifact == null)
-			return baseNode.artifact == null;
+			return jpaNode.artifact == null;
 
-		return artifact.equals(baseNode.artifact);
+		return artifact.equals(jpaNode.artifact);
 	}
 
 	@Override

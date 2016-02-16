@@ -1,10 +1,12 @@
 package at.jku.isse.ecco.artifact;
 
-import at.jku.isse.ecco.sequenceGraph.BaseSequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.JpaSequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.JpaNode;
 import at.jku.isse.ecco.tree.Node;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -24,8 +26,42 @@ public class JpaArtifact<DataType> implements Artifact<DataType>, Serializable {
 	private int id;
 
 
-	@Embedded
-	private Object data;
+	//@Embedded
+	@Transient
+	private transient Object data = null;
+
+	//@Embedded
+	//@Column(columnDefinition = "blob")
+	@Lob
+	private byte[] buffer = null;
+
+	@Override
+	public DataType getData() {
+		if (this.data == null) {
+			Kryo kryo = new Kryo();
+
+			// read
+			Input input = new Input(this.buffer);
+			Object object = kryo.readClassAndObject(input);
+
+			this.data = object;
+		}
+
+		return (DataType) this.data;
+	}
+
+	public void setData(DataType data) {
+		this.data = data;
+
+
+		Kryo kryo = new Kryo();
+
+		// write
+		Output output = new Output(100, 2048);
+		kryo.writeClassAndObject(output, data);
+		this.buffer = output.getBuffer();
+	}
+
 
 	private boolean atomic;
 
@@ -47,15 +83,17 @@ public class JpaArtifact<DataType> implements Artifact<DataType>, Serializable {
 	}
 
 	public JpaArtifact(DataType data, boolean ordered) {
-		this.data = data;
+		//this.data = data;
 		this.ordered = ordered;
 		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
+
+		this.setData(data);
 	}
 
 
 	@Override
 	public int hashCode() {
-		int result = data.hashCode();
+		int result = getData().hashCode();
 		result = 31 * result + (ordered ? 1 : 0);
 		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
 			result = 31 * result + sequenceNumber;
@@ -72,18 +110,12 @@ public class JpaArtifact<DataType> implements Artifact<DataType>, Serializable {
 		if (ordered != that.ordered) return false;
 		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.sequenceNumber != that.sequenceNumber)
 			return false;
-		return data.equals(that.data);
+		return getData().equals(that.getData());
 	}
 
 	@Override
 	public String toString() {
-		return this.data.toString();
-	}
-
-
-	@Override
-	public DataType getData() {
-		return (DataType) this.data;
+		return this.getData().toString();
 	}
 
 
@@ -135,7 +167,7 @@ public class JpaArtifact<DataType> implements Artifact<DataType>, Serializable {
 
 	@Override
 	public SequenceGraph createSequenceGraph() {
-		return new BaseSequenceGraph();
+		return new JpaSequenceGraph();
 	}
 
 

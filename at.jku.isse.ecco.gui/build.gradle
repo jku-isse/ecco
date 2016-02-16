@@ -9,6 +9,7 @@ dependencies {
 
 	compile project(':at.jku.isse.ecco.base')
 	compile project(':at.jku.isse.ecco.perst')
+	compile project(':at.jku.isse.ecco.jpa')
 
 	testCompile project(':at.jku.isse.ecco.file')
 	testCompile project(':at.jku.isse.ecco.text')

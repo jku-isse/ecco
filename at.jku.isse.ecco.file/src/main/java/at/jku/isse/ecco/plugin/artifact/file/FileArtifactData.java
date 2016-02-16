@@ -51,6 +51,13 @@ public class FileArtifactData {
 	private byte[] data;
 	private Path path;
 
+	protected FileArtifactData() throws IOException {
+		this.path = null;
+		this.checksum = null;
+		this.hexChecksum = null;
+		this.data = null;
+	}
+
 	public FileArtifactData(Path base, Path path) throws IOException {
 		//this.path = file.toPath().relativize(new File(".").toPath());
 		//this.path = base.relativize(path);
