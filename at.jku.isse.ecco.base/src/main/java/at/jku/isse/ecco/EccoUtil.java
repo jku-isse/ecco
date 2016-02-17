@@ -5,6 +5,7 @@ import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.SequenceGraphUtil;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -106,7 +107,8 @@ public class EccoUtil {
 	public static void sequenceOrderedNodes(Node node) throws EccoException {
 		if (node.getArtifact() != null && node.getArtifact().isOrdered() && !node.getArtifact().isSequenced()) {
 			node.getArtifact().setSequenceGraph(node.getArtifact().createSequenceGraph());
-			node.getArtifact().getSequenceGraph().sequence(node);
+			//node.getArtifact().getSequenceGraph().sequence(node);
+			SequenceGraphUtil.sequence(node.getArtifact().getSequenceGraph(), node);
 		}
 		for (Node child : node.getChildren()) {
 			sequenceOrderedNodes(child);
@@ -133,13 +135,16 @@ public class EccoUtil {
 					throw new EccoException("Sequence Graphs did not match!");
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
-					left.getArtifact().getSequenceGraph().sequence(left);
+					//left.getArtifact().getSequenceGraph().sequence(left);
+					SequenceGraphUtil.sequence(left.getArtifact().getSequenceGraph(), left);
 				}
 
 				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
-					left.getArtifact().getSequenceGraph().sequence(right);
+					//left.getArtifact().getSequenceGraph().sequence(right);
+					SequenceGraphUtil.sequence(left.getArtifact().getSequenceGraph(), right);
 				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
-					right.getArtifact().getSequenceGraph().sequence(left);
+					//right.getArtifact().getSequenceGraph().sequence(left);
+					SequenceGraphUtil.sequence(right.getArtifact().getSequenceGraph(), left);
 					throw new EccoException("Left node was not sequenced but right node was.");
 				}
 			}

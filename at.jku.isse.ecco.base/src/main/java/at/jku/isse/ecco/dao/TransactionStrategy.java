@@ -6,6 +6,8 @@ public interface TransactionStrategy {
 
 	public void init() throws EccoException;
 
+	public void close() throws EccoException;
+
 
 	public void begin() throws EccoException;
 

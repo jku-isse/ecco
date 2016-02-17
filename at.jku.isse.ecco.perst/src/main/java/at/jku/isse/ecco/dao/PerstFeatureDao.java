@@ -1,14 +1,13 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.feature.PerstFeature;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import org.garret.perst.FieldIndex;
-import org.garret.perst.IterableIterator;
 
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -30,112 +29,46 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 	 * path to a database file or the path where a new database should be
 	 * created.
 	 *
-	 * @param connectionString path to the database
-	 * @param entityFactory    The factory which is used to create new entities.
+	 * @param transactionStrategy The transaction strategy.
+	 * @param entityFactory       The factory which is used to create new entities.
 	 */
 	@Inject
-	public PerstFeatureDao(@Named("connectionString") final String connectionString, final PerstEntityFactory entityFactory) {
-		super(connectionString);
+	public PerstFeatureDao(PerstTransactionStrategy transactionStrategy, final PerstEntityFactory entityFactory) {
+		super(transactionStrategy);
 
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
 	}
 
-	//@Override
-	public boolean exists(final String featureName) {
-		checkNotNull(featureName);
-		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");
-
-		final DatabaseRoot root = openDatabase();
-
-		final boolean result = root.getFeatureIndex().get(featureName) != null;
-
-		closeDatabase();
-
-		return result;
-	}
-
-	//@Override
-	public Optional<FeatureVersion> find(String featureName, int version) {
-		checkNotNull(featureName);
-		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");
-
-		final DatabaseRoot root = openDatabase();
-
-		final Feature feature = root.getFeatureIndex().get(featureName);
-
-		FeatureVersion result = null;
-
-		for (FeatureVersion featureVersion : feature.getVersions()) {
-			if (featureVersion.getVersion() == version)
-				result = featureVersion;
-		}
-
-		closeDatabase();
-
-		return Optional.ofNullable(result);
-	}
-
-	//@Override
-	public Optional<Set<FeatureVersion>> loadAllVersions(final String featureName) {
-		checkNotNull(featureName);
-		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");
-
-		final DatabaseRoot root = openDatabase();
-
-		final Set<FeatureVersion> result = new HashSet<FeatureVersion>(root.getFeatureIndex().get(featureName).getVersions());
-
-		closeDatabase();
-
-		return Optional.ofNullable(result);
-	}
-
-	//@Override
-	public Set<String> loadAllFeatureNames() {
-
-
-		final DatabaseRoot root = openDatabase();
-
-		final Set<String> featureNames = new LinkedHashSet<>();
-		IterableIterator<Map.Entry<Object, PerstFeature>> it = root.getFeatureIndex().entryIterator();
-		while (it.hasNext()) {
-			featureNames.add((String) it.next().getKey());
-		}
-
-		closeDatabase();
-
-		return featureNames;
-	}
-
 	@Override
-	public Feature load(final String id) {
+	public Feature load(final String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non-empty id but was empty.");
 
-		final DatabaseRoot root = openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		final Feature feature = root.getFeatureIndex().get(id);
 
-		closeDatabase();
+		this.transactionStrategy.done();
 
 		return feature;
 	}
 
 	@Override
-	public Set<Feature> loadAllFeatures() {
+	public Set<Feature> loadAllFeatures() throws EccoException {
 
-		final DatabaseRoot root = openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		final Set<Feature> features = new LinkedHashSet<>(root.getFeatureIndex());
 
-		closeDatabase();
+		this.transactionStrategy.done();
 
 		return features;
 	}
 
 	@Override
-	public void remove(final Feature entity) {
+	public void remove(final Feature entity) throws EccoException {
 		checkNotNull(entity);
 		checkNotNull(entity.getName(), "Expected the id of the entity to be non-null but was null.");
 		checkArgument(!entity.getName().isEmpty(), "Expected the id of the entity to be non-empty but was empty.");
@@ -144,31 +77,23 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 	}
 
 	@Override
-	public void remove(final String id) {
+	public void remove(final String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non-empty id but was empty.");
 
-		final DatabaseRoot root = openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		root.getFeatureIndex().remove(id);
 
-		closeDatabase();
-	}
-
-	//@Override
-	public void removeWithAllVersions(final String featureName) {
-		checkNotNull(featureName);
-		checkArgument(!featureName.isEmpty(), "Expected non-empty feature name but was empty.");
-
-		this.remove(featureName);
+		this.transactionStrategy.done();
 	}
 
 
 	@Override
-	public Feature save(final Feature entity) {
+	public Feature save(final Feature entity) throws EccoException {
 		checkNotNull(entity);
 
-		final DatabaseRoot root = openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 		final FieldIndex<PerstFeature> featureIndex = root.getFeatureIndex();
 
 		//final PerstFeature perstEntity = entityFactory.createPerstFeature(entity);
@@ -182,7 +107,7 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 			result = updateFeature(featureIndex, perstEntity);
 		}
 
-		closeDatabase();
+		this.transactionStrategy.done();
 
 		return result;
 	}

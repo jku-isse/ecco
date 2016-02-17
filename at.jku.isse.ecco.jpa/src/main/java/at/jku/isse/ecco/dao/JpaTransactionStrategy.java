@@ -58,6 +58,11 @@ public class JpaTransactionStrategy implements TransactionStrategy {
 		}
 	}
 
+	@Override
+	public void close() throws EccoException {
+
+	}
+
 
 	@Override
 	public void begin() throws EccoException {

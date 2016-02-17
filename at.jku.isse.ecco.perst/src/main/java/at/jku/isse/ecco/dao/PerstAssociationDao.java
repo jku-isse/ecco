@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.PerstArtifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.PerstAssociation;
@@ -9,7 +10,6 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.PerstNode;
 import at.jku.isse.ecco.tree.PerstRootNode;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import org.garret.perst.FieldIndex;
 
 import java.util.ArrayList;
@@ -34,12 +34,12 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 	 * a path to a database file or the path where a new database should be
 	 * created.
 	 *
-	 * @param connectionString path to the database
-	 * @param entityFactory    The factory which is used to create new entities.
+	 * @param transactionStrategy The transaction strategy.
+	 * @param entityFactory       The factory which is used to create new entities.
 	 */
 	@Inject
-	public PerstAssociationDao(@Named("connectionString") final String connectionString, final PerstEntityFactory entityFactory) {
-		super(connectionString);
+	public PerstAssociationDao(PerstTransactionStrategy transactionStrategy, final PerstEntityFactory entityFactory) {
+		super(transactionStrategy);
 
 		checkNotNull(entityFactory);
 
@@ -47,61 +47,70 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 	}
 
 	@Override
-	public List<Association> loadAllAssociations() {
-		final DatabaseRoot root = this.openDatabase();
+	public List<Association> loadAllAssociations() throws EccoException {
+		//final DatabaseRoot root = this.openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		final List<Association> result = new ArrayList<>(root.getAssociationIndex());
 
-		this.closeDatabase();
+		//this.closeDatabase();
+		this.transactionStrategy.done();
 
 		return result;
 	}
 
 	@Override
-	public Association load(final String id) {
+	public Association load(final String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non empty id.");
 
-		final DatabaseRoot root = this.openDatabase();
+		//final DatabaseRoot root = this.openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		final Association perstAssociation = root.getAssociationIndex().get(id);
 
-		this.closeDatabase();
+		//this.closeDatabase();
+		this.transactionStrategy.done();
 
 		return perstAssociation;
 	}
 
 	@Override
-	public void remove(final Association entity) {
+	public void remove(final Association entity) throws EccoException {
 		checkNotNull(entity);
 
-		final DatabaseRoot root = this.openDatabase();
+		//final DatabaseRoot root = this.openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		root.getAssociationIndex().remove(entity);
 
-		this.closeDatabase();
+		//this.closeDatabase();
+		this.transactionStrategy.done();
 	}
 
 	@Override
-	public void remove(final String id) {
+	public void remove(final String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non empty id.");
 
-		final DatabaseRoot root = this.openDatabase();
+		//final DatabaseRoot root = this.openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		root.getAssociationIndex().removeKey(id);
 
-		this.closeDatabase();
+		//this.closeDatabase();
+		this.transactionStrategy.done();
 	}
 
 	@Override
-	public Association save(final Association entity) {
+	public Association save(final Association entity) throws EccoException {
 		checkNotNull(entity);
 
 		//final PerstAssociation association = entityFactory.createPerstAssociation(entity);
 		final PerstAssociation association = (PerstAssociation) entity; // TODO!
 
-		final DatabaseRoot root = this.openDatabase();
+		//final DatabaseRoot root = this.openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 		final FieldIndex<PerstAssociation> associationIndex = root.getAssociationIndex();
 
 		if (association.getId() == 0) {
@@ -118,7 +127,8 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 			associationIndex.set(association);
 		}
 
-		this.closeDatabase();
+		//this.closeDatabase();
+		this.transactionStrategy.done();
 
 		return association;
 	}
@@ -170,12 +180,14 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 
 
 	@Override
-	public Map<Association, Map<Association, Integer>> loadDependencyMap() {
-		final DatabaseRoot root = this.openDatabase();
+	public Map<Association, Map<Association, Integer>> loadDependencyMap() throws EccoException {
+		//final DatabaseRoot root = this.openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		final Map<Association, Map<Association, Integer>> dependecyMap = root.getDependencyMap();
 
-		this.closeDatabase();
+		//this.closeDatabase();
+		this.transactionStrategy.done();
 
 		return dependecyMap;
 	}
@@ -186,13 +198,15 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 	}
 
 	@Override
-	public void storeDependencyMap(final Map<Association, Map<Association, Integer>> dependencyMap) {
+	public void storeDependencyMap(final Map<Association, Map<Association, Integer>> dependencyMap) throws EccoException {
 		checkNotNull(dependencyMap);
 
-		final DatabaseRoot root = this.openDatabase();
+		//final DatabaseRoot root = this.openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 		root.setDependencyMap(dependencyMap);
 
-		this.closeDatabase();
+		//this.closeDatabase();
+		this.transactionStrategy.done();
 	}
 
 	@Override

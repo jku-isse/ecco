@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.PerstCommit;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import org.garret.perst.FieldIndex;
 
 import java.util.ArrayList;
@@ -17,8 +17,8 @@ public class PerstCommitDao extends PerstAbstractGenericDao<Commit> implements C
 	private final PerstEntityFactory entityFactory;
 
 	@Inject
-	PerstCommitDao(@Named("connectionString") String connectionString, final PerstEntityFactory entityFactory) {
-		super(connectionString);
+	PerstCommitDao(PerstTransactionStrategy transactionStrategy, final PerstEntityFactory entityFactory) {
+		super(transactionStrategy);
 
 		checkNotNull(entityFactory);
 
@@ -26,60 +26,57 @@ public class PerstCommitDao extends PerstAbstractGenericDao<Commit> implements C
 	}
 
 	@Override
-	public List<Commit> loadAllCommits() {
-		if (!database.isOpened()) database.open(connectionString);
-		final DatabaseRoot root = database.getRoot();
+	public List<Commit> loadAllCommits() throws EccoException {
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		final List<Commit> result = new ArrayList<>(root.getCommitIndex());
 
-		database.close();
+		this.transactionStrategy.done();
 
 		return result;
 	}
 
 	@Override
-	public Commit load(String id) {
+	public Commit load(String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non empty id.");
 
-		if (!database.isOpened()) database.open(connectionString);
-		final DatabaseRoot root = database.getRoot();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		final Commit perstCommit = root.getCommitIndex().get(id);
 
-		database.close();
+		this.transactionStrategy.done();
 
 		return perstCommit;
 	}
 
 	@Override
-	public void remove(String id) {
+	public void remove(String id) throws EccoException {
 		checkNotNull(id);
 		checkArgument(!id.isEmpty(), "Expected a non empty id.");
 
-		if (!database.isOpened()) database.open(connectionString);
-		final DatabaseRoot root = database.getRoot();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		root.getAssociationIndex().remove(id);
 
-		database.close();
+		this.transactionStrategy.done();
 	}
 
 	@Override
-	public void remove(Commit entity) {
+	public void remove(Commit entity) throws EccoException {
 		checkNotNull(entity);
 
 		remove(String.valueOf(entity.getId()));
 	}
 
 	@Override
-	public Commit save(Commit entity) {
+	public Commit save(Commit entity) throws EccoException {
 		checkNotNull(entity);
 
 		//final PerstAssociation association = entityFactory.createPerstAssociation(entity);
 		final PerstCommit commit = (PerstCommit) entity; // TODO!
 
-		final DatabaseRoot root = openDatabase();
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 		final FieldIndex<PerstCommit> commitIndex = root.getCommitIndex();
 
 		if (!commitIndex.contains(commit)) {
@@ -89,7 +86,7 @@ public class PerstCommitDao extends PerstAbstractGenericDao<Commit> implements C
 			commitIndex.set(commit);
 		}
 
-		closeDatabase();
+		this.transactionStrategy.done();
 
 		return commit;
 	}

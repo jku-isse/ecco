@@ -29,22 +29,22 @@ public interface AssociationDao extends GenericDao<Association> {
 	 *
 	 * @return The dependency map.
 	 */
-	Map<Association, Map<Association, Integer>> loadDependencyMap();
+	Map<Association, Map<Association, Integer>> loadDependencyMap() throws EccoException;
 
 	/**
 	 * Loads a map containing the conflicting associations.
 	 *
 	 * @return The conflicts map.
 	 */
-	Map<Association, Map<Association, Integer>> loadConflictsMap();
+	Map<Association, Map<Association, Integer>> loadConflictsMap() throws EccoException;
 
 	/**
 	 * Stores the dependency map.
 	 *
 	 * @param dependencyMap to store.
 	 */
-	void storeDependencyMap(Map<Association, Map<Association, Integer>> dependencyMap);
+	void storeDependencyMap(Map<Association, Map<Association, Integer>> dependencyMap) throws EccoException;
 
-	void storeConflictsMap(Map<Association, Map<Association, Integer>> conflictsMap);
+	void storeConflictsMap(Map<Association, Map<Association, Integer>> conflictsMap) throws EccoException;
 
 }

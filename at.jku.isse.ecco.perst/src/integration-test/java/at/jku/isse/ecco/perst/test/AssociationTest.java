@@ -32,7 +32,7 @@ public class AssociationTest {
 
 
 	@Test(groups = {"integration", "perst", "association"})
-	public void Association_Test() {
+	public void Association_Test() throws EccoException {
 		this.associationDao.init();
 
 		System.out.println("EXISTING ASSOCS: ");
@@ -77,7 +77,7 @@ public class AssociationTest {
 	}
 
 	@Test(groups = {"integration", "perst", "association"})
-	public void Association_Test_Name_Change() {
+	public void Association_Test_Name_Change() throws EccoException {
 		this.associationDao.init();
 
 		System.out.println("EXISTING ASSOCS: ");

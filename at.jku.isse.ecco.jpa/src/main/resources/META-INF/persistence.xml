@@ -31,11 +31,12 @@
 			<property name="javax.persistence.jdbc.url" value="jdbc:derby:/home/test/databases/simpleDb;create=true"/>
 			<property name="javax.persistence.jdbc.user" value="username"/>
 			<property name="javax.persistence.jdbc.password" value="password"/>
+
 			<property name="show_sql" value="true"/>
 
-			<property name="hibernate.dialect" value="org.hibernate.dialect.DerbyDialect"/>
 			<property name="hibernate.hbm2ddl.auto" value="update"/>
-			<property name="hibernate.temp.use_jdbc_metadata_defaults" value="false"/>
+			<!--<property name="hibernate.temp.use_jdbc_metadata_defaults" value="false"/>-->
+			<!--<property name="hibernate.dialect" value="org.hibernate.dialect.DerbyDialect"/>-->
 		</properties>
 	</persistence-unit>
 

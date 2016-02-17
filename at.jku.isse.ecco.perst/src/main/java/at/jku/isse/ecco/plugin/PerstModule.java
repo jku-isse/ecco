@@ -24,6 +24,8 @@ public class PerstModule extends AbstractModule {
 
 		requireBinding(Key.get(String.class, Names.named("clientConnectionString")));
 		requireBinding(Key.get(String.class, Names.named("serverConnectionString")));
+
+		bind(TransactionStrategy.class).to(PerstTransactionStrategy.class);
 	}
 
 }
