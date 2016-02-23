@@ -8,4 +8,5 @@ include 'at.jku.isse.ecco.base',
 		'at.jku.isse.ecco.uml',
 		'at.jku.isse.ecco.gui',
 		'at.jku.isse.ecco.jpa',
-		'at.jku.isse.ecco.mem'
+		'at.jku.isse.ecco.mem',
+		'at.jku.isse.ecco.genericAdapter'

@@ -1,15 +1,18 @@
 package at.jku.isse.ecco.plugin.artifact.file;
 
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class FileArtifactData {
+public class FileArtifactData implements ArtifactData {
 
 	private static byte[] getSHADigest(Path path) throws IOException, NoSuchAlgorithmException {
 		//InputStream fis = new FileInputStream(path.toFile());
@@ -49,10 +52,13 @@ public class FileArtifactData {
 	private byte[] checksum;
 	private String hexChecksum;
 	private byte[] data;
-	private Path path;
+
+	private transient Path path = null;
+	private String pathString = null;
 
 	protected FileArtifactData() throws IOException {
 		this.path = null;
+		this.pathString = null;
 		this.checksum = null;
 		this.hexChecksum = null;
 		this.data = null;
@@ -61,7 +67,9 @@ public class FileArtifactData {
 	public FileArtifactData(Path base, Path path) throws IOException {
 		//this.path = file.toPath().relativize(new File(".").toPath());
 		//this.path = base.relativize(path);
+		//this.path = path;
 		this.path = path;
+		this.pathString = path.toString();
 		Path resolvedPath = base.resolve(path);
 		try {
 			this.checksum = FileArtifactData.getSHADigest(resolvedPath);
@@ -82,6 +90,9 @@ public class FileArtifactData {
 	}
 
 	public Path getPath() {
+		if (this.path == null && this.pathString != null) {
+			this.path = Paths.get(this.pathString);
+		}
 		return this.path;
 	}
 

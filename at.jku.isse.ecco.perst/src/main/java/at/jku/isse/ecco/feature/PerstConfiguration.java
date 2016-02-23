@@ -5,6 +5,10 @@ import org.garret.perst.impl.StorageImpl;
 
 public class PerstConfiguration extends BaseConfiguration implements Configuration, IPersistent, ICloneable {
 
+	public PerstConfiguration() {
+		super();
+	}
+
 	// # PERST ################################################
 
 	protected void finalize() {

@@ -5,6 +5,10 @@ import org.garret.perst.impl.StorageImpl;
 
 public class PerstCommit extends BaseCommit implements Commit, IPersistent, ICloneable {
 
+	public PerstCommit() {
+		super();
+	}
+
 	// # PERST ################################################
 
 	protected void finalize() {

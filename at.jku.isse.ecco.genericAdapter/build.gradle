@@ -1,0 +1,16 @@
+ext {
+	eccoModule = true
+}
+
+dependencies {
+	compile('org.antlr:antlr4:4.5.1-1')
+
+	compile('org.apache.commons:commons-lang3:3.3.2')
+	compile('org.apache.commons:commons-collections4:4.0')
+
+	compile project(':at.jku.isse.ecco.base')
+}
+
+ospackage {
+	requires('at.jku.isse.ecco.base', version, EQUAL)
+}

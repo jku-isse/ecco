@@ -287,6 +287,9 @@ public class EccoService {
 	 * Initializes the service.
 	 */
 	public void init() throws EccoException {
+		if (this.initialized)
+			return;
+
 		synchronized (this) {
 			if (!this.repositoryDirectoryExists()) {
 				LOGGER.debug("Repository does not exist.");
@@ -394,6 +397,13 @@ public class EccoService {
 
 			LOGGER.debug("Repository initialized.");
 		}
+	}
+
+	public void destroy() throws EccoException {
+		if (!this.initialized)
+			return;
+
+		this.transactionStrategy.close();
 	}
 
 
@@ -566,70 +576,77 @@ public class EccoService {
 		synchronized (this) {
 			checkNotNull(inputAs);
 
-			this.transactionStrategy.begin();
-
 			System.out.println("COMMIT");
 
-			List<Association> originalAssociations = this.associationDao.loadAllAssociations();
-			List<Association> newAssociations = new ArrayList<>();
+			Commit persistedCommit = null;
 
-			// process each new association individually
-			for (Association inputA : inputAs) {
-				List<Association> toAdd = new ArrayList<>();
+			try {
+				this.transactionStrategy.begin();
 
-				// slice new association with every original association
-				for (Association origA : originalAssociations) {
+				List<Association> originalAssociations = this.associationDao.loadAllAssociations();
+				List<Association> newAssociations = new ArrayList<>();
 
-					// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
-					//Association intA = origA.slice(inputA);
-					Association intA = this.entityFactory.createAssociation();
-					intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition())); // TODO: do this in module util
-					//intA.setArtifactRoot((origA.getArtifactTreeRoot().slice(inputA.getArtifactTreeRoot())));
-					intA.setArtifactRoot((RootNode) EccoUtil.sliceNodes(origA.getArtifactTreeRoot(), inputA.getArtifactTreeRoot()));
-					// set parents for intersection association
-					intA.addParent(origA);
-					intA.addParent(inputA);
-					intA.setName(origA.getId() + " INT " + inputA.getId());
+				// process each new association individually
+				for (Association inputA : inputAs) {
+					List<Association> toAdd = new ArrayList<>();
 
-					// if the intersection association has artifacts or a not empty presence condition store it
-					if (intA.getArtifactTreeRoot().getChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
-						toAdd.add(intA);
+					// slice new association with every original association
+					for (Association origA : originalAssociations) {
+
+						// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
+						//Association intA = origA.slice(inputA);
+						Association intA = this.entityFactory.createAssociation();
+						intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition())); // TODO: do this in module util
+						//intA.setArtifactRoot((origA.getArtifactTreeRoot().slice(inputA.getArtifactTreeRoot())));
+						intA.setArtifactRoot((RootNode) EccoUtil.sliceNodes(origA.getArtifactTreeRoot(), inputA.getArtifactTreeRoot()));
+						// set parents for intersection association
+						intA.addParent(origA);
+						intA.addParent(inputA);
+						intA.setName(origA.getId() + " INT " + inputA.getId());
+
+						// if the intersection association has artifacts or a not empty presence condition store it
+						if (intA.getArtifactTreeRoot().getChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
+							toAdd.add(intA);
+						}
+
+						EccoUtil.checkConsistency(origA.getArtifactTreeRoot());
+						EccoUtil.checkConsistency(intA.getArtifactTreeRoot());
 					}
+					originalAssociations.addAll(toAdd); // add new associations to original associations so that they can be sliced with the next input association
+					newAssociations.addAll(toAdd);
 
-					EccoUtil.checkConsistency(origA.getArtifactTreeRoot());
-					EccoUtil.checkConsistency(intA.getArtifactTreeRoot());
+					// if the remainder is not empty store it
+					if (inputA.getArtifactTreeRoot().getChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
+						EccoUtil.sequenceOrderedNodes(inputA.getArtifactTreeRoot());
+						EccoUtil.updateArtifactReferences(inputA.getArtifactTreeRoot());
+						EccoUtil.checkConsistency(inputA.getArtifactTreeRoot());
+
+						originalAssociations.add(inputA);
+						newAssociations.add(inputA);
+					}
 				}
-				originalAssociations.addAll(toAdd); // add new associations to original associations so that they can be sliced with the next input association
-				newAssociations.addAll(toAdd);
 
-				// if the remainder is not empty store it
-				if (inputA.getArtifactTreeRoot().getChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
-					EccoUtil.sequenceOrderedNodes(inputA.getArtifactTreeRoot());
-					EccoUtil.updateArtifactReferences(inputA.getArtifactTreeRoot());
-					EccoUtil.checkConsistency(inputA.getArtifactTreeRoot());
-
-					originalAssociations.add(inputA);
-					newAssociations.add(inputA);
+				// save associations
+				for (Association origA : originalAssociations) {
+					this.associationDao.save(origA);
 				}
-			}
 
-			// save associations
-			for (Association origA : originalAssociations) {
-				this.associationDao.save(origA);
-			}
+				// put together commit
+				Commit commit = this.entityFactory.createCommit();
+				commit.setCommitter(""); // TODO: get this value from the client config. maybe pass it as a parameter to this commit method.
+				for (Association newA : newAssociations) {
+					commit.addAssociation(newA);
+				}
+				persistedCommit = this.commitDao.save(commit);
 
-			// put together commit
-			Commit commit = this.entityFactory.createCommit();
-			commit.setCommitter(""); // TODO: get this value from the client config. maybe pass it as a parameter to this commit method.
-			for (Association newA : newAssociations) {
-				commit.addAssociation(newA);
+				this.transactionStrategy.commit();
+			} catch (Exception e) {
+				this.transactionStrategy.rollback();
 			}
-			Commit persistedCommit = this.commitDao.save(commit);
-
-			this.transactionStrategy.commit();
 
 			// fire event
-			this.fireCommitsChangedEvent(persistedCommit);
+			if (persistedCommit != null)
+				this.fireCommitsChangedEvent(persistedCommit);
 
 			return persistedCommit;
 		}

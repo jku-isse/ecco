@@ -11,9 +11,14 @@ import org.garret.perst.impl.StorageImpl;
  */
 public class PerstRootNode extends BaseRootNode implements RootNode, IPersistent, ICloneable {
 
+	public PerstRootNode() {
+		super();
+	}
+
 	public Node createNode() {
 		return new PerstRootNode();
 	}
+
 
 	// # PERST ################################################
 

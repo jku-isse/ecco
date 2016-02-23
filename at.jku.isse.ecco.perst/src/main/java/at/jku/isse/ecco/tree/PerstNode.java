@@ -14,6 +14,12 @@ import java.util.List;
  */
 public class PerstNode extends BaseNode implements Node, IPersistent, ICloneable {
 
+
+	public PerstNode() {
+		super();
+	}
+
+
 //	private Link<Node> allChildren;
 //	private Link<Node> uniqueChildren;
 

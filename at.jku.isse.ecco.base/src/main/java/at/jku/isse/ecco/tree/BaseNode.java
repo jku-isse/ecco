@@ -19,6 +19,14 @@ public class BaseNode implements Node {
 	private Node parent = null;
 
 
+	public BaseNode() {
+	}
+
+	public BaseNode(Artifact artifact) {
+		this.artifact = artifact;
+	}
+
+
 	@Override
 	public Node createNode() {
 		return new BaseNode();

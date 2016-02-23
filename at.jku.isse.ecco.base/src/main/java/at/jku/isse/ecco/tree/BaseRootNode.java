@@ -1,10 +1,21 @@
 package at.jku.isse.ecco.tree;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 
 public class BaseRootNode extends BaseNode implements RootNode {
 
 	private Association containingAssociation;
+
+
+	public BaseRootNode() {
+		super();
+	}
+
+	public BaseRootNode(Artifact artifact) {
+		super(artifact);
+	}
+
 
 	@Override
 	public boolean isUnique() {

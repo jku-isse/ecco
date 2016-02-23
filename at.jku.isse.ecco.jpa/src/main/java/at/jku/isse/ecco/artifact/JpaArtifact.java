@@ -4,9 +4,6 @@ import at.jku.isse.ecco.sequenceGraph.JpaSequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.JpaNode;
 import at.jku.isse.ecco.tree.Node;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -26,26 +23,26 @@ public class JpaArtifact<DataType> implements Artifact<DataType>, Serializable {
 	private int id;
 
 
-	//@Embedded
-	@Transient
-	private transient Object data = null;
+	@Embedded
+	//@Transient
+	private Object data = null;
 
 	//@Embedded
 	//@Column(columnDefinition = "blob")
-	@Lob
-	private byte[] buffer = null;
+	//@Lob
+	//private byte[] buffer = null;
 
 	@Override
 	public DataType getData() {
-		if (this.data == null) {
-			Kryo kryo = new Kryo();
-
-			// read
-			Input input = new Input(this.buffer);
-			Object object = kryo.readClassAndObject(input);
-
-			this.data = object;
-		}
+//		if (this.data == null) {
+//			Kryo kryo = new Kryo();
+//
+//			// read
+//			Input input = new Input(this.buffer);
+//			Object object = kryo.readClassAndObject(input);
+//
+//			this.data = object;
+//		}
 
 		return (DataType) this.data;
 	}
@@ -54,12 +51,12 @@ public class JpaArtifact<DataType> implements Artifact<DataType>, Serializable {
 		this.data = data;
 
 
-		Kryo kryo = new Kryo();
-
-		// write
-		Output output = new Output(100, 2048);
-		kryo.writeClassAndObject(output, data);
-		this.buffer = output.getBuffer();
+//		Kryo kryo = new Kryo();
+//
+//		// write
+//		Output output = new Output(100, 2048);
+//		kryo.writeClassAndObject(output, data);
+//		this.buffer = output.getBuffer();
 	}
 
 

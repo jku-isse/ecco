@@ -1,15 +1,18 @@
 package at.jku.isse.ecco.plugin.artifact;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DirectoryArtifactData implements ArtifactData {
 
-	private Path path;
+	private transient Path path = null;
+	private String pathString = null;
 
 	protected DirectoryArtifactData() {
 		this.path = null;
+		this.pathString = null;
 	}
 
 	public DirectoryArtifactData(Path path) {
@@ -17,28 +20,32 @@ public class DirectoryArtifactData implements ArtifactData {
 //		checkArgument(Files.isDirectory(path));
 
 		this.path = path;
+		this.pathString = path.toString();
 	}
 
 	public Path getPath() {
+		if (this.path == null && this.pathString != null) {
+			this.path = Paths.get(this.pathString);
+		}
 		return this.path;
 	}
 
 	public Path getDirectoryName() {
-		return this.path.getFileName();
+		return this.getPath().getFileName();
 	}
 
 	public Path getData() {
-		return this.path;
+		return this.getPath();
 	}
 
 	@Override
 	public String toString() {
-		return this.path.toString();
+		return this.getPath().toString();
 	}
 
 	@Override
 	public int hashCode() {
-		return this.path.hashCode();
+		return this.getPath().hashCode();
 	}
 
 	@Override
@@ -48,8 +55,7 @@ public class DirectoryArtifactData implements ArtifactData {
 
 		DirectoryArtifactData that = (DirectoryArtifactData) o;
 
-		return path.equals(that.path);
-
+		return this.getPath().equals(that.getPath());
 	}
 
 }

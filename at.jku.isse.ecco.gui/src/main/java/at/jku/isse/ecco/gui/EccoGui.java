@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.listener.EccoListener;
@@ -64,6 +65,16 @@ public class EccoGui extends Application implements EccoListener {
 
 		primaryStage.setScene(scene);
 		primaryStage.show();
+	}
+
+
+	@Override
+	public void stop() {
+		try {
+			this.eccoService.destroy();
+		} catch (EccoException e) {
+			e.printStackTrace();
+		}
 	}
 
 

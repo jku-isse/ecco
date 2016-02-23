@@ -5,6 +5,10 @@ import org.garret.perst.impl.StorageImpl;
 
 public class PerstFeatureInstance extends BaseFeatureInstance implements FeatureInstance, IPersistent, ICloneable {
 
+	public PerstFeatureInstance() {
+		super();
+	}
+
 	public PerstFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
 		super(feature, featureVersion, sign);
 	}

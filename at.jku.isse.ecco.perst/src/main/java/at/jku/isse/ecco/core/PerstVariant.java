@@ -5,6 +5,10 @@ import org.garret.perst.impl.StorageImpl;
 
 public class PerstVariant extends BaseVariant implements Variant, IPersistent, ICloneable {
 
+	public PerstVariant() {
+		super();
+	}
+
 	// # PERST ################################################
 
 	protected void finalize() {

@@ -2,19 +2,22 @@ package at.jku.isse.ecco.perst.test;
 
 
 import at.jku.isse.ecco.module.ModuleFeature;
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 
-public class TestModule extends HashSet<String>{//} implements IPersistent, ICloneable {
+public class TestModule extends HashSet<String> {//} implements IPersistent, ICloneable {
 
 	public TestModule() {
 		super();
 		this.add("AAAAAAAAAAAAAAAA");
 		this.testCollection2.add("ABBBBB");
+
+		//this.arrayList = Arrays.asList(new String[]{"asdf", "blubb"});
+//		this.arrayList.add(new Object());
+		//this.arrayList.add("asdf");
 	}
 
 	public Collection<ModuleFeature> testCollection = new HashSet<ModuleFeature>();
@@ -23,6 +26,8 @@ public class TestModule extends HashSet<String>{//} implements IPersistent, IClo
 	public Collection<String> testCollection2 = new HashSet<String>();
 
 	public ModuleFeature[] testArray = new ModuleFeature[10];
+
+	public List<String> arrayList;
 
 
 //	// # PERST ################################################

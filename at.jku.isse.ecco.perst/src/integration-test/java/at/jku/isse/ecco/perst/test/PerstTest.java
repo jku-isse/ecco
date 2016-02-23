@@ -2,8 +2,13 @@ package at.jku.isse.ecco.perst.test;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.PerstEntityFactory;
-import at.jku.isse.ecco.feature.*;
-import at.jku.isse.ecco.module.*;
+import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.PerstFeature;
+import at.jku.isse.ecco.module.BaseModuleFeature;
+import at.jku.isse.ecco.module.ModuleFeature;
+import at.jku.isse.ecco.module.PerstModule;
 import org.garret.perst.Persistent;
 import org.garret.perst.Storage;
 import org.garret.perst.StorageFactory;
@@ -14,6 +19,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 
 public class PerstTest {
 
@@ -28,6 +34,7 @@ public class PerstTest {
 		database.open(connectionString);
 		if (database.getRoot() == null) {
 			database.setRoot(new TestDatabaseRoot());
+			System.out.println("LLL: " + ((TestDatabaseRoot) database.getRoot()).testModule.arrayList);
 		}
 		database.close();
 
@@ -73,6 +80,7 @@ public class PerstTest {
 //		database.store(root.testModule);
 //		database.store(root.module);
 		root = this.openDatabase();
+		System.out.println(root.testModule.arrayList);
 		root.testModule = testModule;
 		database.store(testModule);
 		root.store();
@@ -130,10 +138,13 @@ public class PerstTest {
 		public Collection<ModuleFeature> moduleFeatures;
 		public TestModule testModule;
 
+		public List<String> templist;
+
 		public TestDatabaseRoot() {
 			this.module = new PerstModule();
 			this.moduleFeatures = new HashSet<ModuleFeature>();
 			this.testModule = new TestModule();
+			this.templist = Arrays.asList(new String[]{"asdf"});
 		}
 	}
 

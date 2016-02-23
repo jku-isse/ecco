@@ -11,6 +11,12 @@ public class BaseFeatureInstance implements FeatureInstance {
 	private FeatureVersion featureVersion;
 	private boolean sign;
 
+	protected BaseFeatureInstance() {
+		this.feature = null;
+		this.featureVersion = null;
+		this.sign = false;
+	}
+
 	protected BaseFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
 		checkNotNull(feature);
 		checkNotNull(featureVersion);

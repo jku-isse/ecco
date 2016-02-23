@@ -1,7 +1,15 @@
 package at.jku.isse.ecco.artifact;
 
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import at.jku.isse.ecco.sequenceGraph.BaseSequenceGraph;
+import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
+import at.jku.isse.ecco.tree.Node;
+import org.garret.perst.Persistent;
+
+import java.io.*;
+import java.util.*;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Perst implementation of the {@link Artifact}.
@@ -9,149 +17,274 @@ import org.garret.perst.impl.StorageImpl;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstArtifact<DataType> extends BaseArtifact<DataType> implements Artifact<DataType>, IPersistent, ICloneable {
+public class PerstArtifact<DataType> extends Persistent implements Artifact<DataType> {
+
+	// fields
+	private transient DataType data = null;
+
+	private byte[] buffer = null;
+
+	@Override
+	public DataType getData() {
+//		if (this.data == null) {
+//			Kryo kryo = new Kryo();
+////			Kryo.DefaultInstantiatorStrategy defIS = new Kryo.DefaultInstantiatorStrategy();
+////			defIS.setFallbackInstantiatorStrategy(new SerializingInstantiatorStrategy());
+////			kryo.setInstantiatorStrategy(defIS);
+//
+//			// read
+//			Input input = new Input(this.buffer);
+//			Object object = kryo.readClassAndObject(input);
+//
+//			this.data = (DataType) object;
+//		}
+
+
+		if (this.data == null) {
+			try (ByteArrayInputStream bis = new ByteArrayInputStream(this.buffer)) {
+				try (ObjectInput in = new ObjectInputStream(bis)) {
+					this.data = (DataType) in.readObject();
+				}
+			} catch (IOException | ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
+
+
+		return this.data;
+	}
+
+	public void setData(DataType data) {
+		this.data = data;
+
+
+		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+			try (ObjectOutput out = new ObjectOutputStream(bos)) {
+				out.writeObject(this.data);
+				this.buffer = bos.toByteArray();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
+//		Kryo kryo = new Kryo();
+////		Kryo.DefaultInstantiatorStrategy defIS = new Kryo.DefaultInstantiatorStrategy();
+////		defIS.setFallbackInstantiatorStrategy(new SerializingInstantiatorStrategy());
+////		kryo.setInstantiatorStrategy(defIS);
+//
+//		// write
+//		Output output = new Output(100, 2048);
+//		kryo.writeClassAndObject(output, data);
+//		this.buffer = output.getBuffer();
+	}
+
+
+	private boolean atomic;
+
+	private boolean ordered;
+
+	private SequenceGraph sequenceGraph;
+
+	private int sequenceNumber;
+
+
+	// constructors
+	public PerstArtifact() {
+		this(null);
+	}
 
 	public PerstArtifact(DataType data) {
-		super(data);
+		this(data, false);
 	}
 
-	// # PERST ################################################
-
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	public PerstArtifact(DataType data, boolean ordered) {
+		this.setData(data);
+		this.ordered = ordered;
+		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+
+	@Override
+	public int hashCode() {
+		int result = getData().hashCode();
+		result = 31 * result + (ordered ? 1 : 0);
+		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
+			result = 31 * result + sequenceNumber;
+		return result;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		PerstArtifact<?> that = (PerstArtifact<?>) o;
+
+		if (ordered != that.ordered) return false;
+		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.sequenceNumber != that.sequenceNumber)
+			return false;
+		return getData().equals(that.getData());
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+	@Override
+	public String toString() {
+		return this.getData().toString();
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+
+	@Override
+	public boolean isAtomic() {
+		return this.atomic;
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+	@Override
+	public void setAtomic(boolean atomic) {
+		this.atomic = atomic;
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
+	@Override
+	public boolean isOrdered() {
+		return this.ordered;
 	}
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
+	@Override
+	public void setOrdered(boolean ordered) {
+		this.ordered = ordered;
 	}
 
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
+	@Override
+	public SequenceGraph getSequenceGraph() {
+		return this.sequenceGraph;
 	}
 
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
+	@Override
+	public void setSequenceGraph(SequenceGraph sequenceGraph) {
+		this.sequenceGraph = sequenceGraph;
+	}
+
+	@Override
+	public int getSequenceNumber() {
+		return this.sequenceNumber;
+	}
+
+	@Override
+	public void setSequenceNumber(int sequenceNumber) {
+		this.sequenceNumber = sequenceNumber;
+	}
+
+	@Override
+	public boolean isSequenced() {
+		return this.sequenceGraph != null;
+	}
+
+
+	@Override
+	public SequenceGraph createSequenceGraph() {
+		return new BaseSequenceGraph();
+	}
+
+
+	// FIELDS #####################################################
+
+	private final List<ArtifactReference> uses = new ArrayList<>();
+	private final List<ArtifactReference> usedBy = new ArrayList<>();
+
+	private Map<String, Object> properties = new HashMap<>();
+	private Node containingNode;
+
+	// METHODS #####################################################
+
+	@Override
+	public Node getContainingNode() {
+		return containingNode;
+	}
+
+	@Override
+	public void setContainingNode(final Node node) {
+		containingNode = node;
+	}
+
+	// uses and usedBy
+
+	@Override
+	public List<ArtifactReference> getUsedBy() {
+		return usedBy;
+	}
+
+	@Override
+	public List<ArtifactReference> getUses() {
+		return uses;
+	}
+
+	@Override
+	public void setUsedBy(final List<ArtifactReference> references) {
+		checkNotNull(references);
+
+		usedBy.clear();
+		if (!references.isEmpty())
+			usedBy.addAll(references);
+	}
+
+	@Override
+	public void setUses(final List<ArtifactReference> references) {
+		checkNotNull(references);
+
+		uses.clear();
+		if (!references.isEmpty())
+			uses.addAll(references);
+	}
+
+	@Override
+	public void addUsedBy(final ArtifactReference reference) {
+		checkNotNull(reference);
+
+		usedBy.add(reference);
+	}
+
+	@Override
+	public void addUses(final ArtifactReference reference) {
+		checkNotNull(reference);
+
+		uses.add(reference);
+	}
+
+	// properties
+
+	@Override
+	public <T> Optional<T> getProperty(final String name) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+
+		Optional<T> result = Optional.empty();
+		if (properties.containsKey(name)) {
+			final Object obj = properties.get(name);
+			try {
+				@SuppressWarnings("unchecked")
+				final T item = (T) obj;
+				result = Optional.of(item);
+			} catch (final ClassCastException e) {
+				System.err.println("Expected a different type of the property.");
 			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
 		}
+
+		return result;
 	}
 
-	public final int getOid() {
-		return oid;
+	@Override
+	public <T> void putProperty(final String name, final T property) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+		checkNotNull(property);
+
+		properties.put(name, property);
 	}
 
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
+	@Override
+	public void removeProperty(String name) {
+		checkNotNull(name);
 
-	public boolean recursiveLoading() {
-		return true;
-	}
-
-	public final Storage getStorage() {
-		return storage;
-	}
-
-	public void onLoad() {
-	}
-
-	public void onStore() {
-	}
-
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
-
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstArtifact<DataType> p = (PerstArtifact<DataType>) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+		properties.remove(name);
 	}
 
 }
