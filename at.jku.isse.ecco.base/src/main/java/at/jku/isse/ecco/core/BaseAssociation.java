@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.module.PresenceCondition;
-import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 import java.util.ArrayList;
@@ -9,6 +8,12 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * Perst implementation of {@link Association}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
+ */
 public class BaseAssociation implements Association {
 
 	private int id;
@@ -22,22 +27,6 @@ public class BaseAssociation implements Association {
 	 */
 	public BaseAssociation() {
 
-	}
-
-
-	@Override
-	public int countArtifacts() {
-		return this.countRecursively(this.getArtifactTreeRoot(), 0);
-	}
-
-	private int countRecursively(Node node, int currentCount) {
-		if (node.getArtifact() != null && node.isUnique()) {
-			currentCount++;
-		}
-		for (Node child : node.getChildren()) {
-			currentCount = this.countRecursively(child, currentCount);
-		}
-		return currentCount;
 	}
 
 
@@ -89,12 +78,12 @@ public class BaseAssociation implements Association {
 	}
 
 	@Override
-	public RootNode getArtifactTreeRoot() {
+	public RootNode getRootNode() {
 		return artifactTreeRoot;
 	}
 
 	@Override
-	public void setArtifactRoot(final RootNode root) {
+	public void setRootNode(final RootNode root) {
 		this.artifactTreeRoot = root;
 		root.setContainingAssociation(this);
 	}

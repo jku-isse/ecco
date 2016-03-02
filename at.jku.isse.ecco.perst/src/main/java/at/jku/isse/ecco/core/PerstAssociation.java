@@ -1,171 +1,94 @@
 package at.jku.isse.ecco.core;
 
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.tree.RootNode;
+import org.garret.perst.Persistent;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * The database class that maps {@link Association}s to the database.
+ * Perst implementation of {@link Association}.
  *
+ * @author JKU, ISSE
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstAssociation extends BaseAssociation implements Association, IPersistent, ICloneable {
+public class PerstAssociation extends Persistent implements Association {
+
+	private int id;
+	private String name = "";
+	private RootNode rootNode;
+	private PresenceCondition presenceCondition;
+	private List<Association> parents = new ArrayList<Association>();
 
 	public PerstAssociation() {
-		super();
+
 	}
 
-	// # PERST ################################################
-
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	@Override
+	public PresenceCondition getPresenceCondition() {
+		return this.presenceCondition;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+	@Override
+	public void setPresenceCondition(PresenceCondition presenceCondition) {
+		this.presenceCondition = presenceCondition;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public List<Association> getParents() {
+		return this.parents;
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+	@Override
+	public void addParent(Association parent) {
+		this.parents.add(parent);
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	@Override
+	public void removeParent(Association parent) {
+		this.parents.remove(parent);
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+	@Override
+	public int getId() {
+		return this.id;
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
+	@Override
+	public void setId(final int id) {
+		this.id = id;
 	}
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
+	@Override
+	public String getName() {
+		return name;
 	}
 
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
+	@Override
+	public void setName(final String name) {
+		checkNotNull(name);
+
+		this.name = name;
 	}
 
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
+	@Override
+	public RootNode getRootNode() {
+		return rootNode;
 	}
 
-	public final int getOid() {
-		return oid;
+	@Override
+	public void setRootNode(final RootNode root) {
+		this.rootNode = root;
+		root.setContainingAssociation(this);
 	}
 
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
-
-	public boolean recursiveLoading() {
-		return true;
-	}
-
-	public final Storage getStorage() {
-		return storage;
-	}
-
-	public boolean equals(Object o) {
-		if (o == this) {
-			return true;
-		}
-		if (oid == 0) {
-			return super.equals(o);
-		}
-		return o instanceof IPersistent && ((IPersistent) o).getOid() == oid;
-	}
-
-	public int hashCode() {
-		return oid;
-	}
-
-	public void onLoad() {
-	}
-
-	public void onStore() {
-	}
-
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
-
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstAssociation p = (PerstAssociation) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+	@Override
+	public String toString() {
+		return String.format("Id: %d, Name: %s, Artifact Tree: %s", this.id, this.name, rootNode.toString());
 	}
 
 }

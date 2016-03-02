@@ -11,10 +11,13 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
+import java.util.Collection;
 import java.util.Set;
 
 /**
@@ -66,7 +69,7 @@ public interface EntityFactory {
 	 * @param configuration The configuration to compute the presence condition from.
 	 * @return
 	 */
-	public PresenceCondition createPresenceCondition(Configuration configuration);
+	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder);
 
 
 	// # ARTIFACTS ################################################################
@@ -78,7 +81,7 @@ public interface EntityFactory {
 	 * @return
 	 */
 	//public Artifact createArtifact(ArtifactData data);
-	public <T> Artifact<T> createArtifact(T data);
+	public <T extends ArtifactData> Artifact<T> createArtifact(T data);
 
 	/**
 	 * Creates a new artifact reference with the given source and target that is referenced.
@@ -158,6 +161,12 @@ public interface EntityFactory {
 //	 * @return A new module containing the given features.
 //	 */
 //	public Module createModule(Set<FeatureInstance> featureInstances);
+
+	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature);
+
+	public ModuleFeature createModuleFeature(Feature feature, boolean sign);
+
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign);
 
 
 	// # NODES ################################################################

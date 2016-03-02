@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 import at.jku.isse.ecco.sequenceGraph.BaseSequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
@@ -9,9 +10,16 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class BaseArtifact<DataType> implements Artifact<DataType> {
+/**
+ * Memory implementation of the {@link Artifact}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
+ */
+public class BaseArtifact<DataType extends ArtifactData> implements Artifact<DataType> {
 
 	// fields
+
 	private DataType data;
 
 	private boolean atomic;
@@ -24,6 +32,7 @@ public class BaseArtifact<DataType> implements Artifact<DataType> {
 
 
 	// constructors
+
 	public BaseArtifact() {
 		this(null);
 	}
@@ -125,15 +134,9 @@ public class BaseArtifact<DataType> implements Artifact<DataType> {
 	}
 
 
-	// FIELDS #####################################################
+	// containing node
 
-	private final List<ArtifactReference> uses = new ArrayList<>();
-	private final List<ArtifactReference> usedBy = new ArrayList<>();
-
-	private Map<String, Object> properties = new HashMap<>();
 	private Node containingNode;
-
-	// METHODS #####################################################
 
 	@Override
 	public Node getContainingNode() {
@@ -145,7 +148,11 @@ public class BaseArtifact<DataType> implements Artifact<DataType> {
 		containingNode = node;
 	}
 
+
 	// uses and usedBy
+
+	private final List<ArtifactReference> uses = new ArrayList<>();
+	private final List<ArtifactReference> usedBy = new ArrayList<>();
 
 	@Override
 	public List<ArtifactReference> getUsedBy() {
@@ -189,7 +196,10 @@ public class BaseArtifact<DataType> implements Artifact<DataType> {
 		uses.add(reference);
 	}
 
+
 	// properties
+
+	private Map<String, Object> properties = new HashMap<>();
 
 	@Override
 	public <T> Optional<T> getProperty(final String name) {

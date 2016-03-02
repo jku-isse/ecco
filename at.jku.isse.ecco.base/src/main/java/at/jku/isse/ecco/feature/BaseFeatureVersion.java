@@ -2,15 +2,16 @@ package at.jku.isse.ecco.feature;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * Memory implementation of {@link FeatureVersion}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
+ */
 public class BaseFeatureVersion implements FeatureVersion {
 
 	private Feature feature;
 	private int version;
-
-	public BaseFeatureVersion() {
-		this.feature = null;
-		this.version = FeatureVersion.ANY;
-	}
 
 	public BaseFeatureVersion(Feature feature, int version) {
 		checkNotNull(feature);
@@ -32,22 +33,22 @@ public class BaseFeatureVersion implements FeatureVersion {
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		BaseFeatureVersion that = (BaseFeatureVersion) o;
-
-		if (version != that.version) return false;
-		return feature.equals(that.feature);
-
-	}
-
-	@Override
 	public int hashCode() {
 		int result = feature.hashCode();
 		result = 31 * result + version;
 		return result;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof FeatureVersion)) return false;
+
+		final FeatureVersion that = (FeatureVersion) o;
+
+		if (version != that.getVersion()) return false;
+		return feature.equals(that.getFeature());
+
 	}
 
 	@Override

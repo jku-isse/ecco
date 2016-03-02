@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.util;
+package at.jku.isse.ecco.operation;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -9,55 +9,67 @@ import at.jku.isse.ecco.tree.Node;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class SequenceGraphUtil {
+public class SequenceGraphOperator {
 
-	public static void sequence(SequenceGraph sg, Node node) throws EccoException {
+	private SequenceGraphOperand sequenceGraph;
+
+	public SequenceGraphOperator(SequenceGraphOperand sequenceGraph) {
+		this.sequenceGraph = sequenceGraph;
+	}
+
+	private int cur_best_cost = Integer.MAX_VALUE;
+
+
+	// # OPERATIONS #################################################################
+
+	public void sequence(Node node) throws EccoException {
 		if (node.getArtifact().isOrdered())
-			sequenceNodes(sg, node.getChildren());
+			sequenceNodes(node.getChildren());
 		else
 			throw new EccoException("Only ordered nodes can be sequenced.");
 	}
 
-	public static void sequenceNodes(SequenceGraph sg, List<Node> nodes) throws EccoException {
+	public void sequenceNodes(List<Node> nodes) throws EccoException {
 		List<Artifact<?>> artifacts = nodes.stream().map((Node n) -> n.getArtifact()).collect(Collectors.toList());
-		sequenceArtifacts(sg, artifacts);
+		sequenceArtifacts(artifacts);
 	}
 
-	public static void sequenceArtifacts(SequenceGraph sg, List<Artifact<?>> artifacts) throws EccoException {
-		int num_symbols = sg.getCurrentSequenceNumber();
-		int[] alignment = align(sg, artifacts);
+	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException {
+		int num_symbols = this.sequenceGraph.getCurrentSequenceNumber();
+		int[] alignment = align(artifacts);
 
-		if (num_symbols != sg.getCurrentSequenceNumber()) {
+		if (num_symbols != this.sequenceGraph.getCurrentSequenceNumber()) {
 			Set<Artifact<?>> shared_symbols = new HashSet<>();
 			for (Artifact symbol : artifacts) {
 				if (symbol.getSequenceNumber() < num_symbols)
 					shared_symbols.add(symbol);
 			}
 
-			update_rec(sg, new HashSet<Artifact<?>>(), shared_symbols, sg.getRoot(), 0, artifacts, !sg.getPol());
-			sg.setPol(!sg.getPol());
+			update_rec(new HashSet<Artifact<?>>(), shared_symbols, this.sequenceGraph.getRoot(), 0, artifacts, !this.sequenceGraph.getPol());
+			this.sequenceGraph.setPol(!this.sequenceGraph.getPol());
 
 			// remove all graphnodes that were not visited
-			Iterator<SequenceGraphNode> it = sg.getNodes().values().iterator();
+			Iterator<SequenceGraphNode> it = this.sequenceGraph.getNodes().values().iterator();
 			while (it.hasNext()) {
 				SequenceGraphNode gn = it.next();
-				if (gn.getPol() != sg.getPol()) {
+				if (gn.getPol() != this.sequenceGraph.getPol()) {
 					it.remove();
 				}
 			}
 		}
 	}
 
-	public static int[] align(SequenceGraph sg, List<Artifact<?>> artifacts) throws EccoException {
+
+	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
 		int[] alignment_array = new int[artifacts.size()]; // +1? maybe remove node_right_index and use instead alignment[0]?
 
-		sg.setCurrentBestCost(Integer.MAX_VALUE);
-		align_rec_fast(sg, sg.getRoot(), artifacts, 0, alignment_array, 0);
+		this.cur_best_cost = Integer.MAX_VALUE;
+		align_rec_fast(this.sequenceGraph.getRoot(), artifacts, 0, alignment_array, 0);
 
 		// finalize alignment
 		for (int i = 0; i < alignment_array.length; i++) {
 			if (alignment_array[i] == -1 || alignment_array[i] == 0) {
-				alignment_array[i] = sg.nextSequenceNumber();
+				alignment_array[i] = this.sequenceGraph.nextSequenceNumber();
 			}
 		}
 
@@ -72,10 +84,10 @@ public class SequenceGraphUtil {
 	}
 
 
-	private static int align_rec_fast(SequenceGraph sg, SequenceGraphNode left, List<Artifact<?>> artifacts, int node_right_index, int[] alignment, int cost) {
+	private int align_rec_fast(SequenceGraphNode left, List<Artifact<?>> artifacts, int node_right_index, int[] alignment, int cost) {
 
 		//int cur_min_cost = Integer.MAX_VALUE;
-		int cur_min_cost = sg.getCurrentBestCost();
+		int cur_min_cost = this.cur_best_cost;
 
 		// base case: if left has no more elements and right does
 		if (left.getChildren().size() <= 0) {
@@ -83,8 +95,8 @@ public class SequenceGraphUtil {
 			int temp_cost = cost + artifacts.size() - node_right_index;
 
 			// update current best cost if necessary
-			if (sg.getCurrentBestCost() > temp_cost) {
-				sg.setCurrentBestCost(temp_cost);
+			if (this.cur_best_cost > temp_cost) {
+				this.cur_best_cost = temp_cost;
 			}
 
 			return temp_cost;
@@ -94,8 +106,8 @@ public class SequenceGraphUtil {
 		if (node_right_index >= artifacts.size() && left.getChildren().size() <= 0) {
 
 			// update current best cost if necessary
-			if (sg.getCurrentBestCost() > cost) {
-				sg.setCurrentBestCost(cost);
+			if (this.cur_best_cost > cost) {
+				this.cur_best_cost = cost;
 			}
 
 			return cost;
@@ -105,7 +117,7 @@ public class SequenceGraphUtil {
 		boolean skipped_right = false;
 
 		// abort and don't update alignment if we already had a better or equal solution.
-		if (cost >= sg.getCurrentBestCost()) {
+		if (cost >= this.cur_best_cost) {
 			return Integer.MAX_VALUE;
 		}
 
@@ -115,7 +127,7 @@ public class SequenceGraphUtil {
 				// compare artifacts of nodes. this is necessary because left node is already using a sequence number and right is not.
 				if (entry.getKey().equals(artifacts.get(node_right_index))) {
 					found_match = true;
-					int temp_cost = align_rec_fast(sg, entry.getValue(), artifacts, node_right_index + 1, alignment, cost);
+					int temp_cost = align_rec_fast(entry.getValue(), artifacts, node_right_index + 1, alignment, cost);
 					if (temp_cost < cur_min_cost) {
 						cur_min_cost = temp_cost;
 						alignment[node_right_index] = entry.getKey().getSequenceNumber();
@@ -126,7 +138,7 @@ public class SequenceGraphUtil {
 
 		// find other matches in right
 		for (int i = node_right_index + 1; i < artifacts.size() && !found_match; i++) {
-			if (cost + i - node_right_index >= cur_min_cost || cost + i - node_right_index > sg.getCurrentBestCost())
+			if (cost + i - node_right_index >= cur_min_cost || cost + i - node_right_index > this.cur_best_cost)
 				break;
 			if (i < artifacts.size() && left.getChildren().size() > 0) {
 				for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
@@ -134,7 +146,7 @@ public class SequenceGraphUtil {
 					if (entry.getKey().equals(artifacts.get(i))) {
 						found_match = true;
 						skipped_right = true;
-						int temp_cost = align_rec_fast(sg, entry.getValue(), artifacts, i + 1, alignment, cost + i - node_right_index);
+						int temp_cost = align_rec_fast(entry.getValue(), artifacts, i + 1, alignment, cost + i - node_right_index);
 						if (temp_cost < cur_min_cost) {
 							cur_min_cost = temp_cost;
 							alignment[i] = entry.getKey().getSequenceNumber();
@@ -151,7 +163,7 @@ public class SequenceGraphUtil {
 
 		if (left.getChildren().size() > 0 && (skipped_right || !found_match)) { // skip left (only if for this left we skipped a right previously for a match)
 			for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
-				int temp_cost = align_rec_fast(sg, entry.getValue(), artifacts, node_right_index, alignment, cost + 1);
+				int temp_cost = align_rec_fast(entry.getValue(), artifacts, node_right_index, alignment, cost + 1);
 				if (temp_cost < cur_min_cost) {
 					cur_min_cost = temp_cost;
 					// no changes to the alignment
@@ -162,15 +174,15 @@ public class SequenceGraphUtil {
 		return cur_min_cost; // NOTE: this must never be Integer.MAX_VALUE
 	}
 
-	private static SequenceGraphNode update_rec(SequenceGraph sg, HashSet<Artifact<?>> path, Set<Artifact<?>> shared_symbols, SequenceGraphNode node, int alignment_index, List<Artifact<?>> aligned_nodes, boolean new_pol) {
+	private SequenceGraphNode update_rec(HashSet<Artifact<?>> path, Set<Artifact<?>> shared_symbols, SequenceGraphNode node, int alignment_index, List<Artifact<?>> aligned_nodes, boolean new_pol) {
 
 		// get current graph node
 		boolean new_node = false;
-		SequenceGraphNode gn = sg.getNodes().get(path);
+		SequenceGraphNode gn = this.sequenceGraph.getNodes().get(path);
 		if (gn == null) {
 			//gn = new SequenceGraphNode(!new_pol);
-			gn = (SequenceGraphNode) sg.createSequenceGraphNode(!new_pol);
-			sg.getNodes().put(path, gn);
+			gn = (SequenceGraphNode) this.sequenceGraph.createSequenceGraphNode(!new_pol);
+			this.sequenceGraph.getNodes().put(path, gn);
 			new_node = true;
 		}
 
@@ -194,7 +206,7 @@ public class SequenceGraphUtil {
 			HashSet<Artifact<?>> new_path = (HashSet<Artifact<?>>) path.clone();
 			new_path.add(right);
 			// take it
-			SequenceGraphNode new_gn = update_rec(sg, new_path, shared_symbols, node, alignment_index + 1, aligned_nodes, new_pol);
+			SequenceGraphNode new_gn = update_rec(new_path, shared_symbols, node, alignment_index + 1, aligned_nodes, new_pol);
 			new_children.put(right, new_gn);
 		}
 
@@ -211,7 +223,7 @@ public class SequenceGraphUtil {
 				HashSet<Artifact<?>> new_path = (HashSet<Artifact<?>>) path.clone();
 				new_path.add(entry.getKey());
 				// take it
-				SequenceGraphNode new_gn = update_rec(sg, new_path, shared_symbols, entry.getValue(), alignment_index, aligned_nodes, new_pol);
+				SequenceGraphNode new_gn = update_rec(new_path, shared_symbols, entry.getValue(), alignment_index, aligned_nodes, new_pol);
 				// X not a new child. do nothing with new_children.
 				//if (new_node)
 				new_children.put(entry.getKey(), new_gn);
@@ -223,7 +235,7 @@ public class SequenceGraphUtil {
 					HashSet<Artifact<?>> new_path = (HashSet<Artifact<?>>) path.clone();
 					new_path.add(entry.getKey());
 					// take it
-					SequenceGraphNode new_gn = update_rec(sg, new_path, shared_symbols, entry.getValue(), alignment_index + 1, aligned_nodes, new_pol);
+					SequenceGraphNode new_gn = update_rec(new_path, shared_symbols, entry.getValue(), alignment_index + 1, aligned_nodes, new_pol);
 					// X not a new child. do nothing with new_children.
 					//if (new_node)
 					new_children.put(entry.getKey(), new_gn);
@@ -237,6 +249,26 @@ public class SequenceGraphUtil {
 		gn.getChildren().putAll(new_children);
 
 		return gn;
+	}
+
+
+	// # INTERFACE #################################################################
+
+	public interface SequenceGraphOperand extends SequenceGraph {
+		public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes();
+
+
+		public int getCurrentSequenceNumber();
+
+		public int nextSequenceNumber() throws EccoException;
+
+
+		public boolean getPol();
+
+		public void setPol(boolean pol);
+
+
+		public SequenceGraphNode createSequenceGraphNode(boolean pol);
 	}
 
 }

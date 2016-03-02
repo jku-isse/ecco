@@ -1,42 +1,22 @@
 package at.jku.isse.ecco.sequenceGraph;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.tree.Node;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.List;
 
 public interface SequenceGraph {
 
 	public SequenceGraphNode getRoot();
 
-	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes();
 
+	public void sequence(Node node) throws EccoException;
 
-	public int getCurrentSequenceNumber();
+	public void sequenceNodes(List<Node> nodes) throws EccoException;
 
-	public int nextSequenceNumber();
+	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException;
 
-
-	public boolean getPol();
-
-	public void setPol(boolean pol);
-
-	public int getCurrentBestCost();
-
-	public void setCurrentBestCost(int cost);
-
-
-	public SequenceGraphNode createSequenceGraphNode(boolean pol);
-
-
-//	public int getCurSeqNumber();
-//
-//	public void sequence(Node node) throws EccoException;
-//
-//	public void sequenceNodes(List<Node> nodes) throws EccoException;
-//
-//	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException;
-//
-//	public int[] align(List<Artifact<?>> artifacts) throws EccoException;
+	public int[] align(List<Artifact<?>> artifacts) throws EccoException;
 
 }

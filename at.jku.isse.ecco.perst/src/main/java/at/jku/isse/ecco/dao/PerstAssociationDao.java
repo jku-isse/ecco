@@ -119,7 +119,7 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 
 		association.store();
 		this.savePresenceCondition(association.getPresenceCondition());
-		this.saveNode(association.getArtifactTreeRoot());
+		this.saveNode(association.getRootNode());
 
 		if (!associationIndex.contains(association)) {
 			associationIndex.put(association);

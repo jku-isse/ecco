@@ -2,8 +2,6 @@ package at.jku.isse.ecco.artifact;
 
 /**
  * Captures the connection between two artifacts.
- * <p>
- * This interface is part of the {@link at.jku.isse.ecco.plugin.CorePlugin#EXTENSION_POINT_DAL}.
  *
  * @author JKU, ISSE
  * @author Hannes Thaller
@@ -35,16 +33,14 @@ public interface ArtifactReference {
 	/**
 	 * Sets the source of the reference.
 	 *
-	 * @param source
-	 *            of the reference.s
+	 * @param source of the reference.s
 	 */
 	void setSource(Artifact<?> source);
 
 	/**
 	 * Sets the target that is referenced.s
 	 *
-	 * @param target
-	 *            that is referenced
+	 * @param target that is referenced
 	 */
 	void setTarget(Artifact<?> target);
 

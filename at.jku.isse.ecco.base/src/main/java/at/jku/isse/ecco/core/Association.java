@@ -11,10 +11,6 @@ import java.util.List;
  */
 public interface Association extends Persistable {
 
-
-	public int countArtifacts();
-
-
 	public PresenceCondition getPresenceCondition();
 
 	public void setPresenceCondition(PresenceCondition presenceCondition);
@@ -55,19 +51,18 @@ public interface Association extends Persistable {
 	 */
 	void setName(String name);
 
-
 	/**
 	 * Returns the root node of the artifact tree or null if no artifacts are stored.
 	 *
 	 * @return The root of the artifact tree.
 	 */
-	RootNode getArtifactTreeRoot();
+	RootNode getRootNode();
 
 	/**
 	 * Sets the root node of the artifact tree.
 	 *
 	 * @param root The root of the artifact tree (may be null).
 	 */
-	void setArtifactRoot(RootNode root);
+	void setRootNode(RootNode root);
 
 }

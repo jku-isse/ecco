@@ -1,19 +1,20 @@
 package at.jku.isse.ecco.sequenceGraph;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.operation.SequenceGraphOperator;
+import at.jku.isse.ecco.tree.Node;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-public class BaseSequenceGraph implements SequenceGraph {
+public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.SequenceGraphOperand {
+
+	private transient SequenceGraphOperator operator = new SequenceGraphOperator(this);
+
 
 	private SequenceGraphNode root = null;
 
 	private int cur_seq_number = 1;
-
-	private int cur_best_cost = Integer.MAX_VALUE;
 
 	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
 
@@ -27,9 +28,33 @@ public class BaseSequenceGraph implements SequenceGraph {
 	}
 
 
+	@Override
 	public SequenceGraphNode getRoot() {
 		return this.root;
 	}
+
+	@Override
+	public void sequence(Node node) throws EccoException {
+		this.operator.sequence(node);
+	}
+
+	@Override
+	public void sequenceNodes(List<Node> nodes) throws EccoException {
+		this.operator.sequenceNodes(nodes);
+	}
+
+	@Override
+	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException {
+		this.operator.sequenceArtifacts(artifacts);
+	}
+
+	@Override
+	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
+		return this.operator.align(artifacts);
+	}
+
+
+	// operand
 
 	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
 		return this.nodes;
@@ -40,9 +65,9 @@ public class BaseSequenceGraph implements SequenceGraph {
 		return this.cur_seq_number;
 	}
 
-	public int nextSequenceNumber() {
+	public int nextSequenceNumber() throws EccoException {
 		if (this.cur_seq_number + 1 < -1)
-			System.out.println("WARNING: sequence number overflow!"); // TODO: use ecco exception and logger here!
+			throw new EccoException("WARNING: sequence number overflow!");
 		return this.cur_seq_number++;
 	}
 
@@ -53,14 +78,6 @@ public class BaseSequenceGraph implements SequenceGraph {
 
 	public void setPol(boolean pol) {
 		this.pol = pol;
-	}
-
-	public int getCurrentBestCost() {
-		return this.cur_best_cost;
-	}
-
-	public void setCurrentBestCost(int cost) {
-		this.cur_best_cost = cost;
 	}
 
 

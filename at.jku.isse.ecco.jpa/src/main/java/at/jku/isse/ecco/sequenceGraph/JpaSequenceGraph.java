@@ -1,16 +1,15 @@
 package at.jku.isse.ecco.sequenceGraph;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.tree.Node;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 public class JpaSequenceGraph implements SequenceGraph, Serializable {
@@ -40,6 +39,26 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 
 	public SequenceGraphNode getRoot() {
 		return this.root;
+	}
+
+	@Override
+	public void sequence(Node node) throws EccoException {
+
+	}
+
+	@Override
+	public void sequenceNodes(List<Node> nodes) throws EccoException {
+
+	}
+
+	@Override
+	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException {
+
+	}
+
+	@Override
+	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
+		return new int[0];
 	}
 
 	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {

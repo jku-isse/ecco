@@ -1,8 +1,16 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.feature.Feature;
 import org.garret.perst.*;
 import org.garret.perst.impl.StorageImpl;
 
+/**
+ * Perst implementation of {@link Feature}.
+ *
+ * @author JKU, ISSE
+ * @author Hannes Thaller
+ * @version 1.0
+ */
 public class PerstModule extends BaseModule implements Module, IPersistent, ICloneable {
 
 	public PerstModule() {

@@ -1,175 +1,99 @@
 package at.jku.isse.ecco.feature;
 
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import org.garret.perst.Persistent;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * The database class that maps {@link Feature}s to the database.
+ * Perst implementation of {@link Feature}.
  *
+ * @author JKU, ISSE
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstFeature extends BaseFeature implements Feature, IPersistent, ICloneable {
+public class PerstFeature extends Persistent implements Feature {
+
+	private String name = "";
+	private String description = "";
+
+	private List<FeatureVersion> versions = new ArrayList<FeatureVersion>();
 
 	public PerstFeature() {
-		super();
+
 	}
 
 	public PerstFeature(String name) {
-		super(name);
+		this.setName(name);
 	}
 
-	// # PERST ################################################
+	@Override
+	public List<FeatureVersion> getVersions() {
+		return this.versions;
+	}
 
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
+	@Override
+	public void addVersion(FeatureVersion version) {
+		if (!this.versions.contains(version))
+			this.versions.add(version);
+	}
+
+	@Override
+	public FeatureVersion getVersion(FeatureVersion version) {
+		for (FeatureVersion featureVersion : this.versions) {
+			if (featureVersion.equals(version))
+				return featureVersion;
 		}
-		state = DELETED;
+		return null;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+	@Override
+	public String getName() {
+		return name;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public void setName(final String name) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
+
+		this.name = name;
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+	@Override
+	public String getDescription() {
+		return description;
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	@Override
+	public void setDescription(final String description) {
+		checkNotNull(description);
+
+		this.description = description;
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+	@Override
+	public int hashCode() {
+		return Objects.hash(name);
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
+	@Override
+	public boolean equals(final Object o) {
+		if (this == o) return true;
+		if (!(o instanceof Feature)) return false;
+
+		final Feature other = (Feature) o;
+
+		return this.name.equals(other.getName());
 	}
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
-	}
-
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
-	}
-
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
-	}
-
-	public final int getOid() {
-		return oid;
-	}
-
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
-
-	public boolean recursiveLoading() {
-		return true;
-	}
-
-	public final Storage getStorage() {
-		return storage;
-	}
-
-//	public boolean equals(Object o) {
-//		if (o == this) {
-//			return true;
-//		}
-//		if (oid == 0) {
-//			return super.equals(o);
-//		}
-//		return o instanceof IPersistent && ((IPersistent) o).getOid() == oid;
-//	}
-//
-//	public int hashCode() {
-//		return oid;
-//	}
-
-	public void onLoad() {
-	}
-
-	public void onStore() {
-	}
-
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
-
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstFeature p = (PerstFeature) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+	@Override
+	public String toString() {
+		return this.name;
 	}
 
 }

@@ -14,7 +14,7 @@ import java.nio.file.Paths;
 public class ServiceTest {
 
 	@Test(groups = {"integration", "service", "init"})
-	public void Service_Init_Test() throws EccoException {
+	public void Service_Init_Test() throws EccoException, IOException {
 		EccoService service = new EccoService(Paths.get("data/input"), Paths.get("data/repository/.ecco"));
 
 		service.createRepository();
@@ -22,7 +22,7 @@ public class ServiceTest {
 	}
 
 	@Test(groups = {"integration", "service", "commit"})
-	public void Service_Commit_Test() throws EccoException {
+	public void Service_Commit_Test() throws EccoException, IOException {
 		EccoService service = new EccoService(Paths.get("data/input"), Paths.get("data/repository/.ecco"));
 
 		service.createRepository();

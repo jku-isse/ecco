@@ -1,14 +1,7 @@
 package at.jku.isse.ecco.plugin.artifact.php;
 
-import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
-import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Module;
-
-import java.nio.file.Path;
-import java.util.Set;
 
 /**
  * @author Timea Kovacs
@@ -41,16 +34,6 @@ public class PhpPlugin extends ArtifactPlugin {
 	@Override
 	public String getDescription() {
 		return "Php Artifact Plugin";
-	}
-
-	@Override
-	public ArtifactReader<Path, Set<Node>> createReader(final EntityFactory entityFactory) {
-		return new PhpReader(entityFactory);
-	}
-
-	@Override
-	public ArtifactWriter<Set<Node>, Path> createWriter() {
-		return new PhpWriter();
 	}
 
 }

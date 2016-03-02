@@ -1,41 +1,64 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import at.jku.isse.ecco.operation.PresenceConditionOperator;
+import org.garret.perst.Persistent;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Set;
+import java.util.*;
 
-public class PerstPresenceCondition extends BasePresenceCondition implements PresenceCondition, IPersistent, ICloneable {
+/**
+ * Perst implementation of {@link PresenceCondition}.
+ *
+ * @author JKU, ISSE
+ * @author Hannes Thaller
+ * @version 1.0
+ */
+public class PerstPresenceCondition extends Persistent implements PresenceCondition, PresenceConditionOperator.PresenceConditionOperand {
+
+	private transient PresenceConditionOperator operator = new PresenceConditionOperator(this);
+
+
+	protected Set<Module> minModules = new HashSet<Module>();
+	protected Set<Module> maxModules = new HashSet<Module>();
+	protected Set<Module> allModules = new HashSet<Module>();
+	protected Set<Module> notModules = new HashSet<Module>();
+
 
 	public PerstPresenceCondition() {
 		super();
 	}
 
-	public PerstPresenceCondition(Configuration configuration) {
-		super(configuration);
+	public PerstPresenceCondition(Configuration configuration, int maxOrder) {
+		super();
+		this.operator.initialize(configuration, maxOrder);
 	}
 
 
 	@Override
-	protected Module createModule() {
-		return new PerstModule();
+	public boolean holds(Configuration configuration) {
+		return this.operator.holds(configuration);
 	}
 
 	@Override
-	protected ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
-		return new PerstModuleFeature(feature, featureVersions, sign);
+	public boolean isEmpty() {
+		return this.operator.isEmpty();
 	}
 
 	@Override
-	protected PresenceCondition createPresenceCondition() {
-		return new PerstPresenceCondition();
+	public PresenceCondition slice(PresenceCondition other) throws EccoException {
+		return this.operator.slice(other);
 	}
 
+	@Override
+	public void addFeatureVersion(FeatureVersion newFeatureVersion) {
+		this.operator.addFeatureVersion(newFeatureVersion);
+	}
+
+
+	// perst
 
 	public void storeRecursively() {
 		this.store();
@@ -49,157 +72,60 @@ public class PerstPresenceCondition extends BasePresenceCondition implements Pre
 		}
 	}
 
-	// # PERST ################################################
 
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	// operand
+
+	@Override
+	public Set<Module> getMinModules() {
+		return this.minModules;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+	@Override
+	public Set<Module> getMaxModules() {
+		return this.maxModules;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public Set<Module> getNotModules() {
+		return this.notModules;
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+	@Override
+	public Set<Module> getAllModules() {
+		return this.allModules;
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	@Override
+	public Module createModule() {
+		return new PerstModule();
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+	@Override
+	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
+		return this.createModuleFeature(moduleFeature.getFeature(), moduleFeature, moduleFeature.getSign());
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
+	@Override
+	public ModuleFeature createModuleFeature(Feature feature, boolean sign) {
+		return this.createModuleFeature(feature, new ArrayList<>(), sign);
 	}
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
+	@Override
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+		return new PerstModuleFeature(feature, featureVersions, sign);
 	}
 
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
+	@Override
+	public PresenceConditionOperator.PresenceConditionOperand createPresenceCondition() {
+		return new PerstPresenceCondition();
 	}
 
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
-	}
 
-	public final int getOid() {
-		return oid;
-	}
+	// to string
 
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
-
-	public boolean recursiveLoading() {
-		return true;
-	}
-
-	public final Storage getStorage() {
-		return storage;
-	}
-
-	public boolean equals(Object o) {
-		if (o == this) {
-			return true;
-		}
-		if (oid == 0) {
-			return super.equals(o);
-		}
-		return o instanceof IPersistent && ((IPersistent) o).getOid() == oid;
-	}
-
-	public int hashCode() {
-		return oid;
-	}
-
-	public void onLoad() {
-	}
-
-	public void onStore() {
-	}
-
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
-
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstPresenceCondition p = (PerstPresenceCondition) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+	@Override
+	public String toString() {
+		return this.operator.toString();
 	}
 
 }

@@ -1,162 +1,86 @@
 package at.jku.isse.ecco.artifact;
 
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import org.garret.perst.Persistent;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * A perst artifact reference implementation.
+ * Perst implementation of {@link ArtifactReference}.
  *
+ * @author JKU, ISSE
  * @author Hannes Thaller
  * @version 1.0
  */
-//@SuppressWarnings("ExternalizableWithoutPublicNoArgConstructor")
-public class PerstArtifactReference extends BaseArtifactReference implements ArtifactReference, IPersistent, ICloneable {
+public class PerstArtifactReference extends Persistent implements ArtifactReference {
 
+	private final String type;
+
+	private Artifact source;
+	private Artifact target;
+
+	/**
+	 * Constructs a new artifact reference with the type initiliazed to an empty string.
+	 */
 	public PerstArtifactReference() {
-		super();
+		this(null);
 	}
 
-	public PerstArtifactReference(String type) {
-		super(type);
+	/**
+	 * Constructs a new artifact reference with the given type.
+	 */
+	public PerstArtifactReference(final String type) {
+		this.type = type;
 	}
 
-	// # PERST ################################################
-
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	@Override
+	public String getType() {
+		return type;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+	@Override
+	public Artifact getSource() {
+		return source;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public Artifact getTarget() {
+		return target;
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+	@Override
+	public void setSource(final Artifact source) {
+		checkNotNull(source);
+
+		this.source = source;
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	@Override
+	public void setTarget(final Artifact target) {
+		checkNotNull(target);
+
+		this.target = target;
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + (type != null ? type.hashCode() : 0);
+		result = 31 * result + (source != null ? source.hashCode() : 0);
+		result = 31 * result + (target != null ? target.hashCode() : 0);
+		return result;
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
-	}
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		if (!super.equals(o)) return false;
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
-	}
+		PerstArtifactReference that = (PerstArtifactReference) o;
 
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
-	}
-
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
-	}
-
-	public final int getOid() {
-		return oid;
-	}
-
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
-
-	public boolean recursiveLoading() {
-		return true;
-	}
-
-	public final Storage getStorage() {
-		return storage;
-	}
-
-	public void onLoad() {
-	}
-
-	public void onStore() {
-	}
-
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
-
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstArtifactReference p = (PerstArtifactReference) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+		if (type != null ? !type.equals(that.type) : that.type != null) return false;
+		if (source != null ? !source.equals(that.source) : that.source != null) return false;
+		return !(target != null ? !target.equals(that.target) : that.target != null);
 	}
 
 }

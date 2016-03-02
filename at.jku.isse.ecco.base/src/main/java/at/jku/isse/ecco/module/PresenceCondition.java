@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureVersion;
 
@@ -22,7 +23,7 @@ public interface PresenceCondition {
 	/**
 	 * Slices this presence condition against another presence condition and returns a new presence condition.
 	 */
-	public PresenceCondition slice(PresenceCondition other);
+	public PresenceCondition slice(PresenceCondition other) throws EccoException;
 
 	public void addFeatureVersion(FeatureVersion newFeatureVersion);
 

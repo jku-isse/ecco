@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 import at.jku.isse.ecco.sequenceGraph.JpaSequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.JpaNode;
@@ -16,7 +17,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @Entity
-public class JpaArtifact<DataType> implements Artifact<DataType>, Serializable {
+public class JpaArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Serializable {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

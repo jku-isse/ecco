@@ -21,6 +21,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 
 public class InitView extends BorderPane implements EccoListener {
@@ -83,7 +84,7 @@ public class InitView extends BorderPane implements EccoListener {
 				InitView.this.setDisable(true);
 				new Thread(new Task<Void>() {
 					@Override
-					public Void call() throws EccoException {
+					public Void call() throws EccoException, IOException {
 						if (InitView.this.eccoService.repositoryDirectoryExists()) {
 							InitView.this.eccoService.init();
 						} else {
@@ -104,6 +105,8 @@ public class InitView extends BorderPane implements EccoListener {
 						alert.setHeaderText("Init Error");
 
 						alert.showAndWait();
+
+						InitView.this.setDisable(false);
 					}
 				}).start();
 			}

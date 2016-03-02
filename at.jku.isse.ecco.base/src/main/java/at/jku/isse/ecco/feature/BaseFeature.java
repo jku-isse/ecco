@@ -8,7 +8,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * TODO: consider making BaseFeatureInstance and BaseFeatureVersion private classes of this class. And adding feature versions or instances is done only via this class' methods.
+ * Memory implementation of {@link Feature}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
  */
 public class BaseFeature implements Feature {
 

@@ -3,7 +3,6 @@ package at.jku.isse.ecco.core;
 import at.jku.isse.ecco.module.JpaPresenceCondition;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.JpaRootNode;
-import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 import javax.persistence.*;
@@ -36,22 +35,6 @@ public class JpaAssociation implements Association, Serializable {
 	 */
 	public JpaAssociation() {
 
-	}
-
-
-	@Override
-	public int countArtifacts() {
-		return this.countRecursively(this.getArtifactTreeRoot(), 0);
-	}
-
-	private int countRecursively(Node node, int currentCount) {
-		if (node.getArtifact() != null && node.isUnique()) {
-			currentCount++;
-		}
-		for (Node child : node.getChildren()) {
-			currentCount = this.countRecursively(child, currentCount);
-		}
-		return currentCount;
 	}
 
 
@@ -103,12 +86,12 @@ public class JpaAssociation implements Association, Serializable {
 	}
 
 	@Override
-	public RootNode getArtifactTreeRoot() {
+	public RootNode getRootNode() {
 		return artifactTreeRoot;
 	}
 
 	@Override
-	public void setArtifactRoot(final RootNode root) {
+	public void setRootNode(final RootNode root) {
 		this.artifactTreeRoot = root;
 		root.setContainingAssociation(this);
 	}

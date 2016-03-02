@@ -6,15 +6,15 @@ import at.jku.isse.ecco.artifact.JpaArtifact;
 import at.jku.isse.ecco.artifact.JpaArtifactReference;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
-import at.jku.isse.ecco.module.JpaModule;
-import at.jku.isse.ecco.module.JpaPresenceCondition;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.module.*;
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 import at.jku.isse.ecco.tree.JpaNode;
 import at.jku.isse.ecco.tree.JpaRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -48,12 +48,12 @@ public class JpaEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public PresenceCondition createPresenceCondition(Configuration configuration) {
-		return new JpaPresenceCondition(configuration);
+	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder) {
+		return new JpaPresenceCondition(configuration, maxOrder);
 	}
 
 	@Override
-	public <T> Artifact<T> createArtifact(T data) {
+	public <T extends ArtifactData> Artifact<T> createArtifact(T data) {
 		return new JpaArtifact<T>(data);
 	}
 
@@ -102,7 +102,7 @@ public class JpaEntityFactory implements EntityFactory {
 		}
 
 		association.setPresenceCondition(presenceCondition);
-		association.setArtifactRoot(rootNode);
+		association.setRootNode(rootNode);
 
 		return association;
 	}
@@ -145,6 +145,23 @@ public class JpaEntityFactory implements EntityFactory {
 	public Module createModule() {
 		return new JpaModule();
 	}
+
+
+	@Override
+	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
+		return this.createModuleFeature(moduleFeature.getFeature(), moduleFeature, moduleFeature.getSign());
+	}
+
+	@Override
+	public ModuleFeature createModuleFeature(Feature feature, boolean sign) {
+		return this.createModuleFeature(feature, new ArrayList<>(), sign);
+	}
+
+	@Override
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+		return new JpaModuleFeature(feature, featureVersions, sign);
+	}
+
 
 	@Override
 	public Node createNode() {

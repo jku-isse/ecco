@@ -1,14 +1,7 @@
 package at.jku.isse.ecco.plugin.artifact.text;
 
-import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import com.google.inject.Module;
-
-import java.nio.file.Path;
-import java.util.Set;
 
 public class TextPlugin extends ArtifactPlugin {
 
@@ -38,16 +31,6 @@ public class TextPlugin extends ArtifactPlugin {
 	@Override
 	public String getDescription() {
 		return "Text Artifact Plugin";
-	}
-
-	@Override
-	public ArtifactReader<Path, Set<Node>> createReader(final EntityFactory entityFactory) {
-		return new TextReader(entityFactory);
-	}
-
-	@Override
-	public ArtifactWriter<Set<Node>, Path> createWriter() {
-		return new TextWriter();
 	}
 
 }

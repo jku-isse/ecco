@@ -1,22 +1,61 @@
 package at.jku.isse.ecco.sequenceGraph;
 
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.operation.SequenceGraphOperator;
+import at.jku.isse.ecco.tree.Node;
+import org.garret.perst.Persistent;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
-public class PerstSequenceGraph extends BaseSequenceGraph implements SequenceGraph, IPersistent, ICloneable {
+public class PerstSequenceGraph extends Persistent implements SequenceGraph, SequenceGraphOperator.SequenceGraphOperand {
+
+	private transient SequenceGraphOperator operator = new SequenceGraphOperator(this);
+
+
+	private SequenceGraphNode root = null;
+
+	private int cur_seq_number = 1;
+
+	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
+
+	private boolean pol = true;
+
 
 	public PerstSequenceGraph() {
-		super();
+		this.pol = true;
+		this.root = (PerstSequenceGraphNode) this.createSequenceGraphNode(this.pol);
+		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
 	}
 
 
-	public SequenceGraphNode createSequenceGraphNode(boolean pol) {
-		return new PerstSequenceGraphNode(pol);
+	@Override
+	public SequenceGraphNode getRoot() {
+		return this.root;
 	}
 
+	@Override
+	public void sequence(Node node) throws EccoException {
+		this.operator.sequence(node);
+	}
+
+	@Override
+	public void sequenceNodes(List<Node> nodes) throws EccoException {
+		this.operator.sequenceNodes(nodes);
+	}
+
+	@Override
+	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException {
+		this.operator.sequenceArtifacts(artifacts);
+	}
+
+	@Override
+	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
+		return this.operator.align(artifacts);
+	}
+
+
+	// perst
 
 	public void storeRecursively() {
 		this.store();
@@ -40,143 +79,37 @@ public class PerstSequenceGraph extends BaseSequenceGraph implements SequenceGra
 		//}
 	}
 
-	// # PERST ################################################
 
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	// operand
+
+	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
+		return this.nodes;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+
+	public int nextSequenceNumber() throws EccoException {
+		if (this.cur_seq_number + 1 < -1)
+			throw new EccoException("WARNING: sequence number overflow!");
+		return this.cur_seq_number++;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+
+	public int getCurrentSequenceNumber() {
+		return this.cur_seq_number;
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+
+	public boolean getPol() {
+		return this.pol;
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	public void setPol(boolean pol) {
+		this.pol = pol;
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
-	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
-	}
-
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
-	}
-
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
-	}
-
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
-	}
-
-	public final int getOid() {
-		return oid;
-	}
-
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
-
-	public boolean recursiveLoading() {
-		return true;
-	}
-
-	public final Storage getStorage() {
-		return storage;
-	}
-
-	public void onLoad() {
-	}
-
-	public void onStore() {
-	}
-
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
-
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstSequenceGraph p = (PerstSequenceGraph) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+	public SequenceGraphNode createSequenceGraphNode(boolean pol) {
+		return new PerstSequenceGraphNode(pol);
 	}
 
 }

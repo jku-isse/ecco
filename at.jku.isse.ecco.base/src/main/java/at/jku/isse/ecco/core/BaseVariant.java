@@ -2,6 +2,12 @@ package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.feature.Configuration;
 
+/**
+ * Memory implementation of {@link Variant}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
+ */
 public class BaseVariant implements Variant {
 
 	private String name;

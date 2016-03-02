@@ -1,165 +1,67 @@
 package at.jku.isse.ecco.core;
 
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import at.jku.isse.ecco.feature.Configuration;
+import org.garret.perst.Persistent;
 
-public class PerstCommit extends BaseCommit implements Commit, IPersistent, ICloneable {
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Perst implementation of {@link Commit}.
+ *
+ * @author JKU, ISSE
+ * @author Hannes Thaller
+ * @version 1.0
+ */
+public class PerstCommit extends Persistent implements Commit {
+
+	private int id;
+	private List<Association> associations;
+	private String committer;
+	private Configuration configuration;
 
 	public PerstCommit() {
-		super();
+		this.associations = new ArrayList<Association>();
 	}
 
-	// # PERST ################################################
-
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	@Override
+	public int getId() {
+		return this.id;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+	@Override
+	public void setId(int id) {
+		this.id = id;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public Configuration getConfiguration() {
+		return this.configuration;
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+	@Override
+	public void setConfiguration(Configuration configuration) {
+		this.configuration = configuration;
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	@Override
+	public List<Association> getAssociations() {
+		return this.associations;
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+	@Override
+	public void addAssociation(Association association) {
+		this.associations.add(association);
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
+	@Override
+	public String getCommiter() {
+		return this.committer;
 	}
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
-	}
-
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
-	}
-
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
-	}
-
-	public final int getOid() {
-		return oid;
-	}
-
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
-
-	public boolean recursiveLoading() {
-		return true;
-	}
-
-	public final Storage getStorage() {
-		return storage;
-	}
-
-	public boolean equals(Object o) {
-		if (o == this) {
-			return true;
-		}
-		if (oid == 0) {
-			return super.equals(o);
-		}
-		return o instanceof IPersistent && ((IPersistent) o).getOid() == oid;
-	}
-
-	public int hashCode() {
-		return oid;
-	}
-
-	public void onLoad() {
-	}
-
-	public void onStore() {
-	}
-
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
-
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstAssociation p = (PerstAssociation) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+	@Override
+	public void setCommitter(String committer) {
+		this.committer = committer;
 	}
 
 }

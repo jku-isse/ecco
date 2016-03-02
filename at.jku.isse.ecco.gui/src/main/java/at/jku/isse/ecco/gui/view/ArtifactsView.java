@@ -2,7 +2,8 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.composition.BaseCompRootNode;
+import at.jku.isse.ecco.EccoUtil;
+import at.jku.isse.ecco.composition.CompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
@@ -177,15 +178,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 						}
 
 						// use composition here to merge selected associations
-						BaseCompRootNode rootNode = null;
+						CompositionRootNode rootNode = null;
 						if (!selectedAssociations.isEmpty()) {
-							rootNode = new BaseCompRootNode();
+							rootNode = new CompositionRootNode();
 							for (Association association : selectedAssociations) {
-								rootNode.addOrigNode(association.getArtifactTreeRoot());
+								rootNode.addOrigNode(association.getRootNode());
 							}
 						}
 						final RootNode finalRootNode = rootNode;
-						//final RootNode finalRootNode = selectedAssociations.iterator().next().getArtifactTreeRoot();
+						//final RootNode finalRootNode = selectedAssociations.iterator().next().getRootNode();
 						Platform.runLater(() -> {
 							artifactTreeView.setRootNode(finalRootNode);
 						});
@@ -227,9 +228,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 				// use composition here to merge selected associations
 				if (!selectedAssociations.isEmpty()) {
-					final BaseCompRootNode rootNode = new BaseCompRootNode();
+					final CompositionRootNode rootNode = new CompositionRootNode();
 					for (Association association : selectedAssociations) {
-						rootNode.addOrigNode(association.getArtifactTreeRoot());
+						rootNode.addOrigNode(association.getRootNode());
 					}
 
 					Task checkoutTask = new Task<Void>() {
@@ -331,7 +332,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		public AssociationInfo(Association association) {
 			this.association = association;
 			this.selected = new SimpleBooleanProperty(false);
-			this.numArtifacts = new SimpleIntegerProperty(association.countArtifacts());
+			this.numArtifacts = new SimpleIntegerProperty(EccoUtil.countArtifactsInAssociation(association));
 		}
 
 		public Association getAssociation() {

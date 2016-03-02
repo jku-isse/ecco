@@ -5,6 +5,12 @@ import at.jku.isse.ecco.feature.Configuration;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Memory implementation of {@link Commit}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
+ */
 public class BaseCommit implements Commit {
 
 	private int id;

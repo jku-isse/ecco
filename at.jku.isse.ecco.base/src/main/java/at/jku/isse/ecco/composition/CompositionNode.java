@@ -1,24 +1,32 @@
 package at.jku.isse.ecco.composition;
 
-import at.jku.isse.ecco.tree.BaseRootNode;
+import at.jku.isse.ecco.tree.BaseNode;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.RootNode;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class BaseCompRootNode extends BaseRootNode implements RootNode, CompNode {
+/**
+ * A lazy composition node.
+ */
+public class CompositionNode extends BaseNode implements Node {
+
+	private OrderSelector orderSelector;
 
 	private boolean activated = false;
 
 	private List<Node> origNodes;
 
-	public BaseCompRootNode() {
-		this.origNodes = new ArrayList<>();
-		this.activated = false;
+	public CompositionNode() {
+		this(null);
 	}
 
-	@Override
+	public CompositionNode(OrderSelector orderSelector) {
+		this.origNodes = new ArrayList<>();
+		this.activated = false;
+		this.orderSelector = orderSelector;
+	}
+
 	public void addOrigNode(Node origNode) {
 		this.origNodes.add(origNode);
 	}
@@ -30,13 +38,13 @@ public class BaseCompRootNode extends BaseRootNode implements RootNode, CompNode
 
 		// compute the children of this node, but do not activate them!
 
-		List<CompNode> allChildren = new ArrayList<>();
+		List<CompositionNode> allChildren = new ArrayList<>();
 
 		for (Node origNode : this.origNodes) {
 			for (Node origChildNode : origNode.getChildren()) {
-				CompNode newChildNode = null;
+				CompositionNode newChildNode = null;
 				if (!allChildren.contains(origChildNode)) {
-					newChildNode = new BaseCompNode();
+					newChildNode = new CompositionNode(this.orderSelector);
 
 					newChildNode.setParent(this);
 					newChildNode.setArtifact(origChildNode.getArtifact());
@@ -57,6 +65,10 @@ public class BaseCompRootNode extends BaseRootNode implements RootNode, CompNode
 
 		super.getChildren().addAll(allChildren);
 
+		if (this.orderSelector != null && this.getArtifact() != null && this.getArtifact().isOrdered()) {
+			this.orderSelector.select(this);
+		}
+
 		this.activated = true;
 	}
 
@@ -66,6 +78,12 @@ public class BaseCompRootNode extends BaseRootNode implements RootNode, CompNode
 		this.activate();
 
 		return super.getChildren();
+	}
+
+
+	@Override
+	public Node createNode() {
+		return new CompositionNode();
 	}
 
 }

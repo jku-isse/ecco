@@ -1,6 +1,6 @@
 package at.jku.isse.ecco;
 
-import at.jku.isse.ecco.composition.BaseCompRootNode;
+import at.jku.isse.ecco.composition.CompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
@@ -125,7 +125,7 @@ public class EccoService {
 	private Set<Path> ignoredFiles = new HashSet<Path>(); // TODO: set this in dao
 
 	// TODO: set these in dao
-	//private int maxOrder = 4;
+	private int maxOrder = 4; // TODO: load this in init() via SettingsDao. this value is only a cache.
 	//private String committer = "";
 
 	@Inject
@@ -267,20 +267,20 @@ public class EccoService {
 	 *
 	 * @return True if the repository was created, false otherwise.
 	 */
-	public boolean createRepository() throws EccoException {
-		try {
-			if (!this.repositoryDirectoryExists())
-				Files.createDirectory(this.repositoryDir);
+	public boolean createRepository() throws EccoException, IOException {
+//		try {
+		if (!this.repositoryDirectoryExists())
+			Files.createDirectory(this.repositoryDir);
 
-			this.init();
+		this.init();
 
-			// TODO: do some initialization in database like generating root object, etc.?
+		// TODO: do some initialization in database like generating root object, etc.?
 
-			return true;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return false;
+		return true;
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//		return false;
 	}
 
 	/**
@@ -420,7 +420,7 @@ public class EccoService {
 		if (configurationString == null || configurationString.isEmpty())
 			throw new EccoException("No configuration string provided.");
 
-		if (!configurationString.matches("(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?))*"))
+		if (!configurationString.matches("(\\+|\\-)?[a-zA-Z0-9]+('?|(\\.([0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z0-9]+('?|(\\.([0-9])+)?))*"))
 			throw new EccoException("Invalid configuration string provided.");
 
 		Configuration configuration = this.entityFactory.createConfiguration();
@@ -540,7 +540,7 @@ public class EccoService {
 		// TODO: this is where i need to compute the updated configuration for the presence condition and update the existing associations
 		this.addConfiguration(configuration);
 
-		PresenceCondition presenceCondition = this.entityFactory.createPresenceCondition(configuration);
+		PresenceCondition presenceCondition = this.entityFactory.createPresenceCondition(configuration, this.maxOrder);
 
 		Association association = this.entityFactory.createAssociation(presenceCondition, nodes);
 
@@ -597,29 +597,30 @@ public class EccoService {
 						//Association intA = origA.slice(inputA);
 						Association intA = this.entityFactory.createAssociation();
 						intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition())); // TODO: do this in module util
-						//intA.setArtifactRoot((origA.getArtifactTreeRoot().slice(inputA.getArtifactTreeRoot())));
-						intA.setArtifactRoot((RootNode) EccoUtil.sliceNodes(origA.getArtifactTreeRoot(), inputA.getArtifactTreeRoot()));
+						//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
+						//intA.setRootNode((origA.getRootNode().slice(inputA.getRootNode())));
+						intA.setRootNode((RootNode) EccoUtil.sliceNodes(origA.getRootNode(), inputA.getRootNode()));
 						// set parents for intersection association
 						intA.addParent(origA);
 						intA.addParent(inputA);
 						intA.setName(origA.getId() + " INT " + inputA.getId());
 
 						// if the intersection association has artifacts or a not empty presence condition store it
-						if (intA.getArtifactTreeRoot().getChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
+						if (intA.getRootNode().getChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
 							toAdd.add(intA);
 						}
 
-						EccoUtil.checkConsistency(origA.getArtifactTreeRoot());
-						EccoUtil.checkConsistency(intA.getArtifactTreeRoot());
+						EccoUtil.checkConsistency(origA.getRootNode());
+						EccoUtil.checkConsistency(intA.getRootNode());
 					}
 					originalAssociations.addAll(toAdd); // add new associations to original associations so that they can be sliced with the next input association
 					newAssociations.addAll(toAdd);
 
 					// if the remainder is not empty store it
-					if (inputA.getArtifactTreeRoot().getChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
-						EccoUtil.sequenceOrderedNodes(inputA.getArtifactTreeRoot());
-						EccoUtil.updateArtifactReferences(inputA.getArtifactTreeRoot());
-						EccoUtil.checkConsistency(inputA.getArtifactTreeRoot());
+					if (inputA.getRootNode().getChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
+						EccoUtil.sequenceOrderedNodes(inputA.getRootNode());
+						EccoUtil.updateArtifactReferences(inputA.getRootNode());
+						EccoUtil.checkConsistency(inputA.getRootNode());
 
 						originalAssociations.add(inputA);
 						newAssociations.add(inputA);
@@ -746,11 +747,11 @@ public class EccoService {
 
 			System.out.println("CHECKOUT");
 
-			BaseCompRootNode compRootNode = new BaseCompRootNode();
+			CompositionRootNode compRootNode = new CompositionRootNode();
 			for (Association association : this.getAssociations()) {
 				System.out.println("Checking: " + association.getId());
-				if (association.getPresenceCondition().holds(configuration)) { // TODO: the "hold" method seems to not work correctly!
-					compRootNode.addOrigNode(association.getArtifactTreeRoot());
+				if (association.getPresenceCondition().holds(configuration)) {
+					compRootNode.addOrigNode(association.getRootNode());
 					System.out.println("Selected: " + association.getId());
 				}
 			}

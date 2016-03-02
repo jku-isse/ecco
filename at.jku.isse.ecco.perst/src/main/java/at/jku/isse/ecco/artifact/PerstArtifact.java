@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 import at.jku.isse.ecco.sequenceGraph.BaseSequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
@@ -14,32 +15,20 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Perst implementation of the {@link Artifact}.
  *
+ * @author JKU, ISSE
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstArtifact<DataType> extends Persistent implements Artifact<DataType> {
+public class PerstArtifact<DataType extends ArtifactData> extends Persistent implements Artifact<DataType> {
 
-	// fields
+	// data
+
 	private transient DataType data = null;
 
 	private byte[] buffer = null;
 
 	@Override
 	public DataType getData() {
-//		if (this.data == null) {
-//			Kryo kryo = new Kryo();
-////			Kryo.DefaultInstantiatorStrategy defIS = new Kryo.DefaultInstantiatorStrategy();
-////			defIS.setFallbackInstantiatorStrategy(new SerializingInstantiatorStrategy());
-////			kryo.setInstantiatorStrategy(defIS);
-//
-//			// read
-//			Input input = new Input(this.buffer);
-//			Object object = kryo.readClassAndObject(input);
-//
-//			this.data = (DataType) object;
-//		}
-
-
 		if (this.data == null) {
 			try (ByteArrayInputStream bis = new ByteArrayInputStream(this.buffer)) {
 				try (ObjectInput in = new ObjectInputStream(bis)) {
@@ -50,13 +39,11 @@ public class PerstArtifact<DataType> extends Persistent implements Artifact<Data
 			}
 		}
 
-
 		return this.data;
 	}
 
 	public void setData(DataType data) {
 		this.data = data;
-
 
 		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 			try (ObjectOutput out = new ObjectOutputStream(bos)) {
@@ -66,19 +53,10 @@ public class PerstArtifact<DataType> extends Persistent implements Artifact<Data
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-
-//		Kryo kryo = new Kryo();
-////		Kryo.DefaultInstantiatorStrategy defIS = new Kryo.DefaultInstantiatorStrategy();
-////		defIS.setFallbackInstantiatorStrategy(new SerializingInstantiatorStrategy());
-////		kryo.setInstantiatorStrategy(defIS);
-//
-//		// write
-//		Output output = new Output(100, 2048);
-//		kryo.writeClassAndObject(output, data);
-//		this.buffer = output.getBuffer();
 	}
 
+
+	// fields
 
 	private boolean atomic;
 
@@ -90,6 +68,7 @@ public class PerstArtifact<DataType> extends Persistent implements Artifact<Data
 
 
 	// constructors
+
 	public PerstArtifact() {
 		this(null);
 	}
@@ -185,15 +164,9 @@ public class PerstArtifact<DataType> extends Persistent implements Artifact<Data
 	}
 
 
-	// FIELDS #####################################################
+	// containing node
 
-	private final List<ArtifactReference> uses = new ArrayList<>();
-	private final List<ArtifactReference> usedBy = new ArrayList<>();
-
-	private Map<String, Object> properties = new HashMap<>();
 	private Node containingNode;
-
-	// METHODS #####################################################
 
 	@Override
 	public Node getContainingNode() {
@@ -205,7 +178,11 @@ public class PerstArtifact<DataType> extends Persistent implements Artifact<Data
 		containingNode = node;
 	}
 
+
 	// uses and usedBy
+
+	private final List<ArtifactReference> uses = new ArrayList<>();
+	private final List<ArtifactReference> usedBy = new ArrayList<>();
 
 	@Override
 	public List<ArtifactReference> getUsedBy() {
@@ -249,7 +226,10 @@ public class PerstArtifact<DataType> extends Persistent implements Artifact<Data
 		uses.add(reference);
 	}
 
+
 	// properties
+
+	private Map<String, Object> properties = new HashMap<>();
 
 	@Override
 	public <T> Optional<T> getProperty(final String name) {

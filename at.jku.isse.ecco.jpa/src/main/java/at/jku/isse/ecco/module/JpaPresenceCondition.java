@@ -42,7 +42,7 @@ public class JpaPresenceCondition implements PresenceCondition, Serializable {
 		super();
 	}
 
-	public JpaPresenceCondition(Configuration configuration) {
+	public JpaPresenceCondition(Configuration configuration, int maxOrder) {
 		super();
 
 		// TODO: in the configuration there must not be different versions of the same feature! this is only allowed for checkout!
@@ -150,7 +150,7 @@ public class JpaPresenceCondition implements PresenceCondition, Serializable {
 	}
 
 
-	@Override
+	//@Override
 	public void addFeatureVersion(FeatureVersion newFeatureVersion) {
 		for (Set<Module> modules : Arrays.asList(this.minModules, this.maxModules, this.notModules, this.allModules)) {
 			this.addVersionToModules(newFeatureVersion, modules);
@@ -158,7 +158,7 @@ public class JpaPresenceCondition implements PresenceCondition, Serializable {
 	}
 
 
-	@Override
+	//@Override
 	public boolean holds(Configuration configuration) {
 		// A presence condition holds in a configuration when at least one of the modules in minModules or maxModules holds. A module holds if all its feature instances are contained in a configuration.
 		for (Module module : minModules) {
@@ -175,7 +175,7 @@ public class JpaPresenceCondition implements PresenceCondition, Serializable {
 		return false;
 	}
 
-	@Override
+	//@Override
 	public boolean isEmpty() {
 		if (this.minModules.isEmpty() && this.maxModules.isEmpty() && this.allModules.isEmpty() && this.notModules.isEmpty())
 			return true;
@@ -183,7 +183,7 @@ public class JpaPresenceCondition implements PresenceCondition, Serializable {
 			return false;
 	}
 
-	@Override
+	//@Override
 	public PresenceCondition slice(PresenceCondition other) {
 		if (!(other instanceof PresenceCondition))
 			return null;

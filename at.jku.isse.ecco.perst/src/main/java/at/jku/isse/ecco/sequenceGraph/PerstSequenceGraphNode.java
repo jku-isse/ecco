@@ -136,7 +136,7 @@ public class PerstSequenceGraphNode extends BaseSequenceGraphNode implements Seq
 	}
 
 	public Object clone() throws CloneNotSupportedException {
-		PerstSequenceGraph p = (PerstSequenceGraph) super.clone();
+		PerstSequenceGraphNode p = (PerstSequenceGraphNode) super.clone();
 		p.oid = 0;
 		p.state = 0;
 		return p;

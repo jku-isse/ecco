@@ -1,10 +1,13 @@
 package at.jku.isse.ecco.artifact;
 
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactReference;
-
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * Memory implementation of {@link ArtifactReference}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
+ */
 public class BaseArtifactReference implements ArtifactReference {
 
 	private final String type;
@@ -13,11 +16,10 @@ public class BaseArtifactReference implements ArtifactReference {
 	private Artifact target;
 
 	/**
-	 * Constructs a new artifact reference with the type initiliazed to an empty
-	 * string.
+	 * Constructs a new artifact reference with the type initiliazed to an empty string.
 	 */
 	public BaseArtifactReference() {
-		this("");
+		this(null);
 	}
 
 	/**
@@ -28,6 +30,11 @@ public class BaseArtifactReference implements ArtifactReference {
 	}
 
 	@Override
+	public String getType() {
+		return type;
+	}
+
+	@Override
 	public Artifact getSource() {
 		return source;
 	}
@@ -35,11 +42,6 @@ public class BaseArtifactReference implements ArtifactReference {
 	@Override
 	public Artifact getTarget() {
 		return target;
-	}
-
-	@Override
-	public String getType() {
-		return type;
 	}
 
 	@Override
@@ -54,6 +56,28 @@ public class BaseArtifactReference implements ArtifactReference {
 		checkNotNull(target);
 
 		this.target = target;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + (type != null ? type.hashCode() : 0);
+		result = 31 * result + (source != null ? source.hashCode() : 0);
+		result = 31 * result + (target != null ? target.hashCode() : 0);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		if (!super.equals(o)) return false;
+
+		BaseArtifactReference that = (BaseArtifactReference) o;
+
+		if (type != null ? !type.equals(that.type) : that.type != null) return false;
+		if (source != null ? !source.equals(that.source) : that.source != null) return false;
+		return !(target != null ? !target.equals(that.target) : that.target != null);
 	}
 
 }

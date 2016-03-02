@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
@@ -13,7 +14,7 @@ import java.util.Optional;
  * @author Hannes Thaller
  * @version 1.0
  */
-public interface Artifact<DataType> {
+public interface Artifact<DataType extends ArtifactData> {
 
 	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
 

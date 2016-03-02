@@ -6,15 +6,15 @@ import at.jku.isse.ecco.artifact.PerstArtifact;
 import at.jku.isse.ecco.artifact.PerstArtifactReference;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.PerstModule;
-import at.jku.isse.ecco.module.PerstPresenceCondition;
-import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.module.*;
+import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.PerstNode;
 import at.jku.isse.ecco.tree.PerstRootNode;
 import at.jku.isse.ecco.tree.RootNode;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -57,15 +57,15 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public PresenceCondition createPresenceCondition(Configuration configuration) {
-		return new PerstPresenceCondition(configuration);
+	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder) {
+		return new PerstPresenceCondition(configuration, maxOrder);
 	}
 
 
 	// # ARTIFACTS ################################################################
 
 	@Override
-	public <T> Artifact<T> createArtifact(T data) {
+	public <T extends ArtifactData> Artifact<T> createArtifact(T data) {
 		return new PerstArtifact<T>(data);
 	}
 
@@ -118,7 +118,7 @@ public class PerstEntityFactory implements EntityFactory {
 		}
 
 		association.setPresenceCondition(presenceCondition);
-		association.setArtifactRoot(rootNode);
+		association.setRootNode(rootNode);
 
 		return association;
 	}
@@ -174,6 +174,21 @@ public class PerstEntityFactory implements EntityFactory {
 //
 //		return module;
 //	}
+
+	@Override
+	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
+		return this.createModuleFeature(moduleFeature.getFeature(), moduleFeature, moduleFeature.getSign());
+	}
+
+	@Override
+	public ModuleFeature createModuleFeature(Feature feature, boolean sign) {
+		return this.createModuleFeature(feature, new ArrayList<>(), sign);
+	}
+
+	@Override
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+		return new PerstModuleFeature(feature, featureVersions, sign);
+	}
 
 
 	// # NODES ################################################################

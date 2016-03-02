@@ -60,7 +60,7 @@ public class AssociationTest {
 		this.associationDao.init();
 
 		Configuration configuration = this.parseConfigurationString("aaa");
-		PresenceCondition presenceCondition = this.entityFactory.createPresenceCondition(configuration);
+		PresenceCondition presenceCondition = this.entityFactory.createPresenceCondition(configuration, 4);
 
 		Association association = this.entityFactory.createAssociation();
 		association.setPresenceCondition(presenceCondition);

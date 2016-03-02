@@ -3,7 +3,10 @@ package at.jku.isse.ecco.feature;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * TODO: consider making this a private class of BaseFeatuerVersion with a private constructor.
+ * Memory implementation of {@link FeatureInstance}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
  */
 public class BaseFeatureInstance implements FeatureInstance {
 
@@ -11,13 +14,7 @@ public class BaseFeatureInstance implements FeatureInstance {
 	private FeatureVersion featureVersion;
 	private boolean sign;
 
-	protected BaseFeatureInstance() {
-		this.feature = null;
-		this.featureVersion = null;
-		this.sign = false;
-	}
-
-	protected BaseFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
+	public BaseFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
 		checkNotNull(feature);
 		checkNotNull(featureVersion);
 
@@ -39,6 +36,27 @@ public class BaseFeatureInstance implements FeatureInstance {
 	@Override
 	public boolean getSign() {
 		return this.sign;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + (feature != null ? feature.hashCode() : 0);
+		result = 31 * result + (featureVersion != null ? featureVersion.hashCode() : 0);
+		result = 31 * result + (sign ? 1 : 0);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof FeatureInstance)) return false;
+
+		final FeatureInstance that = (FeatureInstance) o;
+
+		if (sign != that.getSign()) return false;
+		if (feature != null ? !feature.equals(that.getFeature()) : that.getFeature() != null) return false;
+		return !(featureVersion != null ? !featureVersion.equals(that.getFeatureVersion()) : that.getFeatureVersion() != null);
 	}
 
 	@Override
