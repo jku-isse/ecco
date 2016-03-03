@@ -34,6 +34,10 @@ public interface Artifact<DataType extends ArtifactData> {
 	public DataType getData();
 
 
+	public boolean useReferencesInEquals();
+
+	public void setUseReferencesInEquals(boolean useReferenesInEquals);
+
 	public boolean isAtomic();
 
 	public void setAtomic(boolean atomic);

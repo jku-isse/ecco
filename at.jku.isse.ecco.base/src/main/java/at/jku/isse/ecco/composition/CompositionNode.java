@@ -65,11 +65,11 @@ public class CompositionNode extends BaseNode implements Node {
 
 		super.getChildren().addAll(allChildren);
 
-		if (this.orderSelector != null && this.getArtifact() != null && this.getArtifact().isOrdered()) {
+		this.activated = true;
+
+		if (this.orderSelector != null && this.getArtifact() != null && this.getArtifact().isOrdered() && this.getArtifact().isSequenced() && this.getArtifact().getSequenceGraph() != null) {
 			this.orderSelector.select(this);
 		}
-
-		this.activated = true;
 	}
 
 

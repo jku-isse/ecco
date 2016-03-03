@@ -30,6 +30,8 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 	private int sequenceNumber;
 
+	private boolean useReferencesInEquals;
+
 
 	// constructors
 
@@ -45,6 +47,7 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 		this.data = data;
 		this.ordered = ordered;
 		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
+		this.useReferencesInEquals = false;
 	}
 
 
@@ -64,10 +67,21 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 		BaseArtifact<?> that = (BaseArtifact<?>) o;
 
-		if (ordered != that.ordered) return false;
-		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.sequenceNumber != that.sequenceNumber)
+		if (this.isOrdered() != that.isOrdered()) return false;
+		if (this.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
 			return false;
-		return data.equals(that.data);
+
+		if (!this.useReferencesInEquals())
+			return getData().equals(that.getData());
+		else {
+			if (!this.getData().equals(that.getData()))
+				return false;
+			for (ArtifactReference ar : this.getUses()) {
+				if (!that.getUses().contains(ar))
+					return false;
+			}
+			return true;
+		}
 	}
 
 	@Override
@@ -81,6 +95,16 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 		return this.data;
 	}
 
+
+	@Override
+	public boolean useReferencesInEquals() {
+		return this.useReferencesInEquals;
+	}
+
+	@Override
+	public void setUseReferencesInEquals(boolean useReferenesInEquals) {
+		this.useReferencesInEquals = useReferenesInEquals;
+	}
 
 	@Override
 	public boolean isAtomic() {

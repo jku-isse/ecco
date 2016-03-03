@@ -2,7 +2,7 @@ package at.jku.isse.ecco.sequenceGraph;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.operation.SequenceGraphOperator;
+import at.jku.isse.ecco.operator.SequenceGraphOperator;
 import at.jku.isse.ecco.tree.Node;
 import org.garret.perst.Persistent;
 

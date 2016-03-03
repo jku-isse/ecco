@@ -66,6 +66,8 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 	private int sequenceNumber;
 
+	private boolean useReferencesInEquals;
+
 
 	// constructors
 
@@ -100,10 +102,21 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 		PerstArtifact<?> that = (PerstArtifact<?>) o;
 
-		if (ordered != that.ordered) return false;
-		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.sequenceNumber != that.sequenceNumber)
+		if (this.isOrdered() != that.isOrdered()) return false;
+		if (this.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
 			return false;
-		return getData().equals(that.getData());
+
+		if (!this.useReferencesInEquals())
+			return getData().equals(that.getData());
+		else {
+			if (!this.getData().equals(that.getData()))
+				return false;
+			for (ArtifactReference ar : this.getUses()) {
+				if (!that.getUses().contains(ar))
+					return false;
+			}
+			return true;
+		}
 	}
 
 	@Override
@@ -111,6 +124,16 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 		return this.getData().toString();
 	}
 
+
+	@Override
+	public boolean useReferencesInEquals() {
+		return this.useReferencesInEquals;
+	}
+
+	@Override
+	public void setUseReferencesInEquals(boolean useReferenesInEquals) {
+		this.useReferencesInEquals = useReferenesInEquals;
+	}
 
 	@Override
 	public boolean isAtomic() {

@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.operation.PresenceConditionOperator;
+import at.jku.isse.ecco.operator.PresenceConditionOperator;
 
 import java.util.ArrayList;
 import java.util.Collection;

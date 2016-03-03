@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.operation;
+package at.jku.isse.ecco.operator;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;

@@ -21,7 +21,6 @@ public class DefaultOrderSelector implements OrderSelector {
 		if (node.getArtifact() == null || !node.getArtifact().isOrdered() || !node.getArtifact().isSequenced() || node.getArtifact().getSequenceGraph() == null)
 			return;
 
-		// TODO: select order
 		List<Node> orderedChildren = new ArrayList<Node>();
 
 		this.traverseSequenceGraph(node.getArtifact().getSequenceGraph().getRoot(), node.getChildren(), orderedChildren);
@@ -44,6 +43,7 @@ public class DefaultOrderSelector implements OrderSelector {
 			if (next.getArtifact().equals(entry.getKey())) {
 				match = next;
 				iterator.remove();
+				break;
 			}
 		}
 		if (match != null) {

@@ -5,7 +5,6 @@ import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.SequenceGraphUtil;
 
 import java.util.HashMap;
 import java.util.Iterator;
