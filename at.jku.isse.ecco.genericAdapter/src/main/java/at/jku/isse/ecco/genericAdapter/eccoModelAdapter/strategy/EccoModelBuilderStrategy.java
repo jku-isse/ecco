@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy;
 
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.builder.BuilderArtifactData;
-import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.BlockDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenValue;
@@ -63,7 +62,7 @@ public interface EccoModelBuilderStrategy {
      * @param parsedTokenValues .
      * @return the built artifact, with custom identifier and type
      */
-    BuilderArtifactData createArtifactData(List<NonTerminal> parsedNonTerminals, List<TokenValue> parsedTokenValues);
+    BuilderArtifactData createArtifactData(List<String> parsedNonTerminals, List<TokenValue> parsedTokenValues);
 
     /**
      * Returns an object that identifies the given artifact to be used in references

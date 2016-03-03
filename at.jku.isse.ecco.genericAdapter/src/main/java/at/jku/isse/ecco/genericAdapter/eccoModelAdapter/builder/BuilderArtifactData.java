@@ -84,7 +84,7 @@ public class BuilderArtifactData implements ArtifactData {
 
 	@Override
 	public String toString() {
-		return getIdentifier();
+		return getType() + ": " +  getIdentifier();
 	}
 
 	@Override
