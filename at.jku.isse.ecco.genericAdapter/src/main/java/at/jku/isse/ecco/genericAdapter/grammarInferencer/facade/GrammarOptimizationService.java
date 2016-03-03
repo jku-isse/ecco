@@ -23,9 +23,11 @@ public class GrammarOptimizationService {
         for (NonTerminal nonTerminal : nonTerminalSet) {
             int ruleHash = nonTerminal.getRules().hashCode();
             if(ruleHashCodes.containsKey(ruleHash)) {
-                System.out.println("Found duplicate nonTerminals: \n" +
-                          ruleHashCodes.get(ruleHash).toString() + "\n" +
-                          nonTerminal.toString());
+                if(ParameterSettings.DEBUG_OUTPUT) {
+                    System.out.println("Found duplicate nonTerminals: \n" +
+                            ruleHashCodes.get(ruleHash).toString() + "\n" +
+                            nonTerminal.toString());
+                }
                 nonTerminalsReplaceMap.put(nonTerminal.getName(), ruleHashCodes.get(ruleHash));
             } else {
                 ruleHashCodes.put(ruleHash, nonTerminal);

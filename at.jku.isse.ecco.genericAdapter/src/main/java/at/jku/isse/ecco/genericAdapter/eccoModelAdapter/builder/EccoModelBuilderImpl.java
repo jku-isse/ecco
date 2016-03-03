@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.genericAdapter.eccoModelAdapter.builder;
 
 
+import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.EccoModelBuilderStrategy;
@@ -29,8 +30,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toList;
-
 /**
  * @author Michael Jahn
  */
@@ -51,12 +50,118 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
     @Override
     public Node buildEccoModel(EccoModelBuilderStrategy strategy, NonTerminal rootSymbol, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException {
 
+        // tokenize file contents
+        TokenizerResult tokenizerResult = tokenizeFile(strategy, filePath);
+        String tokenizedFile = tokenizerResult.tokenizedFile;
+
+        // generate and run parser
+        String antlrGrammar = antlrParserWrapperServiceImpl.convertToAntlrGrammar(strategy.getStrategyName(), rootSymbol, true);
+        ParseTree parseTree;
+        Parser parser;
+        if (tryWrittenParser) {
+            try {
+                Parser writtenParser = antlrParserWrapperServiceImpl.getWrittenParser(strategy.getStrategyName(), tokenizedFile);
+                parseTree = (ParseTree) antlrParserWrapperServiceImpl.runWrittenParser(writtenParser, rootSymbol.getName());
+                parser = writtenParser;
+            } catch (Throwable e) {
+                System.err.println("No written parser could be found... Using implicitly generated parser.");
+                ParserInterpreter implicitParser = antlrParserWrapperServiceImpl.generateImplicitParser(antlrGrammar, tokenizedFile);
+                parseTree = antlrParserWrapperServiceImpl.runGeneratedParser(implicitParser, antlrGrammar, rootSymbol.getName());
+                parser = implicitParser;
+            }
+        } else {
+            ParserInterpreter implicitParser = antlrParserWrapperServiceImpl.generateImplicitParser(antlrGrammar, tokenizedFile);
+            parseTree = antlrParserWrapperServiceImpl.runGeneratedParser(implicitParser, antlrGrammar, rootSymbol.getName());
+            parser = implicitParser;
+        }
+
+        return buildEccoModelFromParseTree(strategy, tokenizerResult.getParsedTokenValues(), parseTree, parser);
+
+    }
+
+
+    @Override
+    public Node buildEccoModel(EccoModelBuilderStrategy strategy, String antlrGrammarFile, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException {
+        // tokenize file contents
+        TokenizerResult tokenizerResult = tokenizeFile(strategy, filePath);
+
+        // generate and run parser
+        ParserInterpreter parser = antlrParserWrapperServiceImpl.generateParserFromFile(new File(antlrGrammarFile), tokenizerResult.getTokenizedFile());
+        ParseTree parseTree = antlrParserWrapperServiceImpl.parseImplicitly(new File(antlrGrammarFile), parser);
+
+        // generate base ecco model from parseTree
+        return buildEccoModelFromParseTree(strategy, tokenizerResult.getParsedTokenValues(), parseTree, parser);
+    }
+
+    /**
+     * PRIVATE METHODS
+     */
+
+    private Node buildEccoModelFromParseTree(EccoModelBuilderStrategy strategy, List<TokenValue> parsedTokenValues, ParseTree parseTree, Parser parser) {
+
+        // generate base ecco model from parseTree
+        Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts = new HashMap<>();
+        List<Artifact<BuilderArtifactData>> referencingArtifacts = new ArrayList<>();
+        Node eccoModelNode = buildArtifactStructureNode(strategy, parseTree, parsedTokenValues, parser.getRuleNames(), referencedArtifacts, referencingArtifacts);
+
+        // post processes artifacts with references
+        for (Artifact<BuilderArtifactData> referencingArtifact : referencingArtifacts) {
+            for (Object reference : strategy.getArtifactReferencingIds(referencingArtifact.getData())) {
+                referencingArtifact.getData().invalidateParsedTokenValues();
+                if (referencedArtifacts.containsKey(reference)) {
+                    referencingArtifact.addUses(entityFactory.createArtifactReference(referencingArtifact, referencedArtifacts.get(reference)));
+                    referencedArtifacts.get(reference).addUsedBy(entityFactory.createArtifactReference(referencedArtifacts.get(reference), referencingArtifact));
+                } else {
+                    System.err.println("Artifact reference: " + reference + " from: " + referencingArtifact.getData().getIdentifier() + " not found!");
+                }
+            }
+        }
+
+        // clean duplicates when nodes are unordered
+        cleanDuplicatesInUnordered(eccoModelNode);
+        EccoUtil.updateArtifactReferences(eccoModelNode);
+
+        // execute post processing step from strategy
+        Node postProcessedRoot = strategy.postProcessing(eccoModelNode);
+        if (postProcessedRoot != null) {
+            eccoModelNode = postProcessedRoot;
+        }
+
+        return eccoModelNode;
+    }
+
+    private void cleanDuplicatesInUnordered(Node eccoModelNode) {
+
+        Map<Integer, List<Artifact>> uniqueChildNodes = new HashMap<>();
+        Iterator<Node> childIterator = eccoModelNode.getChildren().iterator();
+        Artifact childArtifact;
+        Node childNode;
+        while(childIterator.hasNext()) {
+            childNode = childIterator.next();
+            childArtifact = childNode.getArtifact();
+            if (!eccoModelNode.getArtifact().isOrdered()) {
+                if (uniqueChildNodes.containsKey(childArtifact.hashCode()) && uniqueChildNodes.get(childArtifact.hashCode()).contains(childArtifact)) {
+                    childArtifact.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, uniqueChildNodes.get(childArtifact.hashCode()).stream().filter(childArtifact::equals).findFirst().get());
+                    childIterator.remove();
+                } else {
+                    if(!uniqueChildNodes.containsKey(childArtifact.hashCode())) {
+                        uniqueChildNodes.put(childArtifact.hashCode(), new ArrayList<>());
+                    }
+                    uniqueChildNodes.get(childArtifact.hashCode()).add(childArtifact);
+                }
+            }
+            cleanDuplicatesInUnordered(childNode);
+        }
+    }
+
+    private TokenizerResult tokenizeFile(EccoModelBuilderStrategy strategy, String filePath) throws IOException, AmbiguousTokenDefinitionsException {
+
         // combine token and block definitions
         Map<String, TokenDefinition> tokenDefinitionMap = new HashMap<>();
         for (BlockDefinition blockDefinition : strategy.getBlockDefinitions()) {
             if (tokenDefinitionMap.containsKey(blockDefinition.getName().toUpperCase())) {
                 TokenDefinition toAdd = new TokenDefinition(blockDefinition.getName().toUpperCase(),
-                        "(" + tokenDefinitionMap.get(blockDefinition.getName().toUpperCase()).getRegexString() + ")|(" + blockDefinition.getStartRegexString() +")", blockDefinition.getPriority());
+                        "(" + tokenDefinitionMap.get(blockDefinition.getName().toUpperCase()).getRegexString() + ")|(" + blockDefinition.getStartRegexString() + ")", blockDefinition.getPriority());
                 tokenDefinitionMap.put(blockDefinition.getName().toUpperCase(), toAdd);
             } else {
                 tokenDefinitionMap.put(blockDefinition.getName().toUpperCase(), new TokenDefinition(blockDefinition.getName().toUpperCase(), blockDefinition.getStartRegexString(), blockDefinition.getPriority()));
@@ -90,70 +195,19 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
             }
         }
         String tokenizedFile = tokenizer.tokenizeToString(file.toString());
-
         List<TokenValue> parsedTokenValues = tokenizer.getTokenValues();
-
-        // generate and run parser
-        String antlrGrammar = antlrParserWrapperServiceImpl.convertToAntlrGrammar(strategy.getStrategyName(), rootSymbol, true);
-        ParseTree parseTree;
-        Parser parser;
-        if (tryWrittenParser) {
-            try {
-                Parser writtenParser = antlrParserWrapperServiceImpl.getWrittenParser(strategy.getStrategyName(), tokenizedFile);
-                parseTree = (ParseTree) antlrParserWrapperServiceImpl.runWrittenParser(writtenParser, rootSymbol.getName());
-                parser = writtenParser;
-            } catch (Throwable e) {
-                System.err.println("No written parser could be found... Using implicitly generated parser.");
-                ParserInterpreter implicitParser = antlrParserWrapperServiceImpl.generateImplicitParser(antlrGrammar, tokenizedFile);
-                parseTree = antlrParserWrapperServiceImpl.runGeneratedParser(implicitParser, antlrGrammar, rootSymbol.getName());
-                parser = implicitParser;
-            }
-        } else {
-            ParserInterpreter implicitParser = antlrParserWrapperServiceImpl.generateImplicitParser(antlrGrammar, tokenizedFile);
-            parseTree = antlrParserWrapperServiceImpl.runGeneratedParser(implicitParser, antlrGrammar, rootSymbol.getName());
-            parser = implicitParser;
-        }
-
-        // generate base ecco model from parseTree
-        Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts = new HashMap<>();
-        List<Artifact<BuilderArtifactData>> referencingArtifacts = new ArrayList<>();
-        Node eccoModelNode = buildArtifactStructureNode(strategy, parseTree, parsedTokenValues, parser.getRuleNames(), rootSymbol.getAllNonTerminalsMap(), referencedArtifacts, referencingArtifacts);
-
-        // post processes artifacts with references
-        for (Artifact<BuilderArtifactData> referencingArtifact : referencingArtifacts) {
-            for (Object reference : strategy.getArtifactReferencingIds(referencingArtifact.getData())) {
-                referencingArtifact.getData().invalidateParsedTokenValues();
-                if (referencedArtifacts.containsKey(reference)) {
-                    referencingArtifact.addUses(entityFactory.createArtifactReference(referencingArtifact, referencedArtifacts.get(reference)));
-                    referencedArtifacts.get(reference).addUsedBy(entityFactory.createArtifactReference(referencedArtifacts.get(reference), referencingArtifact));
-                } else {
-                    System.err.println("Artifact reference: " + reference + " from: " + referencingArtifact.getData().getIdentifier() + " not found!");
-                }
-            }
-        }
-
-        // execute post processing step from strategy
-        Node postProcessedRoot = strategy.postProcessing(eccoModelNode);
-        if (postProcessedRoot != null) {
-            eccoModelNode = postProcessedRoot;
-        }
-
-        // invalidate all parsed token values
-
-
-        return eccoModelNode;
-
+        return new TokenizerResult(tokenizedFile, parsedTokenValues);
     }
 
-    Node buildArtifactStructureNode(EccoModelBuilderStrategy strategy, ParseTree parseTree, List<TokenValue> parsedTokenValues, String[] ruleNames, Map<String, NonTerminal> nonTerminalsMap,
-                                    Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) {
+    private Node buildArtifactStructureNode(EccoModelBuilderStrategy strategy, ParseTree parseTree, List<TokenValue> parsedTokenValues, String[] ruleNames,
+                                            Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) {
 
         if (parseTree instanceof RuleNode) {
             int ruleIndex = ((RuleNode) parseTree).getRuleContext().getRuleIndex();
             String ruleName = ruleNames[ruleIndex];
             if (NonTerminal.isStructureSymbolName(ruleName)) {
 
-                BuilderArtifactData artifactData = strategy.createArtifactData(Arrays.asList(nonTerminalsMap.get(ruleName.toUpperCase())), Arrays.asList(new TokenValue(null, "", false)));
+                BuilderArtifactData artifactData = strategy.createArtifactData(Arrays.asList(ruleName.toUpperCase()), Arrays.asList(new TokenValue(null, "", false)));
                 Artifact<BuilderArtifactData> artifact = entityFactory.createArtifact(artifactData);
                 updateArtifactReferences(strategy, referencedArtifacts, referencingArtifacts, artifact);
 
@@ -161,15 +215,16 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
                 if (strategy.useOrderedNode(artifactData)) {
                     eccoNode = entityFactory.createOrderedNode(artifact);
                 } else {
-                    // TODO call to entityFactory necessary
-                    eccoNode = entityFactory.createNode(artifact);
+                    eccoNode = createUnorderedNode(artifact);
                 }
+
+                // process children
                 for (int i = 0; i < parseTree.getChildCount(); i++) {
-                    eccoNode.addChild(buildArtifactStructureNode(strategy, parseTree.getChild(i), parsedTokenValues, ruleNames, nonTerminalsMap, referencedArtifacts, referencingArtifacts));
+                    eccoNode.addChild(buildArtifactStructureNode(strategy, parseTree.getChild(i), parsedTokenValues, ruleNames, referencedArtifacts, referencingArtifacts));
                 }
                 return eccoNode;
             } else {
-                return buildArtifactNode(strategy, parseTree, parsedTokenValues, ruleNames, nonTerminalsMap, referencedArtifacts, referencingArtifacts);
+                return buildArtifactNode(strategy, parseTree, parsedTokenValues, ruleNames, referencedArtifacts, referencingArtifacts);
             }
         } else if (parseTree instanceof ErrorNode) {
             System.err.println("Error node found: " + parseTree.toString());
@@ -191,12 +246,18 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
             if (strategy.useOrderedNode(artifact.getData())) {
                 eccoNode = entityFactory.createOrderedNode(artifact);
             } else {
-                eccoNode = entityFactory.createNode(artifact);
+                eccoNode = createUnorderedNode(artifact);
             }
 
             return eccoNode;
         }
         return null;
+    }
+
+    private Node createUnorderedNode(Artifact<BuilderArtifactData> artifact) {
+        Node eccoNode = entityFactory.createNode(artifact);
+        eccoNode.getArtifact().setUseReferencesInEquals(true);
+        return eccoNode;
     }
 
     private void updateArtifactReferences(EccoModelBuilderStrategy strategy, Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts, Artifact<BuilderArtifactData> artifact) {
@@ -212,11 +273,9 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
         }
     }
 
-    Node buildArtifactNode(EccoModelBuilderStrategy strategy, ParseTree parseTree, List<TokenValue> parsedTokenValues, String[] ruleNames, Map<String, NonTerminal> nonTerminalsMap,
-                           Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) {
+    private Node buildArtifactNode(EccoModelBuilderStrategy strategy, ParseTree parseTree, List<TokenValue> parsedTokenValues, String[] ruleNames,
+                                   Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) {
         if (parseTree instanceof RuleNode) {
-            RuleNode ruleNode = (RuleNode) parseTree;
-            String ruleName = ruleNames[ruleNode.getRuleContext().getRuleIndex()];
             List<TerminalNode> terminalNodes = new ArrayList<>();
             List<String> parsedRuleNames = new ArrayList<>();
             collectTerminalNodes(parseTree, terminalNodes, parsedRuleNames, ruleNames);
@@ -234,17 +293,16 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
                 }
                 nodeTokenValues.add(curTokenValue);
             }
-            List<NonTerminal> parsedRules = parsedRuleNames.stream().map(it -> nonTerminalsMap.get(it.toUpperCase())).collect(toList());
 
-            BuilderArtifactData artifactData = strategy.createArtifactData(parsedRules, nodeTokenValues);
-            Artifact<BuilderArtifactData> artifact =  entityFactory.createArtifact(artifactData);
+            BuilderArtifactData artifactData = strategy.createArtifactData(parsedRuleNames, nodeTokenValues);
+            Artifact<BuilderArtifactData> artifact = entityFactory.createArtifact(artifactData);
             updateArtifactReferences(strategy, referencedArtifacts, referencingArtifacts, artifact);
 
             Node eccoNode;
             if (strategy.useOrderedNode(artifactData)) {
                 eccoNode = entityFactory.createOrderedNode(artifact);
             } else {
-                eccoNode = entityFactory.createNode(artifact);
+                eccoNode = createUnorderedNode(artifact);
             }
 
             return eccoNode;
@@ -252,7 +310,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
         return null;
     }
 
-    List<TerminalNode> collectTerminalNodes(ParseTree parseTree, List<TerminalNode> curTerminalNodes, List<String> parsedRules, String[] ruleNames) {
+    private List<TerminalNode> collectTerminalNodes(ParseTree parseTree, List<TerminalNode> curTerminalNodes, List<String> parsedRules, String[] ruleNames) {
         if (parseTree instanceof RuleNode) {
             for (int i = 0; i < parseTree.getChildCount(); i++) {
                 collectTerminalNodes(parseTree.getChild(i), curTerminalNodes, parsedRules, ruleNames);
@@ -276,5 +334,23 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
             content.append(line + "\n");
         }
         return content.toString();
+    }
+
+    private class TokenizerResult {
+        private final String tokenizedFile;
+        private final List<TokenValue> parsedTokenValues;
+
+        private TokenizerResult(String tokenizedFile, List<TokenValue> parsedTokenValues) {
+            this.tokenizedFile = tokenizedFile;
+            this.parsedTokenValues = parsedTokenValues;
+        }
+
+        public String getTokenizedFile() {
+            return tokenizedFile;
+        }
+
+        public List<TokenValue> getParsedTokenValues() {
+            return parsedTokenValues;
+        }
     }
 }

@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy;
 
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.builder.BuilderArtifactData;
-import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.BlockDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenValue;
@@ -86,7 +85,7 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
      * @return the built artifact, with custom identifier and type
      */
     @Override
-    public BuilderArtifactData createArtifactData(List<NonTerminal> parsedNonTerminals, List<TokenValue> parsedTokenValues) {
+    public BuilderArtifactData createArtifactData(List<String> parsedNonTerminals, List<TokenValue> parsedTokenValues) {
         List<String> identifiers = new ArrayList<>();
         StringBuilder alphanumericKeywords = new StringBuilder();
         List<String> printValues = new ArrayList<>();
@@ -114,10 +113,10 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
 
         String type = alphanumericKeywords.toString();
         if (type.isEmpty() && parsedNonTerminals.size() > 0) {
-            type = parsedNonTerminals.get(0).getName().toUpperCase();
+            type = parsedNonTerminals.get(0).toUpperCase();
         }
         if (identifiers.isEmpty() && parsedNonTerminals.size() > 0) {
-            identifiers.add(parsedNonTerminals.get(0).getName().toUpperCase());
+            identifiers.add(parsedNonTerminals.get(0).toUpperCase());
         }
 
         return new BuilderArtifactData(identifiers, type, parsedTokenValues, printValues);
@@ -192,6 +191,6 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
      */
     @Override
     public boolean useOrderedNode(BuilderArtifactData artifact) {
-        return true;
+        return false;
     }
 }
