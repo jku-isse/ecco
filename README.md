@@ -1,13 +1,13 @@
 
 # ECCO
 
-Get the code: `git clone` or download zip file into <working_dir>.
+Get the code: `git clone` or download zip file into `<working_dir>`.
 
 Requires:
 * JDK 8
-* (http://gradle.org/ "Gradle") as build system.
+* [Gradle](http://gradle.org/ "Gradle") as build system.
 
-Run `gradle tasks` in <working_dir> for a list of tasks to execute.
+Run `gradle tasks` in `<working_dir>` for a list of tasks to execute.
 
 Examples:
 * `gradle eclipse` builds eclipse projects.
@@ -28,7 +28,7 @@ Eclipse does not support Gradle by default. There is a Gradle plugin for Eclipse
 Create Eclipse projects from Gradle projects: `gradle eclipse`. This creates the `.project` and `.classpath` files Eclipse needs for every project.
 
 Import the created Eclipse projects into your Eclipse workspace: `File -> Import -> General -> Existing Projects Into Workspace`.
-* Select root directory: <working_dir>
+* Select root directory: `<working_dir>`
 * Search for nested projects.
 * Do *not* copy projects into workspace.
 
