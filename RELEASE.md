@@ -18,6 +18,12 @@
     * (in progress) association detail view: containment table, modules table
     * (in progress) artifact graph view: group children where count above limit separately by association and not in parent
     * ...
+  * added option to use references in artifacts for equals
+  * added requirement for artifact data to be serializable
+  * added transactions to data layer
+  * (in progress) added jpa data backend plugin
+  * (in progress) moved memory (base) implementation into its own data plugin
+  * added order selector to composition
 
 
 
