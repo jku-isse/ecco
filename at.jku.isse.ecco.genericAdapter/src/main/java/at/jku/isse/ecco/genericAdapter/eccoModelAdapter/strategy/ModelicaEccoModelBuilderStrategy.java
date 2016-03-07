@@ -189,4 +189,12 @@ public class ModelicaEccoModelBuilderStrategy implements EccoModelBuilderStrateg
     public boolean useOrderedNode(BuilderArtifactData artifact) {
         return true;
     }
+
+    /**
+     * @return if, the "uses" references should be taken into account when comparing two artifacts with the equals method
+     */
+    @Override
+    public boolean useReferencesInEquals() {
+        return false;
+    }
 }

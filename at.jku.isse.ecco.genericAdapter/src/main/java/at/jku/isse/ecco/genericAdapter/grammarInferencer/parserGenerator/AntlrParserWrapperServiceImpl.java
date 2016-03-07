@@ -63,6 +63,7 @@ public class AntlrParserWrapperServiceImpl {
         File targetFile = new File(targetPath.toFile(), grammarName + "." + GRAMMAR_FILE_EXTIONS);
 
         Files.write(targetFile.toPath(), antlrGrammar.getBytes("utf-8"));
+        System.err.println("Antlr grammar file successfully written to: " + targetFile.toString());
 
         return targetFile.toString();
     }

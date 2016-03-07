@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.genericAdapter.grammarInferencer.data;
 
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.ParameterSettings;
+
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
@@ -14,7 +16,7 @@ public class NonTerminal extends Symbol {
     public static final String NON_TERMINAL_NAME_PREFIX = "R";
     public static final String STRUCTURE_SYMBOL_NAME_PREFIX = "S";
 
-    public static final Map<String, NonTerminal> existingNonTerminalMap = new HashMap<>();
+//    public static final Map<String, NonTerminal> existingNonTerminalMap = new HashMap<>();
 
     private List<Rule> rules;
 
@@ -204,7 +206,7 @@ public class NonTerminal extends Symbol {
                             copiedSymbols.add(symbol.getDeepCopyForSnapshot());
                         }
                     }
-                    copiedNonTerminal.addRule(new Rule(rule.getSymbols()));
+                    copiedNonTerminal.addRule(new Rule(copiedSymbols));
                 } else {
                     copiedNonTerminal.addRule(rule.getDeepCopyForSnapshot());
                 }
@@ -220,7 +222,8 @@ public class NonTerminal extends Symbol {
         for (Rule rule : rules) {
             if(rule.isEndingRule(sampleSeperator)) {
                 if(!allRulesEndingRules) {
-                    System.err.println("ATTENTION!, Not all rules of nonTerminal " + name + " are ending rules!");
+                    if(ParameterSettings.INFO_OUTPUT)
+                        System.err.println("ATTENTION!, Not all rules of nonTerminal " + name + " are ending rules!");
                 }
                 allRulesEndingRules = true;
 

@@ -48,7 +48,7 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
                 new TokenDefinition(NUM_TOKEN, "(?<!\\w)(-)?(\\d)+(\\.(\\d*(E(-|\\+)?(\\d)+)?)?)?", 5),
                 new TokenDefinition(STRING_TOKEN, "'[^']*'", 11),
                 new TokenDefinition(REF_TOKEN, "#(\\d)*", 12),
-                new TokenDefinition(BOOLEAN_TOKEN, "\\.(T|F)\\.", 10)
+                new TokenDefinition(BOOLEAN_TOKEN, "\\.(#T|F)\\.", 10)
         );
     }
 
@@ -191,6 +191,17 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
      */
     @Override
     public boolean useOrderedNode(BuilderArtifactData artifact) {
+        /*if(artifact.getType().matches("S\\d+")) {
+            return true;
+        }*/
         return false;
+    }
+
+    /**
+     * @return if, the "uses" references should be taken into account when comparing two artifacts with the equals method
+     */
+    @Override
+    public boolean useReferencesInEquals() {
+        return true;
     }
 }

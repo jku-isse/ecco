@@ -6,6 +6,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.EccoModelBuilderStrategy;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.ParameterSettings;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.parserGenerator.AntlrParserWrapperServiceImpl;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.BlockDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.AmbiguousTokenDefinitionsException;
@@ -48,7 +49,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
 
 
     @Override
-    public Node buildEccoModel(EccoModelBuilderStrategy strategy, NonTerminal rootSymbol, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException {
+    public Node buildEccoModel(EccoModelBuilderStrategy strategy, NonTerminal rootSymbol, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException, ParserErrorException {
 
         // tokenize file contents
         TokenizerResult tokenizerResult = tokenizeFile(strategy, filePath);
@@ -81,7 +82,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
 
 
     @Override
-    public Node buildEccoModel(EccoModelBuilderStrategy strategy, String antlrGrammarFile, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException {
+    public Node buildEccoModel(EccoModelBuilderStrategy strategy, String antlrGrammarFile, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException, ParserErrorException {
         // tokenize file contents
         TokenizerResult tokenizerResult = tokenizeFile(strategy, filePath);
 
@@ -97,7 +98,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
      * PRIVATE METHODS
      */
 
-    private Node buildEccoModelFromParseTree(EccoModelBuilderStrategy strategy, List<TokenValue> parsedTokenValues, ParseTree parseTree, Parser parser) {
+    private Node buildEccoModelFromParseTree(EccoModelBuilderStrategy strategy, List<TokenValue> parsedTokenValues, ParseTree parseTree, Parser parser) throws ParserErrorException {
 
         // generate base ecco model from parseTree
         Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts = new HashMap<>();
@@ -200,7 +201,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
     }
 
     private Node buildArtifactStructureNode(EccoModelBuilderStrategy strategy, ParseTree parseTree, List<TokenValue> parsedTokenValues, String[] ruleNames,
-                                            Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) {
+                                            Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) throws ParserErrorException {
 
         if (parseTree instanceof RuleNode) {
             int ruleIndex = ((RuleNode) parseTree).getRuleContext().getRuleIndex();
@@ -215,7 +216,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
                 if (strategy.useOrderedNode(artifactData)) {
                     eccoNode = entityFactory.createOrderedNode(artifact);
                 } else {
-                    eccoNode = createUnorderedNode(artifact);
+                    eccoNode = createUnorderedNode(artifact, strategy);
                 }
 
                 // process children
@@ -228,6 +229,9 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
             }
         } else if (parseTree instanceof ErrorNode) {
             System.err.println("Error node found: " + parseTree.toString());
+            if(ParameterSettings.EXCEPTION_ON_PARSE_ERROR) {
+                throw new ParserErrorException(parseTree.getText());
+            }
         } else if (parseTree instanceof TerminalNode) {
             TokenValue curTokenValue = null;
             while (curTokenValue == null || StringUtils.isWhitespace(curTokenValue.getValue())) {
@@ -246,7 +250,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
             if (strategy.useOrderedNode(artifact.getData())) {
                 eccoNode = entityFactory.createOrderedNode(artifact);
             } else {
-                eccoNode = createUnorderedNode(artifact);
+                eccoNode = createUnorderedNode(artifact, strategy);
             }
 
             return eccoNode;
@@ -254,9 +258,11 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
         return null;
     }
 
-    private Node createUnorderedNode(Artifact<BuilderArtifactData> artifact) {
+    private Node createUnorderedNode(Artifact<BuilderArtifactData> artifact, EccoModelBuilderStrategy strategy) {
         Node eccoNode = entityFactory.createNode(artifact);
-        eccoNode.getArtifact().setUseReferencesInEquals(true);
+        if(strategy.useReferencesInEquals()) {
+            eccoNode.getArtifact().setUseReferencesInEquals(true);
+        }
         return eccoNode;
     }
 
@@ -274,7 +280,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
     }
 
     private Node buildArtifactNode(EccoModelBuilderStrategy strategy, ParseTree parseTree, List<TokenValue> parsedTokenValues, String[] ruleNames,
-                                   Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) {
+                                   Map<Object, Artifact<BuilderArtifactData>> referencedArtifacts, List<Artifact<BuilderArtifactData>> referencingArtifacts) throws ParserErrorException {
         if (parseTree instanceof RuleNode) {
             List<TerminalNode> terminalNodes = new ArrayList<>();
             List<String> parsedRuleNames = new ArrayList<>();
@@ -302,7 +308,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
             if (strategy.useOrderedNode(artifactData)) {
                 eccoNode = entityFactory.createOrderedNode(artifact);
             } else {
-                eccoNode = createUnorderedNode(artifact);
+                eccoNode = createUnorderedNode(artifact, strategy);
             }
 
             return eccoNode;
@@ -310,7 +316,7 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
         return null;
     }
 
-    private List<TerminalNode> collectTerminalNodes(ParseTree parseTree, List<TerminalNode> curTerminalNodes, List<String> parsedRules, String[] ruleNames) {
+    private List<TerminalNode> collectTerminalNodes(ParseTree parseTree, List<TerminalNode> curTerminalNodes, List<String> parsedRules, String[] ruleNames) throws ParserErrorException {
         if (parseTree instanceof RuleNode) {
             for (int i = 0; i < parseTree.getChildCount(); i++) {
                 collectTerminalNodes(parseTree.getChild(i), curTerminalNodes, parsedRules, ruleNames);
@@ -321,6 +327,9 @@ public class EccoModelBuilderImpl implements EccoModelBuilder {
             return curTerminalNodes;
         } else if (parseTree instanceof ErrorNode) {
             System.err.println("Error node found: " + parseTree.toString());
+            if(ParameterSettings.EXCEPTION_ON_PARSE_ERROR) {
+                throw new ParserErrorException(parseTree.getText());
+            }
         }
 
         return curTerminalNodes;

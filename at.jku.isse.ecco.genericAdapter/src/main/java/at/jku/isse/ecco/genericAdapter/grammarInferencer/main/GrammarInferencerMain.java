@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.genericAdapter.grammarInferencer.main;
 
+import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.builder.EccoModelBuilderImpl;
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.EccoModelBuilderStrategy;
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.JavaEccoModelBuilderStrategy;
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.StpEccoModelBuilderStrategy;
@@ -8,6 +10,8 @@ import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.GrammarInference
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.GrammarInferenceFacadeImpl;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.parserGenerator.AntlrParserWrapperServiceImpl;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.AmbiguousTokenDefinitionsException;
+import org.antlr.v4.runtime.ParserInterpreter;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +31,7 @@ import java.util.stream.Collectors;
 public class GrammarInferencerMain {
 
     public static final String DEFAULT_GRAMMAR_PATH_ROOT = System.getProperty("java.io.tmpdir") + File.separator + "grammars";
+    public static final String GRAMMAR_DATA_FILE_EXTIONS = "grDat";
 
     private static final List<EccoModelBuilderStrategy> strategies = Arrays.asList(new JavaEccoModelBuilderStrategy(),
             new StpEccoModelBuilderStrategy());
@@ -70,17 +75,17 @@ public class GrammarInferencerMain {
         }
 
         GrammarInferenceFacade grammarInferenceFacade = new GrammarInferenceFacadeImpl();
-        AntlrParserWrapperServiceImpl antlrParserServier = new AntlrParserWrapperServiceImpl();
+        AntlrParserWrapperServiceImpl antlrParserService = new AntlrParserWrapperServiceImpl();
 
-        NonTerminal rootSymbol = grammarInferenceFacade.inferGrammar(filePaths, strategy);
-        String outputFilePath = antlrParserServier.writeAntlrGrammarToFile(new File(outputPath).toPath(), strategy.getStrategyName(), rootSymbol, true);
+        NonTerminal rootSymbol = grammarInferenceFacade.inferGrammar(filePaths, strategy, getGrammarDataFilePath(strategy));
+        String outputFilePath = antlrParserService.writeAntlrGrammarToFile(new File(outputPath).toPath(), strategy.getStrategyName(), rootSymbol, true);
 
         if(outputFilePath != null) {
-            System.out.println("----------------------------\nInferred Grammar successfully written to: " + outputFilePath);
+            System.out.println("----------------------------\nInferred Grammar g4 file successfully written to: " + outputFilePath);
+            System.out.println("----------------------------\nInferred Grammar Data File successfully written to: " + getGrammarDataFilePath(strategy));
         } else {
             System.err.println("An error occured while trying to write to the output path!");
         }
-
 
     }
 
@@ -91,6 +96,10 @@ public class GrammarInferencerMain {
             System.err.println("    -" + strategy.getStrategyName());
         }
         System.exit(1);
+    }
+
+    public static String getGrammarDataFilePath(EccoModelBuilderStrategy strategy) {
+        return DEFAULT_GRAMMAR_PATH_ROOT  + File.separator + strategy.getStrategyName() + "." + GRAMMAR_DATA_FILE_EXTIONS;
     }
 
 }

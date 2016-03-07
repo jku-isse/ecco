@@ -113,4 +113,9 @@ public interface EccoModelBuilderStrategy {
      */
     boolean useOrderedNode(BuilderArtifactData artifact);
 
+    /**
+     * @return if, the "uses" references should be taken into account when comparing two artifacts with the equals method
+     */
+    boolean useReferencesInEquals();
+
 }

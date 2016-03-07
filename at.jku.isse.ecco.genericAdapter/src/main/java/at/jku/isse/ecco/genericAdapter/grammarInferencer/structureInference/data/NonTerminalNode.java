@@ -10,7 +10,16 @@ import java.util.Set;
  */
 public class NonTerminalNode extends Node {
 
-    private final BlockDefinition blockDefinition;
+    private BlockDefinition blockDefinition;
+
+    public void setBlockDefinition(BlockDefinition blockDefinition) {
+        this.blockDefinition = blockDefinition;
+    }
+
+    public void setIdentifiers(List<String> identifiers) {
+        this.identifiers = identifiers;
+    }
+
     private List<String> identifiers;
     private int maxOccurences = 1;
 

@@ -8,6 +8,7 @@ import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.StpEccoModelBui
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.GrammarInferenceFacade;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.GrammarInferenceFacadeImpl;
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.ParameterSettings;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.main.GrammarInferencerMain;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.parserGenerator.AntlrParserWrapperServiceImpl;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.AmbiguousTokenDefinitionsException;
@@ -18,7 +19,6 @@ import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.sun.org.apache.xerces.internal.xni.grammars.Grammar;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +36,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class GenericAdapterReader implements ArtifactReader<Path, Set<Node>> {
 
 
+
 	// TODO scan strategies and return strategy ids
 	private static final List<EccoModelBuilderStrategy> strategies = Arrays.asList(new JavaEccoModelBuilderStrategy(),
 			new StpEccoModelBuilderStrategy());
@@ -45,6 +46,8 @@ public class GenericAdapterReader implements ArtifactReader<Path, Set<Node>> {
 	private final EntityFactory entityFactory;
 	private final EccoModelBuilder eccoModelBuilder;
 	private final GrammarInferenceFacade grammarInferenceFacade;
+	private final AntlrParserWrapperServiceImpl antlrParserService;
+	private final String grammarDataBaseDir;
 
 	@Inject
 	public GenericAdapterReader(EntityFactory entityFactory, @Named("repositoryDir") String repositoryDir) {
@@ -52,8 +55,11 @@ public class GenericAdapterReader implements ArtifactReader<Path, Set<Node>> {
 
 		this.entityFactory = entityFactory;
 
-		this.eccoModelBuilder = new EccoModelBuilderImpl(entityFactory, new AntlrParserWrapperServiceImpl());
+		this.antlrParserService = new AntlrParserWrapperServiceImpl();
+		this.eccoModelBuilder = new EccoModelBuilderImpl(entityFactory, antlrParserService);
 		this.grammarInferenceFacade = new GrammarInferenceFacadeImpl();
+//		this.grammarDataBaseDir = = GrammarInferencerMain.DEFAULT_GRAMMAR_PATH_ROOT;
+		this.grammarDataBaseDir = repositoryDir;
 	}
 
 
@@ -102,28 +108,22 @@ public class GenericAdapterReader implements ArtifactReader<Path, Set<Node>> {
 		}
 
 		// try to find grammar file
-		String grammarFilePath = null;
-		try {
-			List<Path> grammarFiles = Files.list(new File(GrammarInferencerMain.DEFAULT_GRAMMAR_PATH_ROOT).toPath())
-					.filter(it -> it.toString().endsWith(AntlrParserWrapperServiceImpl.GRAMMAR_FILE_EXTIONS)).collect(Collectors.toList());
-			Optional<Path> grammarFileOpt = grammarFiles.stream().filter(it -> it.toString().endsWith(strategy.getStrategyName() + "." + AntlrParserWrapperServiceImpl.GRAMMAR_FILE_EXTIONS)).findFirst();
-			if(!grammarFileOpt.isPresent()) {
-				System.err.println("Could not find grammar file for type: " + strategy.getStrategyName() + " in path: " + GrammarInferencerMain.DEFAULT_GRAMMAR_PATH_ROOT);
-				System.err.println("Found grammar files: ");
-				grammarFiles.stream().forEach(System.err::println);
-			}  else {
-				grammarFilePath = grammarFileOpt.get().toString();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		String grammarFilePath = locateFile(strategy, AntlrParserWrapperServiceImpl.GRAMMAR_FILE_EXTIONS);
 
 		// if no grammar file was found, infer grammar here
 		NonTerminal rootSymbol = null;
 		if(grammarFilePath == null) {
-			System.err.println("ATTENTION! Inferring grammar only on set of input files is risky!");
+			if(ParameterSettings.INFO_OUTPUT)
+				System.err.println("ATTENTION! Inferring grammar only on set of input files is risky!");
 			try {
-				rootSymbol = grammarInferenceFacade.inferGrammar(resolvedPaths, strategy);
+				rootSymbol = grammarInferenceFacade.inferGrammar(resolvedPaths, strategy, getGrammarDataOutputPath(strategy));
+				String outputFilePath = antlrParserService.writeAntlrGrammarToFile(new File(grammarDataBaseDir).toPath(), strategy.getStrategyName(), rootSymbol, true);
+
+				if(outputFilePath != null) {
+					System.out.println("----------------------------\nInferred Grammar g4 file successfully written to: " + outputFilePath);
+				} else {
+					System.err.println("An error occured while trying to write to the output path!");
+				}
 			} catch (IOException | AmbiguousTokenDefinitionsException e) {
 				e.printStackTrace();
 				return null;
@@ -138,8 +138,8 @@ public class GenericAdapterReader implements ArtifactReader<Path, Set<Node>> {
 			Node fileNode = this.entityFactory.createOrderedNode(fileArtifact);
 			nodes.add(fileNode);
 
+			Node node = null;
 			try {
-				Node node = null;
 				if (grammarFilePath != null) {
 					node = eccoModelBuilder.buildEccoModel(strategy, grammarFilePath, resolvedPaths.get(i), false);
 				} else {
@@ -147,16 +147,66 @@ public class GenericAdapterReader implements ArtifactReader<Path, Set<Node>> {
 						node = eccoModelBuilder.buildEccoModel(strategy, rootSymbol, resolvedPaths.get(i), false);
 					}
 				}
-				if (node != null) {
-					fileNode.addChild(node);
-				}
+
 			} catch (IOException | AmbiguousTokenDefinitionsException e) {
 				e.printStackTrace();
 				return null;
+			} catch (ParserErrorException e) {
+				// file could not be parsed by current grammar -> search for grammar data file and try to update grammar
+				System.err.println("Parser error found in file " + resolvedPaths.get(i) + ": " + e.getParseErrorDescription());
+				System.err.println("Trying to update grammar and reparse the file;");
+
+				String grammarDatFile = locateFile(strategy, GrammarInferencerMain.GRAMMAR_DATA_FILE_EXTIONS);
+				if(grammarDatFile != null) {
+					try {
+						rootSymbol = grammarInferenceFacade.updateGrammar(Arrays.asList(resolvedPaths.get(i)), strategy, grammarDatFile);
+
+					if(rootSymbol != null) {
+						try {
+							node = eccoModelBuilder.buildEccoModel(strategy, rootSymbol, resolvedPaths.get(i), false);
+							if(grammarFilePath != null && !grammarFilePath.isEmpty()) {
+								antlrParserService.writeAntlrGrammarToFile(new File(grammarDataBaseDir).toPath(), strategy.getStrategyName(), rootSymbol, true);
+							}
+						} catch (ParserErrorException e1) {
+							System.err.println("Parse error found after trying to update grammar: " + e1.getParseErrorDescription());
+							e1.printStackTrace();
+						}
+					}
+					} catch (IOException | AmbiguousTokenDefinitionsException e1) {
+						e1.printStackTrace();
+						return null;
+					}
+				}
+			}
+			if (node != null) {
+				fileNode.addChild(node);
 			}
 		}
 
 		return nodes;
+	}
+
+	private String getGrammarDataOutputPath(EccoModelBuilderStrategy strategy) {
+		return grammarDataBaseDir + File.separator + strategy.getStrategyName() + "." + GrammarInferencerMain.GRAMMAR_DATA_FILE_EXTIONS;
+	}
+
+	private String locateFile(EccoModelBuilderStrategy strategy, String fileExtension) {
+		String grammarFilePath = null;
+		try {
+			List<Path> grammarFiles = Files.list(new File(grammarDataBaseDir).toPath())
+					.filter(it -> it.toString().endsWith(fileExtension)).collect(Collectors.toList());
+			Optional<Path> grammarFileOpt = grammarFiles.stream().filter(it -> it.toString().endsWith(strategy.getStrategyName() + "." + fileExtension)).findFirst();
+			if(!grammarFileOpt.isPresent()) {
+				System.err.println("Could not find grammar (data) file for type: " + strategy.getStrategyName() + fileExtension + " in path: " + grammarDataBaseDir);
+				System.err.println("Found grammar files: ");
+				grammarFiles.stream().forEach(System.err::println);
+			}  else {
+				grammarFilePath = grammarFileOpt.get().toString();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return grammarFilePath;
 	}
 
 
