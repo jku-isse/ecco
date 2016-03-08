@@ -25,6 +25,20 @@ public interface EccoModelBuilder {
      * @return
      * @throws IOException
      */
-    Node buildEccoModel(EccoModelBuilderStrategy strategy, NonTerminal rootSymbol, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException;
+    Node buildEccoModel(EccoModelBuilderStrategy strategy, NonTerminal rootSymbol, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException, ParserErrorException;
+
+    /**
+     * Generates a ecco model using the given {@link EccoModelBuilderStrategy} to generate the nodes and artifacts from the
+     * given antlr grammar stored in a file and parses the given file {@link String}
+     *
+     * @param strategy
+     * @param antlrGrammarFile
+     * @param filePath
+     * @param tryWrittenParser
+     * @return
+     * @throws IOException
+     * @throws AmbiguousTokenDefinitionsException
+     */
+    Node buildEccoModel(EccoModelBuilderStrategy strategy, String antlrGrammarFile, String filePath, boolean tryWrittenParser) throws IOException, AmbiguousTokenDefinitionsException, ParserErrorException;
 
 }

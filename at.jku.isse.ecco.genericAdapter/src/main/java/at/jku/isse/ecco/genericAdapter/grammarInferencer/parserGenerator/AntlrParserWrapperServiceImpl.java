@@ -1,9 +1,16 @@
 package at.jku.isse.ecco.genericAdapter.grammarInferencer.parserGenerator;
 
-import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.Rule;
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import org.antlr.v4.Tool;
 import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Lexer;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.LexerGrammar;
@@ -14,6 +21,10 @@ import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -25,12 +36,55 @@ import java.util.logging.Logger;
  * @author Michael Jahn
  */
 public class AntlrParserWrapperServiceImpl {
+    public static final String GRAMMAR_FILE_EXTIONS = "g4";
 
     private static Logger LOGGER = Logger.getLogger(AntlrParserWrapperServiceImpl.class.getName());
 
     private static final String GRAMMAR_START = "grammar ";
     private static final String LINE_END = ";";
     private static final String IGNORE_WHITESPACE = "WS: [ \\n\\t\\r]+ -> skip;";
+
+
+    /**
+     * Converts the given grammar into an antlr representation, using {@link #convertToAntlrGrammar(String, NonTerminal, boolean)}
+     * and writes the resulting string to the given {@link Path}
+     *
+     * @return the written filePath, if the grammar was successfully written, null otherwise
+     */
+    public String writeAntlrGrammarToFile(Path targetPath, String grammarName, NonTerminal rootSymbol, boolean ignoreWhitespaces) throws IOException {
+
+        if(!targetPath.toFile().canWrite()) {
+            System.err.println("Can not write to given path:" + targetPath.toFile().getPath());
+            return null;
+        }
+
+        String antlrGrammar = convertToAntlrGrammar(grammarName, rootSymbol, ignoreWhitespaces);
+
+        File targetFile = new File(targetPath.toFile(), grammarName + "." + GRAMMAR_FILE_EXTIONS);
+
+        Files.write(targetFile.toPath(), antlrGrammar.getBytes("utf-8"));
+        System.err.println("Antlr grammar file successfully written to: " + targetFile.toString());
+
+        return targetFile.toString();
+    }
+
+    public ParseTree parseImplicitly(File grammarFile, ParserInterpreter parser) throws IOException {
+        StringBuilder grammarText = new StringBuilder();
+        List<String> lines = Files.readAllLines(grammarFile.toPath());
+        lines.forEach(line -> grammarText.append(line + "\n"));
+
+        String startRuleName = lines.get(1).substring(0, lines.get(1).indexOf(':'));
+
+        return runGeneratedParser(parser, grammarText.toString(), startRuleName.trim());
+    }
+
+    public ParserInterpreter generateParserFromFile(File grammarFile, String testText) throws IOException {
+        StringBuilder grammarText = new StringBuilder();
+        List<String> lines = Files.readAllLines(grammarFile.toPath());
+        lines.forEach(line -> grammarText.append(line + "\n"));
+
+        return generateImplicitParser(grammarText.toString(), testText);
+    }
 
     public String convertToAntlrGrammar(String grammarName, NonTerminal rootSymbol, boolean ignoreWhitespaces) {
         Set<NonTerminal> nonTerminals = rootSymbol.getAllNonTerminalsRecursive();
@@ -136,8 +190,6 @@ public class AntlrParserWrapperServiceImpl {
 
         return returnObject;
     }
-
-
 
     public ParseTree parseImplicitly(String grammarText, String startRuleName, String testText)  {
         ParserInterpreter parser = generateImplicitParser(grammarText, testText);

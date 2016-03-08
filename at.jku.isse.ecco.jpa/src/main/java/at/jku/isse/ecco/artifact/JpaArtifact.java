@@ -48,6 +48,16 @@ public class JpaArtifact<DataType extends ArtifactData> implements Artifact<Data
 		return (DataType) this.data;
 	}
 
+	@Override
+	public boolean useReferencesInEquals() {
+		return false;
+	}
+
+	@Override
+	public void setUseReferencesInEquals(boolean useReferenesInEquals) {
+
+	}
+
 	public void setData(DataType data) {
 		this.data = data;
 

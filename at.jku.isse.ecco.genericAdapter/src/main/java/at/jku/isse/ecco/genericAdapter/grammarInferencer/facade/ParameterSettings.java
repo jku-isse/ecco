@@ -12,7 +12,13 @@ public class ParameterSettings {
      * General Settings
      */
 
-    public static boolean DEBUG_OUTPUT = false; /* whether debug messages should be printed */
+    public static boolean EXCEPTION_ON_PARSE_ERROR = true; /* if true, thwrow an exception if a parse error was found, otherwise ignore parse errors */
+
+    public static boolean STATISTICS_OUTPUT = true; /* whether statistic relevant messages shall be printed */
+
+    public static boolean INFO_OUTPUT = true; /* whether info messages shall be printed */
+
+    public static boolean DEBUG_OUTPUT = false; /* whether debug messages shall be printed */
 
     public static final boolean IGNORE_WHITESPACES = true; /* ignore all whitespaces that are included in a sample */
 

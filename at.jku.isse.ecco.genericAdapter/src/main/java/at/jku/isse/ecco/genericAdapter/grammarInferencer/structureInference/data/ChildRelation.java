@@ -7,7 +7,15 @@ import java.util.Set;
  */
 public class ChildRelation {
 
-    private final Node childNode;
+    public void setChildNode(Node childNode) {
+        this.childNode = childNode;
+    }
+
+    public boolean isHasFixedOrder() {
+        return hasFixedOrder;
+    }
+
+    private Node childNode;
 
     // additional fields, required for base structure inference
     boolean hasFixedOrder = true;   // true if this node is a fixed order child of its parent

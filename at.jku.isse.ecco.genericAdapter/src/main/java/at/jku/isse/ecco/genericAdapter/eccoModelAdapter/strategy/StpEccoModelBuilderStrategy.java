@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy;
 
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.builder.BuilderArtifactData;
-import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.BlockDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenValue;
@@ -49,7 +48,7 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
                 new TokenDefinition(NUM_TOKEN, "(?<!\\w)(-)?(\\d)+(\\.(\\d*(E(-|\\+)?(\\d)+)?)?)?", 5),
                 new TokenDefinition(STRING_TOKEN, "'[^']*'", 11),
                 new TokenDefinition(REF_TOKEN, "#(\\d)*", 12),
-                new TokenDefinition(BOOLEAN_TOKEN, "\\.(T|F)\\.", 10)
+                new TokenDefinition(BOOLEAN_TOKEN, "\\.(#T|F)\\.", 10)
         );
     }
 
@@ -86,7 +85,7 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
      * @return the built artifact, with custom identifier and type
      */
     @Override
-    public BuilderArtifactData createArtifactData(List<NonTerminal> parsedNonTerminals, List<TokenValue> parsedTokenValues) {
+    public BuilderArtifactData createArtifactData(List<String> parsedNonTerminals, List<TokenValue> parsedTokenValues) {
         List<String> identifiers = new ArrayList<>();
         StringBuilder alphanumericKeywords = new StringBuilder();
         List<String> printValues = new ArrayList<>();
@@ -114,10 +113,10 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
 
         String type = alphanumericKeywords.toString();
         if (type.isEmpty() && parsedNonTerminals.size() > 0) {
-            type = parsedNonTerminals.get(0).getName().toUpperCase();
+            type = parsedNonTerminals.get(0).toUpperCase();
         }
         if (identifiers.isEmpty() && parsedNonTerminals.size() > 0) {
-            identifiers.add(parsedNonTerminals.get(0).getName().toUpperCase());
+            identifiers.add(parsedNonTerminals.get(0).toUpperCase());
         }
 
         return new BuilderArtifactData(identifiers, type, parsedTokenValues, printValues);
@@ -192,6 +191,17 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
      */
     @Override
     public boolean useOrderedNode(BuilderArtifactData artifact) {
+        /*if(artifact.getType().matches("S\\d+")) {
+            return true;
+        }*/
+        return false;
+    }
+
+    /**
+     * @return if, the "uses" references should be taken into account when comparing two artifacts with the equals method
+     */
+    @Override
+    public boolean useReferencesInEquals() {
         return true;
     }
 }

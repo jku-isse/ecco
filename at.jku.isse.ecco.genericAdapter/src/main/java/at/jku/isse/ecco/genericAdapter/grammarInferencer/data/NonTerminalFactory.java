@@ -85,6 +85,10 @@ public class NonTerminalFactory {
 
     }
 
+    public static void clearSnapshotGrammar() {
+        snapshotNonTerminals = new HashMap<>();
+    }
+
     /**
      * Applies the latest snapshot to the current NonTerminal set and returns the root symbol
      *

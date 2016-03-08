@@ -59,7 +59,7 @@ public class EccoModelPrinterImpl implements EccoModelPrinter {
 		if (!(artifact.getData() instanceof BuilderArtifactData)) {
 			LOGGER.warning("The artifact: " + ((BuilderArtifactData) artifact.getData()).getIdentifier() + " is not an BuilderArtifactData and can therefore not be handled by this printer implementation!");
 		} else {
-			String printValues = resolvePrintValues((BuilderArtifactData) artifact.getData(), builderStrategy);
+			String printValues = resolvePrintValues(artifact, builderStrategy);
 			if (!printValues.isEmpty()) {
 				nodeText.append(printValues + "\n");
 			}
@@ -72,17 +72,18 @@ public class EccoModelPrinterImpl implements EccoModelPrinter {
 		return nodeText;
 	}
 
-	private String resolvePrintValues(BuilderArtifactData artifact, EccoModelBuilderStrategy builderStrategy) {
+	private String resolvePrintValues(Artifact artifact, EccoModelBuilderStrategy builderStrategy) {
 		StringBuilder resolvedPrintValues = new StringBuilder();
 		int nextUsesIdx = 0;
 		List<ArtifactReference> uses = artifact.getUses();
-		for (String printingValue : artifact.getPrintingValues()) {
+		BuilderArtifactData artifactData = (BuilderArtifactData) artifact.getData();
+		for (String printingValue : artifactData.getPrintingValues()) {
 			if (BuilderArtifactData.RESOLVE_USES_REF_ID.equals(printingValue)) {
-				if (uses.size() <= nextUsesIdx) {
-					LOGGER.warning("Missing reference for artifact: " + artifact.getType() + " (" + artifact.getIdentifier() + ")");
+				if (uses == null || uses.size() <= nextUsesIdx) {
+					LOGGER.warning("Missing reference for artifact: " + artifactData.getType() + " (" + artifactData.getIdentifier() + ")");
 				} else {
 					Artifact targetArtifact = uses.get(nextUsesIdx).getTarget();
-					if (!(targetArtifact instanceof BuilderArtifactData)) {
+					if (!(targetArtifact.getData() instanceof BuilderArtifactData)) {
 						LOGGER.warning("The referenced artifact: " + ((BuilderArtifactData) targetArtifact.getData()).getIdentifier() + " is not an BuilderArtifactData and can therefore not be handled by this printer implementation!");
 					} else {
 						BuilderArtifactData builderTargetArtifact = (BuilderArtifactData) targetArtifact.getData();
@@ -96,8 +97,8 @@ public class EccoModelPrinterImpl implements EccoModelPrinter {
 					nextUsesIdx++;
 				}
 			} else if (BuilderArtifactData.RESOLVE_OWN_REF_ID.equals(printingValue)) {
-				Object refId = artifact.getRefId() != null ? artifact.getRefId() : builderStrategy.getNextArtifactReferenceId();
-				artifact.setRefId(refId);
+				Object refId = artifactData.getRefId() != null ? artifactData.getRefId() : builderStrategy.getNextArtifactReferenceId();
+				artifactData.setRefId(refId);
 				if (lastCharIsAlphaNumeric(resolvedPrintValues) && firstCharIsAlphaNumeric(refId.toString())) {
 					resolvedPrintValues.append(" ");
 				}

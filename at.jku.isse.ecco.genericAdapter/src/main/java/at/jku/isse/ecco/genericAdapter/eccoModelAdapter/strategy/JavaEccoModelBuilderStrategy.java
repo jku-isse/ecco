@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy;
 
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.builder.BuilderArtifactData;
-import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.BlockDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenValue;
@@ -116,7 +115,7 @@ public class JavaEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
 	 * @return the built artifact, with custom identifier and type
 	 */
 	@Override
-	public BuilderArtifactData createArtifactData(List<NonTerminal> parsedNonTerminals, List<TokenValue> parsedTokenValues) {
+	public BuilderArtifactData createArtifactData(List<String> parsedNonTerminals, List<TokenValue> parsedTokenValues) {
 		List<String> valueBuilder = new ArrayList<>();
 		StringBuilder typeBuilder = new StringBuilder();
 		List<String> printValues = new ArrayList<>();
@@ -190,11 +189,11 @@ public class JavaEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
 
 		String type = typeBuilder.toString();
 		if (type.isEmpty() && parsedNonTerminals.size() > 0) {
-			type = parsedNonTerminals.get(0).getName().toUpperCase();
+			type = parsedNonTerminals.get(0).toUpperCase();
 		}
 
 		if (valueBuilder.isEmpty() && parsedNonTerminals.size() > 0) {
-			valueBuilder.add(parsedNonTerminals.get(0).getName().toUpperCase());
+			valueBuilder.add(parsedNonTerminals.get(0).toUpperCase());
 		}
 
 		return new BuilderArtifactData(valueBuilder, type, parsedTokenValues, printValues);
@@ -268,6 +267,14 @@ public class JavaEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
 	@Override
 	public boolean useOrderedNode(BuilderArtifactData artifact) {
 		return true;
+	}
+
+	/**
+	 * @return if, the "uses" references should be taken into account when comparing two artifacts with the equals method
+	 */
+	@Override
+	public boolean useReferencesInEquals() {
+		return false;
 	}
 
 

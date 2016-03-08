@@ -733,7 +733,8 @@ public class GrammarMutator {
                             // rule cannot be splitted, bad case, but need to search for replace token in previously parsed symbols
                             Rule newModifyRule = getBestModifyRuleFromPreviousRules(modifyRule, modifyPosition, replaceTokens);
                             if (newModifyRule == null) {
-                                System.out.println("ATTENTION! COULD NOT PERFORM REPLACE MUTATION: " + curDiff);
+                                if(ParameterSettings.INFO_OUTPUT)
+                                    System.out.println("ATTENTION! COULD NOT PERFORM REPLACE MUTATION: " + curDiff);
                                 return;
                             }
                             ruleStackPositions.push(new RuleParsingPosition(newModifyRule, newModifyRule.getSymbols().indexOf(new Terminal(replaceTokens.get(0), replaceTokens.get(0)))));
@@ -758,7 +759,8 @@ public class GrammarMutator {
 
                             } else {
                                 // TODO [PRIO] implement this case
-                                System.out.println("ATTENTION: REPLACE case not yet implemented!!!!");
+                                if(ParameterSettings.INFO_OUTPUT)
+                                    System.out.println("ATTENTION: REPLACE case not yet implemented!!!!");
                             }
                         }
                     }
@@ -1227,7 +1229,8 @@ public class GrammarMutator {
      * @param replaceTokens
      */
     private Rule getBestModifyRuleFromPreviousRules(Rule modifyRule, int modifyPosition, List<String> replaceTokens) {
-        System.out.println("ATTENTION! error prone mutation will happen, be aware of that!");
+        if(ParameterSettings.INFO_OUTPUT)
+            System.out.println("ATTENTION! error prone mutation will happen, be aware of that!");
 
         Rule newModifyRule;
         while (modifyPosition > 0) {
@@ -1382,7 +1385,8 @@ public class GrammarMutator {
                         }
                     } else {
                         insertWithNewNonTerminalAndEmptyRule(insertTokens, modifyRule, modifyPosition);
-                        System.out.println("ATTENTION risky change was performed");
+                        if(ParameterSettings.INFO_OUTPUT)
+                            System.out.println("ATTENTION risky change was performed");
                     }
                 }
 

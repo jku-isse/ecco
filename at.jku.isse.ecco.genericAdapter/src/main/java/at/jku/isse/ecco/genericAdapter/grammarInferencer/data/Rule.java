@@ -4,6 +4,7 @@ package at.jku.isse.ecco.genericAdapter.grammarInferencer.data;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.stream.Collectors.toList;
 
@@ -13,6 +14,8 @@ import static java.util.stream.Collectors.toList;
  * @author Michael Jahn
  */
 public class Rule {
+
+    private static final String NON_TERMINAL_TRANSFORMED = "TRANSFORMEND_NON_TERMINAL:";
 
     private NonTerminal parentNonTerminal;
 
@@ -163,8 +166,7 @@ public class Rule {
         return parentNonTerminal;
     }
 
-    // sets the parent nonTerminal, only allowed once and only within the package
-    void setParentNonTerminal(NonTerminal parentNonTerminal) {
+    public void setParentNonTerminal(NonTerminal parentNonTerminal) {
         this.parentNonTerminal = parentNonTerminal;
     }
 
@@ -267,6 +269,27 @@ public class Rule {
         return terminals;
     }
 
+    public void transformNonTerminalForSerialization() {
+        for (int i = 0; i < symbols.size(); i++) {
+            if(symbols.get(i).isNonTerminal()) {
+                replaceSymbol(i, new Terminal(NON_TERMINAL_TRANSFORMED + symbols.get(i).getName(), NON_TERMINAL_TRANSFORMED + symbols.get(i).getName()));
+            }
+        }
+    }
+
+    public void reTransformNonTerminalForSerialization(Map<String, NonTerminal> nonTerminals) {
+        for (int i = 0; i < symbols.size(); i++) {
+            String symbolName = symbols.get(i).getName();
+            if(symbolName.startsWith(NON_TERMINAL_TRANSFORMED)) {
+                NonTerminal replaceNonTerminal = nonTerminals.get(symbolName.substring(symbolName.lastIndexOf(':')+1));
+                if(replaceNonTerminal == null) {
+                    System.err.println("ERROR in serialization! Could not find nonTerminal with id: " + symbolName.substring(symbolName.lastIndexOf(':')));
+                } else {
+                    replaceSymbol(i, replaceNonTerminal);
+                }
+            }
+        }
+    }
 }
 
 

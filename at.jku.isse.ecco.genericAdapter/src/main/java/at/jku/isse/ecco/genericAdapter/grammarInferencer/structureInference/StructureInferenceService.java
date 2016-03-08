@@ -21,8 +21,7 @@ public interface StructureInferenceService {
      * @param filePath
      * @return the root symbol of the infered grammar, which are all "structured" rules
      */
-    NonTerminalNode inferBaseStructure(String filePath, List<BlockDefinition> blockDefinitions) throws IOException;
-
+    NonTerminalNode inferBaseStructureFromFiles(String filePath, List<BlockDefinition> blockDefinitions) throws IOException;
 
     /**
      * Builds the basic structure of the given files and return the inducted graph grammar represeting all the given files
@@ -32,7 +31,11 @@ public interface StructureInferenceService {
      * @return
      * @throws IOException
      */
-    Node inferBaseStructure(List<String> filePath, List<BlockDefinition> blockDefinitions) throws IOException;
+    Node inferBaseStructureFromFiles(List<String> filePath, List<BlockDefinition> blockDefinitions) throws IOException;
+
+    Node inferBaseStructure(List<NonTerminalNode> fileStructures, List<BlockDefinition> blockDefinitions);
+
+    List<NonTerminalNode> inferFileStructures(List<String> filePath, List<BlockDefinition> blockDefinitions) throws IOException;
 
     NonTerminal inferGraphGrammar(Node baseStructure, List<BlockDefinition> blockDefinitions);
 

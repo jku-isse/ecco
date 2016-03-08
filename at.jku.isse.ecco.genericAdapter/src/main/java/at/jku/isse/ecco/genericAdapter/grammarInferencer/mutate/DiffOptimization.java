@@ -36,15 +36,18 @@ public class DiffOptimization {
         List<Diff> origDiff = generateFallbackDiff(diffList);
         List<Diff> newDiff = generateFallbackDiff(optimizedDiffList);
         if (origDiff.size() != newDiff.size()) {
-            System.out.println("-------------------------------ATTENTION!!! Inconsistency during optimization detected!----------------------------");
+            if(ParameterSettings.INFO_OUTPUT)
+                System.out.println("-------------------------------ATTENTION!!! Inconsistency during optimization detected!----------------------------");
         } else {
             for (int i = 0; i < origDiff.size(); i++) {
                 if (!origDiff.get(i).equals(newDiff.get(i))) {
-                    System.out.println("-------------------------------ATTENTION!!! Inconsistency during optimization detected!----------------------------");
-                    System.out.print("Orig diff: ");
-                    DiffUtils.printSingleDiff(origDiff.get(i));
-                    System.out.print("New  diff: ");
-                    DiffUtils.printSingleDiff(newDiff.get(i));
+                    if(ParameterSettings.INFO_OUTPUT) {
+                        System.out.println("-------------------------------ATTENTION!!! Inconsistency during optimization detected!----------------------------");
+                        System.out.print("Orig diff: ");
+                        DiffUtils.printSingleDiff(origDiff.get(i));
+                        System.out.print("New  diff: ");
+                        DiffUtils.printSingleDiff(newDiff.get(i));
+                    }
                 }
             }
         }

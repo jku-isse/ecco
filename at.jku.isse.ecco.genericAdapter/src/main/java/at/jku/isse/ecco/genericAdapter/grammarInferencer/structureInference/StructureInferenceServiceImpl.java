@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference;
 
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.*;
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.ParameterSettings;
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.main.GrammarSerializationService;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.BlockDefinition;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.ChildRelation;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.data.Node;
@@ -32,23 +34,22 @@ public class StructureInferenceServiceImpl implements StructureInferenceService 
 
     @Override
     public NonTerminalNode parseBaseStructure(String filePath, List<BlockDefinition> blockDefinitions) throws IOException {
-        return inferBaseStructure(filePath, blockDefinitions, true);
+        return inferBaseStructureFromFiles(filePath, blockDefinitions, true);
     }
 
     @Override
-    public NonTerminalNode inferBaseStructure(String filePath, List<BlockDefinition> blockDefinitions) throws IOException {
-        return inferBaseStructure(filePath, blockDefinitions, false);
+    public NonTerminalNode inferBaseStructureFromFiles(String filePath, List<BlockDefinition> blockDefinitions) throws IOException {
+        return inferBaseStructureFromFiles(filePath, blockDefinitions, false);
     }
 
     @Override
-    public Node inferBaseStructure(List<String> filePaths, List<BlockDefinition> blockDefinitions) throws IOException {
-        List<NonTerminalNode> rootNodes = new ArrayList<>();
+    public Node inferBaseStructureFromFiles(List<String> filePaths, List<BlockDefinition> blockDefinitions) throws IOException {
+        List<NonTerminalNode> rootNodes = inferFileStructures(filePaths, blockDefinitions);
+        return inferBaseStructure(rootNodes, blockDefinitions);
+    }
 
-        for (String file : filePaths) {
-            NonTerminalNode metaRootNode = new NonTerminalNode(META_ROOT, null);
-            metaRootNode.addChild(new ChildRelation(inferBaseStructure(file, blockDefinitions)));
-            rootNodes.add(metaRootNode);
-        }
+    @Override
+    public Node inferBaseStructure(List<NonTerminalNode> rootNodes, List<BlockDefinition> blockDefinitions) {
 
         // merge all rootNodes to one tree
         Set<String> allUniqueLabels = new HashSet<>();
@@ -133,7 +134,8 @@ public class StructureInferenceServiceImpl implements StructureInferenceService 
             }
 
             uniqueLabelsMap.put(curLabel, curLabelNode);
-            System.out.println("all model nodes merged: \n" + (curLabelNode != null ? curLabelNode.subTreeToString() : ""));
+            if(ParameterSettings.INFO_OUTPUT)
+                System.out.println("all model nodes merged: \n" + (curLabelNode != null ? curLabelNode.subTreeToString() : ""));
         }
 
         // connect all nodes with each other
@@ -156,10 +158,25 @@ public class StructureInferenceServiceImpl implements StructureInferenceService 
 
         Node returnRootNode = uniqueLabelsMap.get(ROOT_NODE);
 
-        System.out.println("Final inferred graph grammar: " + returnRootNode.subTreeToString());
+        if(ParameterSettings.INFO_OUTPUT)
+            System.out.println("Final inferred graph grammar: " + returnRootNode.subTreeToString());
 
         return returnRootNode;
 
+    }
+
+    @Override
+    public List<NonTerminalNode> inferFileStructures(List<String> filePaths, List<BlockDefinition> blockDefinitions) throws IOException {
+
+        List<NonTerminalNode> rootNodes = new ArrayList<>();
+
+        for (String file : filePaths) {
+            NonTerminalNode metaRootNode = new NonTerminalNode(META_ROOT, null);
+            metaRootNode.addChild(new ChildRelation(inferBaseStructureFromFiles(file, blockDefinitions)));
+            rootNodes.add(metaRootNode);
+        }
+
+        return rootNodes;
     }
 
     @Override
@@ -284,14 +301,15 @@ public class StructureInferenceServiceImpl implements StructureInferenceService 
             }
         } while (foundOptimization);
 
-        System.out.println(rootSymbol.subTreeToString());
+        if(ParameterSettings.INFO_OUTPUT)
+            System.out.println(rootSymbol.subTreeToString());
 
         return rootSymbol;
     }
 
     @Override
     public NonTerminal inferGraphGrammar(List<String> filePaths, List<BlockDefinition> blockDefinitions) throws IOException {
-        Node baseStructure = inferBaseStructure(filePaths, blockDefinitions);
+        Node baseStructure = inferBaseStructureFromFiles(filePaths, blockDefinitions);
 
         return inferGraphGrammar(baseStructure, blockDefinitions);
     }
@@ -301,7 +319,7 @@ public class StructureInferenceServiceImpl implements StructureInferenceService 
      * Private Methods
      */
 
-    private NonTerminalNode inferBaseStructure(String filePath, List<BlockDefinition> blockDefinitions, boolean storeContents) throws IOException {
+    private NonTerminalNode inferBaseStructureFromFiles(String filePath, List<BlockDefinition> blockDefinitions, boolean storeContents) throws IOException {
 
         Collections.sort(blockDefinitions, (o1, o2) -> o2.compareTo(o1));
         Pattern stringPattern = Pattern.compile(STRING_REGEX);
@@ -448,7 +466,8 @@ public class StructureInferenceServiceImpl implements StructureInferenceService 
             System.err.println("There are still some open blocks at the end of the file! (" + curOpenNodes.peek().getLabel() + ")");
         }
 
-        System.out.println("Base structure for: " + filePath.substring(filePath.lastIndexOf("/") + 1) + "\n" + rootNode.subTreeToString());
+        if(ParameterSettings.INFO_OUTPUT)
+            System.out.println("Base structure for: " + filePath.substring(filePath.lastIndexOf("/") + 1) + "\n" + rootNode.subTreeToString());
 
         return rootNode;
     }

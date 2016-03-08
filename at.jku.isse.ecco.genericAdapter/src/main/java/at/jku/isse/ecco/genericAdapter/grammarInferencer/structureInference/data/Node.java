@@ -8,15 +8,19 @@ import java.util.stream.Collectors;
  *
  * @author Michael Jahn
  */
-public abstract class Node {
+public class Node {
 
-    private final String label;
+    private String label;
 
     private List<ChildRelation> children;
-    private List<Node> parents;
+    private transient List<Node> parents;
     private ChildRelation recursiveNode;
 
     private String content;
+
+    public Node() {
+        int i = 0;
+    }
 
 
     public Node(String label) {
@@ -74,7 +78,9 @@ public abstract class Node {
         return parents.contains(parent);
     }
 
-    public abstract boolean isTerminalNode();
+    public boolean isTerminalNode() {
+        return false;
+    }
 
     public boolean isNonTerminalNode() {
         return !isTerminalNode();

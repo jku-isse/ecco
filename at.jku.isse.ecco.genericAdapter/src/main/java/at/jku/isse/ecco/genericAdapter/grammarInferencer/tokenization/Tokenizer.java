@@ -45,12 +45,18 @@ public class Tokenizer {
     }
 
     public List<String> tokenize(String inputString) throws AmbiguousTokenDefinitionsException {
+        boolean printLog = false;
+        if(inputString.length() > 500) {
+            System.err.print("Started tokenization of string");
+            printLog = true;
+        }
         StringBuilder curString = new StringBuilder(inputString);
         List<String> tokenStringList = new ArrayList<>();
 
         tokenValues = new ArrayList<>();
 
         while (!curString.toString().equals("")) {
+
 
             Map<Integer, TokenDefinition> foundTokenMap = new HashMap<>();
             // find first fitting tokenDefinition
@@ -98,6 +104,9 @@ public class Tokenizer {
                 }
                 tokenStringList.addAll(tmp);
             }
+        }
+        if(printLog) {
+            System.err.println("... finished.");
         }
         return tokenStringList;
     }

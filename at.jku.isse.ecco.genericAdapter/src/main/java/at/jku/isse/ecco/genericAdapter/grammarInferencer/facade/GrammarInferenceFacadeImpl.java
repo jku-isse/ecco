@@ -4,6 +4,7 @@ import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.EccoModelBuilde
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminalFactory;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.StructureNonTerminal;
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.main.GrammarSerializationService;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.mutate.GrammarMutatorService;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.mutate.GrammarMutatorServiceImpl;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.structureInference.StructureInferenceService;
@@ -15,7 +16,10 @@ import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenDefin
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.Tokenizer;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,6 +36,7 @@ public class GrammarInferenceFacadeImpl implements GrammarInferenceFacade {
     private final SampleReaderService sampleReaderService;
     private final Tokenizer tokenizer;
     private final GrammarOptimizationService grammarOptimizationService;
+    private final GrammarSerializationService grammarSerializationService;
 
     public GrammarInferenceFacadeImpl() {
         this.grammarMutatorService = new GrammarMutatorServiceImpl();
@@ -39,27 +44,132 @@ public class GrammarInferenceFacadeImpl implements GrammarInferenceFacade {
         this.sampleReaderService = new SampleReaderService();
         this.tokenizer = new Tokenizer();
         grammarOptimizationService = new GrammarOptimizationService();
+        grammarSerializationService = new GrammarSerializationService();
     }
 
     @Override
-    public NonTerminal inferGrammar(List<String> filePaths, EccoModelBuilderStrategy strategy) throws IOException, AmbiguousTokenDefinitionsException {
+    public NonTerminal inferGrammar(List<String> filePaths, EccoModelBuilderStrategy strategy, String grammarDataOutputPath) throws IOException, AmbiguousTokenDefinitionsException {
+
+        NonTerminalFactory.resetAllNonTerminals();
+
+        List<NonTerminalNode> baseStructures = new ArrayList<>();
+        Map<String, NonTerminal> nonTerminalMap = new HashMap<>();
+        Map<String, Set<String>>  parsedSamples = new HashMap<>();
+
+        NonTerminal rootSymbol = inferGrammar(filePaths, strategy, baseStructures, nonTerminalMap, parsedSamples);
+
+        if(grammarDataOutputPath != null && !grammarDataOutputPath.isEmpty()) {
+            String baseStructureString = grammarSerializationService.serializeBaseStructures(baseStructures);
+            String nonTerminalMapString = grammarSerializationService.serializeNonTerminalMap(nonTerminalMap);
+            String parsedSamplesString = grammarSerializationService.serializeParsedSamples(parsedSamples);
+
+            try {
+                Files.write(new File(grammarDataOutputPath).toPath(), (baseStructureString + "\n" + nonTerminalMapString + "\n" + parsedSamplesString).getBytes());
+            } catch (Throwable e) {
+                System.err.println("ERROR: could not write to provided grammar output file: " + grammarDataOutputPath);
+                e.printStackTrace();
+            }
+            System.err.println("Grammar Data file successfully writen to: " + grammarDataOutputPath.toString());
+        }
+
+        return rootSymbol;
+    }
+
+
+    @Override
+    public NonTerminal updateGrammar(List<String> filePaths, EccoModelBuilderStrategy strategy, String grammarDataFilePath) throws IOException, AmbiguousTokenDefinitionsException {
+
+        File grammarDataFile = new File(grammarDataFilePath);
+        List<String> lines = java.nio.file.Files.readAllLines(grammarDataFile.toPath());
+        if(lines.size() != 3) {
+            System.err.println("ERROR! The file: " + grammarDataFilePath + " is not a valid grammar data file!");
+            return null;
+        }
+
+        List<NonTerminalNode> origBaseStructures;
+        Map<String, NonTerminal> origNonTerminalContentsPerLabel;
+        Map<String, Set<String>>  origParsedSamples;
+        try {
+            origBaseStructures = grammarSerializationService.deserializeBaseStructures(lines.get(0));
+            origNonTerminalContentsPerLabel = grammarSerializationService.deserializeNonTerminalMap(lines.get(1));
+            origParsedSamples = grammarSerializationService.deserializeParsedSamples(lines.get(2));
+        } catch (Throwable e) {
+            System.err.println("ERROR! The file: " + grammarDataFilePath + " is not a valid grammar data file!");
+            e.printStackTrace();
+            return null;
+        }
+        NonTerminal rootSymbol = inferGrammar(filePaths, strategy, origBaseStructures, origNonTerminalContentsPerLabel, origParsedSamples);
+
+        String baseStructureString = grammarSerializationService.serializeBaseStructures(origBaseStructures);
+        String nonTerminalMapString = grammarSerializationService.serializeNonTerminalMap(origNonTerminalContentsPerLabel);
+        String parsedSamplesString = grammarSerializationService.serializeParsedSamples(origParsedSamples);
+
+        try {
+            Files.write(new File(grammarDataFilePath).toPath(), (baseStructureString + "\n" + nonTerminalMapString + "\n" + parsedSamplesString).getBytes());
+        } catch (Throwable e) {
+            System.err.println("ERROR: could not write updated grammar to provided output file: " + grammarDataFilePath);
+            e.printStackTrace();
+        }
+
+        return rootSymbol;
+    }
+
+
+    /**
+     * Infers a grammar based on the input files, if origBaseStructures and origNonTerminalContentsPerLabel are not null, they will be used
+     * to generate an updated grammar, and their contents will be updated
+     *
+     * @param filePaths
+     * @param strategy
+     * @param origBaseStructures
+     * @param origNonTerminalContentsPerLabel
+     * @param origParsedSamples
+     * @return
+     * @throws IOException
+     * @throws AmbiguousTokenDefinitionsException
+     */
+    private NonTerminal inferGrammar(List<String> filePaths, EccoModelBuilderStrategy strategy, List<NonTerminalNode> origBaseStructures,
+                                     Map<String, NonTerminal> origNonTerminalContentsPerLabel, Map<String, Set<String>> origParsedSamples) throws IOException, AmbiguousTokenDefinitionsException {
 
         NonTerminalFactory.resetAllNonTerminals();
 
         tokenizer.setTokenDefinitions(strategy.getTokenDefinitions());
 
         // graph grammar
-        Node rootGraphNode = structureInferenceService.inferBaseStructure(filePaths, strategy.getBlockDefinitions());
+
+        List<NonTerminalNode> rootNodes;
+        if(origBaseStructures != null) {
+            rootNodes = origBaseStructures;
+        } else {
+            rootNodes = new ArrayList<>();
+        }
+
+        rootNodes.addAll(structureInferenceService.inferFileStructures(filePaths, strategy.getBlockDefinitions()));
+
+        Node rootGraphNode = structureInferenceService.inferBaseStructure(rootNodes, strategy.getBlockDefinitions());
         NonTerminal rootGraphSymbol = structureInferenceService.inferGraphGrammar(rootGraphNode, strategy.getBlockDefinitions());
 
-        Map<String, Set<String>> alreadyProcessedSamplesPerLabel = new HashMap<>();
-        Map<String, NonTerminal> nonTerminalContentsPerLabel = new HashMap<>();
+        Map<String, Set<String>> alreadyProcessedSamplesPerLabel;
+        if(origParsedSamples != null) {
+            alreadyProcessedSamplesPerLabel = origParsedSamples;
+        } else {
+            alreadyProcessedSamplesPerLabel = new HashMap<>();
+        }
+
+        Map<String, NonTerminal> nonTerminalContentsPerLabel;
+        if(origNonTerminalContentsPerLabel != null) {
+            nonTerminalContentsPerLabel = origNonTerminalContentsPerLabel;
+        } else {
+            nonTerminalContentsPerLabel = new HashMap<>();
+        }
 
         // run grammar mutator on every label for every file
         for (String filePath : filePaths) {
-            System.out.println("-------------------------------------------------");
-            System.out.println(filePath.substring(filePath.lastIndexOf("\\") + 1));
-            System.out.println("-------------------------------------------------");
+            if(ParameterSettings.INFO_OUTPUT) {
+                System.out.println("-------------------------------------------------");
+                System.out.println(filePath.substring(filePath.lastIndexOf("\\") + 1));
+                System.out.println("-------------------------------------------------");
+            }
             NonTerminalNode rootNode = structureInferenceService.parseBaseStructure(filePath, strategy.getBlockDefinitions());
 
             if (!rootNode.getContent().isEmpty()) {
@@ -107,7 +217,6 @@ public class GrammarInferenceFacadeImpl implements GrammarInferenceFacade {
             grammarOptimizationService.optimizeGrammar(entry.getValue());
         }
 
-
         // combine graph grammar and results from grammar mutator
         for (NonTerminal graphNonTerminal : rootGraphSymbol.getAllNonTerminalsRecursive()) {
             if (graphNonTerminal.isStructureSymbol()) {
@@ -123,13 +232,15 @@ public class GrammarInferenceFacadeImpl implements GrammarInferenceFacade {
             rootGraphSymbol.getRules().get(0).insertSymbols(0, Arrays.asList(NonTerminalFactory.createNewRecursionNonTerminal(nonTerminalContentsPerLabel.get(ROOT_LABEL.toUpperCase()))));
         }
 
+        System.err.println("INFORMATION: successfully inferred grammar");
         return rootGraphSymbol;
     }
 
     private NonTerminal runGrammarMutation(List<TokenDefinition> tokenDefinitions, List<String> sampleSeparator, boolean sampleStopOnLineBreak, List<String> commentBlocks, Map<String, Set<String>> alreadyProcessedSamplesPerLabel, Map<String, NonTerminal> nonTerminalContentsPerLabel, String label, Node labelNode) throws AmbiguousTokenDefinitionsException {
         int origNonTerminalSize;
         origNonTerminalSize = nonTerminalContentsPerLabel.containsKey(label.toUpperCase()) ? nonTerminalContentsPerLabel.get(label.toUpperCase()).getAllNonTerminals().size() : 0;
-        System.out.println("Running grammar mutator for: " + label.toUpperCase());
+        if(ParameterSettings.INFO_OUTPUT)
+            System.out.println("Running grammar mutator for: " + label.toUpperCase());
         List<String> samples = sampleReaderService.readSamplesFromString(labelNode.getContent(), sampleSeparator, commentBlocks, sampleStopOnLineBreak);
 
         // clean samples from empty lines
@@ -143,7 +254,8 @@ public class GrammarInferenceFacadeImpl implements GrammarInferenceFacade {
 
             if(rootSymbol != null) {
                 int newNonTerminalSize = rootSymbol.getAllNonTerminals().size();
-                System.out.println("---- RESULT: " + newNonTerminalSize + " NonTerminals (" + (newNonTerminalSize - origNonTerminalSize) + " new)");
+                if(ParameterSettings.INFO_OUTPUT)
+                    System.out.println("---- RESULT: " + newNonTerminalSize + " NonTerminals (" + (newNonTerminalSize - origNonTerminalSize) + " new)");
             }
 
             if (alreadyProcessedSamplesPerLabel.containsKey(label)) {

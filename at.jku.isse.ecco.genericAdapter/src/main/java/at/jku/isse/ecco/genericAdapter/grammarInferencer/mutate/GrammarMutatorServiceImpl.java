@@ -245,7 +245,8 @@ public class GrammarMutatorServiceImpl implements GrammarMutatorService {
                 }
             }
         }
-        System.out.println("Added " + newSamples + " new sample (already processed: " + alreadyProcessed + ")");
+        if(ParameterSettings.STATISTICS_OUTPUT)
+            System.out.println("Added " + newSamples + " new sample (already processed: " + alreadyProcessed + ")");
         return rootSymbol;
 
 
