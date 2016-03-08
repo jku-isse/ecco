@@ -2,7 +2,7 @@ package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.composition.CompositionRootNode;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.listener.EccoListener;
@@ -198,7 +198,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 //		for (Association association : this.service.getAssociations()) {
 //			this.traverseTree(association.getRootNode(), 0, association.getId(), depthFade);
 //		}
-		CompositionRootNode compRootNode = new CompositionRootNode();
+		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 		for (Association association : this.service.getAssociations()) {
 			compRootNode.addOrigNode(association.getRootNode());
 		}

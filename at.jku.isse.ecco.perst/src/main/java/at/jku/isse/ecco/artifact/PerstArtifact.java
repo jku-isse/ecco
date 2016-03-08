@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
-import at.jku.isse.ecco.sequenceGraph.BaseSequenceGraph;
+import at.jku.isse.ecco.sequenceGraph.PerstSequenceGraph;
 import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import org.garret.perst.Persistent;
@@ -183,7 +183,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 	@Override
 	public SequenceGraph createSequenceGraph() {
-		return new BaseSequenceGraph();
+		return new PerstSequenceGraph();
 	}
 
 

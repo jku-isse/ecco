@@ -27,11 +27,14 @@ Eclipse does not support Gradle by default. There is a Gradle plugin for Eclipse
 
 Create Eclipse projects from Gradle projects: `gradle eclipse`. This creates the `.project` and `.classpath` files Eclipse needs for every project.
 
-Import the created Eclipse projects into your Eclipse workspace: `File -> Import -> General -> Existing Projects Into Workspace`.
+Import the created Eclipse projects into your Eclipse workspace: `File > Import > General > Existing Projects Into Workspace`.
 * Select root directory: `<working_dir>`
 * Search for nested projects.
 * Do *not* copy projects into workspace.
 
 Select all shown projects and import them.
+
+
+Disable errors for cyclic dependencies in Eclipse: `Window > Preferences > Java > Compiler > Building > Build path problems > Circular dependencies > Warning`.
 
 

@@ -1,7 +1,8 @@
 package at.jku.isse.ecco;
 
-import at.jku.isse.ecco.composition.CompositionRootNode;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.BaseCheckout;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.*;
@@ -747,7 +748,7 @@ public class EccoService {
 
 			System.out.println("CHECKOUT");
 
-			CompositionRootNode compRootNode = new CompositionRootNode();
+			LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 			for (Association association : this.getAssociations()) {
 				System.out.println("Checking: " + association.getId());
 				if (association.getPresenceCondition().holds(configuration)) {
@@ -761,7 +762,7 @@ public class EccoService {
 	}
 
 	public Checkout checkout(Node node) {
-		Checkout checkout = this.entityFactory.createCheckout();
+		Checkout checkout = new BaseCheckout(); //this.entityFactory.createCheckout();
 
 		Set<Node> nodes = new HashSet<>(node.getChildren());
 		this.writer.write(this.baseDir, nodes);

@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.EccoUtil;
-import at.jku.isse.ecco.composition.CompositionRootNode;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
@@ -178,9 +178,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 						}
 
 						// use composition here to merge selected associations
-						CompositionRootNode rootNode = null;
+						LazyCompositionRootNode rootNode = null;
 						if (!selectedAssociations.isEmpty()) {
-							rootNode = new CompositionRootNode();
+							rootNode = new LazyCompositionRootNode();
 							for (Association association : selectedAssociations) {
 								rootNode.addOrigNode(association.getRootNode());
 							}
@@ -228,7 +228,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 				// use composition here to merge selected associations
 				if (!selectedAssociations.isEmpty()) {
-					final CompositionRootNode rootNode = new CompositionRootNode();
+					final LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
 					for (Association association : selectedAssociations) {
 						rootNode.addOrigNode(association.getRootNode());
 					}

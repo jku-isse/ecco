@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.EccoUtil;
-import at.jku.isse.ecco.composition.CompositionRootNode;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
@@ -64,7 +64,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 					@Override
 					public Void call() throws EccoException {
 
-						CompositionRootNode compRootNode = new CompositionRootNode();
+						LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 						for (Association association : ChartsView.this.service.getAssociations()) {
 							compRootNode.addOrigNode(association.getRootNode());
 						}

@@ -6,9 +6,9 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.feature.PerstFeature;
-import at.jku.isse.ecco.module.BaseModuleFeature;
 import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PerstModule;
+import at.jku.isse.ecco.module.PerstModuleFeature;
 import org.garret.perst.Persistent;
 import org.garret.perst.Storage;
 import org.garret.perst.StorageFactory;
@@ -51,7 +51,7 @@ public class PerstTest {
 
 		// do work
 		PerstFeature feature = new PerstFeature("F1");
-		ModuleFeature moduleFeature = new BaseModuleFeature(feature, true);
+		ModuleFeature moduleFeature = new PerstModuleFeature(feature, true);
 
 //		root.module.add(moduleFeature);
 //		root.moduleFeatures.add(moduleFeature);

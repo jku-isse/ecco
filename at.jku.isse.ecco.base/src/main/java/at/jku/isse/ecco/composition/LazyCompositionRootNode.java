@@ -7,13 +7,13 @@ import at.jku.isse.ecco.tree.RootNode;
 /**
  * A lazy composition root node.
  */
-public class CompositionRootNode extends CompositionNode implements RootNode {
+public class LazyCompositionRootNode extends LazyCompositionNode implements RootNode {
 
-	public CompositionRootNode() {
+	public LazyCompositionRootNode() {
 		this(new DefaultOrderSelector());
 	}
 
-	public CompositionRootNode(OrderSelector orderSelector) {
+	public LazyCompositionRootNode(OrderSelector orderSelector) {
 		super(orderSelector);
 	}
 
@@ -31,7 +31,7 @@ public class CompositionRootNode extends CompositionNode implements RootNode {
 
 	@Override
 	public Node createNode() {
-		return new CompositionRootNode();
+		return new LazyCompositionRootNode();
 	}
 
 
