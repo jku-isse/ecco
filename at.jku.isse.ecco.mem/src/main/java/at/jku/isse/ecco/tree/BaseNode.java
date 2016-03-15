@@ -5,10 +5,14 @@ import at.jku.isse.ecco.core.Association;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class BaseNode implements Node {
+
+	private transient NodeOperator operator = new NodeOperator(this);
+
 
 	private boolean unique = true;
 
@@ -106,26 +110,63 @@ public class BaseNode implements Node {
 
 	@Override
 	public int hashCode() {
-		return artifact != null ? artifact.hashCode() : 0;
+		return this.operator.hashCode();
 	}
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null) return false;
-		if (!(o instanceof Node)) return false;
-
-		BaseNode baseNode = (BaseNode) o;
-
-		if (artifact == null)
-			return baseNode.artifact == null;
-
-		return artifact.equals(baseNode.artifact);
+		return this.operator.equals(o);
 	}
 
 	@Override
 	public String toString() {
-		return this.getArtifact().toString();
+		return this.operator.toString();
+	}
+
+
+	@Override
+	public void slice(Node node) {
+		this.operator.slice(node);
+	}
+
+	@Override
+	public void merge(Node node) {
+		this.operator.merge(node);
+	}
+
+	@Override
+	public void sequence() {
+		this.operator.sequence();
+	}
+
+	@Override
+	public void updateArtifactReferences() {
+		this.operator.updateArtifactReferences();
+	}
+
+	@Override
+	public Node extractMarked() {
+		return this.operator.extractMarked();
+	}
+
+	@Override
+	public int countArtifacts() {
+		return this.operator.countArtifacts();
+	}
+
+	@Override
+	public Map<Integer, Integer> countArtifactsPerDepth() {
+		return this.operator.countArtifactsPerDepth();
+	}
+
+	@Override
+	public void print() {
+		this.operator.print();
+	}
+
+	@Override
+	public void checkConsistency() {
+		this.operator.checkConsistency();
 	}
 
 }

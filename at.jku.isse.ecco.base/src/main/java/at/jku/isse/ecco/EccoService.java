@@ -2,7 +2,6 @@ package at.jku.isse.ecco;
 
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.BaseCheckout;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.*;
@@ -11,12 +10,14 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.plugin.CoreModule;
 import at.jku.isse.ecco.plugin.artifact.*;
 import at.jku.isse.ecco.plugin.data.DataPlugin;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
+import at.jku.isse.ecco.util.Trees;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import org.slf4j.Logger;
@@ -28,13 +29,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * TODO: base and repository directories may not be changed anymore after the service has been initialized.
- * TODO: deal with locking better. leave service threat unsafe or make it thread safe?
+ * TODO: deal with locking better. leave service thread unsafe or make it thread safe?
  */
 public class EccoService {
 
@@ -111,6 +110,7 @@ public class EccoService {
 		this.ignoredFiles.add(CONFIG_FILE_NAME);
 	}
 
+	private Set<Path> ignoredFiles = new HashSet<>();
 
 	private Collection<ArtifactPlugin> artifactPlugins;
 	private Collection<DataPlugin> dataPlugins;
@@ -122,12 +122,6 @@ public class EccoService {
 	public boolean isInitialized() {
 		return this.initialized;
 	}
-
-	private Set<Path> ignoredFiles = new HashSet<Path>(); // TODO: set this in dao
-
-	// TODO: set these in dao
-	private int maxOrder = 4; // TODO: load this in init() via SettingsDao. this value is only a cache.
-	//private String committer = "";
 
 	@Inject
 	private DispatchReader reader;
@@ -157,9 +151,9 @@ public class EccoService {
 	private FeatureDao featureDao;
 
 
-	// # LISTENERS #########################################
+	// # LISTENERS #####################################################################################################
 
-	private Collection<EccoListener> listeners = new ArrayList<EccoListener>();
+	private Collection<EccoListener> listeners = new ArrayList<>();
 
 	public void addListener(EccoListener listener) {
 		this.listeners.add(listener);
@@ -182,7 +176,55 @@ public class EccoService {
 	}
 
 
-	// # REPOSITORY SERVICES #########################################
+	// # SETTINGS ######################################################################################################
+
+	// TODO: load these in init() via SettingsDao
+
+	private Set<Path> customIgnoredFiles = new HashSet<>();
+
+	private int maxOrder = 4;
+	private String committer = "";
+
+	public int getMaxOrder() {
+		return this.maxOrder;
+	}
+
+	public void setMaxOrder(int maxOrder) {
+		this.maxOrder = maxOrder;
+
+		// TODO: set via settings dao
+	}
+
+	public String getCommitter() {
+		return this.committer;
+	}
+
+	public void setCommitter(String committer) {
+		this.committer = committer;
+
+		// TODO: set via settings dao
+	}
+
+	public void addIgnoreFile(Path path) {
+		this.customIgnoredFiles.add(path);
+		this.ignoredFiles.add(path);
+
+		// TODO: save via dao
+	}
+
+	public void removeIgnoreFile(Path path) {
+		this.customIgnoredFiles.remove(path);
+		this.ignoredFiles.remove(path);
+
+		// TODO: save via dao
+	}
+
+	public Collection<Path> getIgnoreFiles() {
+		return new ArrayList<>(this.ignoredFiles);
+	}
+
+
+	// # REPOSITORY SERVICES ###########################################################################################
 
 	/**
 	 * Checks if the repository directory (either given as a constructor parameter or detected using {@link #detectRepository(Path path) detectRepository}) exists.
@@ -190,10 +232,7 @@ public class EccoService {
 	 * @return True if the repository directory exists, false otherwise.
 	 */
 	public boolean repositoryDirectoryExists() {
-		if (!Files.exists(this.repositoryDir))
-			return false;
-		else
-			return true;
+		return Files.exists(this.repositoryDir);
 	}
 
 	/**
@@ -269,7 +308,6 @@ public class EccoService {
 	 * @return True if the repository was created, false otherwise.
 	 */
 	public boolean createRepository() throws EccoException, IOException {
-//		try {
 		if (!this.repositoryDirectoryExists())
 			Files.createDirectory(this.repositoryDir);
 
@@ -278,10 +316,6 @@ public class EccoService {
 		// TODO: do some initialization in database like generating root object, etc.?
 
 		return true;
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-//		return false;
 	}
 
 	/**
@@ -349,8 +383,8 @@ public class EccoService {
 				}
 			};
 			// artifact modules
-			List<Module> artifactModules = new ArrayList<Module>();
-			List<Module> allArtifactModules = new ArrayList<Module>();
+			List<Module> artifactModules = new ArrayList<>();
+			List<Module> allArtifactModules = new ArrayList<>();
 			this.artifactPlugins = new ArrayList<>();
 			for (ArtifactPlugin ap : ArtifactPlugin.getArtifactPlugins()) {
 				if (artifactPluginsList == null || artifactPluginsList.contains(ap.getPluginId())) {
@@ -362,8 +396,8 @@ public class EccoService {
 			LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
 			LOGGER.debug("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
 			// data modules
-			List<Module> dataModules = new ArrayList<Module>();
-			List<Module> allDataModules = new ArrayList<Module>();
+			List<Module> dataModules = new ArrayList<>();
+			List<Module> allDataModules = new ArrayList<>();
 			for (DataPlugin dataPlugin : DataPlugin.getDataPlugins()) {
 				if (dataPlugin.getPluginId().equals(eccoProperties.get(ECCO_PROPERTIES_DATA)))
 					dataModules.add(dataPlugin.getModule());
@@ -372,7 +406,7 @@ public class EccoService {
 			LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
 			LOGGER.debug("ALL DATA PLUGINS: " + allDataModules.toString());
 			// put them together
-			List<Module> modules = new ArrayList<Module>();
+			List<Module> modules = new ArrayList<>();
 			modules.addAll(Arrays.asList(new CoreModule(), settingsModule));
 			modules.addAll(artifactModules);
 			modules.addAll(dataModules);
@@ -400,6 +434,9 @@ public class EccoService {
 		}
 	}
 
+	/**
+	 * Properly shuts down the service.
+	 */
 	public void destroy() throws EccoException {
 		if (!this.initialized)
 			return;
@@ -408,7 +445,7 @@ public class EccoService {
 	}
 
 
-	// # UTILS #########################################
+	// # UTILS #########################################################################################################
 
 	/**
 	 * Creates a configuration from a given configuration string.
@@ -421,7 +458,7 @@ public class EccoService {
 		if (configurationString == null || configurationString.isEmpty())
 			throw new EccoException("No configuration string provided.");
 
-		if (!configurationString.matches("(\\+|\\-)?[a-zA-Z0-9]+('?|(\\.([0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z0-9]+('?|(\\.([0-9])+)?))*"))
+		if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
 			throw new EccoException("Invalid configuration string provided.");
 
 		Configuration configuration = this.entityFactory.createConfiguration();
@@ -460,33 +497,11 @@ public class EccoService {
 		return configuration;
 	}
 
-	/**
-	 * Creates the configuration string for the given configuration.
-	 *
-	 * @param configuration The configuration object.
-	 * @return The configuration string.
-	 */
-	public String createConfigurationString(Configuration configuration) {
-		// TODO: put this into Configuration.toString()
-		String configurationString = configuration.getFeatureInstances().stream().map((FeatureInstance fi) -> {
-			StringBuffer sb = new StringBuffer();
-			if (fi.getSign())
-				sb.append("+");
-			else
-				sb.append("-");
-			sb.append(fi.getFeatureVersion().getFeature().getName());
-			sb.append(".");
-			sb.append(fi.getFeatureVersion());
-			return sb.toString();
-		}).collect(Collectors.joining(", "));
-		return configurationString;
-	}
+
+	// # CORE SERVICES #################################################################################################
 
 
-	// # CORE SERVICES #########################################
-
-
-	// COMMIT
+	// COMMIT //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	 * Commits the files in the base directory using the configuration string given in {@link #CONFIG_FILE_NAME}.
@@ -545,9 +560,44 @@ public class EccoService {
 
 		Association association = this.entityFactory.createAssociation(presenceCondition, nodes);
 
+
+		// SIMPLE MODULES
+		association.getModules().addAll(configuration.computeModules(this.maxOrder));
+
+
 		// TODO: set the correct configuration (i.e. the one with the replaced feature instances) here!
 		Commit commit = this.commit(association);
 		commit.setConfiguration(configuration);
+
+
+		// PRESENCE TABLE
+		for (Association commitAssociation : commit.getAssociations()) {
+			for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
+				// find module feature in the map that has same feature and sign
+				ModuleFeature moduleFeature = null;
+				int count = 0;
+				Iterator<Map.Entry<ModuleFeature, Integer>> iterator = commitAssociation.getPresenceTable().entrySet().iterator();
+				while (iterator.hasNext()) {
+					Map.Entry<ModuleFeature, Integer> entry = iterator.next();
+
+					if (entry.getKey().getSign() == featureInstance.getSign() && entry.getKey().getFeature().equals(featureInstance.getFeature())) {
+						moduleFeature = entry.getKey();
+						count = entry.getValue();
+
+						iterator.remove();
+						break;
+					}
+				}
+				if (moduleFeature == null) {
+					moduleFeature = this.entityFactory.createModuleFeature(featureInstance.getFeature(), featureInstance.getSign());
+				}
+				moduleFeature.add(featureInstance.getFeatureVersion());
+				count++;
+				commitAssociation.getPresenceTable().put(moduleFeature, count);
+			}
+			commitAssociation.incPresenceCount();
+		}
+
 
 		return commit;
 	}
@@ -555,11 +605,12 @@ public class EccoService {
 	/**
 	 * When an association is committed directly then the corresponding configuration must be added manually first!
 	 *
-	 * @param association
-	 * @return
+	 * @param association The association to be committed.
+	 * @return The resulting commit object or null in case of an error.
 	 */
 	public Commit commit(Association association) throws EccoException {
 		checkNotNull(association);
+
 		List<Association> associations = new ArrayList<>(1);
 		associations.add(association);
 		return this.commit(associations);
@@ -568,10 +619,10 @@ public class EccoService {
 	/**
 	 * When associations are committed directly then the corresponding configuration must be added manually first!
 	 *
-	 * @param inputAs
-	 * @return
+	 * @param inputAs The collection of associations to be committed.
+	 * @return The resulting commit object or null in case of an error.
 	 */
-	public Commit commit(List<Association> inputAs) throws EccoException {
+	public Commit commit(Collection<Association> inputAs) throws EccoException {
 		// TODO: make sure the feature instances used in the given associations are the ones from the repository
 
 		synchronized (this) {
@@ -594,34 +645,51 @@ public class EccoService {
 					// slice new association with every original association
 					for (Association origA : originalAssociations) {
 
+						// ASSOCIATION
 						// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
 						//Association intA = origA.slice(inputA);
 						Association intA = this.entityFactory.createAssociation();
+
+
+						// SIMPLE MODULES
+						intA.getModules().addAll(origA.getModules());
+						intA.getModules().retainAll(inputA.getModules());
+						origA.getModules().removeAll(intA.getModules());
+						inputA.getModules().removeAll(origA.getModules());
+
+
+						// PRESENCE CONDITION
 						intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition())); // TODO: do this in module util
 						//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
+
+
+						// ARTIFACT TREE
 						//intA.setRootNode((origA.getRootNode().slice(inputA.getRootNode())));
-						intA.setRootNode((RootNode) EccoUtil.sliceNodes(origA.getRootNode(), inputA.getRootNode()));
-						// set parents for intersection association
-						intA.addParent(origA);
-						intA.addParent(inputA);
-						intA.setName(origA.getId() + " INT " + inputA.getId());
+						intA.setRootNode((RootNode) Trees.slice(origA.getRootNode(), inputA.getRootNode()));
+
 
 						// if the intersection association has artifacts or a not empty presence condition store it
 						if (intA.getRootNode().getChildren().size() > 0 || !intA.getPresenceCondition().isEmpty()) {
+							// set parents for intersection association (and child for parents)
+							intA.addParent(origA);
+							intA.addParent(inputA);
+							intA.setName(origA.getId() + " INT " + inputA.getId());
+
+							// store association
 							toAdd.add(intA);
 						}
 
-						EccoUtil.checkConsistency(origA.getRootNode());
-						EccoUtil.checkConsistency(intA.getRootNode());
+						Trees.checkConsistency(origA.getRootNode());
+						Trees.checkConsistency(intA.getRootNode());
 					}
 					originalAssociations.addAll(toAdd); // add new associations to original associations so that they can be sliced with the next input association
 					newAssociations.addAll(toAdd);
 
 					// if the remainder is not empty store it
 					if (inputA.getRootNode().getChildren().size() > 0 || !inputA.getPresenceCondition().isEmpty()) {
-						EccoUtil.sequenceOrderedNodes(inputA.getRootNode());
-						EccoUtil.updateArtifactReferences(inputA.getRootNode());
-						EccoUtil.checkConsistency(inputA.getRootNode());
+						Trees.sequence(inputA.getRootNode());
+						Trees.updateArtifactReferences(inputA.getRootNode());
+						Trees.checkConsistency(inputA.getRootNode());
 
 						originalAssociations.add(inputA);
 						newAssociations.add(inputA);
@@ -635,7 +703,7 @@ public class EccoService {
 
 				// put together commit
 				Commit commit = this.entityFactory.createCommit();
-				commit.setCommitter(""); // TODO: get this value from the client config. maybe pass it as a parameter to this commit method.
+				commit.setCommitter(this.committer); // TODO: get this value from the client config. maybe pass it as a parameter to this commit method.
 				for (Association newA : newAssociations) {
 					commit.addAssociation(newA);
 				}
@@ -644,6 +712,8 @@ public class EccoService {
 				this.transactionStrategy.commit();
 			} catch (Exception e) {
 				this.transactionStrategy.rollback();
+
+				throw new EccoException(e.getMessage());
 			}
 
 			// fire event
@@ -725,7 +795,7 @@ public class EccoService {
 	}
 
 
-	// CHECKOUT
+	// CHECKOUT ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	 * Checks out the implementation of the configuration (given as configuration string) into the base directory.
@@ -748,21 +818,46 @@ public class EccoService {
 
 			System.out.println("CHECKOUT");
 
+
+			Set<at.jku.isse.ecco.module.Module> desiredModules = configuration.computeModules(this.maxOrder);
+			Set<at.jku.isse.ecco.module.Module> missingModules = new HashSet<>();
+			Set<at.jku.isse.ecco.module.Module> surplusModules = new HashSet<>();
+
+
 			LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 			for (Association association : this.getAssociations()) {
 				System.out.println("Checking: " + association.getId());
 				if (association.getPresenceCondition().holds(configuration)) {
 					compRootNode.addOrigNode(association.getRootNode());
 					System.out.println("Selected: " + association.getId());
+
+
+					// compute missing
+					for (at.jku.isse.ecco.module.Module desiredModule : desiredModules) {
+						if (!association.getPresenceCondition().getMinModules().contains(desiredModule)) {
+							missingModules.add(desiredModule);
+						}
+					}
+					// compute surplus
+					for (at.jku.isse.ecco.module.Module existingModule : association.getPresenceCondition().getMinModules()) {
+						if (!desiredModules.contains(existingModule)) {
+							surplusModules.add(existingModule);
+						}
+					}
 				}
 			}
 
-			return this.checkout(compRootNode);
+			Checkout checkout = this.checkout(compRootNode);
+
+			checkout.getSurplus().addAll(surplusModules);
+			checkout.getMissing().addAll(missingModules);
+
+			return checkout;
 		}
 	}
 
 	public Checkout checkout(Node node) {
-		Checkout checkout = new BaseCheckout(); //this.entityFactory.createCheckout();
+		Checkout checkout = this.entityFactory.createCheckout();
 
 		Set<Node> nodes = new HashSet<>(node.getChildren());
 		this.writer.write(this.baseDir, nodes);
@@ -771,7 +866,7 @@ public class EccoService {
 	}
 
 
-	// OTHERS
+	// OTHERS //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	 * Get all commit objects.
@@ -786,10 +881,6 @@ public class EccoService {
 			e.printStackTrace();
 		}
 		return null;
-	}
-
-	public void deleteCommit(Commit commit) {
-		// TODO
 	}
 
 	/**
@@ -822,6 +913,14 @@ public class EccoService {
 		return null;
 	}
 
+	/**
+	 * Gets the list of loaded artifact plugins.
+	 *
+	 * @return The list of artifact plugins.
+	 */
+	public Collection<ArtifactPlugin> getArtifactPlugins() {
+		return new ArrayList<>(this.artifactPlugins);
+	}
 
 	/**
 	 * Get the injector that can be used to retreive arbitrary artifact readers, writers, viewers, etc.
@@ -833,13 +932,72 @@ public class EccoService {
 		return this.injector;
 	}
 
-	/**
-	 * Gets the list of loaded artifact plugins.
-	 *
-	 * @return The list of artifact plugins.
-	 */
-	public Collection<ArtifactPlugin> getArtifactPlugins() {
-		return new ArrayList<ArtifactPlugin>(this.artifactPlugins);
+
+	// # TODO
+
+
+	public void deleteCommit(Commit commit) {
+		// TODO
+
+		try {
+			this.transactionStrategy.begin();
+
+			// get association unique to commit
+			Association uniqueAssociation = null;
+			for (Association association : commit.getAssociations()) {
+				if (association.getParents().isEmpty()) {
+					uniqueAssociation = association;
+					break;
+				}
+			}
+
+			// remove new feature versions from all associations
+			for (Association association : this.getAssociations()) {
+				// TODO!
+				//association.getPresenceCondition().removeFeatureVersion(commit.getNewFeatureVersions());
+			}
+
+			// remove new modules (the min modules from unique association) from all associations
+			for (Association association : this.getAssociations()) {
+				if (association != uniqueAssociation)
+					association.getPresenceCondition().removeModules(uniqueAssociation.getPresenceCondition().getMinModules());
+			}
+
+
+			// go through every association (except for unique association) from commit and merge with parent (that is not the unique association)
+			for (Association association : commit.getAssociations()) {
+				if (association != uniqueAssociation) {
+					// merge with parent that is NOT the unique association
+					Association parent = null;
+					for (Association tempParent : association.getParents()) {
+						if (tempParent != uniqueAssociation) {
+							parent = tempParent;
+							break;
+						}
+					}
+
+					// merge trees
+					Trees.merge(parent.getRootNode(), association.getRootNode());
+
+					// merge modules
+					// TODO!
+					//parent.getPresenceCondition().add(association.getPresenceCondition());
+
+					// remove association
+					this.associationDao.remove(association);
+				}
+			}
+			// remove unique association
+			this.associationDao.remove(uniqueAssociation);
+
+
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+		}
+
+
 	}
+
 
 }

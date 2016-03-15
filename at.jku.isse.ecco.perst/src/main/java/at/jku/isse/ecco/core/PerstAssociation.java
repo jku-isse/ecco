@@ -1,11 +1,12 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.RootNode;
 import org.garret.perst.Persistent;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -22,7 +23,12 @@ public class PerstAssociation extends Persistent implements Association {
 	private String name = "";
 	private RootNode rootNode;
 	private PresenceCondition presenceCondition;
-	private List<Association> parents = new ArrayList<Association>();
+	private List<Association> parents = new ArrayList<>();
+	private List<Association> children = new ArrayList<>();
+
+	private Set<Module> modules = new HashSet<>();
+	private Map<ModuleFeature, Integer> presenceTable = new HashMap<>();
+	private int presenceCount;
 
 	public PerstAssociation() {
 
@@ -39,6 +45,31 @@ public class PerstAssociation extends Persistent implements Association {
 	}
 
 	@Override
+	public Set<Module> getModules() {
+		return this.modules;
+	}
+
+	@Override
+	public Map<ModuleFeature, Integer> getPresenceTable() {
+		return this.presenceTable;
+	}
+
+	@Override
+	public int getPresenceCount() {
+		return this.presenceCount;
+	}
+
+	@Override
+	public int incPresenceCount() {
+		return (++this.presenceCount);
+	}
+
+	@Override
+	public int incPresenceCount(int val) {
+		return (this.presenceCount += val);
+	}
+
+	@Override
 	public List<Association> getParents() {
 		return this.parents;
 	}
@@ -51,6 +82,21 @@ public class PerstAssociation extends Persistent implements Association {
 	@Override
 	public void removeParent(Association parent) {
 		this.parents.remove(parent);
+	}
+
+	@Override
+	public Collection<Association> getChildren() {
+		return this.children;
+	}
+
+	@Override
+	public void addChild(Association child) {
+		this.children.add(child);
+	}
+
+	@Override
+	public void removeChild(Association child) {
+		this.children.remove(child);
 	}
 
 	@Override

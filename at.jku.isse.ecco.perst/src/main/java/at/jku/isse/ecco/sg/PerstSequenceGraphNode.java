@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.sequenceGraph;
+package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import org.garret.perst.Persistent;

@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.operator;
+package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
@@ -92,17 +92,19 @@ public class PresenceConditionOperator {
 	}
 
 	public void initialize(Configuration configuration, int maxOrder) {
-		// first compute the ordinary powerset modules
-		Set<Module> modules = this.powerSet(configuration.getFeatureInstances(), maxOrder);
+//		// first compute the ordinary powerset modules
+//		Set<Module> modules = this.powerSet(configuration.getFeatureInstances(), maxOrder);
+//
+//		// add different feature versions to modules
+//		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
+//			for (FeatureVersion featureVersion : featureInstance.getFeature().getVersions()) { // for every version of every feature
+//				if (!featureVersion.equals(featureInstance.getFeatureVersion())) {
+//					this.addVersionToModules(featureVersion, modules);
+//				}
+//			}
+//		}
 
-		// add different feature versions to modules
-		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-			for (FeatureVersion featureVersion : featureInstance.getFeature().getVersions()) { // for every version of every feature
-				if (!featureVersion.equals(featureInstance.getFeatureVersion())) {
-					this.addVersionToModules(featureVersion, modules);
-				}
-			}
-		}
+		Set<Module> modules = configuration.computeModules(maxOrder);
 
 		// initialize the module sets
 		this.presenceCondition.getMinModules().clear();

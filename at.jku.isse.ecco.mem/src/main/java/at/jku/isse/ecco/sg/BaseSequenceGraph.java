@@ -1,65 +1,59 @@
-package at.jku.isse.ecco.sequenceGraph;
+package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import java.io.Serializable;
 import java.util.*;
 
-@Entity
-public class JpaSequenceGraph implements SequenceGraph, Serializable {
+public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.SequenceGraphOperand {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private int id;
+	private transient SequenceGraphOperator operator = new SequenceGraphOperator(this);
 
 
 	private SequenceGraphNode root = null;
 
 	private int cur_seq_number = 1;
 
-	private int cur_best_cost = Integer.MAX_VALUE;
-
 	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
 
 	private boolean pol = true;
 
 
-	public JpaSequenceGraph() {
+	public BaseSequenceGraph() {
 		this.pol = true;
-		this.root = (JpaSequenceGraphNode) this.createSequenceGraphNode(this.pol);
+		this.root = (BaseSequenceGraphNode) this.createSequenceGraphNode(this.pol);
 		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
 	}
 
 
+	@Override
 	public SequenceGraphNode getRoot() {
 		return this.root;
 	}
 
 	@Override
 	public void sequence(Node node) throws EccoException {
-
+		this.operator.sequence(node);
 	}
 
 	@Override
 	public void sequenceNodes(List<Node> nodes) throws EccoException {
-
+		this.operator.sequenceNodes(nodes);
 	}
 
 	@Override
 	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException {
-
+		this.operator.sequenceArtifacts(artifacts);
 	}
 
 	@Override
 	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
-		return new int[0];
+		return this.operator.align(artifacts);
 	}
+
+
+	// operand
 
 	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
 		return this.nodes;
@@ -70,9 +64,9 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 		return this.cur_seq_number;
 	}
 
-	public int nextSequenceNumber() {
+	public int nextSequenceNumber() throws EccoException {
 		if (this.cur_seq_number + 1 < -1)
-			System.out.println("WARNING: sequence number overflow!"); // TODO: use ecco exception and logger here!
+			throw new EccoException("WARNING: sequence number overflow!");
 		return this.cur_seq_number++;
 	}
 
@@ -85,17 +79,9 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 		this.pol = pol;
 	}
 
-	public int getCurrentBestCost() {
-		return this.cur_best_cost;
-	}
-
-	public void setCurrentBestCost(int cost) {
-		this.cur_best_cost = cost;
-	}
-
 
 	public SequenceGraphNode createSequenceGraphNode(boolean pol) {
-		return new JpaSequenceGraphNode(pol);
+		return new BaseSequenceGraphNode(pol);
 	}
 
 
@@ -200,7 +186,7 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 //
 //		// first do the match
 //		if (node_right_index < artifacts.size() && left.getChildren().size() > 0) {
-//			for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
+//			for (Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
 //				// compare artifacts of nodes. this is necessary because left node is already using a sequence number and right is not.
 //				if (entry.getKey().equals(artifacts.get(node_right_index))) {
 //					found_match = true;
@@ -218,7 +204,7 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 //			if (cost + i - node_right_index >= cur_min_cost || cost + i - node_right_index > this.cur_best_cost)
 //				break;
 //			if (i < artifacts.size() && left.getChildren().size() > 0) {
-//				for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
+//				for (Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
 //					// compare artifacts of nodes. this is necessary because left node is already using a sequence number and right is not.
 //					if (entry.getKey().equals(artifacts.get(i))) {
 //						found_match = true;
@@ -239,7 +225,7 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 //		}
 //
 //		if (left.getChildren().size() > 0 && (skipped_right || !found_match)) { // skip left (only if for this left we skipped a right previously for a match)
-//			for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
+//			for (Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {
 //				int temp_cost = this.align_rec_fast(entry.getValue(), artifacts, node_right_index, alignment, cost + 1);
 //				if (temp_cost < cur_min_cost) {
 //					cur_min_cost = temp_cost;
@@ -290,9 +276,9 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 //		// gn.children.putAll(new_children); // NOTE: can this cause a concurrent modification exception?
 //
 //		// for every left child (this is the cutting part)
-//		Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> it = node.getChildren().entrySet().iterator();
+//		Iterator<Entry<Artifact<?>, SequenceGraphNode>> it = node.getChildren().entrySet().iterator();
 //		while (it.hasNext()) {
-//			Map.Entry<Artifact<?>, SequenceGraphNode> entry = it.next();
+//			Entry<Artifact<?>, SequenceGraphNode> entry = it.next();
 //			// if left child unshared we can take it
 //			if (!shared_symbols.contains(entry.getKey())) {
 //				// compute new path

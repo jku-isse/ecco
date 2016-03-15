@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
@@ -332,7 +331,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		public AssociationInfo(Association association) {
 			this.association = association;
 			this.selected = new SimpleBooleanProperty(false);
-			this.numArtifacts = new SimpleIntegerProperty(EccoUtil.countArtifactsInAssociation(association));
+			this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
 		}
 
 		public Association getAssociation() {

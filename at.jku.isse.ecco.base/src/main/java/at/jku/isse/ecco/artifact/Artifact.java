@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
+import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.List;
@@ -19,6 +19,8 @@ public interface Artifact<DataType extends ArtifactData> {
 	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
 
 	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
+
+	public static final String MARKED_FOR_EXTRACTION = "marked";
 
 
 	@Override

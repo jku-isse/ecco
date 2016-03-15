@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
-import at.jku.isse.ecco.sequenceGraph.PerstSequenceGraph;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
+import at.jku.isse.ecco.sg.PerstSequenceGraph;
+import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import org.garret.perst.Persistent;
 

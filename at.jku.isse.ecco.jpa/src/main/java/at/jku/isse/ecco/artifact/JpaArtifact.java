@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
-import at.jku.isse.ecco.sequenceGraph.JpaSequenceGraph;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
+import at.jku.isse.ecco.sg.JpaSequenceGraph;
+import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.JpaNode;
 import at.jku.isse.ecco.tree.Node;
 

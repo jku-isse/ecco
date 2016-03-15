@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraphNode;
+import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.sg.SequenceGraphNode;
 import javafx.embed.swing.SwingNode;
 import javafx.event.EventHandler;
 import javafx.scene.input.ScrollEvent;

@@ -1,17 +1,28 @@
-package at.jku.isse.ecco.sequenceGraph;
+package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.artifact.Artifact;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BaseSequenceGraphNode implements SequenceGraphNode {
+@Entity
+public class JpaSequenceGraphNode implements SequenceGraphNode, Serializable {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private int id;
+
 
 	private HashMap<Artifact<?>, SequenceGraphNode> children = new HashMap<>(); // maybe use linked hash map?
 
 	private boolean pol;
 
-	public BaseSequenceGraphNode(boolean pol) {
+	public JpaSequenceGraphNode(boolean pol) {
 		this.pol = pol;
 	}
 

@@ -1,9 +1,9 @@
-package at.jku.isse.ecco.operator;
+package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraphNode;
+import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.sg.SequenceGraphNode;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;

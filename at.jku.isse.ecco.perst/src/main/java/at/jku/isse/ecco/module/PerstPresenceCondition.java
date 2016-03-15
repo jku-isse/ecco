@@ -4,7 +4,6 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.operator.PresenceConditionOperator;
 import org.garret.perst.Persistent;
 
 import java.util.*;
@@ -55,6 +54,16 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	@Override
 	public void addFeatureVersion(FeatureVersion newFeatureVersion) {
 		this.operator.addFeatureVersion(newFeatureVersion);
+	}
+
+	@Override
+	public void removeFeatureVersion(FeatureVersion featureVersion) {
+		// TODO
+	}
+
+	@Override
+	public void removeModules(Set<Module> modules) {
+		// TODO
 	}
 
 

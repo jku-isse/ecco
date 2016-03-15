@@ -2,10 +2,12 @@ package at.jku.isse.ecco.composition;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.tree.NodeOperator;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -13,6 +15,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * A lazy composition node.
  */
 public class LazyCompositionNode implements Node {
+
+	private transient NodeOperator operator = new NodeOperator(this);
+
 
 	private OrderSelector orderSelector;
 
@@ -169,27 +174,63 @@ public class LazyCompositionNode implements Node {
 
 	@Override
 	public int hashCode() {
-		return artifact != null ? artifact.hashCode() : 0;
+		return this.operator.hashCode();
 	}
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null) return false;
-		if (!(o instanceof Node)) return false;
-
-		Node baseNode = (Node) o;
-
-		if (artifact == null)
-			return baseNode.getArtifact() == null;
-
-		return artifact.equals(baseNode.getArtifact());
+		return this.operator.equals(o);
 	}
 
 	@Override
 	public String toString() {
-		return this.getArtifact().toString();
+		return this.operator.toString();
 	}
 
+
+	@Override
+	public void slice(Node node) {
+		this.operator.slice(node);
+	}
+
+	@Override
+	public void merge(Node node) {
+		this.operator.merge(node);
+	}
+
+	@Override
+	public void sequence() {
+		this.operator.sequence();
+	}
+
+	@Override
+	public void updateArtifactReferences() {
+		this.operator.updateArtifactReferences();
+	}
+
+	@Override
+	public Node extractMarked() {
+		return this.operator.extractMarked();
+	}
+
+	@Override
+	public int countArtifacts() {
+		return this.operator.countArtifacts();
+	}
+
+	@Override
+	public Map<Integer, Integer> countArtifactsPerDepth() {
+		return this.operator.countArtifactsPerDepth();
+	}
+
+	@Override
+	public void print() {
+		this.operator.print();
+	}
+
+	@Override
+	public void checkConsistency() {
+		this.operator.checkConsistency();
+	}
 
 }
