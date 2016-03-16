@@ -210,6 +210,11 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
+	public Node createNode(ArtifactData artifactData) {
+		return this.createNode(this.createArtifact(artifactData));
+	}
+
+	@Override
 	public Node createOrderedNode(final Artifact artifact) {
 		checkNotNull(artifact);
 
@@ -220,6 +225,11 @@ public class PerstEntityFactory implements EntityFactory {
 		artifact.setOrdered(true);
 
 		return node;
+	}
+
+	@Override
+	public Node createOrderedNode(ArtifactData artifactData) {
+		return this.createOrderedNode(this.createArtifact(artifactData));
 	}
 
 	@Override

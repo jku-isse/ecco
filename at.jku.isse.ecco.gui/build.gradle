@@ -16,6 +16,7 @@ dependencies {
 	testCompile project(':at.jku.isse.ecco.text')
 	testCompile project(':at.jku.isse.ecco.image')
 	testCompile project(':at.jku.isse.ecco.php')
+	testCompile project(':at.jku.isse.ecco.java')
 
 	testCompile project(':at.jku.isse.ecco.genericAdapter')
 }

@@ -187,6 +187,14 @@ public interface EntityFactory {
 	public Node createNode(final Artifact artifact);
 
 	/**
+	 * Creates a new node with a new artifact containing the given data.
+	 *
+	 * @param artifactData The artifact data.
+	 * @return The new node.
+	 */
+	public Node createNode(final ArtifactData artifactData);
+
+	/**
 	 * Creates a new empty root node.
 	 *
 	 * @return A new empty root node.
@@ -194,6 +202,8 @@ public interface EntityFactory {
 	public RootNode createRootNode();
 
 	public Node createOrderedNode(final Artifact artifact);
+
+	public Node createOrderedNode(final ArtifactData artifactData);
 
 	/**
 	 * Creates a new empty root node that is contained in the given association.

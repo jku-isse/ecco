@@ -352,6 +352,8 @@ public class Trees {
 	private static void printRec(Node node, String indent) {
 		System.out.println(indent + node.toString());
 		String newIndent = indent + " ";
+		if (node.isAtomic())
+			return;
 		for (Node child : node.getChildren()) {
 			printRec(child, newIndent);
 		}
