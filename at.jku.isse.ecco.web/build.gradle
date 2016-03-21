@@ -2,16 +2,21 @@ ext {
 	eccoModule = true
 }
 
+apply plugin: 'war'
+apply plugin: 'jetty'
+
 dependencies {
+	compile 'org.glassfish.jersey.core:jersey-server:2.22.2'
+	compile 'org.glassfish.jersey.containers:jersey-container-servlet:2.22.2'
+//	compile 'org.glassfish.grizzly:grizzly-http:2.3.24'
+//	compile 'org.glassfish.grizzly:grizzly-http-servlet:2.3.24'
+//	compile 'org.glassfish.grizzly:grizzly-http-server:2.3.24'
+	compile 'javax.servlet:javax.servlet-api:3.1.0'
+
 	compile project(':at.jku.isse.ecco.base')
 
+	//testCompile 'org.eclipse.jetty:jetty-server:9.3.8.v20160314'
+	//testCompile 'org.eclipse.jetty:jetty-runner:9.3.8.v20160314'
+
 	testCompile project(':at.jku.isse.ecco.perst')
-
-	testCompile project(':at.jku.isse.ecco.file')
-	testCompile project(':at.jku.isse.ecco.text')
-	testCompile project(':at.jku.isse.ecco.image')
-	testCompile project(':at.jku.isse.ecco.php')
-	testCompile project(':at.jku.isse.ecco.java')
-
-	testCompile project(':at.jku.isse.ecco.genericAdapter')
 }

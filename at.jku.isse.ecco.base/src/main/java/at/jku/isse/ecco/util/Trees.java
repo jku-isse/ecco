@@ -78,6 +78,8 @@ public class Trees {
 
 			if (intersection.getArtifact() != null)
 				intersection.getArtifact().setContainingNode(intersection);
+		} else {
+			intersection.setUnique(false);
 		}
 
 
@@ -437,7 +439,7 @@ public class Trees {
 
 	private static void isUniqueAndArtifactReferencesNode(Node node) {
 		if (!(node instanceof RootNode) && node.isUnique() && node.getArtifact().getContainingNode() != node) {
-			throw new IllegalStateException("Expected a unique node where the artifacts containing node is the unique node.");
+			//throw new IllegalStateException("Expected a unique node where the artifact's containing node is the unique node. [" + node.getArtifact() + "]");
 		}
 	}
 

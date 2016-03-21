@@ -12,6 +12,7 @@ public class BaseFeatureVersion implements FeatureVersion {
 
 	private Feature feature;
 	private int version;
+	private String description;
 
 	public BaseFeatureVersion(Feature feature, int version) {
 		checkNotNull(feature);
@@ -30,6 +31,11 @@ public class BaseFeatureVersion implements FeatureVersion {
 	@Override
 	public int getVersion() {
 		return this.version;
+	}
+
+	@Override
+	public String getDescription() {
+		return this.description;
 	}
 
 	@Override

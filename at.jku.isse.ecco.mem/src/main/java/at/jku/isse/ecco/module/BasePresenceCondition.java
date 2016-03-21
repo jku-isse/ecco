@@ -67,6 +67,16 @@ public class BasePresenceCondition implements PresenceCondition, PresenceConditi
 		this.operator.addFeatureVersion(newFeatureVersion);
 	}
 
+	@Override
+	public void removeFeatureVersion(FeatureVersion featureVersion) {
+		// TODO
+	}
+
+	@Override
+	public void removeModules(Set<Module> modules) {
+		// TODO
+	}
+
 
 	// operand
 

@@ -15,6 +15,7 @@ public class PerstFeatureVersion extends Persistent implements FeatureVersion {
 
 	private Feature feature;
 	private int version;
+	private String description;
 
 	protected PerstFeatureVersion() {
 		this.feature = null;
@@ -38,6 +39,11 @@ public class PerstFeatureVersion extends Persistent implements FeatureVersion {
 	@Override
 	public int getVersion() {
 		return this.version;
+	}
+
+	@Override
+	public String getDescription() {
+		return this.description;
 	}
 
 	@Override

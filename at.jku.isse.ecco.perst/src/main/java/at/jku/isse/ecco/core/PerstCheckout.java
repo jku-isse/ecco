@@ -17,6 +17,8 @@ public class PerstCheckout extends Persistent implements Checkout {
 	private Set<Module> missing;
 	private Set<Module> surplus;
 
+	private String message;
+
 	public PerstCheckout() {
 		this.warnings = new ArrayList<>();
 		this.missing = new HashSet<>();
@@ -45,6 +47,11 @@ public class PerstCheckout extends Persistent implements Checkout {
 	@Override
 	public Set<Module> getMissing() {
 		return this.missing;
+	}
+
+	@Override
+	public String getMessage() {
+		return this.message;
 	}
 
 }

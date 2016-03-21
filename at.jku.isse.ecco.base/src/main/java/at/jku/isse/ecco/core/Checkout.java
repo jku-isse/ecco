@@ -16,4 +16,6 @@ public interface Checkout {
 
 	public Set<Module> getMissing();
 
+	public String getMessage();
+
 }

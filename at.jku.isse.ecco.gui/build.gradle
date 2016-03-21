@@ -10,15 +10,16 @@ dependencies {
 	compile project(':at.jku.isse.ecco.base')
 
 	testCompile project(':at.jku.isse.ecco.perst')
+	testCompile project(':at.jku.isse.ecco.mem')
 	//testCompile project(':at.jku.isse.ecco.jpa')
 
-	testCompile project(':at.jku.isse.ecco.file')
-	testCompile project(':at.jku.isse.ecco.text')
-	testCompile project(':at.jku.isse.ecco.image')
-	testCompile project(':at.jku.isse.ecco.php')
-	testCompile project(':at.jku.isse.ecco.java')
+	testRuntime project(':at.jku.isse.ecco.file')
+	testRuntime project(':at.jku.isse.ecco.text')
+	testRuntime project(':at.jku.isse.ecco.image')
+	testRuntime project(':at.jku.isse.ecco.php')
+	testRuntime project(':at.jku.isse.ecco.java')
 
-	testCompile project(':at.jku.isse.ecco.genericAdapter')
+	testRuntime project(':at.jku.isse.ecco.genericAdapter')
 }
 
 ospackage {

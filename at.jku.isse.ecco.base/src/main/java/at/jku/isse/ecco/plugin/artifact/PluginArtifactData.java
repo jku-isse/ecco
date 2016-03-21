@@ -1,5 +1,8 @@
 package at.jku.isse.ecco.plugin.artifact;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -55,6 +58,16 @@ public class PluginArtifactData implements ArtifactData {
 
 		return this.getPath().equals(that.getPath());
 
+	}
+
+
+	private void writeObject(ObjectOutputStream out) throws IOException {
+		out.defaultWriteObject();
+	}
+
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+		this.path = Paths.get(this.pathString);
 	}
 
 }

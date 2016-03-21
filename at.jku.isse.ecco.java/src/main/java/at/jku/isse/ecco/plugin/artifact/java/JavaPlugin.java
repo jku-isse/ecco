@@ -18,7 +18,7 @@ public class JavaPlugin extends ArtifactPlugin {
 
 	@Override
 	public String getPluginId() {
-		return JavaModule.class.getName();
+		return JavaPlugin.class.getName();
 	}
 
 	@Override

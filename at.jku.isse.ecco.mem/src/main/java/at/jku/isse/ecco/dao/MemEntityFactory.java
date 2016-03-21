@@ -2,144 +2,230 @@ package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.core.Variant;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleFeature;
-import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.artifact.BaseArtifact;
+import at.jku.isse.ecco.artifact.BaseArtifactReference;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.tree.BaseNode;
+import at.jku.isse.ecco.tree.BaseRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemEntityFactory implements EntityFactory {
 
 	@Override
 	public Configuration createConfiguration() {
-		return null;
+		return new BaseConfiguration();
 	}
 
 	@Override
 	public Variant createVariant() {
-		return null;
+		return new BaseVariant();
 	}
 
 	@Override
 	public Commit createCommit() {
-		return null;
+		return new BaseCommit();
 	}
 
 	@Override
 	public Checkout createCheckout() {
-		return null;
+		return new BaseCheckout();
 	}
 
 	@Override
 	public PresenceCondition createPresenceCondition() {
-		return null;
+		return new BasePresenceCondition();
 	}
 
 	@Override
 	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder) {
-		return null;
+		return new BasePresenceCondition(configuration, maxOrder);
 	}
+
+
+	// # ARTIFACTS ################################################################
 
 	@Override
 	public <T extends ArtifactData> Artifact<T> createArtifact(T data) {
-		return null;
+		return new BaseArtifact<T>(data);
 	}
 
 	@Override
-	public ArtifactReference createArtifactReference(Artifact source, Artifact target) {
-		return null;
+	public ArtifactReference createArtifactReference(final Artifact source, final Artifact target) {
+		checkNotNull(source);
+		checkNotNull(target);
+
+		final ArtifactReference reference = new BaseArtifactReference();
+		reference.setSource(source);
+		reference.setTarget(target);
+
+		return reference;
 	}
 
 	@Override
-	public ArtifactReference createArtifactReference(Artifact source, Artifact target, String type) {
-		return null;
+	public ArtifactReference createArtifactReference(final Artifact source, final Artifact target, final String type) {
+		checkNotNull(source);
+		checkNotNull(target);
+		checkNotNull(type);
+
+		final ArtifactReference reference = new BaseArtifactReference(type);
+		reference.setSource(source);
+		reference.setTarget(target);
+
+		return reference;
+
 	}
+
+
+	// # ASSOCIATIONS ################################################################
 
 	@Override
 	public Association createAssociation() {
-		return null;
+		return new BaseAssociation();
 	}
 
 	@Override
 	public Association createAssociation(PresenceCondition presenceCondition, Set<Node> nodes) {
-		return null;
+		checkNotNull(presenceCondition);
+		checkNotNull(nodes);
+
+		final Association association = new BaseAssociation();
+
+		RootNode rootNode = this.createRootNode();
+		rootNode.setContainingAssociation(association);
+
+		for (Node node : nodes) {
+			rootNode.addChild(node);
+		}
+
+		association.setPresenceCondition(presenceCondition);
+		association.setRootNode(rootNode);
+
+		return association;
+	}
+
+
+	// # FEATURES ################################################################
+
+	@Override
+	public Feature createFeature(final String name) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
+
+		return new BaseFeature(name);
 	}
 
 	@Override
-	public Feature createFeature(String name) {
-		return null;
-	}
+	public Feature createFeature(final String name, final String description) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
+		checkNotNull(description);
 
-	@Override
-	public Feature createFeature(String name, String description) {
-		return null;
+		final Feature feature = new BaseFeature(name);
+		feature.setDescription(description);
+
+		return feature;
 	}
 
 	@Override
 	public FeatureVersion createFeatureVersion(Feature feature, int version) {
-		return null;
+		return new BaseFeatureVersion(feature, version);
 	}
 
 	@Override
-	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
-		return null;
+	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign) {
+		checkNotNull(feature);
+		checkNotNull(featureVersion);
+
+		BaseFeatureInstance featureInstance = new BaseFeatureInstance(feature, featureVersion, sign);
+		return featureInstance;
 	}
 
 	@Override
 	public Module createModule() {
-		return null;
+		return new BaseModule();
 	}
 
 	@Override
 	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
-		return null;
+		return this.createModuleFeature(moduleFeature.getFeature(), moduleFeature, moduleFeature.getSign());
 	}
 
 	@Override
 	public ModuleFeature createModuleFeature(Feature feature, boolean sign) {
-		return null;
+		return this.createModuleFeature(feature, new ArrayList<>(), sign);
 	}
 
 	@Override
 	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
-		return null;
+		return new BaseModuleFeature(feature, featureVersions, sign);
 	}
+
+
+	// # NODES ################################################################
 
 	@Override
 	public Node createNode() {
-		return null;
+		return new BaseNode();
 	}
 
 	@Override
-	public Node createNode(Artifact artifact) {
-		return null;
+	public Node createNode(final Artifact artifact) {
+		checkNotNull(artifact);
+
+		final Node node = new BaseNode();
+		node.setArtifact(artifact);
+		artifact.setContainingNode(node);
+
+		return node;
+	}
+
+	@Override
+	public Node createNode(ArtifactData artifactData) {
+		return this.createNode(this.createArtifact(artifactData));
+	}
+
+	@Override
+	public Node createOrderedNode(final Artifact artifact) {
+		checkNotNull(artifact);
+
+		final Node node = new BaseNode();
+		node.setArtifact(artifact);
+		artifact.setContainingNode(node);
+
+		artifact.setOrdered(true);
+
+		return node;
+	}
+
+	@Override
+	public Node createOrderedNode(ArtifactData artifactData) {
+		return this.createOrderedNode(this.createArtifact(artifactData));
 	}
 
 	@Override
 	public RootNode createRootNode() {
-		return null;
+		return new BaseRootNode();
 	}
 
 	@Override
-	public Node createOrderedNode(Artifact artifact) {
-		return null;
-	}
+	public RootNode createRootNode(final Association association) {
+		checkNotNull(association);
 
-	@Override
-	public RootNode createRootNode(Association association) {
-		return null;
+		final RootNode root = new BaseRootNode();
+		root.setContainingAssociation(association);
+
+		return root;
 	}
 
 }

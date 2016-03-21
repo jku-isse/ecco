@@ -1,7 +1,5 @@
 package at.jku.isse.ecco.tree;
 
-import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
 
 import java.util.Map;
@@ -19,8 +17,10 @@ public class NodeOperator {
 	public String toString() {
 		if (this.node instanceof RootNode)
 			return "root";
-		else
+		else if (this.node.getArtifact() != null)
 			return this.node.getArtifact().toString();
+		else
+			return "null";
 	}
 
 	@Override

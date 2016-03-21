@@ -114,6 +114,7 @@ public class EccoService {
 
 	private Collection<ArtifactPlugin> artifactPlugins;
 	private Collection<DataPlugin> dataPlugins;
+	private DataPlugin dataPlugin;
 
 	private Injector injector;
 
@@ -358,8 +359,9 @@ public class EccoService {
 			if (eccoProperties.getProperty(ECCO_PROPERTIES_DATA) == null) {
 				throw new EccoException("No data plugin specified.");
 			}
-			if (eccoProperties.contains(ECCO_PROPERTIES_ARTIFACT)) {
+			if (eccoProperties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
 				artifactPluginsList = Arrays.asList(eccoProperties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
+				LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
 			}
 
 
@@ -399,8 +401,10 @@ public class EccoService {
 			List<Module> dataModules = new ArrayList<>();
 			List<Module> allDataModules = new ArrayList<>();
 			for (DataPlugin dataPlugin : DataPlugin.getDataPlugins()) {
-				if (dataPlugin.getPluginId().equals(eccoProperties.get(ECCO_PROPERTIES_DATA)))
+				if (dataPlugin.getPluginId().equals(eccoProperties.get(ECCO_PROPERTIES_DATA))) {
 					dataModules.add(dataPlugin.getModule());
+					this.dataPlugin = dataPlugin;
+				}
 				allDataModules.add(dataPlugin.getModule());
 			}
 			LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
