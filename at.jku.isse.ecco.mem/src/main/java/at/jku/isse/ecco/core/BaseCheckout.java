@@ -5,6 +5,7 @@ import at.jku.isse.ecco.module.Module;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 public class BaseCheckout implements Checkout {
@@ -19,6 +20,8 @@ public class BaseCheckout implements Checkout {
 
 	public BaseCheckout() {
 		this.warnings = new ArrayList<>();
+		this.missing = new HashSet<>();
+		this.surplus = new HashSet<>();
 	}
 
 	public void setConfiguration(Configuration configuration) {

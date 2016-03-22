@@ -10,7 +10,6 @@ import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
-import at.jku.isse.ecco.tree.RootNode;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
@@ -177,17 +176,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 						}
 
 						// use composition here to merge selected associations
-						LazyCompositionRootNode rootNode = null;
-						if (!selectedAssociations.isEmpty()) {
-							rootNode = new LazyCompositionRootNode();
-							for (Association association : selectedAssociations) {
-								rootNode.addOrigNode(association.getRootNode());
-							}
+						LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+						for (Association association : selectedAssociations) {
+							rootNode.addOrigNode(association.getRootNode());
 						}
-						final RootNode finalRootNode = rootNode;
-						//final RootNode finalRootNode = selectedAssociations.iterator().next().getRootNode();
 						Platform.runLater(() -> {
-							artifactTreeView.setRootNode(finalRootNode);
+							artifactTreeView.setRootNode(rootNode);
 						});
 
 						Platform.runLater(() -> {

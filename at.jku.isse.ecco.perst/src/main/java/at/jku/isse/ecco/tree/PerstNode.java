@@ -4,9 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import org.garret.perst.Persistent;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -16,7 +14,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstNode extends Persistent implements Node {
+public class PerstNode extends Persistent implements Node, NodeOperator.NodeOperand {
 
 	private transient NodeOperator operator = new NodeOperator(this);
 
@@ -46,6 +44,7 @@ public class PerstNode extends Persistent implements Node {
 
 	@Override
 	public boolean isAtomic() {
+		this.load();
 		if (this.artifact != null)
 			return this.artifact.isAtomic();
 		else
@@ -55,6 +54,7 @@ public class PerstNode extends Persistent implements Node {
 
 	@Override
 	public Association getContainingAssociation() {
+		this.load();
 		if (this.parent == null)
 			return null;
 		else
@@ -64,31 +64,37 @@ public class PerstNode extends Persistent implements Node {
 
 	@Override
 	public Artifact getArtifact() {
+		this.load();
 		return artifact;
 	}
 
 	@Override
 	public void setArtifact(Artifact artifact) {
+		this.load();
 		this.artifact = artifact;
 	}
 
 	@Override
 	public Node getParent() {
+		this.load();
 		return parent;
 	}
 
 	@Override
 	public void setParent(Node parent) {
+		this.load();
 		this.parent = parent;
 	}
 
 	@Override
 	public boolean isUnique() {
+		this.load();
 		return this.unique;
 	}
 
 	@Override
 	public void setUnique(boolean unique) {
+		this.load();
 		this.unique = unique;
 	}
 
@@ -96,6 +102,8 @@ public class PerstNode extends Persistent implements Node {
 	@Override
 	public void addChild(Node child) {
 		checkNotNull(child);
+
+		this.load();
 
 		this.children.add(child);
 		child.setParent(this);
@@ -105,15 +113,40 @@ public class PerstNode extends Persistent implements Node {
 	public void removeChild(Node child) {
 		checkNotNull(child);
 
+		this.load();
+
 		this.children.remove(child);
 	}
 
 
 	@Override
 	public List<Node> getChildren() {
+		this.load();
 		return this.children;
 	}
 
+
+	// properties
+
+	private transient Map<String, Object> properties = new HashMap<>();
+
+	@Override
+	public <T> Optional<T> getProperty(final String name) {
+		return this.operator.getProperty(name);
+	}
+
+	@Override
+	public <T> void putProperty(final String name, final T property) {
+		this.operator.putProperty(name, property);
+	}
+
+	@Override
+	public void removeProperty(String name) {
+		this.operator.removeProperty(name);
+	}
+
+
+	// operations
 
 	@Override
 	public int hashCode() {
@@ -174,6 +207,14 @@ public class PerstNode extends Persistent implements Node {
 	@Override
 	public void checkConsistency() {
 		this.operator.checkConsistency();
+	}
+
+
+	// operand
+
+	@Override
+	public Map<String, Object> getProperties() {
+		return this.properties;
 	}
 
 }

@@ -5,6 +5,7 @@ import at.jku.isse.ecco.core.Association;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * A node in the artifact tree.
@@ -33,7 +34,7 @@ public interface Node {
 	public Node createNode();
 
 
-	// properties
+	// node
 
 	/**
 	 * Returns whether this node is atomic or not.
@@ -111,6 +112,35 @@ public interface Node {
 	 * @return all children
 	 */
 	List<Node> getChildren();
+
+
+	// properties
+
+	/**
+	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
+	 * <p>
+	 * These properties are volatile, i.e. they are not persisted!
+	 *
+	 * @param name of the property that should be retrieved
+	 * @return An optional which contains the actual property or nothing.
+	 */
+	<T> Optional<T> getProperty(String name);
+
+	/**
+	 * Adds a new property. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
+	 * <p>
+	 * These properties are volatile, i.e. they are not persisted!
+	 *
+	 * @param property that should be added
+	 */
+	<T> void putProperty(String name, T property);
+
+	/**
+	 * Removes the property with the given name. If the name could not be found in the map it does nothing.
+	 *
+	 * @param name of the property that should be removed
+	 */
+	void removeProperty(String name);
 
 
 	// operations

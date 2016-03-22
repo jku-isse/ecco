@@ -2,19 +2,17 @@ package at.jku.isse.ecco.composition;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.tree.NodeOperator;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.NodeOperator;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A lazy composition node.
  */
-public class LazyCompositionNode implements Node {
+public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 	private transient NodeOperator operator = new NodeOperator(this);
 
@@ -231,6 +229,34 @@ public class LazyCompositionNode implements Node {
 	@Override
 	public void checkConsistency() {
 		this.operator.checkConsistency();
+	}
+
+
+	// properties
+
+	private transient Map<String, Object> properties = new HashMap<>();
+
+	@Override
+	public <T> Optional<T> getProperty(final String name) {
+		return this.operator.getProperty(name);
+	}
+
+	@Override
+	public <T> void putProperty(final String name, final T property) {
+		this.operator.putProperty(name, property);
+	}
+
+	@Override
+	public void removeProperty(String name) {
+		this.operator.removeProperty(name);
+	}
+
+
+	// operand
+
+	@Override
+	public Map<String, Object> getProperties() {
+		return this.properties;
 	}
 
 }

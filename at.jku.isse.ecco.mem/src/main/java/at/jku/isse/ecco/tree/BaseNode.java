@@ -3,13 +3,11 @@ package at.jku.isse.ecco.tree;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class BaseNode implements Node {
+public class BaseNode implements Node, NodeOperator.NodeOperand {
 
 	private transient NodeOperator operator = new NodeOperator(this);
 
@@ -124,6 +122,28 @@ public class BaseNode implements Node {
 	}
 
 
+	// properties
+
+	private transient Map<String, Object> properties = new HashMap<>();
+
+	@Override
+	public <T> Optional<T> getProperty(final String name) {
+		return this.operator.getProperty(name);
+	}
+
+	@Override
+	public <T> void putProperty(final String name, final T property) {
+		this.operator.putProperty(name, property);
+	}
+
+	@Override
+	public void removeProperty(String name) {
+		this.operator.removeProperty(name);
+	}
+
+
+	// operations
+
 	@Override
 	public void slice(Node node) {
 		this.operator.slice(node);
@@ -167,6 +187,14 @@ public class BaseNode implements Node {
 	@Override
 	public void checkConsistency() {
 		this.operator.checkConsistency();
+	}
+
+
+	// operand
+
+	@Override
+	public Map<String, Object> getProperties() {
+		return this.properties;
 	}
 
 }

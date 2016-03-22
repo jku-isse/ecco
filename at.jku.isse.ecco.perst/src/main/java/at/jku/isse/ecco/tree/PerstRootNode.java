@@ -36,11 +36,13 @@ public class PerstRootNode extends PerstNode implements RootNode {
 
 	@Override
 	public Association getContainingAssociation() {
+		this.load();
 		return this.containingAssociation;
 	}
 
 	@Override
 	public void setContainingAssociation(Association containingAssociation) {
+		this.load();
 		this.containingAssociation = containingAssociation;
 	}
 

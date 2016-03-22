@@ -8,7 +8,7 @@ public class JavaViewer extends BorderPane implements ArtifactViewer {
 
 	@Override
 	public String getPluginId() {
-		return null;
+		return JavaPlugin.class.getName();
 	}
 
 	@Override

@@ -3,12 +3,16 @@ package at.jku.isse.ecco.tree;
 import at.jku.isse.ecco.util.Trees;
 
 import java.util.Map;
+import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class NodeOperator {
 
-	private Node node;
+	private NodeOperand node;
 
-	public NodeOperator(Node node) {
+	public NodeOperator(NodeOperand node) {
 		this.node = node;
 	}
 
@@ -43,7 +47,7 @@ public class NodeOperator {
 	}
 
 
-	// # OPERATIONS #################################################################
+	// # OPERATIONS ####################################################################################################
 
 	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#slice(Node, Node)}
@@ -106,6 +110,49 @@ public class NodeOperator {
 	 */
 	public void checkConsistency() {
 		Trees.checkConsistency(this.node);
+	}
+
+
+	// # PROPERTIES ####################################################################################################
+
+	public <T> Optional<T> getProperty(final String name) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+
+		Optional<T> result = Optional.empty();
+		if (this.node.getProperties().containsKey(name)) {
+			final Object obj = this.node.getProperties().get(name);
+			try {
+				@SuppressWarnings("unchecked")
+				final T item = (T) obj;
+				result = Optional.of(item);
+			} catch (final ClassCastException e) {
+				System.err.println("Expected a different type of the property.");
+			}
+		}
+
+		return result;
+	}
+
+	public <T> void putProperty(final String name, final T property) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+		checkNotNull(property);
+
+		this.node.getProperties().put(name, property);
+	}
+
+	public void removeProperty(String name) {
+		checkNotNull(name);
+
+		this.node.getProperties().remove(name);
+	}
+
+
+	// # INTERFACE #####################################################################################################
+
+	public interface NodeOperand extends Node {
+		public Map<String, Object> getProperties();
 	}
 
 }

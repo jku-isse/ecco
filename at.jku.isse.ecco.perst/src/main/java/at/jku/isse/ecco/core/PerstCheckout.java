@@ -27,6 +27,7 @@ public class PerstCheckout extends Persistent implements Checkout {
 
 	public void setConfiguration(Configuration configuration) {
 		this.configuration = configuration;
+		this.message = "";
 	}
 
 	@Override

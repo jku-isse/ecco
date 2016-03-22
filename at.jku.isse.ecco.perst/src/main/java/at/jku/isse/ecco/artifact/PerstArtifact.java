@@ -252,7 +252,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 	// properties
 
-	private Map<String, Object> properties = new HashMap<>();
+	private transient Map<String, Object> properties = new HashMap<>();
 
 	@Override
 	public <T> Optional<T> getProperty(final String name) {

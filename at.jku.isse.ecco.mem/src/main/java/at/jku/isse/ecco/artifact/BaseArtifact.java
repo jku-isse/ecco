@@ -223,7 +223,7 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 	// properties
 
-	private Map<String, Object> properties = new HashMap<>();
+	private transient Map<String, Object> properties = new HashMap<>();
 
 	@Override
 	public <T> Optional<T> getProperty(final String name) {

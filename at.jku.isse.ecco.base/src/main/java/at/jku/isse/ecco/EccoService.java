@@ -717,7 +717,8 @@ public class EccoService {
 			} catch (Exception e) {
 				this.transactionStrategy.rollback();
 
-				throw new EccoException(e.getMessage());
+				//throw new EccoException(e.getMessage());
+				throw e;
 			}
 
 			// fire event
@@ -998,6 +999,8 @@ public class EccoService {
 			this.transactionStrategy.commit();
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
+
+			throw e;
 		}
 
 
