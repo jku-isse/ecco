@@ -33,6 +33,8 @@ import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ArtifactGraphView extends BorderPane implements EccoListener {
 
@@ -93,6 +95,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		depthFadeCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
 			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
 				ArtifactGraphView.this.depthFade = new_val;
+				ArtifactGraphView.this.updateNodesAndEdgesStyles(new_val);
 			}
 		});
 
@@ -152,6 +155,41 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	}
 
 
+	private void updateNodesAndEdgesStyles(boolean depthFade) {
+		for (Node node : this.graph.getNodeSet()) {
+			int depth = node.getAttribute(DEPTH_ATTRIBUTE);
+
+			int size = DEFAULT_SIZE;
+			if (node.hasAttribute(SUCCESSOR_COUNT_ATTRIBUTE)) {
+				int successorsCount = node.getAttribute(SUCCESSOR_COUNT_ATTRIBUTE);
+				size = (int) ((double) MIN_SIZE + ((double) successorsCount) / (double) (this.maxSuccessorsCount) * (double) (MAX_SIZE - MIN_SIZE));
+			}
+
+			if (depthFade) {
+				int colorValue = (int) (((double) depth) * 200.0 / ((double) this.maxDepth));
+				node.setAttribute("ui.style", "size: " + size + "px; fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
+				node.removeAttribute("ui.class");
+			} else {
+				node.setAttribute("ui.style", "size: " + size + "px;");
+				if (node.hasAttribute(ASSOC_ID_ATTRIBUTE))
+					node.setAttribute("ui.class", "A" + ((node.<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+			}
+		}
+
+		for (Edge edge : this.graph.getEdgeSet()) {
+			int depth = edge.getAttribute(DEPTH_ATTRIBUTE);
+			int colorValue = (int) (((double) depth) * 200.0 / ((double) this.maxDepth));
+			if (depthFade) {
+				edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
+				edge.removeAttribute("ui.class");
+			} else {
+				if (edge.hasAttribute(ASSOC_ID_ATTRIBUTE))
+					edge.addAttribute("ui.class", "A" + ((edge.<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+				edge.removeAttribute("ui.style");
+			}
+		}
+	}
+
 	private void updateGraphStylehseet(boolean showLabels) {
 		String textMode = "text-mode: normal; ";
 		if (!showLabels)
@@ -159,7 +197,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 		this.graph.addAttribute("ui.stylesheet",
 				"edge { size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
-						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: 10px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } " +
+						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: " + DEFAULT_SIZE + "px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } " +
 						"edge.A1 { fill-color: #ffaaaa; } " +
 						"edge.A2 { fill-color: #aaffaa; } " +
 						"edge.A3 { fill-color: #aaaaff; } " +
@@ -190,9 +228,9 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		this.graph.addAttribute("ui.quality");
 		this.graph.addAttribute("ui.antialias");
 
-		this.updateGraphStylehseet(showLabels);
-
 		this.artifactCount = 0;
+		this.maxSuccessorsCount = 0;
+		this.maxDepth = 0;
 
 		// traverse trees and add nodes
 //		for (Association association : this.service.getAssociations()) {
@@ -202,7 +240,10 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		for (Association association : this.service.getAssociations()) {
 			compRootNode.addOrigNode(association.getRootNode());
 		}
-		this.traverseTree(compRootNode, 0, depthFade, showLabels);
+		this.traverseTree(compRootNode, 0);
+
+		this.updateNodesAndEdgesStyles(depthFade);
+		this.updateGraphStylehseet(showLabels);
 
 		while (this.layout.getStabilization() < 0.9) {
 			System.out.println(this.layout.getStabilization());
@@ -219,26 +260,100 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 
 	private static final int CHILD_COUNT_LIMIT = 100;
+	private static final int MAX_SIZE = 100;
+	private static final int MIN_SIZE = 30;
+	private static final int DEFAULT_SIZE = 20;
+	private static final String SUCCESSOR_COUNT_ATTRIBUTE = "artifactsCount";
+	private static final String DEPTH_ATTRIBUTE = "depth";
+	private static final String ASSOC_ID_ATTRIBUTE = "assocId";
 
 	private int artifactCount = 0;
+	private int maxSuccessorsCount = 0;
+	private int maxDepth = 0;
 
-	private Node traverseTree(at.jku.isse.ecco.tree.Node eccoNode, int depth, boolean depthFade, boolean showLabels) {
-		int colorValue = (int) (Math.min(1.0, depth / 8.0) * 200.0);
+	private void groupArtifactsByAssocRec(at.jku.isse.ecco.tree.Node eccoNode, Map<Association, Integer> groupMap) {
+		for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
+			if (eccoChildNode.getArtifact() != null) {
+				Association childContainingAssociation = eccoChildNode.getArtifact().getContainingNode().getContainingAssociation();
+				if (childContainingAssociation != null) {
+					if (groupMap.containsKey(childContainingAssociation)) {
+						int groupCount = groupMap.get(childContainingAssociation);
+						groupCount++;
+						groupMap.put(childContainingAssociation, groupCount);
+					} else {
+						groupMap.put(childContainingAssociation, 1);
+					}
+				}
+			}
+			this.groupArtifactsByAssocRec(eccoChildNode, groupMap);
+		}
+	}
+
+	private Node traverseTree(at.jku.isse.ecco.tree.Node eccoNode, int depth) {
+		int assocId = 0;
 
 		Node graphNode = null;
 		if (eccoNode.getArtifact() != null) {
 			this.artifactCount++;
 
-			graphNode = this.graph.addNode(String.valueOf(artifactCount));
-			if (depthFade) {
-				if (eccoNode.getChildren().size() < CHILD_COUNT_LIMIT)
-					graphNode.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
-				else
-					graphNode.addAttribute("ui.style", "size: " + Math.min(200, eccoNode.getChildren().size()) + "px; fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
-			} else {
-				if (eccoNode.getChildren().size() >= CHILD_COUNT_LIMIT)
-					graphNode.addAttribute("ui.style", "size: " + Math.min(200, eccoNode.getChildren().size()) + "px;");
-				graphNode.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
+			graphNode = this.graph.addNode(String.valueOf(this.artifactCount));
+			graphNode.addAttribute(DEPTH_ATTRIBUTE, depth);
+			assocId = eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId();
+			graphNode.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+			if (this.maxDepth < depth)
+				this.maxDepth = depth;
+
+//			if (depthFade) {
+//				graphNode.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
+//			} else {
+//				graphNode.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
+//			}
+
+			if (eccoNode.getChildren().size() >= CHILD_COUNT_LIMIT) {
+				// group children by association
+				Map<Association, Integer> groupMap = new HashMap<>();
+				this.groupArtifactsByAssocRec(eccoNode, groupMap);
+//				for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
+//					if (eccoChildNode.getArtifact() != null) {
+//						Association childContainingAssociation = eccoChildNode.getArtifact().getContainingNode().getContainingAssociation();
+//						if (childContainingAssociation != null) {
+//							int childContainedArtifactsCount = eccoChildNode.getArtifact().getContainingNode().countArtifacts();
+//							if (groupMap.containsKey(childContainingAssociation)) {
+//								int groupCount = groupMap.get(childContainingAssociation);
+//								groupCount += childContainedArtifactsCount;
+//								groupMap.put(childContainingAssociation, groupCount);
+//							} else {
+//								groupMap.put(childContainingAssociation, childContainedArtifactsCount);
+//							}
+//						}
+//					}
+//				}
+				// add one child node per group
+				for (Map.Entry<Association, Integer> entry : groupMap.entrySet()) {
+					this.artifactCount++;
+					Node graphChildNode = this.graph.addNode(String.valueOf(this.artifactCount));
+					graphChildNode.setAttribute("label", "[" + entry.getValue() + "]");
+//					if (depthFade) {
+//						int childColorValue = (int) (Math.min(1.0, (depth + 1) / 8.0) * 200.0);
+//						graphChildNode.addAttribute("ui.style", "size: " + Math.min(MAX_SIZE, entry.getValue()) + "px; fill-color: rgb(" + childColorValue + ", " + childColorValue + ", " + childColorValue + ");");
+//					} else {
+//						graphChildNode.addAttribute("ui.style", "size: " + Math.min(MAX_SIZE, entry.getValue()) + "px;");
+//						graphChildNode.addAttribute("ui.class", "A" + ((entry.getKey().getId() % 7) + 1));
+//					}
+//					if (!depthFade) {
+//						graphChildNode.addAttribute("ui.class", "A" + ((entry.getKey().getId() % 7) + 1));
+//					}
+					graphChildNode.addAttribute(SUCCESSOR_COUNT_ATTRIBUTE, entry.getValue());
+					graphChildNode.addAttribute(DEPTH_ATTRIBUTE, depth + 1);
+					graphChildNode.addAttribute(ASSOC_ID_ATTRIBUTE, entry.getKey().getId());
+
+					if (this.maxSuccessorsCount < entry.getValue())
+						this.maxSuccessorsCount = entry.getValue();
+
+					Edge edge = this.graph.addEdge(graphNode.getId() + "-" + graphChildNode.getId(), graphNode, graphChildNode, true);
+					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
+					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+				}
 			}
 
 			if (eccoNode.getArtifact().getData() instanceof PluginArtifactData) {
@@ -251,15 +366,16 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 		if (eccoNode.getChildren().size() < CHILD_COUNT_LIMIT) {
 			for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
-				Node graphChildNode = this.traverseTree(eccoChildNode, depth + 1, depthFade, showLabels);
+				Node graphChildNode = this.traverseTree(eccoChildNode, depth + 1);
 
 				if (graphChildNode != null && graphNode != null) {
 					Edge edge = this.graph.addEdge(graphNode.getId() + "-" + graphChildNode.getId(), graphNode, graphChildNode, true);
-					if (depthFade)
-						edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
-					else
-						//edge.addAttribute("ui.class", "A" + assocId);
-						edge.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
+					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
+					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+//					if (depthFade)
+//						edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
+//					else
+//						edge.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() % 7) + 1));
 				}
 			}
 		}

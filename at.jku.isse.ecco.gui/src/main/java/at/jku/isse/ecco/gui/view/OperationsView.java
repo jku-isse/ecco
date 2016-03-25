@@ -23,6 +23,8 @@ import javafx.geometry.Orientation;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 
 import java.nio.file.Path;
 
@@ -49,9 +51,14 @@ public class OperationsView extends BorderPane implements EccoListener {
 		Button commitButton = new Button("Commit");
 		Button checkoutButton = new Button("Checkout");
 
+		HBox configurationStringHbox = new HBox(); // TODO: make this expand to take up the remaining width of the toolbar
+		configurationStringHbox.getChildren().add(configurationStringInput);
+		configurationStringHbox.setHgrow(configurationStringInput, Priority.ALWAYS);
+
 		ToolBar toolBar = new ToolBar();
-		toolBar.getItems().addAll(configurationStringLabel, configurationStringInput, commitButton, checkoutButton);
+		toolBar.getItems().addAll(configurationStringLabel, configurationStringHbox, commitButton, checkoutButton);
 		this.setTop(toolBar);
+
 
 		commitButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override

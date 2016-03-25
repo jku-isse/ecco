@@ -55,7 +55,7 @@ public class PerstRootNode extends PerstNode implements RootNode {
 
 	@Override
 	public boolean recursiveLoading() {
-		return false;
+		return true;
 	}
 
 }

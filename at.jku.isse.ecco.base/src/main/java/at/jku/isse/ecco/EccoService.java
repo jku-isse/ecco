@@ -350,7 +350,7 @@ public class EccoService {
 				try {
 					eccoProperties.load(inputStream);
 				} catch (IOException e) {
-					throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES + "'.");
+					throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES + "'.", e);
 				}
 			} else {
 				throw new EccoException("Property file '" + ECCO_PROPERTIES + "' not found in the classpath.");
@@ -522,7 +522,7 @@ public class EccoService {
 				String configurationString = new String(Files.readAllBytes(configFile));
 				return this.commit(configurationString);
 			} catch (IOException e) {
-				throw new EccoException(e.getMessage());
+				throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
 			}
 		}
 	}
@@ -717,8 +717,7 @@ public class EccoService {
 			} catch (Exception e) {
 				this.transactionStrategy.rollback();
 
-				//throw new EccoException(e.getMessage());
-				throw e;
+				throw new EccoException("Error during commit.", e);
 			}
 
 			// fire event
@@ -883,9 +882,8 @@ public class EccoService {
 			this.commitDao.init();
 			return this.commitDao.loadAllCommits();
 		} catch (EccoException e) {
-			e.printStackTrace();
+			throw new EccoException("Error when retrieving commits.", e);
 		}
-		return null;
 	}
 
 	/**
@@ -898,9 +896,8 @@ public class EccoService {
 			this.associationDao.init();
 			return this.associationDao.loadAllAssociations();
 		} catch (EccoException e) {
-			e.printStackTrace();
+			throw new EccoException("Error when retrieving associations.", e);
 		}
-		return null;
 	}
 
 	/**
@@ -913,9 +910,8 @@ public class EccoService {
 			this.featureDao.init();
 			return this.featureDao.loadAllFeatures();
 		} catch (EccoException e) {
-			e.printStackTrace();
+			throw new EccoException("Error when retrieving features.", e);
 		}
-		return null;
 	}
 
 	/**
@@ -1000,7 +996,7 @@ public class EccoService {
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
 
-			throw e;
+			throw new EccoException("Error during deletion of commit.", e);
 		}
 
 

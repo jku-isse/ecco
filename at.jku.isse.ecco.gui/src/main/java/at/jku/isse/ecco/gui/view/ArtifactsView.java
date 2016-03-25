@@ -58,8 +58,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		Button selectAllButton = new Button("Select All");
 		toolBar.getItems().add(selectAllButton);
 
+		Button unselectAllButton = new Button("Unselect All");
+		toolBar.getItems().add(unselectAllButton);
+
 		Button checkoutSelectedButton = new Button("Checkout Selected");
 		toolBar.getItems().add(checkoutSelectedButton);
+
+
+		CheckBox showBelowAtomic = new CheckBox("Show Artifacts Below Atomic");
+		toolBar.getItems().add(showBelowAtomic);
 
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
