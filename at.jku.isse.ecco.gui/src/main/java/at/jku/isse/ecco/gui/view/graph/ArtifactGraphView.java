@@ -177,14 +177,15 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		}
 
 		for (Edge edge : this.graph.getEdgeSet()) {
-			int depth = edge.getAttribute(DEPTH_ATTRIBUTE);
+			//int depth = edge.getAttribute(DEPTH_ATTRIBUTE);
+			int depth = edge.getSourceNode().getAttribute(DEPTH_ATTRIBUTE);
 			int colorValue = (int) (((double) depth) * 200.0 / ((double) this.maxDepth));
 			if (depthFade) {
 				edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
 				edge.removeAttribute("ui.class");
 			} else {
-				if (edge.hasAttribute(ASSOC_ID_ATTRIBUTE))
-					edge.addAttribute("ui.class", "A" + ((edge.<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+				if (edge.getSourceNode().hasAttribute(ASSOC_ID_ATTRIBUTE))
+					edge.addAttribute("ui.class", "A" + ((edge.getSourceNode().<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
 				edge.removeAttribute("ui.style");
 			}
 		}
@@ -351,8 +352,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 						this.maxSuccessorsCount = entry.getValue();
 
 					Edge edge = this.graph.addEdge(graphNode.getId() + "-" + graphChildNode.getId(), graphNode, graphChildNode, true);
-					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
-					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+//					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
+//					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
 				}
 			}
 
@@ -370,8 +371,9 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 				if (graphChildNode != null && graphNode != null) {
 					Edge edge = this.graph.addEdge(graphNode.getId() + "-" + graphChildNode.getId(), graphNode, graphChildNode, true);
-					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
-					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+//					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
+//					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+
 //					if (depthFade)
 //						edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
 //					else
