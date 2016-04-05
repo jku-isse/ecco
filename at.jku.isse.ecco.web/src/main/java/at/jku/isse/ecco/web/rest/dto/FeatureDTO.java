@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.web.dto;
+package at.jku.isse.ecco.web.rest.dto;
 
 public class FeatureDTO {
 

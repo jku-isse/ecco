@@ -1,9 +1,9 @@
-package at.jku.isse.ecco.web;
+package at.jku.isse.ecco.web.server;
 
+import at.jku.isse.ecco.web.rest.EccoApplication;
 import org.glassfish.grizzly.http.server.CLStaticHttpHandler;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
-import org.glassfish.jersey.server.ResourceConfig;
 
 import java.io.IOException;
 import java.net.URI;
@@ -22,25 +22,29 @@ public class EccoWebServer {
 		protocol = "http://";
 		host = Optional.ofNullable(System.getenv("HOSTNAME"));
 		port = Optional.ofNullable(System.getenv("PORT"));
-		path = "myapp";
+		path = "ecco";
 		BASE_URI = protocol + host.orElse("localhost") + ":" + port.orElse("8080") + "/" + path + "/";
 	}
 
-	/**
-	 * Starts Grizzly HTTP server exposing JAX-RS resources defined in this application.
-	 *
-	 * @return Grizzly HTTP server.
-	 */
-	public static HttpServer startServer() throws IOException {
+	public static void main(String[] args) throws IOException, InterruptedException {
+		// TODO: cli parameters for path to repo and port (e.g. "ecco-web --port=8080 --repo=/home/user/repo" or "ecco-web -p 8080 -r /home/user/repo")
+		String repositoryDir = "<url>";
+
+
 		// create a resource config that scans for JAX-RS resources and providers in at.jku.isse.ecco.web package
-		final ResourceConfig rc = new ResourceConfig().packages("at.jku.isse.ecco.web");
+		final EccoApplication eccoApplication = new EccoApplication();
+		eccoApplication.init(repositoryDir);
+
+		/**
+		 * There are two ways to initialize the ecco service:
+		 * - here when starting grizzly using cli parameters.
+		 * - in the servlet context listener using web.xml parameters.
+		 * put this into a reusable (util) method that is used in both places!
+		 */
+
 
 		// create and start a new instance of grizzly http server exposing the Jersey application at BASE_URI
-		HttpServer httpServer = GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), rc);
-
-		//httpServer.getServerConfiguration().addHttpHandler(new CLStaticHttpHandler(new URLClassLoader(new URL[]{new URL("file:///home/username/staticfiles.jar")})), "/www");
-
-		//Main.class.getClassLoader().getResource("templates/static").getPath()
+		final HttpServer httpServer = GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), eccoApplication);
 
 		CLStaticHttpHandler staticHttpHandler = new CLStaticHttpHandler(EccoWebServer.class.getClassLoader(), "/www/");
 		httpServer.getServerConfiguration().addHttpHandler(staticHttpHandler);
@@ -54,23 +58,12 @@ public class EccoWebServer {
 
 		httpServer.start();
 
-		return httpServer;
-	}
 
-	/**
-	 * Main method.
-	 *
-	 * @param args
-	 * @throws IOException
-	 */
-	public static void main(String[] args) throws IOException, InterruptedException {
-		final HttpServer server = startServer();
-		System.out.println(String.format("Jersey app started with WADL available at %sapplication.wadl\nHit enter to stop it...", BASE_URI));
+		System.out.println(String.format("Jersey app started with WADL available at %sapplication.wadl\n", BASE_URI));
 
 		Thread.currentThread().join();
 
-//		System.in.read();
-//		server.stop();
+		eccoApplication.destroy();
 	}
 
 }

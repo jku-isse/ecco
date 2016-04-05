@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.web;
+package at.jku.isse.ecco.web.server;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;

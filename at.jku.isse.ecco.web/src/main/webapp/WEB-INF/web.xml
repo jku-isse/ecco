@@ -8,7 +8,7 @@
 	</context-param>
 
 	<listener>
-		<listener-class>at.jku.isse.ecco.web.ApplicationState</listener-class>
+		<listener-class>at.jku.isse.ecco.web.rest.EccoServletContextListener</listener-class>
 	</listener>
 
 </web-app>
