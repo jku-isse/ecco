@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.web.rest;
 
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.web.server.CorsFilter;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import javax.ws.rs.ApplicationPath;
@@ -15,6 +16,8 @@ public class EccoApplication extends ResourceConfig {
 		packages("at.jku.isse.ecco.web.rest");
 
 		property("eccoService", this.eccoService);
+
+		register(CorsFilter.class);
 	}
 
 	public EccoService getEccoService() {

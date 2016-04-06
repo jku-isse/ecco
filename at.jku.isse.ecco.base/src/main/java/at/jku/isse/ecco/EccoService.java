@@ -72,6 +72,9 @@ public class EccoService {
 	}
 
 	public void setRepositoryDir(Path repositoryDir) {
+		if (this.initialized)
+			throw new EccoException("The repository directory cannot be changed after the service has been initialized.");
+
 		if (!this.repositoryDir.equals(repositoryDir)) {
 			this.repositoryDir = repositoryDir;
 			this.fireStatusChangedEvent();
