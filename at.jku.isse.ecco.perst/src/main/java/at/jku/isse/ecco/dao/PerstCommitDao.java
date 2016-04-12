@@ -86,6 +86,9 @@ public class PerstCommitDao extends PerstAbstractGenericDao<Commit> implements C
 			commitIndex.set(commit);
 		}
 
+		//commit.store();
+		commit.modify();
+
 		this.transactionStrategy.done();
 
 		return commit;

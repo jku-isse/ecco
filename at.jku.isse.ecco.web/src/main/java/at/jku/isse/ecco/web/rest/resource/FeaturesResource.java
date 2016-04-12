@@ -79,7 +79,8 @@ public class FeaturesResource extends EccoResource {
 			}
 		}
 
-		return null;
+		throw new NotFoundException();
+		//return null;
 	}
 
 	@GET
@@ -103,7 +104,8 @@ public class FeaturesResource extends EccoResource {
 			}
 		}
 
-		return null;
+		throw new NotFoundException();
+		//return null;
 	}
 
 	@GET
@@ -128,7 +130,9 @@ public class FeaturesResource extends EccoResource {
 			}
 		}
 
-		return null;
+		//throw new WebApplicationException(404);
+		throw new NotFoundException();
+		//return null;
 	}
 
 }

@@ -93,10 +93,9 @@ public class SequenceGraphView extends BorderPane {
 		this.traverseSequenceGraph(sg.getRoot(), root, "", new HashSet<Artifact<?>>());
 
 
-		while (this.layout.getStabilization() < 0.9) {
-			System.out.println(this.layout.getStabilization());
-			this.layout.compute();
-		}
+//		while (this.layout.getStabilization() < 0.9) {
+//			this.layout.compute();
+//		}
 
 
 		this.graph.addSink(this.layout);

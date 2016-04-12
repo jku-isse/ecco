@@ -81,12 +81,12 @@ public class ImageWriter implements ArtifactWriter<Set<Node>, Path> {
 
 						int color = 0;
 						if (posNode.getChildren().size() <= 0) {
-							System.out.println("There is no color for pos (" + x + ", " + y + ").");
+							//System.out.println("There is no color for pos (" + x + ", " + y + ").");
 							// color = 0;
 							color = defaultColor;
 						} else {
 							if (posNode.getChildren().size() > 1) {
-								System.out.println("There is more than one color for pos (" + x + ", " + y + "). Picking the first one.");
+								//System.out.println("There is more than one color for pos (" + x + ", " + y + "). Picking the first one.");
 							}
 
 							int alpha = 0;
@@ -134,8 +134,8 @@ public class ImageWriter implements ArtifactWriter<Set<Node>, Path> {
 						String fileType = fileName.substring(fileName.lastIndexOf(".") + 1, fileName.length());
 						ImageIO.write(outputImage, fileType, outputPath.toFile());
 
-						System.out.println(outputImage.getColorModel());
-						System.out.println(outputImage.getType());
+						//System.out.println(outputImage.getColorModel());
+						//System.out.println(outputImage.getType());
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

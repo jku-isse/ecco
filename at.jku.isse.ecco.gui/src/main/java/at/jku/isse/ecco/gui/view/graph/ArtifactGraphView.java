@@ -246,11 +246,9 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		this.updateNodesAndEdgesStyles(depthFade);
 		this.updateGraphStylehseet(showLabels);
 
-		while (this.layout.getStabilization() < 0.9) {
-			System.out.println(this.layout.getStabilization());
-			this.layout.compute();
-		}
-		System.out.println(this.layout.getStabilization());
+//		while (this.layout.getStabilization() < 0.9) {
+//			this.layout.compute();
+//		}
 
 
 		this.graph.addSink(this.layout);

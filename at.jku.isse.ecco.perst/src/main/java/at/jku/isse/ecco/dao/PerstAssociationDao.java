@@ -6,6 +6,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.PerstAssociation;
 import at.jku.isse.ecco.module.PerstPresenceCondition;
 import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.sg.PerstSequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.PerstNode;
 import at.jku.isse.ecco.tree.PerstRootNode;
@@ -158,8 +159,12 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 			for (Node child : node.getChildren()) {
 				this.saveNode(child);
 			}
-			if (node.getArtifact() != null)
+			if (node.getArtifact() != null) {
 				((PerstArtifact) node.getArtifact()).store();
+				if (node.getArtifact().getSequenceGraph() != null && node.getArtifact().getSequenceGraph() instanceof PerstSequenceGraph) {
+					((PerstSequenceGraph) node.getArtifact().getSequenceGraph()).storeRecursively();
+				}
+			}
 			//this.closeDatabase();
 			return node;
 		} else if (entity instanceof PerstRootNode) {
@@ -169,8 +174,12 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 			for (Node child : node.getChildren()) {
 				this.saveNode(child);
 			}
-			if (node.getArtifact() != null)
+			if (node.getArtifact() != null) {
 				((PerstArtifact) node.getArtifact()).store();
+				if (node.getArtifact().getSequenceGraph() instanceof PerstSequenceGraph) {
+					((PerstSequenceGraph) node.getArtifact().getSequenceGraph()).storeRecursively();
+				}
+			}
 			//this.closeDatabase();
 			return node;
 		}

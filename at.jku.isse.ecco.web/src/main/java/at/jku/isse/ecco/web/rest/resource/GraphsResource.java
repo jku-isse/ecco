@@ -51,7 +51,7 @@ public class GraphsResource {
 
 		// compute graph
 		if (maxChildren > 0)
-			this.maxChildren = 0;
+			this.maxChildren = maxChildren;
 		this.updateGraph();
 		return this.graph;
 	}

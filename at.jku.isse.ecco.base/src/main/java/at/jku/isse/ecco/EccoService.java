@@ -579,6 +579,15 @@ public class EccoService {
 		// TODO: set the correct configuration (i.e. the one with the replaced feature instances) here!
 		Commit commit = this.commit(association);
 		commit.setConfiguration(configuration);
+		try {
+			this.transactionStrategy.begin();
+			commit = this.commitDao.save(commit);
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error during commit.", e);
+		}
 
 
 		// PRESENCE TABLE
@@ -775,34 +784,42 @@ public class EccoService {
 //
 //		}
 
-		// collect new features and feature versions and add them to the repository
-		Set<Feature> newFeatures = new HashSet<Feature>();
-		Set<FeatureVersion> newFeatureVersions = new HashSet<FeatureVersion>();
-		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-			Feature repoFeature = this.featureDao.load(featureInstance.getFeature().getName());
-			if (repoFeature == null) {
-				newFeatures.add(featureInstance.getFeature());
-				this.featureDao.save(featureInstance.getFeature()); // save new feature including all its versions
-			} else {
-				if (!repoFeature.getVersions().contains(featureInstance.getFeatureVersion())) {
-					FeatureVersion repoFeatureVersion = this.entityFactory.createFeatureVersion(repoFeature, featureInstance.getFeatureVersion().getVersion());
-					newFeatureVersions.add(repoFeatureVersion);
-					repoFeature.addVersion(repoFeatureVersion);
-					this.featureDao.save(repoFeature); // save repo feature now containing new version
+		try {
+			this.transactionStrategy.begin();
+
+			// collect new features and feature versions and add them to the repository
+			Set<Feature> newFeatures = new HashSet<Feature>();
+			Set<FeatureVersion> newFeatureVersions = new HashSet<FeatureVersion>();
+			for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
+				Feature repoFeature = this.featureDao.load(featureInstance.getFeature().getName());
+				if (repoFeature == null) {
+					newFeatures.add(featureInstance.getFeature());
+					this.featureDao.save(featureInstance.getFeature()); // save new feature including all its versions
+				} else {
+					if (!repoFeature.getVersions().contains(featureInstance.getFeatureVersion())) {
+						FeatureVersion repoFeatureVersion = this.entityFactory.createFeatureVersion(repoFeature, featureInstance.getFeatureVersion().getVersion());
+						newFeatureVersions.add(repoFeatureVersion);
+						repoFeature.addVersion(repoFeatureVersion);
+						this.featureDao.save(repoFeature); // save repo feature now containing new version
+					}
 				}
 			}
-		}
 
-		// update existing associations with new (features and) feature versions. NOTE: update with negative features is not necessary if the configurations contain also all the negative features!
-		Collection<Association> associations = this.associationDao.loadAllAssociations();
-		for (Association association : associations) {
-			for (FeatureVersion newFeatureVersion : newFeatureVersions) {
-				association.getPresenceCondition().addFeatureVersion(newFeatureVersion);
+			// update existing associations with new (features and) feature versions. NOTE: update with negative features is not necessary if the configurations contain also all the negative features!
+			Collection<Association> associations = this.associationDao.loadAllAssociations();
+			for (Association association : associations) {
+				for (FeatureVersion newFeatureVersion : newFeatureVersions) {
+					association.getPresenceCondition().addFeatureVersion(newFeatureVersion);
+				}
 			}
-		}
 
 //		// return new configuration containing features and versions from the repository where they existed
 //		return newConfiguration;
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+			throw new EccoException("Error when adding configuration.", e);
+		}
 	}
 
 
@@ -887,8 +904,12 @@ public class EccoService {
 	public Collection<Commit> getCommits() {
 		try {
 			this.commitDao.init();
-			return this.commitDao.loadAllCommits();
+			this.transactionStrategy.begin();
+			List<Commit> commits = this.commitDao.loadAllCommits();
+			this.transactionStrategy.commit();
+			return commits;
 		} catch (EccoException e) {
+			this.transactionStrategy.rollback();
 			throw new EccoException("Error when retrieving commits.", e);
 		}
 	}
@@ -901,8 +922,12 @@ public class EccoService {
 	public Collection<Association> getAssociations() {
 		try {
 			this.associationDao.init();
-			return this.associationDao.loadAllAssociations();
+			this.transactionStrategy.begin();
+			List<Association> associations = this.associationDao.loadAllAssociations();
+			this.transactionStrategy.commit();
+			return associations;
 		} catch (EccoException e) {
+			this.transactionStrategy.rollback();
 			throw new EccoException("Error when retrieving associations.", e);
 		}
 	}
@@ -915,8 +940,12 @@ public class EccoService {
 	public Collection<Feature> getFeatures() {
 		try {
 			this.featureDao.init();
-			return this.featureDao.loadAllFeatures();
+			this.transactionStrategy.begin();
+			Set<Feature> features = this.featureDao.loadAllFeatures();
+			this.transactionStrategy.commit();
+			return features;
 		} catch (EccoException e) {
+			this.transactionStrategy.rollback();
 			throw new EccoException("Error when retrieving features.", e);
 		}
 	}
