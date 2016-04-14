@@ -28,4 +28,4 @@ But be aware that the input string to the parser needs to be already tokenized, 
 <br>
 ## ECCO Adapter
 
-The ECCO Adapter makes use of the Grammar Inference module and can be used as any other ECCO Adapter, by adding [GenericAdapterReader](src/main/java/at/jku/isse/ecco/genericAdapter/eccoModelAdapter/builder/GenericAdapterReader.java) and [GenericAdapterWriter](src/main/java/at/jku/isse/ecco/genericAdapter/eccoModelAdapter/builder/GenericAdapterWriter.java) to the dependencies. New type strategy imlementations need to be registered in both classes.
+The ECCO Adapter makes use of the Grammar Inference module and can be used as any other ECCO Adapter, by adding [GenericAdapterReader](src/main/java/at/jku/isse/ecco/genericAdapter/eccoModelAdapter/builder/GenericAdapterReader.java) and [GenericAdapterWriter](src/main/java/at/jku/isse/ecco/genericAdapter/eccoModelAdapter/printer/GenericAdapterWriter.java) to the dependencies. New type strategy imlementations need to be registered in both classes.
