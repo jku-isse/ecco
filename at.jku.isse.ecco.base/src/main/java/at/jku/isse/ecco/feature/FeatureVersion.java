@@ -11,6 +11,8 @@ public interface FeatureVersion extends Persistable {
 
 	public int getVersion();
 
+	public String getDescription();
+
 	@Override
 	public int hashCode();
 

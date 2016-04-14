@@ -1,4 +1,5 @@
-# ecco php adapter
+
+# ECCO PHP Adapter
 by Timea Kovacs
 
-Uses (https://github.com/oliverklee/phpparser "PhpParser").
+Uses [PhpParser](https://github.com/oliverklee/phpparser "PhpParser").

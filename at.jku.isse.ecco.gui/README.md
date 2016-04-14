@@ -1,1 +1,5 @@
-# ecco gui
+
+# ECCO GUI
+
+Graphical User Interface (GUI) for ECCO.
+

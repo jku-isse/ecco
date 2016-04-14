@@ -1,10 +1,12 @@
 package at.jku.isse.ecco.tree;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import at.jku.isse.ecco.core.Association;
+import org.garret.perst.Persistent;
 
-import java.util.List;
+import java.util.*;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A perst implementation of the node. When recursive loading for this node is disabled it will be loaded on demand as soon as any of its object members is accessed.
@@ -12,16 +14,26 @@ import java.util.List;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstNode extends BaseNode implements Node, IPersistent, ICloneable {
+public class PerstNode extends Persistent implements Node, NodeOperator.NodeOperand {
+
+	private transient NodeOperator operator = new NodeOperator(this);
+
+
+	private boolean unique = true;
+
+	private final List<Node> children = new ArrayList<>();
+
+	private Artifact artifact = null;
+
+	private Node parent = null;
 
 
 	public PerstNode() {
-		super();
 	}
 
-
-//	private Link<Node> allChildren;
-//	private Link<Node> uniqueChildren;
+	public PerstNode(Artifact artifact) {
+		this.artifact = artifact;
+	}
 
 
 	@Override
@@ -30,202 +42,179 @@ public class PerstNode extends BaseNode implements Node, IPersistent, ICloneable
 	}
 
 
-	/**
-	 * TODO: this is a really ugly workaround! and it would also be needed for artifacts... instead of using recursive loading maybe use a perst list (link)?
-	 * <p>
-	 * best thing probably is to use perst lists (links) for uses/usedby and all/unique/ordered children. for this i need to pass the storage in the constructor of nodes and artifacts in the perst daos, but that is no problem. the bigger probelm is that perst has to reimplement many of the things defined in the basenode and maybe an extend makes no sense anymore.
-	 */
-
-	private static boolean loadNodesRecursively = true;
-
-	public static void setRecursiveNodeLoading(boolean loadRecursively) {
-		PerstNode.loadNodesRecursively = loadRecursively;
+	@Override
+	public boolean isAtomic() {
+		this.load();
+		if (this.artifact != null)
+			return this.artifact.isAtomic();
+		else
+			return false;
 	}
 
-	public static boolean getRecursiveNodeLoading() {
-		return PerstNode.loadNodesRecursively;
+
+	@Override
+	public Association getContainingAssociation() {
+		this.load();
+		if (this.parent == null)
+			return null;
+		else
+			return this.parent.getContainingAssociation();
 	}
 
-	/**
-	 * TODO: since i need artifact and parent right away i need to recursively load every node that i intend to use! but not its children...
-	 * <p>
-	 * always recursively load nodes (i.e. artifact, parent, etc.)! BUT: do NOT recursively load children! that means: the lists of unique/all children should be perst indices!
-	 */
-
-	transient boolean loaded = false;
-	transient boolean loadRecursively = false; // TODO: when to set this? in the perst dao? when loading an association specify whether its nodes should be loaded recursively? hm...
-
-	public void setRecursiveLoading(boolean recursiveLoading) {
-		this.loadRecursively = recursiveLoading;
-	}
-
-	private void loadNode() {
-		if (oid != 0) {
-			if (!this.recursiveLoading() && !this.loaded) {
-				// TODO: check if storage is open, if not open it
-				this.load();
-				// TODO: close storage
-			}
-		}
-	}
 
 	@Override
 	public Artifact getArtifact() {
-		this.loadNode();
-		return super.getArtifact();
+		this.load();
+		return artifact;
+	}
+
+	@Override
+	public void setArtifact(Artifact artifact) {
+		this.load();
+		this.artifact = artifact;
 	}
 
 	@Override
 	public Node getParent() {
-		this.loadNode();
-		return super.getParent();
+		this.load();
+		return parent;
 	}
 
 	@Override
+	public void setParent(Node parent) {
+		this.load();
+		this.parent = parent;
+	}
+
+	@Override
+	public boolean isUnique() {
+		this.load();
+		return this.unique;
+	}
+
+	@Override
+	public void setUnique(boolean unique) {
+		this.load();
+		this.unique = unique;
+	}
+
+
+	@Override
+	public void addChild(Node child) {
+		checkNotNull(child);
+
+		this.load();
+
+		this.children.add(child);
+		child.setParent(this);
+	}
+
+	@Override
+	public void removeChild(Node child) {
+		checkNotNull(child);
+
+		this.load();
+
+		this.children.remove(child);
+	}
+
+
+	@Override
 	public List<Node> getChildren() {
-		this.loadNode();
-		return super.getChildren();
+		this.load();
+		return this.children;
 	}
 
-	// # PERST ################################################
 
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	// properties
+
+	private transient Map<String, Object> properties = new HashMap<>();
+
+	@Override
+	public <T> Optional<T> getProperty(final String name) {
+		return this.operator.getProperty(name);
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-			this.loaded = true;
-		}
+	@Override
+	public <T> void putProperty(final String name, final T property) {
+		this.operator.putProperty(name, property);
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public void removeProperty(String name) {
+		this.operator.removeProperty(name);
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+
+	// operations
+
+	@Override
+	public int hashCode() {
+		return this.operator.hashCode();
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	@Override
+	public boolean equals(Object o) {
+		return this.operator.equals(o);
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+	@Override
+	public String toString() {
+		return this.operator.toString();
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
+
+	@Override
+	public void slice(Node node) {
+		this.operator.slice(node);
 	}
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
+	@Override
+	public void merge(Node node) {
+		this.operator.merge(node);
 	}
 
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
+	@Override
+	public void sequence() {
+		this.operator.sequence();
 	}
 
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
+	@Override
+	public void updateArtifactReferences() {
+		this.operator.updateArtifactReferences();
 	}
 
-	public final int getOid() {
-		return oid;
+	@Override
+	public Node extractMarked() {
+		return this.operator.extractMarked();
 	}
 
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
+	@Override
+	public int countArtifacts() {
+		return this.operator.countArtifacts();
 	}
 
-	public boolean recursiveLoading() {
-		//return this.loadRecursively;
-		return PerstNode.getRecursiveNodeLoading();
+	@Override
+	public Map<Integer, Integer> countArtifactsPerDepth() {
+		return this.operator.countArtifactsPerDepth();
 	}
 
-	public final Storage getStorage() {
-		return storage;
+	@Override
+	public void print() {
+		this.operator.print();
 	}
 
-	public void onLoad() {
+	@Override
+	public void checkConsistency() {
+		this.operator.checkConsistency();
 	}
 
-	public void onStore() {
-	}
 
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
-	}
+	// operand
 
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
-	}
-
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstNode p = (PerstNode) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+	@Override
+	public Map<String, Object> getProperties() {
+		return this.properties;
 	}
 
 }

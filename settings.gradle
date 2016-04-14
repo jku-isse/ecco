@@ -9,4 +9,6 @@ include 'at.jku.isse.ecco.base',
 		'at.jku.isse.ecco.gui',
 		'at.jku.isse.ecco.jpa',
 		'at.jku.isse.ecco.mem',
-		'at.jku.isse.ecco.genericAdapter'
+		'at.jku.isse.ecco.genericAdapter',
+		'at.jku.isse.ecco.java',
+		'at.jku.isse.ecco.web'

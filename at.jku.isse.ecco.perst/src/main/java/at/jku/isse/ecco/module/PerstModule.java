@@ -1,8 +1,16 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import at.jku.isse.ecco.feature.FeatureInstance;
+import at.jku.isse.ecco.feature.FeatureVersion;
+import org.garret.perst.Persistent;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Perst implementation of {@link Feature}.
@@ -11,16 +19,21 @@ import org.garret.perst.impl.StorageImpl;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstModule extends BaseModule implements Module, IPersistent, ICloneable {
+public class PerstModule extends Persistent implements Module {
+
+
+	// constructors
 
 	public PerstModule() {
-		super();
+		this.moduleFeatures = new HashSet<ModuleFeature>();
 	}
 
-	public PerstModule(PerstModule set) {
-		super(set);
+	public PerstModule(PerstModule module) {
+		this.moduleFeatures = new HashSet<ModuleFeature>(module.moduleFeatures);
 	}
 
+
+	// perst
 
 	public void storeRecursively() {
 		this.store();
@@ -32,143 +45,127 @@ public class PerstModule extends BaseModule implements Module, IPersistent, IClo
 		}
 	}
 
-	// # PERST ################################################
 
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
-	}
+	protected Set<ModuleFeature> moduleFeatures;
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
-	}
+	@Override
+	public boolean holds(Configuration configuration) {
+		/**
+		 * A module holds in a configuration when all the module's features are contained in the configuration.
+		 */
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
-	}
+		Set<FeatureInstance> featureInstances = configuration.getFeatureInstances();
+		for (ModuleFeature mf : this) {
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
-	}
-
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
-	}
-
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
-	}
-
-	public final boolean isPersistent() {
-		return oid != 0;
-	}
-
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
-	}
-
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
-	}
-
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
+			boolean atLeastOneVersionMatched = false;
+			for (FeatureVersion fv : mf) {
+				for (FeatureInstance fi : featureInstances) {
+					if (fi.getFeatureVersion().equals(fv) && fi.getSign() == mf.getSign()) {
+						atLeastOneVersionMatched = true;
+						break;
+					}
+				}
+				if (atLeastOneVersionMatched)
+					break;
 			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
+
+			if (!atLeastOneVersionMatched)
+				return false;
 		}
-	}
 
-	public final int getOid() {
-		return oid;
-	}
-
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
-	}
-
-	public boolean recursiveLoading() {
 		return true;
 	}
 
-	public final Storage getStorage() {
-		return storage;
+	@Override
+	public int hashCode() {
+		return this.moduleFeatures.hashCode();
 	}
 
-	public void onLoad() {
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		PerstModule that = (PerstModule) o;
+
+		return this.moduleFeatures.equals(that.moduleFeatures);
 	}
 
-	public void onStore() {
+	@Override
+	public String toString() {
+		String result = this.stream().map((ModuleFeature mf) -> {
+			return mf.toString();
+		}).collect(Collectors.joining(", "));
+
+		return "d^" + this.getOrder() + "(" + result + ")";
 	}
 
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
+
+	// # SET ####################################################
+
+	@Override
+	public int size() {
+		return this.moduleFeatures.size();
 	}
 
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
+	@Override
+	public boolean isEmpty() {
+		return this.moduleFeatures.isEmpty();
 	}
 
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
+	@Override
+	public boolean contains(Object o) {
+		return this.moduleFeatures.contains(o);
 	}
 
-	protected void clearState() {
-		state = 0;
-		oid = 0;
+	@Override
+	public Iterator<ModuleFeature> iterator() {
+		return this.moduleFeatures.iterator();
 	}
 
-	public Object clone() throws CloneNotSupportedException {
-		PerstModule p = (PerstModule) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
+	@Override
+	public Object[] toArray() {
+		return this.moduleFeatures.toArray();
 	}
 
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
+	@Override
+	public <T> T[] toArray(T[] ts) {
+		return this.moduleFeatures.<T>toArray(ts);
 	}
 
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
+	@Override
+	public boolean add(ModuleFeature moduleFeature) {
+		return this.moduleFeatures.add(moduleFeature);
+	}
+
+	@Override
+	public boolean remove(Object o) {
+		return this.moduleFeatures.remove(o);
+	}
+
+	@Override
+	public boolean containsAll(Collection<?> collection) {
+		return this.moduleFeatures.containsAll(collection);
+	}
+
+	@Override
+	public boolean addAll(Collection<? extends ModuleFeature> collection) {
+		return this.moduleFeatures.addAll(collection);
+	}
+
+	@Override
+	public boolean retainAll(Collection<?> collection) {
+		return this.moduleFeatures.retainAll(collection);
+	}
+
+	@Override
+	public boolean removeAll(Collection<?> collection) {
+		return this.moduleFeatures.removeAll(collection);
+	}
+
+	@Override
+	public void clear() {
+		this.moduleFeatures.clear();
 	}
 
 }

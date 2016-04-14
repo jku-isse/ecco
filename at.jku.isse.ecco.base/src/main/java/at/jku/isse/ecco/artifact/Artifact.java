@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
-import at.jku.isse.ecco.sequenceGraph.SequenceGraph;
+import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.List;
@@ -19,6 +19,8 @@ public interface Artifact<DataType extends ArtifactData> {
 	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
 
 	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
+
+	public static final String MARKED_FOR_EXTRACTION = "marked";
 
 
 	@Override
@@ -121,8 +123,9 @@ public interface Artifact<DataType extends ArtifactData> {
 	// properties
 
 	/**
-	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store
-	 * different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
+	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
+	 * <p>
+	 * These properties are volatile, i.e. they are not persisted!
 	 *
 	 * @param name of the property that should be retrieved
 	 * @return An optional which contains the actual property or nothing.
@@ -130,8 +133,9 @@ public interface Artifact<DataType extends ArtifactData> {
 	<T> Optional<T> getProperty(String name);
 
 	/**
-	 * Adds a new property to this artifact. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides
-	 * old properties.
+	 * Adds a new property to this artifact. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
+	 * <p>
+	 * These properties are volatile, i.e. they are not persisted!
 	 *
 	 * @param property that should be added
 	 */

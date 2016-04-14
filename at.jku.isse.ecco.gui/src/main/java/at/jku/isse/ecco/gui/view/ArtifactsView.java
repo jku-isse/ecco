@@ -2,8 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.EccoUtil;
-import at.jku.isse.ecco.composition.CompositionRootNode;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
@@ -11,7 +10,6 @@ import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
-import at.jku.isse.ecco.tree.RootNode;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
@@ -60,8 +58,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		Button selectAllButton = new Button("Select All");
 		toolBar.getItems().add(selectAllButton);
 
+		Button unselectAllButton = new Button("Unselect All");
+		toolBar.getItems().add(unselectAllButton);
+
 		Button checkoutSelectedButton = new Button("Checkout Selected");
 		toolBar.getItems().add(checkoutSelectedButton);
+
+
+		CheckBox showBelowAtomic = new CheckBox("Show Artifacts Below Atomic");
+		toolBar.getItems().add(showBelowAtomic);
 
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
@@ -178,17 +183,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 						}
 
 						// use composition here to merge selected associations
-						CompositionRootNode rootNode = null;
-						if (!selectedAssociations.isEmpty()) {
-							rootNode = new CompositionRootNode();
-							for (Association association : selectedAssociations) {
-								rootNode.addOrigNode(association.getRootNode());
-							}
+						LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+						for (Association association : selectedAssociations) {
+							rootNode.addOrigNode(association.getRootNode());
 						}
-						final RootNode finalRootNode = rootNode;
-						//final RootNode finalRootNode = selectedAssociations.iterator().next().getRootNode();
 						Platform.runLater(() -> {
-							artifactTreeView.setRootNode(finalRootNode);
+							artifactTreeView.setRootNode(rootNode);
 						});
 
 						Platform.runLater(() -> {
@@ -228,7 +228,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 				// use composition here to merge selected associations
 				if (!selectedAssociations.isEmpty()) {
-					final CompositionRootNode rootNode = new CompositionRootNode();
+					final LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
 					for (Association association : selectedAssociations) {
 						rootNode.addOrigNode(association.getRootNode());
 					}
@@ -332,7 +332,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		public AssociationInfo(Association association) {
 			this.association = association;
 			this.selected = new SimpleBooleanProperty(false);
-			this.numArtifacts = new SimpleIntegerProperty(EccoUtil.countArtifactsInAssociation(association));
+			this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
 		}
 
 		public Association getAssociation() {

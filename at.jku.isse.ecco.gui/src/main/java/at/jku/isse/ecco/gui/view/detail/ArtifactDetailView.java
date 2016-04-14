@@ -66,7 +66,7 @@ public class ArtifactDetailView extends BorderPane {
 			// select artifact viewer
 			ArtifactViewer artifactViewer = null;
 			for (ArtifactViewer tempArtifactViewer : artifactViewers) {
-				if (tempArtifactViewer instanceof Pane) {
+				if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
 					if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData) {
 						PluginArtifactData pad = (PluginArtifactData) node.getArtifact().getData();
 						if (tempArtifactViewer.getPluginId().equals(pad.getPluginId()))

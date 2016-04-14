@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.plugin.artifact;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
@@ -103,6 +104,13 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 
 	@Override
 	public Set<Node> read(Path base, Path[] input) {
+		if (!Files.exists(base)) {
+			throw new EccoException("Base directory does not exist.");
+		} else if (!Files.isDirectory(base)) {
+			throw new EccoException("Current base directory is not a directory but a file.");
+		}
+
+
 		Set<Node> nodes = new HashSet<>();
 
 		base = base.normalize();
@@ -125,11 +133,17 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 
 					Set<Node> pluginNodes = reader.read(base, pluginInput);
 					for (Node pluginNode : pluginNodes) {
+						if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData))
+							throw new EccoException("Plugin must return valid plugin nodes as root nodes in order for it to be compatible with dispatchers.");
 						PluginArtifactData pluginArtifactData = (PluginArtifactData) pluginNode.getArtifact().getData();
 						Path parent = pluginArtifactData.getPath().getParent();
 						if (parent == null)
 							parent = Paths.get(".").normalize();
-						directoryNodes.get(parent).addChild(pluginNode);
+						Node parentNode = directoryNodes.get(parent);
+						if (parentNode != null)
+							parentNode.addChild(pluginNode);
+						else
+							throw new EccoException("Plugin '" + pluginArtifactData.getPluginId() + "' returned an invalid plugin node: " + pluginNode);
 					}
 				}
 			}

@@ -2,163 +2,144 @@ package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import org.garret.perst.*;
-import org.garret.perst.impl.StorageImpl;
+import org.garret.perst.Persistent;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-public class PerstModuleFeature extends BaseModuleFeature implements ModuleFeature, IPersistent, ICloneable {
+public class PerstModuleFeature extends Persistent implements ModuleFeature {
 
 	public PerstModuleFeature() {
-		super();
+		this.feature = null;
+		this.sign = true;
+
+		this.featureVersions = new HashSet<FeatureVersion>();
 	}
 
 	public PerstModuleFeature(Feature feature, boolean sign) {
-		super(feature, sign);
+		this.feature = feature;
+		this.sign = sign;
+
+		this.featureVersions = new HashSet<FeatureVersion>();
 	}
 
 	public PerstModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
-		super(feature, featureVersions, sign);
+		this.feature = feature;
+		this.sign = sign;
+
+		this.featureVersions = new HashSet<FeatureVersion>(featureVersions);
 	}
 
 
-	// # PERST ################################################
+	protected Set<FeatureVersion> featureVersions;
 
-	protected void finalize() {
-		if ((state & DIRTY) != 0 && oid != 0) {
-			storage.storeFinalizedObject(this);
-		}
-		state = DELETED;
+	private Feature feature;
+	private boolean sign;
+
+	@Override
+	public Feature getFeature() {
+		return this.feature;
 	}
 
-	public synchronized void load() {
-		if (oid != 0 && (state & RAW) != 0) {
-			storage.loadObject(this);
-		}
+	@Override
+	public boolean getSign() {
+		return this.sign;
 	}
 
-	public synchronized void loadAndModify() {
-		load();
-		modify();
+	@Override
+	public int hashCode() {
+		int result = featureVersions.hashCode();
+		result = 31 * result + (sign ? 1 : 0);
+		return result;
 	}
 
-	public final boolean isRaw() {
-		return (state & RAW) != 0;
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		PerstModuleFeature that = (PerstModuleFeature) o;
+
+		if (sign != that.sign) return false;
+		return featureVersions.equals(that.featureVersions);
 	}
 
-	public final boolean isModified() {
-		return (state & DIRTY) != 0;
+	@Override
+	public String toString() {
+		String signString = this.sign ? "+" : "-";
+		return signString + this.feature.toString() + ".{" + this.stream().map(v -> String.valueOf(v.getVersion())).collect(Collectors.joining(",")) + "}";
 	}
 
-	public final boolean isDeleted() {
-		return (state & DELETED) != 0;
+
+	// # SET ####################################################
+
+	@Override
+	public int size() {
+		return this.featureVersions.size();
 	}
 
-	public final boolean isPersistent() {
-		return oid != 0;
+	@Override
+	public boolean isEmpty() {
+		return this.featureVersions.isEmpty();
 	}
 
-	public void makePersistent(Storage storage) {
-		if (oid == 0) {
-			storage.makePersistent(this);
-		}
+	@Override
+	public boolean contains(Object o) {
+		return this.featureVersions.contains(o);
 	}
 
-	public void store() {
-		if ((state & RAW) != 0) {
-			throw new StorageError(StorageError.ACCESS_TO_STUB);
-		}
-		if (storage != null) {
-			storage.storeObject(this);
-			state &= ~DIRTY;
-		}
+	@Override
+	public Iterator<FeatureVersion> iterator() {
+		return this.featureVersions.iterator();
 	}
 
-	public void modify() {
-		if ((state & DIRTY) == 0 && oid != 0) {
-			if ((state & RAW) != 0) {
-				throw new StorageError(StorageError.ACCESS_TO_STUB);
-			}
-			Assert.that((state & DELETED) == 0);
-			storage.modifyObject(this);
-			state |= DIRTY;
-		}
+	@Override
+	public Object[] toArray() {
+		return this.featureVersions.toArray();
 	}
 
-	public final int getOid() {
-		return oid;
+	@Override
+	public <T> T[] toArray(T[] ts) {
+		return this.featureVersions.<T>toArray(ts);
 	}
 
-	public void deallocate() {
-		if (oid != 0) {
-			storage.deallocateObject(this);
-		}
+	@Override
+	public boolean add(FeatureVersion moduleFeature) {
+		return this.featureVersions.add(moduleFeature);
 	}
 
-	public boolean recursiveLoading() {
-		return true;
+	@Override
+	public boolean remove(Object o) {
+		return this.featureVersions.remove(o);
 	}
 
-	public final Storage getStorage() {
-		return storage;
+	@Override
+	public boolean containsAll(Collection<?> collection) {
+		return this.featureVersions.containsAll(collection);
 	}
 
-	public void onLoad() {
+	@Override
+	public boolean addAll(Collection<? extends FeatureVersion> collection) {
+		return this.featureVersions.addAll(collection);
 	}
 
-	public void onStore() {
+	@Override
+	public boolean retainAll(Collection<?> collection) {
+		return this.featureVersions.retainAll(collection);
 	}
 
-	public void invalidate() {
-		state &= ~DIRTY;
-		state |= RAW;
+	@Override
+	public boolean removeAll(Collection<?> collection) {
+		return this.featureVersions.removeAll(collection);
 	}
 
-	transient Storage storage;
-	transient int oid;
-	transient int state;
-
-	static public final int RAW = 1;
-	static public final int DIRTY = 2;
-	static public final int DELETED = 4;
-
-	public void unassignOid() {
-		oid = 0;
-		state = DELETED;
-		storage = null;
+	@Override
+	public void clear() {
+		this.featureVersions.clear();
 	}
 
-	public void assignOid(Storage storage, int oid, boolean raw) {
-		this.oid = oid;
-		this.storage = storage;
-		if (raw) {
-			state |= RAW;
-		} else {
-			state &= ~RAW;
-		}
-	}
-
-	protected void clearState() {
-		state = 0;
-		oid = 0;
-	}
-
-	public Object clone() throws CloneNotSupportedException {
-		PerstModuleFeature p = (PerstModuleFeature) super.clone();
-		p.oid = 0;
-		p.state = 0;
-		return p;
-	}
-
-	public void readExternal(java.io.ObjectInput s) throws java.io.IOException, ClassNotFoundException {
-		oid = s.readInt();
-	}
-
-	public void writeExternal(java.io.ObjectOutput s) throws java.io.IOException {
-		if (s instanceof StorageImpl.PersistentObjectOutputStream) {
-			makePersistent(((StorageImpl.PersistentObjectOutputStream) s).getStorage());
-		}
-		s.writeInt(oid);
-	}
 
 }

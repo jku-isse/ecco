@@ -20,8 +20,8 @@
 		<class>at.jku.isse.ecco.module.JpaModuleFeature</class>
 		<class>at.jku.isse.ecco.module.JpaPresenceCondition</class>
 
-		<class>at.jku.isse.ecco.sequenceGraph.JpaSequenceGraph</class>
-		<class>at.jku.isse.ecco.sequenceGraph.JpaSequenceGraphNode</class>
+		<class>at.jku.isse.ecco.sg.JpaSequenceGraph</class>
+		<class>at.jku.isse.ecco.sg.JpaSequenceGraphNode</class>
 
 		<class>at.jku.isse.ecco.tree.JpaNode</class>
 		<class>at.jku.isse.ecco.tree.JpaRootNode</class>

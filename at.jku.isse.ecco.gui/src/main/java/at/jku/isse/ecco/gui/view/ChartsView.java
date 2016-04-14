@@ -2,8 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.EccoUtil;
-import at.jku.isse.ecco.composition.CompositionRootNode;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
@@ -64,17 +63,17 @@ public class ChartsView extends BorderPane implements EccoListener {
 					@Override
 					public Void call() throws EccoException {
 
-						CompositionRootNode compRootNode = new CompositionRootNode();
+						LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 						for (Association association : ChartsView.this.service.getAssociations()) {
 							compRootNode.addOrigNode(association.getRootNode());
 						}
-						Map<Integer, Integer> artifactsPerDepth = EccoUtil.computeArtifactsPerDepth(compRootNode);
+						Map<Integer, Integer> artifactsPerDepth = compRootNode.countArtifactsPerDepth();
 
 						Platform.runLater(() -> {
 							// artifacts per association
 							ChartsView.this.artifactsPerAssociationData.clear();
 							for (Association association : ChartsView.this.service.getAssociations()) {
-								int numArtifacts = EccoUtil.countArtifactsInAssociation(association);
+								int numArtifacts = association.getRootNode().countArtifacts();
 								if (numArtifacts > 0)
 									ChartsView.this.artifactsPerAssociationData.add(new PieChart.Data("A" + association.getId(), numArtifacts));
 							}

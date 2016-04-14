@@ -40,14 +40,19 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 		if (!this.initialized) {
 			this.database = StorageFactory.getInstance().createStorage();
 
+			// enable multiclient access
+			this.database.setProperty("perst.multiclient.support", Boolean.TRUE);
+
 			this.database.open(connectionString);
+			this.database.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 			if (this.database.getRoot() == null) {
 				this.database.setRoot(createDatabaseRoot());
 			}
+			this.database.endThreadTransaction();
 			this.database.close();
 
 			// open database and keep it open
-			this.openDatabase();
+			this.database.open(connectionString);
 			this.currentDatabaseRoot = null;
 
 			this.initialized = true;
@@ -57,7 +62,9 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 	@Override
 	public void close() {
 		if (this.initialized) {
-			this.closeDatabase();
+			if (this.database.isOpened())
+				this.database.close();
+
 			this.currentDatabaseRoot = null;
 
 			this.initialized = false;
@@ -78,17 +85,6 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 			throw new EccoException("Transaction Strategy has not been initialized.");
 	}
 
-	protected void closeDatabase() {
-		if (this.database.isOpened())
-			this.database.close();
-	}
-
-	protected DatabaseRoot openDatabase() {
-		if (!database.isOpened())
-			database.open(connectionString);
-		return database.getRoot();
-	}
-
 
 	@Override
 	public void begin() throws EccoException {
@@ -101,6 +97,14 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 		} else {
 			throw new EccoException("Transaction is already in progress.");
 		}
+	}
+
+	public void beginReadOnly() {
+
+	}
+
+	public void beginReadWrite() {
+
 	}
 
 	@Override

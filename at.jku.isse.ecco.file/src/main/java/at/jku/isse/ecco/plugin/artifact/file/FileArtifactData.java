@@ -113,6 +113,11 @@ public class FileArtifactData implements ArtifactData {
 		return Objects.hash(this.checksum);
 	}
 
+	@Override
+	public String toString() {
+		return this.hexChecksum;
+	}
+
 	public byte[] getData() {
 		return data;
 	}

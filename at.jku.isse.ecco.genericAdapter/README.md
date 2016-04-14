@@ -1,2 +1,4 @@
-# ecco generic adapter
+
+# ECCO Generic Adapter
 by Michael Jahn
+

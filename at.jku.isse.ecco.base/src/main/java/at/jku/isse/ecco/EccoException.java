@@ -6,4 +6,8 @@ public class EccoException extends RuntimeException {
 		super(message);
 	}
 
+	public EccoException(String message, Exception cause) {
+		super(message, cause);
+	}
+
 }

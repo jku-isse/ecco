@@ -1,0 +1,11 @@
+ext {
+	eccoModule = true
+}
+
+dependencies {
+	compile fileTree(dir: 'lib', include: '*.jar')
+
+	compile project(':at.jku.isse.ecco.base')
+
+	testCompile project(':at.jku.isse.ecco.perst')
+}
