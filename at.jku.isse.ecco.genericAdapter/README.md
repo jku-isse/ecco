@@ -15,7 +15,7 @@ The Grammar Inference module can be used in any context, where generating a gram
     <li>The resulting grammar will be written to the specified output path in ANTLR syntax</li>
 </ol>
 
-The process can also be started during runtime, by using the _inferGrammar_ method from the [GrammarInferenceFacade](at.jku.isse.ecco.genericAdapter/src/main/java/at/jku/isse/ecco/genericAdapter/grammarInferencer/facade/GrammarInferenceFacade.java) and passing the implemented strategy, along with the input files and output directory, as parameters.
+The process can also be started during runtime, by using the _inferGrammar_ method from the [GrammarInferenceFacade](src/main/java/at/jku/isse/ecco/genericAdapter/grammarInferencer/facade/GrammarInferenceFacade.java) and passing the implemented strategy, along with the input files and output directory, as parameters.
 
 Additionally to inferring a grammar from input files, an existing grammar can also be updated. To do so, use the method _updateGrammar_ from [GrammarInferenceFacade](at.jku.isse.ecco.genericAdapter/src/main/java/at/jku/isse/ecco/genericAdapter/grammarInferencer/facade/GrammarInferenceFacade.java).
 The grammarDataFile (*.grDat), which is a mandatory parameter, is generated in the same directory as the grammar file when generating the initial grammar (either using the command line tool, or the facade call).
