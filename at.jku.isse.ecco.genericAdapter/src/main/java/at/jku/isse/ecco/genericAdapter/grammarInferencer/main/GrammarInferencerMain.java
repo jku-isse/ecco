@@ -77,12 +77,12 @@ public class GrammarInferencerMain {
         GrammarInferenceFacade grammarInferenceFacade = new GrammarInferenceFacadeImpl();
         AntlrParserWrapperServiceImpl antlrParserService = new AntlrParserWrapperServiceImpl();
 
-        NonTerminal rootSymbol = grammarInferenceFacade.inferGrammar(filePaths, strategy, getGrammarDataFilePath(strategy));
+        NonTerminal rootSymbol = grammarInferenceFacade.inferGrammar(filePaths, strategy, getGrammarDataFilePath(outputPath, strategy));
         String outputFilePath = antlrParserService.writeAntlrGrammarToFile(new File(outputPath).toPath(), strategy.getStrategyName(), rootSymbol, true);
 
         if(outputFilePath != null) {
             System.out.println("----------------------------\nInferred Grammar g4 file successfully written to: " + outputFilePath);
-            System.out.println("----------------------------\nInferred Grammar Data File successfully written to: " + getGrammarDataFilePath(strategy));
+            System.out.println("----------------------------\nInferred Grammar Data File successfully written to: " + getGrammarDataFilePath(outputPath, strategy));
         } else {
             System.err.println("An error occured while trying to write to the output path!");
         }
@@ -98,8 +98,8 @@ public class GrammarInferencerMain {
         System.exit(1);
     }
 
-    public static String getGrammarDataFilePath(EccoModelBuilderStrategy strategy) {
-        return DEFAULT_GRAMMAR_PATH_ROOT  + File.separator + strategy.getStrategyName() + "." + GRAMMAR_DATA_FILE_EXTIONS;
+    public static String getGrammarDataFilePath(String outputPath, EccoModelBuilderStrategy strategy) {
+        return outputPath  + File.separator + strategy.getStrategyName() + "." + GRAMMAR_DATA_FILE_EXTIONS;
     }
 
 }
