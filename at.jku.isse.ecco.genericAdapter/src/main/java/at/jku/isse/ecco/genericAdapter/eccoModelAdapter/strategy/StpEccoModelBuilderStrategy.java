@@ -191,9 +191,9 @@ public class StpEccoModelBuilderStrategy implements EccoModelBuilderStrategy {
      */
     @Override
     public boolean useOrderedNode(BuilderArtifactData artifact) {
-        /*if(artifact.getType().matches("S\\d+")) {
+        if(artifact.getType().matches("S\\d+")) {
             return true;
-        }*/
+        }
         return false;
     }
 

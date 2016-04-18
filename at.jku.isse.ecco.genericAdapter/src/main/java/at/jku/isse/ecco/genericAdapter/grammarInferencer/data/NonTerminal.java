@@ -15,6 +15,7 @@ public class NonTerminal extends Symbol {
 
     public static final String NON_TERMINAL_NAME_PREFIX = "R";
     public static final String STRUCTURE_SYMBOL_NAME_PREFIX = "S";
+    public static final String BLOCK_CONTENT_STRUCTURE_SYMBOL_NAME_PREFIX = "SB";
 
 //    public static final Map<String, NonTerminal> existingNonTerminalMap = new HashMap<>();
 

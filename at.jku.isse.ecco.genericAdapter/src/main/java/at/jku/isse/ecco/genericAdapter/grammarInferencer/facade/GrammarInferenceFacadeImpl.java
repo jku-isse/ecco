@@ -3,6 +3,7 @@ package at.jku.isse.ecco.genericAdapter.grammarInferencer.facade;
 import at.jku.isse.ecco.genericAdapter.eccoModelAdapter.strategy.EccoModelBuilderStrategy;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.NonTerminalFactory;
+import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.Rule;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.data.StructureNonTerminal;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.main.GrammarSerializationService;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.mutate.GrammarMutatorService;
@@ -223,8 +224,11 @@ public class GrammarInferenceFacadeImpl implements GrammarInferenceFacade {
                 StructureNonTerminal structureNonTerminal = (StructureNonTerminal) graphNonTerminal;
                 if (structureNonTerminal.containsLabel() && nonTerminalContentsPerLabel.containsKey(structureNonTerminal.getLabel())) {
                     NonTerminal contentNonTerminal = NonTerminalFactory.createNewRecursionNonTerminal(nonTerminalContentsPerLabel.get(structureNonTerminal.getLabel()));
-                    structureNonTerminal.getLabelRule().insertSymbols(1, Arrays.asList(contentNonTerminal));
-                    structureNonTerminal.getLabelRule().insertSymbols(structureNonTerminal.getLabelRule().getSymbols().size()-1, Arrays.asList(contentNonTerminal));
+                    NonTerminal contentWrapperNonTerminal = NonTerminalFactory.createBlockContentStructureNonTerminal();
+                    contentWrapperNonTerminal.addRule(new Rule(Arrays.asList(contentNonTerminal)));
+
+                    structureNonTerminal.getLabelRule().insertSymbols(1, Arrays.asList(contentWrapperNonTerminal));
+                    structureNonTerminal.getLabelRule().insertSymbols(structureNonTerminal.getLabelRule().getSymbols().size()-1, Arrays.asList(contentWrapperNonTerminal));
                 }
             }
         }

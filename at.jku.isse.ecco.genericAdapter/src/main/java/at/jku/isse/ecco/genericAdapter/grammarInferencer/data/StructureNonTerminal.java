@@ -17,6 +17,13 @@ public class StructureNonTerminal extends NonTerminal {
         this.blockDefinition = blockDefinition;
     }
 
+    public StructureNonTerminal(String prefix) {
+        super();
+        this.name = prefix + this.getId();
+        this.label = "";
+        this.blockDefinition = null;
+    }
+
     public StructureNonTerminal(){
         super();
         this.label = "";

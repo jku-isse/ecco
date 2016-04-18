@@ -16,7 +16,7 @@ public class ParameterSettings {
 
     public static boolean STATISTICS_OUTPUT = true; /* whether statistic relevant messages shall be printed */
 
-    public static boolean INFO_OUTPUT = true; /* whether info messages shall be printed */
+    public static boolean INFO_OUTPUT = false; /* whether info messages shall be printed */
 
     public static boolean DEBUG_OUTPUT = false; /* whether debug messages shall be printed */
 
