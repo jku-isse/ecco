@@ -51,6 +51,12 @@ public class NonTerminalFactory {
         return nonTerminal;
     }
 
+    public static StructureNonTerminal createBlockContentStructureNonTerminal() {
+        StructureNonTerminal nonTerminal = new StructureNonTerminal(NonTerminal.BLOCK_CONTENT_STRUCTURE_SYMBOL_NAME_PREFIX);
+        existingNonTerminals.put(nonTerminal.getName(), nonTerminal);
+        return nonTerminal;
+    }
+
     public static StructureNonTerminal createNewStructureNonTerminal(BlockDefinition blockDefinition) {
         StructureNonTerminal nonTerminal= new StructureNonTerminal(blockDefinition);
         existingNonTerminals.put(nonTerminal.getName(), nonTerminal);
