@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.plugin.artifact.image;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
@@ -23,6 +24,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ImageReader.class);
+
+	public static final String TYPE_IMAGE = "IMAGE";
+	public static final String TYPE_POS = "POS";
+	public static final String TYPE_COLOR = "COLOR";
 
 	private final EntityFactory entityFactory;
 
@@ -79,6 +84,8 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 				System.out.println(image.getType());
 			} catch (IOException e) {
 				LOGGER.error("Could not read the image: " + resolvedPath, e);
+
+				throw new EccoException("Could not read the image: " + resolvedPath, e);
 			}
 		}
 
@@ -86,7 +93,7 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 	private Node parseImage(final BufferedImage image) {
-		final ImageArtifactData imageArtifactData = new ImageArtifactData(new int[]{image.getWidth(), image.getHeight()}, "IMAGE");
+		final ImageArtifactData imageArtifactData = new ImageArtifactData(new int[]{image.getWidth(), image.getHeight()}, TYPE_IMAGE);
 
 		final Node imageNode = this.entityFactory.createNode(this.entityFactory.createArtifact(imageArtifactData));
 
@@ -118,10 +125,10 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 		for (int y = 0; y < image.getHeight(); y++) {
 			for (int x = 0; x < image.getWidth(); x++) {
 				final int[] position = new int[]{x, y};
-				final ImageArtifactData posArtifactData = new ImageArtifactData(position, "POS");
+				final ImageArtifactData posArtifactData = new ImageArtifactData(position, TYPE_POS);
 
 				final int[] rgb = this.getPixel(image, x, y);
-				final ImageArtifactData colorArtifactData = new ImageArtifactData(rgb, "COLOR");
+				final ImageArtifactData colorArtifactData = new ImageArtifactData(rgb, TYPE_COLOR);
 
 				final Node positionNode = this.entityFactory.createNode(this.entityFactory.createArtifact(posArtifactData));
 

@@ -5,7 +5,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.plugin.PerstModule;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
 import at.jku.isse.ecco.plugin.artifact.text.TextReader;
-import at.jku.isse.ecco.plugin.artifact.text.TextWriter;
+import at.jku.isse.ecco.plugin.artifact.text.TextFileWriter;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import org.testng.annotations.AfterTest;
@@ -28,7 +28,7 @@ public class TextModuleTest {
 	@Inject
 	private TextReader reader;
 	@Inject
-	private TextWriter writer;
+	private TextFileWriter writer;
 
 	@Test(groups = {"integration", "text"})
 	public void Text_Module_Test() {

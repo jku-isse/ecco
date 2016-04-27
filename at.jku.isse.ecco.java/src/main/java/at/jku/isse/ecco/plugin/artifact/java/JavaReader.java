@@ -534,9 +534,6 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 				ArtifactReference reference = entityFactory.createArtifactReference(pair.artifact, ref);
 				//TODO check if reference already exists
 
-				System.out.println("AAA: " + reference.getSource() + " -> " + reference.getTarget());
-				System.out.println("BBB: " + pair.artifact + " -> " + ref);
-
 				pair.artifact.addUses(reference);
 				ref.addUsedBy(reference);
 			}

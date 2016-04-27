@@ -83,6 +83,7 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 	public List<Node> getChildren() {
 		this.activate();
 
+		//return Collections.unmodifiableList(this.children);
 		return this.children;
 	}
 
@@ -156,6 +157,8 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 	@Override
 	public void addChild(Node child) {
+//		throw new UnsupportedOperationException("Cannot add children to a lazy composition node.");
+
 		checkNotNull(child);
 
 		this.children.add(child);

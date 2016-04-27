@@ -3,8 +3,8 @@ package at.jku.isse.ecco.gui.view.detail;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.gui.view.graph.SequenceGraphView;
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
-import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Trees;
 import com.google.inject.Inject;
 import javafx.geometry.Orientation;
 import javafx.scene.control.Label;
@@ -67,11 +67,15 @@ public class ArtifactDetailView extends BorderPane {
 			ArtifactViewer artifactViewer = null;
 			for (ArtifactViewer tempArtifactViewer : artifactViewers) {
 				if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
-					if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData) {
-						PluginArtifactData pad = (PluginArtifactData) node.getArtifact().getData();
-						if (tempArtifactViewer.getPluginId().equals(pad.getPluginId()))
-							artifactViewer = tempArtifactViewer;
-					}
+					String pluginId = Trees.getPluginId(node);
+					if (tempArtifactViewer.getPluginId().equals(pluginId))
+						artifactViewer = tempArtifactViewer;
+
+//					if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData) {
+//						PluginArtifactData pad = (PluginArtifactData) node.getArtifact().getData();
+//						if (tempArtifactViewer.getPluginId().equals(pad.getPluginId()))
+//							artifactViewer = tempArtifactViewer;
+//					}
 				}
 			}
 

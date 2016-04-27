@@ -5,7 +5,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.plugin.PerstModule;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
 import at.jku.isse.ecco.plugin.artifact.text.TextReader;
-import at.jku.isse.ecco.plugin.artifact.text.TextWriter;
+import at.jku.isse.ecco.plugin.artifact.text.TextFileWriter;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -75,7 +75,7 @@ public class Main {
 		// ################ YOUR CODE ################
 
 		TextReader reader = injector.getInstance(TextReader.class);
-		TextWriter writer = injector.getInstance(TextWriter.class);
+		TextFileWriter writer = injector.getInstance(TextFileWriter.class);
 
 		Path[] inputFiles = new Path[]{Paths.get("data/input/file.txt")};
 

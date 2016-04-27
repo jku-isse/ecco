@@ -23,7 +23,7 @@ public class ImageModule extends AbstractModule {
 		final Multibinder<ArtifactWriter<Set<Node>, Path>> writerMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {
 				});
-		writerMultibinder.addBinding().to(ImageWriter.class);
+		writerMultibinder.addBinding().to(ImageFileWriter.class);
 
 		final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactViewer>() {

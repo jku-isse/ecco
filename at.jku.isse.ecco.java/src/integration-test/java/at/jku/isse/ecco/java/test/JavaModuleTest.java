@@ -2,6 +2,8 @@ package at.jku.isse.ecco.java.test;
 
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.dao.PerstEntityFactory;
+import at.jku.isse.ecco.plugin.artifact.java.JDTArtifactData;
+import at.jku.isse.ecco.plugin.artifact.java.JDTNodeArtifactData;
 import at.jku.isse.ecco.plugin.artifact.java.JavaReader;
 import at.jku.isse.ecco.plugin.artifact.java.JavaWriter;
 import at.jku.isse.ecco.tree.Node;
@@ -40,7 +42,7 @@ public class JavaModuleTest {
 		JavaReader javaReader = new JavaReader(new PerstEntityFactory());
 
 
-		Set<Node> nodes = javaReader.read(Paths.get("data/input"), new Path[]{Paths.get("test_min.java")});
+		Set<Node> nodes = javaReader.read(Paths.get("data/input"), new Path[]{Paths.get("test2.java")});
 		for (Node node : nodes) {
 			print(node);
 		}
@@ -66,7 +68,7 @@ public class JavaModuleTest {
 	private static void printRec(Node node, String indent) {
 		String detailString = "";
 		if (node.getArtifact() != null) {
-			detailString = "[" + node.getArtifact().isAtomic() + "]" + "(" + node.getArtifact().getUses().stream().map((ArtifactReference ref) -> "REF: " + ref.getTarget().toString()).collect(Collectors.joining(", ")) + ")";
+			detailString = "[" + node.getArtifact().isAtomic() + "]" + "(" + node.getArtifact().getUses().stream().map((ArtifactReference ref) -> "REF: " + ref.getTarget().toString() + ", ID: " + System.identityHashCode(ref.getTarget())).collect(Collectors.joining(", ")) + ")" + "ID: " + System.identityHashCode(node.getArtifact());
 		}
 		System.out.println(indent + node.toString() + detailString);
 		String newIndent = indent + " ";

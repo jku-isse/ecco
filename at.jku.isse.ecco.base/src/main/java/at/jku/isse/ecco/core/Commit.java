@@ -41,4 +41,14 @@ public interface Commit extends Persistable {
 
 	public void setCommitter(String committer);
 
+
+	public List<Association> getExistingAssociation();
+
+	public void addExistingAssociation(Association association);
+
+
+	public List<Association> getNewAssociations();
+
+	public void addNewAssociation(Association association);
+
 }

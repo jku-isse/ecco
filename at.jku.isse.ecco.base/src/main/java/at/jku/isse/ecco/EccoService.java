@@ -43,7 +43,7 @@ public class EccoService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
-	public static final String ECCO_PROPERTIES = "ecco.properties";
+	public static final String ECCO_PROPERTIES_FILE = "ecco.properties";
 	public static final String ECCO_PROPERTIES_DATA = "plugin.data";
 	public static final String ECCO_PROPERTIES_ARTIFACT = "plugin.artifact";
 
@@ -183,6 +183,12 @@ public class EccoService {
 		}
 	}
 
+	private void fireAssociationSelectedEvent(Association association) {
+		for (EccoListener listener : this.listeners) {
+			listener.associationSelectedEvent(this, association);
+		}
+	}
+
 
 	// # SETTINGS ######################################################################################################
 
@@ -192,6 +198,7 @@ public class EccoService {
 
 	private int maxOrder = 4;
 	private String committer = "";
+	private boolean manualMode = false;
 
 	public int getMaxOrder() {
 		return this.maxOrder;
@@ -211,6 +218,18 @@ public class EccoService {
 		this.committer = committer;
 
 		// TODO: set via settings dao
+	}
+
+	public boolean isManualMode() {
+		return this.manualMode;
+	}
+
+	public void setManualMode(boolean manualMode) {
+		if (!this.manualMode)
+			this.manualMode = manualMode;
+		else if (!manualMode) {
+			throw new EccoException("Once manual mode has been activated it cannot be turned off anymore.");
+		}
 	}
 
 	public void addIgnoreFile(Path path) {
@@ -350,17 +369,17 @@ public class EccoService {
 
 
 			// load properties file
-			InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES);
+			InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES_FILE);
 			Properties eccoProperties = new Properties();
 			List<String> artifactPluginsList = null;
 			if (inputStream != null) {
 				try {
 					eccoProperties.load(inputStream);
 				} catch (IOException e) {
-					throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES + "'.", e);
+					throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES_FILE + "'.", e);
 				}
 			} else {
-				throw new EccoException("Property file '" + ECCO_PROPERTIES + "' not found in the classpath.");
+				throw new EccoException("Property file '" + ECCO_PROPERTIES_FILE + "' not found in the classpath.");
 			}
 			LOGGER.debug("PROPERTIES: " + eccoProperties);
 			if (eccoProperties.getProperty(ECCO_PROPERTIES_DATA) == null) {
@@ -512,6 +531,30 @@ public class EccoService {
 	// # CORE SERVICES #################################################################################################
 
 
+	/**
+	 * Maps the given tree (e.g. result from a reader) to the repository without modifying the repository by replacing the artifacts in the given tree.
+	 * With this way a reader could keep reading a file after it was changed, map it to the repository, and have the trace information again.
+	 * The nodes contain the updated line/col information from the reader, and the marking can still be done on the artifacts in the repository.
+	 * This also enables highlighting of selected associations in changed files.
+	 *
+	 * @param nodes The tree to be mapped.
+	 */
+	public void map(Collection<Node> nodes) {
+		// TODO
+	}
+
+
+	/**
+	 * Extracts all marked artifacts in the repository from their previous association into a new one.
+	 *
+	 * @return The commit object containing the affected associations.
+	 */
+	public Commit extract() {
+		// TODO
+		return null;
+	}
+
+
 	// COMMIT //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
@@ -590,32 +633,34 @@ public class EccoService {
 		}
 
 
-		// PRESENCE TABLE
-		for (Association commitAssociation : commit.getAssociations()) {
-			for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-				// find module feature in the map that has same feature and sign
-				ModuleFeature moduleFeature = null;
-				int count = 0;
-				Iterator<Map.Entry<ModuleFeature, Integer>> iterator = commitAssociation.getPresenceTable().entrySet().iterator();
-				while (iterator.hasNext()) {
-					Map.Entry<ModuleFeature, Integer> entry = iterator.next();
+		if (!this.manualMode) {
+			// PRESENCE TABLE
+			for (Association commitAssociation : commit.getAssociations()) {
+				for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
+					// find module feature in the map that has same feature and sign
+					ModuleFeature moduleFeature = null;
+					int count = 0;
+					Iterator<Map.Entry<ModuleFeature, Integer>> iterator = commitAssociation.getPresenceTable().entrySet().iterator();
+					while (iterator.hasNext()) {
+						Map.Entry<ModuleFeature, Integer> entry = iterator.next();
 
-					if (entry.getKey().getSign() == featureInstance.getSign() && entry.getKey().getFeature().equals(featureInstance.getFeature())) {
-						moduleFeature = entry.getKey();
-						count = entry.getValue();
+						if (entry.getKey().getSign() == featureInstance.getSign() && entry.getKey().getFeature().equals(featureInstance.getFeature())) {
+							moduleFeature = entry.getKey();
+							count = entry.getValue();
 
-						iterator.remove();
-						break;
+							iterator.remove();
+							break;
+						}
 					}
+					if (moduleFeature == null) {
+						moduleFeature = this.entityFactory.createModuleFeature(featureInstance.getFeature(), featureInstance.getSign());
+					}
+					moduleFeature.add(featureInstance.getFeatureVersion());
+					count++;
+					commitAssociation.getPresenceTable().put(moduleFeature, count);
 				}
-				if (moduleFeature == null) {
-					moduleFeature = this.entityFactory.createModuleFeature(featureInstance.getFeature(), featureInstance.getSign());
-				}
-				moduleFeature.add(featureInstance.getFeatureVersion());
-				count++;
-				commitAssociation.getPresenceTable().put(moduleFeature, count);
+				commitAssociation.incPresenceCount();
 			}
-			commitAssociation.incPresenceCount();
 		}
 
 
@@ -655,6 +700,9 @@ public class EccoService {
 			try {
 				this.transactionStrategy.begin();
 
+				Commit commit = this.entityFactory.createCommit();
+				commit.setCommitter(this.committer); // TODO: get this value from the client config. maybe pass it as a parameter to this commit method.
+
 				List<Association> originalAssociations = this.associationDao.loadAllAssociations();
 				List<Association> newAssociations = new ArrayList<>();
 
@@ -673,14 +721,20 @@ public class EccoService {
 
 						// SIMPLE MODULES
 						intA.getModules().addAll(origA.getModules());
-						intA.getModules().retainAll(inputA.getModules());
-						origA.getModules().removeAll(intA.getModules());
+						if (!this.manualMode) {
+							intA.getModules().retainAll(inputA.getModules());
+							origA.getModules().removeAll(intA.getModules());
+						}
 						inputA.getModules().removeAll(origA.getModules());
 
 
 						// PRESENCE CONDITION
-						intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition())); // TODO: do this in module util
-						//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
+						if (!this.manualMode) {
+							intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition())); // TODO: do this in module util
+							//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
+						} else {
+							// TODO: clone original presence condition!
+						}
 
 
 						// ARTIFACT TREE
@@ -697,6 +751,8 @@ public class EccoService {
 
 							// store association
 							toAdd.add(intA);
+
+							commit.addExistingAssociation(intA);
 						}
 
 						Trees.checkConsistency(origA.getRootNode());
@@ -713,6 +769,8 @@ public class EccoService {
 
 						originalAssociations.add(inputA);
 						newAssociations.add(inputA);
+
+						commit.addNewAssociation(inputA);
 					}
 				}
 
@@ -722,8 +780,6 @@ public class EccoService {
 				}
 
 				// put together commit
-				Commit commit = this.entityFactory.createCommit();
-				commit.setCommitter(this.committer); // TODO: get this value from the client config. maybe pass it as a parameter to this commit method.
 				for (Association newA : newAssociations) {
 					commit.addAssociation(newA);
 				}
@@ -851,7 +907,6 @@ public class EccoService {
 			Set<at.jku.isse.ecco.module.Module> missingModules = new HashSet<>();
 			Set<at.jku.isse.ecco.module.Module> surplusModules = new HashSet<>();
 
-
 			LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 			for (Association association : this.getAssociations()) {
 				System.out.println("Checking: " + association.getId());
@@ -891,6 +946,46 @@ public class EccoService {
 		this.writer.write(this.baseDir, nodes);
 
 		return checkout;
+	}
+
+
+	// COMPOSE /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	public Node compose(String configurationString) {
+		return this.compose(this.parseConfigurationString(configurationString));
+	}
+
+	public Node compose(Configuration configuration) {
+		// TODO: use eager composition here and not lazy!
+
+		Set<at.jku.isse.ecco.module.Module> desiredModules = configuration.computeModules(this.maxOrder);
+		Set<at.jku.isse.ecco.module.Module> missingModules = new HashSet<>();
+		Set<at.jku.isse.ecco.module.Module> surplusModules = new HashSet<>();
+
+		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
+		for (Association association : this.getAssociations()) {
+			System.out.println("Checking: " + association.getId());
+			if (association.getPresenceCondition().holds(configuration)) {
+				compRootNode.addOrigNode(association.getRootNode());
+				System.out.println("Selected: " + association.getId());
+
+				this.fireAssociationSelectedEvent(association);
+
+				// compute missing
+				for (at.jku.isse.ecco.module.Module desiredModule : desiredModules) {
+					if (!association.getPresenceCondition().getMinModules().contains(desiredModule)) {
+						missingModules.add(desiredModule);
+					}
+				}
+				// compute surplus
+				for (at.jku.isse.ecco.module.Module existingModule : association.getPresenceCondition().getMinModules()) {
+					if (!desiredModules.contains(existingModule)) {
+						surplusModules.add(existingModule);
+					}
+				}
+			}
+		}
+		return compRootNode;
 	}
 
 

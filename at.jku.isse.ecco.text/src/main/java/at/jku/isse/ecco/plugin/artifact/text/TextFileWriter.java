@@ -16,7 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-public class TextWriter implements ArtifactWriter<Set<Node>, Path> {
+public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 
 	@Override
 	public String getPluginId() {
@@ -44,7 +44,7 @@ public class TextWriter implements ArtifactWriter<Set<Node>, Path> {
 			output.add(outputPath);
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath)) {
-				for (Node lineNode : fileNode.getChildren()) { // TODO: the order in which to write lines needs to be determined!
+				for (Node lineNode : fileNode.getChildren()) {
 					LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
 
 					bw.write(lineArtifactData.getLine());

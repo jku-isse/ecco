@@ -28,7 +28,7 @@ public class TextModule extends AbstractModule {
 		final Multibinder<ArtifactWriter<Set<Node>, Path>> writerMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {
 				});
-		writerMultibinder.addBinding().to(TextWriter.class);
+		writerMultibinder.addBinding().to(TextFileWriter.class);
 
 		final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactViewer>() {

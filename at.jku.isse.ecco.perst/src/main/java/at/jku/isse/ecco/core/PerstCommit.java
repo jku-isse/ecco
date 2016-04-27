@@ -19,9 +19,13 @@ public class PerstCommit extends Persistent implements Commit {
 	private List<Association> associations;
 	private String committer;
 	private Configuration configuration;
+	private List<Association> existingAssociations;
+	private List<Association> newAssociations;
 
 	public PerstCommit() {
 		this.associations = new ArrayList<Association>();
+		this.existingAssociations = new ArrayList<Association>();
+		this.newAssociations = new ArrayList<Association>();
 	}
 
 	@Override
@@ -62,6 +66,26 @@ public class PerstCommit extends Persistent implements Commit {
 	@Override
 	public void setCommitter(String committer) {
 		this.committer = committer;
+	}
+
+	@Override
+	public List<Association> getExistingAssociation() {
+		return this.existingAssociations;
+	}
+
+	@Override
+	public void addExistingAssociation(Association association) {
+		this.existingAssociations.add(association);
+	}
+
+	@Override
+	public List<Association> getNewAssociations() {
+		return this.newAssociations;
+	}
+
+	@Override
+	public void addNewAssociation(Association association) {
+		this.newAssociations.add(association);
 	}
 
 }

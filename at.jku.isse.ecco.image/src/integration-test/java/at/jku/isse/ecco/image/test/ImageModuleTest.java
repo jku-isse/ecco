@@ -5,7 +5,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.plugin.PerstModule;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
 import at.jku.isse.ecco.plugin.artifact.image.ImageReader;
-import at.jku.isse.ecco.plugin.artifact.image.ImageWriter;
+import at.jku.isse.ecco.plugin.artifact.image.ImageFileWriter;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import org.testng.annotations.AfterTest;
@@ -28,7 +28,7 @@ public class ImageModuleTest {
 	@Inject
 	private ImageReader reader;
 	@Inject
-	private ImageWriter writer;
+	private ImageFileWriter writer;
 
 	@Test(groups = {"integration", "text"})
 	public void Text_Module_Test() {

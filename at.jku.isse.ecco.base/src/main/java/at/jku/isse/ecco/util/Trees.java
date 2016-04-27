@@ -7,6 +7,7 @@ import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -272,6 +273,17 @@ public class Trees {
 
 
 	// # READ ONLY OPERATIONS ##################################################################################
+
+
+	/**
+	 * Composes a new tree from the given trees using clone/add/merge/etc. operations on the given trees without modifying them.
+	 *
+	 * @param nodes The root nodes of the trees to be composed.
+	 * @return
+	 */
+	public Node compose(Collection<Node> nodes) {
+		return null; // TODO
+	}
 
 
 	/**
