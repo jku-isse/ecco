@@ -11,6 +11,8 @@ public interface WriteListener {
 	 *
 	 * @param file The file that was written.
 	 */
-	public void fileWriteEvent(Path file, ArtifactWriter writer);
+	public default void fileWriteEvent(Path file, ArtifactWriter writer) {
+		// do nothing
+	}
 
 }

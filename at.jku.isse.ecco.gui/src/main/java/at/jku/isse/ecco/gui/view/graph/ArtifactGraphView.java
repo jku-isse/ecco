@@ -5,6 +5,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -22,16 +23,22 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
+import org.graphstream.stream.file.FileSink;
+import org.graphstream.stream.file.FileSinkFactory;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
 import org.graphstream.ui.swingViewer.ViewPanel;
 import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,7 +55,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	private boolean depthFade = false;
 	private boolean showLabels = true;
 
-	public ArtifactGraphView(EccoService service) {
+	public ArtifactGraphView(EccoService service, Stage stage) {
 		this.service = service;
 
 
@@ -65,28 +72,50 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 					@Override
 					public void run() {
 						ArtifactGraphView.this.updateGraph(ArtifactGraphView.this.depthFade, ArtifactGraphView.this.showLabels);
+
+						Task refreshTask = new Task<Void>() {
+							@Override
+							public Void call() throws EccoException {
+								//ArtifactsGraphView.this.updateGraph();
+								Platform.runLater(() -> {
+									toolBar.setDisable(false);
+								});
+								return null;
+							}
+						};
+						new Thread(refreshTask).start();
 					}
 				});
-				Task refreshTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						//ArtifactsGraphView.this.updateGraph();
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
-						return null;
-					}
-				};
-
-				new Thread(refreshTask).start();
 			}
 		});
-
 
 		toolBar.getItems().add(refreshButton);
 
 
 		Button exportButton = new Button("Export");
+
+		exportButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent ae) {
+				toolBar.setDisable(true);
+
+				FileChooser fileChooser = new FileChooser();
+				File selectedFile = fileChooser.showSaveDialog(stage);
+
+				if (selectedFile != null) {
+					FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
+					try {
+						out.writeAll(ArtifactGraphView.this.graph, selectedFile.toString());
+						out.flush();
+					} catch (IOException e) {
+						new ExceptionAlert(e).show();
+					}
+				}
+
+				toolBar.setDisable(false);
+			}
+		});
+
 		toolBar.getItems().add(exportButton);
 
 

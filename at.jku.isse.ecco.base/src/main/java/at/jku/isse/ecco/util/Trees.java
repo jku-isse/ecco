@@ -265,6 +265,7 @@ public class Trees {
 
 			return right;
 		} else if (!right.getChildren().isEmpty()) { // there are unique/marked successors
+			right.setUnique(false);
 			return right;
 		} else { // neither the node itself nor any of its successors are unique/marked
 			return null;

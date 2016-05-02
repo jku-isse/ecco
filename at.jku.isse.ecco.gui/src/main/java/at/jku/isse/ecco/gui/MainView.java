@@ -8,10 +8,11 @@ import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.Stage;
 
 public class MainView extends BorderPane {
 
-	public MainView(EccoService eccoService) {
+	public MainView(EccoService eccoService, Stage stage) {
 		TabPane tabPane = new TabPane();
 		this.setCenter(tabPane);
 
@@ -57,7 +58,7 @@ public class MainView extends BorderPane {
 		commitGraphTab.setClosable(false);
 		tabPane.getTabs().add(commitGraphTab);
 
-		CommitGraphView commitGraphView = new CommitGraphView(eccoService);
+		CommitGraphView commitGraphView = new CommitGraphView(eccoService, stage);
 		commitGraphTab.setContent(commitGraphView);
 
 		// associations
@@ -80,11 +81,11 @@ public class MainView extends BorderPane {
 
 		// artifacts graph
 		Tab artifactsGraphTab = new Tab();
-		artifactsGraphTab.setText("Artifacts Graph");
+		artifactsGraphTab.setText("Artifact Graph");
 		artifactsGraphTab.setClosable(false);
 		tabPane.getTabs().add(artifactsGraphTab);
 
-		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService);
+		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService, stage);
 		artifactsGraphTab.setContent(artifactsGraphView);
 
 		// dependency graph
@@ -104,6 +105,15 @@ public class MainView extends BorderPane {
 
 		ChartsView chartsView = new ChartsView(eccoService);
 		chartsTab.setContent(chartsView);
+
+		// presence table
+		Tab persenceTableTab = new Tab();
+		persenceTableTab.setText("Presence Table");
+		persenceTableTab.setClosable(false);
+		tabPane.getTabs().add(persenceTableTab);
+
+		PresenceTableView presenceTableView = new PresenceTableView(eccoService);
+		persenceTableTab.setContent(presenceTableView);
 	}
 
 }

@@ -221,10 +221,12 @@ public class EccoService {
 	}
 
 	public boolean isManualMode() {
+		// TODO: set via settings dao
 		return this.manualMode;
 	}
 
 	public void setManualMode(boolean manualMode) {
+		// TODO: set via settings dao
 		if (!this.manualMode)
 			this.manualMode = manualMode;
 		else if (!manualMode) {
@@ -550,8 +552,77 @@ public class EccoService {
 	 * @return The commit object containing the affected associations.
 	 */
 	public Commit extract() {
-		// TODO
-		return null;
+		Commit persistedCommit = null;
+
+		try {
+			this.transactionStrategy.begin();
+
+			Commit commit = this.entityFactory.createCommit();
+			commit.setCommitter(this.committer); // TODO: get this value from the client config. maybe pass it as a parameter to this commit method.
+
+			List<Association> originalAssociations = this.associationDao.loadAllAssociations();
+			List<Association> newAssociations = new ArrayList<>();
+
+			// extract from every  original association
+			for (Association origA : originalAssociations) {
+
+
+				// ASSOCIATION
+				Association extractedA = this.entityFactory.createAssociation();
+
+
+				// PRESENCE CONDITION
+				extractedA.setPresenceCondition(this.entityFactory.createPresenceCondition());
+
+
+				// ARTIFACT TREE
+				RootNode extractedTree = (RootNode) Trees.extractMarked(origA.getRootNode());
+				if (extractedTree != null)
+					extractedA.setRootNode(extractedTree);
+
+
+				// if the intersection association has artifacts or a not empty presence condition store it
+				if ((extractedA.getRootNode() != null && extractedA.getRootNode().getChildren().size() > 0) || !extractedA.getPresenceCondition().isEmpty()) {
+					// set parents for intersection association (and child for parents)
+					extractedA.addParent(origA);
+					extractedA.setName("EXTRACTED " + origA.getId());
+
+					// store association
+					newAssociations.add(extractedA);
+
+					commit.addNewAssociation(extractedA);
+				}
+
+				Trees.checkConsistency(origA.getRootNode());
+				if (extractedA.getRootNode() != null)
+					Trees.checkConsistency(extractedA.getRootNode());
+			}
+			originalAssociations.addAll(newAssociations);
+
+
+			// save associations
+			for (Association origA : originalAssociations) {
+				this.associationDao.save(origA);
+			}
+
+			// put together commit
+			for (Association newA : newAssociations) {
+				commit.addAssociation(newA);
+			}
+			persistedCommit = this.commitDao.save(commit);
+
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error during extraction.", e);
+		}
+
+		// fire event
+		if (persistedCommit != null)
+			this.fireCommitsChangedEvent(persistedCommit);
+
+		return persistedCommit;
 	}
 
 
@@ -734,6 +805,7 @@ public class EccoService {
 							//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
 						} else {
 							// TODO: clone original presence condition!
+							intA.setPresenceCondition(this.entityFactory.createPresenceCondition());
 						}
 
 
@@ -914,6 +986,7 @@ public class EccoService {
 					compRootNode.addOrigNode(association.getRootNode());
 					System.out.println("Selected: " + association.getId());
 
+					this.fireAssociationSelectedEvent(association);
 
 					// compute missing
 					for (at.jku.isse.ecco.module.Module desiredModule : desiredModules) {

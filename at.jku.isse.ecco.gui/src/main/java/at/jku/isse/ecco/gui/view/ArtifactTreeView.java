@@ -1,24 +1,22 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.ObservableList;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeTableCell;
-import javafx.scene.control.TreeTableColumn;
-import javafx.scene.control.TreeTableView;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+public class ArtifactTreeView extends TreeTableView<Node> {
 
-public class ArtifactsTreeView extends TreeTableView<Node> {
-
-	public ArtifactsTreeView() {
+	public ArtifactTreeView() {
 		super();
 
 		// create columns
@@ -52,9 +50,42 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 				}
 		);
 
+		TreeTableColumn<Node, Boolean> isMarkedNodeCol = new TreeTableColumn<>("Marked");
+		isMarkedNodeCol.setCellValueFactory(
+				(TreeTableColumn.CellDataFeatures<Node, Boolean> param) ->
+				{
+					Artifact artifact = param.getValue().getValue().getArtifact();
+
+					if (artifact != null) {
+						SimpleBooleanProperty sbp = new SimpleBooleanProperty() {
+							@Override
+							public boolean get() {
+								return super.get();
+							}
+
+							@Override
+							public void set(boolean value) {
+								if (value)
+									artifact.putProperty(Artifact.MARKED_FOR_EXTRACTION, value);
+								else
+									artifact.removeProperty(Artifact.MARKED_FOR_EXTRACTION);
+								super.set(value);
+							}
+						};
+						sbp.set(artifact.getProperty(Artifact.MARKED_FOR_EXTRACTION).isPresent());
+						return sbp;
+						//return new ReadOnlyBooleanWrapper(artifact.getProperty(Artifact.MARKED_FOR_EXTRACTION).isPresent());
+					} else {
+						return new ReadOnlyBooleanWrapper(false);
+					}
+				}
+		);
+		isMarkedNodeCol.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(isMarkedNodeCol));
+		isMarkedNodeCol.setEditable(true);
+
 
 		TreeTableColumn<Node, String> artifactTreeCol = new TreeTableColumn<>("Artifact Tree");
-		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol);
+		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol, isMarkedNodeCol);
 
 
 		uniqueNodeCol.setCellFactory(new Callback<TreeTableColumn<Node, Boolean>, TreeTableCell<Node, Boolean>>() {
@@ -80,11 +111,13 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 
 		this.getColumns().setAll(artifactTreeCol);
 
+		this.setEditable(true);
 		this.setTableMenuButtonVisible(true);
 		this.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
+		this.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 	}
 
-	public ArtifactsTreeView(RootNode rootNode) {
+	public ArtifactTreeView(RootNode rootNode) {
 		this();
 
 		this.setRootNode(rootNode);
@@ -92,9 +125,20 @@ public class ArtifactsTreeView extends TreeTableView<Node> {
 
 
 	public void setRootNode(RootNode rootNode) {
-		checkNotNull(rootNode);
+		if (rootNode == null)
+			this.setRoot(null);
+		else
+			this.setRoot(new NodeTreeItem(rootNode));
+	}
 
-		this.setRoot(new NodeTreeItem(rootNode));
+	public void markSelected() {
+		// TODO: mark selected
+		for (TreeItem<Node> item : this.getSelectionModel().getSelectedItems()) {
+			Artifact artifact = item.getValue().getArtifact();
+			if (artifact != null) {
+				artifact.putProperty(Artifact.MARKED_FOR_EXTRACTION, true);
+			}
+		}
 	}
 
 

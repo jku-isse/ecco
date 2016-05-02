@@ -6,9 +6,13 @@ import at.jku.isse.ecco.core.Commit;
 
 public interface EccoListener extends ReadListener, WriteListener {
 
-	public void statusChangedEvent(EccoService service);
+	public default void statusChangedEvent(EccoService service) {
+		// do nothing
+	}
 
-	public void commitsChangedEvent(EccoService service, Commit commit);
+	public default void commitsChangedEvent(EccoService service, Commit commit) {
+		// do nothing
+	}
 
 	public default void associationSelectedEvent(EccoService service, Association association) {
 		// do nothing

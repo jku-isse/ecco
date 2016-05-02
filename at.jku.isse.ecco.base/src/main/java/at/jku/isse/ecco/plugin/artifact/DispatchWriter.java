@@ -5,6 +5,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,9 +25,12 @@ public class DispatchWriter implements ArtifactWriter<Set<Node>, Path> {
 	 */
 	private Collection<ArtifactWriter<Set<Node>, Path>> writers;
 
+	private Path repositoryDir;
+
 	@Inject
-	public DispatchWriter(Set<ArtifactWriter<Set<Node>, Path>> writers) {
+	public DispatchWriter(Set<ArtifactWriter<Set<Node>, Path>> writers, @Named("repositoryDir") String repositoryDir) {
 		this.writers = writers;
+		this.repositoryDir = Paths.get(repositoryDir);
 	}
 
 	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();
@@ -67,7 +71,9 @@ public class DispatchWriter implements ArtifactWriter<Set<Node>, Path> {
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
 			try {
-				if (Files.list(base).findAny().isPresent()) {
+				if (Files.list(base).filter(path -> {
+					return !path.equals(this.repositoryDir);
+				}).findAny().isPresent()) {
 					throw new EccoException("Current base directory must be empty for checkout operation.");
 				}
 			} catch (IOException e) {

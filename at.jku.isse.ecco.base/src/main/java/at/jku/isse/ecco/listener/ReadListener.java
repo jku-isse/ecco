@@ -11,6 +11,8 @@ public interface ReadListener {
 	 *
 	 * @param file The file that was read.
 	 */
-	public void fileReadEvent(Path file, ArtifactReader reader);
+	public default void fileReadEvent(Path file, ArtifactReader reader) {
+		// do nothing
+	}
 
 }

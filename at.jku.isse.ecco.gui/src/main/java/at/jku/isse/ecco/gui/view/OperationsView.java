@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
@@ -215,9 +216,9 @@ public class OperationsView extends BorderPane implements EccoListener {
 		fileTable.setEditable(false);
 		fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<FileInfo, String> actionCol = new TableColumn<FileInfo, String>("Action");
-		TableColumn<FileInfo, String> pathCol = new TableColumn<FileInfo, String>("Path");
-		TableColumn<FileInfo, String> pluginCol = new TableColumn<FileInfo, String>("Plugin");
+		TableColumn<FileInfo, String> actionCol = new TableColumn<>("Action");
+		TableColumn<FileInfo, String> pathCol = new TableColumn<>("Path");
+		TableColumn<FileInfo, String> pluginCol = new TableColumn<>("Plugin");
 
 		fileTable.getColumns().setAll(actionCol, pathCol, pluginCol);
 
@@ -256,6 +257,7 @@ public class OperationsView extends BorderPane implements EccoListener {
 
 	private static final String READ_ACTION_STRING = "READ";
 	private static final String WRITE_ACTION_STRING = "WRITE";
+	private static final String ASSOCIATION_SELECTION_STRING = "SELECT";
 
 	@Override
 	public void fileReadEvent(Path file, ArtifactReader reader) {
@@ -270,6 +272,14 @@ public class OperationsView extends BorderPane implements EccoListener {
 			this.logData.add(new FileInfo(this.WRITE_ACTION_STRING, file.toString(), writer.getPluginId()));
 		});
 	}
+
+	@Override
+	public void associationSelectedEvent(EccoService service, Association association) {
+		Platform.runLater(() -> {
+			this.logData.add(new FileInfo(this.ASSOCIATION_SELECTION_STRING, String.valueOf(association.getId()), association.getPresenceCondition().toString()));
+		});
+	}
+
 
 	public static class FileInfo {
 		private final SimpleStringProperty action;

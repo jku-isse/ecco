@@ -46,7 +46,7 @@ public class EccoGui extends Application implements EccoListener {
 
 
 		// TOP LEVEL
-		this.mainView = new MainView(eccoService);
+		this.mainView = new MainView(eccoService, primaryStage);
 		// bind to take available space
 		mainView.prefHeightProperty().bind(scene.heightProperty());
 		mainView.prefWidthProperty().bind(scene.widthProperty());
@@ -64,6 +64,7 @@ public class EccoGui extends Application implements EccoListener {
 
 
 		primaryStage.setScene(scene);
+		primaryStage.setMaximized(true);
 		primaryStage.show();
 	}
 

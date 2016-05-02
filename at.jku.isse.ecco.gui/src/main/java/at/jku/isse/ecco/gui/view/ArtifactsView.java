@@ -39,6 +39,9 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 	private final ArtifactDetailView artifactDetailView;
 
+	private ToolBar toolBar = new ToolBar();
+	private ArtifactTreeView artifactTreeView = new ArtifactTreeView();
+
 	public ArtifactsView(EccoService service) {
 		this.service = service;
 
@@ -46,11 +49,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 
 		// toolbar
-		ToolBar toolBar = new ToolBar();
+		toolBar = new ToolBar();
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
 		toolBar.getItems().add(refreshButton);
+
+		toolBar.getItems().add(new Separator());
 
 		Button compositionButton = new Button("Compose");
 		toolBar.getItems().add(compositionButton);
@@ -64,6 +69,16 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		Button checkoutSelectedButton = new Button("Checkout Selected");
 		toolBar.getItems().add(checkoutSelectedButton);
 
+		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
+		toolBar.getItems().add(showEmptyAssociationsCheckBox);
+
+		toolBar.getItems().add(new Separator());
+
+		Button markSelectedButton = new Button("Mark Selected");
+		toolBar.getItems().add(markSelectedButton);
+
+		Button extractMarkedButton = new Button("Extract Marked");
+		toolBar.getItems().add(extractMarkedButton);
 
 		CheckBox showBelowAtomic = new CheckBox("Show Artifacts Below Atomic");
 		toolBar.getItems().add(showBelowAtomic);
@@ -71,8 +86,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
 
-		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
-		toolBar.getItems().add(showEmptyAssociationsCheckBox);
 		showEmptyAssociationsCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
 			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldValue, Boolean newValue) {
 				filteredData.setPredicate(associationInfo -> {
@@ -120,7 +133,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		associationsTable.setItems(sortedData);
 
 
-		ArtifactsTreeView artifactTreeView = new ArtifactsTreeView();
+		artifactTreeView = new ArtifactTreeView();
 
 
 		artifactTreeView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
@@ -145,26 +158,28 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
+				ArtifactsView.this.refresh();
 
-				Task refreshTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						Collection<Association> associations = ArtifactsView.this.service.getAssociations();
-						Platform.runLater(() -> {
-							ArtifactsView.this.associationsData.clear();
-							for (Association a : associations) {
-								ArtifactsView.this.associationsData.add(new AssociationInfo(a));
-							}
-						});
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
-						return null;
-					}
-				};
-
-				new Thread(refreshTask).start();
+//				toolBar.setDisable(true);
+//
+//				Task refreshTask = new Task<Void>() {
+//					@Override
+//					public Void call() throws EccoException {
+//						Collection<Association> associations = ArtifactsView.this.service.getAssociations();
+//						Platform.runLater(() -> {
+//							ArtifactsView.this.associationsData.clear();
+//							for (Association a : associations) {
+//								ArtifactsView.this.associationsData.add(new AssociationInfo(a));
+//							}
+//						});
+//						Platform.runLater(() -> {
+//							toolBar.setDisable(false);
+//						});
+//						return null;
+//					}
+//				};
+//
+//				new Thread(refreshTask).start();
 			}
 		});
 
@@ -209,6 +224,19 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 				for (AssociationInfo assocInfo : ArtifactsView.this.associationsData) {
 					assocInfo.setSelected(true);
+				}
+
+				toolBar.setDisable(false);
+			}
+		});
+
+		unselectAllButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent e) {
+				toolBar.setDisable(true);
+
+				for (AssociationInfo assocInfo : ArtifactsView.this.associationsData) {
+					assocInfo.setSelected(false);
 				}
 
 				toolBar.setDisable(false);
@@ -281,6 +309,72 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 			}
 		});
 
+		markSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent e) {
+				toolBar.setDisable(true);
+
+				artifactTreeView.markSelected();
+
+				toolBar.setDisable(false);
+			}
+		});
+
+		extractMarkedButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent e) {
+				toolBar.setDisable(true);
+
+				Task extractTask = new Task<Void>() {
+					@Override
+					public Void call() throws EccoException {
+						service.extract();
+
+						Platform.runLater(() -> {
+							ArtifactsView.this.refresh();
+						});
+						return null;
+					}
+
+					public void finished() {
+						toolBar.setDisable(false);
+					}
+
+					@Override
+					public void succeeded() {
+						super.succeeded();
+						this.finished();
+
+						Alert alert = new Alert(Alert.AlertType.INFORMATION);
+						alert.setTitle("Extraction Successful");
+						alert.setHeaderText("Extraction Successful");
+						alert.setContentText("Extraction Successful!");
+
+						alert.showAndWait();
+					}
+
+					@Override
+					public void cancelled() {
+						super.cancelled();
+					}
+
+					@Override
+					public void failed() {
+						super.failed();
+						this.finished();
+
+						ExceptionAlert alert = new ExceptionAlert(this.getException());
+						alert.setTitle("Extraction Error");
+						alert.setHeaderText("Extraction Error");
+
+						alert.showAndWait();
+					}
+				};
+
+				new Thread(extractTask).start();
+			}
+		});
+
 
 		showEmptyAssociationsCheckBox.setSelected(true);
 
@@ -290,6 +384,32 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		if (!service.isInitialized())
 			this.setDisable(true);
+	}
+
+
+	protected void refresh() {
+		toolBar.setDisable(true);
+
+		artifactTreeView.setRootNode(null);
+
+		Task refreshTask = new Task<Void>() {
+			@Override
+			public Void call() throws EccoException {
+				Collection<Association> associations = ArtifactsView.this.service.getAssociations();
+				Platform.runLater(() -> {
+					ArtifactsView.this.associationsData.clear();
+					for (Association a : associations) {
+						ArtifactsView.this.associationsData.add(new AssociationInfo(a));
+					}
+				});
+				Platform.runLater(() -> {
+					toolBar.setDisable(false);
+				});
+				return null;
+			}
+		};
+
+		new Thread(refreshTask).start();
 	}
 
 

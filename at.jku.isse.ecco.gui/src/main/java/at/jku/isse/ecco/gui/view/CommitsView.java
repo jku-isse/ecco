@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
@@ -11,10 +12,10 @@ import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.scene.control.SplitPane;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.ToolBar;
+import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 
 import java.nio.file.Path;
@@ -32,19 +33,49 @@ public class CommitsView extends BorderPane implements EccoListener {
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
+		Button refreshButton = new Button("Refresh");
+
+		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent e) {
+				toolBar.setDisable(true);
+				CommitsView.this.commitsData.clear();
+
+				Task commitsRefreshTask = new Task<Void>() {
+					@Override
+					public Void call() throws EccoException {
+						Collection<Commit> commits = CommitsView.this.service.getCommits();
+						Platform.runLater(() -> {
+							for (Commit commit : commits) {
+								CommitsView.this.commitsData.add(new CommitInfo(commit));
+							}
+						});
+						Platform.runLater(() -> {
+							toolBar.setDisable(false);
+						});
+						return null;
+					}
+				};
+
+				new Thread(commitsRefreshTask).start();
+			}
+		});
+
+		toolBar.getItems().add(refreshButton);
+
 
 		SplitPane splitPane = new SplitPane();
 		this.setCenter(splitPane);
 
 
 		// list of commits
-		TableView<CommitInfo> commitsTable = new TableView<CommitInfo>();
+		TableView<CommitInfo> commitsTable = new TableView<>();
 		commitsTable.setEditable(false);
 		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<CommitInfo, Integer> idCommitterCol = new TableColumn<CommitInfo, Integer>("Id");
-		TableColumn<CommitInfo, String> committerCol = new TableColumn<CommitInfo, String>("Committer");
-		TableColumn<CommitInfo, String> commitsCol = new TableColumn<CommitInfo, String>("Commits");
+		TableColumn<CommitInfo, Integer> idCommitterCol = new TableColumn<>("Id");
+		TableColumn<CommitInfo, String> committerCol = new TableColumn<>("Committer");
+		TableColumn<CommitInfo, String> commitsCol = new TableColumn<>("Commits");
 
 		commitsCol.getColumns().addAll(idCommitterCol, committerCol);
 		commitsTable.getColumns().setAll(commitsCol);

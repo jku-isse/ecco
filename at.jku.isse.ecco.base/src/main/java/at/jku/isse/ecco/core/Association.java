@@ -26,7 +26,7 @@ public interface Association extends Persistable {
 	// # PRESENCE TABLE #####################################################################
 
 	/**
-	 * Maps module features (i.e. set of feature versions with sign) to the number of commits/variants with at least one of the featuer versions in which the artifacts were contained.
+	 * Maps module features (i.e. set of feature versions with sign) to the number of commits/variants with at least one of the feature versions in which the artifacts were contained.
 	 *
 	 * @return The presence table.
 	 */

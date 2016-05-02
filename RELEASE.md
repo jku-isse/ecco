@@ -22,7 +22,7 @@
   * added requirement for artifact data to be serializable
   * added transactions to data layer
   * (in progress) added jpa data backend plugin
-  * (in progress) moved memory (base) implementation into its own data plugin
+  * moved memory (base) implementation into its own data plugin
   * added order selector to composition
 
 

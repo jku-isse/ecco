@@ -45,7 +45,7 @@ public class FeaturesView extends BorderPane implements EccoListener {
 				toolBar.setDisable(true);
 				FeaturesView.this.featuresData.clear();
 
-				Task commitTask = new Task<Void>() {
+				Task featuresRefreshTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
 						Collection<Feature> featureVersions = FeaturesView.this.service.getFeatures();
@@ -61,7 +61,7 @@ public class FeaturesView extends BorderPane implements EccoListener {
 					}
 				};
 
-				new Thread(commitTask).start();
+				new Thread(featuresRefreshTask).start();
 			}
 		});
 
@@ -113,13 +113,13 @@ public class FeaturesView extends BorderPane implements EccoListener {
 		});
 
 		// list of features
-		TableView<FeatureInfo> featuresTable = new TableView<FeatureInfo>();
+		TableView<FeatureInfo> featuresTable = new TableView<>();
 		featuresTable.setEditable(false);
 		featuresTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<FeatureInfo, String> featureNameCol = new TableColumn<FeatureInfo, String>("Name");
-		TableColumn<FeatureInfo, String> featureDescriptionCol = new TableColumn<FeatureInfo, String>("Description");
-		TableColumn<FeatureInfo, String> featuresCol = new TableColumn<FeatureInfo, String>("Features");
+		TableColumn<FeatureInfo, String> featureNameCol = new TableColumn<>("Name");
+		TableColumn<FeatureInfo, String> featureDescriptionCol = new TableColumn<>("Description");
+		TableColumn<FeatureInfo, String> featuresCol = new TableColumn<>("Features");
 
 		featuresCol.getColumns().addAll(featureNameCol, featureDescriptionCol);
 		featuresTable.getColumns().setAll(featuresCol);
@@ -166,6 +166,7 @@ public class FeaturesView extends BorderPane implements EccoListener {
 			});
 			Collection<Feature> features = service.getFeatures();
 			Platform.runLater(() -> {
+				this.featuresData.clear();
 				for (Feature feature : features) {
 					this.featuresData.add(new FeatureInfo(feature));
 				}
