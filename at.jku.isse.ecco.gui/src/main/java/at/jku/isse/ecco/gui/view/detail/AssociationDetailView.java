@@ -1,9 +1,13 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.module.PresenceCondition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;
@@ -21,6 +25,7 @@ public class AssociationDetailView extends BorderPane {
 	private TextArea associationName;
 	private SplitPane splitPane;
 	private ToolBar toolBar;
+	private TextField associationPC;
 
 
 	public AssociationDetailView(EccoService service) {
@@ -55,6 +60,9 @@ public class AssociationDetailView extends BorderPane {
 		this.associationId = new TextField();
 		this.associationId.setEditable(false);
 		this.associationName = new TextArea();
+		this.associationPC = new TextField();
+
+		Button updateButton = new Button("Update");
 
 		int row = 0;
 		associationDetails.add(new Label("Id: "), 1, row, 1, 1);
@@ -65,6 +73,58 @@ public class AssociationDetailView extends BorderPane {
 		row++;
 		associationDetails.add(this.associationName, 1, row, 1, 1);
 		row++;
+		associationDetails.add(new Label("Presence Condition: "), 1, row, 1, 1);
+		row++;
+		associationDetails.add(this.associationPC, 1, row, 1, 1);
+		row++;
+		associationDetails.add(updateButton, 1, row, 1, 1);
+		row++;
+
+
+		updateButton.setOnAction(event -> {
+			AssociationDetailView.this.toolBar.setDisable(true);
+
+			Task updateTask = new Task<Void>() {
+				@Override
+				public Void call() throws EccoException {
+					PresenceCondition pc = AssociationDetailView.this.service.parsePresenceCondition(AssociationDetailView.this.associationPC.getText());
+					AssociationDetailView.this.currentAssociation.setPresenceCondition(pc);
+					AssociationDetailView.this.service.updateAssociation(AssociationDetailView.this.currentAssociation);
+					return null;
+				}
+
+				public void finished() {
+					AssociationDetailView.this.showAssociation(AssociationDetailView.this.currentAssociation);
+					AssociationDetailView.this.toolBar.setDisable(false);
+				}
+
+				@Override
+				public void succeeded() {
+					super.succeeded();
+					this.finished();
+				}
+
+				@Override
+				public void cancelled() {
+					super.cancelled();
+				}
+
+				@Override
+				public void failed() {
+					super.failed();
+					this.finished();
+
+					ExceptionAlert alert = new ExceptionAlert(this.getException());
+					alert.setTitle("Checkout Error");
+					alert.setHeaderText("Checkout Error");
+
+					alert.showAndWait();
+				}
+			};
+
+			new Thread(updateTask).start();
+		});
+
 
 		splitPane.getItems().add(associationDetails);
 
@@ -106,6 +166,7 @@ public class AssociationDetailView extends BorderPane {
 			// show details
 			this.associationId.setText(String.valueOf(association.getId()));
 			this.associationName.setText(association.getName());
+			this.associationPC.setText(association.getPresenceCondition().toString());
 
 			// show containment table
 			// TODO
@@ -118,6 +179,7 @@ public class AssociationDetailView extends BorderPane {
 
 			this.associationId.setText("");
 			this.associationName.setText("");
+			this.associationPC.setText("");
 		}
 	}
 

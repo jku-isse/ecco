@@ -52,6 +52,16 @@ public class MemEntityFactory implements EntityFactory {
 		return new BasePresenceCondition(configuration, maxOrder);
 	}
 
+	@Override
+	public PresenceCondition createPresenceCondition(PresenceCondition pc) {
+		BasePresenceCondition clone = new BasePresenceCondition();
+		clone.getMinModules().addAll(pc.getMinModules());
+		clone.getMaxModules().addAll(pc.getMaxModules());
+		clone.getAllModules().addAll(pc.getAllModules());
+		clone.getNotModules().addAll(pc.getNotModules());
+		return clone;
+	}
+
 
 	// # ARTIFACTS ################################################################
 

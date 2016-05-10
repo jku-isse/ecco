@@ -71,6 +71,14 @@ public interface EntityFactory {
 	 */
 	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder);
 
+	/**
+	 * Creates a clone/copy of the given presence condition.
+	 *
+	 * @param pc The presence condition that is to be cloned.
+	 * @return
+	 */
+	public PresenceCondition createPresenceCondition(PresenceCondition pc);
+
 
 	// # ARTIFACTS ################################################################
 

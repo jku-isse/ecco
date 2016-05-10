@@ -33,6 +33,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -479,6 +481,183 @@ public class EccoService {
 
 	// # UTILS #########################################################################################################
 
+
+	/**
+	 * Creates a presence condition from a given string. Uses existing features and feature versions from the repository. Adds new features and feature versions to the repository.
+	 *
+	 * @param pcString The presence condition string.
+	 * @return The parsed presence condition.
+	 */
+	public PresenceCondition parsePresenceCondition(String pcString) {
+		if (pcString == null)
+			throw new EccoException("No presence condition string provided.");
+
+		if (!pcString.matches("\\([+-]?[a-zA-Z0-9]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?(\\s*,\\s*[+-]?[a-zA-Z0-9]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?)*\\)(\\s*,\\s*\\([+-]?[a-zA-Z0-9]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?(\\s*,\\s*[+-]?[a-zA-Z0-9]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?)*\\))*"))
+			throw new EccoException("Invalid presence condition string provided.");
+
+		try {
+			this.transactionStrategy.begin();
+
+			PresenceCondition pc = this.entityFactory.createPresenceCondition();
+
+
+			// modules
+			Pattern modulePattern = Pattern.compile("\\(([^()]*)\\)");
+			Matcher moduleMatcher = modulePattern.matcher(pcString);
+			while (moduleMatcher.find()) {
+				for (int i = 0; i < moduleMatcher.groupCount(); i++) {
+					String moduleString = moduleMatcher.group(i);
+
+					at.jku.isse.ecco.module.Module module = this.entityFactory.createModule();
+
+					// module features
+					Pattern moduleFeaturePattern = Pattern.compile("(\\+|\\-)?([a-zA-Z0-9]+)(.(\\{[+-]?[a-zA-Z0-9]+(\\s*,\\s*[+-]?[a-zA-Z0-9]+)*\\}|[+-]?[0-9]+))?");
+					Matcher moduleFeatureMatcher = moduleFeaturePattern.matcher(moduleString);
+					while (moduleFeatureMatcher.find()) {
+						String featureSignString = moduleFeatureMatcher.group(1);
+						boolean featureSign = (featureSignString != null && featureSignString.equals("-")) ? false : true;
+						String featureName = moduleFeatureMatcher.group(2);
+
+						Feature feature;
+						try {
+							feature = this.featureDao.load(featureName);
+						} catch (IllegalArgumentException e) {
+							feature = null;
+						}
+						if (feature == null) {
+							feature = this.entityFactory.createFeature(featureName);
+							feature = this.featureDao.save(feature);
+						}
+
+						Collection<FeatureVersion> featureVersions = new ArrayList<>();
+
+						// versions
+						//Pattern pattern3 = Pattern.compile("\\{([0-9]+)(\\s*,\\s*([0-9]+))*\\}");
+						Pattern versionPattern = Pattern.compile("[^+-0-9{}, ]*([+-]?[0-9]+)[^+-0-9{}, ]*");
+						if (moduleFeatureMatcher.group(3) != null) {
+							Matcher versionMatcher = versionPattern.matcher(moduleFeatureMatcher.group(4));
+							while (versionMatcher.find()) {
+								int version = Integer.parseInt(versionMatcher.group(0));
+
+								FeatureVersion tempFeatureVersion = this.entityFactory.createFeatureVersion(feature, version);
+								FeatureVersion featureVersion = feature.getVersion(tempFeatureVersion);
+								if (featureVersion == null) {
+									feature.addVersion(tempFeatureVersion);
+									featureVersion = tempFeatureVersion;
+								}
+
+								featureVersions.add(featureVersion);
+							}
+						}
+
+						ModuleFeature mf = this.entityFactory.createModuleFeature(feature, featureVersions, featureSign);
+						module.add(mf);
+					}
+
+					pc.getMinModules().add(module);
+				}
+			}
+
+
+//			// split string into modules
+//			String[] moduleStrings = pcString.split("\\s*,\\s*\\(");
+//			for (String moduleString : moduleStrings) {
+//				moduleString = moduleString.substring(0, moduleString.lastIndexOf(")"));
+//
+//				at.jku.isse.ecco.module.Module module = this.entityFactory.createModule();
+//
+//				// split module into module feature
+//				String[] moduleFeatureStrings = moduleString.split(",");
+//				for (String moduleFeatureString : moduleFeatureStrings) {
+//					moduleFeatureString = moduleFeatureString.trim();
+//
+//
+//					String featureName = null;
+//					String[] featureVersionStrings;
+//
+//					if (moduleFeatureString.contains(".")) { // version(s) given
+//						String[] pair = moduleFeatureString.split("\\.");
+//						featureName = pair[0];
+//						if (pair[1].startsWith("{")) { // multiple versions
+//							// split into versions
+//							featureVersionStrings = pair[1].split(",");
+//						} else { // single version
+//							featureVersionStrings = new String[]{pair[1]};
+//						}
+//					} else { // no version(s) given, default to -1
+//						featureName = moduleFeatureString;
+//						featureVersionStrings = new String[]{"-1"};
+//					}
+//
+//
+//					if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
+//						featureName = featureName.substring(1);
+//					boolean featureSign = !(moduleFeatureString.startsWith("!") || moduleFeatureString.startsWith("-"));
+//					// find existing feature or create new one
+//					Feature feature;
+//					try {
+//						feature = this.featureDao.load(featureName);
+//					} catch (IllegalArgumentException e) {
+//						feature = null;
+//					}
+//					if (feature == null) {
+//						feature = this.entityFactory.createFeature(featureName);
+//						feature = this.featureDao.save(feature);
+//					}
+//
+//					Collection<FeatureVersion> featureVersions = new ArrayList<>();
+//					for (String featureVersionString : featureVersionStrings) {
+//						featureVersionString = featureVersionString.trim();
+//
+//						FeatureVersion tempFeatureVersion = this.entityFactory.createFeatureVersion(feature, Integer.parseInt(featureVersionString));
+//						FeatureVersion featureVersion = feature.getVersion(tempFeatureVersion);
+//						if (featureVersion == null) {
+//							feature.addVersion(tempFeatureVersion);
+//							featureVersion = tempFeatureVersion;
+//						}
+//
+//						featureVersions.add(featureVersion);
+//					}
+//
+//					ModuleFeature mf = this.entityFactory.createModuleFeature(feature, featureVersions, featureSign);
+//					module.add(mf);
+//				}
+//
+//				pc.getMinModules().add(module);
+//			}
+
+			this.transactionStrategy.commit();
+
+			return pc;
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error during extraction.", e);
+		}
+	}
+
+	/**
+	 * TODO: i don't like this solution. try to find a better one.
+	 */
+	public void updateAssociation(Association association) {
+		try {
+			this.transactionStrategy.begin();
+
+			this.associationDao.save(association);
+
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error during extraction.", e);
+		}
+	}
+
+
+	/**
+	 * TODO: change "parseConfigurationString" so that it also behaves like "parsePresenceCondition". provide a way to save changed associations. like "service.update(assoc)".
+	 */
+
 	/**
 	 * Creates a configuration from a given configuration string.
 	 *
@@ -487,13 +666,17 @@ public class EccoService {
 	 * @throws EccoException
 	 */
 	public Configuration parseConfigurationString(String configurationString) throws EccoException {
-		if (configurationString == null || configurationString.isEmpty())
+		//if (configurationString == null || configurationString.isEmpty())
+		if (configurationString == null)
 			throw new EccoException("No configuration string provided.");
 
 		if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
 			throw new EccoException("Invalid configuration string provided.");
 
 		Configuration configuration = this.entityFactory.createConfiguration();
+
+		if (configurationString.isEmpty())
+			return configuration;
 
 		String[] featureInstanceStrings = configurationString.split(",");
 		for (String featureInstanceString : featureInstanceStrings) {
@@ -527,6 +710,84 @@ public class EccoService {
 		}
 
 		return configuration;
+	}
+
+
+	/**
+	 * This method first adds new features and feature versions to the repository.
+	 * Then it updates the presence condition of every association to include the new feature versions.
+	 *
+	 * @param configuration
+	 * @return
+	 */
+	public void addConfiguration(Configuration configuration) throws EccoException {
+//		// first replace features and feature versions in configuration with existing ones in repository (and add negative features)
+//		Configuration newConfiguration = this.entityFactory.createConfiguration();
+//		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
+//
+//			// first check if feature is contained in repository, if so use version from repository, if not add it to repository
+//			Feature repoFeature = this.featureDao.load(featureInstance.getFeature().getName());
+//			if (repoFeature != null) { // feature is contained in repo
+//				// check if versions are also contained
+//				for (FeatureVersion featureVersion : featureInstance.getFeatureVersions()) {
+//					FeatureVersion repoFeatureVersion = null;
+//					for (FeatureVersion tempRepoFeatureVersion : repoFeature.getVersions()) {
+//						if (tempRepoFeatureVersion.equals(featureVersion))
+//							repoFeatureVersion = tempRepoFeatureVersion;
+//					}
+//					if (repoFeatureVersion != null) {
+//						// use repo version
+//
+//					} else {
+//						// use version from config
+//						newConfiguration.addFeatureInstance(featureInstance);
+//						// add version to feature
+//
+//					}
+//				}
+//			} else { // feature is not contained in repo
+//
+//			}
+//			// then check if feature instance is contained in repository, if so use version from repository, if not add it to repository
+//
+//		}
+
+		try {
+			this.transactionStrategy.begin();
+
+			// collect new features and feature versions and add them to the repository
+			Set<Feature> newFeatures = new HashSet<Feature>();
+			Set<FeatureVersion> newFeatureVersions = new HashSet<FeatureVersion>();
+			for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
+				Feature repoFeature = this.featureDao.load(featureInstance.getFeature().getName());
+				if (repoFeature == null) {
+					newFeatures.add(featureInstance.getFeature());
+					this.featureDao.save(featureInstance.getFeature()); // save new feature including all its versions
+				} else {
+					if (!repoFeature.getVersions().contains(featureInstance.getFeatureVersion())) {
+						FeatureVersion repoFeatureVersion = this.entityFactory.createFeatureVersion(repoFeature, featureInstance.getFeatureVersion().getVersion());
+						newFeatureVersions.add(repoFeatureVersion);
+						repoFeature.addVersion(repoFeatureVersion);
+						this.featureDao.save(repoFeature); // save repo feature now containing new version
+					}
+				}
+			}
+
+			// update existing associations with new (features and) feature versions. NOTE: update with negative features is not necessary if the configurations contain also all the negative features!
+			Collection<Association> associations = this.associationDao.loadAllAssociations();
+			for (Association association : associations) {
+				for (FeatureVersion newFeatureVersion : newFeatureVersions) {
+					association.getPresenceCondition().addFeatureVersion(newFeatureVersion);
+				}
+			}
+
+//		// return new configuration containing features and versions from the repository where they existed
+//		return newConfiguration;
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+			throw new EccoException("Error when adding configuration.", e);
+		}
 	}
 
 
@@ -572,7 +833,7 @@ public class EccoService {
 
 
 				// PRESENCE CONDITION
-				extractedA.setPresenceCondition(this.entityFactory.createPresenceCondition());
+				extractedA.setPresenceCondition(this.entityFactory.createPresenceCondition(origA.getPresenceCondition()));
 
 
 				// ARTIFACT TREE
@@ -635,16 +896,25 @@ public class EccoService {
 	 * @throws EccoException When the configuration file does not exist or cannot be read.
 	 */
 	public Commit commit() throws EccoException {
+//		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
+//		if (!Files.exists(configFile)) {
+//			throw new EccoException("No configuration string was given and no configuration file (" + CONFIG_FILE_NAME.toString() + ") exists in base directory.");
+//		} else {
+//			try {
+//				String configurationString = new String(Files.readAllBytes(configFile));
+//				return this.commit(configurationString);
+//			} catch (IOException e) {
+//				throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
+//			}
+//		}
 		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
-		if (!Files.exists(configFile)) {
-			throw new EccoException("No configuration string was given and no configuration file (" + CONFIG_FILE_NAME.toString() + ") exists in base directory.");
-		} else {
-			try {
-				String configurationString = new String(Files.readAllBytes(configFile));
-				return this.commit(configurationString);
-			} catch (IOException e) {
-				throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
-			}
+		try {
+			String configurationString = "";
+			if (Files.exists(configFile))
+				configurationString = new String(Files.readAllBytes(configFile));
+			return this.commit(configurationString);
+		} catch (IOException e) {
+			throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
 		}
 	}
 
@@ -744,7 +1014,7 @@ public class EccoService {
 	 * @param association The association to be committed.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	public Commit commit(Association association) throws EccoException {
+	protected Commit commit(Association association) throws EccoException {
 		checkNotNull(association);
 
 		List<Association> associations = new ArrayList<>(1);
@@ -758,7 +1028,7 @@ public class EccoService {
 	 * @param inputAs The collection of associations to be committed.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	public Commit commit(Collection<Association> inputAs) throws EccoException {
+	protected Commit commit(Collection<Association> inputAs) throws EccoException {
 		// TODO: make sure the feature instances used in the given associations are the ones from the repository
 
 		synchronized (this) {
@@ -805,7 +1075,7 @@ public class EccoService {
 							//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
 						} else {
 							// TODO: clone original presence condition!
-							intA.setPresenceCondition(this.entityFactory.createPresenceCondition());
+							intA.setPresenceCondition(this.entityFactory.createPresenceCondition(origA.getPresenceCondition()));
 						}
 
 
@@ -869,84 +1139,6 @@ public class EccoService {
 				this.fireCommitsChangedEvent(persistedCommit);
 
 			return persistedCommit;
-		}
-	}
-
-
-	/**
-	 * This method first adds new features and feature versions to the repository.
-	 * Then it updates the presence condition of every association to include the new feature versions.
-	 *
-	 * @param configuration
-	 * @return
-	 */
-	public void addConfiguration(Configuration configuration) throws EccoException {
-//		// first replace features and feature versions in configuration with existing ones in repository (and add negative features)
-//		Configuration newConfiguration = this.entityFactory.createConfiguration();
-//		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-//
-//			// first check if feature is contained in repository, if so use version from repository, if not add it to repository
-//			Feature repoFeature = this.featureDao.load(featureInstance.getFeature().getName());
-//			if (repoFeature != null) { // feature is contained in repo
-//				// check if versions are also contained
-//				for (FeatureVersion featureVersion : featureInstance.getFeatureVersions()) {
-//					FeatureVersion repoFeatureVersion = null;
-//					for (FeatureVersion tempRepoFeatureVersion : repoFeature.getVersions()) {
-//						if (tempRepoFeatureVersion.equals(featureVersion))
-//							repoFeatureVersion = tempRepoFeatureVersion;
-//					}
-//					if (repoFeatureVersion != null) {
-//						// use repo version
-//
-//					} else {
-//						// use version from config
-//						newConfiguration.addFeatureInstance(featureInstance);
-//						// add version to feature
-//
-//					}
-//				}
-//			} else { // feature is not contained in repo
-//
-//			}
-//			// then check if feature instance is contained in repository, if so use version from repository, if not add it to repository
-//
-//		}
-
-		try {
-			this.transactionStrategy.begin();
-
-			// collect new features and feature versions and add them to the repository
-			Set<Feature> newFeatures = new HashSet<Feature>();
-			Set<FeatureVersion> newFeatureVersions = new HashSet<FeatureVersion>();
-			for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-				Feature repoFeature = this.featureDao.load(featureInstance.getFeature().getName());
-				if (repoFeature == null) {
-					newFeatures.add(featureInstance.getFeature());
-					this.featureDao.save(featureInstance.getFeature()); // save new feature including all its versions
-				} else {
-					if (!repoFeature.getVersions().contains(featureInstance.getFeatureVersion())) {
-						FeatureVersion repoFeatureVersion = this.entityFactory.createFeatureVersion(repoFeature, featureInstance.getFeatureVersion().getVersion());
-						newFeatureVersions.add(repoFeatureVersion);
-						repoFeature.addVersion(repoFeatureVersion);
-						this.featureDao.save(repoFeature); // save repo feature now containing new version
-					}
-				}
-			}
-
-			// update existing associations with new (features and) feature versions. NOTE: update with negative features is not necessary if the configurations contain also all the negative features!
-			Collection<Association> associations = this.associationDao.loadAllAssociations();
-			for (Association association : associations) {
-				for (FeatureVersion newFeatureVersion : newFeatureVersions) {
-					association.getPresenceCondition().addFeatureVersion(newFeatureVersion);
-				}
-			}
-
-//		// return new configuration containing features and versions from the repository where they existed
-//		return newConfiguration;
-			this.transactionStrategy.commit();
-		} catch (Exception e) {
-			this.transactionStrategy.rollback();
-			throw new EccoException("Error when adding configuration.", e);
 		}
 	}
 
