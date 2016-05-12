@@ -536,6 +536,7 @@ public class EccoService {
 						Pattern versionPattern = Pattern.compile("[^+-0-9{}, ]*([+-]?[0-9]+)[^+-0-9{}, ]*");
 						if (moduleFeatureMatcher.group(3) != null) {
 							Matcher versionMatcher = versionPattern.matcher(moduleFeatureMatcher.group(4));
+
 							while (versionMatcher.find()) {
 								int version = Integer.parseInt(versionMatcher.group(0));
 
@@ -548,6 +549,14 @@ public class EccoService {
 
 								featureVersions.add(featureVersion);
 							}
+						} else {
+							FeatureVersion tempFeatureVersion = this.entityFactory.createFeatureVersion(feature, FeatureVersion.NEWEST);
+							FeatureVersion featureVersion = feature.getVersion(tempFeatureVersion);
+							if (featureVersion == null) {
+								feature.addVersion(tempFeatureVersion);
+								featureVersion = tempFeatureVersion;
+							}
+							featureVersions.add(featureVersion);
 						}
 
 						ModuleFeature mf = this.entityFactory.createModuleFeature(feature, featureVersions, featureSign);
