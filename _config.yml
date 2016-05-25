@@ -2,3 +2,5 @@
 name: ecco
 
 description: ecco description
+
+baseurl: /ecco/
