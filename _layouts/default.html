@@ -6,12 +6,12 @@
     <meta charset="utf-8" />
     <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.name }}</title>
 
-    <link rel="stylesheet" href="{{site.baseurl}}css/styles.css">
-    <link rel="stylesheet" href="{{site.baseurl}}css/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="{{site.baseurl}}css/bootstrap/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="{{site.baseurl}}/css/styles.css">
+    <link rel="stylesheet" href="{{site.baseurl}}/css/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="{{site.baseurl}}/css/bootstrap/bootstrap-theme.min.css">
 
-    <script src="{{site.baseurl}}js/jquery-2.2.2.min.js"></script>
-    <script src="{{site.baseurl}}js/bootstrap/bootstrap.min.js"></script>
+    <script src="{{site.baseurl}}/js/jquery-2.2.2.min.js"></script>
+    <script src="{{site.baseurl}}/js/bootstrap/bootstrap.min.js"></script>
 </head>
 
 <body>
@@ -35,10 +35,10 @@
 
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
-                    <li class="{% if page.active == 'home' %}active{% endif %}"><a href="/">Home</a></li>
-                    <li class="{% if page.active == 'about' %}active{% endif %}"><a href="/about">About</a></li>
-                    <li class="{% if page.active == 'publications' %}active{% endif %}"><a href="/publications">Publications</a></li>
-                    <li class="{% if page.active == 'showcase' %}active{% endif %}"><a href="/showcase">Showcase</a></li>
+                    <li class="{% if page.active == 'home' %}active{% endif %}"><a href="{{site.baseurl}}/">Home</a></li>
+                    <li class="{% if page.active == 'about' %}active{% endif %}"><a href="{{site.baseurl}}/about">About</a></li>
+                    <li class="{% if page.active == 'publications' %}active{% endif %}"><a href="{{site.baseurl}}/publications">Publications</a></li>
+                    <li class="{% if page.active == 'showcase' %}active{% endif %}"><a href="{{site.baseurl}}/showcase">Showcase</a></li>
                 </ul>
             </div>
 
