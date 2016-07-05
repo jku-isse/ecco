@@ -8,4 +8,10 @@ public interface JDTArtifactData {
 
 	public String getSource();
 
+	boolean isExecuted();
+
+	void setExecuted();
+
+	String getFile();
+
 }

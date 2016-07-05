@@ -2,8 +2,6 @@ package at.jku.isse.ecco.java.test;
 
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.dao.PerstEntityFactory;
-import at.jku.isse.ecco.plugin.artifact.java.JDTArtifactData;
-import at.jku.isse.ecco.plugin.artifact.java.JDTNodeArtifactData;
 import at.jku.isse.ecco.plugin.artifact.java.JavaReader;
 import at.jku.isse.ecco.plugin.artifact.java.JavaWriter;
 import at.jku.isse.ecco.tree.Node;

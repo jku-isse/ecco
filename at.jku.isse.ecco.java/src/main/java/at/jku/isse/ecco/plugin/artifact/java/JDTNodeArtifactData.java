@@ -2,6 +2,8 @@ package at.jku.isse.ecco.plugin.artifact.java;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -21,6 +23,7 @@ public class JDTNodeArtifactData implements ArtifactData, JDTArtifactData {
 	private String source;
 	private String sourceType;
 	private String type;
+	private boolean executed = false;
 
 	/**
 	 * Constructs a new JDTArtifact with the given <code>astNode</code> as
@@ -43,8 +46,7 @@ public class JDTNodeArtifactData implements ArtifactData, JDTArtifactData {
 	 * @param type       of the content
 	 * @param simpleType whether it is a simple content
 	 */
-	public JDTNodeArtifactData(String astNode, String identifier, String type,
-							   boolean simpleType) {
+	public JDTNodeArtifactData(String astNode, String identifier, String type, boolean simpleType) {
 		checkNotNull(astNode);
 		checkNotNull(identifier);
 		checkNotNull(type);
@@ -108,7 +110,7 @@ public class JDTNodeArtifactData implements ArtifactData, JDTArtifactData {
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) return true;
-		if (!super.equals(obj)) return false;
+		if (obj == null) return false;
 		if (getClass() != obj.getClass()) return false;
 		JDTNodeArtifactData other = (JDTNodeArtifactData) obj;
 		if (identifier == null) {
@@ -123,6 +125,22 @@ public class JDTNodeArtifactData implements ArtifactData, JDTArtifactData {
 	@Override
 	public String toString() {
 		return identifier;
+	}
+
+	public String getFile() {
+		if (source == null || !source.endsWith(".java") || source.equals("")) {
+			return "";
+		}
+		Path p = Paths.get(source);
+		return p.getFileName().toString();
+	}
+
+	public boolean isExecuted() {
+		return executed;
+	}
+
+	public void setExecuted() {
+		executed = true;
 	}
 
 }

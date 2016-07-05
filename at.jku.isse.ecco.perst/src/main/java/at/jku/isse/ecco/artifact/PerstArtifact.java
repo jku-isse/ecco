@@ -111,6 +111,8 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 		else {
 			if (!this.getData().equals(that.getData()))
 				return false;
+			if (this.getUses().size() != that.getUses().size())
+				return false;
 			for (ArtifactReference ar : this.getUses()) {
 				if (!that.getUses().contains(ar))
 					return false;

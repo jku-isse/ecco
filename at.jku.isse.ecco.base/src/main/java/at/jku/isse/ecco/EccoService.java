@@ -852,7 +852,7 @@ public class EccoService {
 
 
 				// if the intersection association has artifacts or a not empty presence condition store it
-				if ((extractedA.getRootNode() != null && extractedA.getRootNode().getChildren().size() > 0) || !extractedA.getPresenceCondition().isEmpty()) {
+				if (extractedA.getRootNode() != null && (extractedA.getRootNode().getChildren().size() > 0 || !extractedA.getPresenceCondition().isEmpty())) {
 					// set parents for intersection association (and child for parents)
 					extractedA.addParent(origA);
 					extractedA.setName("EXTRACTED " + origA.getId());

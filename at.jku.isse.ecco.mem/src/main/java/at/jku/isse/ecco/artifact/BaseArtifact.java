@@ -76,6 +76,8 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 		else {
 			if (!this.getData().equals(that.getData()))
 				return false;
+			if (this.getUses().size() != that.getUses().size())
+				return false;
 			for (ArtifactReference ar : this.getUses()) {
 				if (!that.getUses().contains(ar))
 					return false;

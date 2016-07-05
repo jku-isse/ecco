@@ -246,7 +246,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 			}
 			astNode = parent;
 		} else {
-			throw new IllegalArgumentException("Printer works only for JDTArtifacts!");
+			throw new IllegalArgumentException("Writer works only for JDTArtifacts! (" + artifactData.getClass() + ")");
 		}
 
 		return astNode;

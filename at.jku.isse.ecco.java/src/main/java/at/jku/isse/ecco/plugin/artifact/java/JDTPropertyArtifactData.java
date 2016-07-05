@@ -2,6 +2,8 @@ package at.jku.isse.ecco.plugin.artifact.java;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 
 public class JDTPropertyArtifactData implements ArtifactData, JDTArtifactData {
@@ -12,6 +14,7 @@ public class JDTPropertyArtifactData implements ArtifactData, JDTArtifactData {
 	private String sourceType;
 	private String structuralProperty;
 	private String type;
+	private boolean executed = false;
 
 	public JDTPropertyArtifactData(String structuralProperty, String identifier, String type, boolean mandatory) {
 		super();
@@ -80,6 +83,22 @@ public class JDTPropertyArtifactData implements ArtifactData, JDTArtifactData {
 	@Override
 	public String toString() {
 		return identifier + " [" + type + "]";
+	}
+
+	public boolean isExecuted() {
+		return executed;
+	}
+
+	public void setExecuted() {
+		executed = true;
+	}
+
+	public String getFile() {
+		if (source == null || !source.endsWith(".java") || source.equals("")) {
+			return "";
+		}
+		Path p = Paths.get(source);
+		return p.getFileName().toString();
 	}
 
 }
