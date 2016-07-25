@@ -273,6 +273,38 @@ public class Trees {
 	}
 
 
+	/**
+	 * Subtracts the right tree from the left tree. The right tree is not modified.
+	 *
+	 * @param left  The left tree to be subtracted from, which is modified.
+	 * @param right The right tree to subtract, which is not modified.
+	 */
+	public void subtract(Node left, Node right) {
+		// do some basic checks
+		if (left.getArtifact() != null && !left.getArtifact().equals(right.getArtifact()))
+			throw new EccoException("Artifacts must be equal.");
+
+		// deal with current node
+		if (right.isUnique())
+			left.setUnique(false);
+
+		// deal with children
+		Iterator<Node> iterator = left.getChildren().iterator();
+		while (iterator.hasNext()) {
+			Node leftChild = iterator.next();
+			int ri = right.getChildren().indexOf(leftChild);
+			if (ri != -1) {
+				Node rightChild = right.getChildren().get(ri);
+
+				subtract(leftChild, rightChild);
+
+				if (!leftChild.isUnique() && leftChild.getChildren().isEmpty())
+					iterator.remove();
+			}
+		}
+	}
+
+
 	// # READ ONLY OPERATIONS ##################################################################################
 
 

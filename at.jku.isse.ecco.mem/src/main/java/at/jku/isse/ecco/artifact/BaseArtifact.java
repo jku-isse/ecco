@@ -79,8 +79,18 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 			if (this.getUses().size() != that.getUses().size())
 				return false;
 			for (ArtifactReference ar : this.getUses()) {
-				if (!that.getUses().contains(ar))
+				boolean found = false;
+				for (ArtifactReference thatAR : that.getUses()) {
+					if (ar.getTarget().equals(thatAR.getTarget())) {
+						found = true;
+						break;
+					}
+				}
+				if (!found)
 					return false;
+				// this causes an endless recursion:
+				//if (!that.getUses().contains(ar))
+				//	return false;
 			}
 			return true;
 		}
