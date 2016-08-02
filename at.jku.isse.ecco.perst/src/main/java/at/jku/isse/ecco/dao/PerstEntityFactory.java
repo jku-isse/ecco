@@ -63,7 +63,7 @@ public class PerstEntityFactory implements EntityFactory {
 
 	@Override
 	public PresenceCondition createPresenceCondition(PresenceCondition pc) {
-		PerstPresenceCondition clone = new PerstPresenceCondition();
+		PerstPresenceCondition clone = new PerstPresenceCondition(); // TODO: reuse module instances!? when modules are modified, all associations that contain the are affected!
 		clone.getMinModules().addAll(pc.getMinModules());
 		clone.getMaxModules().addAll(pc.getMaxModules());
 		clone.getAllModules().addAll(pc.getAllModules());

@@ -972,6 +972,7 @@ public class EccoService {
 		// TODO: set the correct configuration (i.e. the one with the replaced feature instances) here!
 		Commit commit = this.commit(association);
 		commit.setConfiguration(configuration);
+
 		try {
 			this.transactionStrategy.begin();
 			commit = this.commitDao.save(commit);
@@ -1084,6 +1085,8 @@ public class EccoService {
 							//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
 						} else {
 							// TODO: clone original presence condition!
+
+							// clone original presence condition for intersection association and leave it unchained.
 							intA.setPresenceCondition(this.entityFactory.createPresenceCondition(origA.getPresenceCondition()));
 						}
 
@@ -1105,6 +1108,31 @@ public class EccoService {
 
 							commit.addExistingAssociation(intA);
 						}
+
+
+						// add negated input presence condition to original association if intersection has artifacts (i.e. original association contains artifacts that were removed) and manual mode is activated
+						if (this.manualMode && !intA.getRootNode().getChildren().isEmpty()) {
+							for (at.jku.isse.ecco.module.Module m : inputA.getPresenceCondition().getMinModules()) {
+								if (m.size() == 1) { // only consider base modules
+									for (ModuleFeature f : m) {
+
+										Set<at.jku.isse.ecco.module.Module> new_modules = new HashSet();
+										Iterator<at.jku.isse.ecco.module.Module> it = origA.getPresenceCondition().getMinModules().iterator();
+										while (it.hasNext()) {
+											at.jku.isse.ecco.module.Module m2 = it.next();
+											at.jku.isse.ecco.module.Module m_new = this.entityFactory.createModule();
+											m_new.addAll(m2);
+											m_new.add(this.entityFactory.createModuleFeature(f.getFeature(), f, false));
+											new_modules.add(m_new);
+											it.remove();
+										}
+										origA.getPresenceCondition().getMinModules().addAll(new_modules);
+
+									}
+								}
+							}
+						}
+
 
 						Trees.checkConsistency(origA.getRootNode());
 						Trees.checkConsistency(intA.getRootNode());
