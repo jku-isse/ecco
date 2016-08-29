@@ -32,6 +32,11 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
+	public Remote createRemote(String name, String address, Remote.Type type) {
+		return new PerstRemote(name, address, type);
+	}
+
+	@Override
 	public Configuration createConfiguration() {
 		return new PerstConfiguration();
 	}

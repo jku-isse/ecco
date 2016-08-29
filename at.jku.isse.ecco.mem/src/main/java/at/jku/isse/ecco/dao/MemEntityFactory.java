@@ -23,6 +23,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class MemEntityFactory implements EntityFactory {
 
 	@Override
+	public Remote createRemote(String name, String address, Remote.Type type) {
+		return new BaseRemote(name, address, type);
+	}
+
+	@Override
 	public Configuration createConfiguration() {
 		return new BaseConfiguration();
 	}

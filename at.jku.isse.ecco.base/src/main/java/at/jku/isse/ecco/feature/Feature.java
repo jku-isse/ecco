@@ -15,9 +15,19 @@ public interface Feature extends Persistable {
 
 	public List<FeatureVersion> getVersions();
 
-	public void addVersion(FeatureVersion version);
+//	public void addVersion(FeatureVersion version);
+//
+//	public FeatureVersion getVersion(FeatureVersion version);
 
-	public FeatureVersion getVersion(FeatureVersion version);
+	public FeatureVersion addVersion(int version);
+
+	public FeatureVersion getVersion(int version);
+
+
+	public FeatureVersion getLatestVersion();
+
+	public FeatureVersion createNewVersion();
+
 
 	/**
 	 * Returns the name of the feature.

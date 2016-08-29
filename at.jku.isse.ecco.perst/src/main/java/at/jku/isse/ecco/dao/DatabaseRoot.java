@@ -1,14 +1,15 @@
 package at.jku.isse.ecco.dao;
 
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.PerstAssociation;
-import at.jku.isse.ecco.core.PerstCommit;
-import at.jku.isse.ecco.core.PerstVariant;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.PerstFeature;
 import org.garret.perst.FieldIndex;
 import org.garret.perst.Persistent;
 
+import java.nio.file.Path;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -29,7 +30,19 @@ public class DatabaseRoot extends Persistent {
 	private int currentCommitId = 0;
 	private int currentAssociationId = 0;
 
-	private final Map<Association, Map<Association, Integer>> dependencyMap = new HashMap<>();
+
+	private int maxOrder = 5;
+	private String userName = "";
+	private String userMailAddress = "";
+
+	private Configuration currentCheckoutConfiguration = null;
+
+	private final FieldIndex<PerstRemote> remoteIndex;
+
+	private final Collection<Path> ignoredFiles = new HashSet<Path>();
+
+	private final Map<Path, String> fileToPluginMap = new HashMap<Path, String>();
+
 
 	/**
 	 * Constructs a new DatabaseRoot with the given indexers.
@@ -39,7 +52,7 @@ public class DatabaseRoot extends Persistent {
 	 * @param commitIndex      used to index {@link PerstCommit}
 	 * @param variantIndex     used to index {@link PerstVariant}
 	 */
-	public DatabaseRoot(final FieldIndex<PerstAssociation> associationIndex, final FieldIndex<PerstFeature> featureIndex, final FieldIndex<PerstCommit> commitIndex, final FieldIndex<PerstVariant> variantIndex) {
+	public DatabaseRoot(final FieldIndex<PerstAssociation> associationIndex, final FieldIndex<PerstFeature> featureIndex, final FieldIndex<PerstCommit> commitIndex, final FieldIndex<PerstVariant> variantIndex, final FieldIndex<PerstRemote> remoteIndex) {
 		checkNotNull(associationIndex);
 		checkNotNull(featureIndex);
 		checkNotNull(commitIndex);
@@ -49,6 +62,7 @@ public class DatabaseRoot extends Persistent {
 		this.featureIndex = featureIndex;
 		this.commitIndex = commitIndex;
 		this.variantIndex = variantIndex;
+		this.remoteIndex = remoteIndex;
 	}
 
 	public int nextCommitId() {
@@ -68,7 +82,7 @@ public class DatabaseRoot extends Persistent {
 	 *
 	 * @return {@link PerstAssociation} indexer
 	 */
-	FieldIndex<PerstAssociation> getAssociationIndex() {
+	public FieldIndex<PerstAssociation> getAssociationIndex() {
 		return this.associationIndex;
 	}
 
@@ -77,17 +91,69 @@ public class DatabaseRoot extends Persistent {
 	 *
 	 * @return {@link PerstFeature} indexer
 	 */
-	FieldIndex<PerstFeature> getFeatureIndex() {
+	public FieldIndex<PerstFeature> getFeatureIndex() {
 		return this.featureIndex;
 	}
 
-	FieldIndex<PerstCommit> getCommitIndex() {
+	public FieldIndex<PerstCommit> getCommitIndex() {
 		return this.commitIndex;
 	}
 
-	FieldIndex<PerstVariant> getVariantIndex() {
+	public FieldIndex<PerstVariant> getVariantIndex() {
 		return this.variantIndex;
 	}
+
+
+	public int getMaxOrder() {
+		return maxOrder;
+	}
+
+	public void setMaxOrder(int maxOrder) {
+		this.maxOrder = maxOrder;
+	}
+
+	public String getUserName() {
+		return userName;
+	}
+
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+
+	public String getUserMailAddress() {
+		return userMailAddress;
+	}
+
+	public void setUserMailAddress(String userMailAddress) {
+		this.userMailAddress = userMailAddress;
+	}
+
+	public Configuration getCurrentCheckoutConfiguration() {
+		return currentCheckoutConfiguration;
+	}
+
+	public void setCurrentCheckoutConfiguration(Configuration currentCheckoutConfiguration) {
+		this.currentCheckoutConfiguration = currentCheckoutConfiguration;
+	}
+
+
+	public FieldIndex<PerstRemote> getRemoteIndex() {
+		return this.remoteIndex;
+	}
+
+
+	// TODO: figure out how to best deal with this
+	public Collection<Path> getIgnoredFiles() {
+		return ignoredFiles;
+	}
+
+	public Map<Path, String> getFileToPluginMap() {
+		return fileToPluginMap;
+	}
+
+
+	// TODO: probably remove this.
+	private final Map<Association, Map<Association, Integer>> dependencyMap = new HashMap<>();
 
 	/**
 	 * Returns the dependency map.

@@ -2,10 +2,7 @@ package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.core.Variant;
+import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
@@ -27,6 +24,8 @@ import java.util.Set;
  * @version 1.0
  */
 public interface EntityFactory {
+
+	public Remote createRemote(String name, String address, Remote.Type type);
 
 	/**
 	 * Creates an empty configuration.

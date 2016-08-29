@@ -20,6 +20,8 @@ public class BaseFeature implements Feature {
 
 	private List<FeatureVersion> versions = new ArrayList<FeatureVersion>();
 
+	private int nextVersion = 0;
+
 	public BaseFeature() {
 
 	}
@@ -34,19 +36,53 @@ public class BaseFeature implements Feature {
 	}
 
 	@Override
-	public void addVersion(FeatureVersion version) {
-		if (!this.versions.contains(version))
-			this.versions.add(version);
+	public FeatureVersion addVersion(int version) {
+		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, version);
+		if (!this.versions.contains(featureVersion)) {
+			this.versions.add(featureVersion);
+			if (this.nextVersion <= version)
+				this.nextVersion = version + 1;
+			return featureVersion;
+		}
+		return null;
 	}
 
 	@Override
-	public FeatureVersion getVersion(FeatureVersion version) {
+	public FeatureVersion getVersion(int version) {
 		for (FeatureVersion featureVersion : this.versions) {
-			if (featureVersion.equals(version))
+			if (featureVersion.getVersion() == version)
 				return featureVersion;
 		}
 		return null;
 	}
+
+	@Override
+	public FeatureVersion getLatestVersion() {
+		return this.versions.get(this.versions.size() - 1);
+	}
+
+	@Override
+	public FeatureVersion createNewVersion() {
+		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, this.nextVersion);
+		this.nextVersion++;
+		this.versions.add(featureVersion);
+		return featureVersion;
+	}
+
+//	@Override
+//	public void addVersion(FeatureVersion version) {
+//		if (!this.versions.contains(version))
+//			this.versions.add(version);
+//	}
+//
+//	@Override
+//	public FeatureVersion getVersion(FeatureVersion version) {
+//		for (FeatureVersion featureVersion : this.versions) {
+//			if (featureVersion.equals(version))
+//				return featureVersion;
+//		}
+//		return null;
+//	}
 
 	@Override
 	public String getName() {

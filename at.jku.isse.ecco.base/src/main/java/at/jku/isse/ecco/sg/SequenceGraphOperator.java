@@ -2,8 +2,6 @@ package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.sg.SequenceGraph;
-import at.jku.isse.ecco.sg.SequenceGraphNode;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
@@ -21,6 +19,12 @@ public class SequenceGraphOperator {
 
 
 	// # OPERATIONS #################################################################
+
+
+	public void sequence(SequenceGraph other) {
+		// TODO: align other to this.sequenceGraph
+	}
+
 
 	public void sequence(Node node) throws EccoException {
 		if (node.getArtifact().isOrdered())

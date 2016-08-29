@@ -19,4 +19,7 @@ public interface SequenceGraph {
 
 	public int[] align(List<Artifact<?>> artifacts) throws EccoException;
 
+
+	public void sequence(SequenceGraph other);
+
 }

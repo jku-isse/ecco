@@ -18,9 +18,10 @@ public interface Artifact<DataType extends ArtifactData> {
 
 	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
 
-	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
+	public static final String PROPERTY_MARKED_FOR_EXTRACTION = "marked";
 
-	public static final String MARKED_FOR_EXTRACTION = "marked";
+
+	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
 
 
 	@Override

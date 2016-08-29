@@ -66,15 +66,15 @@ public class ArtifactTreeView extends TreeTableView<Node> {
 							@Override
 							public void set(boolean value) {
 								if (value)
-									artifact.putProperty(Artifact.MARKED_FOR_EXTRACTION, value);
+									artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, value);
 								else
-									artifact.removeProperty(Artifact.MARKED_FOR_EXTRACTION);
+									artifact.removeProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION);
 								super.set(value);
 							}
 						};
-						sbp.set(artifact.getProperty(Artifact.MARKED_FOR_EXTRACTION).isPresent());
+						sbp.set(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
 						return sbp;
-						//return new ReadOnlyBooleanWrapper(artifact.getProperty(Artifact.MARKED_FOR_EXTRACTION).isPresent());
+						//return new ReadOnlyBooleanWrapper(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
 					} else {
 						return new ReadOnlyBooleanWrapper(false);
 					}
@@ -136,7 +136,7 @@ public class ArtifactTreeView extends TreeTableView<Node> {
 		for (TreeItem<Node> item : this.getSelectionModel().getSelectedItems()) {
 			Artifact artifact = item.getValue().getArtifact();
 			if (artifact != null) {
-				artifact.putProperty(Artifact.MARKED_FOR_EXTRACTION, true);
+				artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, true);
 			}
 		}
 	}

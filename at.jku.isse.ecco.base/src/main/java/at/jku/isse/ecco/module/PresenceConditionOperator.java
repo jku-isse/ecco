@@ -5,9 +5,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleFeature;
-import at.jku.isse.ecco.module.PresenceCondition;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -44,7 +41,7 @@ public class PresenceConditionOperator {
 				Module newModule = this.presenceCondition.createModule();
 
 				for (ModuleFeature moduleFeature : module) {
-					if (moduleFeature.equals(featureVersion.getFeature())) {
+					if (moduleFeature.getFeature().equals(featureVersion.getFeature())) {
 						ModuleFeature newModuleFeature = this.presenceCondition.createModuleFeature(moduleFeature); // make a copy of the module feature
 						newModuleFeature.add(featureVersion);
 						newModule.add(newModuleFeature);

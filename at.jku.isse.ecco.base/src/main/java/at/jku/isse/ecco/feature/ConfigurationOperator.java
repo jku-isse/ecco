@@ -68,7 +68,7 @@ public class ConfigurationOperator {
 				Module newModule = this.configuration.createModule();
 
 				for (ModuleFeature moduleFeature : module) {
-					if (moduleFeature.equals(featureVersion.getFeature())) {
+					if (moduleFeature.getFeature().equals(featureVersion.getFeature())) {
 						ModuleFeature newModuleFeature = this.configuration.createModuleFeature(moduleFeature); // make a copy of the module feature
 						newModuleFeature.add(featureVersion);
 						newModule.add(newModuleFeature);

@@ -17,13 +17,15 @@ public class BaseCommit implements Commit {
 	private List<Association> associations;
 	private String committer;
 	private Configuration configuration;
-	private List<Association> existingAssociations;
+	private List<Association> unmodifiedAssociations;
 	private List<Association> newAssociations;
+	private List<Association> removedAssociations;
 
 	public BaseCommit() {
 		this.associations = new ArrayList<Association>();
-		this.existingAssociations = new ArrayList<Association>();
+		this.unmodifiedAssociations = new ArrayList<Association>();
 		this.newAssociations = new ArrayList<Association>();
+		this.removedAssociations = new ArrayList<Association>();
 	}
 
 	@Override
@@ -66,23 +68,34 @@ public class BaseCommit implements Commit {
 		this.committer = committer;
 	}
 
+
 	@Override
-	public List<Association> getExistingAssociation() {
-		return this.existingAssociations;
+	public List<Association> getUnmodified() {
+		return this.unmodifiedAssociations;
 	}
 
 	@Override
-	public void addExistingAssociation(Association association) {
-		this.existingAssociations.add(association);
+	public void addUnmodified(Association association) {
+		this.unmodifiedAssociations.add(association);
 	}
 
 	@Override
-	public List<Association> getNewAssociations() {
+	public List<Association> getRemoved() {
+		return this.removedAssociations;
+	}
+
+	@Override
+	public void addRemoved(Association association) {
+		this.removedAssociations.add(association);
+	}
+
+	@Override
+	public List<Association> getNew() {
 		return this.newAssociations;
 	}
 
 	@Override
-	public void addNewAssociation(Association association) {
+	public void addNew(Association association) {
 		this.newAssociations.add(association);
 	}
 
