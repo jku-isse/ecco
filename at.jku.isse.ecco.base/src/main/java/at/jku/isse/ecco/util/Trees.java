@@ -41,14 +41,22 @@ public class Trees {
 
 		if (node.getArtifact() != null) {
 			Artifact<?> artifact = node.getArtifact();
-			Artifact artifact2 = entityFactory.createArtifact(artifact.getData());
+			Artifact<?> artifact2;
+
+			if (node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+				artifact2 = node.getArtifact().<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+			} else {
+				artifact2 = entityFactory.createArtifact(artifact.getData());
+				artifact.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, artifact2);
+			}
 
 			node2.setArtifact(artifact2);
 
-			artifact.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, artifact2);
+			if (node.isUnique()) {
+				artifact2.setContainingNode(node2);
+			}
 
 			artifact2.setAtomic(artifact.isAtomic());
-			artifact2.setContainingNode(node2);
 			artifact2.setOrdered(artifact.isOrdered());
 			artifact2.setSequenceNumber(artifact.getSequenceNumber());
 
@@ -59,9 +67,8 @@ public class Trees {
 
 				artifact2.setSequenceGraph(sequenceGraph2);
 
-				// TODO: copy sequence graph
+				// copy sequence graph
 				sequenceGraph2.sequence(sequenceGraph);
-
 			}
 
 			// references
@@ -311,6 +318,11 @@ public class Trees {
 						replacingArtifact.addUses(usedBy);
 					}
 				}
+			}
+
+			// update sequence graph
+			if (node.getArtifact().getSequenceGraph() != null) {
+				node.getArtifact().getSequenceGraph().updateArtifactReferences();
 			}
 		}
 

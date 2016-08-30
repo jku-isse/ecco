@@ -15,7 +15,7 @@ import at.jku.isse.ecco.plugin.artifact.*;
 import at.jku.isse.ecco.plugin.data.DataPlugin;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
-import at.jku.isse.ecco.util.PresenceConditions;
+import at.jku.isse.ecco.util.Associations;
 import at.jku.isse.ecco.util.Trees;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -956,7 +956,7 @@ public class EccoService {
 
 
 	public void fork(URL url, String configurationString) {
-
+		throw new EccoException("Remote fork not yet implemented!");
 	}
 
 	/**
@@ -967,9 +967,6 @@ public class EccoService {
 	 */
 	//public void fork(Path parentRepositoryDir, String remoteName, String configurationString) {
 	public void fork(Path parentRepositoryDir, String configurationString) {
-		// TODO: should this operation be executed on the parent or the child repo? this could be an operation that can be executed before the init operation.
-
-
 		// step 1: (set repository dir,) check that this service has not yet been initialized. check that no repository already exists, create a new empty repository, and init this repository.
 		if (this.isInitialized())
 			throw new EccoException("ECCO Service must not be initialized for fork operation.");
@@ -984,13 +981,6 @@ public class EccoService {
 
 		Configuration configuration = this.parseConfigurationString(configurationString);
 
-//		// get remote
-//		Remote remote = this.settingsDao.loadRemote(remoteName);
-//
-//		if (remote.getType() == Remote.Type.REMOTE) {
-//			throw new EccoException("Remote repositories not yet supported.");
-//		} else if (remote.getType() == Remote.Type.LOCAL) {
-		// TODO: automatically add remote after fork!
 
 		// step 2: create another ecco service and init it on the parent repository directory.
 		EccoService parentService = new EccoService();
@@ -1014,7 +1004,7 @@ public class EccoService {
 				for (FeatureVersion parentFeatureVersion : parentFeature.getVersions()) {
 					FeatureVersion childFeatureVersion = childFeature.addVersion(parentFeatureVersion.getVersion());
 					childFeatureVersion.setDescription(parentFeatureVersion.getDescription());
-					// set "replaced by" for version
+					// set "replaced by" for version?
 				}
 				childFeatures.add(childFeature);
 				this.featureDao.save(childFeature);
@@ -1024,25 +1014,26 @@ public class EccoService {
 			Collection<Association> childAssociations = new ArrayList<>();
 			for (Association parentAssociation : associations) {
 				if (parentAssociation.getPresenceCondition().holds(configuration)) {
-					Association childAssociation = this.entityFactory.createAssociation();
-
-					// set presence condition
-					PresenceCondition childPresenceCondition = this.entityFactory.createPresenceCondition();
-					childAssociation.setPresenceCondition(childPresenceCondition);
-					// TODO: clone pc
-					PresenceConditions.copy(parentAssociation.getPresenceCondition(), childPresenceCondition);
-
-
-					// set artifact tree
-					RootNode childRootNode = this.entityFactory.createRootNode();
-					childAssociation.setRootNode(childRootNode);
-					// clone tree
-					for (Node parentChildNode : parentAssociation.getRootNode().getChildren()) {
-						Node childChildNode = Trees.copy(parentChildNode, this.entityFactory);
-						childRootNode.addChild(childChildNode);
-						childChildNode.setParent(childRootNode);
-					}
-					Trees.checkConsistency(childRootNode);
+//					Association childAssociation = this.entityFactory.createAssociation();
+//
+//					// set presence condition
+//					PresenceCondition childPresenceCondition = this.entityFactory.createPresenceCondition();
+//					childAssociation.setPresenceCondition(childPresenceCondition);
+//					// TODO: clone pc
+//					PresenceConditions.copy(parentAssociation.getPresenceCondition(), childPresenceCondition);
+//
+//
+//					// set artifact tree
+//					RootNode childRootNode = this.entityFactory.createRootNode();
+//					childAssociation.setRootNode(childRootNode);
+//					// clone tree
+//					for (Node parentChildNode : parentAssociation.getRootNode().getChildren()) {
+//						Node childChildNode = Trees.copy(parentChildNode, this.entityFactory);
+//						childRootNode.addChild(childChildNode);
+//						childChildNode.setParent(childRootNode);
+//					}
+//					Trees.checkConsistency(childRootNode);
+					Association childAssociation = Associations.copy(parentAssociation, this.entityFactory);
 
 
 					childAssociations.add(childAssociation);
@@ -1050,10 +1041,14 @@ public class EccoService {
 				}
 			}
 
+
+			// after fork add used remote as default origin remote
+			Remote remote = this.entityFactory.createRemote("origin", parentRepositoryDir.toString(), Remote.Type.LOCAL);
+			this.settingsDao.storeRemote(remote);
+
+
 			this.transactionStrategy.commit();
 		} catch (Exception e) {
-			System.out.println(e);
-
 			this.transactionStrategy.rollback();
 
 			throw new EccoException("Error during fork.", e);
@@ -1062,7 +1057,6 @@ public class EccoService {
 
 		// step 4: destroy parent ecco service. leave this ecco service initialized and running as if it had been ordinarily initialized.
 		parentService.destroy();
-//		}
 
 	}
 
@@ -1070,15 +1064,74 @@ public class EccoService {
 	/**
 	 * Pulls the changes from the parent repository to this repository.
 	 */
-	public void pull() {
-		// TODO
+	public void pull(String remoteName) {
+		// step 0: load remote
+		Remote remote = this.settingsDao.loadRemote(remoteName);
+		if (remote == null) {
+			throw new EccoException("Remote " + remoteName + " does not exist");
+		} else if (remote.getType() == Remote.Type.REMOTE) {
+			throw new EccoException("Remote pull is not yet implemented");
+		} else if (remote.getType() == Remote.Type.LOCAL) {
+			// step 1: init this repo
+			this.init();
+
+			// step 2: open parent repo
+			EccoService parentService = new EccoService();
+			parentService.setRepositoryDir(Paths.get(remote.getAddress()));
+			parentService.init(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+
+			try {
+				this.transactionStrategy.begin();
+
+				// steps 3 and 4: transfer all features and versions from parent to child and add new features and versions to associations in this repository
+				Collection<Feature> features = parentService.getFeatures();
+				// TODO
+
+
+				// step 5: copy associations from parent (just like during fork/clone)
+				Collection<Association> associations = parentService.getAssociations();
+				Collection<Association> childAssociations = new ArrayList<>();
+				for (Association parentAssociation : associations) {
+					Association childAssociation = Associations.copy(parentAssociation, this.entityFactory);
+					childAssociations.add(childAssociation);
+				}
+
+				// step 6: commit copied associations to this repository
+				this.commit(childAssociations);
+
+				this.transactionStrategy.commit();
+			} catch (Exception e) {
+				this.transactionStrategy.rollback();
+
+				throw new EccoException("Error during pull.", e);
+			}
+
+			// step 7: close parent repository
+			parentService.destroy();
+		}
+
 	}
 
 	/**
 	 * Pushes the changes from this repository to its parent repository.
 	 */
-	public void push() {
+	public void push(String remoteName) {
 		// TODO
+
+		// step 0: load remote
+
+		// step 1: init this repo
+
+		// step 2: open parent repo
+
+		// steps 3 and 4: transfer all features and versions from child to parent and add new features and versions to associations in parent repository
+
+		// step 5: copy associations from this repository (just like during fork/clone)
+
+		// step 6: commit copied associations to parent repository
+
+		// step 7: close parent repository
+
 	}
 
 

@@ -22,4 +22,6 @@ public interface SequenceGraph {
 
 	public void sequence(SequenceGraph other);
 
+	public void updateArtifactReferences();
+
 }

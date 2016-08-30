@@ -52,6 +52,16 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.S
 		return this.operator.align(artifacts);
 	}
 
+	@Override
+	public void sequence(SequenceGraph other) {
+		this.operator.sequence(other);
+	}
+
+	@Override
+	public void updateArtifactReferences() {
+		this.operator.updateArtifactReferences();
+	}
+
 
 	// operand
 

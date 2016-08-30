@@ -21,8 +21,81 @@ public class SequenceGraphOperator {
 	// # OPERATIONS #################################################################
 
 
+	public void updateArtifactReferences() {
+		// update graph
+		this.updateSequenceGraphArtifactReferencesRec(this.sequenceGraph.getRoot());
+
+		// update node list
+		Iterator<Map.Entry<Set<Artifact<?>>, SequenceGraphNode>> it = this.sequenceGraph.getNodes().entrySet().iterator();
+		while (it.hasNext()) {
+			Set<Artifact<?>> artifacts = it.next().getKey();
+
+			Set<Artifact<?>> updatedArtifacts = new HashSet<>();
+			Iterator<Artifact<?>> it2 = artifacts.iterator();
+			while (it2.hasNext()) {
+				Artifact<?> artifact = it2.next();
+
+				if (artifact.getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+					Artifact<?> replacing = artifact.<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+					replacing.setSequenceNumber(artifact.getSequenceNumber());
+
+					updatedArtifacts.add(replacing);
+					it2.remove();
+				}
+			}
+			artifacts.addAll(updatedArtifacts);
+		}
+
+	}
+
+	private void updateSequenceGraphArtifactReferencesRec(SequenceGraphNode sgn) {
+		// update references in children
+		Map<Artifact<?>, SequenceGraphNode> updatedChildren = new HashMap<>();
+		Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> it = sgn.getChildren().entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<Artifact<?>, SequenceGraphNode> entry = it.next();
+			if (entry.getKey().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+				Artifact<?> replacing = entry.getKey().<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+				replacing.setSequenceNumber(entry.getKey().getSequenceNumber());
+
+				updatedChildren.put(replacing, entry.getValue());
+				it.remove();
+			}
+		}
+		sgn.getChildren().putAll(updatedChildren);
+
+		// traverse children
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
+			this.updateSequenceGraphArtifactReferencesRec(child.getValue());
+		}
+	}
+
+
 	public void sequence(SequenceGraph other) {
-		// TODO: align other to this.sequenceGraph
+		// TODO: better implementation?
+
+		// align other to this.sequenceGraph
+
+		// traverse other to retrieve every order and sequence it into the new sequence graph.
+		this.traverseSequenceGraphForOrder(other.getRoot(), new ArrayList<Artifact<?>>());
+	}
+
+
+	private void traverseSequenceGraphForOrder(SequenceGraphNode sgn, List<Artifact<?>> order) {
+		if (sgn.getChildren().isEmpty()) {
+			// we have reached the end and the current path is a possible plath
+			this.sequenceGraph.sequenceArtifacts(order);
+		} else {
+			// keep traversing
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
+				order.add(child.getKey());
+
+				this.traverseSequenceGraphForOrder(child.getValue(), order);
+
+				// when we are done remove current from order
+				order.remove(order.size() - 1);
+			}
+		}
 	}
 
 

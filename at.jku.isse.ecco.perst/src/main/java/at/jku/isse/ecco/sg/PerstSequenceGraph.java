@@ -58,6 +58,11 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 		this.operator.sequence(other);
 	}
 
+	@Override
+	public void updateArtifactReferences() {
+		this.operator.updateArtifactReferences();
+	}
+
 
 	// perst
 
