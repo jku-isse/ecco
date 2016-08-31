@@ -3,6 +3,7 @@ package at.jku.isse.ecco.module;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import org.garret.perst.Persistent;
 
@@ -49,6 +50,11 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	@Override
 	public PresenceCondition slice(PresenceCondition other) throws EccoException {
 		return this.operator.slice(other);
+	}
+
+	@Override
+	public void addFeatureInstance(FeatureInstance featureInstance) {
+		this.operator.addFeatureInstance(featureInstance);
 	}
 
 	@Override

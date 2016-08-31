@@ -23,6 +23,7 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 	protected Storage database = null;
 	protected boolean initialized = false;
 
+	protected int numBegin = 0;
 
 	@Inject
 	public PerstTransactionStrategy(@Named("connectionString") final String connectionString) {
@@ -92,12 +93,15 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 	public void begin() throws EccoException {
 		this.checkInitialized();
 
+		this.numBegin++;
+
 		if (this.currentDatabaseRoot == null) {
 			this.database.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 
 			this.currentDatabaseRoot = this.database.getRoot();
 		} else {
-			throw new EccoException("Transaction is already in progress.");
+			//throw new EccoException("Transaction is already in progress.");
+			// do nothing
 		}
 	}
 
@@ -109,6 +113,8 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 
 	}
 
+	// TODO: improve transactions!
+
 	@Override
 	public void commit() throws EccoException {
 		this.checkInitialized();
@@ -116,9 +122,13 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 		if (this.currentDatabaseRoot == null) { // no explicit transaction
 			throw new EccoException("No transaction in progress.");
 		} else { // explicit transaction
-			this.database.endThreadTransaction();
+			this.numBegin--;
 
-			this.currentDatabaseRoot = null;
+			if (this.numBegin == 0) {
+				this.database.endThreadTransaction();
+
+				this.currentDatabaseRoot = null;
+			}
 		}
 	}
 
@@ -129,9 +139,13 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 		if (this.currentDatabaseRoot == null) { // no explicit transaction
 			throw new EccoException("No transaction in progress.");
 		} else { // explicit transaction
-			this.database.rollbackThreadTransaction();
+			this.numBegin--;
 
-			this.currentDatabaseRoot = null;
+			if (this.numBegin == 0) {
+				this.database.rollbackThreadTransaction();
+
+				this.currentDatabaseRoot = null;
+			}
 		}
 	}
 

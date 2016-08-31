@@ -1,7 +1,5 @@
 package at.jku.isse.ecco.util;
 
-import at.jku.isse.ecco.module.PresenceCondition;
-
 public class PresenceConditions {
 
 	private PresenceConditions() {
@@ -32,11 +30,11 @@ public class PresenceConditions {
 //			}
 //		}
 //	}
-
-
-	public static void copy(PresenceCondition from, PresenceCondition to) {
-		// TODO
-	}
+//
+//
+//	public static void copy(PresenceCondition from, PresenceCondition to) {
+//		// TODO
+//	}
 
 
 }

@@ -25,6 +25,12 @@ public class PresenceConditionOperator {
 
 	// # OPERATIONS #################################################################
 
+
+	public void addFeatureInstance(FeatureInstance featureInstance) {
+		// TODO
+	}
+
+
 	private void addVersionToModules(FeatureVersion featureVersion, Set<Module> modules) {
 		Set<Module> modulesToAdd = new HashSet<Module>();
 		for (Module module : modules) { // for every module

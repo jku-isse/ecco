@@ -2,6 +2,7 @@ package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 
 import java.util.Set;
@@ -11,7 +12,10 @@ import java.util.Set;
  */
 public interface PresenceCondition {
 
-	public void addFeatureVersion(FeatureVersion newFeatureVersion);
+	public void addFeatureInstance(FeatureInstance featureInstance);
+
+	public void addFeatureVersion(FeatureVersion featureVersion);
+
 
 	public void removeFeatureVersion(FeatureVersion featureVersion);
 

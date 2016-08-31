@@ -18,7 +18,7 @@ public class ForkTest {
 		parentService.setRepositoryDir(Paths.get("data/parent_repo/.ecco"));
 		parentService.createRepository();
 		parentService.init();
-		parentService.setBaseDir(Paths.get("data/input/"));
+		parentService.setBaseDir(Paths.get("data/input/V1/"));
 		parentService.commit();
 		parentService.destroy();
 
@@ -26,9 +26,40 @@ public class ForkTest {
 		EccoService service = new EccoService();
 		service.setRepositoryDir(Paths.get("data/forked_repo/.ecco"));
 		service.fork(Paths.get("data/parent_repo/.ecco"), "A.1");
-
-
 	}
+
+
+	@Test(groups = {"integration", "base"})
+	public void Pull_Test() throws IOException {
+		// create parent repo
+		EccoService parentService = new EccoService();
+		parentService.setRepositoryDir(Paths.get("data/parent_repo/.ecco"));
+		parentService.createRepository();
+		parentService.init();
+
+		// commit first variant to parent
+		parentService.setBaseDir(Paths.get("data/input/V1/"));
+		parentService.commit();
+		parentService.destroy();
+
+		// create child repo and fork it from parent
+		EccoService service = new EccoService();
+		service.setRepositoryDir(Paths.get("data/forked_repo/.ecco"));
+		service.fork(Paths.get("data/parent_repo/.ecco"), "A.1");
+
+		// commit second variant to parent
+		parentService = new EccoService();
+		parentService.setRepositoryDir(Paths.get("data/parent_repo/.ecco"));
+		parentService.createRepository();
+		parentService.init();
+		parentService.setBaseDir(Paths.get("data/input/V2/"));
+		parentService.commit();
+		parentService.destroy();
+
+		// pull changes from parent to child
+		service.pull("origin");
+	}
+
 
 	@AfterTest(alwaysRun = true)
 	public void afterTest() {

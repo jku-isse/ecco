@@ -26,7 +26,7 @@ public class Trees {
 	// # WRITE OPERATIONS ##################################################################################
 
 
-	public static Node copy(Node node, EntityFactory entityFactory) {
+	public static Node copy(Node node, EntityFactory entityFactory) { // TODO: is this the right place for this?
 		Node node2 = Trees.copyRec(node, entityFactory);
 
 		Trees.updateArtifactReferences(node2);
@@ -43,11 +43,13 @@ public class Trees {
 			Artifact<?> artifact = node.getArtifact();
 			Artifact<?> artifact2;
 
-			if (node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-				artifact2 = node.getArtifact().<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+			boolean firstMatch = false;
+			if (artifact.getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+				artifact2 = artifact.<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
 			} else {
 				artifact2 = entityFactory.createArtifact(artifact.getData());
 				artifact.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, artifact2);
+				firstMatch = true;
 			}
 
 			node2.setArtifact(artifact2);
@@ -61,7 +63,7 @@ public class Trees {
 			artifact2.setSequenceNumber(artifact.getSequenceNumber());
 
 			// sequence graph
-			if (artifact.getSequenceGraph() != null) {
+			if (artifact.getSequenceGraph() != null && firstMatch) {
 				SequenceGraph sequenceGraph = artifact.getSequenceGraph();
 				SequenceGraph sequenceGraph2 = artifact2.createSequenceGraph();
 
@@ -112,7 +114,8 @@ public class Trees {
 		if (left.getArtifact() != null && right.getArtifact() != null) {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getSequenceGraph() != right.getArtifact().getSequenceGraph()) {
-					throw new EccoException("Sequence Graphs did not match!");
+					left.getArtifact().getSequenceGraph().sequence(right.getArtifact().getSequenceGraph());
+					//throw new EccoException("Sequence Graphs did not match!");
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
 					left.getArtifact().getSequenceGraph().sequence(left);

@@ -3,6 +3,7 @@ package at.jku.isse.ecco.module;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 
 import java.util.ArrayList;
@@ -60,6 +61,11 @@ public class BasePresenceCondition implements PresenceCondition, PresenceConditi
 	@Override
 	public PresenceCondition slice(PresenceCondition other) throws EccoException {
 		return this.operator.slice(other);
+	}
+
+	@Override
+	public void addFeatureInstance(FeatureInstance featureInstance) {
+		this.operator.addFeatureInstance(featureInstance);
 	}
 
 	@Override

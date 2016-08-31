@@ -23,7 +23,7 @@ public class SequenceGraphOperator {
 
 	public void updateArtifactReferences() {
 		// update graph
-		this.updateSequenceGraphArtifactReferencesRec(this.sequenceGraph.getRoot());
+		this.updateArtifactReferencesRec(this.sequenceGraph.getRoot());
 
 		// update node list
 		Iterator<Map.Entry<Set<Artifact<?>>, SequenceGraphNode>> it = this.sequenceGraph.getNodes().entrySet().iterator();
@@ -48,7 +48,7 @@ public class SequenceGraphOperator {
 
 	}
 
-	private void updateSequenceGraphArtifactReferencesRec(SequenceGraphNode sgn) {
+	private void updateArtifactReferencesRec(SequenceGraphNode sgn) {
 		// update references in children
 		Map<Artifact<?>, SequenceGraphNode> updatedChildren = new HashMap<>();
 		Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> it = sgn.getChildren().entrySet().iterator();
@@ -66,13 +66,13 @@ public class SequenceGraphOperator {
 
 		// traverse children
 		for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
-			this.updateSequenceGraphArtifactReferencesRec(child.getValue());
+			this.updateArtifactReferencesRec(child.getValue());
 		}
 	}
 
 
 	public void sequence(SequenceGraph other) {
-		// TODO: better implementation?
+		// TODO: FIX THIS!
 
 		// align other to this.sequenceGraph
 
@@ -80,11 +80,12 @@ public class SequenceGraphOperator {
 		this.traverseSequenceGraphForOrder(other.getRoot(), new ArrayList<Artifact<?>>());
 	}
 
-
 	private void traverseSequenceGraphForOrder(SequenceGraphNode sgn, List<Artifact<?>> order) {
 		if (sgn.getChildren().isEmpty()) {
 			// we have reached the end and the current path is a possible plath
+			System.out.println("ORDER1: " + order + ", " + this.sequenceGraph.getNodes().size());
 			this.sequenceGraph.sequenceArtifacts(order);
+			System.out.println("ORDER2: " + order + ", " + this.sequenceGraph.getNodes().size());
 		} else {
 			// keep traversing
 			for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
