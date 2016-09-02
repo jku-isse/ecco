@@ -47,6 +47,8 @@ public class ForkTest {
 		service.setRepositoryDir(Paths.get("data/forked_repo/.ecco"));
 		service.fork(Paths.get("data/parent_repo/.ecco"), "A.1");
 
+		System.out.println("---");
+
 		// commit second variant to parent
 		parentService = new EccoService();
 		parentService.setRepositoryDir(Paths.get("data/parent_repo/.ecco"));
@@ -55,6 +57,8 @@ public class ForkTest {
 		parentService.setBaseDir(Paths.get("data/input/V2/"));
 		parentService.commit();
 		parentService.destroy();
+
+		System.out.println("---");
 
 		// pull changes from parent to child
 		service.pull("origin");

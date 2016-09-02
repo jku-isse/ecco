@@ -15,7 +15,255 @@ public class SequenceGraphOperator {
 		this.sequenceGraph = sequenceGraph;
 	}
 
-	private int cur_best_cost = Integer.MAX_VALUE;
+	private int global_best_cost = Integer.MAX_VALUE;
+
+
+	// # SG #################################################################
+
+
+	public void sequence(SequenceGraph other) {
+//		 TODO: FIX THIS!
+//
+//		 align other to this.sequenceGraph
+//
+//		 traverse other to retrieve every order and sequence it into the new sequence graph.
+//		this.traverseSequenceGraphForOrder(other.getRoot(), new ArrayList<Artifact<?>>());
+
+
+		// align right to left
+		this.global_best_cost = Integer.MAX_VALUE;
+		this.alignSequenceGraphRec(this.sequenceGraph.getRoot(), other.getRoot(), 0);
+
+		// assign new sequence numbers to right
+		int num_symbols = this.sequenceGraph.getCurrentSequenceNumber();
+		Set<Artifact<?>> rightArtifacts = new HashSet<>();
+		this.assignNewSequenceNumbers(other.getRoot(), rightArtifacts);
+
+
+		// update left
+		Set<Artifact<?>> shared_symbols = new HashSet<>();
+		for (Artifact symbol : rightArtifacts) {
+			if (symbol.getSequenceNumber() < num_symbols)
+				shared_symbols.add(symbol);
+		}
+		this.updateSequenceGraphRec(this.sequenceGraph.getRoot(), other.getRoot(), new HashSet<Artifact<?>>(), shared_symbols, !this.sequenceGraph.getPol());
+		this.sequenceGraph.setPol(!this.sequenceGraph.getPol());
+
+		// remove all graphnodes that were not visited
+		Iterator<SequenceGraphNode> it = this.sequenceGraph.getNodes().values().iterator();
+		while (it.hasNext()) {
+			SequenceGraphNode gn = it.next();
+			if (gn.getPol() != this.sequenceGraph.getPol()) {
+				it.remove();
+			}
+		}
+	}
+
+	private void assignNewSequenceNumbers(SequenceGraphNode sgn, Set<Artifact<?>> artifacts) {
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
+			artifacts.add(child.getKey());
+
+			if (child.getKey().getSequenceNumber() == -1)
+				child.getKey().setSequenceNumber(this.sequenceGraph.nextSequenceNumber());
+
+			this.assignNewSequenceNumbers(child.getValue(), artifacts);
+		}
+	}
+
+//	private void traverseSequenceGraphForOrder(SequenceGraphNode sgn, List<Artifact<?>> order) {
+//		if (sgn.getChildren().isEmpty()) {
+//			// we have reached the end and the current path is a possible plath
+//			System.out.println("ORDER1: " + order + ", " + this.sequenceGraph.getNodes().size());
+//			this.sequenceGraph.sequenceArtifacts(order);
+//			System.out.println("ORDER2: " + order + ", " + this.sequenceGraph.getNodes().size());
+//		} else {
+//			// keep traversing
+//			for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
+//				order.add(child.getKey());
+//
+//				this.traverseSequenceGraphForOrder(child.getValue(), order);
+//
+//				// when we are done remove current from order
+//				order.remove(order.size() - 1);
+//			}
+//		}
+//	}
+
+	/**
+	 * This aligns the right sequence graph to the left sequence graph, assigning sequence numbers to the artifacts of the right sequence graph.
+	 * <p>
+	 * NOTES:
+	 * - careful: changing the sequence number of artifacts changes their hashCode() and equals()!
+	 */
+	private int alignSequenceGraphRec(SequenceGraphNode left, SequenceGraphNode right, int cost) {
+
+		//int local_best_cost = this.global_best_cost;
+		int local_best_cost = Integer.MAX_VALUE;
+
+		// base case 0: abort and don't update alignment if we already had a better or equal solution.
+		if (cost >= this.global_best_cost) {
+			return Integer.MAX_VALUE;
+		}
+
+		// base case 1: both sequence graphs have no more nodes
+		else if (left.getChildren().isEmpty() && right.getChildren().isEmpty()) {
+			// update current best cost (we would not have gotten here if cost > global_best_cost)
+			this.global_best_cost = cost;
+			return cost;
+		}
+
+		// base case 2: left has no more nodes, right does
+		else if (left.getChildren().isEmpty() && !right.getChildren().isEmpty()) {
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost + 1);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+
+				if (temp_cost <= this.global_best_cost) { // part of currently best alignment
+					if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != -1)
+						System.out.println("WARNING1! " + rightChildEntry.getKey() + ": " + -1);
+
+					rightChildEntry.getKey().setSequenceNumber(-1); // indicate that this artifact needs a new sequence number assigned
+				}
+			}
+		}
+
+		// base case 3: right has no more nodes, left does
+		else if (right.getChildren().isEmpty() && !left.getChildren().isEmpty()) {
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost + 1);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+			}
+		}
+
+		// recursion case
+		else {
+
+			// case 1: do matches first
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
+				for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
+
+					if (leftChildEntry.getKey().equals(rightChildEntry.getKey())) {
+						if (rightChildEntry != null) { // we found a match -> pursue it
+							int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), rightChildEntry.getValue(), cost); // do not increment cost as it was a match
+
+							if (temp_cost < local_best_cost)
+								local_best_cost = temp_cost;
+
+							if (temp_cost <= this.global_best_cost) { // part of currently best alignment
+								if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != leftChildEntry.getKey().getSequenceNumber())
+									System.out.println("WARNING2! " + leftChildEntry.getKey() + ": " + leftChildEntry.getKey().getSequenceNumber());
+
+								rightChildEntry.getKey().setSequenceNumber(leftChildEntry.getKey().getSequenceNumber()); // set right sequence number to left sequence number
+							}
+						}
+					}
+
+				}
+			}
+
+			// case 2: skip left
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost + 1);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+			}
+
+			// case 3: skip right
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+
+				if (temp_cost <= this.global_best_cost) { // part of currently best alignment
+					if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != -1)
+						System.out.println("WARNING3! " + rightChildEntry.getKey() + ": " + -1);
+
+					rightChildEntry.getKey().setSequenceNumber(-1); // indicate that this artifact needs a new sequence number assigned
+				}
+			}
+
+		}
+
+		return local_best_cost;
+	}
+
+	/**
+	 * This updates the left sequence graph by merging the aligned right sequence graph into it.
+	 */
+	private SequenceGraphNode updateSequenceGraphRec(SequenceGraphNode left, SequenceGraphNode right, HashSet<Artifact<?>> path, Set<Artifact<?>> shared_symbols, boolean new_pol) {
+
+		// get current graph node
+		SequenceGraphNode sgn = this.sequenceGraph.getNodes().get(path);
+		if (sgn == null) {
+			sgn = this.sequenceGraph.createSequenceGraphNode(!new_pol);
+			this.sequenceGraph.getNodes().put(path, sgn);
+		}
+
+		// base case: node has already been visited
+		if (sgn.getPol() == new_pol)
+			return sgn;
+
+		// set node to visited
+		sgn.setPol(new_pol);
+
+		HashMap<Artifact<?>, SequenceGraphNode> new_children = new HashMap<>();
+
+
+		// if unshared symbol left -> advance
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> leftEntry : left.getChildren().entrySet()) {
+			if (!shared_symbols.contains(leftEntry.getKey())) {
+				HashSet<Artifact<?>> new_path = new HashSet<>(path);
+				new_path.add(leftEntry.getKey());
+				SequenceGraphNode child = this.updateSequenceGraphRec(leftEntry.getValue(), right, new_path, shared_symbols, new_pol);
+				new_children.put(leftEntry.getKey(), child);
+			}
+		}
+
+		// if unshared symbol right -> add it left and advance
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> rightEntry : right.getChildren().entrySet()) {
+			if (!shared_symbols.contains(rightEntry.getKey())) {
+				HashSet<Artifact<?>> new_path = new HashSet<>(path);
+				new_path.add(rightEntry.getKey());
+				SequenceGraphNode child = this.updateSequenceGraphRec(left, rightEntry.getValue(), new_path, shared_symbols, new_pol); // this should be a new node
+				new_children.put(rightEntry.getKey(), child);
+			}
+		}
+
+		// if shared symbol -> cut it if onesided or take it when on both sides
+		Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> it = left.getChildren().entrySet().iterator();
+		//for (Map.Entry<Artifact<?>, SequenceGraphNode> leftEntry : left.getChildren().entrySet()) {
+		while (it.hasNext()) {
+			Map.Entry<Artifact<?>, SequenceGraphNode> leftEntry = it.next();
+			if (shared_symbols.contains(leftEntry.getKey())) {
+				Map.Entry<Artifact<?>, SequenceGraphNode> rightEntry = null;
+				for (Map.Entry<Artifact<?>, SequenceGraphNode> tempRightEntry : right.getChildren().entrySet()) {
+					if (tempRightEntry.getKey().equals(leftEntry.getKey())) {
+						rightEntry = tempRightEntry;
+						break;
+					}
+				}
+				if (rightEntry != null) { // matching shared symbols -> take them
+					HashSet<Artifact<?>> new_path = new HashSet<>(path);
+					new_path.add(rightEntry.getKey());
+					SequenceGraphNode child = this.updateSequenceGraphRec(leftEntry.getValue(), rightEntry.getValue(), new_path, shared_symbols, new_pol);
+					new_children.put(leftEntry.getKey(), child);
+				} else { // no match for shared symbol -> cut graph
+					it.remove();
+				}
+			}
+		}
+
+
+		sgn.getChildren().putAll(new_children);
+
+		return sgn;
+	}
 
 
 	// # OPERATIONS #################################################################
@@ -71,35 +319,6 @@ public class SequenceGraphOperator {
 	}
 
 
-	public void sequence(SequenceGraph other) {
-		// TODO: FIX THIS!
-
-		// align other to this.sequenceGraph
-
-		// traverse other to retrieve every order and sequence it into the new sequence graph.
-		this.traverseSequenceGraphForOrder(other.getRoot(), new ArrayList<Artifact<?>>());
-	}
-
-	private void traverseSequenceGraphForOrder(SequenceGraphNode sgn, List<Artifact<?>> order) {
-		if (sgn.getChildren().isEmpty()) {
-			// we have reached the end and the current path is a possible plath
-			System.out.println("ORDER1: " + order + ", " + this.sequenceGraph.getNodes().size());
-			this.sequenceGraph.sequenceArtifacts(order);
-			System.out.println("ORDER2: " + order + ", " + this.sequenceGraph.getNodes().size());
-		} else {
-			// keep traversing
-			for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
-				order.add(child.getKey());
-
-				this.traverseSequenceGraphForOrder(child.getValue(), order);
-
-				// when we are done remove current from order
-				order.remove(order.size() - 1);
-			}
-		}
-	}
-
-
 	public void sequence(Node node) throws EccoException {
 		if (node.getArtifact().isOrdered())
 			sequenceNodes(node.getChildren());
@@ -116,32 +335,32 @@ public class SequenceGraphOperator {
 		int num_symbols = this.sequenceGraph.getCurrentSequenceNumber();
 		int[] alignment = align(artifacts);
 
-		if (num_symbols != this.sequenceGraph.getCurrentSequenceNumber()) {
-			Set<Artifact<?>> shared_symbols = new HashSet<>();
-			for (Artifact symbol : artifacts) {
-				if (symbol.getSequenceNumber() < num_symbols)
-					shared_symbols.add(symbol);
-			}
+		//if (num_symbols != this.sequenceGraph.getCurrentSequenceNumber()) {
+		Set<Artifact<?>> shared_symbols = new HashSet<>();
+		for (Artifact symbol : artifacts) {
+			if (symbol.getSequenceNumber() < num_symbols)
+				shared_symbols.add(symbol);
+		}
 
-			update_rec(new HashSet<Artifact<?>>(), shared_symbols, this.sequenceGraph.getRoot(), 0, artifacts, !this.sequenceGraph.getPol());
-			this.sequenceGraph.setPol(!this.sequenceGraph.getPol());
+		update_rec(new HashSet<Artifact<?>>(), shared_symbols, this.sequenceGraph.getRoot(), 0, artifacts, !this.sequenceGraph.getPol());
+		this.sequenceGraph.setPol(!this.sequenceGraph.getPol());
 
-			// remove all graphnodes that were not visited
-			Iterator<SequenceGraphNode> it = this.sequenceGraph.getNodes().values().iterator();
-			while (it.hasNext()) {
-				SequenceGraphNode gn = it.next();
-				if (gn.getPol() != this.sequenceGraph.getPol()) {
-					it.remove();
-				}
+		// remove all graphnodes that were not visited
+		Iterator<SequenceGraphNode> it = this.sequenceGraph.getNodes().values().iterator();
+		while (it.hasNext()) {
+			SequenceGraphNode gn = it.next();
+			if (gn.getPol() != this.sequenceGraph.getPol()) {
+				it.remove();
 			}
 		}
+		//}
 	}
 
 
 	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
 		int[] alignment_array = new int[artifacts.size()]; // +1? maybe remove node_right_index and use instead alignment[0]?
 
-		this.cur_best_cost = Integer.MAX_VALUE;
+		this.global_best_cost = Integer.MAX_VALUE;
 		align_rec_fast(this.sequenceGraph.getRoot(), artifacts, 0, alignment_array, 0);
 
 		// finalize alignment
@@ -165,7 +384,7 @@ public class SequenceGraphOperator {
 	private int align_rec_fast(SequenceGraphNode left, List<Artifact<?>> artifacts, int node_right_index, int[] alignment, int cost) {
 
 		//int cur_min_cost = Integer.MAX_VALUE;
-		int cur_min_cost = this.cur_best_cost;
+		int cur_min_cost = this.global_best_cost;
 
 		// base case: if left has no more elements and right does
 		if (left.getChildren().size() <= 0) {
@@ -173,8 +392,8 @@ public class SequenceGraphOperator {
 			int temp_cost = cost + artifacts.size() - node_right_index;
 
 			// update current best cost if necessary
-			if (this.cur_best_cost > temp_cost) {
-				this.cur_best_cost = temp_cost;
+			if (this.global_best_cost > temp_cost) {
+				this.global_best_cost = temp_cost;
 			}
 
 			return temp_cost;
@@ -184,8 +403,8 @@ public class SequenceGraphOperator {
 		if (node_right_index >= artifacts.size() && left.getChildren().size() <= 0) {
 
 			// update current best cost if necessary
-			if (this.cur_best_cost > cost) {
-				this.cur_best_cost = cost;
+			if (this.global_best_cost > cost) {
+				this.global_best_cost = cost;
 			}
 
 			return cost;
@@ -195,7 +414,7 @@ public class SequenceGraphOperator {
 		boolean skipped_right = false;
 
 		// abort and don't update alignment if we already had a better or equal solution.
-		if (cost >= this.cur_best_cost) {
+		if (cost >= this.global_best_cost) {
 			return Integer.MAX_VALUE;
 		}
 
@@ -216,7 +435,7 @@ public class SequenceGraphOperator {
 
 		// find other matches in right
 		for (int i = node_right_index + 1; i < artifacts.size() && !found_match; i++) {
-			if (cost + i - node_right_index >= cur_min_cost || cost + i - node_right_index > this.cur_best_cost)
+			if (cost + i - node_right_index >= cur_min_cost || cost + i - node_right_index > this.global_best_cost)
 				break;
 			if (i < artifacts.size() && left.getChildren().size() > 0) {
 				for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : left.getChildren().entrySet()) {

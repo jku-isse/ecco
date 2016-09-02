@@ -1141,6 +1141,9 @@ public class EccoService {
 				Collection<Feature> features = parentService.getFeatures();
 				Collection<Association> associations = parentService.getAssociations();
 
+				// step 7: close parent repository
+				parentService.destroy();
+
 
 				this.merge(features, associations);
 
@@ -1255,9 +1258,6 @@ public class EccoService {
 //
 //				// step 6: commit copied associations to this repository
 //				this.commit(childAssociations);
-
-				// step 7: close parent repository
-				parentService.destroy();
 			}
 
 			this.transactionStrategy.commit();
@@ -1307,6 +1307,7 @@ public class EccoService {
 		}
 	}
 
+	// TODO: make e.g. commit also use this? instead of adding features and versions already when parsing a configuration string (or a presence condition string).
 	protected void merge(Collection<Feature> features, Collection<Association> associations) {
 		try {
 			this.transactionStrategy.begin();
@@ -1345,18 +1346,18 @@ public class EccoService {
 
 
 			// step 5: copy input associations (just like during fork/clone)
-			Collection<Association> childAssociations = new ArrayList<>();
+			Collection<Association> copiedParentAssociations = new ArrayList<>();
 			for (Association parentAssociation : associations) {
-				Association childAssociation = this.entityFactory.createAssociation();
-				childAssociation.setId(parentAssociation.getId());
-				childAssociation.setName(parentAssociation.getName());
+				Association copiedParentAssociation = this.entityFactory.createAssociation();
+//				copiedParentAssociation.setId(parentAssociation.getId());
+//				copiedParentAssociation.setName(parentAssociation.getName());
 
 				PresenceCondition parentPresenceCondition = parentAssociation.getPresenceCondition();
 
 
 				// copy presence condition
 				PresenceCondition childPresenceCondition = this.entityFactory.createPresenceCondition();
-				childAssociation.setPresenceCondition(childPresenceCondition);
+				copiedParentAssociation.setPresenceCondition(childPresenceCondition);
 
 				Set<at.jku.isse.ecco.module.Module>[][] moduleSetPairs = new Set[][]{{parentPresenceCondition.getMinModules(), childPresenceCondition.getMinModules()}, {parentPresenceCondition.getMaxModules(), childPresenceCondition.getMaxModules()}, {parentPresenceCondition.getNotModules(), childPresenceCondition.getNotModules()}, {parentPresenceCondition.getAllModules(), childPresenceCondition.getAllModules()}};
 
@@ -1400,23 +1401,58 @@ public class EccoService {
 
 
 				// copy artifact tree
-				RootNode childRootNode = this.entityFactory.createRootNode();
-				childAssociation.setRootNode(childRootNode);
+				RootNode copiedRootNode = this.entityFactory.createRootNode();
+				copiedParentAssociation.setRootNode(copiedRootNode);
 				// clone tree
 				for (Node parentChildNode : parentAssociation.getRootNode().getChildren()) {
-					Node childChildNode = Trees.copy(parentChildNode, this.entityFactory);
-					childRootNode.addChild(childChildNode);
-					childChildNode.setParent(childRootNode);
+					Node copiedChildNode = Trees.copy(parentChildNode, this.entityFactory);
+					copiedRootNode.addChild(copiedChildNode);
+					copiedChildNode.setParent(copiedRootNode);
 				}
-				Trees.checkConsistency(childRootNode);
+				Trees.checkConsistency(copiedRootNode);
 
 
-				childAssociations.add(childAssociation);
+				copiedParentAssociations.add(copiedParentAssociation);
+			}
+
+
+			// step 5.5: add new features in child repo to copied parent associations
+			Collection<FeatureVersion> newParentFeatureVersions = new ArrayList<>();
+			for (Feature childFeature : this.featureDao.loadAllFeatures()) {
+				Feature parentFeature = null;
+				for (Feature tempParentFeature : features) {
+					if (tempParentFeature.equals(childFeature)) {
+						parentFeature = tempParentFeature;
+						break;
+					}
+				}
+				if (parentFeature == null) {
+					// add all its versions to list
+					for (FeatureVersion childFeatureVersion : childFeature.getVersions()) {
+						newParentFeatureVersions.add(childFeatureVersion);
+					}
+				} else {
+					// compare versions and add new ones to list
+					for (FeatureVersion childFeatureVersion : childFeature.getVersions()) {
+						FeatureVersion parentFeatureVersion = parentFeature.getVersion(childFeatureVersion.getVersion());
+						if (parentFeatureVersion == null) {
+							newParentFeatureVersions.add(childFeatureVersion);
+						}
+					}
+				}
+			}
+			for (Association copiedAssociation : copiedParentAssociations) {
+				for (FeatureVersion newParentFeatureVersion : newParentFeatureVersions) {
+					copiedAssociation.getPresenceCondition().addFeatureVersion(newParentFeatureVersion);
+				}
+				for (FeatureVersion newParentFeatureVersion : newParentFeatureVersions) {
+					copiedAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newParentFeatureVersion.getFeature(), newParentFeatureVersion, false));
+				}
 			}
 
 
 			// step 6: commit copied associations to this repository
-			this.commit(childAssociations);
+			this.commit(copiedParentAssociations);
 
 			this.transactionStrategy.commit();
 		} catch (Exception e) {
