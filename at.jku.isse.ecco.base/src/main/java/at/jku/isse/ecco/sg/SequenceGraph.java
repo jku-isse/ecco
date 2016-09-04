@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface SequenceGraph {
@@ -23,5 +24,9 @@ public interface SequenceGraph {
 	public void sequence(SequenceGraph other);
 
 	public void updateArtifactReferences();
+
+	public void copy(SequenceGraph other);
+
+	public Collection<Artifact<?>> getSymbols();
 
 }

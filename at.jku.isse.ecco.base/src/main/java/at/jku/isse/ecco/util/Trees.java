@@ -34,7 +34,7 @@ public class Trees {
 		return node2;
 	}
 
-	public static Node copyRec(Node node, EntityFactory entityFactory) {
+	private static Node copyRec(Node node, EntityFactory entityFactory) {
 		Node node2 = entityFactory.createNode();
 
 		node2.setUnique(node.isUnique());
@@ -70,9 +70,11 @@ public class Trees {
 				artifact2.setSequenceGraph(sequenceGraph2);
 
 				// copy sequence graph
-				sequenceGraph2.sequence(sequenceGraph);
+				sequenceGraph2.copy(sequenceGraph);
+				//sequenceGraph2.sequence(sequenceGraph);
 			}
 
+			// TODO: make source and target artifacts both use the same artifact reference instance?
 			// references
 			for (ArtifactReference artifactReference : artifact.getUses()) {
 				ArtifactReference artifactReference2 = entityFactory.createArtifactReference(artifact2, artifactReference.getTarget(), artifactReference.getType());
@@ -114,8 +116,15 @@ public class Trees {
 		if (left.getArtifact() != null && right.getArtifact() != null) {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getSequenceGraph() != right.getArtifact().getSequenceGraph()) {
-					left.getArtifact().getSequenceGraph().sequence(right.getArtifact().getSequenceGraph());
 					//throw new EccoException("Sequence Graphs did not match!");
+
+					// set sequence number of all artifacts in right sequence graph to Artifact.UNASSIGNED_SEQUENCE_NUMBER prior to alignment to left sequence graph.
+					for (Artifact symbol : right.getArtifact().getSequenceGraph().getSymbols()) {
+						symbol.setSequenceNumber(Artifact.UNASSIGNED_SEQUENCE_NUMBER);
+					}
+
+					left.getArtifact().getSequenceGraph().sequence(right.getArtifact().getSequenceGraph());
+					right.getArtifact().setSequenceGraph(left.getArtifact().getSequenceGraph());
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
 					left.getArtifact().getSequenceGraph().sequence(left);

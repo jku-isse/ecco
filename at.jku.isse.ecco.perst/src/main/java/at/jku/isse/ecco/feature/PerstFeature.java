@@ -53,7 +53,7 @@ public class PerstFeature extends Persistent implements Feature {
 	@Override
 	public FeatureVersion getVersion(int version) {
 		for (FeatureVersion featureVersion : this.versions) {
-			if (featureVersion.getVersion() == version)
+			if (featureVersion.getId() == version)
 				return featureVersion;
 		}
 		return null;
@@ -81,7 +81,7 @@ public class PerstFeature extends Persistent implements Feature {
 //	}
 //
 //	@Override
-//	public FeatureVersion getVersion(FeatureVersion version) {
+//	public FeatureVersion getId(FeatureVersion version) {
 //		for (FeatureVersion featureVersion : this.versions) {
 //			if (featureVersion.equals(version))
 //				return featureVersion;

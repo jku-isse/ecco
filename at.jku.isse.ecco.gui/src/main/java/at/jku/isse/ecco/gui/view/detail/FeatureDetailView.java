@@ -146,7 +146,7 @@ public class FeatureDetailView extends BorderPane {
 
 			// show feature versions
 			for (FeatureVersion featureVersion : feature.getVersions()) {
-				FeatureDetailView.this.featureVersionsData.add(new FeatureVersionInfo(featureVersion.getVersion()));
+				FeatureDetailView.this.featureVersionsData.add(new FeatureVersionInfo(featureVersion.getId()));
 			}
 		} else {
 			this.setCenter(null);

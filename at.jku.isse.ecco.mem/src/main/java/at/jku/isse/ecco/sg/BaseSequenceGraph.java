@@ -62,6 +62,16 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.S
 		this.operator.updateArtifactReferences();
 	}
 
+	@Override
+	public void copy(SequenceGraph other) {
+		this.operator.copy(other);
+	}
+
+	@Override
+	public Collection<Artifact<?>> getSymbols() {
+		return this.operator.collectSymbols();
+	}
+
 
 	// operand
 
@@ -72,6 +82,11 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.S
 
 	public int getCurrentSequenceNumber() {
 		return this.cur_seq_number;
+	}
+
+	@Override
+	public void setCurrentSequenceNumber(int sn) {
+		this.cur_seq_number = sn;
 	}
 
 	public int nextSequenceNumber() throws EccoException {

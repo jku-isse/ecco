@@ -24,15 +24,29 @@ public class PresenceConditionOperator {
 	// # OPERATIONS #################################################################
 
 
+	public void merge(PresenceCondition other) {
+		this.presenceCondition.getMinModules().addAll(other.getMinModules());
+		this.presenceCondition.getMaxModules().addAll(other.getMaxModules());
+		this.presenceCondition.getAllModules().addAll(other.getAllModules());
+		this.presenceCondition.getNotModules().addAll(other.getNotModules());
+	}
+
+
 	/**
 	 * Adds the given feature instance to every module that does not already contain an instance of the same feature.
 	 *
 	 * @param featureInstance The feature instance to add.
 	 */
 	public void addFeatureInstance(FeatureInstance featureInstance) {
+		this.addFeatureInstance(featureInstance, Integer.MAX_VALUE);
+	}
+
+	public void addFeatureInstance(FeatureInstance featureInstance, int maxOrder) {
 		for (Set<Module> modules : new Set[]{this.presenceCondition.getMinModules(), this.presenceCondition.getMaxModules(), this.presenceCondition.getNotModules(), this.presenceCondition.getAllModules()}) {
 			Set<Module> modulesToAdd = new HashSet<>();
 			for (Module module : modules) {
+				if (module.size() >= maxOrder)
+					continue;
 				boolean featureAlreadyContained = false;
 				for (ModuleFeature mf : module) {
 					if (mf.getFeature().equals(featureInstance.getFeature())) {
@@ -88,18 +102,6 @@ public class PresenceConditionOperator {
 	}
 
 	public void initialize(Configuration configuration, int maxOrder) {
-//		// first compute the ordinary powerset modules
-//		Set<Module> modules = this.powerSet(configuration.getFeatureInstances(), maxOrder);
-//
-//		// add different feature versions to modules
-//		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-//			for (FeatureVersion featureVersion : featureInstance.getFeature().getVersions()) { // for every version of every feature
-//				if (!featureVersion.equals(featureInstance.getFeatureVersion())) {
-//					this.addVersionToModules(featureVersion, modules);
-//				}
-//			}
-//		}
-
 		Set<Module> modules = configuration.computeModules(maxOrder);
 
 		// initialize the module sets
@@ -112,76 +114,6 @@ public class PresenceConditionOperator {
 		this.presenceCondition.getMaxModules().addAll(modules);
 		this.presenceCondition.getAllModules().addAll(modules);
 	}
-
-
-//	private void addVersionToModules(FeatureVersion featureVersion, Set<Module> modules) {
-//		Set<Module> modulesToAdd = new HashSet<Module>();
-//		for (Module module : modules) { // for every module
-//
-//			boolean featureContained = false;
-//			boolean versionContained = false;
-//			for (ModuleFeature moduleFeature : module) {
-//				if (moduleFeature.getFeature().equals(featureVersion.getFeature()))
-//					featureContained = true;
-//				if (moduleFeature.contains(featureVersion))
-//					versionContained = true;
-//			}
-//			if (featureContained && !versionContained) { // feature must be contained in module but not in the same version as the one we want to add
-//				Module newModule = this.presenceCondition.createModule();
-//
-//				for (ModuleFeature moduleFeature : module) {
-//					if (moduleFeature.getFeature().equals(featureVersion.getFeature())) {
-//						ModuleFeature newModuleFeature = this.presenceCondition.createModuleFeature(moduleFeature); // make a copy of the module feature
-//						newModuleFeature.add(featureVersion);
-//						newModule.add(newModuleFeature);
-//					} else {
-//						newModule.add(moduleFeature); // copy module feature from original module
-//					}
-//				}
-//
-//				modulesToAdd.add(newModule);
-//			}
-//		}
-//		modules.addAll(modulesToAdd);
-//	}
-//
-//	private Set<Module> powerSet(final Set<FeatureInstance> featureInstances, int maxOrder) {
-//		checkNotNull(featureInstances);
-//
-//		Set<ModuleFeature> moduleFeatures = new HashSet<ModuleFeature>();
-//		for (FeatureInstance featureInstance : featureInstances) {
-//			moduleFeatures.add(this.presenceCondition.createModuleFeature(featureInstance.getFeature(), Arrays.asList(featureInstance.getFeatureVersion()), featureInstance.getSign()));
-//		}
-//
-//		// add empty set
-//		Set<Module> moduleSet = new HashSet<>();
-//		moduleSet.add(this.presenceCondition.createModule()); // add empty module to power set
-//
-//		for (final ModuleFeature moduleFeature : moduleFeatures) {
-//			final Set<Module> toAdd = new HashSet<>();
-//
-//			for (final Module module : moduleSet) {
-//				if (module.getOrder() < maxOrder) {
-//					final Module newModule = this.presenceCondition.createModule();
-//					newModule.addAll(module);
-//					newModule.add(moduleFeature);
-//					toAdd.add(newModule);
-//				}
-//			}
-//
-//			moduleSet.addAll(toAdd);
-//		}
-//
-//		moduleSet.remove(this.presenceCondition.createModule()); // remove the empty module again
-//
-//		return moduleSet;
-//	}
-//
-//	public void addFeatureVersion(FeatureVersion newFeatureVersion) {
-//		for (Set<Module> modules : Arrays.asList(this.presenceCondition.getMinModules(), this.presenceCondition.getMaxModules(), this.presenceCondition.getNotModules(), this.presenceCondition.getAllModules())) {
-//			this.addVersionToModules(newFeatureVersion, modules);
-//		}
-//	}
 
 
 	public boolean holds(Configuration configuration) {

@@ -18,7 +18,7 @@ public class PresenceConditionStringTest {
 		EccoService eccoService = new EccoService();
 		eccoService.setRepositoryDir(Paths.get("/home/user/Desktop/ecco/demo/repository/.ecco"));
 		eccoService.init();
-		PresenceCondition pc = eccoService.parsePresenceCondition("(test)");
+		PresenceCondition pc = eccoService.parsePresenceConditionString("(test)");
 		System.out.println("PC: " + pc);
 		Association association = eccoService.getAssociations().iterator().next();
 		association.setPresenceCondition(pc);

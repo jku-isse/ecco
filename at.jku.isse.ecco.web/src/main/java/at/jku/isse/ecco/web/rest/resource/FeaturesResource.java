@@ -96,7 +96,7 @@ public class FeaturesResource extends EccoResource {
 			if (feature.getName().equals(name)) {
 				for (FeatureVersion featureVersion : feature.getVersions()) {
 					FeatureVersionDTO featureVersionDTO = new FeatureVersionDTO();
-					featureVersionDTO.setVersion(featureVersion.getVersion());
+					featureVersionDTO.setVersion(featureVersion.getId());
 					featureVersionDTO.setDescription(featureVersion.getDescription());
 					featuresVersions.add(featureVersionDTO);
 				}
@@ -119,9 +119,9 @@ public class FeaturesResource extends EccoResource {
 		for (Feature feature : eccoService.getFeatures()) {
 			if (feature.getName().equals(name)) {
 				for (FeatureVersion featureVersion : feature.getVersions()) {
-					if (featureVersion.getVersion() == version) {
+					if (featureVersion.getId() == version) {
 						FeatureVersionDTO featureVersionDTO = new FeatureVersionDTO();
-						featureVersionDTO.setVersion(featureVersion.getVersion());
+						featureVersionDTO.setVersion(featureVersion.getId());
 						featureVersionDTO.setDescription(featureVersion.getDescription());
 						return featureVersionDTO;
 					}

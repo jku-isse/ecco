@@ -18,6 +18,8 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 
 	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
 
+//	private List<Artifact<?>> symbols = new ArrayList<>();
+
 	private boolean pol = true;
 
 
@@ -63,22 +65,33 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 		this.operator.updateArtifactReferences();
 	}
 
+	@Override
+	public void copy(SequenceGraph other) {
+		this.operator.copy(other);
+	}
+
+	@Override
+	public Collection<Artifact<?>> getSymbols() {
+		return this.operator.collectSymbols();
+	}
+
 
 	// perst
 
 	public void storeRecursively() {
 		this.store();
 
-		Set<SequenceGraphNode> nodes = new HashSet<>();
-		this.collectNodes(this.getRoot(), nodes);
+//		Set<SequenceGraphNode> nodes = new HashSet<>();
+//		this.collectNodes(this.getRoot(), nodes);
 
 		// store all nodes
-		for (SequenceGraphNode node : nodes) {
+		for (SequenceGraphNode node : this.nodes.values()) {
 			//if (node instanceof PerstSequenceGraphNode)
 			((PerstSequenceGraphNode) node).store();
 		}
 	}
 
+	// TODO: this is a bad implementation! every node is visited multiple times!
 	protected void collectNodes(SequenceGraphNode node, Set<SequenceGraphNode> nodeSet) {
 		//if (node instanceof PerstSequenceGraphNode) {
 		nodeSet.add(node);
@@ -105,6 +118,11 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 
 	public int getCurrentSequenceNumber() {
 		return this.cur_seq_number;
+	}
+
+	@Override
+	public void setCurrentSequenceNumber(int sn) {
+		this.cur_seq_number = sn;
 	}
 
 

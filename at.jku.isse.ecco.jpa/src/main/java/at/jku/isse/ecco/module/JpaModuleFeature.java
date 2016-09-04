@@ -78,7 +78,7 @@ public class JpaModuleFeature implements ModuleFeature, Serializable {
 	@Override
 	public String toString() {
 		String signString = this.sign ? "+" : "-";
-		return signString + this.feature.toString() + ".{" + this.stream().map(v -> String.valueOf(v.getVersion())).collect(Collectors.joining(",")) + "}";
+		return signString + this.feature.toString() + ".{" + this.stream().map(v -> String.valueOf(v.getId())).collect(Collectors.joining(",")) + "}";
 	}
 
 

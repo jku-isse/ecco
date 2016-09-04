@@ -12,7 +12,12 @@ import java.util.Set;
  */
 public interface PresenceCondition {
 
+	public void merge(PresenceCondition other);
+
+
 	public void addFeatureInstance(FeatureInstance featureInstance);
+
+	public void addFeatureInstance(FeatureInstance featureInstance, int maxOrder);
 
 	public void addFeatureVersion(FeatureVersion featureVersion);
 

@@ -70,7 +70,7 @@ public class PerstFeatureInstance extends Persistent implements FeatureInstance 
 
 	@Override
 	public String toString() {
-		return (this.sign ? "+" : "-") + this.feature.getName() + "." + this.featureVersion.getVersion();
+		return (this.sign ? "+" : "-") + this.feature.getName() + "." + this.featureVersion.getId();
 	}
 
 }

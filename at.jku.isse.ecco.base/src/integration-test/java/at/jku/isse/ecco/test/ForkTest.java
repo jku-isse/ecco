@@ -62,6 +62,8 @@ public class ForkTest {
 
 		// pull changes from parent to child
 		service.pull("origin");
+
+		service.destroy();
 	}
 
 

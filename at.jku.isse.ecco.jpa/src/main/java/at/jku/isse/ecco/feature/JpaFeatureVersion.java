@@ -36,7 +36,7 @@ public class JpaFeatureVersion implements FeatureVersion, Serializable {
 	}
 
 	@Override
-	public int getVersion() {
+	public int getId() {
 		return this.version;
 	}
 

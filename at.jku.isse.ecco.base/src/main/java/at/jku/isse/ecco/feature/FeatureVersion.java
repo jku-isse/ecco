@@ -9,7 +9,7 @@ public interface FeatureVersion extends Persistable {
 
 	public Feature getFeature();
 
-	public int getVersion();
+	public int getId();
 
 	public String getDescription();
 

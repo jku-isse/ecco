@@ -2,6 +2,7 @@ package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
@@ -9,26 +10,110 @@ import java.util.stream.Collectors;
 
 public class SequenceGraphOperator {
 
+	private EntityFactory entityFactory;
+
 	private SequenceGraphOperand sequenceGraph;
 
 	public SequenceGraphOperator(SequenceGraphOperand sequenceGraph) {
 		this.sequenceGraph = sequenceGraph;
 	}
 
+	public SequenceGraphOperator(SequenceGraphOperand sequenceGraph, EntityFactory entityFactory) {
+		this.sequenceGraph = sequenceGraph;
+		this.entityFactory = entityFactory;
+	}
+
 	private int global_best_cost = Integer.MAX_VALUE;
 
 
-	// # SG #################################################################
+	// # NEW SG OPERATIONS #################################################################
 
 
-	public void sequence(SequenceGraph other) {
-//		 TODO: FIX THIS!
+	public Collection<Artifact<?>> collectSymbols() {
+		Set<Artifact<?>> symbols = new HashSet<>();
+		this.collectSymbolsRec(this.sequenceGraph.getRoot(), symbols);
+		return symbols;
+	}
+
+	private void collectSymbolsRec(SequenceGraphNode sgn, Collection<Artifact<?>> symbols) {
+		if (sgn.getPol() == this.sequenceGraph.getPol()) // already visited
+			return;
+
+		sgn.setPol(this.sequenceGraph.getPol()); // mark as visited
+
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : sgn.getChildren().entrySet()) {
+			symbols.add(entry.getKey());
+
+			this.collectSymbolsRec(entry.getValue(), symbols);
+		}
+	}
+
+
+	/**
+	 * Creates a copy of the sequence graph. Uses the same artifacts.
+	 */
+	public void copy(SequenceGraph sg) {
+		if (!this.sequenceGraph.getRoot().getChildren().isEmpty())
+			throw new EccoException("Sequence graph must be empty to copy another.");
+
+		if (!(sg instanceof SequenceGraphOperand))
+			throw new EccoException("Copy requires two sequence graph operands.");
+		SequenceGraphOperand other = (SequenceGraphOperand) sg;
+
+		other.setPol(!other.getPol());
+		//this.sequenceGraph.getNodes().clear();
+		this.copyRec(new HashSet<Artifact<?>>(), this.sequenceGraph.getRoot(), other.getRoot(), other.getPol());
+
+		this.sequenceGraph.setCurrentSequenceNumber(other.getCurrentSequenceNumber());
+	}
+
+	private void copyRec(Set<Artifact<?>> path, SequenceGraphNode left, SequenceGraphNode right, boolean newPol) {
+//		SequenceGraphNode leftNode = this.sequenceGraph.getNodes().get(path);
+//		if (leftNode == null) {
+//			leftNode = this.sequenceGraph.createSequenceGraphNode(this.sequenceGraph.getPol());
+//			this.sequenceGraph.getNodes().put(path, leftNode);
 //
-//		 align other to this.sequenceGraph
+//			if (right.getPol() == newPol)
+//				throw new EccoException("Right node has already been visited yet left one does not exist.");
+//		}
 //
-//		 traverse other to retrieve every order and sequence it into the new sequence graph.
-//		this.traverseSequenceGraphForOrder(other.getRoot(), new ArrayList<Artifact<?>>());
+//		if (right.getPol() == newPol) // already visited
+//			return leftNode;
 
+		if (right.getPol() == newPol) // already visited
+			return;
+
+		right.setPol(this.sequenceGraph.getPol()); // mark as visited
+
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> rightEntry : right.getChildren().entrySet()) {
+			Set<Artifact<?>> newPath = new HashSet<>(path);
+			newPath.add(rightEntry.getKey());
+
+			SequenceGraphNode leftNode = this.sequenceGraph.getNodes().get(newPath);
+			if (leftNode == null) {
+				leftNode = this.sequenceGraph.createSequenceGraphNode(this.sequenceGraph.getPol());
+				this.sequenceGraph.getNodes().put(newPath, leftNode);
+			}
+			left.getChildren().put(rightEntry.getKey(), leftNode);
+
+			this.copyRec(newPath, leftNode, rightEntry.getValue(), newPol);
+
+//			SequenceGraphNode child = this.copyRec(newPath, leftNode, rightEntry.getValue(), newPol);
+
+//			left.getChildren().put(rightEntry.getKey(), child);
+		}
+	}
+
+
+	/**
+	 * Sequences another sequence graph into this sequence graph.
+	 *
+	 * @param sg The other sequence graph to sequence into this one.
+	 */
+	public void sequence(SequenceGraph sg) {
+		if (!(sg instanceof SequenceGraphOperand))
+			throw new EccoException("Copy requires two sequence graph operands.");
+		SequenceGraphOperand other = (SequenceGraphOperand) sg;
 
 		// align right to left
 		this.global_best_cost = Integer.MAX_VALUE;
@@ -37,17 +122,21 @@ public class SequenceGraphOperator {
 		// assign new sequence numbers to right
 		int num_symbols = this.sequenceGraph.getCurrentSequenceNumber();
 		Set<Artifact<?>> rightArtifacts = new HashSet<>();
-		this.assignNewSequenceNumbers(other.getRoot(), rightArtifacts);
-
+		other.setPol(!other.getPol());
+		this.assignNewSequenceNumbersRec(other.getRoot(), rightArtifacts, other.getPol());
 
 		// update left
 		Set<Artifact<?>> shared_symbols = new HashSet<>();
 		for (Artifact symbol : rightArtifacts) {
-			if (symbol.getSequenceNumber() < num_symbols)
+			if (symbol.getSequenceNumber() < num_symbols) {
 				shared_symbols.add(symbol);
+				System.out.println("SHARED: " + symbol.getSequenceNumber());
+			}
 		}
-		this.updateSequenceGraphRec(this.sequenceGraph.getRoot(), other.getRoot(), new HashSet<Artifact<?>>(), shared_symbols, !this.sequenceGraph.getPol());
+		System.out.println("AAA: " + this.sequenceGraph.getNodes().size());
 		this.sequenceGraph.setPol(!this.sequenceGraph.getPol());
+		this.updateSequenceGraphRec(this.sequenceGraph.getRoot(), other.getRoot(), new HashSet<Artifact<?>>(), shared_symbols);
+		System.out.println("BBB: " + this.sequenceGraph.getNodes().size());
 
 		// remove all graphnodes that were not visited
 		Iterator<SequenceGraphNode> it = this.sequenceGraph.getNodes().values().iterator();
@@ -59,60 +148,41 @@ public class SequenceGraphOperator {
 		}
 	}
 
-	private void assignNewSequenceNumbers(SequenceGraphNode sgn, Set<Artifact<?>> artifacts) {
+	// TODO: should this be a util function? or a public function? because this should actually be called on the other sg not on this one!
+	private void assignNewSequenceNumbersRec(SequenceGraphNode sgn, Set<Artifact<?>> artifacts, boolean newPol) {
+		if (sgn.getPol() == newPol) // already visited
+			return;
+
+		sgn.setPol(this.sequenceGraph.getPol()); // mark as visited
+
 		for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
-			artifacts.add(child.getKey());
-
-			if (child.getKey().getSequenceNumber() == -1)
+			if (child.getKey().getSequenceNumber() == -1) {
 				child.getKey().setSequenceNumber(this.sequenceGraph.nextSequenceNumber());
+			}
+			artifacts.add(child.getKey()); // add symbol after it had its new sequence number assigned, otherwise there may be identical symbols.
 
-			this.assignNewSequenceNumbers(child.getValue(), artifacts);
+			this.assignNewSequenceNumbersRec(child.getValue(), artifacts, newPol);
 		}
 	}
 
-//	private void traverseSequenceGraphForOrder(SequenceGraphNode sgn, List<Artifact<?>> order) {
-//		if (sgn.getChildren().isEmpty()) {
-//			// we have reached the end and the current path is a possible plath
-//			System.out.println("ORDER1: " + order + ", " + this.sequenceGraph.getNodes().size());
-//			this.sequenceGraph.sequenceArtifacts(order);
-//			System.out.println("ORDER2: " + order + ", " + this.sequenceGraph.getNodes().size());
-//		} else {
-//			// keep traversing
-//			for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
-//				order.add(child.getKey());
-//
-//				this.traverseSequenceGraphForOrder(child.getValue(), order);
-//
-//				// when we are done remove current from order
-//				order.remove(order.size() - 1);
-//			}
-//		}
-//	}
-
-	/**
-	 * This aligns the right sequence graph to the left sequence graph, assigning sequence numbers to the artifacts of the right sequence graph.
-	 * <p>
-	 * NOTES:
-	 * - careful: changing the sequence number of artifacts changes their hashCode() and equals()!
-	 */
-	private int alignSequenceGraphRec(SequenceGraphNode left, SequenceGraphNode right, int cost) {
-
+	// TODO: implement optimized sequence graph merge
+	private int alignSequenceGraphRecFast(SequenceGraphNode left, SequenceGraphNode right, int cost) {
 		//int local_best_cost = this.global_best_cost;
 		int local_best_cost = Integer.MAX_VALUE;
 
-		// base case 0: abort and don't update alignment if we already had a better or equal solution.
+		// base case 1: abort and don't update alignment if we already had a better or equal solution.
 		if (cost >= this.global_best_cost) {
 			return Integer.MAX_VALUE;
 		}
 
-		// base case 1: both sequence graphs have no more nodes
+		// base case 2: both sequence graphs have no more nodes
 		else if (left.getChildren().isEmpty() && right.getChildren().isEmpty()) {
 			// update current best cost (we would not have gotten here if cost > global_best_cost)
 			this.global_best_cost = cost;
 			return cost;
 		}
 
-		// base case 2: left has no more nodes, right does
+		// recursion case 1: left has no more nodes, right does
 		else if (left.getChildren().isEmpty() && !right.getChildren().isEmpty()) {
 			for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
 				int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost + 1);
@@ -129,7 +199,7 @@ public class SequenceGraphOperator {
 			}
 		}
 
-		// base case 3: right has no more nodes, left does
+		// recursion case 2: right has no more nodes, left does
 		else if (right.getChildren().isEmpty() && !left.getChildren().isEmpty()) {
 			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
 				int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost + 1);
@@ -146,19 +216,139 @@ public class SequenceGraphOperator {
 			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
 				for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
 
-					if (leftChildEntry.getKey().equals(rightChildEntry.getKey())) {
-						if (rightChildEntry != null) { // we found a match -> pursue it
-							int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), rightChildEntry.getValue(), cost); // do not increment cost as it was a match
+					if (leftChildEntry.getKey().equals(rightChildEntry.getKey())) { // we found a match -> pursue it
+						int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), rightChildEntry.getValue(), cost); // do not increment cost as it was a match
 
-							if (temp_cost < local_best_cost)
-								local_best_cost = temp_cost;
+						if (temp_cost < local_best_cost)
+							local_best_cost = temp_cost;
 
-							if (temp_cost <= this.global_best_cost) { // part of currently best alignment
-								if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != leftChildEntry.getKey().getSequenceNumber())
-									System.out.println("WARNING2! " + leftChildEntry.getKey() + ": " + leftChildEntry.getKey().getSequenceNumber());
+						if (temp_cost <= this.global_best_cost) { // part of currently best alignment
+							if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != leftChildEntry.getKey().getSequenceNumber())
+								System.out.println("WARNING2! " + leftChildEntry.getKey() + ": " + leftChildEntry.getKey().getSequenceNumber());
 
-								rightChildEntry.getKey().setSequenceNumber(leftChildEntry.getKey().getSequenceNumber()); // set right sequence number to left sequence number
-							}
+							rightChildEntry.getKey().setSequenceNumber(leftChildEntry.getKey().getSequenceNumber()); // set right sequence number to left sequence number
+						}
+					}
+
+				}
+			}
+
+//			// find match by skipping left
+//			SequenceGraphNode tempLeftNode = left.getChildren().values().iterator().next();
+//			boolean found_match = false;
+//			while (tempLeftNode.getChildren().size() > 0) {
+//				for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : tempLeftNode.getChildren().entrySet()) {
+//					for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
+//						if (leftChildEntry.getKey().equals(rightChildEntry.getKey())) {
+//							found_match = true;
+//							// TODO
+//							break;
+//						}
+//					}
+//					if (found_match)
+//						break;
+//				}
+//				if (!found_match) {
+//					tempLeftNode = left.getChildren().values().iterator().next(); // just take first left child
+//				} else {
+//
+//				}
+//			}
+
+			// case 2: skip left
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost + 1);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+			}
+
+			// case 3: skip right
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+
+				if (temp_cost <= this.global_best_cost) { // part of currently best alignment
+					if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != -1)
+						System.out.println("WARNING3! " + rightChildEntry.getKey() + ": " + -1);
+
+					rightChildEntry.getKey().setSequenceNumber(-1); // indicate that this artifact needs a new sequence number assigned
+				}
+			}
+
+		}
+
+		return local_best_cost;
+	}
+
+	/**
+	 * This aligns the right sequence graph to the left sequence graph, assigning sequence numbers to the artifacts of the right sequence graph.
+	 * <p>
+	 * NOTE: Changing the sequence number of artifacts changes their hashCode() and equals()! This makes the right sequence graph's children maps inconsistent!
+	 * In other words: in its current state this method destroys the right sequence graph!
+	 */
+	private int alignSequenceGraphRec(SequenceGraphNode left, SequenceGraphNode right, int cost) {
+		int local_best_cost = Integer.MAX_VALUE;
+
+		// base case 1: abort and don't update alignment if we already had a better or equal solution.
+		if (cost >= this.global_best_cost) {
+			return Integer.MAX_VALUE;
+		}
+
+		// base case 2: both sequence graphs have no more nodes
+		else if (left.getChildren().isEmpty() && right.getChildren().isEmpty()) {
+			// update current best cost (we would not have gotten here if cost > global_best_cost)
+			this.global_best_cost = cost;
+			return cost;
+		}
+
+		// recursion case 1: left has no more nodes, right does
+		else if (left.getChildren().isEmpty() && !right.getChildren().isEmpty()) {
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost + 1);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+
+				if (temp_cost <= this.global_best_cost) { // part of currently best alignment
+					if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != -1)
+						System.out.println("WARNING1! " + rightChildEntry.getKey() + ": " + -1);
+
+					rightChildEntry.getKey().setSequenceNumber(-1); // indicate that this artifact needs a new sequence number assigned
+				}
+			}
+		}
+
+		// recursion case 2: right has no more nodes, left does
+		else if (right.getChildren().isEmpty() && !left.getChildren().isEmpty()) {
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
+				int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost + 1);
+
+				if (temp_cost < local_best_cost)
+					local_best_cost = temp_cost;
+			}
+		}
+
+		// recursion case
+		else {
+
+			// case 1: do matches first
+			for (Map.Entry<Artifact<?>, SequenceGraphNode> leftChildEntry : left.getChildren().entrySet()) {
+				for (Map.Entry<Artifact<?>, SequenceGraphNode> rightChildEntry : right.getChildren().entrySet()) {
+
+					if (leftChildEntry.getKey().equals(rightChildEntry.getKey())) { // we found a match -> pursue it
+						int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), rightChildEntry.getValue(), cost); // do not increment cost as it was a match
+
+						if (temp_cost < local_best_cost)
+							local_best_cost = temp_cost;
+
+						if (temp_cost <= this.global_best_cost) { // part of currently best alignment
+							if (temp_cost == this.global_best_cost && rightChildEntry.getKey().getSequenceNumber() != leftChildEntry.getKey().getSequenceNumber())
+								System.out.println("WARNING2! " + leftChildEntry.getKey() + ": " + leftChildEntry.getKey().getSequenceNumber());
+
+							rightChildEntry.getKey().setSequenceNumber(leftChildEntry.getKey().getSequenceNumber()); // set right sequence number to left sequence number
 						}
 					}
 
@@ -196,31 +386,30 @@ public class SequenceGraphOperator {
 	/**
 	 * This updates the left sequence graph by merging the aligned right sequence graph into it.
 	 */
-	private SequenceGraphNode updateSequenceGraphRec(SequenceGraphNode left, SequenceGraphNode right, HashSet<Artifact<?>> path, Set<Artifact<?>> shared_symbols, boolean new_pol) {
-
+	private SequenceGraphNode updateSequenceGraphRec(SequenceGraphNode left, SequenceGraphNode right, HashSet<Artifact<?>> path, Set<Artifact<?>> shared_symbols) {
 		// get current graph node
 		SequenceGraphNode sgn = this.sequenceGraph.getNodes().get(path);
 		if (sgn == null) {
-			sgn = this.sequenceGraph.createSequenceGraphNode(!new_pol);
+			sgn = this.sequenceGraph.createSequenceGraphNode(!this.sequenceGraph.getPol());
 			this.sequenceGraph.getNodes().put(path, sgn);
 		}
 
 		// base case: node has already been visited
-		if (sgn.getPol() == new_pol)
+		if (sgn.getPol() == this.sequenceGraph.getPol())
 			return sgn;
 
 		// set node to visited
-		sgn.setPol(new_pol);
+		sgn.setPol(this.sequenceGraph.getPol());
 
 		HashMap<Artifact<?>, SequenceGraphNode> new_children = new HashMap<>();
-
 
 		// if unshared symbol left -> advance
 		for (Map.Entry<Artifact<?>, SequenceGraphNode> leftEntry : left.getChildren().entrySet()) {
 			if (!shared_symbols.contains(leftEntry.getKey())) {
+				System.out.println("LEFT UNSHARED");
 				HashSet<Artifact<?>> new_path = new HashSet<>(path);
 				new_path.add(leftEntry.getKey());
-				SequenceGraphNode child = this.updateSequenceGraphRec(leftEntry.getValue(), right, new_path, shared_symbols, new_pol);
+				SequenceGraphNode child = this.updateSequenceGraphRec(leftEntry.getValue(), right, new_path, shared_symbols);
 				new_children.put(leftEntry.getKey(), child);
 			}
 		}
@@ -228,9 +417,10 @@ public class SequenceGraphOperator {
 		// if unshared symbol right -> add it left and advance
 		for (Map.Entry<Artifact<?>, SequenceGraphNode> rightEntry : right.getChildren().entrySet()) {
 			if (!shared_symbols.contains(rightEntry.getKey())) {
+				System.out.println("RIGHT UNSHARED");
 				HashSet<Artifact<?>> new_path = new HashSet<>(path);
 				new_path.add(rightEntry.getKey());
-				SequenceGraphNode child = this.updateSequenceGraphRec(left, rightEntry.getValue(), new_path, shared_symbols, new_pol); // this should be a new node
+				SequenceGraphNode child = this.updateSequenceGraphRec(left, rightEntry.getValue(), new_path, shared_symbols); // this should be a new node
 				new_children.put(rightEntry.getKey(), child);
 			}
 		}
@@ -249,17 +439,19 @@ public class SequenceGraphOperator {
 					}
 				}
 				if (rightEntry != null) { // matching shared symbols -> take them
+					System.out.println("MATCH SHARED");
 					HashSet<Artifact<?>> new_path = new HashSet<>(path);
-					new_path.add(rightEntry.getKey());
-					SequenceGraphNode child = this.updateSequenceGraphRec(leftEntry.getValue(), rightEntry.getValue(), new_path, shared_symbols, new_pol);
+					new_path.add(leftEntry.getKey());
+					SequenceGraphNode child = this.updateSequenceGraphRec(leftEntry.getValue(), rightEntry.getValue(), new_path, shared_symbols);
 					new_children.put(leftEntry.getKey(), child);
 				} else { // no match for shared symbol -> cut graph
+					System.out.println("MATCH CUT");
 					it.remove();
 				}
 			}
 		}
 
-
+		sgn.getChildren().clear();
 		sgn.getChildren().putAll(new_children);
 
 		return sgn;
@@ -268,55 +460,71 @@ public class SequenceGraphOperator {
 
 	// # OPERATIONS #################################################################
 
-
 	public void updateArtifactReferences() {
-		// update graph
-		this.updateArtifactReferencesRec(this.sequenceGraph.getRoot());
+//		// update graph
+//		this.updateArtifactReferencesRec(this.sequenceGraph.getRoot());
 
 		// update node list
 		Iterator<Map.Entry<Set<Artifact<?>>, SequenceGraphNode>> it = this.sequenceGraph.getNodes().entrySet().iterator();
 		while (it.hasNext()) {
-			Set<Artifact<?>> artifacts = it.next().getKey();
+			Map.Entry<Set<Artifact<?>>, SequenceGraphNode> entry = it.next();
+			Set<Artifact<?>> artifacts = entry.getKey();
+			SequenceGraphNode sgn = entry.getValue();
 
+			// update references in artifacts path
 			Set<Artifact<?>> updatedArtifacts = new HashSet<>();
-			Iterator<Artifact<?>> it2 = artifacts.iterator();
-			while (it2.hasNext()) {
-				Artifact<?> artifact = it2.next();
+			Iterator<Artifact<?>> artifactsIterator = artifacts.iterator();
+			while (artifactsIterator.hasNext()) {
+				Artifact<?> artifact = artifactsIterator.next();
 
 				if (artifact.getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
 					Artifact<?> replacing = artifact.<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
 					replacing.setSequenceNumber(artifact.getSequenceNumber());
 
 					updatedArtifacts.add(replacing);
-					it2.remove();
+					artifactsIterator.remove();
 				}
 			}
 			artifacts.addAll(updatedArtifacts);
-		}
 
-	}
+			// update references in children
+			Map<Artifact<?>, SequenceGraphNode> updatedChildren = new HashMap<>();
+			Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> childrenIterator = sgn.getChildren().entrySet().iterator();
+			while (childrenIterator.hasNext()) {
+				Map.Entry<Artifact<?>, SequenceGraphNode> childEntry = childrenIterator.next();
+				if (childEntry.getKey().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+					Artifact<?> replacing = childEntry.getKey().<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+					replacing.setSequenceNumber(childEntry.getKey().getSequenceNumber());
 
-	private void updateArtifactReferencesRec(SequenceGraphNode sgn) {
-		// update references in children
-		Map<Artifact<?>, SequenceGraphNode> updatedChildren = new HashMap<>();
-		Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> it = sgn.getChildren().entrySet().iterator();
-		while (it.hasNext()) {
-			Map.Entry<Artifact<?>, SequenceGraphNode> entry = it.next();
-			if (entry.getKey().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-				Artifact<?> replacing = entry.getKey().<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
-				replacing.setSequenceNumber(entry.getKey().getSequenceNumber());
-
-				updatedChildren.put(replacing, entry.getValue());
-				it.remove();
+					updatedChildren.put(replacing, childEntry.getValue());
+					childrenIterator.remove();
+				}
 			}
-		}
-		sgn.getChildren().putAll(updatedChildren);
-
-		// traverse children
-		for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
-			this.updateArtifactReferencesRec(child.getValue());
+			sgn.getChildren().putAll(updatedChildren);
 		}
 	}
+
+//	private void updateArtifactReferencesRec(SequenceGraphNode sgn) {
+//		// update references in children
+//		Map<Artifact<?>, SequenceGraphNode> updatedChildren = new HashMap<>();
+//		Iterator<Map.Entry<Artifact<?>, SequenceGraphNode>> it = sgn.getChildren().entrySet().iterator();
+//		while (it.hasNext()) {
+//			Map.Entry<Artifact<?>, SequenceGraphNode> entry = it.next();
+//			if (entry.getKey().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+//				Artifact<?> replacing = entry.getKey().<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+//				replacing.setSequenceNumber(entry.getKey().getSequenceNumber());
+//
+//				updatedChildren.put(replacing, entry.getValue());
+//				it.remove();
+//			}
+//		}
+//		sgn.getChildren().putAll(updatedChildren);
+//
+//		// traverse children
+//		for (Map.Entry<Artifact<?>, SequenceGraphNode> child : sgn.getChildren().entrySet()) {
+//			this.updateArtifactReferencesRec(child.getValue());
+//		}
+//	}
 
 
 	public void sequence(Node node) throws EccoException {
@@ -552,10 +760,12 @@ public class SequenceGraphOperator {
 	// # INTERFACE #################################################################
 
 	public interface SequenceGraphOperand extends SequenceGraph {
-		public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes();
+		public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes(); // TODO: this may be unneeded!
 
 
 		public int getCurrentSequenceNumber();
+
+		public void setCurrentSequenceNumber(int sn);
 
 		public int nextSequenceNumber() throws EccoException;
 

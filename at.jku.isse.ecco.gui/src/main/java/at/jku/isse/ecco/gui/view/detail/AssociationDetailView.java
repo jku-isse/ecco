@@ -87,7 +87,7 @@ public class AssociationDetailView extends BorderPane {
 			Task updateTask = new Task<Void>() {
 				@Override
 				public Void call() throws EccoException {
-					PresenceCondition pc = AssociationDetailView.this.service.parsePresenceCondition(AssociationDetailView.this.associationPC.getText());
+					PresenceCondition pc = AssociationDetailView.this.service.parsePresenceConditionString(AssociationDetailView.this.associationPC.getText());
 					AssociationDetailView.this.currentAssociation.setPresenceCondition(pc);
 					AssociationDetailView.this.service.updateAssociation(AssociationDetailView.this.currentAssociation);
 					return null;

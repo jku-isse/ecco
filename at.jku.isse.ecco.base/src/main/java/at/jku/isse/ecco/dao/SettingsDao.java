@@ -2,12 +2,13 @@ package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.feature.Feature;
 
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
 
-public interface SettingsDao {
+public interface SettingsDao extends GenericDao<Feature> {
 
 	public int loadMaxOrder();
 
@@ -33,8 +34,6 @@ public interface SettingsDao {
 	public Remote loadRemote(String name);
 
 	public Remote storeRemote(Remote remote);
-
-
 
 
 	// TODO: change these to a FileInfo type that contains either the plugin that should parse the file or marks the file to be ignored or sets it to auto (to automatically choose the plugin that should load the file)!

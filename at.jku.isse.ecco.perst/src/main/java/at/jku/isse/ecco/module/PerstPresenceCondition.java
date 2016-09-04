@@ -53,8 +53,18 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	}
 
 	@Override
+	public void merge(PresenceCondition other) {
+		this.operator.merge(other);
+	}
+
+	@Override
 	public void addFeatureInstance(FeatureInstance featureInstance) {
 		this.operator.addFeatureInstance(featureInstance);
+	}
+
+	@Override
+	public void addFeatureInstance(FeatureInstance featureInstance, int maxOrder) {
+		this.operator.addFeatureInstance(featureInstance, maxOrder);
 	}
 
 	@Override

@@ -55,8 +55,8 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 	public int hashCode() {
 		int result = data.hashCode();
 		result = 31 * result + (ordered ? 1 : 0);
-		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
-			result = 31 * result + sequenceNumber;
+//		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
+//			result = 31 * result + sequenceNumber;
 		return result;
 	}
 

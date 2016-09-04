@@ -29,7 +29,7 @@ public class BaseFeatureVersion implements FeatureVersion {
 	}
 
 	@Override
-	public int getVersion() {
+	public int getId() {
 		return this.version;
 	}
 
@@ -57,7 +57,7 @@ public class BaseFeatureVersion implements FeatureVersion {
 
 		final FeatureVersion that = (FeatureVersion) o;
 
-		if (version != that.getVersion()) return false;
+		if (version != that.getId()) return false;
 		return feature.equals(that.getFeature());
 
 	}
