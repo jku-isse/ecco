@@ -13,7 +13,7 @@ import java.util.List;
  */
 public interface Feature extends Persistable {
 
-	public List<FeatureVersion> getVersions();
+	public List<? extends FeatureVersion> getVersions();
 
 //	public void addVersion(FeatureVersion version);
 //

@@ -118,10 +118,10 @@ public class Trees {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getSequenceGraph() != right.getArtifact().getSequenceGraph()) {
 					//throw new EccoException("Sequence Graphs did not match!");
 
-					// set sequence number of all artifacts in right sequence graph to Artifact.UNASSIGNED_SEQUENCE_NUMBER prior to alignment to left sequence graph.
-					for (Artifact symbol : right.getArtifact().getSequenceGraph().getSymbols()) {
-						symbol.setSequenceNumber(Artifact.UNASSIGNED_SEQUENCE_NUMBER);
-					}
+//					// set sequence number of all artifacts in right sequence graph to Artifact.UNASSIGNED_SEQUENCE_NUMBER prior to alignment to left sequence graph.
+//					for (Artifact symbol : right.getArtifact().getSequenceGraph().getSymbols()) {
+//						symbol.setSequenceNumber(Artifact.UNASSIGNED_SEQUENCE_NUMBER);
+//					}
 
 					left.getArtifact().getSequenceGraph().sequence(right.getArtifact().getSequenceGraph());
 					right.getArtifact().setSequenceGraph(left.getArtifact().getSequenceGraph());

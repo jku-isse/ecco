@@ -115,6 +115,11 @@ public class SequenceGraphOperator {
 			throw new EccoException("Copy requires two sequence graph operands.");
 		SequenceGraphOperand other = (SequenceGraphOperand) sg;
 
+		// set sequence number of all artifacts in right sequence graph to -1 prior to alignment to left sequence graph.
+		for (Artifact symbol : other.getSymbols()) {
+			symbol.setSequenceNumber(-1);
+		}
+
 		// align right to left
 		this.global_best_cost = Integer.MAX_VALUE;
 		this.alignSequenceGraphRec(this.sequenceGraph.getRoot(), other.getRoot(), 0);

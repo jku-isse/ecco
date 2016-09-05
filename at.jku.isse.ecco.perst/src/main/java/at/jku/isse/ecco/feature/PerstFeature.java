@@ -21,7 +21,7 @@ public class PerstFeature extends Persistent implements Feature {
 	private String name = "";
 	private String description = "";
 
-	private List<FeatureVersion> versions = new ArrayList<FeatureVersion>();
+	private List<PerstFeatureVersion> versions = new ArrayList<>();
 
 	private int nextVersion = 0;
 
@@ -34,7 +34,7 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public List<FeatureVersion> getVersions() {
+	public List<PerstFeatureVersion> getVersions() {
 		return this.versions;
 	}
 

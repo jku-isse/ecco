@@ -551,7 +551,7 @@ public class EccoService {
 						}
 						if (feature == null) {
 							feature = this.entityFactory.createFeature(featureName);
-							feature = this.featureDao.save(feature);
+//							feature = this.featureDao.save(feature);
 						}
 
 						Collection<FeatureVersion> featureVersions = new ArrayList<>();
@@ -572,6 +572,7 @@ public class EccoService {
 //									feature.addVersion(tempFeatureVersion);
 //									featureVersion = tempFeatureVersion;
 									featureVersion = feature.addVersion(version);
+//									feature = this.featureDao.save(feature);
 								}
 
 								featureVersions.add(featureVersion);
@@ -590,6 +591,8 @@ public class EccoService {
 
 						ModuleFeature mf = this.entityFactory.createModuleFeature(feature, featureVersions, featureSign);
 						module.add(mf);
+
+						feature = this.featureDao.save(feature);
 					}
 
 					pc.getMinModules().add(module);
@@ -1244,6 +1247,7 @@ public class EccoService {
 					childAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), this.getMaxOrder());
 				}
 			}
+//			Configuration newConfiguration = configuration;
 
 			// create presence condition
 			PresenceCondition presenceCondition = this.entityFactory.createPresenceCondition(newConfiguration, this.getMaxOrder());

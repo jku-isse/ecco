@@ -3,6 +3,7 @@ package at.jku.isse.ecco.dao;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.PerstFeature;
+import at.jku.isse.ecco.feature.PerstFeatureVersion;
 import com.google.inject.Inject;
 import org.garret.perst.FieldIndex;
 
@@ -99,7 +100,7 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 		//final PerstFeature perstEntity = entityFactory.createPerstFeature(entity);
 		final PerstFeature perstEntity = (PerstFeature) entity;
 
-		Feature result;
+		PerstFeature result;
 
 		if (perstEntity.getName().isEmpty()) {
 			result = saveNewFeature(featureIndex, perstEntity);
@@ -107,12 +108,17 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 			result = updateFeature(featureIndex, perstEntity);
 		}
 
+		result.store();
+		for (PerstFeatureVersion featureVersion : result.getVersions()) {
+			featureVersion.store();
+		}
+
 		this.transactionStrategy.done();
 
 		return result;
 	}
 
-	private Feature updateFeature(final FieldIndex<PerstFeature> featureIndex, final PerstFeature perstEntity) {
+	private PerstFeature updateFeature(final FieldIndex<PerstFeature> featureIndex, final PerstFeature perstEntity) {
 		assert featureIndex != null;
 		assert perstEntity != null;
 		assert !perstEntity.getName().isEmpty() : "Expected that the entity is already stored in the database";
@@ -123,14 +129,14 @@ public class PerstFeatureDao extends PerstAbstractGenericDao<Feature> implements
 	}
 
 
-	private Feature saveNewFeature(final FieldIndex<PerstFeature> featureIndex, final PerstFeature perstEntity) {
+	private PerstFeature saveNewFeature(final FieldIndex<PerstFeature> featureIndex, final PerstFeature perstEntity) {
 		assert featureIndex != null;
 		assert perstEntity != null;
 		assert perstEntity.getName().isEmpty() : "Expected that the entity is new to the database.";
 
 		featureIndex.put(perstEntity);
 
-		final Feature result = perstEntity;
+		final PerstFeature result = perstEntity;
 
 		return result;
 	}
