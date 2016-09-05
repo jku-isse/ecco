@@ -91,7 +91,7 @@ public class MemEntityFactory implements EntityFactory {
 	public ArtifactReference createArtifactReference(final Artifact source, final Artifact target, final String type) {
 		checkNotNull(source);
 		checkNotNull(target);
-		checkNotNull(type);
+//		checkNotNull(type);
 
 		final ArtifactReference reference = new BaseArtifactReference(type);
 		reference.setSource(source);
