@@ -1279,7 +1279,7 @@ public class EccoService {
 			commit = this.commitDao.save(commit);
 
 
-			if (!this.manualMode) { // TODO: bring this up to date.
+			if (!this.isManualMode()) { // TODO: bring this up to date.
 				// PRESENCE TABLE
 				for (Association commitAssociation : commit.getAssociations()) {
 					for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
@@ -1385,7 +1385,7 @@ public class EccoService {
 
 						// SIMPLE MODULES
 						intA.getModules().addAll(origA.getModules());
-						if (!this.manualMode) {
+						if (!this.isManualMode()) {
 							intA.getModules().retainAll(inputA.getModules());
 							origA.getModules().removeAll(intA.getModules());
 						}
@@ -1393,7 +1393,7 @@ public class EccoService {
 
 
 						// PRESENCE CONDITION
-						if (!this.manualMode) {
+						if (!this.isManualMode()) {
 							//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
 							intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition()));
 						} else {
@@ -1450,7 +1450,7 @@ public class EccoService {
 
 
 						// add negated input presence condition to original association if intersection has artifacts (i.e. original association contains artifacts that were removed) and manual mode is activated
-						if (this.manualMode && !intA.getRootNode().getChildren().isEmpty()) {
+						if (this.isManualMode() && !intA.getRootNode().getChildren().isEmpty()) {
 							for (at.jku.isse.ecco.module.Module m : inputA.getPresenceCondition().getMinModules()) {
 								if (m.size() == 1) { // only consider base modules
 									for (ModuleFeature f : m) {
