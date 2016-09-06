@@ -37,6 +37,16 @@ public class DatabaseRoot extends Persistent {
 
 	private Configuration currentCheckoutConfiguration = null;
 
+	private boolean manualMode = false;
+
+	public boolean isManualMode() {
+		return this.manualMode;
+	}
+
+	public void setManualMode(boolean manualMode) {
+		this.manualMode = manualMode;
+	}
+
 	private final FieldIndex<PerstRemote> remoteIndex;
 
 	private final Collection<Path> ignoredFiles = new HashSet<Path>();

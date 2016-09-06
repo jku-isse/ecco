@@ -36,6 +36,11 @@ public interface SettingsDao extends GenericDao<Feature> {
 	public Remote storeRemote(Remote remote);
 
 
+	public void setManualMode(boolean manualMode);
+
+	public boolean isManualMode();
+
+
 	// TODO: change these to a FileInfo type that contains either the plugin that should parse the file or marks the file to be ignored or sets it to auto (to automatically choose the plugin that should load the file)!
 
 

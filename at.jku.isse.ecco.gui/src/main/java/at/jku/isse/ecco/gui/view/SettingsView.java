@@ -209,24 +209,25 @@ public class SettingsView extends BorderPane implements EccoListener {
 	private void updateValues() {
 		if (service.isInitialized()) {
 			this.statusLabel.setText("The ECCO Service is initialized.");
+
+			this.baseDirUrl.setText(service.getBaseDir().toString());
+			this.repositoryDirUrl.setText(service.getRepositoryDir().toString());
+			this.settingsBaseDirUrl.setText(service.getBaseDir().toString());
+			this.settingsManualModeCheckBox.setSelected(service.isManualMode());
+
+			if (!Paths.get(this.settingsBaseDirUrl.getText()).equals(SettingsView.this.service.getBaseDir())) {
+				setBaseDirButton.setDisable(false);
+			} else {
+				setBaseDirButton.setDisable(true);
+			}
+
+			if (this.settingsManualModeCheckBox.isSelected() != SettingsView.this.service.isManualMode()) {
+				SettingsView.this.setModeButton.setDisable(false);
+			} else {
+				SettingsView.this.setModeButton.setDisable(true);
+			}
 		} else {
 			this.statusLabel.setText("The ECCO Service has not been initialized yet.");
-		}
-		this.baseDirUrl.setText(service.getBaseDir().toString());
-		this.repositoryDirUrl.setText(service.getRepositoryDir().toString());
-		this.settingsBaseDirUrl.setText(service.getBaseDir().toString());
-		this.settingsManualModeCheckBox.setSelected(service.isManualMode());
-
-		if (!Paths.get(this.settingsBaseDirUrl.getText()).equals(SettingsView.this.service.getBaseDir())) {
-			setBaseDirButton.setDisable(false);
-		} else {
-			setBaseDirButton.setDisable(true);
-		}
-
-		if (this.settingsManualModeCheckBox.isSelected() != SettingsView.this.service.isManualMode()) {
-			SettingsView.this.setModeButton.setDisable(false);
-		} else {
-			SettingsView.this.setModeButton.setDisable(true);
 		}
 	}
 

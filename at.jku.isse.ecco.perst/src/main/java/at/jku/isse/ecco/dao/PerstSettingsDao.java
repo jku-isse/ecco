@@ -155,6 +155,24 @@ public class PerstSettingsDao extends PerstAbstractGenericDao<Feature> implement
 	}
 
 	@Override
+	public void setManualMode(boolean manualMode) {
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
+
+		root.setManualMode(true);
+
+		root.store();
+
+		this.transactionStrategy.done();
+	}
+
+	@Override
+	public boolean isManualMode() {
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
+
+		return root.isManualMode();
+	}
+
+	@Override
 	public Collection<Path> loadIgnoredFiles() {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 

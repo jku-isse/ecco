@@ -223,15 +223,27 @@ public class EccoService {
 
 	public boolean isManualMode() {
 		// TODO: set via settings dao?
-		return this.manualMode;
+//		return this.manualMode;
+		return this.settingsDao.isManualMode();
 	}
 
 	public void setManualMode(boolean manualMode) {
 		// TODO: set via settings dao?
-		if (!this.manualMode)
-			this.manualMode = manualMode;
-		else if (!manualMode) {
-			throw new EccoException("Once manual mode has been activated it cannot be turned off anymore.");
+		try {
+			this.transactionStrategy.begin();
+
+			if (!this.settingsDao.isManualMode())
+//			this.manualMode = manualMode;
+				this.settingsDao.setManualMode(manualMode);
+			else if (!manualMode) {
+				throw new EccoException("Once manual mode has been activated it cannot be turned off anymore.");
+			}
+
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error retrieving settings.", e);
 		}
 	}
 
