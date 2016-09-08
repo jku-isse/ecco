@@ -50,6 +50,51 @@ public class SequenceGraphOperator {
 
 
 	/**
+	 * Trims the sequence graph by removing all symbols that are not contained in the collection of given symbols.
+	 *
+	 * @param symbols Symbols to keep.
+	 */
+	public void trim(Collection<Artifact<?>> symbols) {
+		SequenceGraphNode tempLeftRoot = this.sequenceGraph.createSequenceGraphNode(this.sequenceGraph.getPol());
+		tempLeftRoot.getChildren().putAll(this.sequenceGraph.getRoot().getChildren()); // copy all children over to temporary root node
+		this.sequenceGraph.getRoot().getChildren().clear(); // clear all children of real root node
+
+		Set<Artifact<?>> path = new HashSet<>();
+
+		this.sequenceGraph.getNodes().clear(); // clear node list of sequence graph
+		this.sequenceGraph.getNodes().put(path, this.sequenceGraph.getRoot()); // add root node back into node list
+
+		this.sequenceGraph.setPol(!this.sequenceGraph.getPol());
+		this.trimRec(symbols, path, this.sequenceGraph.getNodes(), tempLeftRoot, this.sequenceGraph.getRoot());
+	}
+
+	private void trimRec(Collection<Artifact<?>> symbols, Set<Artifact<?>> path, Map<Set<Artifact<?>>, SequenceGraphNode> rightNodes, SequenceGraphNode left, SequenceGraphNode right) {
+		if (left.getPol() == this.sequenceGraph.getPol()) // node already visited
+			return;
+
+		left.setPol(this.sequenceGraph.getPol()); // set to visited
+
+		for (Map.Entry<Artifact<?>, SequenceGraphNode> leftEntry : left.getChildren().entrySet()) {
+			if (symbols.contains(leftEntry.getKey())) { // put it into right
+				Set<Artifact<?>> newPath = new HashSet<>(path);
+				newPath.add(leftEntry.getKey());
+
+				SequenceGraphNode rightChild = rightNodes.get(newPath);
+				if (rightChild == null) {
+					rightChild = this.sequenceGraph.createSequenceGraphNode(this.sequenceGraph.getPol());
+					rightNodes.put(newPath, rightChild);
+				}
+				right.getChildren().put(leftEntry.getKey(), rightChild);
+
+				this.trimRec(symbols, newPath, rightNodes, leftEntry.getValue(), rightChild);
+			} else {
+				this.trimRec(symbols, path, rightNodes, leftEntry.getValue(), right);
+			}
+		}
+	}
+
+
+	/**
 	 * Creates a copy of the sequence graph. Uses the same artifacts.
 	 */
 	public void copy(SequenceGraph sg) {

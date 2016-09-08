@@ -1,18 +1,12 @@
 package at.jku.isse.ecco.dao;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.PerstRemote;
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import com.google.inject.Inject;
 import org.garret.perst.FieldIndex;
 
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -33,27 +27,6 @@ public class PerstSettingsDao extends PerstAbstractGenericDao<Feature> implement
 
 
 	@Override
-	public Feature load(String id) throws EccoException {
-		return null;
-	}
-
-	@Override
-	public void remove(String id) throws EccoException {
-
-	}
-
-	@Override
-	public void remove(Feature entity) throws EccoException {
-
-	}
-
-	@Override
-	public Feature save(Feature entity) throws EccoException {
-		return null;
-	}
-
-
-	@Override
 	public int loadMaxOrder() {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
@@ -67,47 +40,25 @@ public class PerstSettingsDao extends PerstAbstractGenericDao<Feature> implement
 		root.setMaxOrder(maxOrder);
 	}
 
+
 	@Override
-	public String loadUserName() {
+	public void storeManualMode(boolean manualMode) {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		return root.getUserName();
+		root.setManualMode(true);
+
+		root.store();
+
+		this.transactionStrategy.done();
 	}
 
 	@Override
-	public void storeUserName(String userName) {
+	public boolean loadManualMode() {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		root.setUserName(userName);
+		return root.isManualMode();
 	}
 
-	@Override
-	public String loadUserMailAddress() {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		return root.getUserMailAddress();
-	}
-
-	@Override
-	public void storeUserMailAddress(String userMailAddress) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.setUserMailAddress(userMailAddress);
-	}
-
-	@Override
-	public Configuration loadCurrentCheckoutConfiguration() {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		return root.getCurrentCheckoutConfiguration();
-	}
-
-	@Override
-	public void storeCurrentCheckoutConfiguration(Configuration configuration) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.setCurrentCheckoutConfiguration(configuration);
-	}
 
 	@Override
 	public Collection<Remote> loadAllRemotes() {
@@ -155,49 +106,80 @@ public class PerstSettingsDao extends PerstAbstractGenericDao<Feature> implement
 	}
 
 	@Override
-	public void setManualMode(boolean manualMode) {
+	public void removeRemote(String name) {
+		checkNotNull(name);
+
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
+		final FieldIndex<PerstRemote> remoteIndex = root.getRemoteIndex();
+
+		remoteIndex.removeKey(name);
+
+		this.transactionStrategy.done();
+	}
+
+
+	@Override
+	public Map<String, String> loadPluginMap() {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		root.setManualMode(true);
+		final Map<String, String> pluginMap = new HashMap<>();
+		pluginMap.putAll(root.getPluginMap());
 
+		this.transactionStrategy.done();
+
+		return pluginMap;
+	}
+
+	@Override
+	public void addPluginMapping(String pattern, String pluginId) {
+		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
+
+		root.getPluginMap().put(pattern, pluginId);
 		root.store();
 
 		this.transactionStrategy.done();
 	}
 
 	@Override
-	public boolean isManualMode() {
+	public void removePluginMapping(String pattern) {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		return root.isManualMode();
+		root.getPluginMap().remove(pattern);
+		root.store();
+
+		this.transactionStrategy.done();
 	}
 
 	@Override
-	public Collection<Path> loadIgnoredFiles() {
+	public Set<String> loadIgnorePatterns() {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		return root.getIgnoredFiles();
+		final Set<String> ignorePatterns = new HashSet<>();
+		ignorePatterns.addAll(root.getIgnorePatterns());
+
+		this.transactionStrategy.done();
+
+		return ignorePatterns;
 	}
 
 	@Override
-	public void storeIgnoredFiles(Collection<Path> ignoredFiles) {
+	public void addIgnorePattern(String ignorePattern) {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		// TODO
+		root.getIgnorePatterns().add(ignorePattern);
+		root.store();
+
+		this.transactionStrategy.done();
 	}
 
 	@Override
-	public Map<Path, String> loadFileToPluginMap() {
+	public void removeIgnorePattern(String ignorePattern) {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		return root.getFileToPluginMap();
-	}
+		root.getIgnorePatterns().remove(ignorePattern);
+		root.store();
 
-	@Override
-	public void storeFileToPluginMap(Map<Path, String> fileToPluginMap) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		// TODO
+		this.transactionStrategy.done();
 	}
 
 }

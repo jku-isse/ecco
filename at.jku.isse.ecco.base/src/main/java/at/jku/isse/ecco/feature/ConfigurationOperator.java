@@ -2,12 +2,12 @@ package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleFeature;
-import at.jku.isse.ecco.util.Configurations;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -22,11 +22,23 @@ public class ConfigurationOperator {
 
 	// # OPERATIONS #################################################################
 
-	/**
-	 * See {@link at.jku.isse.ecco.util.Configurations#createConfigurationString(Configuration)}
-	 */
 	public String createConfigurationString() {
-		return Configurations.createConfigurationString(this.configuration);
+		return configuration.getFeatureInstances().stream().map((FeatureInstance fi) -> {
+			StringBuffer sb = new StringBuffer();
+			if (fi.getSign())
+				sb.append("+");
+			else
+				sb.append("-");
+			sb.append(fi.getFeatureVersion().getFeature().getName());
+			sb.append(".");
+			sb.append(fi.getFeatureVersion());
+			return sb.toString();
+		}).collect(Collectors.joining(", "));
+	}
+
+	@Override
+	public String toString() {
+		return this.createConfigurationString();
 	}
 
 

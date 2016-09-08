@@ -5,7 +5,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.listener.RepositoryListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
@@ -35,7 +35,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class CommitGraphView extends BorderPane implements EccoListener {
+public class CommitGraphView extends BorderPane implements RepositoryListener {
 
 	private EccoService service;
 

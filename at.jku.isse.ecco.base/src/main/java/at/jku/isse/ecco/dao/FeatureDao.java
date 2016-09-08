@@ -12,7 +12,7 @@ import java.util.Set;
  * @version 1.0
  * @see Feature Feature
  */
-public interface FeatureDao extends GenericDao<Feature> {
+public interface FeatureDao extends EntityDao<Feature> {
 
 	/**
 	 * Loads all features from the storage.

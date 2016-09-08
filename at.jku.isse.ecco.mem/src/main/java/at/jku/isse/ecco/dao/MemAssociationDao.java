@@ -7,7 +7,6 @@ import com.google.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -31,26 +30,6 @@ public class MemAssociationDao extends MemAbstractGenericDao<Association> implem
 		final List<Association> associations = new ArrayList<>(root.getAssociationIndex().values());
 
 		return associations;
-	}
-
-	@Override
-	public Map<Association, Map<Association, Integer>> loadDependencyMap() throws EccoException {
-		return null; // TODO
-	}
-
-	@Override
-	public Map<Association, Map<Association, Integer>> loadConflictsMap() throws EccoException {
-		return null; // TODO
-	}
-
-	@Override
-	public void storeDependencyMap(Map<Association, Map<Association, Integer>> dependencyMap) throws EccoException {
-		// TODO
-	}
-
-	@Override
-	public void storeConflictsMap(Map<Association, Map<Association, Integer>> conflictsMap) throws EccoException {
-		// TODO
 	}
 
 	@Override

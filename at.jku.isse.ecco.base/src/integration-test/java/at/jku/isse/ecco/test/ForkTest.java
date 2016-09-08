@@ -25,7 +25,7 @@ public class ForkTest {
 		// create child repo
 		EccoService service = new EccoService();
 		service.setRepositoryDir(Paths.get("data/forked_repo/.ecco"));
-		service.fork(Paths.get("data/parent_repo/.ecco"), "A.1");
+		service.fork(Paths.get("data/parent_repo/.ecco"));
 	}
 
 
@@ -45,7 +45,7 @@ public class ForkTest {
 		// create child repo and fork it from parent
 		EccoService service = new EccoService();
 		service.setRepositoryDir(Paths.get("data/forked_repo/.ecco"));
-		service.fork(Paths.get("data/parent_repo/.ecco"), "A.1");
+		service.fork(Paths.get("data/parent_repo/.ecco"));
 
 		System.out.println("---");
 

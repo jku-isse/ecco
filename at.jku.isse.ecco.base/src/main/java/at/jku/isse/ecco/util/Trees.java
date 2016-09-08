@@ -23,10 +23,11 @@ public class Trees {
 	}
 
 
-	// # WRITE OPERATIONS ##################################################################################
+	// # COPY OPERATION ##################################################################################
 
+	// TODO: is this the right place for this? probably move it into service.
 
-	public static Node copy(Node node, EntityFactory entityFactory) { // TODO: is this the right place for this?
+	public static Node copy(Node node, EntityFactory entityFactory) {
 		Node node2 = Trees.copyRec(node, entityFactory);
 
 		Trees.updateArtifactReferences(node2);
@@ -99,6 +100,8 @@ public class Trees {
 	}
 
 
+	// # WRITE OPERATIONS ##############################################################################################
+
 	/**
 	 * Slices (i.e. intersects) the two given nodes. It returns the intersection node and removes the intersection from the left and right nodes.
 	 *
@@ -117,26 +120,17 @@ public class Trees {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getSequenceGraph() != right.getArtifact().getSequenceGraph()) {
 					//throw new EccoException("Sequence Graphs did not match!");
-
-//					// set sequence number of all artifacts in right sequence graph to Artifact.UNASSIGNED_SEQUENCE_NUMBER prior to alignment to left sequence graph.
-//					for (Artifact symbol : right.getArtifact().getSequenceGraph().getSymbols()) {
-//						symbol.setSequenceNumber(Artifact.UNASSIGNED_SEQUENCE_NUMBER);
-//					}
-
 					left.getArtifact().getSequenceGraph().sequence(right.getArtifact().getSequenceGraph());
 					right.getArtifact().setSequenceGraph(left.getArtifact().getSequenceGraph());
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
 					left.getArtifact().getSequenceGraph().sequence(left);
-					//SequenceGraphUtil.sequence(left.getArtifact().getSequenceGraph(), left);
 				}
 
 				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					left.getArtifact().getSequenceGraph().sequence(right);
-					//SequenceGraphUtil.sequence(left.getArtifact().getSequenceGraph(), right);
 				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
 					right.getArtifact().getSequenceGraph().sequence(left);
-					//SequenceGraphUtil.sequence(right.getArtifact().getSequenceGraph(), left);
 					throw new EccoException("Left node was not sequenced but right node was!");
 				}
 			}
@@ -147,6 +141,19 @@ public class Trees {
 				return left;
 			} else if (left.getArtifact() != right.getArtifact()) {
 				right.getArtifact().putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, left.getArtifact());
+
+				// merge artifact references
+				for (ArtifactReference ar : right.getArtifact().getUses()) {
+					if (!left.getArtifact().getUses().contains(ar)) {
+						left.getArtifact().addUses(ar);
+					}
+				}
+				for (ArtifactReference ar : right.getArtifact().getUsedBy()) {
+					if (!left.getArtifact().getUsedBy().contains(ar)) {
+						left.getArtifact().addUsedBy(ar);
+					}
+				}
+
 				right.setArtifact(left.getArtifact());
 			}
 		}
@@ -186,7 +193,7 @@ public class Trees {
 				intersection.addChild(intersectionChild);
 			}
 
-			if (intersectionChild.isAtomic()) { // left child becomes the intersection child
+			if (intersectionChild != null && intersectionChild.isAtomic()) { // left child becomes the intersection child
 				intersectionChild.setParent(intersection);
 
 				rightChild.setParent(null);
@@ -212,16 +219,26 @@ public class Trees {
 
 	private static void matchAtomicArtifacts(Node left, Node right) {
 		right.getArtifact().putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, left.getArtifact());
+
+		// merge artifact references
+		for (ArtifactReference ar : right.getArtifact().getUses()) {
+			if (!left.getArtifact().getUses().contains(ar)) {
+				left.getArtifact().addUses(ar);
+			}
+		}
+		for (ArtifactReference ar : right.getArtifact().getUsedBy()) {
+			if (!left.getArtifact().getUsedBy().contains(ar)) {
+				left.getArtifact().addUsedBy(ar);
+			}
+		}
+
 		right.setArtifact(left.getArtifact());
 
 		if (left.getChildren().size() != right.getChildren().size()) {
 			throw new EccoException("Equal atomic nodes must have identical children!");
 		}
 
-		Iterator<Node> leftChildrenIterator = left.getChildren().iterator();
-		while (leftChildrenIterator.hasNext()) {
-			Node leftChild = leftChildrenIterator.next();
-
+		for (Node leftChild : left.getChildren()) {
 			int ri = right.getChildren().indexOf(leftChild);
 			if (ri == -1) {
 				throw new EccoException("Equal atomic nodes must have identical children!");
@@ -300,7 +317,7 @@ public class Trees {
 				throw new EccoException("Artifact should have been replaced.");
 			}
 
-			// update uses
+			// update "uses" artifact references
 			for (ArtifactReference uses : node.getArtifact().getUses()) {
 				if (uses.getSource() != node.getArtifact())
 					throw new EccoException("Source of uses artifact reference must be identical to artifact.");
@@ -316,7 +333,7 @@ public class Trees {
 				}
 			}
 
-			// update used by
+			// update "used by" artifact references
 			for (ArtifactReference usedBy : node.getArtifact().getUsedBy()) {
 				if (usedBy.getTarget() != node.getArtifact())
 					throw new EccoException("Target of usedBy artifact reference must be identical to artifact.");
@@ -325,14 +342,14 @@ public class Trees {
 					Artifact replacingArtifact = usedBy.getSource().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
 					if (replacingArtifact != null) {
 						usedBy.setSource(replacingArtifact);
-					}
-					if (!replacingArtifact.getUses().contains(usedBy)) {
-						replacingArtifact.addUses(usedBy);
+						if (!replacingArtifact.getUses().contains(usedBy)) {
+							replacingArtifact.addUses(usedBy);
+						}
 					}
 				}
 			}
 
-			// update sequence graph
+			// update sequence graph symbols (which are artifacts)
 			if (node.getArtifact().getSequenceGraph() != null) {
 				node.getArtifact().getSequenceGraph().updateArtifactReferences();
 			}
@@ -359,7 +376,6 @@ public class Trees {
 	}
 
 	private static Node extractMarkedRec(Node left) {
-
 		// create right node
 		Node right = left.createNode();
 		right.setArtifact(left.getArtifact());
@@ -439,7 +455,7 @@ public class Trees {
 	 * Composes a new tree from the given trees using clone/add/merge/etc. operations on the given trees without modifying them.
 	 *
 	 * @param nodes The root nodes of the trees to be composed.
-	 * @return
+	 * @return The root node of the composed tree.
 	 */
 	public Node compose(Collection<Node> nodes) {
 		return null; // TODO
@@ -611,7 +627,7 @@ public class Trees {
 
 	private static void isUniqueAndArtifactReferencesNode(Node node) {
 		if (!(node instanceof RootNode) && node.isUnique() && node.getArtifact().getContainingNode() != node) {
-			//throw new IllegalStateException("Expected a unique node where the artifact's containing node is the unique node. [" + node.getArtifact() + "]");
+			//throw new IllegalStateException("Expected a unique node where the artifact's containing node is the unique node.");
 		}
 	}
 

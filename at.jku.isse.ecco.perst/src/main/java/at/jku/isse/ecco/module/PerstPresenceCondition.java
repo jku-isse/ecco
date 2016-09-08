@@ -146,7 +146,16 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	}
 
 
-	// to string
+	@Override
+	public boolean equals(Object o) {
+		return this.operator.equals(o);
+	}
+
+	@Override
+	public int hashCode() {
+		return this.operator.hashCode();
+	}
+
 
 	@Override
 	public String toString() {

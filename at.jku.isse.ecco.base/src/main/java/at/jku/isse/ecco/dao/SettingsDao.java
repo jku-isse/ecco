@@ -1,12 +1,11 @@
 package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 public interface SettingsDao extends GenericDao<Feature> {
 
@@ -15,18 +14,9 @@ public interface SettingsDao extends GenericDao<Feature> {
 	public void storeMaxOrder(int maxOrder);
 
 
-	public String loadUserName();
+	public void storeManualMode(boolean manualMode);
 
-	public void storeUserName(String committer);
-
-	public String loadUserMailAddress();
-
-	public void storeUserMailAddress(String committer);
-
-
-	public Configuration loadCurrentCheckoutConfiguration();
-
-	public void storeCurrentCheckoutConfiguration(Configuration configuration);
+	public boolean loadManualMode();
 
 
 	public Collection<Remote> loadAllRemotes();
@@ -35,23 +25,27 @@ public interface SettingsDao extends GenericDao<Feature> {
 
 	public Remote storeRemote(Remote remote);
 
-
-	public void setManualMode(boolean manualMode);
-
-	public boolean isManualMode();
+	public void removeRemote(String name);
 
 
-	// TODO: change these to a FileInfo type that contains either the plugin that should parse the file or marks the file to be ignored or sets it to auto (to automatically choose the plugin that should load the file)!
+	// #################################################################
 
 
-	public Collection<Path> loadIgnoredFiles();
+	// map from glob patterns to plugins (string ids) to use for those files
 
-	public void storeIgnoredFiles(Collection<Path> ignoredFiles);
+	public Map<String, String> loadPluginMap();
+
+	public void addPluginMapping(String pattern, String pluginId);
+
+	public void removePluginMapping(String pattern);
 
 
-	public Map<Path, String> loadFileToPluginMap();
+	// set of glob patterns (strings) for files to ignore
 
-	public void storeFileToPluginMap(Map<Path, String> fileToPluginMap);
+	public Set<String> loadIgnorePatterns();
 
+	public void addIgnorePattern(String ignorePattern);
+
+	public void removeIgnorePattern(String ignorePattern);
 
 }

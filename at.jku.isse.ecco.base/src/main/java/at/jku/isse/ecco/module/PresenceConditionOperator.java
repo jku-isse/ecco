@@ -6,10 +6,7 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class PresenceConditionOperator {
@@ -29,6 +26,31 @@ public class PresenceConditionOperator {
 		this.presenceCondition.getMaxModules().addAll(other.getMaxModules());
 		this.presenceCondition.getAllModules().addAll(other.getAllModules());
 		this.presenceCondition.getNotModules().addAll(other.getNotModules());
+	}
+
+
+	/**
+	 * Removes a feature version from a presence condition. This removes all modules that contain the feature version positively, and removes the feature version from all modules that contain it negatively.
+	 */
+	public void removeFeatureVersion(FeatureVersion featureVersion) {
+		for (Set<Module> modules : new Set[]{this.presenceCondition.getMinModules(), this.presenceCondition.getMaxModules(), this.presenceCondition.getNotModules(), this.presenceCondition.getAllModules()}) {
+			Iterator<Module> it = modules.iterator();
+			while (it.hasNext()) {
+				Module module = it.next();
+
+				Iterator<ModuleFeature> it2 = module.iterator();
+				while (it2.hasNext()) {
+					ModuleFeature mf = it2.next();
+					if (mf.contains(featureVersion)) {
+						if (mf.getSign()) {
+							it.remove(); // remove module from presence condition
+						} else {
+							it2.remove(); // remove feature from module
+						}
+					}
+				}
+			}
+		}
 	}
 
 
@@ -179,10 +201,36 @@ public class PresenceConditionOperator {
 		return intersection;
 	}
 
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof PresenceConditionOperand)) return false;
+		if (!super.equals(o)) return false;
+
+		PresenceConditionOperand that = (PresenceConditionOperand) o;
+
+		if (!this.presenceCondition.getMinModules().equals(that.getMinModules())) return false;
+		if (!this.presenceCondition.getMaxModules().equals(that.getMaxModules())) return false;
+		if (!this.presenceCondition.getAllModules().equals(that.getAllModules())) return false;
+		return this.presenceCondition.getNotModules().equals(that.getNotModules());
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + this.presenceCondition.getMinModules().hashCode();
+		result = 31 * result + this.presenceCondition.getMaxModules().hashCode();
+		result = 31 * result + this.presenceCondition.getAllModules().hashCode();
+		result = 31 * result + this.presenceCondition.getNotModules().hashCode();
+		return result;
+	}
+
+
 	@Override
 	public String toString() {
 		Set<Module> modules = null;
-		String separator = " AND ";
+		String separator;
 		if (!this.presenceCondition.getMinModules().isEmpty()) { // use min modules
 			modules = this.presenceCondition.getMinModules();
 			separator = " AND ";

@@ -1,16 +1,17 @@
 package at.jku.isse.ecco.dao;
 
-import at.jku.isse.ecco.core.*;
-import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.core.PerstAssociation;
+import at.jku.isse.ecco.core.PerstCommit;
+import at.jku.isse.ecco.core.PerstRemote;
+import at.jku.isse.ecco.core.PerstVariant;
 import at.jku.isse.ecco.feature.PerstFeature;
 import org.garret.perst.FieldIndex;
 import org.garret.perst.Persistent;
 
-import java.nio.file.Path;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -30,28 +31,23 @@ public class DatabaseRoot extends Persistent {
 	private int currentCommitId = 0;
 	private int currentAssociationId = 0;
 
-
 	private int maxOrder = 5;
-	private String userName = "";
-	private String userMailAddress = "";
-
-	private Configuration currentCheckoutConfiguration = null;
-
 	private boolean manualMode = false;
-
-	public boolean isManualMode() {
-		return this.manualMode;
-	}
-
-	public void setManualMode(boolean manualMode) {
-		this.manualMode = manualMode;
-	}
 
 	private final FieldIndex<PerstRemote> remoteIndex;
 
-	private final Collection<Path> ignoredFiles = new HashSet<Path>();
+	private final Set<String> ignorePatterns = new HashSet<>();
 
-	private final Map<Path, String> fileToPluginMap = new HashMap<Path, String>();
+	private final Map<String, String> pluginMap = new HashMap<>();
+
+
+	public Set<String> getIgnorePatterns() {
+		return this.ignorePatterns;
+	}
+
+	public Map<String, String> getPluginMap() {
+		return this.pluginMap;
+	}
 
 
 	/**
@@ -122,68 +118,18 @@ public class DatabaseRoot extends Persistent {
 		this.maxOrder = maxOrder;
 	}
 
-	public String getUserName() {
-		return userName;
+
+	public boolean isManualMode() {
+		return this.manualMode;
 	}
 
-	public void setUserName(String userName) {
-		this.userName = userName;
-	}
-
-	public String getUserMailAddress() {
-		return userMailAddress;
-	}
-
-	public void setUserMailAddress(String userMailAddress) {
-		this.userMailAddress = userMailAddress;
-	}
-
-	public Configuration getCurrentCheckoutConfiguration() {
-		return currentCheckoutConfiguration;
-	}
-
-	public void setCurrentCheckoutConfiguration(Configuration currentCheckoutConfiguration) {
-		this.currentCheckoutConfiguration = currentCheckoutConfiguration;
+	public void setManualMode(boolean manualMode) {
+		this.manualMode = manualMode;
 	}
 
 
 	public FieldIndex<PerstRemote> getRemoteIndex() {
 		return this.remoteIndex;
-	}
-
-
-	// TODO: figure out how to best deal with this
-	public Collection<Path> getIgnoredFiles() {
-		return ignoredFiles;
-	}
-
-	public Map<Path, String> getFileToPluginMap() {
-		return fileToPluginMap;
-	}
-
-
-	// TODO: probably remove this.
-	private final Map<Association, Map<Association, Integer>> dependencyMap = new HashMap<>();
-
-	/**
-	 * Returns the dependency map.
-	 *
-	 * @return The dependency map.
-	 */
-	Map<Association, Map<Association, Integer>> getDependencyMap() {
-		return dependencyMap;
-	}
-
-	/**
-	 * Sets the dependency map.
-	 *
-	 * @param dependencyMap that should be persisted
-	 */
-	public void setDependencyMap(Map<Association, Map<Association, Integer>> dependencyMap) {
-		checkNotNull(dependencyMap);
-
-		this.dependencyMap.clear();
-		this.dependencyMap.putAll(dependencyMap);
 	}
 
 }

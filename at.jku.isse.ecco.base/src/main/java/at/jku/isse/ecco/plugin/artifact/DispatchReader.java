@@ -8,9 +8,7 @@ import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -87,16 +85,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 		return currentReader;
 	}
 
-	private Set<Path> ignoredFiles = new HashSet<Path>();
-
-	public void setIgnoredFiles(Set<Path> ignoredFiles) {
-		this.ignoredFiles = ignoredFiles;
-	}
-
-	public Set<Path> getIgnoredFiles() {
-		return this.ignoredFiles;
-	}
-
 	@Override
 	public Set<Node> read(Path[] input) {
 		return this.read(Paths.get("."), input);
@@ -154,12 +142,40 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 		return nodes;
 	}
 
+
+//	private Set<Path> ignoredFiles = new HashSet<Path>();
+//
+//	public void setIgnoredFiles(Set<Path> ignoredFiles) {
+//		this.ignoredFiles = ignoredFiles;
+//	}
+//
+//	public Set<Path> getIgnoredFiles() {
+//		return this.ignoredFiles;
+//	}
+
+	private Set<String> ignorePatterns = new HashSet<>();
+
+	public Set<String> getIgnorePatterns() {
+		return this.ignorePatterns;
+	}
+
+	private boolean isIgnored(Path path) {
+//		return this.ignoredFiles.contains(path);
+		for (String ignorePattern : this.ignorePatterns) {
+			PathMatcher pm = FileSystems.getDefault().getPathMatcher(ignorePattern);
+			if (pm.matches(path))
+				return true;
+		}
+		return false;
+	}
+
+
 	private Node readDirectories(Path base, Path current, Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap, Map<Path, Node> directoryNodes) {
 		Path relativeCurrent = base.relativize(current);
 
 		try {
 			if (Files.isDirectory(current) && this.getReaderForFile(base, relativeCurrent) == null) { // deal with directories that cannot be dispatched
-				if (!this.ignoredFiles.contains(relativeCurrent)) { // if directory is not ignored add it to directories
+				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
 					Artifact directoryArtifact = entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
 					Node directoryNode = entityFactory.createNode(directoryArtifact);
 					directoryNodes.put(relativeCurrent, directoryNode);
@@ -176,7 +192,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 					return directoryNode;
 				}
 			} else { // deal with files and directories that can be dispatched
-				if (!this.ignoredFiles.contains(relativeCurrent)) { // if file is not ignored add it to readerToFilesMap
+				if (!this.isIgnored(relativeCurrent)) { // if file is not ignored add it to readerToFilesMap
 					// assign file to reader
 					ArtifactReader<Path, Set<Node>> reader = this.getReaderForFile(base, relativeCurrent);
 

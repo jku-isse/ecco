@@ -4,7 +4,7 @@ package at.jku.isse.ecco.gui;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.listener.RepositoryListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
@@ -24,7 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class InitView extends BorderPane implements EccoListener {
+public class InitView extends BorderPane implements RepositoryListener {
 
 	private EccoService eccoService;
 

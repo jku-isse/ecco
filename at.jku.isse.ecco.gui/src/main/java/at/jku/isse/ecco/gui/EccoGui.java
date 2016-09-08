@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.listener.RepositoryListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Application;
@@ -15,7 +15,7 @@ import javafx.stage.Stage;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class EccoGui extends Application implements EccoListener {
+public class EccoGui extends Application implements RepositoryListener {
 
 	public static void main(String[] args) {
 		Application.launch(args);

@@ -2,7 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.listener.RepositoryListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -16,7 +16,7 @@ import javafx.scene.control.TableView;
 import java.nio.file.Path;
 import java.util.Collection;
 
-public class PluginsView extends TableView<PluginsView.PluginInfo> implements EccoListener {
+public class PluginsView extends TableView<PluginsView.PluginInfo> implements RepositoryListener {
 
 	private EccoService service;
 

@@ -24,6 +24,7 @@ public interface PresenceCondition {
 
 	public void removeFeatureVersion(FeatureVersion featureVersion);
 
+
 	public void removeModules(Set<Module> modules);
 
 

@@ -5,7 +5,7 @@ import at.jku.isse.ecco.core.Commit;
 
 import java.util.List;
 
-public interface CommitDao extends GenericDao<Commit> {
+public interface CommitDao extends EntityDao<Commit> {
 
 	List<Commit> loadAllCommits() throws EccoException;
 

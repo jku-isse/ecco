@@ -15,7 +15,6 @@ import org.garret.perst.FieldIndex;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -185,42 +184,6 @@ public class PerstAssociationDao extends PerstAbstractGenericDao<Association> im
 		}
 
 		return null;
-	}
-
-
-	@Override
-	public Map<Association, Map<Association, Integer>> loadDependencyMap() throws EccoException {
-		//final DatabaseRoot root = this.openDatabase();
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		final Map<Association, Map<Association, Integer>> dependecyMap = root.getDependencyMap();
-
-		//this.closeDatabase();
-		this.transactionStrategy.done();
-
-		return dependecyMap;
-	}
-
-	@Override
-	public Map<Association, Map<Association, Integer>> loadConflictsMap() {
-		return null;
-	}
-
-	@Override
-	public void storeDependencyMap(final Map<Association, Map<Association, Integer>> dependencyMap) throws EccoException {
-		checkNotNull(dependencyMap);
-
-		//final DatabaseRoot root = this.openDatabase();
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-		root.setDependencyMap(dependencyMap);
-
-		//this.closeDatabase();
-		this.transactionStrategy.done();
-	}
-
-	@Override
-	public void storeConflictsMap(Map<Association, Map<Association, Integer>> conflictsMap) {
-
 	}
 
 }
