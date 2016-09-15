@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.feature;
 
+import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleFeature;
 
@@ -13,16 +14,29 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ConfigurationOperator {
 
+	private EntityFactory entityFactory;
+
 	private ConfigurationOperand configuration;
 
 	public ConfigurationOperator(ConfigurationOperand configuration) {
 		this.configuration = configuration;
 	}
 
+	public ConfigurationOperator(ConfigurationOperand configuration, EntityFactory entityFactory) {
+		this.configuration = configuration;
+		this.entityFactory = entityFactory;
+	}
+
 
 	// # OPERATIONS #################################################################
 
-	public String createConfigurationString() {
+
+	protected void parseConfigurationString() {
+		// TODO: create repo independent configuration from string. this is basically for initialization.
+	}
+
+
+	protected String createConfigurationString() {
 		return configuration.getFeatureInstances().stream().map((FeatureInstance fi) -> {
 			StringBuffer sb = new StringBuffer();
 			if (fi.getSign())
@@ -48,7 +62,7 @@ public class ConfigurationOperator {
 	 * @param maxOrder The maximum order up to which modules shall be computed.
 	 * @return The set of modules.
 	 */
-	public Set<Module> computeModules(int maxOrder) {
+	protected Set<Module> computeModules(int maxOrder) {
 		// first compute the ordinary powerset modules
 		Set<Module> modules = this.powerSet(this.configuration.getFeatureInstances(), maxOrder);
 

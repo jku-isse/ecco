@@ -34,7 +34,7 @@ public class ImageFileWriter implements ArtifactWriter<Set<Node>, Path> {
 
 	@Override
 	public Path[] write(Path base, Set<Node> nodes) {
-		List<Path> output = new ArrayList<Path>();
+		List<Path> output = new ArrayList<>();
 
 		for (Node pluginNode : nodes) {
 			if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData)) {

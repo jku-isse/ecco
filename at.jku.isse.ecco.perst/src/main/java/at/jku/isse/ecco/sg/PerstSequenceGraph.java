@@ -5,7 +5,9 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 import org.garret.perst.Persistent;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 
 public class PerstSequenceGraph extends Persistent implements SequenceGraph, SequenceGraphOperator.SequenceGraphOperand {
 
@@ -16,7 +18,7 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 
 	private int cur_seq_number = 1;
 
-	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
+//	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
 
 //	private List<Artifact<?>> symbols = new ArrayList<>();
 
@@ -26,7 +28,7 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 	public PerstSequenceGraph() {
 		this.pol = true;
 		this.root = (PerstSequenceGraphNode) this.createSequenceGraphNode(this.pol);
-		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
+//		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
 	}
 
 
@@ -84,9 +86,13 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 //		Set<SequenceGraphNode> nodes = new HashSet<>();
 //		this.collectNodes(this.getRoot(), nodes);
 
-		// store all nodes
-		for (SequenceGraphNode node : this.nodes.values()) {
-			//if (node instanceof PerstSequenceGraphNode)
+//		// store all nodes
+//		for (SequenceGraphNode node : this.nodes.values()) {
+//			//if (node instanceof PerstSequenceGraphNode)
+//			((PerstSequenceGraphNode) node).store();
+//		}
+
+		for (SequenceGraphNode node : this.operator.collectNodes()) {
 			((PerstSequenceGraphNode) node).store();
 		}
 	}
@@ -104,9 +110,9 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 
 	// operand
 
-	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
-		return this.nodes;
-	}
+//	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
+//		return this.nodes;
+//	}
 
 
 	public int nextSequenceNumber() throws EccoException {

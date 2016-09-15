@@ -1,5 +1,6 @@
 package at.jku.isse.ecco;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.dao.*;
@@ -36,6 +37,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -44,7 +46,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class EccoService {
 
-	protected static final boolean MERGE_EMPTY_ASSOCIATIONS = false;
+//	protected static final boolean MERGE_EMPTY_ASSOCIATIONS = false;
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
@@ -56,6 +58,7 @@ public class EccoService {
 	public static final Path DEFAULT_BASE_DIR = Paths.get("");
 	public static final Path DEFAULT_REPOSITORY_DIR = DEFAULT_BASE_DIR.resolve(REPOSITORY_DIR_NAME);
 	public static final Path CONFIG_FILE_NAME = Paths.get(".config");
+	public static final Path WARNINGS_FILE_NAME = Paths.get(".warnings");
 
 	private Path baseDir;
 	private Path repositoryDir;
@@ -123,6 +126,7 @@ public class EccoService {
 
 		this.defaultIgnorePatterns.add("glob:" + REPOSITORY_DIR_NAME.toString());
 		this.defaultIgnorePatterns.add("glob:" + CONFIG_FILE_NAME.toString());
+		this.defaultIgnorePatterns.add("glob:" + WARNINGS_FILE_NAME.toString());
 	}
 
 
@@ -275,8 +279,20 @@ public class EccoService {
 		}
 	}
 
-	public boolean isManualMode() {
-		return this.settingsDao.loadManualMode();
+	public boolean isManualMode() { // TODO: come up with a better way! this is a read only operation. it does not make sense to start a transaction here!
+		try {
+			this.transactionStrategy.begin();
+
+			boolean temp = this.settingsDao.loadManualMode();
+
+			this.transactionStrategy.commit();
+
+			return temp;
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error changing settings.", e);
+		}
 	}
 
 	public void setManualMode(boolean manualMode) {
@@ -945,7 +961,7 @@ public class EccoService {
 			}
 			persistedCommit = this.commitDao.save(commit);
 
-			this.consolidateAssociations();
+			//this.consolidateAssociations(); // NOTE: do not do this here! the presence conditions are just copied and the separated association will be merged again right away.
 
 			this.transactionStrategy.commit();
 		} catch (Exception e) {
@@ -1912,6 +1928,7 @@ public class EccoService {
 
 			checkout.getSurplus().addAll(surplusModules);
 			checkout.getMissing().addAll(missingModules);
+			checkout.getOrderWarnings().addAll(compRootNode.getOrderSelector().getUncertainOrders());
 
 			// write config file into base directory
 			if (Files.exists(this.baseDir.resolve(CONFIG_FILE_NAME))) {
@@ -1921,6 +1938,37 @@ public class EccoService {
 					Files.write(this.baseDir.resolve(CONFIG_FILE_NAME), configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 				} catch (IOException e) {
 					throw new EccoException("Could not create configuration file.", e);
+				}
+			}
+
+			// write warnings file into base directory
+			if (Files.exists(this.baseDir.resolve(WARNINGS_FILE_NAME))) {
+				throw new EccoException("Warnings file already exists in base directory.");
+			} else {
+				try {
+					StringBuffer sb = new StringBuffer();
+
+					for (at.jku.isse.ecco.module.Module m : checkout.getMissing()) {
+						sb.append("MISSING: " + m + System.lineSeparator());
+					}
+					for (at.jku.isse.ecco.module.Module m : checkout.getSurplus()) {
+						sb.append("SURPLUS: " + m + System.lineSeparator());
+					}
+					for (Artifact a : checkout.getOrderWarnings()) {
+						List<String> pathList = new LinkedList<>();
+						Node current = a.getContainingNode().getParent();
+						while (current != null) {
+							if (current.getArtifact() != null)
+								pathList.add(0, current.getArtifact().toString() + " > ");
+							current = current.getParent();
+						}
+						pathList.add(a.toString());
+						sb.append("ORDER: " + pathList.stream().collect(Collectors.joining()) + System.lineSeparator());
+					}
+
+					Files.write(this.baseDir.resolve(WARNINGS_FILE_NAME), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				} catch (IOException e) {
+					throw new EccoException("Could not create warnings file.", e);
 				}
 			}
 

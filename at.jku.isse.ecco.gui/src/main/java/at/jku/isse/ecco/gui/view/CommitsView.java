@@ -71,6 +71,7 @@ public class CommitsView extends BorderPane implements RepositoryListener {
 		// list of commits
 		TableView<CommitInfo> commitsTable = new TableView<>();
 		commitsTable.setEditable(false);
+		commitsTable.setTableMenuButtonVisible(true);
 		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<CommitInfo, Integer> idCommitterCol = new TableColumn<>("Id");

@@ -115,6 +115,7 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 		// list of features
 		TableView<FeatureInfo> featuresTable = new TableView<>();
 		featuresTable.setEditable(false);
+		featuresTable.setTableMenuButtonVisible(true);
 		featuresTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<FeatureInfo, String> featureNameCol = new TableColumn<>("Name");

@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-public class ImageBufferWriter implements ArtifactWriter<Set<Node>, BufferedImage> {
+public class AwtImageWriter implements ArtifactWriter<Set<Node>, BufferedImage> {
 
 	private int backgroundColor = 0x00ffffff;
 	private boolean enableBlending = true;

@@ -146,11 +146,13 @@ public class Trees {
 				for (ArtifactReference ar : right.getArtifact().getUses()) {
 					if (!left.getArtifact().getUses().contains(ar)) {
 						left.getArtifact().addUses(ar);
+						ar.setSource(left.getArtifact());
 					}
 				}
 				for (ArtifactReference ar : right.getArtifact().getUsedBy()) {
 					if (!left.getArtifact().getUsedBy().contains(ar)) {
 						left.getArtifact().addUsedBy(ar);
+						ar.setTarget(left.getArtifact());
 					}
 				}
 
@@ -224,11 +226,13 @@ public class Trees {
 		for (ArtifactReference ar : right.getArtifact().getUses()) {
 			if (!left.getArtifact().getUses().contains(ar)) {
 				left.getArtifact().addUses(ar);
+				ar.setSource(left.getArtifact());
 			}
 		}
 		for (ArtifactReference ar : right.getArtifact().getUsedBy()) {
 			if (!left.getArtifact().getUsedBy().contains(ar)) {
 				left.getArtifact().addUsedBy(ar);
+				ar.setTarget(left.getArtifact());
 			}
 		}
 

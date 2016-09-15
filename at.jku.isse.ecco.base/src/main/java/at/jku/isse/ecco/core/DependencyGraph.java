@@ -83,7 +83,10 @@ public class DependencyGraph {
 						DependencyImpl dependency = fromDependencyMap.get(toA);
 						if (dependency == null) {
 							dependency = new DependencyImpl();
+							dependency.setFrom(fromA);
+							dependency.setTo(toA);
 							fromDependencyMap.put(toA, dependency);
+							this.dependencies.add(dependency);
 						}
 
 						dependency.setWeight(dependency.getWeight() + CROSS_REFERENCE_WEIGHT);
@@ -99,7 +102,7 @@ public class DependencyGraph {
 			}
 
 			// parent
-			if (node.getParent() != null) {
+			if (node.getParent() != null && node.getParent().getArtifact() != null) {
 				Association parentA = node.getParent().getArtifact().getContainingNode().getContainingAssociation();
 
 				if (parentA != null && this.associations.contains(parentA)) {
@@ -112,7 +115,10 @@ public class DependencyGraph {
 						DependencyImpl dependency = fromDependencyMap.get(parentA);
 						if (dependency == null) {
 							dependency = new DependencyImpl();
+							dependency.setFrom(fromA);
+							dependency.setTo(parentA);
 							fromDependencyMap.put(parentA, dependency);
+							this.dependencies.add(dependency);
 						}
 
 						dependency.setWeight(dependency.getWeight() + PARENT_WEIGHT);

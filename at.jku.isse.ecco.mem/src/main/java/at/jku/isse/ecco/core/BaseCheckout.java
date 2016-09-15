@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.module.Module;
 
@@ -16,12 +17,15 @@ public class BaseCheckout implements Checkout {
 	private Set<Module> missing;
 	private Set<Module> surplus;
 
+	private Collection<Artifact<?>> orderWarnings;
+
 	private String message;
 
 	public BaseCheckout() {
 		this.warnings = new ArrayList<>();
 		this.missing = new HashSet<>();
 		this.surplus = new HashSet<>();
+		this.orderWarnings = new ArrayList<>();
 	}
 
 	public void setConfiguration(Configuration configuration) {
@@ -47,6 +51,11 @@ public class BaseCheckout implements Checkout {
 	@Override
 	public Set<Module> getMissing() {
 		return this.missing;
+	}
+
+	@Override
+	public Collection<Artifact<?>> getOrderWarnings() {
+		return this.orderWarnings;
 	}
 
 	@Override

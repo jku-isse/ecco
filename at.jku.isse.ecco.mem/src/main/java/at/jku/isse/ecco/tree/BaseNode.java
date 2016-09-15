@@ -97,6 +97,7 @@ public class BaseNode implements Node, NodeOperator.NodeOperand {
 		checkNotNull(child);
 
 		this.children.remove(child);
+		child.setParent(null);
 	}
 
 

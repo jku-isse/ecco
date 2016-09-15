@@ -19,9 +19,19 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 	private OrderSelector orderSelector;
 
+	public OrderSelector getOrderSelector() {
+		return orderSelector;
+	}
+
+	public void setOrderSelector(OrderSelector orderSelector) {
+		this.orderSelector = orderSelector;
+	}
+
+
 	private boolean activated = false;
 
 	private List<Node> origNodes;
+
 
 	public LazyCompositionNode() {
 		this(null);
@@ -32,6 +42,7 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 		this.activated = false;
 		this.orderSelector = orderSelector;
 	}
+
 
 	public void addOrigNode(Node origNode) {
 		this.origNodes.add(origNode);

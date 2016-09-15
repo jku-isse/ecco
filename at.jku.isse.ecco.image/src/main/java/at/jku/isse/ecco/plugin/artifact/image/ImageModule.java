@@ -7,7 +7,9 @@ import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
+import javafx.scene.image.Image;
 
+import java.awt.image.BufferedImage;
 import java.nio.file.Path;
 import java.util.Set;
 
@@ -29,6 +31,17 @@ public class ImageModule extends AbstractModule {
 				new TypeLiteral<ArtifactViewer>() {
 				});
 		viewerMultibinder.addBinding().to(ImageViewer.class);
+
+
+		final Multibinder<ArtifactWriter<Set<Node>, BufferedImage>> awtImageWriterMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<ArtifactWriter<Set<Node>, BufferedImage>>() {
+				});
+		awtImageWriterMultibinder.addBinding().to(AwtImageWriter.class);
+
+		final Multibinder<ArtifactWriter<Set<Node>, Image>> fxImageWriterMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<ArtifactWriter<Set<Node>, Image>>() {
+				});
+		fxImageWriterMultibinder.addBinding().to(FxImageWriter.class);
 	}
 
 }

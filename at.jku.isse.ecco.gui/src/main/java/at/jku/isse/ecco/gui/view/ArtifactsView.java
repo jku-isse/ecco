@@ -80,8 +80,11 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 		Button extractMarkedButton = new Button("Extract Marked");
 		toolBar.getItems().add(extractMarkedButton);
 
-		CheckBox showBelowAtomic = new CheckBox("Show Artifacts Below Atomic");
+		CheckBox showBelowAtomic = new CheckBox("Show Artifacts Below Atomic"); // TODO
 		toolBar.getItems().add(showBelowAtomic);
+
+		CheckBox showBelowFiles = new CheckBox("Show Artifacts Below File Level"); // TODO
+		toolBar.getItems().add(showBelowFiles);
 
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
@@ -102,6 +105,7 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 		// associations table
 		TableView<AssociationInfo> associationsTable = new TableView<>();
 		associationsTable.setEditable(true);
+		associationsTable.setTableMenuButtonVisible(true);
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, Integer> idAssociationsCol = new TableColumn<>("Id");

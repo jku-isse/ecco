@@ -83,4 +83,9 @@ public class PerstArtifactReference extends Persistent implements ArtifactRefere
 		return !(target != null ? !target.equals(that.target) : that.target != null);
 	}
 
+	@Override
+	public String toString() {
+		return "[" + this.source + " > " + this.target + "]";
+	}
+
 }

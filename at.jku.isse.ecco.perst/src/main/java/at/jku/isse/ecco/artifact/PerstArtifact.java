@@ -90,8 +90,8 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	public int hashCode() {
 		int result = getData().hashCode();
 		result = 31 * result + (ordered ? 1 : 0);
-		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
-			result = 31 * result + sequenceNumber;
+//		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
+//			result = 31 * result + sequenceNumber;
 		return result;
 	}
 

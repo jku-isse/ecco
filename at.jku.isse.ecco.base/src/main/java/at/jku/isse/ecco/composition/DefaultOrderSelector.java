@@ -4,12 +4,17 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraphNode;
 import at.jku.isse.ecco.tree.Node;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class DefaultOrderSelector implements OrderSelector {
+
+	private Collection<Artifact<?>> uncertainOrder = new ArrayList<>();
+
+	@Override
+	public Collection<Artifact<?>> getUncertainOrders() {
+		return this.uncertainOrder;
+	}
+
 
 	/**
 	 * Selects and sets the first valid order that was found.
@@ -23,16 +28,21 @@ public class DefaultOrderSelector implements OrderSelector {
 
 		List<Node> orderedChildren = new ArrayList<Node>();
 
-		this.traverseSequenceGraph(node.getArtifact().getSequenceGraph().getRoot(), node.getChildren(), orderedChildren);
+		boolean uncertainOrder = this.traverseSequenceGraph(node.getArtifact().getSequenceGraph().getRoot(), node.getChildren(), orderedChildren);
 
 		node.getChildren().clear();
 		node.getChildren().addAll(orderedChildren);
+
+		if (uncertainOrder)
+			this.uncertainOrder.add(node.getArtifact());
 	}
 
 
-	private void traverseSequenceGraph(SequenceGraphNode sgn, List<Node> unorderedChildren, List<Node> orderedChildren) {
+	private boolean traverseSequenceGraph(SequenceGraphNode sgn, List<Node> unorderedChildren, List<Node> orderedChildren) {
+		boolean uncertainOrder = false;
+
 		if (sgn.getChildren().isEmpty())
-			return;
+			return uncertainOrder;
 
 		Map.Entry<Artifact<?>, SequenceGraphNode> entry = sgn.getChildren().entrySet().iterator().next();
 
@@ -48,9 +58,21 @@ public class DefaultOrderSelector implements OrderSelector {
 		}
 		if (match != null) {
 			orderedChildren.add(match);
+
+			// check if we would have other order options
+			for (Artifact<?> key : sgn.getChildren().keySet()) {
+				for (Node node : unorderedChildren) {
+					if (match != node && node.getArtifact() != null && node.getArtifact().equals(key)) {
+						uncertainOrder = true;
+					}
+				}
+			}
 		}
 
-		this.traverseSequenceGraph(entry.getValue(), unorderedChildren, orderedChildren);
+		boolean childUncertainOrder = this.traverseSequenceGraph(entry.getValue(), unorderedChildren, orderedChildren);
+		uncertainOrder = uncertainOrder || childUncertainOrder;
+
+		return uncertainOrder;
 	}
 
 

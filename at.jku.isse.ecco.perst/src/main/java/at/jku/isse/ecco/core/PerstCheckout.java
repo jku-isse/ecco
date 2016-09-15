@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.module.Module;
 import org.garret.perst.Persistent;
@@ -17,12 +18,15 @@ public class PerstCheckout extends Persistent implements Checkout {
 	private Set<Module> missing;
 	private Set<Module> surplus;
 
+	private Collection<Artifact<?>> orderWarnings;
+
 	private String message;
 
 	public PerstCheckout() {
 		this.warnings = new ArrayList<>();
 		this.missing = new HashSet<>();
 		this.surplus = new HashSet<>();
+		this.orderWarnings = new ArrayList<>();
 	}
 
 	public void setConfiguration(Configuration configuration) {
@@ -48,6 +52,11 @@ public class PerstCheckout extends Persistent implements Checkout {
 	@Override
 	public Set<Module> getMissing() {
 		return this.missing;
+	}
+
+	@Override
+	public Collection<Artifact<?>> getOrderWarnings() {
+		return this.orderWarnings;
 	}
 
 	@Override

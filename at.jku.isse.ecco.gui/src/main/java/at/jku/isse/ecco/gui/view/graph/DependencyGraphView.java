@@ -3,6 +3,8 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.DependencyGraph;
+import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.RepositoryListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -18,14 +20,21 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.FileChooser;
+import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
+import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
+import org.graphstream.stream.file.FileSink;
+import org.graphstream.stream.file.FileSinkFactory;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
 import org.graphstream.ui.swingViewer.ViewPanel;
 import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 
 public class DependencyGraphView extends BorderPane implements RepositoryListener {
@@ -37,7 +46,6 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 	private Viewer viewer;
 	private ViewPanel view;
 
-	private boolean depthFade = false;
 	private boolean showLabels = true;
 
 
@@ -57,7 +65,7 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 				SwingUtilities.invokeLater(new Runnable() {
 					@Override
 					public void run() {
-						DependencyGraphView.this.updateGraph(DependencyGraphView.this.depthFade, DependencyGraphView.this.showLabels);
+						DependencyGraphView.this.updateGraph(DependencyGraphView.this.showLabels);
 					}
 				});
 				Task refreshTask = new Task<Void>() {
@@ -80,6 +88,29 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 
 
 		Button exportButton = new Button("Export");
+
+		exportButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent ae) {
+				toolBar.setDisable(true);
+
+				FileChooser fileChooser = new FileChooser();
+				File selectedFile = fileChooser.showSaveDialog(DependencyGraphView.this.getScene().getWindow());
+
+				if (selectedFile != null) {
+					FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
+					try {
+						out.writeAll(DependencyGraphView.this.graph, selectedFile.toString());
+						out.flush();
+					} catch (IOException e) {
+						new ExceptionAlert(e).show();
+					}
+				}
+
+				toolBar.setDisable(false);
+			}
+		});
+
 		toolBar.getItems().add(exportButton);
 
 
@@ -144,11 +175,11 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 			textMode = "text-mode: hidden; ";
 
 		this.graph.addAttribute("ui.stylesheet",
-				"edge { size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
+				"edge { " + textMode + " size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
 						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: 10px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
 	}
 
-	private void updateGraph(boolean depthFade, boolean showLabels) {
+	private void updateGraph(boolean showLabels) {
 		this.viewer.disableAutoLayout();
 
 		this.graph.removeSink(this.layout);
@@ -159,18 +190,35 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 		this.view.getCamera().resetView();
 
 
+		//this.graph.setStrict(false);
+
 		this.graph.addAttribute("ui.quality");
 		this.graph.addAttribute("ui.antialias");
 
 		this.updateGraphStylehseet(showLabels);
 
 
-		// TODO: implement dependency graph visualization
+		DependencyGraph dg = new DependencyGraph(this.service.getAssociations());
 
-
-		while (this.layout.getStabilization() < 0.9) {
-			this.layout.compute();
+		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
+			Node from = this.graph.getNode(String.valueOf(dep.getFrom().getId()));
+			if (from == null) {
+				from = this.graph.addNode(String.valueOf(dep.getFrom().getId()));
+				from.setAttribute("label", "[" + dep.getFrom().getPresenceCondition().toString() + "]");
+			}
+			Node to = this.graph.getNode(String.valueOf(dep.getTo().getId()));
+			if (to == null) {
+				to = this.graph.addNode(String.valueOf(dep.getTo().getId()));
+				to.setAttribute("label", "[" + dep.getTo().getPresenceCondition().toString() + "]");
+			}
+			Edge edge = this.graph.addEdge(dep.getFrom().getId() + "-" + dep.getTo().getId(), from, to, true);
+			edge.setAttribute("label", String.valueOf(dep.getWeight()));
 		}
+
+
+//		while (this.layout.getStabilization() < 0.9) {
+//			this.layout.compute();
+//		}
 
 
 		this.graph.addSink(this.layout);

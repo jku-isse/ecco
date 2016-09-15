@@ -116,6 +116,7 @@ public class PerstNode extends Persistent implements Node, NodeOperator.NodeOper
 		this.load();
 
 		this.children.remove(child);
+		child.setParent(null);
 	}
 
 

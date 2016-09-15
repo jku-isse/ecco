@@ -97,6 +97,7 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 		// list of associations
 		TableView<AssociationInfo> associationsTable = new TableView<AssociationInfo>();
 		associationsTable.setEditable(false);
+		associationsTable.setTableMenuButtonVisible(true);
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, Integer> idAssociationsCol = new TableColumn<AssociationInfo, Integer>("Id");
