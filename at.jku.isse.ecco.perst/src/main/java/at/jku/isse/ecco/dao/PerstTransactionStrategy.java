@@ -78,7 +78,7 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 		final FieldIndex<PerstAssociation> associationIndex = database.<PerstAssociation>createFieldIndex(PerstAssociation.class, "id", true);
 		final FieldIndex<PerstCommit> commitIndex = database.<PerstCommit>createFieldIndex(PerstCommit.class, "id", true);
 		final FieldIndex<PerstVariant> variantIndex = database.<PerstVariant>createFieldIndex(PerstVariant.class, "name", true);
-		final FieldIndex<PerstRemote> remoteIndex = database.createFieldIndex(PerstRemote.class, "name", true);
+		final FieldIndex<PerstRemote> remoteIndex = database.<PerstRemote>createFieldIndex(PerstRemote.class, "name", true);
 
 		return new DatabaseRoot(associationIndex, featureIndex, commitIndex, variantIndex, remoteIndex);
 	}

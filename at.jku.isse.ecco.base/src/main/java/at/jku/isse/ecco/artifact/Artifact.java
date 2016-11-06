@@ -20,6 +20,8 @@ public interface Artifact<DataType extends ArtifactData> {
 
 	public static final String PROPERTY_MARKED_FOR_EXTRACTION = "marked";
 
+	public static final String PROPERTY_MAPPED_ARTIFACT = "mapped";
+
 
 	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
 

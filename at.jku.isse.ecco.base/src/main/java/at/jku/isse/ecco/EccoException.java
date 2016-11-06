@@ -10,4 +10,8 @@ public class EccoException extends RuntimeException {
 		super(message, cause);
 	}
 
+	public EccoException(Exception cause) {
+		super(cause);
+	}
+
 }

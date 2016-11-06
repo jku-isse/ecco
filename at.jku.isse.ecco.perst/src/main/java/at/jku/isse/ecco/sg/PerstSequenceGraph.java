@@ -77,6 +77,11 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 		return this.operator.collectSymbols();
 	}
 
+	@Override
+	public void trim(Collection<Artifact<?>> symbols) {
+		this.operator.trim(symbols);
+	}
+
 
 	// perst
 

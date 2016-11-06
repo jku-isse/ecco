@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.tree.Node;
 
@@ -12,15 +13,26 @@ public class DependencyGraph {
 
 
 	public enum ReferencesResolveMode {
-		TRIM_UNRESOLVED_ARTIFACT_REFERENCES, INCLUDE_ALL_REFERENCED_ASSOCIATIONS, LEAVE_REFERENCES_UNRESOLVED
+		/**
+		 * Artifact references that cannot be resolved using the given set of associations are removed. No new dependencies are introduced.
+		 * Parent-Child relations cannot be trimmed and are left unresolved.
+		 */
+		TRIM_UNRESOLVED_ARTIFACT_REFERENCES,
+		/**
+		 * Associations that are referenced but not included in the given set of associations are added to the set of associations.
+		 */
+		INCLUDE_ALL_REFERENCED_ASSOCIATIONS,
+		/**
+		 * Unresolved references are left unresolved and the dependency is added to the list of unresolved dependencies.
+		 */
+		LEAVE_REFERENCES_UNRESOLVED
 	}
 
 
 	private Collection<DependencyImpl> dependencies = new ArrayList<>();
+	private Collection<DependencyImpl> unresolvedDependencies = new ArrayList<>();
 
 	private Map<Association, Map<Association, DependencyImpl>> dependencyMap = new HashMap<>();
-
-	private int unresolvedDependenciesWeight = 0;
 
 	private Collection<Association> associations = new ArrayList<>();
 
@@ -49,8 +61,8 @@ public class DependencyGraph {
 
 	public void compute(Collection<Association> associations, ReferencesResolveMode referencesResolveMode) {
 		this.dependencies.clear();
+		this.unresolvedDependencies.clear();
 		this.dependencyMap.clear();
-		this.unresolvedDependenciesWeight = 0;
 		this.associations.clear();
 		this.associations.addAll(associations);
 
@@ -68,36 +80,37 @@ public class DependencyGraph {
 
 				Association toA = ar.getTarget().getContainingNode().getContainingAssociation();
 
-				if (toA != null && (this.associations.contains(toA) || referencesResolveMode == ReferencesResolveMode.INCLUDE_ALL_REFERENCED_ASSOCIATIONS)) {
-					if (!this.associations.contains(toA) && referencesResolveMode == ReferencesResolveMode.INCLUDE_ALL_REFERENCED_ASSOCIATIONS) {
-						this.associations.add(toA);
-
-						this.unresolvedDependenciesWeight += CROSS_REFERENCE_WEIGHT;
-					}
-					if (fromA != toA) {
-						Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.get(fromA);
-						if (fromDependencyMap == null) {
-							fromDependencyMap = new HashMap<>();
-							this.dependencyMap.put(fromA, fromDependencyMap);
+				if (toA != null) {
+					if (this.associations.contains(toA) || referencesResolveMode != ReferencesResolveMode.TRIM_UNRESOLVED_ARTIFACT_REFERENCES) {
+						if (!this.associations.contains(toA) && referencesResolveMode == ReferencesResolveMode.INCLUDE_ALL_REFERENCED_ASSOCIATIONS) {
+							this.associations.add(toA);
 						}
-						DependencyImpl dependency = fromDependencyMap.get(toA);
-						if (dependency == null) {
-							dependency = new DependencyImpl();
-							dependency.setFrom(fromA);
-							dependency.setTo(toA);
-							fromDependencyMap.put(toA, dependency);
-							this.dependencies.add(dependency);
-						}
+						if (fromA != toA) {
+							Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.get(fromA);
+							if (fromDependencyMap == null) {
+								fromDependencyMap = new HashMap<>();
+								this.dependencyMap.put(fromA, fromDependencyMap);
+							}
+							DependencyImpl dependency = fromDependencyMap.get(toA);
+							if (dependency == null) {
+								dependency = new DependencyImpl();
+								dependency.setFrom(fromA);
+								dependency.setTo(toA);
+								fromDependencyMap.put(toA, dependency);
+								if (this.associations.contains(toA))
+									this.dependencies.add(dependency);
+								else
+									this.unresolvedDependencies.add(dependency);
+							}
 
-						dependency.setWeight(dependency.getWeight() + CROSS_REFERENCE_WEIGHT);
-					}
-				} else {
-					if (referencesResolveMode == ReferencesResolveMode.TRIM_UNRESOLVED_ARTIFACT_REFERENCES) {
+							dependency.setWeight(dependency.getWeight() + CROSS_REFERENCE_WEIGHT);
+						}
+					} else {
 						ar.getTarget().getUsedBy().remove(ar);
 						it.remove();
 					}
-
-					this.unresolvedDependenciesWeight += CROSS_REFERENCE_WEIGHT;
+				} else {
+					throw new EccoException("Artifacts must be contained in an association.");
 				}
 			}
 
@@ -105,7 +118,7 @@ public class DependencyGraph {
 			if (node.getParent() != null && node.getParent().getArtifact() != null) {
 				Association parentA = node.getParent().getArtifact().getContainingNode().getContainingAssociation();
 
-				if (parentA != null && this.associations.contains(parentA)) {
+				if (parentA != null) {
 					if (fromA != parentA) {
 						Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.get(fromA);
 						if (fromDependencyMap == null) {
@@ -118,13 +131,16 @@ public class DependencyGraph {
 							dependency.setFrom(fromA);
 							dependency.setTo(parentA);
 							fromDependencyMap.put(parentA, dependency);
-							this.dependencies.add(dependency);
+							if (this.associations.contains(parentA))
+								this.dependencies.add(dependency);
+							else
+								this.unresolvedDependencies.add(dependency);
 						}
 
 						dependency.setWeight(dependency.getWeight() + PARENT_WEIGHT);
 					}
 				} else {
-					this.unresolvedDependenciesWeight += PARENT_WEIGHT;
+					throw new EccoException("Artifacts must be contained in an association.");
 				}
 			}
 		}
@@ -147,8 +163,46 @@ public class DependencyGraph {
 		return new ArrayList<>(this.dependencies);
 	}
 
-	public int getUnresolvedDependencyWeight() {
-		return this.unresolvedDependenciesWeight;
+
+	public Dependency getUnresolvedDependency(Association from, Association to) {
+		for (Dependency dependency : this.unresolvedDependencies) {
+			if (dependency.getFrom() == from && dependency.getTo() == to)
+				return dependency;
+		}
+		return null;
+	}
+
+	public Collection<Dependency> getUnresolvedDependencies() {
+		return new ArrayList<>(this.unresolvedDependencies);
+	}
+
+
+	public String getGMLString() {
+		StringBuffer sb = new StringBuffer();
+
+		sb.append("graph [\n");
+		sb.append("\tdirected 1\n");
+
+		for (Association association : this.associations) {
+			sb.append("\tnode [\n");
+			sb.append("\t\tid " + association.getId() + "\n");
+			sb.append("\t\tlabel " + association.getName() + "\n");
+			sb.append("\t\tsize " + association.getRootNode().countArtifacts() + "\n");
+			sb.append("\t]\n");
+		}
+
+		for (Dependency dependency : this.dependencies) {
+			sb.append("\tedge [\n");
+			sb.append("\t\tsource " + dependency.getFrom().getId() + "\n");
+			sb.append("\t\ttarget " + dependency.getTo().getId() + "\n");
+			sb.append("\t\tlabel " + dependency.getWeight() + "\n");
+			sb.append("\t\tweight " + dependency.getWeight() + "\n");
+			sb.append("\t]\n");
+		}
+
+		sb.append("]\n");
+
+		return sb.toString();
 	}
 
 

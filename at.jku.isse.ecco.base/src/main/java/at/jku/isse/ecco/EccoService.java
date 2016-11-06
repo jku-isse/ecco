@@ -16,6 +16,7 @@ import at.jku.isse.ecco.plugin.artifact.*;
 import at.jku.isse.ecco.plugin.data.DataPlugin;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
+import at.jku.isse.ecco.util.Associations;
 import at.jku.isse.ecco.util.Trees;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -397,13 +398,18 @@ public class EccoService {
 	 *
 	 * @return True if the repository was created, false otherwise.
 	 */
-	public boolean createRepository() throws EccoException, IOException {
-		if (!this.repositoryDirectoryExists())
-			Files.createDirectory(this.repositoryDir);
+	public boolean createRepository() throws EccoException {
+		try {
+			if (!this.repositoryDirectoryExists())
+				Files.createDirectory(this.repositoryDir);
 
-		this.init();
+			this.init();
 
-		// TODO: do some initialization in database like generating root object, etc.?
+			// TODO: do some initialization in database like generating root object, etc.?
+
+		} catch (IOException e) {
+			throw new EccoException("Error while creating repository.", e);
+		}
 
 		return true;
 	}
@@ -534,7 +540,7 @@ public class EccoService {
 	/**
 	 * Properly shuts down the service.
 	 */
-	public void destroy() throws EccoException {
+	public void close() throws EccoException {
 		if (!this.initialized)
 			return;
 
@@ -551,6 +557,29 @@ public class EccoService {
 
 	// # UTILS #########################################################################################################
 
+	public void addRemote(String name, String address) {
+		URI uri = URI.create(address);
+
+		try {
+			this.transactionStrategy.begin();
+
+			Remote.Type type;
+			if (uri.getScheme() == null || uri.getScheme().equals("file")) {
+				type = Remote.Type.LOCAL;
+			} else {
+				type = Remote.Type.REMOTE;
+			}
+			Remote remote = this.entityFactory.createRemote(name, address, type);
+
+			this.settingsDao.storeRemote(remote);
+
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error adding remote.", e);
+		}
+	}
 
 	public void addRemote(String name, String address, String typeString) {
 		Remote.Type type = Remote.Type.valueOf(typeString);
@@ -584,11 +613,39 @@ public class EccoService {
 	}
 
 	public Remote getRemote(String name) {
-		return this.settingsDao.loadRemote(name);
+		try {
+			this.transactionStrategy.begin();
+
+			Remote remote = this.settingsDao.loadRemote(name);
+
+			this.transactionStrategy.commit();
+
+			return remote;
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error retrieving remote.", e);
+		} finally {
+
+		}
 	}
 
 	public Collection<Remote> getRemotes() {
-		return this.settingsDao.loadAllRemotes();
+		try {
+			this.transactionStrategy.begin();
+
+			Collection<Remote> remotes = this.settingsDao.loadAllRemotes();
+
+			this.transactionStrategy.commit();
+
+			return remotes;
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error retrieving remotes.", e);
+		} finally {
+
+		}
 	}
 
 
@@ -881,8 +938,14 @@ public class EccoService {
 	 *
 	 * @param nodes The tree to be mapped.
 	 */
-	public void map(Collection<Node> nodes) {
-		// TODO
+	public void map(Collection<RootNode> nodes) {
+		Collection<Association> associations = this.associationDao.loadAllAssociations();
+
+		for (Node node : nodes) {
+			for (Association association : associations) {
+				Trees.map(association.getRootNode(), node);
+			}
+		}
 	}
 
 
@@ -939,8 +1002,6 @@ public class EccoService {
 
 					// store association
 					newAssociations.add(extractedA);
-
-					commit.addNew(extractedA);
 				}
 
 				Trees.checkConsistency(origA.getRootNode());
@@ -1021,12 +1082,57 @@ public class EccoService {
 		}
 	}
 
+	protected void mergeEmptyAssociations() {
+		try {
+			this.transactionStrategy.begin();
+
+			Collection<Association> originalAssociations = this.associationDao.loadAllAssociations();
+			Collection<Association> toRemove = new ArrayList<>();
+			Association emptyAssociation = null;
+
+			// look for empty association
+			for (Association originalAssociation : originalAssociations) {
+				if (originalAssociation.getRootNode().getChildren().isEmpty()) {
+					emptyAssociation = originalAssociation;
+					break;
+				}
+			}
+			if (emptyAssociation == null) {// if no empty association was found we are done
+				this.transactionStrategy.commit(); // TODO: to avoid this start read/write transaction after this point! until here only have a read transaction. a read transaction does not need a commit, just a close/done or something.
+				return;
+			}
+
+
+			// TODO
+
+
+			// delete removed associations
+			for (Association a : toRemove) {
+				this.associationDao.remove(a);
+			}
+
+			// save modified association
+			this.associationDao.save(emptyAssociation);
+
+			this.transactionStrategy.commit();
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error while merging empty associations.", e);
+		}
+	}
+
 
 	// DISTRIBUTED OPERATIONS //////////////////////////////////////////////////////////////////////////////////////////
 
 
 	public void fork(URI uri) {
-		throw new EccoException("Remote fork not yet implemented!");
+		if (uri.getScheme() == null || uri.getScheme().equals("file")) {
+			Path remotePath = Paths.get(uri.getPath());
+			this.fork(remotePath);
+		} else {
+			throw new EccoException("Remote fork not yet implemented!");
+		}
 	}
 
 	public void fork(URL url) {
@@ -1050,7 +1156,7 @@ public class EccoService {
 
 		try {
 			this.createRepository();
-		} catch (IOException e) {
+		} catch (EccoException e) {
 			throw new EccoException("Error while creating repository for fork.", e);
 		}
 		this.init();
@@ -1063,7 +1169,7 @@ public class EccoService {
 		Collection<Feature> originFeatures = originRepository.getFeatures();
 		Collection<Association> originAssociations = originRepository.getAssociations();
 
-		originRepository.destroy();
+		originRepository.close();
 
 
 		// selected features and associations from parent, clone them, and add them to this repository. (do not transfer commit objects for now as they may reference not needed associations!)
@@ -1095,9 +1201,9 @@ public class EccoService {
 			// load remote
 			Remote remote = this.settingsDao.loadRemote(remoteName);
 			if (remote == null) {
-				throw new EccoException("Remote " + remoteName + " does not exist");
+				throw new EccoException("Remote '" + remoteName + "' does not exist.");
 			} else if (remote.getType() == Remote.Type.REMOTE) {
-				throw new EccoException("Remote pull is not yet implemented");
+				throw new EccoException("Remote pull is not yet implemented.");
 			} else if (remote.getType() == Remote.Type.LOCAL) {
 				// init this repo
 				this.init();
@@ -1110,7 +1216,7 @@ public class EccoService {
 				Collection<Feature> features = parentService.getFeatures();
 				Collection<Association> associations = parentService.getAssociations();
 
-				parentService.destroy();
+				parentService.close();
 
 
 				this.merge(features, associations);
@@ -1152,7 +1258,7 @@ public class EccoService {
 
 
 				// close parent repository
-				parentService.destroy();
+				parentService.close();
 			}
 
 			this.transactionStrategy.commit();
@@ -1164,10 +1270,24 @@ public class EccoService {
 	}
 
 	protected void merge(Collection<Feature> features, Collection<Association> associations) {
+		this.merge(new ArrayList<>(), features, associations);
+	}
+
+	protected void merge(Collection<FeatureVersion> deselected, Collection<Feature> features, Collection<Association> associations) {
+		/**
+		 * 1.) deselect feature versions that are not desired by providing a set (configuration?) of negative feature instances. <- INPUT
+		 * 1.1) add new feature versions/instances that have NO fixed value to "this" repository. those that do have a fixed value AND ARE NOT NEW should NOT be added to the featureVersionReplacementMap!
+		 * 2.) clone all associations.
+		 * 3.) remove (fixate) all negative feature instances in the presence conditions of the cloned associations.
+		 * 4.) remove cloned associations with empty PCs. merge cloned associations with equal PCs.
+		 * 5.) do ordinary full push/pull/fork.
+		 *
+		 * fork/push/pull() --- selection=emptyset ---> fork/push/pull(Set<FeatureInstance> selection) -> merge(selection, features, associations) -> merge(features, associations) -> commit
+		 */
 		try {
 			this.transactionStrategy.begin();
 
-			// step 1: add new features and versions to associations in this repository
+			// step 1: add new features and versions to associations in this repository, excluding the deselected feature versions
 			Map<Feature, Feature> featureReplacementMap = new HashMap<>();
 			Map<FeatureVersion, FeatureVersion> featureVersionReplacementMap = new HashMap<>();
 			Collection<FeatureVersion> newChildFeatureVersions = new ArrayList<>();
@@ -1176,19 +1296,23 @@ public class EccoService {
 				if (childFeature == null) {
 					childFeature = this.entityFactory.createFeature(parentFeature.getName(), parentFeature.getDescription());
 				}
-				featureReplacementMap.put(parentFeature, childFeature);
 
 				for (FeatureVersion parentFeatureVersion : parentFeature.getVersions()) {
-					FeatureVersion childFeatureVersion = childFeature.getVersion(parentFeatureVersion.getId());
-					if (childFeatureVersion == null) {
-						childFeatureVersion = childFeature.addVersion(parentFeatureVersion.getId());
-						childFeatureVersion.setDescription(parentFeatureVersion.getDescription());
-						newChildFeatureVersions.add(childFeatureVersion);
+					if (!deselected.contains(parentFeatureVersion)) {
+						FeatureVersion childFeatureVersion = childFeature.getVersion(parentFeatureVersion.getId());
+						if (childFeatureVersion == null) {
+							childFeatureVersion = childFeature.addVersion(parentFeatureVersion.getId());
+							childFeatureVersion.setDescription(parentFeatureVersion.getDescription());
+							newChildFeatureVersions.add(childFeatureVersion);
+						}
+						featureVersionReplacementMap.put(parentFeatureVersion, childFeatureVersion);
 					}
-					featureVersionReplacementMap.put(parentFeatureVersion, childFeatureVersion);
 				}
 
-				this.featureDao.save(childFeature);
+				if (!childFeature.getVersions().isEmpty()) {
+					featureReplacementMap.put(parentFeature, childFeature);
+					this.featureDao.save(childFeature);
+				}
 			}
 			for (Association childAssociation : this.associationDao.loadAllAssociations()) {
 				for (FeatureVersion newChildFeatureVersion : newChildFeatureVersions) {
@@ -1198,7 +1322,7 @@ public class EccoService {
 			}
 
 
-			// step 2: copy input associations
+			// step 2: copy input associations, but exclude modules or module features that evaluate to false given the deselected feature versions
 			Collection<Association> copiedParentAssociations = new ArrayList<>();
 			for (Association parentAssociation : associations) {
 				Association copiedParentAssociation = this.entityFactory.createAssociation();
@@ -1221,6 +1345,8 @@ public class EccoService {
 					for (at.jku.isse.ecco.module.Module fromModule : parentModuleSet) {
 						at.jku.isse.ecco.module.Module toModule = this.entityFactory.createModule();
 						for (ModuleFeature fromModuleFeature : fromModule) {
+
+							// feature
 							Feature fromFeature = fromModuleFeature.getFeature();
 							Feature toFeature;
 							if (featureReplacementMap.containsKey(fromFeature)) {
@@ -1231,22 +1357,64 @@ public class EccoService {
 								throw new EccoException("This should not happen!");
 							}
 
+
+							// ------------
+
+							// if a deselected feature version is contained in module feature:
+							//  if module feature is positive: remove / do not add feature version from module feature
+							//   if module feature is empty: remove it / do not add it
+							//  else if module feature is negative: remove module feature from module
+							//   if module is empty (should not happen?) then leave it! module is always TRUE (again: should not happen, because at least one positive module feature should be in every module, but that might currently not be the case)
+
 							ModuleFeature toModuleFeature = this.entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
-
-							// feature versions
+							boolean addToModule = true;
 							for (FeatureVersion fromFeatureVersion : fromModuleFeature) {
-								FeatureVersion toFeatureVersion;
-								if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
-									toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
-								} else {
-									toFeatureVersion = fromFeatureVersion;
+								if (deselected.contains(fromFeatureVersion)) { // if a deselected feature version is contained in module feature
 
-									throw new EccoException("This should not happen!");
+									if (fromModuleFeature.getSign()) {  // if module feature is positive
+										// do not add feature version to module feature
+									} else {
+										// do not add module feature to module because it is always true
+										addToModule = false;
+										break;
+									}
+
+								} else { // ordinary copy
+									FeatureVersion toFeatureVersion;
+									if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
+										toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
+									} else {
+										toFeatureVersion = fromFeatureVersion;
+
+										throw new EccoException("This should not happen!");
+									}
+									toModuleFeature.add(toFeatureVersion);
 								}
-								toModuleFeature.add(toFeatureVersion);
+							}
+							if (!toModuleFeature.isEmpty() && addToModule) { // if module feature is empty: do not add it
+								toModule.add(toModuleFeature);
 							}
 
-							toModule.add(toModuleFeature);
+							// ------------
+
+
+//							// feature versions
+//							ModuleFeature toModuleFeature = this.entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
+//							for (FeatureVersion fromFeatureVersion : fromModuleFeature) {
+//								FeatureVersion toFeatureVersion;
+//								if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
+//									toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
+//								} else {
+//									toFeatureVersion = fromFeatureVersion;
+//
+//									throw new EccoException("This should not happen!");
+//								}
+//								toModuleFeature.add(toFeatureVersion);
+//							}
+//
+//							toModule.add(toModuleFeature);
+
+
 						}
 						childModuleSet.add(toModule);
 					}
@@ -1258,7 +1426,7 @@ public class EccoService {
 				copiedParentAssociation.setRootNode(copiedRootNode);
 				// clone tree
 				for (Node parentChildNode : parentAssociation.getRootNode().getChildren()) {
-					Node copiedChildNode = Trees.copy(parentChildNode, this.entityFactory);
+					Node copiedChildNode = EccoUtil.deepCopyTree(parentChildNode, this.entityFactory);
 					copiedRootNode.addChild(copiedChildNode);
 					copiedChildNode.setParent(copiedRootNode);
 				}
@@ -1269,7 +1437,35 @@ public class EccoService {
 			}
 
 
-			// step 3: add new features in child repo to copied parent associations
+			// step 2.1: remove (fixate) all provided (selected) feature instances in the presence conditions of the cloned associations.
+			// this is done in the previous step 2
+
+
+			// step 2.2: remove cloned associations with empty PCs.
+			Iterator<Association> associationIterator = copiedParentAssociations.iterator();
+			while (associationIterator.hasNext()) {
+				Association association = associationIterator.next();
+				if (association.getPresenceCondition().isEmpty())
+					associationIterator.remove();
+			}
+
+
+			// step 2.3: compute dependency graph for selected associations and check if there are any unresolved dependencies
+			DependencyGraph dg = new DependencyGraph(copiedParentAssociations, DependencyGraph.ReferencesResolveMode.LEAVE_REFERENCES_UNRESOLVED); // we do not trim unresolved references. instead we abort.
+			if (!dg.getUnresolvedDependencies().isEmpty()) {
+				throw new EccoException("Unresolved dependencies in selection.");
+			}
+
+
+			// step 2.4: merge cloned associations with equal PCs.
+			Associations.consolidate(copiedParentAssociations);
+
+
+			// step 2.5: trim sequence graphs to only contain artifacts from the selected associations
+			EccoUtil.trimSequenceGraph(copiedParentAssociations);
+
+
+			// step 3: add new features in this repo to copied input associations
 			Collection<FeatureVersion> newParentFeatureVersions = new ArrayList<>();
 			for (Feature childFeature : this.featureDao.loadAllFeatures()) {
 				Feature parentFeature = null;
@@ -1314,211 +1510,211 @@ public class EccoService {
 	}
 
 
-	/**
-	 * // TODO: this is experimental and not yet finished.
-	 * <p>
-	 * Does a selective merge operation.
-	 * The set of original features.
-	 * The associations are not yet trimmed. They will be trimmed based on the given set of features and their versions.
-	 *
-	 * @param originalFeatures        The set of original features.
-	 * @param originalAssociations    The set of original associations.
-	 * @param selectedFeatureVersions The set of selected feature versions.
-	 */
-	protected void selectiveMerge(Collection<Feature> originalFeatures, Collection<Association> originalAssociations, Collection<FeatureVersion> selectedFeatureVersions) {
-		try {
-			this.transactionStrategy.begin();
-
-			// step 1: add new features and versions (that have been selected!) to this repository
-			Map<Feature, Feature> featureReplacementMap = new HashMap<>();
-			Map<FeatureVersion, FeatureVersion> featureVersionReplacementMap = new HashMap<>();
-			Collection<FeatureVersion> newChildFeatureVersions = new ArrayList<>();
-			for (Feature parentFeature : originalFeatures) {
-				Feature childFeature = this.featureDao.load(parentFeature.getName()); // TODO: what to do when parent and child feature have different description? e.g. because it was changed on one of the two before the pull.
-				if (childFeature == null) {
-					childFeature = this.entityFactory.createFeature(parentFeature.getName(), parentFeature.getDescription());
-				}
-
-				boolean featureAlreadyAdded = false;
-				for (FeatureVersion parentFeatureVersion : parentFeature.getVersions()) {
-					if (selectedFeatureVersions.contains(parentFeatureVersion)) {
-						FeatureVersion childFeatureVersion = childFeature.getVersion(parentFeatureVersion.getId());
-						if (childFeatureVersion == null) {
-							childFeatureVersion = childFeature.addVersion(parentFeatureVersion.getId());
-							childFeatureVersion.setDescription(parentFeatureVersion.getDescription());
-							newChildFeatureVersions.add(childFeatureVersion);
-						}
-						featureVersionReplacementMap.put(parentFeatureVersion, childFeatureVersion);
-						if (!featureAlreadyAdded) {
-							featureReplacementMap.put(parentFeature, childFeature);
-							featureAlreadyAdded = true;
-						}
-					}
-				}
-
-				this.featureDao.save(childFeature);
-			}
-			for (Association childAssociation : this.associationDao.loadAllAssociations()) {
-				for (FeatureVersion newChildFeatureVersion : newChildFeatureVersions) {
-					childAssociation.getPresenceCondition().addFeatureVersion(newChildFeatureVersion);
-					childAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newChildFeatureVersion.getFeature(), newChildFeatureVersion, false), this.getMaxOrder());
-				}
-			}
-
-
-			// step 2: copy original associations
-			Collection<Association> copiedAssociations = new ArrayList<>();
-			for (Association originalAssociation : originalAssociations) {
-				Association copiedParentAssociation = this.entityFactory.createAssociation();
-
-				PresenceCondition parentPresenceCondition = originalAssociation.getPresenceCondition();
-
-
-				// copy presence condition
-				PresenceCondition childPresenceCondition = this.entityFactory.createPresenceCondition();
-				copiedParentAssociation.setPresenceCondition(childPresenceCondition);
-
-				Set<at.jku.isse.ecco.module.Module>[][] moduleSetPairs = new Set[][]{{parentPresenceCondition.getMinModules(), childPresenceCondition.getMinModules()}, {parentPresenceCondition.getMaxModules(), childPresenceCondition.getMaxModules()}, {parentPresenceCondition.getNotModules(), childPresenceCondition.getNotModules()}, {parentPresenceCondition.getAllModules(), childPresenceCondition.getAllModules()}};
-
-				for (Set<at.jku.isse.ecco.module.Module>[] moduleSetPair : moduleSetPairs) {
-					Set<at.jku.isse.ecco.module.Module> parentModuleSet = moduleSetPair[0];
-					Set<at.jku.isse.ecco.module.Module> childModuleSet = moduleSetPair[1];
-
-					for (at.jku.isse.ecco.module.Module fromModule : parentModuleSet) {
-						at.jku.isse.ecco.module.Module toModule = this.entityFactory.createModule();
-						for (ModuleFeature fromModuleFeature : fromModule) {
-							Feature fromFeature = fromModuleFeature.getFeature();
-							Feature toFeature;
-							if (featureReplacementMap.containsKey(fromFeature)) {
-								toFeature = featureReplacementMap.get(fromFeature);
-							} else {
-								toFeature = fromFeature;
-
-								throw new EccoException("This should not happen!");
-							}
-
-							ModuleFeature toModuleFeature = this.entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
-
-							// feature versions
-							for (FeatureVersion fromFeatureVersion : fromModuleFeature) {
-								FeatureVersion toFeatureVersion;
-								if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
-									toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
-								} else {
-									toFeatureVersion = fromFeatureVersion;
-
-									throw new EccoException("This should not happen!");
-								}
-								toModuleFeature.add(toFeatureVersion);
-							}
-
-							toModule.add(toModuleFeature);
-						}
-						childModuleSet.add(toModule);
-					}
-				}
-
-
-				// copy artifact tree
-				RootNode copiedRootNode = this.entityFactory.createRootNode();
-				copiedParentAssociation.setRootNode(copiedRootNode);
-				// clone tree
-				for (Node parentChildNode : originalAssociation.getRootNode().getChildren()) {
-					Node copiedChildNode = Trees.copy(parentChildNode, this.entityFactory);
-					copiedRootNode.addChild(copiedChildNode);
-					copiedChildNode.setParent(copiedRootNode);
-				}
-				Trees.checkConsistency(copiedRootNode);
-
-
-				copiedAssociations.add(copiedParentAssociation);
-			}
-
-
-			// -----------------------
-
-
-			// select associations
-			Collection<Association> selectedAssociations = new ArrayList<>();
-			for (Association copiedAssociation : copiedAssociations) {
-				// select any association whose presence condition contains any selected feature version either positively in a base module or either positively or negatively in a derivative module together with a feature version (positive) that is contained in this repository.
-				selectedAssociations.add(copiedAssociation); // TODO
-			}
-
-			// remove not selected feature versions from presence conditions of selected associations
-			for (Association copiedAssociation : copiedAssociations) {
-				//copiedAssociation.getPresenceCondition().removeFeatureVersion(null); // TODO
-			}
-
-			// compute dependency graph for selected associations and check if there are any unresolved dependencies
-			DependencyGraph dg = new DependencyGraph(selectedAssociations, DependencyGraph.ReferencesResolveMode.LEAVE_REFERENCES_UNRESOLVED); // we do not trim unresolved references. instead we abort.
-			if (dg.getUnresolvedDependencyWeight() > 0) {
-				throw new EccoException("Unresolved dependencies in selection.");
-			}
-
-			// merge associations with equal presence conditions
-			Map<PresenceCondition, Association> pcToAssocMap = new HashMap<>();
-			Iterator<Association> it = selectedAssociations.iterator();
-			while (it.hasNext()) {
-				Association selectedAssociation = it.next();
-				Association equalAssoc = pcToAssocMap.get(selectedAssociation.getPresenceCondition());
-				if (equalAssoc == null) {
-					pcToAssocMap.put(selectedAssociation.getPresenceCondition(), selectedAssociation);
-				} else {
-					Trees.merge(equalAssoc.getRootNode(), selectedAssociation.getRootNode());
-					it.remove();
-				}
-			}
-
-			// TODO: trim sequence graphs to only contain artifacts from the selected associations
-
-
-			// -----------------------
-
-
-			// step 3: add new features in child repo to copied and selected parent associations
-			Collection<FeatureVersion> newParentFeatureVersions = new ArrayList<>();
-			for (Feature childFeature : this.featureDao.loadAllFeatures()) {
-				Feature parentFeature = null;
-				for (Feature tempParentFeature : originalFeatures) {
-					if (tempParentFeature.equals(childFeature)) {
-						parentFeature = tempParentFeature;
-						break;
-					}
-				}
-				if (parentFeature == null) {
-					// add all its versions to list
-					for (FeatureVersion childFeatureVersion : childFeature.getVersions()) {
-						newParentFeatureVersions.add(childFeatureVersion);
-					}
-				} else {
-					// compare versions and add new ones to list
-					for (FeatureVersion childFeatureVersion : childFeature.getVersions()) {
-						FeatureVersion parentFeatureVersion = parentFeature.getVersion(childFeatureVersion.getId());
-						if (parentFeatureVersion == null) {
-							newParentFeatureVersions.add(childFeatureVersion);
-						}
-					}
-				}
-			}
-			for (Association copiedAssociation : selectedAssociations) {
-				for (FeatureVersion newParentFeatureVersion : newParentFeatureVersions) {
-					copiedAssociation.getPresenceCondition().addFeatureVersion(newParentFeatureVersion);
-					copiedAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newParentFeatureVersion.getFeature(), newParentFeatureVersion, false), this.getMaxOrder());
-				}
-			}
-
-
-			// step 4: commit copied and selected associations to this repository
-			this.commit(selectedAssociations);
-
-			this.transactionStrategy.commit();
-		} catch (Exception e) {
-			this.transactionStrategy.rollback();
-
-			throw new EccoException("Error during merge.", e);
-		}
-	}
+//	/**
+//	 * // TODO: this is experimental and not yet finished.
+//	 * <p>
+//	 * Does a selective merge operation.
+//	 * The set of original features.
+//	 * The associations are not yet trimmed. They will be trimmed based on the given set of features and their versions.
+//	 *
+//	 * @param originalFeatures        The set of original features.
+//	 * @param originalAssociations    The set of original associations.
+//	 * @param selectedFeatureVersions The set of selected feature versions.
+//	 */
+//	protected void selectiveMerge(Collection<Feature> originalFeatures, Collection<Association> originalAssociations, Collection<FeatureVersion> selectedFeatureVersions) {
+//		try {
+//			this.transactionStrategy.begin();
+//
+//			// step 1: add new features and versions (that have been selected!) to this repository
+//			Map<Feature, Feature> featureReplacementMap = new HashMap<>();
+//			Map<FeatureVersion, FeatureVersion> featureVersionReplacementMap = new HashMap<>();
+//			Collection<FeatureVersion> newChildFeatureVersions = new ArrayList<>();
+//			for (Feature parentFeature : originalFeatures) {
+//				Feature childFeature = this.featureDao.load(parentFeature.getName()); // TODO: what to do when parent and child feature have different description? e.g. because it was changed on one of the two before the pull.
+//				if (childFeature == null) {
+//					childFeature = this.entityFactory.createFeature(parentFeature.getName(), parentFeature.getDescription());
+//				}
+//
+//				boolean featureAlreadyAdded = false;
+//				for (FeatureVersion parentFeatureVersion : parentFeature.getVersions()) {
+//					if (selectedFeatureVersions.contains(parentFeatureVersion)) {
+//						FeatureVersion childFeatureVersion = childFeature.getVersion(parentFeatureVersion.getId());
+//						if (childFeatureVersion == null) {
+//							childFeatureVersion = childFeature.addVersion(parentFeatureVersion.getId());
+//							childFeatureVersion.setDescription(parentFeatureVersion.getDescription());
+//							newChildFeatureVersions.add(childFeatureVersion);
+//						}
+//						featureVersionReplacementMap.put(parentFeatureVersion, childFeatureVersion);
+//						if (!featureAlreadyAdded) {
+//							featureReplacementMap.put(parentFeature, childFeature);
+//							featureAlreadyAdded = true;
+//						}
+//					}
+//				}
+//
+//				this.featureDao.save(childFeature);
+//			}
+//			for (Association childAssociation : this.associationDao.loadAllAssociations()) {
+//				for (FeatureVersion newChildFeatureVersion : newChildFeatureVersions) {
+//					childAssociation.getPresenceCondition().addFeatureVersion(newChildFeatureVersion);
+//					childAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newChildFeatureVersion.getFeature(), newChildFeatureVersion, false), this.getMaxOrder());
+//				}
+//			}
+//
+//
+//			// step 2: copy original associations
+//			Collection<Association> copiedAssociations = new ArrayList<>();
+//			for (Association originalAssociation : originalAssociations) {
+//				Association copiedParentAssociation = this.entityFactory.createAssociation();
+//
+//				PresenceCondition parentPresenceCondition = originalAssociation.getPresenceCondition();
+//
+//
+//				// copy presence condition
+//				PresenceCondition childPresenceCondition = this.entityFactory.createPresenceCondition();
+//				copiedParentAssociation.setPresenceCondition(childPresenceCondition);
+//
+//				Set<at.jku.isse.ecco.module.Module>[][] moduleSetPairs = new Set[][]{{parentPresenceCondition.getMinModules(), childPresenceCondition.getMinModules()}, {parentPresenceCondition.getMaxModules(), childPresenceCondition.getMaxModules()}, {parentPresenceCondition.getNotModules(), childPresenceCondition.getNotModules()}, {parentPresenceCondition.getAllModules(), childPresenceCondition.getAllModules()}};
+//
+//				for (Set<at.jku.isse.ecco.module.Module>[] moduleSetPair : moduleSetPairs) {
+//					Set<at.jku.isse.ecco.module.Module> parentModuleSet = moduleSetPair[0];
+//					Set<at.jku.isse.ecco.module.Module> childModuleSet = moduleSetPair[1];
+//
+//					for (at.jku.isse.ecco.module.Module fromModule : parentModuleSet) {
+//						at.jku.isse.ecco.module.Module toModule = this.entityFactory.createModule();
+//						for (ModuleFeature fromModuleFeature : fromModule) {
+//							Feature fromFeature = fromModuleFeature.getFeature();
+//							Feature toFeature;
+//							if (featureReplacementMap.containsKey(fromFeature)) {
+//								toFeature = featureReplacementMap.get(fromFeature);
+//							} else {
+//								toFeature = fromFeature;
+//
+//								throw new EccoException("This should not happen!");
+//							}
+//
+//							ModuleFeature toModuleFeature = this.entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
+//
+//							// feature versions
+//							for (FeatureVersion fromFeatureVersion : fromModuleFeature) {
+//								FeatureVersion toFeatureVersion;
+//								if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
+//									toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
+//								} else {
+//									toFeatureVersion = fromFeatureVersion;
+//
+//									throw new EccoException("This should not happen!");
+//								}
+//								toModuleFeature.add(toFeatureVersion);
+//							}
+//
+//							toModule.add(toModuleFeature);
+//						}
+//						childModuleSet.add(toModule);
+//					}
+//				}
+//
+//
+//				// copy artifact tree
+//				RootNode copiedRootNode = this.entityFactory.createRootNode();
+//				copiedParentAssociation.setRootNode(copiedRootNode);
+//				// clone tree
+//				for (Node parentChildNode : originalAssociation.getRootNode().getChildren()) {
+//					Node copiedChildNode = Trees.deepCopy(parentChildNode, this.entityFactory);
+//					copiedRootNode.addChild(copiedChildNode);
+//					copiedChildNode.setParent(copiedRootNode);
+//				}
+//				Trees.checkConsistency(copiedRootNode);
+//
+//
+//				copiedAssociations.add(copiedParentAssociation);
+//			}
+//
+//
+//			// -----------------------
+//
+//
+//			// select associations
+//			Collection<Association> selectedAssociations = new ArrayList<>();
+//			for (Association copiedAssociation : copiedAssociations) {
+//				// select any association whose presence condition contains any selected feature version either positively in a base module or either positively or negatively in a derivative module together with a feature version (positive) that is contained in this repository.
+//				selectedAssociations.add(copiedAssociation); // TODO
+//			}
+//
+//			// remove not selected feature versions from presence conditions of selected associations
+//			for (Association copiedAssociation : copiedAssociations) {
+//				//copiedAssociation.getPresenceCondition().removeFeatureVersion(null); // TODO
+//			}
+//
+//			// compute dependency graph for selected associations and check if there are any unresolved dependencies
+//			DependencyGraph dg = new DependencyGraph(selectedAssociations, DependencyGraph.ReferencesResolveMode.LEAVE_REFERENCES_UNRESOLVED); // we do not trim unresolved references. instead we abort.
+//			if (!dg.getUnresolvedDependencies().isEmpty()) {
+//				throw new EccoException("Unresolved dependencies in selection.");
+//			}
+//
+//			// merge associations with equal presence conditions
+//			Map<PresenceCondition, Association> pcToAssocMap = new HashMap<>();
+//			Iterator<Association> it = selectedAssociations.iterator();
+//			while (it.hasNext()) {
+//				Association selectedAssociation = it.next();
+//				Association equalAssoc = pcToAssocMap.get(selectedAssociation.getPresenceCondition());
+//				if (equalAssoc == null) {
+//					pcToAssocMap.put(selectedAssociation.getPresenceCondition(), selectedAssociation);
+//				} else {
+//					Trees.merge(equalAssoc.getRootNode(), selectedAssociation.getRootNode());
+//					it.remove();
+//				}
+//			}
+//
+//			// TODO: trim sequence graphs to only contain artifacts from the selected associations
+//
+//
+//			// -----------------------
+//
+//
+//			// step 3: add new features in child repo to copied and selected parent associations
+//			Collection<FeatureVersion> newParentFeatureVersions = new ArrayList<>();
+//			for (Feature childFeature : this.featureDao.loadAllFeatures()) {
+//				Feature parentFeature = null;
+//				for (Feature tempParentFeature : originalFeatures) {
+//					if (tempParentFeature.equals(childFeature)) {
+//						parentFeature = tempParentFeature;
+//						break;
+//					}
+//				}
+//				if (parentFeature == null) {
+//					// add all its versions to list
+//					for (FeatureVersion childFeatureVersion : childFeature.getVersions()) {
+//						newParentFeatureVersions.add(childFeatureVersion);
+//					}
+//				} else {
+//					// compare versions and add new ones to list
+//					for (FeatureVersion childFeatureVersion : childFeature.getVersions()) {
+//						FeatureVersion parentFeatureVersion = parentFeature.getVersion(childFeatureVersion.getId());
+//						if (parentFeatureVersion == null) {
+//							newParentFeatureVersions.add(childFeatureVersion);
+//						}
+//					}
+//				}
+//			}
+//			for (Association copiedAssociation : selectedAssociations) {
+//				for (FeatureVersion newParentFeatureVersion : newParentFeatureVersions) {
+//					copiedAssociation.getPresenceCondition().addFeatureVersion(newParentFeatureVersion);
+//					copiedAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newParentFeatureVersion.getFeature(), newParentFeatureVersion, false), this.getMaxOrder());
+//				}
+//			}
+//
+//
+//			// step 4: commit copied and selected associations to this repository
+//			this.commit(selectedAssociations);
+//
+//			this.transactionStrategy.commit();
+//		} catch (Exception e) {
+//			this.transactionStrategy.rollback();
+//
+//			throw new EccoException("Error during merge.", e);
+//		}
+//	}
 
 
 	// COMMIT //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1896,39 +2092,58 @@ public class EccoService {
 			System.out.println("CHECKOUT");
 
 
-			Set<at.jku.isse.ecco.module.Module> desiredModules = configuration.computeModules(this.getMaxOrder());
-			Set<at.jku.isse.ecco.module.Module> missingModules = new HashSet<>();
-			Set<at.jku.isse.ecco.module.Module> surplusModules = new HashSet<>();
-
+			Set<Association> selectedAssociations = new HashSet<>();
 			LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 			for (Association association : this.getAssociations()) {
 				System.out.println("Checking: " + association.getId());
 				if (association.getPresenceCondition().holds(configuration)) {
-					compRootNode.addOrigNode(association.getRootNode());
+					selectedAssociations.add(association);
 					System.out.println("Selected: " + association.getId());
+				}
+			}
 
-					this.fireAssociationSelectedEvent(association);
 
-					// compute missing
-					for (at.jku.isse.ecco.module.Module desiredModule : desiredModules) {
-						if (!association.getPresenceCondition().getMinModules().contains(desiredModule)) {
-							missingModules.add(desiredModule);
-						}
+			DependencyGraph dg = new DependencyGraph(selectedAssociations, DependencyGraph.ReferencesResolveMode.INCLUDE_ALL_REFERENCED_ASSOCIATIONS);
+
+//			if (INCLUDE_ALL_REFERENCED_ASSOCIATIONS) {
+//				selectedAssociations.addAll(dg.getAssociations());
+//			}
+
+
+			Set<at.jku.isse.ecco.module.Module> desiredModules = configuration.computeModules(this.getMaxOrder());
+			Set<at.jku.isse.ecco.module.Module> missingModules = new HashSet<>();
+			Set<at.jku.isse.ecco.module.Module> surplusModules = new HashSet<>();
+
+			for (Association association : selectedAssociations) {
+				compRootNode.addOrigNode(association.getRootNode());
+
+				this.fireAssociationSelectedEvent(association);
+
+				// compute missing
+				for (at.jku.isse.ecco.module.Module desiredModule : desiredModules) {
+					if (!association.getPresenceCondition().getMinModules().contains(desiredModule)) {
+						missingModules.add(desiredModule);
 					}
-					// compute surplus
-					for (at.jku.isse.ecco.module.Module existingModule : association.getPresenceCondition().getMinModules()) {
-						if (!desiredModules.contains(existingModule)) {
-							surplusModules.add(existingModule);
-						}
+				}
+				// compute surplus
+				for (at.jku.isse.ecco.module.Module existingModule : association.getPresenceCondition().getMinModules()) {
+					if (!desiredModules.contains(existingModule)) {
+						surplusModules.add(existingModule);
 					}
 				}
 			}
+
+			// compute unresolved dependencies
+			Set<Association> unresolvedAssociations = new HashSet<>(dg.getAssociations());
+			unresolvedAssociations.removeAll(selectedAssociations);
+
 
 			Checkout checkout = this.checkout(compRootNode);
 
 			checkout.getSurplus().addAll(surplusModules);
 			checkout.getMissing().addAll(missingModules);
 			checkout.getOrderWarnings().addAll(compRootNode.getOrderSelector().getUncertainOrders());
+			checkout.getUnresolvedAssociations().addAll(unresolvedAssociations);
 
 			// write config file into base directory
 			if (Files.exists(this.baseDir.resolve(CONFIG_FILE_NAME))) {
@@ -1965,6 +2180,9 @@ public class EccoService {
 						pathList.add(a.toString());
 						sb.append("ORDER: " + pathList.stream().collect(Collectors.joining()) + System.lineSeparator());
 					}
+					for (Association association : checkout.getUnresolvedAssociations()) {
+						sb.append("UNRESOLVED: " + association + System.lineSeparator());
+					}
 
 					Files.write(this.baseDir.resolve(WARNINGS_FILE_NAME), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 				} catch (IOException e) {
@@ -1977,7 +2195,7 @@ public class EccoService {
 	}
 
 	public Checkout checkout(Node node) {
-		Checkout checkout = this.entityFactory.createCheckout();
+		Checkout checkout = new Checkout();
 
 		Set<Node> nodes = new HashSet<>(node.getChildren());
 		this.writer.write(this.baseDir, nodes);

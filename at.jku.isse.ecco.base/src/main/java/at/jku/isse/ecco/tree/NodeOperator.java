@@ -17,14 +17,18 @@ public class NodeOperator {
 	}
 
 
-	@Override
-	public String toString() {
+	public String getLabel() {
 		if (this.node instanceof RootNode)
 			return "root";
 		else if (this.node.getArtifact() != null)
 			return this.node.getArtifact().toString();
 		else
 			return "null";
+	}
+
+	@Override
+	public String toString() {
+		return this.getLabel();
 	}
 
 	@Override

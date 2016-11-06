@@ -29,4 +29,7 @@ public interface SequenceGraph {
 
 	public Collection<Artifact<?>> getSymbols();
 
+
+	public void trim(Collection<Artifact<?>> symbols);
+
 }

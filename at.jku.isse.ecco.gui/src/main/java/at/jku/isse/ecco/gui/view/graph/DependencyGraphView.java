@@ -47,6 +47,11 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 	private ViewPanel view;
 
 	private boolean showLabels = true;
+	private boolean simplifyLabels = true;
+	private boolean hideImpliedDependencies = true;
+
+
+	private DependencyGraph dg = null;
 
 
 	public DependencyGraphView(EccoService service) {
@@ -65,7 +70,8 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 				SwingUtilities.invokeLater(new Runnable() {
 					@Override
 					public void run() {
-						DependencyGraphView.this.updateGraph(DependencyGraphView.this.showLabels);
+						dg = new DependencyGraph(DependencyGraphView.this.service.getAssociations());
+						DependencyGraphView.this.updateGraph();
 					}
 				});
 				Task refreshTask = new Task<Void>() {
@@ -115,11 +121,34 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
+		showLabelsCheckbox.setSelected(this.hideImpliedDependencies);
 		toolBar.getItems().add(showLabelsCheckbox);
 		showLabelsCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
 			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
 				DependencyGraphView.this.showLabels = new_val;
-				DependencyGraphView.this.updateGraphStylehseet(new_val);
+				DependencyGraphView.this.updateGraphStylehseet();
+			}
+		});
+
+
+		CheckBox simplifyLabelsCheckbox = new CheckBox("Simplified Labels");
+		simplifyLabelsCheckbox.setSelected(this.simplifyLabels);
+		toolBar.getItems().add(simplifyLabelsCheckbox);
+		simplifyLabelsCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
+				DependencyGraphView.this.simplifyLabels = new_val;
+				DependencyGraphView.this.updateGraph();
+			}
+		});
+
+
+		CheckBox hideImpliedDependenciesCheckbox = new CheckBox("Hide Implied Dependencies");
+		hideImpliedDependenciesCheckbox.setSelected(this.hideImpliedDependencies);
+		toolBar.getItems().add(hideImpliedDependenciesCheckbox);
+		hideImpliedDependenciesCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
+				DependencyGraphView.this.hideImpliedDependencies = new_val;
+				DependencyGraphView.this.updateGraph();
 			}
 		});
 
@@ -169,9 +198,9 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 	}
 
 
-	private void updateGraphStylehseet(boolean showLabels) {
+	private void updateGraphStylehseet() {
 		String textMode = "text-mode: normal; ";
-		if (!showLabels)
+		if (!this.showLabels)
 			textMode = "text-mode: hidden; ";
 
 		this.graph.addAttribute("ui.stylesheet",
@@ -179,7 +208,7 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: 10px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
 	}
 
-	private void updateGraph(boolean showLabels) {
+	private void updateGraph() {
 		this.viewer.disableAutoLayout();
 
 		this.graph.removeSink(this.layout);
@@ -195,24 +224,50 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 		this.graph.addAttribute("ui.quality");
 		this.graph.addAttribute("ui.antialias");
 
-		this.updateGraphStylehseet(showLabels);
+		this.updateGraphStylehseet();
 
 
-		DependencyGraph dg = new DependencyGraph(this.service.getAssociations());
+		if (dg == null)
+			dg = new DependencyGraph(this.service.getAssociations());
 
 		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
-			Node from = this.graph.getNode(String.valueOf(dep.getFrom().getId()));
-			if (from == null) {
-				from = this.graph.addNode(String.valueOf(dep.getFrom().getId()));
-				from.setAttribute("label", "[" + dep.getFrom().getPresenceCondition().toString() + "]");
+			if (!hideImpliedDependencies || !dep.getFrom().getPresenceCondition().implies(dep.getTo().getPresenceCondition())) {
+//			boolean implied = Condition.implies(dep.getFrom().getPresenceCondition(), dep.getTo().getPresenceCondition());
+				Node from = this.graph.getNode(String.valueOf(dep.getFrom().getId()));
+				if (from == null) {
+					from = this.graph.addNode(String.valueOf(dep.getFrom().getId()));
+					if (simplifyLabels)
+						from.setAttribute("label", "[" + dep.getFrom().getPresenceCondition().getSimpleLabel() + "]");
+					else
+						from.setAttribute("label", "[" + dep.getFrom().getPresenceCondition().getLabel() + "]");
+//				from.setAttribute("implied", implied);
+//				if (implied)
+//					from.setAttribute("hide");
+				}
+//			if ((boolean) from.getAttribute("implied") && !implied) {
+//				from.setAttribute("implied", false);
+//				from.removeAttribute("hide");
+//			}
+				Node to = this.graph.getNode(String.valueOf(dep.getTo().getId()));
+				if (to == null) {
+					to = this.graph.addNode(String.valueOf(dep.getTo().getId()));
+					if (simplifyLabels)
+						to.setAttribute("label", "[" + dep.getTo().getPresenceCondition().getSimpleLabel() + "]");
+					else
+						to.setAttribute("label", "[" + dep.getTo().getPresenceCondition().getLabel() + "]");
+//				to.setAttribute("implied", implied);
+//				if (implied)
+//					to.setAttribute("hide");
+				}
+//			if ((boolean) to.getAttribute("implied") && !implied) {
+//				to.setAttribute("implied", false);
+//				to.removeAttribute("hide");
+//			}
+				Edge edge = this.graph.addEdge(dep.getFrom().getId() + "-" + dep.getTo().getId(), from, to, true);
+				edge.setAttribute("label", String.valueOf(dep.getWeight()));
+//			if (implied)
+//				edge.setAttribute("hide");
 			}
-			Node to = this.graph.getNode(String.valueOf(dep.getTo().getId()));
-			if (to == null) {
-				to = this.graph.addNode(String.valueOf(dep.getTo().getId()));
-				to.setAttribute("label", "[" + dep.getTo().getPresenceCondition().toString() + "]");
-			}
-			Edge edge = this.graph.addEdge(dep.getFrom().getId() + "-" + dep.getTo().getId(), from, to, true);
-			edge.setAttribute("label", String.valueOf(dep.getWeight()));
 		}
 
 

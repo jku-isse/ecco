@@ -148,6 +148,21 @@ public class BasePresenceCondition implements PresenceCondition, PresenceConditi
 	}
 
 	@Override
+	public boolean implies(PresenceCondition other) {
+		return this.operator.implies(other);
+	}
+
+	@Override
+	public String getLabel() {
+		return this.operator.getLabel();
+	}
+
+	@Override
+	public String getSimpleLabel() {
+		return this.operator.getSimpleLabel();
+	}
+
+	@Override
 	public int hashCode() {
 		return this.operator.hashCode();
 	}
@@ -155,7 +170,7 @@ public class BasePresenceCondition implements PresenceCondition, PresenceConditi
 
 	@Override
 	public String toString() {
-		return this.operator.toString();
+		return this.operator.getLabel();
 	}
 
 

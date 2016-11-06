@@ -1,11 +1,6 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
 
 <suite name="CLI Integration Test" verbose="1">
-	<test name="CliCommitTest">
-		<classes>
-			<class name="at.jku.isse.ecco.cli.test.CliCommitTest"/>
-		</classes>
-	</test>
 	<test name="CLI">
 		<groups>
 			<run>

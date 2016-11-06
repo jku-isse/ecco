@@ -3,16 +3,12 @@ package at.jku.isse.ecco.util;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
-import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This static class provides a collection of tree utility functions.
@@ -25,78 +21,13 @@ public class Trees {
 
 	// # COPY OPERATION ##################################################################################
 
-	// TODO: is this the right place for this? probably move it into service.
+	/**
+	 * Creates a shallow copy of the tree.
+	 *
+	 * @param node The root node of the tree to copy.
+	 */
+	public void copy(Node node) {
 
-	public static Node copy(Node node, EntityFactory entityFactory) {
-		Node node2 = Trees.copyRec(node, entityFactory);
-
-		Trees.updateArtifactReferences(node2);
-
-		return node2;
-	}
-
-	private static Node copyRec(Node node, EntityFactory entityFactory) {
-		Node node2 = entityFactory.createNode();
-
-		node2.setUnique(node.isUnique());
-
-		if (node.getArtifact() != null) {
-			Artifact<?> artifact = node.getArtifact();
-			Artifact<?> artifact2;
-
-			boolean firstMatch = false;
-			if (artifact.getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-				artifact2 = artifact.<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
-			} else {
-				artifact2 = entityFactory.createArtifact(artifact.getData());
-				artifact.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, artifact2);
-				firstMatch = true;
-			}
-
-			node2.setArtifact(artifact2);
-
-			if (node.isUnique()) {
-				artifact2.setContainingNode(node2);
-			}
-
-			artifact2.setAtomic(artifact.isAtomic());
-			artifact2.setOrdered(artifact.isOrdered());
-			artifact2.setSequenceNumber(artifact.getSequenceNumber());
-
-			// sequence graph
-			if (artifact.getSequenceGraph() != null && firstMatch) {
-				SequenceGraph sequenceGraph = artifact.getSequenceGraph();
-				SequenceGraph sequenceGraph2 = artifact2.createSequenceGraph();
-
-				artifact2.setSequenceGraph(sequenceGraph2);
-
-				// copy sequence graph
-				sequenceGraph2.copy(sequenceGraph);
-				//sequenceGraph2.sequence(sequenceGraph);
-			}
-
-			// TODO: make source and target artifacts both use the same artifact reference instance?
-			// references
-			for (ArtifactReference artifactReference : artifact.getUses()) {
-				ArtifactReference artifactReference2 = entityFactory.createArtifactReference(artifact2, artifactReference.getTarget(), artifactReference.getType());
-				artifact2.addUses(artifactReference2);
-			}
-			for (ArtifactReference artifactReference : artifact.getUsedBy()) {
-				ArtifactReference artifactReference2 = entityFactory.createArtifactReference(artifactReference.getSource(), artifact2, artifactReference.getType());
-				artifact2.addUsedBy(artifactReference2);
-			}
-
-		} else {
-			node2.setArtifact(null);
-		}
-
-		for (Node childNode : node.getChildren()) {
-			Node childNode2 = Trees.copyRec(childNode, entityFactory);
-			node2.addChild(childNode2);
-			childNode2.setParent(node2);
-		}
-
-		return node2;
 	}
 
 
@@ -131,6 +62,7 @@ public class Trees {
 					left.getArtifact().getSequenceGraph().sequence(right);
 				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
 					right.getArtifact().getSequenceGraph().sequence(left);
+					left.getArtifact().setSequenceGraph(right.getArtifact().getSequenceGraph());
 					throw new EccoException("Left node was not sequenced but right node was!");
 				}
 			}
@@ -453,6 +385,87 @@ public class Trees {
 
 
 	// # READ ONLY OPERATIONS ##################################################################################
+
+
+	/**
+	 * Maps artifacts in tree rooted at right to artifacts in tree rooted at left. Does not merge or update artifact references. The left tree is not modified.
+	 * Mapped artifacts can be found in the property {@link Artifact#PROPERTY_MAPPED_ARTIFACT} of the right artifacts.
+	 *
+	 * @param left  Root node of the first tree.
+	 * @param right Root node of the second tree.
+	 */
+	public static void map(Node left, Node right) {
+		if (!left.equals(right))
+			throw new EccoException("Mapping of non-equal nodes is not allowed!");
+
+
+		if (left.getArtifact() != null && right.getArtifact() != null) {
+			if (left.getArtifact().isOrdered()) {
+				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getSequenceGraph() != right.getArtifact().getSequenceGraph()) {
+					throw new EccoException("Sequence Graphs did not match!");
+				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
+					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
+					left.getArtifact().getSequenceGraph().sequence(left);
+				}
+
+				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
+					List<Artifact<?>> rightArtifacts = right.getChildren().stream().map((Node n) -> n.getArtifact()).collect(Collectors.toList());
+					left.getArtifact().getSequenceGraph().align(rightArtifacts);
+				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
+					throw new EccoException("Left node was not sequenced but right node was!");
+				}
+			}
+
+
+			if (left.getArtifact().isAtomic()) {
+				Trees.mapAtomicArtifacts(left, right);
+			} else if (left.getArtifact() != right.getArtifact()) {
+				right.getArtifact().putProperty(Artifact.PROPERTY_MAPPED_ARTIFACT, left.getArtifact());
+			}
+		}
+
+
+		Iterator<Node> leftChildrenIterator = left.getChildren().iterator();
+		while (leftChildrenIterator.hasNext()) {
+			Node leftChild = leftChildrenIterator.next();
+
+			int ri = right.getChildren().indexOf(leftChild);
+			if (ri == -1)
+				continue;
+
+			Node rightChild = right.getChildren().get(ri);
+
+			map(leftChild, rightChild);
+		}
+
+
+		if (left.getArtifact() != null && right.getArtifact() != null) {
+			if (left.getArtifact().isOrdered()) {
+				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
+					right.getChildren().stream().forEach((Node n) -> n.getArtifact().setSequenceNumber(0));
+				}
+			}
+		}
+	}
+
+	private static void mapAtomicArtifacts(Node left, Node right) {
+		right.getArtifact().putProperty(Artifact.PROPERTY_MAPPED_ARTIFACT, left.getArtifact());
+
+		if (left.getChildren().size() != right.getChildren().size()) {
+			throw new EccoException("Equal atomic nodes must have identical children!");
+		}
+
+		for (Node leftChild : left.getChildren()) {
+			int ri = right.getChildren().indexOf(leftChild);
+			if (ri == -1) {
+				throw new EccoException("Equal atomic nodes must have identical children!");
+			}
+
+			Node rightChild = right.getChildren().get(ri);
+
+			Trees.mapAtomicArtifacts(leftChild, rightChild);
+		}
+	}
 
 
 	/**

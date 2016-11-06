@@ -49,8 +49,13 @@ public class MultiClientTest {
 		try {
 			// do something
 
+			System.out.println(database.getRoot() + "!!!");
+			database.setRoot(new Object());
+			System.out.println(database.getRoot() + "!!!");
+
 			System.out.println("ReadWrite transaction began!");
-			System.in.read();
+			//System.in.read();
+			Thread.sleep(10000);
 			System.out.println("ReadWrite transaction ended!");
 
 			database.endThreadTransaction();
@@ -76,9 +81,14 @@ public class MultiClientTest {
 		try {
 			// do something
 
+			System.out.println(database.getRoot() + "!!!");
+
 			System.out.println("ReadOnly transaction began!");
-			System.in.read();
+			//System.in.read();
+			Thread.sleep(10000);
 			System.out.println("ReadOnly transaction ended!");
+
+			System.out.println(database.getRoot().toString());
 
 			database.endThreadTransaction();
 		} catch (Exception e) {
@@ -159,7 +169,7 @@ public class MultiClientTest {
 			System.out.println(database.getRoot() + " ");
 
 			System.out.println("ReadOnly transaction began!");
-			database.setRoot(new Object());
+			database.setRoot(new Integer(1));
 
 			System.out.println(database.getRoot() + " ");
 			//System.in.read();
@@ -180,7 +190,7 @@ public class MultiClientTest {
 			System.out.println(database.getRoot() + " ");
 
 			System.out.println("ReadOnly transaction began!");
-			database.setRoot(new Object());
+			database.setRoot(new Integer(2));
 
 			System.out.println(database.getRoot() + " ");
 			//System.in.read();

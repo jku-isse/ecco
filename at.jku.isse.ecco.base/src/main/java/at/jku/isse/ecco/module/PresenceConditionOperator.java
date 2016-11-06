@@ -137,7 +137,12 @@ public class PresenceConditionOperator {
 		this.presenceCondition.getAllModules().addAll(modules);
 	}
 
-
+	/**
+	 * Checks if a given condition holds for a given configuration.
+	 *
+	 * @param configuration
+	 * @return
+	 */
 	public boolean holds(Configuration configuration) {
 		// a presence condition holds in a configuration when at least one of the modules in minModules or maxModules holds. A module holds if all its feature instances are contained in a configuration.
 		for (Module module : this.presenceCondition.getMinModules()) {
@@ -227,8 +232,29 @@ public class PresenceConditionOperator {
 	}
 
 
-	@Override
-	public String toString() {
+	public String getSimpleLabel() {
+		Set<Module> modules = null;
+		String separator;
+		if (!this.presenceCondition.getMinModules().isEmpty()) { // use min modules
+			modules = this.presenceCondition.getMinModules();
+			separator = " AND ";
+		} else if (!this.presenceCondition.getMaxModules().isEmpty()) { // use max modules
+			modules = this.presenceCondition.getMaxModules();
+			separator = " OR ";
+		} else {
+			return "";
+		}
+
+		int minOrder = modules.stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
+		String result = modules.stream().filter(m -> m.getOrder() <= minOrder).map((Module module) -> {
+			return module.toString();
+		}).collect(Collectors.joining(separator));
+
+		return result;
+	}
+
+
+	public String getLabel() {
 		Set<Module> modules = null;
 		String separator;
 		if (!this.presenceCondition.getMinModules().isEmpty()) { // use min modules
@@ -245,6 +271,123 @@ public class PresenceConditionOperator {
 
 		return result;
 	}
+
+
+	/**
+	 * Fixes a feature version to a specific value and removes every occurrence of the feature version from the condition by either removing the feature version from modules (that contain <code>fi</code>) or by removing whole modules (that contain !<code>fi</code>).
+	 *
+	 * @param fi
+	 */
+	public void fixate(FeatureInstance fi) { // TODO: change from FI to MF here.
+		for (Set<Module> modules : new Set[]{this.presenceCondition.getMinModules(), this.presenceCondition.getNotModules(), this.presenceCondition.getAllModules(), this.presenceCondition.getMaxModules()}) {
+
+			Iterator<Module> moduleIterator = this.presenceCondition.getMinModules().iterator();
+			while (moduleIterator.hasNext()) {
+				Module m = moduleIterator.next();
+
+				Iterator<ModuleFeature> moduleFeatureIterator = m.iterator();
+				while (moduleFeatureIterator.hasNext()) {
+					ModuleFeature mf = moduleFeatureIterator.next();
+
+					Iterator<FeatureVersion> featureVersionIterator = mf.iterator();
+					while (featureVersionIterator.hasNext()) {
+						FeatureVersion fv = featureVersionIterator.next();
+
+						if (fi.getFeature().equals(fv.getFeature())) {
+							if (mf.getSign() == fi.getSign()) {
+								// remove module feature from module.
+								moduleFeatureIterator.remove();
+								// if module is empty remove it from condition.
+								if (m.isEmpty()) {
+									moduleIterator.remove();
+								}
+							} else {
+								// remove fv from module feature.
+								featureVersionIterator.remove();
+								// if module feature is empty remove whole module.
+								if (mf.isEmpty()) {
+									moduleIterator.remove();
+								}
+							}
+						}
+					}
+				}
+
+			}
+
+			// workaround to rehash values because after these modifications the values will have new hashes and there may be duplicates
+			Set<Module> temp = new HashSet<>();
+			temp.addAll(this.presenceCondition.getMinModules());
+			this.presenceCondition.getMinModules().clear();
+			this.presenceCondition.getMinModules().addAll(temp);
+		}
+
+		// TODO: this is for testing. later remove it.
+
+		// special treatment for max modules
+		Set<Module> maxModules = new HashSet<>();
+		maxModules.addAll(this.presenceCondition.getAllModules());
+		maxModules.removeAll(this.presenceCondition.getNotModules());
+
+		if (!this.presenceCondition.getMaxModules().equals(maxModules))
+			System.err.println("ERROR: inconsistency in max modules after fixating values!");
+
+//		c.getMaxModules().clear();
+//		c.getMaxModules().addAll(maxModules);
+	}
+
+
+	/**
+	 * Checks if this condition implies other condition.
+	 * This imeans every module in this must be implied by at least one module in other.
+	 *
+	 * @param other
+	 * @return
+	 */
+	public boolean implies(PresenceCondition other) {
+		for (Module m2 : other.getMinModules()) {
+			boolean moduleImplied = false;
+			for (Module m1 : this.presenceCondition.getMinModules()) {
+				if (m1.containsAll(m2)) {
+					moduleImplied = true;
+					break;
+				}
+			}
+			if (!moduleImplied) {
+				return false;
+			}
+
+		}
+
+		for (Module m2 : other.getMaxModules()) {
+			boolean moduleImplied = false;
+			for (Module m1 : this.presenceCondition.getMaxModules()) {
+				if (m1.containsAll(m2)) {
+					moduleImplied = true;
+					break;
+				}
+			}
+			if (!moduleImplied) {
+				return false;
+			}
+
+		}
+
+		return true;
+	}
+
+
+//	/**
+//	 * Checks if a presence condition is satisfiable given a (partial) configuration.
+//	 * Every feature version that is not specified by either a positive or a negative instance in the configuration is considered unspecified.
+//	 *
+//	 * @param configuration
+//	 * @return
+//	 */
+//	public boolean satisfiable(Configuration configuration) {
+//
+//		return false;
+//	}
 
 
 	// # INTERFACE #################################################################

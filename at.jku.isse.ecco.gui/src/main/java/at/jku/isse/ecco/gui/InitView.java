@@ -18,7 +18,6 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
-import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +31,7 @@ public class InitView extends BorderPane implements RepositoryListener {
 	private Button initButton;
 	private Label statusLabel;
 
-	public InitView(EccoService eccoService, Stage stage) {
+	public InitView(EccoService eccoService) {
 		this.eccoService = eccoService;
 
 		VBox content = new VBox();
@@ -69,7 +68,7 @@ public class InitView extends BorderPane implements RepositoryListener {
 			@Override
 			public void handle(ActionEvent event) {
 				DirectoryChooser directoryChooser = new DirectoryChooser();
-				File selectedDirectory = directoryChooser.showDialog(stage);
+				File selectedDirectory = directoryChooser.showDialog(InitView.this.getScene().getWindow());
 
 				if (selectedDirectory != null) {
 					InitView.this.updatePath(selectedDirectory.toPath());

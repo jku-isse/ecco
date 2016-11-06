@@ -58,4 +58,11 @@ public interface PresenceCondition {
 	@Override
 	public boolean equals(Object other);
 
+
+	public boolean implies(PresenceCondition other);
+
+	public String getLabel();
+
+	public String getSimpleLabel();
+
 }

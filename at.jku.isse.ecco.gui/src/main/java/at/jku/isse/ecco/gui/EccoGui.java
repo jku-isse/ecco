@@ -46,13 +46,13 @@ public class EccoGui extends Application implements RepositoryListener {
 
 
 		// TOP LEVEL
-		this.mainView = new MainView(eccoService, primaryStage);
+		this.mainView = new MainView(eccoService);
 		// bind to take available space
 		mainView.prefHeightProperty().bind(scene.heightProperty());
 		mainView.prefWidthProperty().bind(scene.widthProperty());
 
 
-		this.initView = new InitView(eccoService, primaryStage);
+		this.initView = new InitView(eccoService);
 		initView.prefHeightProperty().bind(scene.heightProperty());
 		initView.prefWidthProperty().bind(scene.widthProperty());
 
@@ -72,7 +72,7 @@ public class EccoGui extends Application implements RepositoryListener {
 	@Override
 	public void stop() {
 		try {
-			this.eccoService.destroy();
+			this.eccoService.close();
 		} catch (EccoException e) {
 			e.printStackTrace();
 		}

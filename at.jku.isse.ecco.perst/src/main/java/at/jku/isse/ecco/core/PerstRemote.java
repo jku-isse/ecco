@@ -1,6 +1,9 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.feature.Feature;
 import org.garret.perst.Persistent;
+
+import java.util.Collection;
 
 public class PerstRemote extends Persistent implements Remote {
 
@@ -50,6 +53,11 @@ public class PerstRemote extends Persistent implements Remote {
 	@Override
 	public void setType(Type type) {
 		this.type = type;
+	}
+
+	@Override
+	public Collection<Feature> getFeatures() {
+		return null; // TODO
 	}
 
 }

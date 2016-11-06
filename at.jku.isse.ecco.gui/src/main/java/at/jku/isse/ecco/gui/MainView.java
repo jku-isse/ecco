@@ -8,11 +8,10 @@ import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
-import javafx.stage.Stage;
 
 public class MainView extends BorderPane {
 
-	public MainView(EccoService eccoService, Stage stage) {
+	public MainView(EccoService eccoService) {
 		TabPane tabPane = new TabPane();
 		this.setCenter(tabPane);
 
@@ -58,7 +57,7 @@ public class MainView extends BorderPane {
 		commitGraphTab.setClosable(false);
 		tabPane.getTabs().add(commitGraphTab);
 
-		CommitGraphView commitGraphView = new CommitGraphView(eccoService, stage);
+		CommitGraphView commitGraphView = new CommitGraphView(eccoService);
 		commitGraphTab.setContent(commitGraphView);
 
 		// associations
@@ -85,7 +84,7 @@ public class MainView extends BorderPane {
 		artifactsGraphTab.setClosable(false);
 		tabPane.getTabs().add(artifactsGraphTab);
 
-		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService, stage);
+		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService);
 		artifactsGraphTab.setContent(artifactsGraphView);
 
 		// dependency graph

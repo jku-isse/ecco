@@ -24,7 +24,6 @@ import javafx.scene.control.ToolBar;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
@@ -55,7 +54,7 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 	private boolean depthFade = false;
 	private boolean showLabels = true;
 
-	public ArtifactGraphView(EccoService service, Stage stage) {
+	public ArtifactGraphView(EccoService service) {
 		this.service = service;
 
 
@@ -100,7 +99,7 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				toolBar.setDisable(true);
 
 				FileChooser fileChooser = new FileChooser();
-				File selectedFile = fileChooser.showSaveDialog(stage);
+				File selectedFile = fileChooser.showSaveDialog(ArtifactGraphView.this.getScene().getWindow());
 
 				if (selectedFile != null) {
 					FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());

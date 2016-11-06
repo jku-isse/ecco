@@ -63,6 +63,7 @@ public class DatabaseRoot extends Persistent {
 		checkNotNull(featureIndex);
 		checkNotNull(commitIndex);
 		checkNotNull(variantIndex);
+		checkNotNull(remoteIndex);
 
 		this.associationIndex = associationIndex;
 		this.featureIndex = featureIndex;

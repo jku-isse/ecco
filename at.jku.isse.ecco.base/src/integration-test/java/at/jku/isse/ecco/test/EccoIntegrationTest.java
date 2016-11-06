@@ -1,25 +1,11 @@
-package at.jku.isse.ecco.cli.test;
+package at.jku.isse.ecco.test;
+
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
 
 import java.io.File;
 
-import at.jku.isse.ecco.cli.Main;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
-
-public class CliCommitTest {
-
-	@Test(groups = {"integration", "cli"})
-	public void CLI_Commit() {
-		System.out.println("ecco init");
-		Main.main(new String[]{"init"});
-
-//		System.out.println("ecco add");
-//		Main.main(new String[]{"add"});
-
-		System.out.println("ecco commit A.10,B.1,C',D");
-		Main.main(new String[]{"commit", "A.10,B.1,C',D"});
-	}
+public abstract class EccoIntegrationTest {
 
 
 	@AfterTest(alwaysRun = true)
@@ -44,5 +30,6 @@ public class CliCommitTest {
 			System.out.println("Could not delete the repository directory.");
 		}
 	}
+
 
 }

@@ -62,10 +62,14 @@ public class DefaultOrderSelector implements OrderSelector {
 			// check if we would have other order options
 			for (Artifact<?> key : sgn.getChildren().keySet()) {
 				for (Node node : unorderedChildren) {
-					if (match != node && node.getArtifact() != null && node.getArtifact().equals(key)) {
-						uncertainOrder = true;
+					if (node.getArtifact() != null && node.getArtifact().equals(key)) {
+						if (match != node)
+							uncertainOrder = true;
+						break;
 					}
 				}
+				if (uncertainOrder)
+					break;
 			}
 		}
 

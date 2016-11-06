@@ -4,21 +4,64 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.module.Module;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
-public interface Checkout {
+public class Checkout {
 
-	public Configuration getConfiguration();
+	private Configuration configuration;
+	private Collection<Warning> warnings;
 
-	public Collection<Warning> getWarnings();
+	private Set<Module> missing;
+	private Set<Module> surplus;
 
-	public Set<Module> getSurplus();
+	private Collection<Artifact<?>> orderWarnings;
 
-	public Set<Module> getMissing();
+	private Set<Association> unresolvedAssociations;
 
-	public Collection<Artifact<?>> getOrderWarnings();
+	private String message;
 
-	public String getMessage();
+	public Checkout() {
+		this.warnings = new ArrayList<>();
+		this.missing = new HashSet<>();
+		this.surplus = new HashSet<>();
+		this.orderWarnings = new ArrayList<>();
+		this.unresolvedAssociations = new HashSet<>();
+	}
+
+	public void setConfiguration(Configuration configuration) {
+		this.configuration = configuration;
+		this.message = "";
+	}
+
+	public Configuration getConfiguration() {
+		return this.configuration;
+	}
+
+	public Collection<Warning> getWarnings() {
+		return this.warnings;
+	}
+
+	public Set<Module> getSurplus() {
+		return this.surplus;
+	}
+
+	public Set<Module> getMissing() {
+		return this.missing;
+	}
+
+	public Collection<Artifact<?>> getOrderWarnings() {
+		return this.orderWarnings;
+	}
+
+	public Set<Association> getUnresolvedAssociations() {
+		return this.unresolvedAssociations;
+	}
+
+	public String getMessage() {
+		return this.message;
+	}
 
 }

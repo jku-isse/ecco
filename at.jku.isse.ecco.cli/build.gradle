@@ -6,7 +6,7 @@ dependencies {
 	compile 'org.perf4j:perf4j:0.9.16'
 
 	compile 'net.sf.jopt-simple:jopt-simple:4.9'
-	compile 'net.sourceforge.argparse4j:argparse4j:0.6.0'
+	compile 'net.sourceforge.argparse4j:argparse4j:0.7.0'
 
 	compile project(':at.jku.isse.ecco.base')
 	compile project(':at.jku.isse.ecco.perst')

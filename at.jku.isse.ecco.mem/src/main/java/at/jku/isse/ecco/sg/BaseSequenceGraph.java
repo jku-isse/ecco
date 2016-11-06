@@ -72,6 +72,11 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.S
 		return this.operator.collectSymbols();
 	}
 
+	@Override
+	public void trim(Collection<Artifact<?>> symbols) {
+		this.operator.trim(symbols);
+	}
+
 
 	// operand
 

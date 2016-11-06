@@ -1,5 +1,9 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.feature.Feature;
+
+import java.util.Collection;
+
 public interface Remote {
 
 	public enum Type {
@@ -20,5 +24,8 @@ public interface Remote {
 	public Type getType();
 
 	public void setType(Type type);
+
+
+	public Collection<Feature> getFeatures();
 
 }

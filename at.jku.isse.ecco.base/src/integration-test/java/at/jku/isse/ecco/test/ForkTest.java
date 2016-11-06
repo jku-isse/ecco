@@ -20,7 +20,7 @@ public class ForkTest {
 		parentService.init();
 		parentService.setBaseDir(Paths.get("data/input/V1/"));
 		parentService.commit();
-		parentService.destroy();
+		parentService.close();
 
 		// create child repo
 		EccoService service = new EccoService();
@@ -40,7 +40,7 @@ public class ForkTest {
 		// commit first variant to parent
 		parentService.setBaseDir(Paths.get("data/input/V1/"));
 		parentService.commit();
-		parentService.destroy();
+		parentService.close();
 
 		// create child repo and fork it from parent
 		EccoService service = new EccoService();
@@ -56,14 +56,14 @@ public class ForkTest {
 		parentService.init();
 		parentService.setBaseDir(Paths.get("data/input/V2/"));
 		parentService.commit();
-		parentService.destroy();
+		parentService.close();
 
 		System.out.println("---");
 
 		// pull changes from parent to child
 		service.pull("origin");
 
-		service.destroy();
+		service.close();
 	}
 
 

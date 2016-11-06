@@ -30,7 +30,7 @@ public class EccoApplication extends ResourceConfig {
 	}
 
 	public void destroy() {
-		this.eccoService.destroy();
+		this.eccoService.close();
 	}
 
 }

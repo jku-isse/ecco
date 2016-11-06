@@ -43,11 +43,6 @@ public class MemEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Checkout createCheckout() {
-		return new BaseCheckout();
-	}
-
-	@Override
 	public PresenceCondition createPresenceCondition() {
 		return new BasePresenceCondition();
 	}
