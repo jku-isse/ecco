@@ -110,6 +110,12 @@ public class PerstNode extends Persistent implements Node, NodeOperator.NodeOper
 	}
 
 	@Override
+	public void addChildren(Node... children) {
+		for (Node child : children)
+			this.addChild(child);
+	}
+
+	@Override
 	public void removeChild(Node child) {
 		checkNotNull(child);
 

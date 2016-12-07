@@ -41,7 +41,7 @@ public class JpaTransactionStrategy implements TransactionStrategy {
 
 
 	@Override
-	public void init() {
+	public void open() {
 		if (!this.initialized) {
 			Map<String, String> persistenceMap = new HashMap<>();
 			persistenceMap.put("javax.persistence.jdbc.url", "jdbc:derby:" + connectionString + ";create=true");
@@ -76,7 +76,7 @@ public class JpaTransactionStrategy implements TransactionStrategy {
 	}
 
 	@Override
-	public void commit() throws EccoException {
+	public void end() throws EccoException {
 		this.checkInitialized();
 
 		if (this.currentEntityManager == null) {

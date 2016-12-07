@@ -14,6 +14,7 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.repository.RepositoryOperand;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -144,7 +145,7 @@ public interface EntityFactory {
 	 */
 	public Feature createFeature(final String name, final String description);
 
-	public FeatureVersion createFeatureVersion(Feature feature, int version);
+	public FeatureVersion createFeatureVersion(Feature feature, String id);
 
 	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign);
 
@@ -215,5 +216,7 @@ public interface EntityFactory {
 	 * @return A root node that is contained in the given association.
 	 */
 	public RootNode createRootNode(final Association association);
+
+	RepositoryOperand createRepository();
 
 }

@@ -3,6 +3,7 @@ package at.jku.isse.ecco.feature;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -15,19 +16,30 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class BaseFeature implements Feature {
 
+	private String id = "";
 	private String name = "";
 	private String description = "";
 
 	private List<FeatureVersion> versions = new ArrayList<FeatureVersion>();
 
-	private int nextVersion = 0;
+//	private int nextVersion = 0;
 
 	public BaseFeature() {
 
 	}
 
 	public BaseFeature(String name) {
-		this.setName(name);
+		this(UUID.randomUUID().toString(), name, "");
+	}
+
+	public BaseFeature(String id, String name, String description) {
+		checkNotNull(id);
+		checkNotNull(name);
+		checkNotNull(description);
+
+		this.id = id;
+		this.name = name;
+		this.description = description;
 	}
 
 	@Override
@@ -36,21 +48,21 @@ public class BaseFeature implements Feature {
 	}
 
 	@Override
-	public FeatureVersion addVersion(int version) {
-		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, version);
+	public FeatureVersion addVersion(String id) {
+		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, id);
 		if (!this.versions.contains(featureVersion)) {
 			this.versions.add(featureVersion);
-			if (this.nextVersion <= version)
-				this.nextVersion = version + 1;
+//			if (this.nextVersion <= version)
+//				this.nextVersion = version + 1;
 			return featureVersion;
 		}
 		return null;
 	}
 
 	@Override
-	public FeatureVersion getVersion(int version) {
+	public FeatureVersion getVersion(String id) {
 		for (FeatureVersion featureVersion : this.versions) {
-			if (featureVersion.getId() == version)
+			if (featureVersion.getId().equals(id))
 				return featureVersion;
 		}
 		return null;
@@ -58,31 +70,24 @@ public class BaseFeature implements Feature {
 
 	@Override
 	public FeatureVersion getLatestVersion() {
+		if (this.versions.isEmpty())
+			return null;
 		return this.versions.get(this.versions.size() - 1);
 	}
 
 	@Override
 	public FeatureVersion createNewVersion() {
-		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, this.nextVersion);
-		this.nextVersion++;
+		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, UUID.randomUUID().toString());
+//		this.nextVersion++;
 		this.versions.add(featureVersion);
 		return featureVersion;
 	}
 
-//	@Override
-//	public void addVersion(FeatureVersion version) {
-//		if (!this.versions.contains(version))
-//			this.versions.add(version);
-//	}
-//
-//	@Override
-//	public FeatureVersion getId(FeatureVersion version) {
-//		for (FeatureVersion featureVersion : this.versions) {
-//			if (featureVersion.equals(version))
-//				return featureVersion;
-//		}
-//		return null;
-//	}
+
+	@Override
+	public String getId() {
+		return this.name;
+	}
 
 	@Override
 	public String getName() {
@@ -109,9 +114,10 @@ public class BaseFeature implements Feature {
 		this.description = description;
 	}
 
+
 	@Override
 	public int hashCode() {
-		return Objects.hash(name);
+		return Objects.hash(this.name);
 	}
 
 	@Override
@@ -120,11 +126,13 @@ public class BaseFeature implements Feature {
 		if (!(obj instanceof BaseFeature)) return false;
 
 		final Feature other = (Feature) obj;
-		return name.equals(other.getName());
+		return this.id.equals(other.getId());
 	}
+
 
 	@Override
 	public String toString() {
+		//return this.name + "(" + this.id + ")";
 		return this.name;
 	}
 

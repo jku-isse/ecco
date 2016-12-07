@@ -1,22 +1,12 @@
 package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.feature.Feature;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-public interface SettingsDao extends GenericDao<Feature> {
-
-	public int loadMaxOrder();
-
-	public void storeMaxOrder(int maxOrder);
-
-
-	public void storeManualMode(boolean manualMode);
-
-	public boolean loadManualMode();
+public interface SettingsDao extends GenericDao {
 
 
 	public Collection<Remote> loadAllRemotes();

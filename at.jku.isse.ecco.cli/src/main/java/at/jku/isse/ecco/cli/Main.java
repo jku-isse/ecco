@@ -6,6 +6,9 @@ import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.*;
 import net.sourceforge.argparse4j.internal.HelpScreenException;
 
+/**
+ * Main class for the CLI. Parses the command line parameters.
+ */
 public class Main {
 
 	public static final String COMMAND = "command";
@@ -106,7 +109,7 @@ public class Main {
 		Subparser parserDG = subparsers.addParser("dg").aliases("dependencyGraph").help("dependency graph").description("Show the dependency graph of the traces stored in the repository at the current location.");
 
 
-		// TODO: update (update working copy)
+		// TODO: update (update working copy)?
 
 
 		try {

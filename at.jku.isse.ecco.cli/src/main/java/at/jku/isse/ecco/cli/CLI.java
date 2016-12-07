@@ -2,7 +2,6 @@ package at.jku.isse.ecco.cli;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.Repository;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.core.Remote;
@@ -22,11 +21,14 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+/**
+ * This class implements all the CLI commands.
+ */
 public class CLI implements RepositoryListener {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(CLI.class);
 
-	private Repository repository;
+	private EccoService eccoService;
 
 
 	// # EVENTS ######################################
@@ -52,28 +54,39 @@ public class CLI implements RepositoryListener {
 	// # CLI #########################################
 
 	public CLI() {
-		this.repository = new Repository();
-		this.repository.detectRepository();
-		this.repository.addListener(this);
+		this.eccoService = new EccoService();
+		this.eccoService.detectRepository();
+		this.eccoService.addListener(this);
 	}
 
 	private void initRepo() {
-		if (!this.repository.repositoryDirectoryExists())
-			throw new EccoException("There is no repository at " + this.repository.getRepositoryDir());
+		if (!this.eccoService.repositoryDirectoryExists())
+			throw new EccoException("There is no repository at " + this.eccoService.getRepositoryDir());
 
-		this.repository.init();
+		this.eccoService.init();
 	}
+
+
+	/**
+	 * TODO:
+	 * - ignore files
+	 * - file to plugin map
+	 * - untracked files: those not yet in file to plugin map
+	 * - ignored files: those in ignore list
+	 * - changed and unchanged files (during checkout save hash for every checked out file. this needs to be done in base directory, similar to .config or .warnings. for simplicity, initially i could generate .hashes or .ecco/.hashes).
+	 * - current configuration: see .config
+	 */
 
 
 	@Profiled // this annotation requires aspectj or spring aop to work.
 	public void init() {
 		StopWatch stopWatch = new LoggingStopWatch();
-		if (this.repository.repositoryDirectoryExists()) {
+		if (this.eccoService.repositoryDirectoryExists()) {
 			System.err.println("ERROR: Repository already exists at this location.");
 		} else {
-			if (this.repository.createRepository()) {
+			if (this.eccoService.createRepository()) {
 				System.out.println("SUCCESS: Repository initialized.");
-				this.repository.close();
+				this.eccoService.close();
 			} else
 				System.err.println("ERROR: Error during repository initialization.");
 		}
@@ -85,8 +98,10 @@ public class CLI implements RepositoryListener {
 
 		StringBuffer output = new StringBuffer();
 
-		output.append("Repository Directory: " + this.repository.getRepositoryDir() + "\n");
-		output.append("Base Directory: " + this.repository.getBaseDir() + "\n");
+		output.append("Repository Directory: " + this.eccoService.getRepositoryDir() + "\n");
+		output.append("Base Directory: " + this.eccoService.getBaseDir() + "\n");
+
+		// TODO: status
 
 		// configuration
 		output.append("Current Configuration: " + "\n");
@@ -106,7 +121,7 @@ public class CLI implements RepositoryListener {
 
 		System.out.println(output.toString());
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void setProperty(String clientProperty, String value) {
@@ -115,12 +130,12 @@ public class CLI implements RepositoryListener {
 		switch (clientProperty.toLowerCase()) {
 			case "basedir":
 				Path baseDir = Paths.get(value);
-				this.repository.setBaseDir(baseDir);
+				this.eccoService.setBaseDir(baseDir);
 				System.out.println("SUCCESS: SET baseDir=" + baseDir);
 				break;
 			case "maxorder":
 				int maxOrder = Integer.parseInt(value);
-				this.repository.setMaxOrder(maxOrder);
+				this.eccoService.setMaxOrder(maxOrder);
 				System.out.println("SUCCESS: SET maxOrder=" + maxOrder);
 				break;
 			default:
@@ -128,7 +143,7 @@ public class CLI implements RepositoryListener {
 				break;
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void getProperty(String clientProperty) {
@@ -136,17 +151,17 @@ public class CLI implements RepositoryListener {
 
 		switch (clientProperty.toLowerCase()) {
 			case "basedir":
-				System.out.println("SUCCESS: GET baseDir=" + this.repository.getBaseDir());
+				System.out.println("SUCCESS: GET baseDir=" + this.eccoService.getBaseDir());
 				break;
 			case "maxorder":
-				System.out.println("SUCCESS: GET maxOrder=" + this.repository.getMaxOrder());
+				System.out.println("SUCCESS: GET maxOrder=" + this.eccoService.getMaxOrder());
 				break;
 			default:
 				System.out.println("ERROR: No property named \"" + clientProperty + "\".");
 				break;
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 //	public void addFiles(String pathString) throws EccoException {
@@ -193,41 +208,41 @@ public class CLI implements RepositoryListener {
 	public void checkout(String configurationString) {
 		this.initRepo();
 
-		this.repository.checkout(configurationString);
+		this.eccoService.checkout(configurationString);
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void commit() {
 		this.initRepo();
 
-		this.repository.commit();
+		this.eccoService.commit();
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void commit(String configurationString) {
 		this.initRepo();
 
-		this.repository.commit(configurationString);
+		this.eccoService.commit(configurationString);
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void fork(String remoteUriString) {
 		URI remoteUri = URI.create(remoteUriString);
 
-		this.repository.fork(remoteUri);
+		this.eccoService.fork(remoteUri);
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void pull(String remoteName) {
 		this.initRepo();
 
-		this.repository.pull(remoteName);
+		this.eccoService.pull(remoteName);
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void pull(String remoteName, String excludedFeatureVersionsString) {
@@ -235,15 +250,15 @@ public class CLI implements RepositoryListener {
 
 		// TODO
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void push(String remoteName) {
 		this.initRepo();
 
-		this.repository.pull(remoteName);
+		this.eccoService.pull(remoteName);
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void push(String remoteName, String excludedFeatureVersionsString) {
@@ -251,7 +266,7 @@ public class CLI implements RepositoryListener {
 
 		// TODO
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void fetch(String remoteName) {
@@ -259,39 +274,39 @@ public class CLI implements RepositoryListener {
 
 		// TODO
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void addRemote(String remoteName, String remoteUri) {
 		this.initRepo();
 
-		this.repository.addRemote(remoteName, remoteUri);
+		this.eccoService.addRemote(remoteName, remoteUri);
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void removeRemote(String remoteName) {
 		this.initRepo();
 
-		this.repository.removeRemote(remoteName);
+		this.eccoService.removeRemote(remoteName);
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void listRemotes() {
 		this.initRepo();
 
-		for (Remote remote : this.repository.getRemotes()) {
+		for (Remote remote : this.eccoService.getRemotes()) {
 			System.out.println(remote.getName() + ": " + remote.getAddress() + " [" + remote.getType() + "]");
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void showRemote(String remoteName) {
 		this.initRepo();
 
-		Remote remote = this.repository.getRemote(remoteName);
+		Remote remote = this.eccoService.getRemote(remoteName);
 		if (remote != null) {
 			System.out.println(remote.getName() + ": " + remote.getAddress() + " [" + remote.getType() + "]");
 
@@ -307,23 +322,23 @@ public class CLI implements RepositoryListener {
 			System.out.println("Remote " + remoteName + " does not exist.");
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void listFeatures() {
 		this.initRepo();
 
-		for (Feature feature : this.repository.getFeatures()) {
+		for (Feature feature : this.eccoService.getRepository().getFeatures()) {
 			System.out.println(feature.toString());
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void showFeature(String featureName) {
 		this.initRepo();
 
-		for (Feature feature : this.repository.getFeatures()) {
+		for (Feature feature : this.eccoService.getRepository().getFeatures()) {
 			if (feature.getName().equals(featureName)) {
 				System.out.println(feature.toString());
 				for (FeatureVersion fv : feature.getVersions()) {
@@ -332,46 +347,46 @@ public class CLI implements RepositoryListener {
 			}
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void listTraces() {
 		this.initRepo();
 
-		for (Association association : this.repository.getAssociations()) {
+		for (Association association : this.eccoService.getRepository().getAssociations()) {
 			System.out.println("[" + association.getId() + "] " + association.getPresenceCondition().getLabel());
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void showTraces(String traceId) {
 		this.initRepo();
 
-		for (Association association : this.repository.getAssociations()) {
+		for (Association association : this.eccoService.getRepository().getAssociations()) {
 			if (association.getId() == Integer.valueOf(traceId)) {
 				System.out.println("[" + association.getId() + "] " + association.getPresenceCondition().getLabel());
 				Trees.print(association.getRootNode());
 			}
 		}
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void showDependencyGraph() {
 		this.initRepo();
 
-		new DependencyGraph(this.repository.getAssociations()).getGMLString(); // TODO: do this via the repository api
+		new DependencyGraph(this.eccoService.getRepository().getAssociations()).getGMLString(); // TODO: do this via the repository api
 
-		this.repository.close();
+		this.eccoService.close();
 	}
 
 	public void setRepoDir(String repoDir) {
-		this.repository.setRepositoryDir(Paths.get(repoDir));
+		this.eccoService.setRepositoryDir(Paths.get(repoDir));
 	}
 
 	public void setBaseDir(String baseDir) {
-		this.repository.setBaseDir(Paths.get(baseDir));
+		this.eccoService.setBaseDir(Paths.get(baseDir));
 	}
 
 }

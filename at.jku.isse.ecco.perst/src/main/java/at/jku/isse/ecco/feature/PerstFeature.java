@@ -5,6 +5,7 @@ import org.garret.perst.Persistent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -18,19 +19,30 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class PerstFeature extends Persistent implements Feature {
 
+	private String id = "";
 	private String name = "";
 	private String description = "";
 
 	private List<PerstFeatureVersion> versions = new ArrayList<>();
 
-	private int nextVersion = 0;
+//	private int nextVersion = 0;
 
 	public PerstFeature() {
 
 	}
 
 	public PerstFeature(String name) {
-		this.setName(name);
+		this(UUID.randomUUID().toString(), name, "");
+	}
+
+	public PerstFeature(String id, String name, String description) {
+		checkNotNull(id);
+		checkNotNull(name);
+		checkNotNull(description);
+
+		this.id = id;
+		this.name = name;
+		this.description = description;
 	}
 
 	@Override
@@ -39,21 +51,21 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public FeatureVersion addVersion(int version) {
-		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, version);
+	public FeatureVersion addVersion(String id) {
+		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, id);
 		if (!this.versions.contains(featureVersion)) {
 			this.versions.add(featureVersion);
-			if (this.nextVersion <= version)
-				this.nextVersion = version + 1;
+//			if (this.nextVersion <= version)
+//				this.nextVersion = version + 1;
 			return featureVersion;
 		}
 		return null;
 	}
 
 	@Override
-	public FeatureVersion getVersion(int version) {
+	public FeatureVersion getVersion(String id) {
 		for (FeatureVersion featureVersion : this.versions) {
-			if (featureVersion.getId() == version)
+			if (featureVersion.getId().equals(id))
 				return featureVersion;
 		}
 		return null;
@@ -68,26 +80,11 @@ public class PerstFeature extends Persistent implements Feature {
 
 	@Override
 	public FeatureVersion createNewVersion() {
-		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, this.nextVersion);
-		this.nextVersion++;
+		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, UUID.randomUUID().toString());
+//		this.nextVersion++;
 		this.versions.add(featureVersion);
 		return featureVersion;
 	}
-
-//	@Override
-//	public void addVersion(FeatureVersion version) {
-//		if (!this.versions.contains(version))
-//			this.versions.add(version);
-//	}
-//
-//	@Override
-//	public FeatureVersion getId(FeatureVersion version) {
-//		for (FeatureVersion featureVersion : this.versions) {
-//			if (featureVersion.equals(version))
-//				return featureVersion;
-//		}
-//		return null;
-//	}
 
 	@Override
 	public String getName() {
@@ -116,7 +113,7 @@ public class PerstFeature extends Persistent implements Feature {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(name);
+		return Objects.hash(this.id);
 	}
 
 	@Override
@@ -126,11 +123,17 @@ public class PerstFeature extends Persistent implements Feature {
 
 		final Feature other = (Feature) o;
 
-		return this.name.equals(other.getName());
+		return this.id.equals(other.getId());
+	}
+
+	@Override
+	public String getId() {
+		return this.name;
 	}
 
 	@Override
 	public String toString() {
+		//return this.name + "(" + this.id + ")";
 		return this.name;
 	}
 

@@ -5,29 +5,31 @@ import at.jku.isse.ecco.dao.Persistable;
 import java.util.List;
 
 /**
- * Contains name and description of a feature.
+ * Contains id, name and description of a feature.
  *
  * @author JKU, ISSE
- * @author Hannes Thaller
  * @version 1.0
  */
 public interface Feature extends Persistable {
 
 	public List<? extends FeatureVersion> getVersions();
 
-//	public void addVersion(FeatureVersion version);
-//
-//	public FeatureVersion getId(FeatureVersion version);
+	public FeatureVersion addVersion(String id);
 
-	public FeatureVersion addVersion(int version);
-
-	public FeatureVersion getVersion(int version);
+	public FeatureVersion getVersion(String id);
 
 
 	public FeatureVersion getLatestVersion();
 
 	public FeatureVersion createNewVersion();
 
+
+	/**
+	 * Returns the id of the feature.
+	 *
+	 * @return The id.
+	 */
+	public String getId();
 
 	/**
 	 * Returns the name of the feature.
@@ -56,6 +58,7 @@ public interface Feature extends Persistable {
 	 * @param description of the association
 	 */
 	public void setDescription(String description);
+
 
 	@Override
 	public int hashCode();

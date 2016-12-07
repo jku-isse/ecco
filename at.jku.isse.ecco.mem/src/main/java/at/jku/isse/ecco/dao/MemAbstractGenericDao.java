@@ -4,7 +4,7 @@ import com.google.inject.Inject;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public abstract class MemAbstractGenericDao<T extends Persistable> implements GenericDao<T> {
+public abstract class MemAbstractGenericDao implements GenericDao {
 
 	protected MemTransactionStrategy transactionStrategy;
 

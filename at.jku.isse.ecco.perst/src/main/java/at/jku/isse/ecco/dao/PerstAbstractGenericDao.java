@@ -11,7 +11,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Hannes Thaller
  * @version 1.0
  */
-public abstract class PerstAbstractGenericDao<T extends Persistable> implements GenericDao<T> {
+public abstract class PerstAbstractGenericDao<T extends Persistable> implements GenericDao {
 
 	protected PerstTransactionStrategy transactionStrategy;
 
@@ -26,7 +26,7 @@ public abstract class PerstAbstractGenericDao<T extends Persistable> implements 
 	 * @param transactionStrategy the transaction strategy
 	 */
 	@Inject
-	PerstAbstractGenericDao(PerstTransactionStrategy transactionStrategy) {
+	public PerstAbstractGenericDao(PerstTransactionStrategy transactionStrategy) {
 		checkNotNull(transactionStrategy);
 
 		this.transactionStrategy = transactionStrategy;

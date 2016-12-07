@@ -99,6 +99,8 @@ public interface Node {
 	 */
 	void addChild(Node child);
 
+	void addChildren(Node... children);
+
 	/**
 	 * Removes the given child from the node.
 	 *

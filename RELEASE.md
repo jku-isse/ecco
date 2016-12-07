@@ -3,6 +3,13 @@
 
 
 
+* 0.1.5
+  * major refactoring, most notably separation of service and repository
+  * added fork, push, pull commands
+  * ...
+
+
+
 * 0.1.4
   * removed ordered node
   * unified all children and ordered children in a single list

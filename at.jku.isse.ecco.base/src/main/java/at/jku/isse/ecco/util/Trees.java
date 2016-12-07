@@ -194,15 +194,16 @@ public class Trees {
 	 * @param left  The left node to which is added.
 	 * @param right The right node which is added.
 	 */
-	public static void merge(Node left, Node right) {
+	public static void merge(Node left, Node right) { // TODO: exact behavior of this method?
 		// do some basic checks
 		if (left.getArtifact() != right.getArtifact())
-			throw new EccoException("Artifact instance must be identical.");
+			throw new EccoException("Artifact instance must be identical, i.e. trees must originate from the same repository.");
 
 		// deal with current node
 		if (right.isUnique()) {
 			left.setUnique(true); // TODO: the "unique" field is redundant. we could determine uniqueness via the artifact's containing node (i.e. whether node and containing node are identical).
-			left.getArtifact().setContainingNode(left);
+			if (left.getArtifact() != null)
+				left.getArtifact().setContainingNode(left);
 		}
 
 		// deal with children
@@ -250,7 +251,10 @@ public class Trees {
 	public static void updateArtifactReferences(Node node) throws EccoException {
 		if (node.getArtifact() != null) {
 			if (node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-				throw new EccoException("Artifact should have been replaced.");
+				if (!node.isUnique())
+					node.setArtifact(node.getArtifact().<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get());
+				else
+					throw new EccoException("Artifact should have been replaced.");
 			}
 
 			// update "uses" artifact references
@@ -385,6 +389,31 @@ public class Trees {
 
 
 	// # READ ONLY OPERATIONS ##################################################################################
+
+
+	/**
+	 * Checks if two trees are equal.
+	 *
+	 * @param left  Root of the first tree.
+	 * @param right Root of the second tree.
+	 * @return
+	 */
+	public static boolean equals(Node left, Node right) {
+		Iterator<Node> leftChildrenIterator = left.getChildren().iterator();
+		while (leftChildrenIterator.hasNext()) {
+			Node leftChild = leftChildrenIterator.next();
+
+			int ri = right.getChildren().indexOf(leftChild);
+			if (ri == -1)
+				return false;
+
+			Node rightChild = right.getChildren().get(ri);
+
+			if (!equals(leftChild, rightChild))
+				return false;
+		}
+		return true;
+	}
 
 
 	/**
@@ -659,6 +688,5 @@ public class Trees {
 			throw new IllegalStateException("Expected that the referenced target has no replacing artifact.");
 		}
 	}
-
 
 }

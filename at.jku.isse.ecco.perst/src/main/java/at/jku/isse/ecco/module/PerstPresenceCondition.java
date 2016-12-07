@@ -1,10 +1,7 @@
 package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.*;
 import org.garret.perst.Persistent;
 
 import java.util.*;
@@ -164,6 +161,11 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	@Override
 	public String getSimpleLabel() {
 		return this.operator.getSimpleLabel();
+	}
+
+	@Override
+	public void addFeatureInstance(FeatureVersion featureVersion, boolean sign, int maxOrder) {
+		this.addFeatureInstance(new PerstFeatureInstance(featureVersion.getFeature(), featureVersion, sign), maxOrder);
 	}
 
 	@Override

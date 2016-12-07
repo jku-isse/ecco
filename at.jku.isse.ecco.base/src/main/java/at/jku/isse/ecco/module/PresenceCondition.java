@@ -65,4 +65,6 @@ public interface PresenceCondition {
 
 	public String getSimpleLabel();
 
+	void addFeatureInstance(FeatureVersion featureVersion, boolean sign, int maxOrder);
+
 }

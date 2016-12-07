@@ -8,6 +8,8 @@ import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.repository.PerstRepository;
+import at.jku.isse.ecco.repository.RepositoryOperand;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.PerstNode;
 import at.jku.isse.ecco.tree.PerstRootNode;
@@ -157,8 +159,8 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public FeatureVersion createFeatureVersion(Feature feature, int version) {
-		return new PerstFeatureVersion(feature, version);
+	public FeatureVersion createFeatureVersion(Feature feature, String id) {
+		return new PerstFeatureVersion(feature, id);
 	}
 
 	@Override
@@ -255,6 +257,11 @@ public class PerstEntityFactory implements EntityFactory {
 		root.setContainingAssociation(association);
 
 		return root;
+	}
+
+	@Override
+	public RepositoryOperand createRepository() {
+		return new PerstRepository();
 	}
 
 

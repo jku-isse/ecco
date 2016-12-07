@@ -11,17 +11,19 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class BaseFeatureVersion implements FeatureVersion {
 
 	private Feature feature;
-	private int version;
+	private String id;
 	private String description;
 
-	public BaseFeatureVersion(Feature feature, int version) {
+	public BaseFeatureVersion(Feature feature, String id) {
 		checkNotNull(feature);
+		checkNotNull(id);
 
 		this.feature = feature;
-		this.version = version;
+		this.id = id;
 
 //		this.feature.addVersion(this);
 	}
+
 
 	@Override
 	public Feature getFeature() {
@@ -29,8 +31,8 @@ public class BaseFeatureVersion implements FeatureVersion {
 	}
 
 	@Override
-	public int getId() {
-		return this.version;
+	public String getId() {
+		return this.id;
 	}
 
 	@Override
@@ -43,28 +45,29 @@ public class BaseFeatureVersion implements FeatureVersion {
 		this.description = description;
 	}
 
+
 	@Override
 	public int hashCode() {
-		int result = feature.hashCode();
-		result = 31 * result + version;
+		int result = getFeature().hashCode();
+		result = 31 * result + getId().hashCode();
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (!(o instanceof FeatureVersion)) return false;
+		if (!(o instanceof BaseFeatureVersion)) return false;
 
-		final FeatureVersion that = (FeatureVersion) o;
+		BaseFeatureVersion that = (BaseFeatureVersion) o;
 
-		if (version != that.getId()) return false;
-		return feature.equals(that.getFeature());
+		if (!getFeature().equals(that.getFeature())) return false;
+		return getId().equals(that.getId());
 
 	}
 
 	@Override
 	public String toString() {
-		return this.feature.getName() + "." + this.version;
+		return this.feature.getName() + "." + this.getId();
 	}
 
 }

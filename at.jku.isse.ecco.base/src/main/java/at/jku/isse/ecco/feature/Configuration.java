@@ -4,10 +4,12 @@ import at.jku.isse.ecco.module.Module;
 
 import java.util.Set;
 
-public interface Configuration {
+/**
+ * A configuration of a variant that consists of a set of feature instances.
+ */
+public interface Configuration {//extends Collection<FeatureInstance> {
 
-	//public final String CONFIGURATION_STRING_REGULAR_EXPRESSION = "(\\+|\\-)?[a-zA-Z0-9]+('?|(\\.((\\+|\\-)?[0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z0-9]+('?|(\\.((\\+|\\-)?[0-9])+)?))*";
-	public final String CONFIGURATION_STRING_REGULAR_EXPRESSION = "((\\+|\\-)?[a-zA-Z0-9_-]+('?|(\\.((\\+|\\-)?[0-9])+)?)(\\s*,\\s*(\\+|\\-)?[a-zA-Z0-9_-]+('?|(\\.((\\+|\\-)?[0-9])+)?))*)?";
+	public final String CONFIGURATION_STRING_REGULAR_EXPRESSION = "((\\+|\\-)?((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('?|(\\.([a-zA-Z0-9_-])+)?)(\\s*,\\s*(\\+|\\-)?((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('?|(\\.([a-zA-Z0-9_-])+)?))*)?";
 
 
 	@Override

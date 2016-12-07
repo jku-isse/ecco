@@ -2,7 +2,7 @@ package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.EccoException;
 
-public interface EntityDao<T extends Persistable> extends GenericDao<T> {
+public interface EntityDao<T extends Persistable> extends GenericDao {
 
 	/**
 	 * Returns the entity with the given id.

@@ -38,7 +38,7 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 
 
 	@Override
-	public void init() {
+	public void open() {
 		if (!this.initialized) {
 			this.database = StorageFactory.getInstance().createStorage();
 
@@ -116,7 +116,7 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 	// TODO: improve transactions!
 
 	@Override
-	public void commit() throws EccoException {
+	public void end() throws EccoException {
 		this.checkInitialized();
 
 		if (this.currentDatabaseRoot == null) { // no explicit transaction

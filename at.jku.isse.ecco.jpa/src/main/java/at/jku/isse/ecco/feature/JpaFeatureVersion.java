@@ -18,7 +18,7 @@ public class JpaFeatureVersion implements FeatureVersion, Serializable {
 
 	public JpaFeatureVersion() {
 		this.feature = null;
-		this.version = FeatureVersion.ANY;
+//		this.version = FeatureVersion.ANY;
 	}
 
 	public JpaFeatureVersion(Feature feature, int version) {

@@ -1,5 +1,9 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.feature.Feature;
+
+import java.util.Collection;
+
 public class BaseRemote implements Remote {
 
 	private String name;
@@ -48,6 +52,11 @@ public class BaseRemote implements Remote {
 	@Override
 	public void setType(Type type) {
 		this.type = type;
+	}
+
+	@Override
+	public Collection<Feature> getFeatures() {
+		return null; // TODO
 	}
 
 }

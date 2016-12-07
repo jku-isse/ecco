@@ -27,40 +27,6 @@ public class PerstSettingsDao extends PerstAbstractGenericDao<Feature> implement
 
 
 	@Override
-	public int loadMaxOrder() {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		return root.getMaxOrder();
-	}
-
-	@Override
-	public void storeMaxOrder(int maxOrder) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.setMaxOrder(maxOrder);
-	}
-
-
-	@Override
-	public void storeManualMode(boolean manualMode) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.setManualMode(true);
-
-		root.store();
-
-		this.transactionStrategy.done();
-	}
-
-	@Override
-	public boolean loadManualMode() {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		return root.isManualMode();
-	}
-
-
-	@Override
 	public Collection<Remote> loadAllRemotes() {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 

@@ -19,7 +19,7 @@ public class MemTransactionStrategy implements TransactionStrategy {
 	}
 
 	@Override
-	public void init() throws EccoException {
+	public void open() throws EccoException {
 		this.database = new Database();
 	}
 
@@ -34,7 +34,7 @@ public class MemTransactionStrategy implements TransactionStrategy {
 	}
 
 	@Override
-	public void commit() throws EccoException {
+	public void end() throws EccoException {
 
 	}
 

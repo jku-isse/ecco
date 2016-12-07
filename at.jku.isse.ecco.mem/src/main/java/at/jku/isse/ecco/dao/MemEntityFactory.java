@@ -8,6 +8,8 @@ import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.repository.MemRepository;
+import at.jku.isse.ecco.repository.RepositoryOperand;
 import at.jku.isse.ecco.tree.BaseNode;
 import at.jku.isse.ecco.tree.BaseRootNode;
 import at.jku.isse.ecco.tree.Node;
@@ -148,8 +150,8 @@ public class MemEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public FeatureVersion createFeatureVersion(Feature feature, int version) {
-		return new BaseFeatureVersion(feature, version);
+	public FeatureVersion createFeatureVersion(Feature feature, String id) {
+		return new BaseFeatureVersion(feature, id);
 	}
 
 	@Override
@@ -236,6 +238,11 @@ public class MemEntityFactory implements EntityFactory {
 		root.setContainingAssociation(association);
 
 		return root;
+	}
+
+	@Override
+	public RepositoryOperand createRepository() {
+		return new MemRepository();
 	}
 
 }

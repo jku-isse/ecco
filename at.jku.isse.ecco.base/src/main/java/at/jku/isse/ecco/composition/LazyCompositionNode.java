@@ -177,6 +177,12 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 	}
 
 	@Override
+	public void addChildren(Node... children) {
+		for (Node child : children)
+			this.addChild(child);
+	}
+
+	@Override
 	public void removeChild(Node child) {
 		checkNotNull(child);
 

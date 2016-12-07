@@ -57,7 +57,7 @@ public class PerstCommitDao extends PerstAbstractGenericDao<Commit> implements C
 
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
-		root.getAssociationIndex().remove(id);
+		root.getCommitIndex().remove(id);
 
 		this.transactionStrategy.done();
 	}

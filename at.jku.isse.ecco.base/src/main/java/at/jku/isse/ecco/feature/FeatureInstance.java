@@ -1,15 +1,18 @@
 package at.jku.isse.ecco.feature;
 
+import at.jku.isse.ecco.dao.Persistable;
+
 /**
- * NOTE: this class does not need to be persistable.
+ * A concrete instance of a feature version that is has either a positive or a negative sign.
  */
-public interface FeatureInstance { // extends Persistable {
+public interface FeatureInstance extends Persistable {
 
 	public Feature getFeature();
 
 	public FeatureVersion getFeatureVersion();
 
 	public boolean getSign();
+
 
 	@Override
 	public int hashCode();

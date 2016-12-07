@@ -10,7 +10,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class MemCommitDao extends MemAbstractGenericDao<Commit> implements CommitDao {
+public class MemCommitDao extends MemAbstractGenericDao implements CommitDao {
 
 	private final MemEntityFactory entityFactory;
 
