@@ -147,13 +147,12 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Feature createFeature(final String name, final String description) {
+	public Feature createFeature(final String id, final String name, final String description) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
 		checkNotNull(description);
 
-		final Feature feature = new PerstFeature(name);
-		feature.setDescription(description);
+		final Feature feature = new PerstFeature(id, name, description);
 
 		return feature;
 	}

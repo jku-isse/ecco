@@ -138,13 +138,12 @@ public class MemEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Feature createFeature(final String name, final String description) {
+	public Feature createFeature(final String id, final String name, final String description) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
 		checkNotNull(description);
 
-		final Feature feature = new BaseFeature(name);
-		feature.setDescription(description);
+		final Feature feature = new BaseFeature(id, name, description);
 
 		return feature;
 	}

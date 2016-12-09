@@ -4,16 +4,34 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
 public class EccoUtil {
 
 	private EccoUtil() {
+	}
+
+
+	public static Collection<Feature> deepCopyFeatures(Collection<? extends Feature> features, EntityFactory entityFactory) {
+		Collection<Feature> copiedFeatures = new ArrayList<Feature>();
+		for (Feature feature : features) {
+			Feature copiedFeature = entityFactory.createFeature(feature.getId(), feature.getName(), feature.getDescription());
+
+			for (FeatureVersion featureVersion : feature.getVersions()) {
+				FeatureVersion copiedFeatureVersion = copiedFeature.addVersion(featureVersion.getId());
+				copiedFeatureVersion.setDescription(featureVersion.getDescription());
+			}
+		}
+
+		return copiedFeatures;
 	}
 
 

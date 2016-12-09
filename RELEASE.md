@@ -5,7 +5,9 @@
 
 * 0.1.5
   * major refactoring, most notably separation of service and repository
-  * added fork, push, pull commands
+  * added fetch, fork, push, pull commands
+  * added simple server functionality
+  * (in progress) unit and integration tests
   * ...
 
 

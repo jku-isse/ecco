@@ -26,7 +26,7 @@ public class EccoApplication extends ResourceConfig {
 
 	public void init(String repositoryDir) {
 		this.eccoService.setRepositoryDir(Paths.get(repositoryDir));
-		this.eccoService.init();
+		this.eccoService.open();
 	}
 
 	public void destroy() {

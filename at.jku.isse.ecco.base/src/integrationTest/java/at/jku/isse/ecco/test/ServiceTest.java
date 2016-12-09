@@ -23,15 +23,15 @@ public class ServiceTest {
 	public void Init_Test() throws EccoException, IOException {
 		EccoService service = new EccoService(inputDir.resolve(Paths.get("V1")), repositoryDir.resolve(Paths.get(".ecco")));
 
-		service.createRepository();
-
 		service.init();
+
+		service.open();
 	}
 
 	@Test(groups = {"integration", "base", "service", "commit"})
 	public void Commit_Test() throws EccoException, IOException {
 		EccoService service = new EccoService(inputDir.resolve(Paths.get("V1")), repositoryDir.resolve(Paths.get(".ecco")));
-		service.createRepository();
+		service.init();
 
 		System.out.println("Commit 1:");
 		service.commit();
@@ -55,8 +55,8 @@ public class ServiceTest {
 		// create parent repo
 		EccoService parentService = new EccoService();
 		parentService.setRepositoryDir(outputDir.resolve(Paths.get("parent_repo/.ecco")));
-		parentService.createRepository();
 		parentService.init();
+		parentService.open();
 		parentService.setBaseDir(inputDir.resolve(Paths.get("V1")));
 		parentService.commit();
 		System.out.println("OUTPUT1:");
@@ -65,7 +65,7 @@ public class ServiceTest {
 		}
 		parentService.close();
 
-		parentService.init();
+		parentService.open();
 		System.out.println("OUTPUT2:");
 		for (Association a : parentService.getRepository().getAssociations()) {
 			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
@@ -89,8 +89,8 @@ public class ServiceTest {
 		// create parent repo
 		EccoService parentService = new EccoService();
 		parentService.setRepositoryDir(outputDir.resolve(Paths.get("parent_repo/.ecco")));
-		parentService.createRepository();
 		parentService.init();
+		parentService.open();
 
 		// commit first variant to parent
 		parentService.setBaseDir(inputDir.resolve(Paths.get("V1")));
@@ -108,8 +108,8 @@ public class ServiceTest {
 		// commit second variant to parent
 		parentService = new EccoService();
 		parentService.setRepositoryDir(outputDir.resolve(Paths.get("parent_repo/.ecco")));
-		parentService.createRepository();
 		parentService.init();
+		parentService.open();
 		parentService.setBaseDir(inputDir.resolve(Paths.get("V2")));
 		parentService.commit();
 		System.out.println("OUTPUT1:");
@@ -123,7 +123,7 @@ public class ServiceTest {
 		// pull changes from parent to child
 		service = new EccoService();
 		service.setRepositoryDir(outputDir.resolve(Paths.get("forked_repo/.ecco")));
-		service.init();
+		service.open();
 		service.pull("origin");
 		System.out.println("OUTPUT2:");
 		for (Association a : service.getRepository().getAssociations()) {

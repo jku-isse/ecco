@@ -85,9 +85,9 @@ public class InitView extends BorderPane implements RepositoryListener {
 					@Override
 					public Void call() throws EccoException, IOException {
 						if (InitView.this.eccoService.repositoryDirectoryExists()) {
-							InitView.this.eccoService.init();
+							InitView.this.eccoService.open();
 						} else {
-							InitView.this.eccoService.createRepository();
+							InitView.this.eccoService.init();
 						}
 						Platform.runLater(() -> {
 							InitView.this.setDisable(false);

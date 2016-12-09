@@ -63,7 +63,7 @@ public class CLI implements RepositoryListener {
 		if (!this.eccoService.repositoryDirectoryExists())
 			throw new EccoException("There is no repository at " + this.eccoService.getRepositoryDir());
 
-		this.eccoService.init();
+		this.eccoService.open();
 	}
 
 
@@ -84,7 +84,7 @@ public class CLI implements RepositoryListener {
 		if (this.eccoService.repositoryDirectoryExists()) {
 			System.err.println("ERROR: Repository already exists at this location.");
 		} else {
-			if (this.eccoService.createRepository()) {
+			if (this.eccoService.init()) {
 				System.out.println("SUCCESS: Repository initialized.");
 				this.eccoService.close();
 			} else
