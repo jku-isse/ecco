@@ -48,8 +48,8 @@ public class RepositoryOperator {
 	 *
 	 * @return The copy of the repository.
 	 */
-	public RepositoryOperand copy() {
-		return this.subset(new ArrayList<>(), this.repository.getMaxOrder(), this.entityFactory);
+	public RepositoryOperand copy(EntityFactory entityFactory) {
+		return this.subset(new ArrayList<>(), this.repository.getMaxOrder(), entityFactory);
 	}
 
 

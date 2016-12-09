@@ -12,4 +12,5 @@ include 'at.jku.isse.ecco.base',
 		'at.jku.isse.ecco.genericAdapter',
 		'at.jku.isse.ecco.java',
 		'at.jku.isse.ecco.web',
-		'at.jku.isse.ecco.runtime'
+		'at.jku.isse.ecco.runtime',
+		'at.jku.isse.ecco.service'

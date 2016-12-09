@@ -58,6 +58,11 @@ public class MemRepository implements Repository, RepositoryOperand {
 	}
 
 	@Override
+	public RepositoryOperand copy(EntityFactory entityFactory) {
+		return this.operator.copy(entityFactory);
+	}
+
+	@Override
 	public void merge(RepositoryOperand repository) {
 		this.operator.merge(repository);
 	}

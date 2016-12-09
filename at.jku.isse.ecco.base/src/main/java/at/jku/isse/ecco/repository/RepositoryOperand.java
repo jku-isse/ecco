@@ -20,6 +20,8 @@ public interface RepositoryOperand extends Repository {
 
 	public RepositoryOperand subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory);
 
+	public RepositoryOperand copy(EntityFactory entityFactory);
+
 	public void merge(RepositoryOperand repository);
 
 

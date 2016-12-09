@@ -30,9 +30,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
@@ -45,11 +43,9 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * TODO: deal with locking better. leave service thread unsafe or make it thread safe?
+ * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
 public class EccoService {
-
-//	protected static final boolean MERGE_EMPTY_ASSOCIATIONS = false;
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
@@ -407,121 +403,119 @@ public class EccoService {
 		if (this.initialized)
 			return;
 
-		synchronized (this) {
-			if (!this.repositoryDirectoryExists()) {
-				LOGGER.debug("Repository does not exist.");
-				throw new EccoException("Repository does not exist.");
-				//return;
+		if (!this.repositoryDirectoryExists()) {
+			LOGGER.debug("Repository does not exist.");
+			throw new EccoException("Repository does not exist.");
+			//return;
+		}
+		if (this.isInitialized()) {
+			LOGGER.debug("Repository is already initialized.");
+			throw new EccoException("Repository is already initialized.");
+			//return;
+		}
+
+		LOGGER.debug("BASE_DIR: " + this.baseDir);
+		LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
+
+
+		// load properties file
+		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES_FILE);
+		Properties eccoProperties = new Properties();
+		List<String> artifactPluginsList = null;
+		if (inputStream != null) {
+			try {
+				eccoProperties.load(inputStream);
+			} catch (IOException e) {
+				throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES_FILE + "'.", e);
 			}
-			if (this.isInitialized()) {
-				LOGGER.debug("Repository is already initialized.");
-				throw new EccoException("Repository is already initialized.");
-				//return;
+		} else {
+			throw new EccoException("Property file '" + ECCO_PROPERTIES_FILE + "' not found in the classpath.");
+		}
+		LOGGER.debug("PROPERTIES: " + eccoProperties);
+		if (eccoProperties.getProperty(ECCO_PROPERTIES_DATA) == null) {
+			throw new EccoException("No data plugin specified.");
+		}
+		if (eccoProperties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
+			artifactPluginsList = Arrays.asList(eccoProperties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
+			LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
+		}
+
+
+		Properties properties = new Properties();
+		//properties.setProperty("module.data", "at.jku.isse.ecco.perst");
+		//properties.setProperty("baseDir", this.baseDir.toString());
+		properties.setProperty("repositoryDir", this.repositoryDir.toString());
+		properties.setProperty("connectionString", this.repositoryDir.resolve("ecco.db").toString());
+		properties.setProperty("clientConnectionString", this.repositoryDir.resolve("client.db").toString());
+		properties.setProperty("serverConnectionString", this.repositoryDir.resolve("server.db").toString());
+
+		// create modules
+		final Module settingsModule = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String.class).annotatedWith(Names.named("repositoryDir")).toInstance(properties.getProperty("repositoryDir"));
+
+				bind(String.class).annotatedWith(Names.named("connectionString")).toInstance(properties.getProperty("connectionString"));
+				bind(String.class).annotatedWith(Names.named("clientConnectionString")).toInstance(properties.getProperty("clientConnectionString"));
+				bind(String.class).annotatedWith(Names.named("serverConnectionString")).toInstance(properties.getProperty("serverConnectionString"));
 			}
-
-			LOGGER.debug("BASE_DIR: " + this.baseDir);
-			LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
-
-
-			// load properties file
-			InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES_FILE);
-			Properties eccoProperties = new Properties();
-			List<String> artifactPluginsList = null;
-			if (inputStream != null) {
-				try {
-					eccoProperties.load(inputStream);
-				} catch (IOException e) {
-					throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES_FILE + "'.", e);
-				}
-			} else {
-				throw new EccoException("Property file '" + ECCO_PROPERTIES_FILE + "' not found in the classpath.");
+		};
+		// artifact modules
+		List<Module> artifactModules = new ArrayList<>();
+		List<Module> allArtifactModules = new ArrayList<>();
+		this.artifactPlugins = new ArrayList<>();
+		for (ArtifactPlugin ap : ArtifactPlugin.getArtifactPlugins()) {
+			if (artifactPluginsList == null || artifactPluginsList.contains(ap.getPluginId())) {
+				artifactModules.add(ap.getModule());
+				this.artifactPlugins.add(ap);
 			}
-			LOGGER.debug("PROPERTIES: " + eccoProperties);
-			if (eccoProperties.getProperty(ECCO_PROPERTIES_DATA) == null) {
-				throw new EccoException("No data plugin specified.");
+			allArtifactModules.add(ap.getModule());
+		}
+		LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
+		LOGGER.debug("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
+		// data modules
+		List<Module> dataModules = new ArrayList<>();
+		List<Module> allDataModules = new ArrayList<>();
+		for (DataPlugin dataPlugin : DataPlugin.getDataPlugins()) {
+			if (dataPlugin.getPluginId().equals(eccoProperties.get(ECCO_PROPERTIES_DATA))) {
+				dataModules.add(dataPlugin.getModule());
+				this.dataPlugin = dataPlugin;
 			}
-			if (eccoProperties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
-				artifactPluginsList = Arrays.asList(eccoProperties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
-				LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
-			}
+			allDataModules.add(dataPlugin.getModule());
+		}
+		LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
+		LOGGER.debug("ALL DATA PLUGINS: " + allDataModules.toString());
+		// put them together
+		List<Module> modules = new ArrayList<>();
+		modules.addAll(Arrays.asList(new CoreModule(), settingsModule));
+		modules.addAll(artifactModules);
+		modules.addAll(dataModules);
 
+		// create injector
+		Injector injector = Guice.createInjector(modules);
 
-			Properties properties = new Properties();
-			//properties.setProperty("module.data", "at.jku.isse.ecco.perst");
-			//properties.setProperty("baseDir", this.baseDir.toString());
-			properties.setProperty("repositoryDir", this.repositoryDir.toString());
-			properties.setProperty("connectionString", this.repositoryDir.resolve("ecco.db").toString());
-			properties.setProperty("clientConnectionString", this.repositoryDir.resolve("client.db").toString());
-			properties.setProperty("serverConnectionString", this.repositoryDir.resolve("server.db").toString());
+		this.injector = injector;
 
-			// create modules
-			final Module settingsModule = new AbstractModule() {
-				@Override
-				protected void configure() {
-					bind(String.class).annotatedWith(Names.named("repositoryDir")).toInstance(properties.getProperty("repositoryDir"));
+		injector.injectMembers(this);
 
-					bind(String.class).annotatedWith(Names.named("connectionString")).toInstance(properties.getProperty("connectionString"));
-					bind(String.class).annotatedWith(Names.named("clientConnectionString")).toInstance(properties.getProperty("clientConnectionString"));
-					bind(String.class).annotatedWith(Names.named("serverConnectionString")).toInstance(properties.getProperty("serverConnectionString"));
-				}
-			};
-			// artifact modules
-			List<Module> artifactModules = new ArrayList<>();
-			List<Module> allArtifactModules = new ArrayList<>();
-			this.artifactPlugins = new ArrayList<>();
-			for (ArtifactPlugin ap : ArtifactPlugin.getArtifactPlugins()) {
-				if (artifactPluginsList == null || artifactPluginsList.contains(ap.getPluginId())) {
-					artifactModules.add(ap.getModule());
-					this.artifactPlugins.add(ap);
-				}
-				allArtifactModules.add(ap.getModule());
-			}
-			LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
-			LOGGER.debug("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
-			// data modules
-			List<Module> dataModules = new ArrayList<>();
-			List<Module> allDataModules = new ArrayList<>();
-			for (DataPlugin dataPlugin : DataPlugin.getDataPlugins()) {
-				if (dataPlugin.getPluginId().equals(eccoProperties.get(ECCO_PROPERTIES_DATA))) {
-					dataModules.add(dataPlugin.getModule());
-					this.dataPlugin = dataPlugin;
-				}
-				allDataModules.add(dataPlugin.getModule());
-			}
-			LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
-			LOGGER.debug("ALL DATA PLUGINS: " + allDataModules.toString());
-			// put them together
-			List<Module> modules = new ArrayList<>();
-			modules.addAll(Arrays.asList(new CoreModule(), settingsModule));
-			modules.addAll(artifactModules);
-			modules.addAll(dataModules);
+		this.transactionStrategy.open();
 
-			// create injector
-			Injector injector = Guice.createInjector(modules);
-
-			this.injector = injector;
-
-			injector.injectMembers(this);
-
-			this.transactionStrategy.open();
-
-			this.repositoryDao.init();
-			this.settingsDao.init();
-			this.commitDao.init();
+		this.repositoryDao.init();
+		this.settingsDao.init();
+		this.commitDao.init();
 //			this.associationDao.init();
 //			this.featureDao.init();
 
 //			this.reader.setIgnoredFiles(this.ignoredFiles);
-			this.reader.getIgnorePatterns().clear();
-			this.reader.getIgnorePatterns().addAll(this.customIgnorePatterns);
-			this.reader.getIgnorePatterns().addAll(this.defaultIgnorePatterns);
+		this.reader.getIgnorePatterns().clear();
+		this.reader.getIgnorePatterns().addAll(this.customIgnorePatterns);
+		this.reader.getIgnorePatterns().addAll(this.defaultIgnorePatterns);
 
-			this.initialized = true;
+		this.initialized = true;
 
-			this.fireStatusChangedEvent();
+		this.fireStatusChangedEvent();
 
-			LOGGER.debug("Repository initialized.");
-		}
+		LOGGER.debug("Repository initialized.");
 	}
 
 	/**
@@ -845,10 +839,13 @@ public class EccoService {
 					Feature feature;
 					if (featureName.startsWith("[") && featureName.endsWith("]")) { // id
 						feature = repository.getFeature(featureName);
+						if (feature == null) {
+							feature = repository.addFeature(featureName, "", "");
+						}
 					} else { // name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
 						if (features.isEmpty()) {
-							feature = repository.addFeature(featureName);
+							feature = repository.addFeature(featureName, "");
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
 						} else {
@@ -994,6 +991,66 @@ public class EccoService {
 //		}
 //	}
 
+	protected Collection<FeatureVersion> parseFeatureVersionString(String featureVersionsString) {
+		if (featureVersionsString == null)
+			throw new EccoException("No feature versions string provided.");
+
+		if (!featureVersionsString.matches("(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+)(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+))*)?"))
+			throw new EccoException("Invalid configuration string provided.");
+
+		try {
+			this.transactionStrategy.begin();
+
+			Collection<FeatureVersion> featureVersions = new ArrayList<>();
+
+			if (featureVersionsString.isEmpty()) {
+				this.transactionStrategy.end();
+				return featureVersions;
+			}
+
+			RepositoryOperand repository = this.repositoryDao.load();
+
+			String[] featureVersionStrings = featureVersionsString.split(",");
+			for (String featureVersionString : featureVersionStrings) {
+				featureVersionString = featureVersionString.trim();
+
+				String[] pair = featureVersionString.split("\\.");
+				String featureName = pair[0];
+				String versionId = pair[1];
+
+				Feature feature;
+				if (featureName.startsWith("[") && featureName.endsWith("]")) { // id
+					feature = repository.getFeature(featureName);
+					if (feature == null) {
+						throw new EccoException("Feature with id does not exist: " + featureName);
+					}
+				} else { // name
+					Collection<Feature> features = repository.getFeaturesByName(featureName);
+					if (features.isEmpty()) {
+						throw new EccoException("Feature with name does not exist: " + featureName);
+					} else if (features.size() == 1) {
+						feature = features.iterator().next();
+					} else {
+						throw new EccoException("Feature name is not unique. Use feature id instead.");
+					}
+				}
+
+				FeatureVersion featureVersion = feature.getVersion(versionId);
+				if (featureVersion != null) {
+					featureVersions.add(featureVersion);
+				}
+			}
+
+			this.transactionStrategy.end();
+
+			return featureVersions;
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error parsing feature versions string: " + featureVersionsString, e);
+		}
+	}
+
 
 	// # CORE SERVICES #################################################################################################
 
@@ -1001,81 +1058,132 @@ public class EccoService {
 	// DISTRIBUTED OPERATIONS //////////////////////////////////////////////////////////////////////////////////////////
 
 
-	public void server() {
-		// TODO: start tcp server blocking
-		try {
+	public void server(int port) {
+		boolean shutdown = false;
 
-			ServerSocketChannel ssChannel = ServerSocketChannel.open();
+		try (ServerSocketChannel ssChannel = ServerSocketChannel.open()) {
 			ssChannel.configureBlocking(true);
-			ssChannel.socket().bind(new InetSocketAddress(12345));
+			ssChannel.socket().bind(new InetSocketAddress(port));
 
-			while (true) {
-				SocketChannel sChannel = ssChannel.accept();
+			while (!shutdown) {
+				try (SocketChannel sChannel = ssChannel.accept()) {
+					ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+					ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
 
-				// determine if it is a push (receive data) or a pull (send data)
+					// determine if it is a push (receive data) or a pull (send data)
+					String command = (String) ois.readObject();
+					System.out.println("COMMAND: " + command);
 
+					if (command.equals("PULL")) { // if pull, send data
+						// retrieve deselection
+						Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
 
-				// if pull, send data
-				ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-				oos.writeObject(new Object());
-				oos.close();
+						// compute subset repository using mem entity factory
+						this.transactionStrategy.begin();
+						RepositoryOperand repository = this.repositoryDao.load();
+						RepositoryOperand subsetRepository = repository.subset(deselected, repository.getMaxOrder(), this.entityFactory); // TODO: change entity factory to mem
+						this.transactionStrategy.end();
 
+						// send subset repository
+						oos.writeObject(subsetRepository);
+					} else if (command.equals("PUSH")) { // if push, receive data
+						// retrieve repository
+						RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
 
-				// if push, receive data
+						// copy it using this entity factory
+						RepositoryOperand copiedRepository = subsetRepository.copy(this.entityFactory);
 
-
+						// merge into this repository
+						this.transactionStrategy.begin();
+						RepositoryOperand repository = this.repositoryDao.load();
+						repository.merge(copiedRepository);
+						this.repositoryDao.store(repository);
+						this.transactionStrategy.end();
+					}
+				} catch (Exception e) {
+					throw new EccoException("Error receiving request.", e);
+				}
 			}
 
-		} catch (IOException e) {
+		} catch (Exception e) {
 			throw new EccoException("Error starting server.", e);
 		}
 	}
 
 
-	public void fork(URI uri) {
-		this.fork(new ArrayList<>(), uri);
+//	public void fork(URI uri) {
+//		this.fork(new ArrayList<>(), uri);
+//	}
+//
+//	public void fork(Collection<FeatureVersion> deselected, URI uri) {
+//		if (uri.getScheme() == null || uri.getScheme().equals("file")) {
+//			//if (uri.getScheme().equals("file")) {
+//			Path remotePath = Paths.get(uri.getPath());
+//			this.fork(deselected, remotePath);
+//		} else if (uri.getScheme().equals("ecco")) {
+//			try {
+//				this.fork(deselected, uri.toURL());
+//			} catch (MalformedURLException e) {
+//				throw new EccoException("Error during remote fork.", e);
+//			}
+//		}
+//	}
+
+	public void fork(String hostname, int port) {
+		this.fork("", hostname, port);
 	}
 
-	public void fork(Collection<FeatureVersion> deselected, URI uri) {
-		if (uri.getScheme() == null || uri.getScheme().equals("file")) {
-			//if (uri.getScheme().equals("file")) {
-			Path remotePath = Paths.get(uri.getPath());
-			this.fork(deselected, remotePath);
-		} else if (uri.getScheme().equals("ecco")) {
-			try {
-				this.fork(deselected, uri.toURL());
-			} catch (MalformedURLException e) {
-				throw new EccoException("Error during remote fork.", e);
-			}
-		}
-	}
+	public void fork(String deselectedFeatureVersionsString, String hostname, int port) {
+		if (this.isInitialized())
+			throw new EccoException("ECCO Service must not be initialized for fork operation.");
+		if (this.repositoryDirectoryExists())
+			throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
 
-	public void fork(URL url) {
-		this.fork(new ArrayList<>(), url);
-	}
-
-	public void fork(Collection<FeatureVersion> deselected, URL url) {
-		// TODO
-		try {
-			SocketChannel sChannel = SocketChannel.open();
+		RepositoryOperand copiedRepository;
+		try (SocketChannel sChannel = SocketChannel.open()) {
 			sChannel.configureBlocking(true);
-			if (sChannel.connect(new InetSocketAddress(url.toString(), 12345))) {
-
+			if (sChannel.connect(new InetSocketAddress(hostname, port))) {
+				ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
 				ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
 
-				Object o = (Object) ois.readObject();
-			}
+				oos.writeObject("PULL");
+				oos.writeObject(deselectedFeatureVersionsString);
 
-		} catch (IOException | ClassNotFoundException e) {
-			throw new EccoException("Error starting server.", e);
+				// retrieve remote repository
+				RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
+
+				// copy it using this entity factory
+				copiedRepository = subsetRepository.copy(this.entityFactory);
+			} else {
+				throw new EccoException("Error connecting to remote: " + hostname + ":" + port);
+			}
+		} catch (Exception e) {
+			throw new EccoException("Error during remote fork.", e);
 		}
 
+		try {
+			this.createRepository();
+			this.init();
 
-		throw new EccoException("Remote fork not yet implemented!");
+			this.transactionStrategy.begin();
+
+			// merge into this repository
+			RepositoryOperand repository = this.repositoryDao.load();
+			repository.merge(copiedRepository);
+			this.repositoryDao.store(repository);
+
+			// after fork add used remote as default origin remote
+			Remote remote = this.entityFactory.createRemote("origin", hostname + ":" + Integer.toString(port), Remote.Type.REMOTE);
+			this.settingsDao.storeRemote(remote);
+
+			this.transactionStrategy.end();
+		} catch (Exception e) {
+			throw new EccoException("Error during remote fork.", e);
+		}
 	}
 
 	public void fork(Path originRepositoryDir) {
-		this.fork(new ArrayList<>(), originRepositoryDir);
+		this.fork("", originRepositoryDir);
 	}
 
 	/**
@@ -1086,44 +1194,40 @@ public class EccoService {
 	 *
 	 * @param originRepositoryDir The directory of the repository from which to fork.
 	 */
-	public void fork(Collection<FeatureVersion> deselected, Path originRepositoryDir) {
+	public void fork(String deselectedFeatureVersionsString, Path originRepositoryDir) {
 		// check that this service has not yet been initialized and that no repository already exists,
 		if (this.isInitialized())
 			throw new EccoException("ECCO Service must not be initialized for fork operation.");
 		if (this.repositoryDirectoryExists())
-			throw new EccoException("A repository already exists at the given location.");
-
-		try {
-			this.createRepository();
-		} catch (EccoException e) {
-			throw new EccoException("Error while creating repository for fork.", e);
-		}
-		this.init();
+			throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
 
 		// create another ecco service and init it on the parent repository directory.
 		EccoService originService = new EccoService();
 		originService.setRepositoryDir(originRepositoryDir);
-		originService.init(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
-
 		// create subset repository
 		RepositoryOperand subsetOriginRepository;
 		try {
+			originService.init(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+
 			originService.transactionStrategy.begin();
 
 			RepositoryOperand originRepository = originService.repositoryDao.load();
-			subsetOriginRepository = originRepository.subset(deselected, originRepository.getMaxOrder(), this.entityFactory);
+			subsetOriginRepository = originRepository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
 
 			originService.transactionStrategy.end();
 		} catch (Exception e) {
 			originService.transactionStrategy.rollback();
 
 			throw new EccoException("Error during fork.", e);
+		} finally {
+			// close parent repository
+			originService.close();
 		}
 
-		// close parent repository
-		originService.close();
-
 		try {
+			this.createRepository();
+			this.init();
+
 			this.transactionStrategy.begin();
 
 			// merge into this repository
@@ -1145,13 +1249,13 @@ public class EccoService {
 
 
 	public void pull(String remoteName) {
-		this.pull(new ArrayList<>(), remoteName);
+		this.pull("", remoteName);
 	}
 
 	/**
 	 * Pulls the changes from the parent repository to this repository.
 	 */
-	public void pull(Collection<FeatureVersion> deselected, String remoteName) {
+	public void pull(String deselectedFeatureVersionsString, String remoteName) {
 		try {
 			this.transactionStrategy.begin();
 
@@ -1160,7 +1264,34 @@ public class EccoService {
 			if (remote == null) {
 				throw new EccoException("Remote '" + remoteName + "' does not exist.");
 			} else if (remote.getType() == Remote.Type.REMOTE) {
-				throw new EccoException("Remote pull is not yet implemented.");
+
+				try (SocketChannel sChannel = SocketChannel.open()) {
+					sChannel.configureBlocking(true);
+					String[] pair = remote.getAddress().split(":");
+					if (sChannel.connect(new InetSocketAddress(pair[0], Integer.valueOf(pair[1])))) {
+						ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+						ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+
+						oos.writeObject("PULL");
+						oos.writeObject(deselectedFeatureVersionsString);
+
+						// retrieve remote repository
+						RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
+
+						// copy it using this entity factory
+						RepositoryOperand copiedRepository = subsetRepository.copy(this.entityFactory);
+
+						// merge into this repository
+						RepositoryOperand repository = this.repositoryDao.load();
+						repository.merge(copiedRepository);
+						this.repositoryDao.store(repository);
+					} else {
+						throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + pair[0] + ":" + pair[1]);
+					}
+				} catch (Exception e) {
+					throw new EccoException("Error during remote pull.", e);
+				}
+
 			} else if (remote.getType() == Remote.Type.LOCAL) {
 				// init this repository
 				this.init();
@@ -1176,7 +1307,7 @@ public class EccoService {
 					parentService.transactionStrategy.begin();
 
 					RepositoryOperand parentRepository = parentService.repositoryDao.load();
-					subsetParentRepository = parentRepository.subset(deselected, parentRepository.getMaxOrder(), this.entityFactory);
+					subsetParentRepository = parentRepository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
 
 					parentService.transactionStrategy.end();
 				} catch (Exception e) {
@@ -1204,13 +1335,13 @@ public class EccoService {
 
 
 	public void push(String remoteName) {
-		this.push(new ArrayList<>(), remoteName);
+		this.push("", remoteName);
 	}
 
 	/**
 	 * Pushes the changes from this repository to its parent repository.
 	 */
-	public void push(Collection<FeatureVersion> deselected, String remoteName) {
+	public void push(String deselectedFeatureVersionsString, String remoteName) {
 		try {
 			this.transactionStrategy.begin();
 
@@ -1219,7 +1350,31 @@ public class EccoService {
 			if (remote == null) {
 				throw new EccoException("Remote " + remoteName + " does not exist");
 			} else if (remote.getType() == Remote.Type.REMOTE) {
-				throw new EccoException("Remote pull is not yet implemented");
+
+				try (SocketChannel sChannel = SocketChannel.open()) {
+					sChannel.configureBlocking(true);
+					String[] pair = remote.getAddress().split(":");
+					if (sChannel.connect(new InetSocketAddress(pair[0], Integer.valueOf(pair[1])))) {
+						ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+						ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+
+						oos.writeObject("PUSH");
+
+						// compute subset repository using mem entity factory
+						this.transactionStrategy.begin();
+						RepositoryOperand repository = this.repositoryDao.load();
+						RepositoryOperand subsetRepository = repository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.entityFactory); // TODO: change entity factory to mem
+						this.transactionStrategy.end();
+
+						// send subset repository
+						oos.writeObject(subsetRepository);
+					} else {
+						throw new EccoException("Error connecting to remote: " + pair[0] + ":" + pair[1]);
+					}
+				} catch (Exception e) {
+					throw new EccoException("Error during remote fork.", e);
+				}
+
 			} else if (remote.getType() == Remote.Type.LOCAL) {
 				// init this repo
 				this.init();
@@ -1231,7 +1386,7 @@ public class EccoService {
 
 				// create subset repository
 				RepositoryOperand repository = this.repositoryDao.load();
-				RepositoryOperand subsetRepository = repository.subset(deselected, repository.getMaxOrder(), parentService.entityFactory);
+				RepositoryOperand subsetRepository = repository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), repository.getMaxOrder(), parentService.entityFactory);
 
 				// merge into parent repository
 				try {
@@ -1887,8 +2042,7 @@ public class EccoService {
 	 * @param configuration The configuration to be checked out.
 	 */
 	public Checkout checkout(Configuration configuration) throws EccoException {
-		synchronized (this) {
-			checkNotNull(configuration);
+		checkNotNull(configuration);
 
 //			System.out.println("CHECKOUT");
 //
@@ -1947,61 +2101,60 @@ public class EccoService {
 //			checkout.getUnresolvedAssociations().addAll(unresolvedAssociations);
 
 
-			RepositoryOperand repository = this.repositoryDao.load();
-			Checkout checkout = repository.compose(configuration);
+		RepositoryOperand repository = this.repositoryDao.load();
+		Checkout checkout = repository.compose(configuration);
 
 
-			for (Association selectedAssociation : checkout.getSelectedAssociations()) {
-				this.fireAssociationSelectedEvent(selectedAssociation);
-			}
-
-			// write config file into base directory
-			if (Files.exists(this.baseDir.resolve(CONFIG_FILE_NAME))) {
-				throw new EccoException("Configuration file already exists in base directory.");
-			} else {
-				try {
-					Files.write(this.baseDir.resolve(CONFIG_FILE_NAME), configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-				} catch (IOException e) {
-					throw new EccoException("Could not create configuration file.", e);
-				}
-			}
-
-			// write warnings file into base directory
-			if (Files.exists(this.baseDir.resolve(WARNINGS_FILE_NAME))) {
-				throw new EccoException("Warnings file already exists in base directory.");
-			} else {
-				try {
-					StringBuffer sb = new StringBuffer();
-
-					for (at.jku.isse.ecco.module.Module m : checkout.getMissing()) {
-						sb.append("MISSING: " + m + System.lineSeparator());
-					}
-					for (at.jku.isse.ecco.module.Module m : checkout.getSurplus()) {
-						sb.append("SURPLUS: " + m + System.lineSeparator());
-					}
-					for (Artifact a : checkout.getOrderWarnings()) {
-						List<String> pathList = new LinkedList<>();
-						Node current = a.getContainingNode().getParent();
-						while (current != null) {
-							if (current.getArtifact() != null)
-								pathList.add(0, current.getArtifact().toString() + " > ");
-							current = current.getParent();
-						}
-						pathList.add(a.toString());
-						sb.append("ORDER: " + pathList.stream().collect(Collectors.joining()) + System.lineSeparator());
-					}
-					for (Association association : checkout.getUnresolvedAssociations()) {
-						sb.append("UNRESOLVED: " + association + System.lineSeparator());
-					}
-
-					Files.write(this.baseDir.resolve(WARNINGS_FILE_NAME), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-				} catch (IOException e) {
-					throw new EccoException("Could not create warnings file.", e);
-				}
-			}
-
-			return checkout;
+		for (Association selectedAssociation : checkout.getSelectedAssociations()) {
+			this.fireAssociationSelectedEvent(selectedAssociation);
 		}
+
+		// write config file into base directory
+		if (Files.exists(this.baseDir.resolve(CONFIG_FILE_NAME))) {
+			throw new EccoException("Configuration file already exists in base directory.");
+		} else {
+			try {
+				Files.write(this.baseDir.resolve(CONFIG_FILE_NAME), configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+			} catch (IOException e) {
+				throw new EccoException("Could not create configuration file.", e);
+			}
+		}
+
+		// write warnings file into base directory
+		if (Files.exists(this.baseDir.resolve(WARNINGS_FILE_NAME))) {
+			throw new EccoException("Warnings file already exists in base directory.");
+		} else {
+			try {
+				StringBuffer sb = new StringBuffer();
+
+				for (at.jku.isse.ecco.module.Module m : checkout.getMissing()) {
+					sb.append("MISSING: " + m + System.lineSeparator());
+				}
+				for (at.jku.isse.ecco.module.Module m : checkout.getSurplus()) {
+					sb.append("SURPLUS: " + m + System.lineSeparator());
+				}
+				for (Artifact a : checkout.getOrderWarnings()) {
+					List<String> pathList = new LinkedList<>();
+					Node current = a.getContainingNode().getParent();
+					while (current != null) {
+						if (current.getArtifact() != null)
+							pathList.add(0, current.getArtifact().toString() + " > ");
+						current = current.getParent();
+					}
+					pathList.add(a.toString());
+					sb.append("ORDER: " + pathList.stream().collect(Collectors.joining()) + System.lineSeparator());
+				}
+				for (Association association : checkout.getUnresolvedAssociations()) {
+					sb.append("UNRESOLVED: " + association + System.lineSeparator());
+				}
+
+				Files.write(this.baseDir.resolve(WARNINGS_FILE_NAME), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+			} catch (IOException e) {
+				throw new EccoException("Could not create warnings file.", e);
+			}
+		}
+
+		return checkout;
 	}
 
 	public Checkout checkout(Node node) {
