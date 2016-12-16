@@ -30,14 +30,12 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
+import java.net.SocketException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -48,6 +46,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class EccoService {
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
+
+	public static final String ORIGIN_REMOTE_NAME = "origin";
 
 	public static final String ECCO_PROPERTIES_FILE = "ecco.properties";
 	public static final String ECCO_PROPERTIES_DATA = "plugin.data";
@@ -472,45 +472,45 @@ public class EccoService {
 		this.commitDao.close();
 
 		this.transactionStrategy.close();
+
+		this.fireStatusChangedEvent();
+
+		LOGGER.debug("Repository closed.");
 	}
 
 
 	// # UTILS #########################################################################################################
 
-	public void addRemote(String name, String address) {
-		URI uri = URI.create(address);
-
+	public Remote addRemote(String name, String address) {
+		Path path;
 		try {
-			this.transactionStrategy.begin();
-
-			Remote.Type type;
-			if (uri.getScheme() == null || uri.getScheme().equals("file")) {
-				type = Remote.Type.LOCAL;
-			} else {
-				type = Remote.Type.REMOTE;
-			}
-			Remote remote = this.entityFactory.createRemote(name, address, type);
-
-			this.settingsDao.storeRemote(remote);
-
-			this.transactionStrategy.end();
-		} catch (Exception e) {
-			this.transactionStrategy.rollback();
-
-			throw new EccoException("Error adding remote.", e);
+			path = Paths.get(address);
+		} catch (InvalidPathException | NullPointerException ex) {
+			path = null;
+		}
+		if (path != null) {
+			return this.addRemote(name, address, Remote.Type.LOCAL);
+		} else if (address.matches("[a-zA-Z]+:[0-9]+")) {
+			return this.addRemote(name, address, Remote.Type.REMOTE);
+		} else {
+			throw new EccoException("Invalid remote address provided.");
 		}
 	}
 
-	public void addRemote(String name, String address, String typeString) {
-		Remote.Type type = Remote.Type.valueOf(typeString);
-		Remote remote = this.entityFactory.createRemote(name, address, type);
-
+	public Remote addRemote(String name, String address, Remote.Type type) {
 		try {
 			this.transactionStrategy.begin();
 
-			this.settingsDao.storeRemote(remote);
+			if (this.getRemote(name) != null)
+				throw new EccoException("Remote with this name already exists.");
+
+			//Remote.Type type = Remote.Type.valueOf(typeString);
+			Remote remote = this.entityFactory.createRemote(name, address, type);
+			remote = this.settingsDao.storeRemote(remote);
 
 			this.transactionStrategy.end();
+
+			return remote;
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
 
@@ -874,15 +874,27 @@ public class EccoService {
 
 	// DISTRIBUTED OPERATIONS //////////////////////////////////////////////////////////////////////////////////////////
 
+	private ServerSocketChannel ssChannel = null;
+	private boolean serverShutdown = false;
+	//	private boolean serverRunning = false;
+	private Lock serverLock;
 
-	public void server(int port) {
-		boolean shutdown = false;
+	public void startServer(int port) {
+		if (!this.serverLock.tryLock())
+			throw new EccoException("Server is already running.");
+
+//		if (this.serverRunning)
+//			throw new EccoException("Server is already running.");
 
 		try (ServerSocketChannel ssChannel = ServerSocketChannel.open()) {
+			this.ssChannel = ssChannel;
+//			this.serverRunning = true;
+			this.serverShutdown = false;
+
 			ssChannel.configureBlocking(true);
 			ssChannel.socket().bind(new InetSocketAddress(port));
 
-			while (!shutdown) {
+			while (!serverShutdown) {
 				try (SocketChannel sChannel = ssChannel.accept()) {
 					ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
 					ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
@@ -926,14 +938,38 @@ public class EccoService {
 						this.repositoryDao.store(repository);
 						this.transactionStrategy.end();
 					}
+				} catch (SocketException e) {
+					// server shut down
+					e.printStackTrace();
 				} catch (Exception e) {
 					throw new EccoException("Error receiving request.", e);
 				}
 			}
-
 		} catch (Exception e) {
 			throw new EccoException("Error starting server.", e);
+		} finally {
+//			this.serverRunning = false;
+			this.serverLock.unlock();
 		}
+	}
+
+	public void stopServer() {
+		if (this.serverLock.tryLock()) {
+			this.serverLock.unlock();
+			throw new EccoException("Server is not running.");
+		}
+//		if (this.serverRunning) {
+		this.serverShutdown = true;
+		try {
+			if (this.ssChannel != null)
+				this.ssChannel.close();
+		} catch (IOException e) {
+			throw new EccoException("Error stopping server.", e);
+		}
+		this.ssChannel = null;
+//		} else {
+//			throw new EccoException("Server is not running.");
+//		}
 	}
 
 
@@ -974,9 +1010,6 @@ public class EccoService {
 				}
 
 			} else if (remote.getType() == Remote.Type.LOCAL) {
-				// init this repository
-				this.open();
-
 				// open parent repository
 				EccoService parentService = new EccoService();
 				parentService.setRepositoryDir(Paths.get(remote.getAddress()));
@@ -1004,10 +1037,10 @@ public class EccoService {
 
 
 	public void fork(String hostname, int port) {
-		this.fork("", hostname, port);
+		this.fork(hostname, port, "");
 	}
 
-	public void fork(String deselectedFeatureVersionsString, String hostname, int port) {
+	public void fork(String hostname, int port, String deselectedFeatureVersionsString) {
 		if (this.isInitialized())
 			throw new EccoException("ECCO Service must not be initialized for fork operation.");
 		if (this.repositoryDirectoryExists())
@@ -1047,7 +1080,7 @@ public class EccoService {
 			this.repositoryDao.store(repository);
 
 			// after fork add used remote as default origin remote
-			Remote remote = this.entityFactory.createRemote("origin", hostname + ":" + Integer.toString(port), Remote.Type.REMOTE);
+			Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + Integer.toString(port), Remote.Type.REMOTE);
 			this.settingsDao.storeRemote(remote);
 
 			this.transactionStrategy.end();
@@ -1057,7 +1090,7 @@ public class EccoService {
 	}
 
 	public void fork(Path originRepositoryDir) {
-		this.fork("", originRepositoryDir);
+		this.fork(originRepositoryDir, "");
 	}
 
 	/**
@@ -1068,7 +1101,7 @@ public class EccoService {
 	 *
 	 * @param originRepositoryDir The directory of the repository from which to fork.
 	 */
-	public void fork(String deselectedFeatureVersionsString, Path originRepositoryDir) {
+	public void fork(Path originRepositoryDir, String deselectedFeatureVersionsString) {
 		// check that this service has not yet been initialized and that no repository already exists,
 		if (this.isInitialized())
 			throw new EccoException("ECCO Service must not be initialized for fork operation.");
@@ -1110,7 +1143,7 @@ public class EccoService {
 			this.repositoryDao.store(repository);
 
 			// after fork add used remote as default origin remote
-			Remote remote = this.entityFactory.createRemote("origin", originRepositoryDir.toString(), Remote.Type.LOCAL);
+			Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, originRepositoryDir.toString(), Remote.Type.LOCAL);
 			this.settingsDao.storeRemote(remote);
 
 			this.transactionStrategy.end();
@@ -1167,9 +1200,6 @@ public class EccoService {
 				}
 
 			} else if (remote.getType() == Remote.Type.LOCAL) {
-				// init this repository
-				this.open();
-
 				// open parent repository
 				EccoService parentService = new EccoService();
 				parentService.setRepositoryDir(Paths.get(remote.getAddress()));

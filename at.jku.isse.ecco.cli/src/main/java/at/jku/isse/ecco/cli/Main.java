@@ -64,6 +64,7 @@ public class Main {
 		// clone/fork (cloning remote locally)
 		Subparser parserFork = subparsers.addParser("fork").help("fork from another repository");
 		parserFork.addArgument(REMOTE_URI);
+		parserFork.addArgument(EXCLUDED_FEATURE_VERSIONS_STRING).nargs("?");
 
 		// pull (fetch + update?)
 		Subparser parserPull = subparsers.addParser("pull").help("pull from a remote");
@@ -108,6 +109,10 @@ public class Main {
 		// dependency graph (export as gml)
 		Subparser parserDG = subparsers.addParser("dg").aliases("dependencyGraph").help("dependency graph").description("Show the dependency graph of the traces stored in the repository at the current location.");
 
+		// server
+		Subparser parserServer = subparsers.addParser("server").help("start a server").description("Start a server on the given port.");
+		parserServer.addArgument(REMOTE_NAME);
+
 
 		// TODO: update (update working copy)?
 
@@ -146,7 +151,10 @@ public class Main {
 						cli.commit();
 					break;
 				case "fork":
-					cli.fork(res.getString(REMOTE_URI));
+					if (res.getString(EXCLUDED_FEATURE_VERSIONS_STRING) != null)
+						cli.fork(res.getString(REMOTE_URI), res.getString(EXCLUDED_FEATURE_VERSIONS_STRING));
+					else
+						cli.fork(res.getString(REMOTE_URI));
 					break;
 				case "pull":
 					if (res.getString(EXCLUDED_FEATURE_VERSIONS_STRING) != null)
@@ -207,6 +215,9 @@ public class Main {
 					break;
 				case "dg":
 					cli.showDependencyGraph();
+					break;
+				case "server":
+					cli.startServer(Integer.parseInt(res.getString("port")));
 					break;
 			}
 

@@ -3,6 +3,7 @@ package at.jku.isse.ecco.core;
 import at.jku.isse.ecco.feature.Feature;
 import org.garret.perst.Persistent;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 public class PerstRemote extends Persistent implements Remote {
@@ -11,17 +12,18 @@ public class PerstRemote extends Persistent implements Remote {
 	private String address;
 	private Type type;
 
+	private Collection<Feature> features;
+
 
 	public PerstRemote() {
-		this.name = "";
-		this.address = "";
-		this.type = Type.LOCAL;
+		this("", "", Type.LOCAL);
 	}
 
 	public PerstRemote(String name, String address, Type type) {
 		this.name = name;
 		this.address = address;
 		this.type = type;
+		this.features = new ArrayList<>();
 	}
 
 
@@ -57,7 +59,7 @@ public class PerstRemote extends Persistent implements Remote {
 
 	@Override
 	public Collection<Feature> getFeatures() {
-		return null; // TODO
+		return this.features;
 	}
 
 }

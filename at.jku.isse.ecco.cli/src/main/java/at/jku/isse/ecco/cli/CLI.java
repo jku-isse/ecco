@@ -17,7 +17,7 @@ import org.perf4j.aop.Profiled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -96,7 +96,7 @@ public class CLI implements RepositoryListener {
 	public void status() {
 		this.initRepo();
 
-		StringBuffer output = new StringBuffer();
+		StringBuilder output = new StringBuilder();
 
 		output.append("Repository Directory: " + this.eccoService.getRepositoryDir() + "\n");
 		output.append("Base Directory: " + this.eccoService.getBaseDir() + "\n");
@@ -133,11 +133,11 @@ public class CLI implements RepositoryListener {
 				this.eccoService.setBaseDir(baseDir);
 				System.out.println("SUCCESS: SET baseDir=" + baseDir);
 				break;
-			case "maxorder":
-				int maxOrder = Integer.parseInt(value);
-				this.eccoService.setMaxOrder(maxOrder);
-				System.out.println("SUCCESS: SET maxOrder=" + maxOrder);
-				break;
+//			case "maxorder":
+//				int maxOrder = Integer.parseInt(value);
+//				this.eccoService.setMaxOrder(maxOrder);
+//				System.out.println("SUCCESS: SET maxOrder=" + maxOrder);
+//				break;
 			default:
 				System.out.println("ERROR: No property named \"" + clientProperty + "\".");
 				break;
@@ -153,9 +153,9 @@ public class CLI implements RepositoryListener {
 			case "basedir":
 				System.out.println("SUCCESS: GET baseDir=" + this.eccoService.getBaseDir());
 				break;
-			case "maxorder":
-				System.out.println("SUCCESS: GET maxOrder=" + this.eccoService.getMaxOrder());
-				break;
+//			case "maxorder":
+//				System.out.println("SUCCESS: GET maxOrder=" + this.eccoService.getMaxOrder());
+//				break;
 			default:
 				System.out.println("ERROR: No property named \"" + clientProperty + "\".");
 				break;
@@ -230,11 +230,47 @@ public class CLI implements RepositoryListener {
 	}
 
 	public void fork(String remoteUriString) {
-		URI remoteUri = URI.create(remoteUriString);
+		Path path;
+		try {
+			path = Paths.get(remoteUriString);
+		} catch (InvalidPathException | NullPointerException ex) {
+			path = null;
+		}
 
-		this.eccoService.fork(remoteUri);
+		if (path != null) {
+			this.eccoService.fork(path);
+			this.eccoService.close();
+		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
+			String[] pair = remoteUriString.split(":");
+			String hostname = pair[0];
+			int port = Integer.parseInt(pair[1]);
+			this.eccoService.fork(hostname, port);
+			this.eccoService.close();
+		} else {
+			System.err.println("ERROR: Invalid remote address provided.");
+		}
+	}
 
-		this.eccoService.close();
+	public void fork(String remoteUriString, String excludedFeatureVersionsString) {
+		Path path;
+		try {
+			path = Paths.get(remoteUriString);
+		} catch (InvalidPathException | NullPointerException ex) {
+			path = null;
+		}
+
+		if (path != null) {
+			this.eccoService.fork(path, excludedFeatureVersionsString);
+			this.eccoService.close();
+		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
+			String[] pair = remoteUriString.split(":");
+			String hostname = pair[0];
+			int port = Integer.parseInt(pair[1]);
+			this.eccoService.fork(hostname, port, excludedFeatureVersionsString);
+			this.eccoService.close();
+		} else {
+			System.err.println("ERROR: Invalid remote address provided.");
+		}
 	}
 
 	public void pull(String remoteName) {
@@ -248,7 +284,7 @@ public class CLI implements RepositoryListener {
 	public void pull(String remoteName, String excludedFeatureVersionsString) {
 		this.initRepo();
 
-		// TODO
+		this.eccoService.pull(remoteName, excludedFeatureVersionsString);
 
 		this.eccoService.close();
 	}
@@ -264,7 +300,7 @@ public class CLI implements RepositoryListener {
 	public void push(String remoteName, String excludedFeatureVersionsString) {
 		this.initRepo();
 
-		// TODO
+		this.eccoService.push(remoteName, excludedFeatureVersionsString);
 
 		this.eccoService.close();
 	}
@@ -272,17 +308,31 @@ public class CLI implements RepositoryListener {
 	public void fetch(String remoteName) {
 		this.initRepo();
 
-		// TODO
+		this.eccoService.fetch(remoteName);
 
 		this.eccoService.close();
 	}
 
-	public void addRemote(String remoteName, String remoteUri) {
-		this.initRepo();
+	public void addRemote(String remoteName, String remoteUriString) {
+		Path path;
+		try {
+			path = Paths.get(remoteUriString);
+		} catch (InvalidPathException | NullPointerException ex) {
+			path = null;
+		}
 
-		this.eccoService.addRemote(remoteName, remoteUri);
-
-		this.eccoService.close();
+		Remote.Type remoteType;
+		if (path != null) {
+			this.initRepo();
+			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.LOCAL);
+			this.eccoService.close();
+		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
+			this.initRepo();
+			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.REMOTE);
+			this.eccoService.close();
+		} else {
+			System.err.println("ERROR: Invalid remote address provided.");
+		}
 	}
 
 	public void removeRemote(String remoteName) {
@@ -387,6 +437,14 @@ public class CLI implements RepositoryListener {
 
 	public void setBaseDir(String baseDir) {
 		this.eccoService.setBaseDir(Paths.get(baseDir));
+	}
+
+	public void startServer(int port) {
+		this.initRepo();
+
+		this.eccoService.startServer(port);
+
+		this.eccoService.close();
 	}
 
 }

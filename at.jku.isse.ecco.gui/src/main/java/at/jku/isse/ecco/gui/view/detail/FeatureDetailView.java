@@ -5,7 +5,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -159,17 +159,17 @@ public class FeatureDetailView extends BorderPane {
 
 
 	public static class FeatureVersionInfo {
-		private final SimpleIntegerProperty version;
+		private final SimpleStringProperty version;
 
-		private FeatureVersionInfo(int version) {
-			this.version = new SimpleIntegerProperty(version);
+		private FeatureVersionInfo(String version) {
+			this.version = new SimpleStringProperty(version);
 		}
 
-		public int getVersion() {
+		public String getVersion() {
 			return this.version.get();
 		}
 
-		public void setVersion(int version) {
+		public void setVersion(String version) {
 			this.version.set(version);
 		}
 	}

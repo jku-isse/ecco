@@ -4,11 +4,8 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.RepositoryListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.plugin.artifact.DirectoryArtifactData;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import javafx.application.Platform;
@@ -20,6 +17,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
@@ -38,7 +36,6 @@ import org.graphstream.ui.view.Viewer;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,7 +59,7 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
-
+		toolBar.getItems().add(refreshButton);
 		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
@@ -87,12 +84,11 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				});
 			}
 		});
-
-		toolBar.getItems().add(refreshButton);
+		toolBar.getItems().add(new Separator());
 
 
 		Button exportButton = new Button("Export");
-
+		toolBar.getItems().add(exportButton);
 		exportButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent ae) {
@@ -114,8 +110,7 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				toolBar.setDisable(false);
 			}
 		});
-
-		toolBar.getItems().add(exportButton);
+		toolBar.getItems().add(new Separator());
 
 
 		CheckBox depthFadeCheckBox = new CheckBox("Depth Fade");
@@ -126,6 +121,7 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				ArtifactGraphView.this.updateNodesAndEdgesStyles(new_val);
 			}
 		});
+		toolBar.getItems().add(new Separator());
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		toolBar.getItems().add(showLabelsCheckbox);
@@ -135,10 +131,10 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				ArtifactGraphView.this.updateGraphStylehseet(new_val);
 			}
 		});
+		toolBar.getItems().add(new Separator());
 
 
-		//System.clearProperty("gs.ui.renderer");
-		System.setProperty("gs.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
 
 		this.graph = new SingleGraph("ArtifactsGraph");
@@ -184,6 +180,9 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 
 
 	private void updateNodesAndEdgesStyles(boolean depthFade) {
+		Map<String, Integer> idColorMap = new HashMap<>();
+		int nextColor = 1;
+
 		for (Node node : this.graph.getNodeSet()) {
 			int depth = node.getAttribute(DEPTH_ATTRIBUTE);
 
@@ -199,8 +198,14 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				node.removeAttribute("ui.class");
 			} else {
 				node.setAttribute("ui.style", "size: " + size + "px;");
-				if (node.hasAttribute(ASSOC_ID_ATTRIBUTE))
-					node.setAttribute("ui.class", "A" + ((node.<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+				if (node.hasAttribute(ASSOC_ID_ATTRIBUTE)) {
+					String id = node.<String>getAttribute(ASSOC_ID_ATTRIBUTE);
+					if (!idColorMap.containsKey(id)) {
+						idColorMap.put(id, nextColor++);
+					}
+					node.setAttribute("ui.class", "A" + idColorMap.get(id));
+					//node.setAttribute("ui.class", "A" + ((node.<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+				}
 			}
 		}
 
@@ -212,8 +217,14 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
 				edge.removeAttribute("ui.class");
 			} else {
-				if (edge.getSourceNode().hasAttribute(ASSOC_ID_ATTRIBUTE))
-					edge.addAttribute("ui.class", "A" + ((edge.getSourceNode().<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+				if (edge.getSourceNode().hasAttribute(ASSOC_ID_ATTRIBUTE)) {
+					String id = edge.getSourceNode().<String>getAttribute(ASSOC_ID_ATTRIBUTE);
+					if (!idColorMap.containsKey(id)) {
+						idColorMap.put(id, nextColor++);
+					}
+					edge.addAttribute("ui.class", "A" + idColorMap.get(id));
+					//edge.addAttribute("ui.class", "A" + ((edge.getSourceNode().<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+				}
 				edge.removeAttribute("ui.style");
 			}
 		}
@@ -266,7 +277,7 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 //			this.traverseTree(association.getRootNode(), 0, association.getId(), depthFade);
 //		}
 		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
-		for (Association association : this.service.getAssociations()) {
+		for (Association association : this.service.getRepository().getAssociations()) {
 			compRootNode.addOrigNode(association.getRootNode());
 		}
 		this.traverseTree(compRootNode, 0);
@@ -317,7 +328,7 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 	}
 
 	private Node traverseTree(at.jku.isse.ecco.tree.Node eccoNode, int depth) {
-		int assocId = 0;
+		String assocId;
 
 		Node graphNode = null;
 		if (eccoNode.getArtifact() != null) {
@@ -424,21 +435,6 @@ public class ArtifactGraphView extends BorderPane implements RepositoryListener 
 				this.setDisable(true);
 			});
 		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
-	}
-
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
 	}
 
 }

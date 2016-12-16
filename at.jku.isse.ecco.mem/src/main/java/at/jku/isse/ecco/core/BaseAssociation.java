@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class BaseAssociation implements Association {
 
-	private int id;
+	private String id;
 	private String name = "";
 	private RootNode artifactTreeRoot;
 	private PresenceCondition presenceCondition;
@@ -32,7 +32,7 @@ public class BaseAssociation implements Association {
 	 * Constructs a new association.
 	 */
 	public BaseAssociation() {
-
+		this.id = UUID.randomUUID().toString();
 	}
 
 	@Override
@@ -101,12 +101,12 @@ public class BaseAssociation implements Association {
 	}
 
 	@Override
-	public int getId() {
+	public String getId() {
 		return this.id;
 	}
 
 	@Override
-	public void setId(final int id) {
+	public void setId(final String id) {
 		this.id = id;
 	}
 

@@ -2,17 +2,13 @@ package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.listener.RepositoryListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class EccoGui extends Application implements RepositoryListener {
@@ -29,12 +25,17 @@ public class EccoGui extends Application implements RepositoryListener {
 
 	private Group root;
 
+	private Stage stage;
+
 
 	@Override
 	public void start(Stage primaryStage) {
 		// ECCO Service
 		this.eccoService = new EccoService(Paths.get("").toAbsolutePath()); // create ecco service
 		eccoService.detectRepository(Paths.get("").toAbsolutePath()); // detect any existing repository
+
+
+		this.stage = primaryStage;
 
 
 		// INIT
@@ -52,9 +53,9 @@ public class EccoGui extends Application implements RepositoryListener {
 		mainView.prefWidthProperty().bind(scene.widthProperty());
 
 
-		this.initView = new InitView(eccoService);
-		initView.prefHeightProperty().bind(scene.heightProperty());
-		initView.prefWidthProperty().bind(scene.widthProperty());
+//		this.initView = new InitView(eccoService);
+//		initView.prefHeightProperty().bind(scene.heightProperty());
+//		initView.prefWidthProperty().bind(scene.widthProperty());
 
 
 		this.eccoService.addListener(this);
@@ -76,15 +77,18 @@ public class EccoGui extends Application implements RepositoryListener {
 		} catch (EccoException e) {
 			e.printStackTrace();
 		}
+
+		System.exit(0); // TODO: this is to work around the graphstream swing thread bug!
 	}
 
 
 	private void updateView() {
-		if (this.eccoService.isInitialized()) {
-			this.root.getChildren().setAll(this.mainView);
-		} else {
-			this.root.getChildren().setAll(this.initView);
-		}
+//		if (this.eccoService.isInitialized()) {
+//			this.root.getChildren().setAll(this.mainView);
+//		} else {
+//			this.root.getChildren().setAll(this.initView);
+//		}
+		this.root.getChildren().setAll(this.mainView);
 	}
 
 
@@ -92,22 +96,12 @@ public class EccoGui extends Application implements RepositoryListener {
 	public void statusChangedEvent(EccoService service) {
 		Platform.runLater(() -> {
 			this.updateView();
+			if (service.isInitialized()) {
+				this.stage.setTitle("ECCO - " + this.eccoService.getRepositoryDir());
+			} else {
+				this.stage.setTitle("ECCO");
+			}
 		});
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
-	}
-
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
 	}
 
 }

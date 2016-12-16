@@ -4,16 +4,12 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.listener.RepositoryListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
+import javafx.beans.binding.When;
 import javafx.beans.property.*;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -27,78 +23,50 @@ import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 
 public class ArtifactsView extends BorderPane implements RepositoryListener {
 
-	private EccoService service;
+	private final EccoService service;
 
 	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
 
-	private final ArtifactDetailView artifactDetailView;
 
-	private ToolBar toolBar = new ToolBar();
-	private ArtifactTreeView artifactTreeView = new ArtifactTreeView();
-
-	public ArtifactsView(EccoService service) {
+	public ArtifactsView(final EccoService service) {
 		this.service = service;
 
-		this.artifactDetailView = new ArtifactDetailView(service);
+		final ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
 
 
 		// toolbar
-		toolBar = new ToolBar();
+		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
-		toolBar.getItems().add(refreshButton);
-
-		toolBar.getItems().add(new Separator());
-
-		Button compositionButton = new Button("Compose");
-		toolBar.getItems().add(compositionButton);
 
 		Button selectAllButton = new Button("Select All");
-		toolBar.getItems().add(selectAllButton);
-
 		Button unselectAllButton = new Button("Unselect All");
-		toolBar.getItems().add(unselectAllButton);
-
 		Button checkoutSelectedButton = new Button("Checkout Selected");
-		toolBar.getItems().add(checkoutSelectedButton);
+
+		Button composeSelectedButton = new Button("Compose Selected");
 
 		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
-		toolBar.getItems().add(showEmptyAssociationsCheckBox);
+		CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
 
-		toolBar.getItems().add(new Separator());
+		CheckBox showBelowAtomicCheckBox = new CheckBox("Show Artifacts Below Atomic"); // TODO
+		CheckBox showBelowFilesCheckBox = new CheckBox("Show Artifacts Below File Level"); // TODO
 
 		Button markSelectedButton = new Button("Mark Selected");
-		toolBar.getItems().add(markSelectedButton);
+		Button splitMarkedButton = new Button("Split Marked");
 
-		Button extractMarkedButton = new Button("Extract Marked");
-		toolBar.getItems().add(extractMarkedButton);
-
-		CheckBox showBelowAtomic = new CheckBox("Show Artifacts Below Atomic"); // TODO
-		toolBar.getItems().add(showBelowAtomic);
-
-		CheckBox showBelowFiles = new CheckBox("Show Artifacts Below File Level"); // TODO
-		toolBar.getItems().add(showBelowFiles);
+		toolBar.getItems().addAll(refreshButton, new Separator(), selectAllButton, unselectAllButton, checkoutSelectedButton, composeSelectedButton, new Separator(), showEmptyAssociationsCheckBox, new Separator(), useSimplifiedLabelsCheckBox, new Separator(), showBelowAtomicCheckBox, new Separator(), showBelowFilesCheckBox, new Separator(), markSelectedButton, splitMarkedButton, new Separator());
 
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
 
-		showEmptyAssociationsCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
-			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldValue, Boolean newValue) {
-				filteredData.setPredicate(associationInfo -> {
-					if (newValue) {
-						return true;
-					} else {
-						return (associationInfo.getNumArtifacts() > 0);
-					}
-				});
-			}
+		showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) -> {
+			filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0));
 		});
 
 
@@ -108,7 +76,7 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 		associationsTable.setTableMenuButtonVisible(true);
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<AssociationInfo, Integer> idAssociationsCol = new TableColumn<>("Id");
+		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
 		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
 		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
@@ -120,9 +88,9 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
-		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getAssociation().getId()));
+		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
 		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getPresenceCondition().toString()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().getPresenceCondition().getSimpleLabel()).otherwise(param.getValue().getAssociation().getPresenceCondition().getLabel()));
 		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 
 
@@ -137,57 +105,51 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 		associationsTable.setItems(sortedData);
 
 
-		artifactTreeView = new ArtifactTreeView();
-
+		ArtifactTreeView artifactTreeView = new ArtifactTreeView();
 
 		artifactTreeView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
 			if (newValue != null) {
-				this.artifactDetailView.showTree(newValue.getValue());
+				artifactDetailView.showTree(newValue.getValue());
 			}
 		});
 
 
-		// horizontal split pane
+		// split panes
+		SplitPane artifactsSplitPane = new SplitPane();
+		artifactsSplitPane.setOrientation(Orientation.HORIZONTAL);
+		artifactsSplitPane.getItems().addAll(artifactTreeView, artifactDetailView);
+
 		SplitPane horizontalSplitPane = new SplitPane();
 		horizontalSplitPane.setOrientation(Orientation.VERTICAL);
-
-		horizontalSplitPane.getItems().add(associationsTable);
-		horizontalSplitPane.getItems().add(artifactTreeView);
-		horizontalSplitPane.getItems().add(this.artifactDetailView);
-
+		horizontalSplitPane.getItems().addAll(associationsTable, artifactsSplitPane);
 
 		this.setCenter(horizontalSplitPane);
 
 
-		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				ArtifactsView.this.refresh();
+		refreshButton.setOnAction(e -> {
+			toolBar.setDisable(true);
 
-//				toolBar.setDisable(true);
-//
-//				Task refreshTask = new Task<Void>() {
-//					@Override
-//					public Void call() throws EccoException {
-//						Collection<Association> associations = ArtifactsView.this.service.getAssociations();
-//						Platform.runLater(() -> {
-//							ArtifactsView.this.associationsData.clear();
-//							for (Association a : associations) {
-//								ArtifactsView.this.associationsData.add(new AssociationInfo(a));
-//							}
-//						});
-//						Platform.runLater(() -> {
-//							toolBar.setDisable(false);
-//						});
-//						return null;
-//					}
-//				};
-//
-//				new Thread(refreshTask).start();
-			}
+			artifactTreeView.setRootNode(null);
+
+			Task refreshTask = new Task<Void>() {
+				@Override
+				public Void call() throws EccoException {
+					Collection<? extends Association> associations = ArtifactsView.this.service.getRepository().getAssociations();
+					Platform.runLater(() -> {
+						ArtifactsView.this.associationsData.clear();
+						for (Association a : associations) {
+							ArtifactsView.this.associationsData.add(new AssociationInfo(a));
+						}
+					});
+					Platform.runLater(() -> toolBar.setDisable(false));
+					return null;
+				}
+			};
+
+			new Thread(refreshTask).start();
 		});
 
-		compositionButton.setOnAction(new EventHandler<ActionEvent>() {
+		composeSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
@@ -206,13 +168,9 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 						for (Association association : selectedAssociations) {
 							rootNode.addOrigNode(association.getRootNode());
 						}
-						Platform.runLater(() -> {
-							artifactTreeView.setRootNode(rootNode);
-						});
+						Platform.runLater(() -> artifactTreeView.setRootNode(rootNode));
 
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
+						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;
 					}
 				};
@@ -313,74 +271,72 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 			}
 		});
 
-		markSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
+		markSelectedButton.setOnAction(e -> {
+			toolBar.setDisable(true);
 
-				artifactTreeView.markSelected();
+			artifactTreeView.markSelected();
 
-				toolBar.setDisable(false);
-			}
+			toolBar.setDisable(false);
 		});
 
-		extractMarkedButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
+//		splitMarkedButton.setOnAction(new EventHandler<ActionEvent>() {
+//			@Override
+//			public void handle(ActionEvent e) {
+//				toolBar.setDisable(true);
+//
+//				Task extractTask = new Task<Void>() {
+//					@Override
+//					public Void call() throws EccoException {
+//						service.split();
+//
+//						Platform.runLater(() -> {
+//							ArtifactsView.this.refresh();
+//						});
+//						return null;
+//					}
+//
+//					public void finished() {
+//						toolBar.setDisable(false);
+//					}
+//
+//					@Override
+//					public void succeeded() {
+//						super.succeeded();
+//						this.finished();
+//
+//						Alert alert = new Alert(Alert.AlertType.INFORMATION);
+//						alert.setTitle("Extraction Successful");
+//						alert.setHeaderText("Extraction Successful");
+//						alert.setContentText("Extraction Successful!");
+//
+//						alert.showAndWait();
+//					}
+//
+//					@Override
+//					public void cancelled() {
+//						super.cancelled();
+//					}
+//
+//					@Override
+//					public void failed() {
+//						super.failed();
+//						this.finished();
+//
+//						ExceptionAlert alert = new ExceptionAlert(this.getException());
+//						alert.setTitle("Extraction Error");
+//						alert.setHeaderText("Extraction Error");
+//
+//						alert.showAndWait();
+//					}
+//				};
+//
+//				new Thread(extractTask).start();
+//			}
+//		});
 
-				Task extractTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						service.extract();
 
-						Platform.runLater(() -> {
-							ArtifactsView.this.refresh();
-						});
-						return null;
-					}
-
-					public void finished() {
-						toolBar.setDisable(false);
-					}
-
-					@Override
-					public void succeeded() {
-						super.succeeded();
-						this.finished();
-
-						Alert alert = new Alert(Alert.AlertType.INFORMATION);
-						alert.setTitle("Extraction Successful");
-						alert.setHeaderText("Extraction Successful");
-						alert.setContentText("Extraction Successful!");
-
-						alert.showAndWait();
-					}
-
-					@Override
-					public void cancelled() {
-						super.cancelled();
-					}
-
-					@Override
-					public void failed() {
-						super.failed();
-						this.finished();
-
-						ExceptionAlert alert = new ExceptionAlert(this.getException());
-						alert.setTitle("Extraction Error");
-						alert.setHeaderText("Extraction Error");
-
-						alert.showAndWait();
-					}
-				};
-
-				new Thread(extractTask).start();
-			}
-		});
-
-
-		showEmptyAssociationsCheckBox.setSelected(true);
+		showEmptyAssociationsCheckBox.setSelected(false);
+		useSimplifiedLabelsCheckBox.setSelected(true);
 
 
 		// ecco service
@@ -391,58 +347,13 @@ public class ArtifactsView extends BorderPane implements RepositoryListener {
 	}
 
 
-	protected void refresh() {
-		toolBar.setDisable(true);
-
-		artifactTreeView.setRootNode(null);
-
-		Task refreshTask = new Task<Void>() {
-			@Override
-			public Void call() throws EccoException {
-				Collection<Association> associations = ArtifactsView.this.service.getAssociations();
-				Platform.runLater(() -> {
-					ArtifactsView.this.associationsData.clear();
-					for (Association a : associations) {
-						ArtifactsView.this.associationsData.add(new AssociationInfo(a));
-					}
-				});
-				Platform.runLater(() -> {
-					toolBar.setDisable(false);
-				});
-				return null;
-			}
-		};
-
-		new Thread(refreshTask).start();
-	}
-
-
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
-			Platform.runLater(() -> {
-				this.setDisable(false);
-			});
+			Platform.runLater(() -> this.setDisable(false));
 		} else {
-			Platform.runLater(() -> {
-				this.setDisable(true);
-			});
+			Platform.runLater(() -> this.setDisable(true));
 		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
-	}
-
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
 	}
 
 

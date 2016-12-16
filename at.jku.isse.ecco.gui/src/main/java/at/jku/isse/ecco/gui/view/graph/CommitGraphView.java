@@ -6,14 +6,13 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.RepositoryListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.control.Button;
+import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
@@ -32,7 +31,6 @@ import org.graphstream.ui.view.Viewer;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 
 public class CommitGraphView extends BorderPane implements RepositoryListener {
 
@@ -51,7 +49,7 @@ public class CommitGraphView extends BorderPane implements RepositoryListener {
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
-
+		toolBar.getItems().add(refreshButton);
 		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
@@ -64,9 +62,7 @@ public class CommitGraphView extends BorderPane implements RepositoryListener {
 					@Override
 					public Void call() throws EccoException {
 						CommitGraphView.this.updateGraph();
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
+						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;
 					}
 				};
@@ -74,39 +70,33 @@ public class CommitGraphView extends BorderPane implements RepositoryListener {
 				new Thread(refreshTask).start();
 			}
 		});
-
-
-		toolBar.getItems().add(refreshButton);
+		toolBar.getItems().add(new Separator());
 
 
 		Button exportButton = new Button("Export");
-
-		exportButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent ae) {
-				toolBar.setDisable(true);
-
-				FileChooser fileChooser = new FileChooser();
-				File selectedFile = fileChooser.showSaveDialog(CommitGraphView.this.getScene().getWindow());
-
-				if (selectedFile != null) {
-					FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-					try {
-						out.writeAll(CommitGraphView.this.graph, selectedFile.toString());
-						out.flush();
-					} catch (IOException e) {
-						new ExceptionAlert(e).show();
-					}
-				}
-
-				toolBar.setDisable(false);
-			}
-		});
-
 		toolBar.getItems().add(exportButton);
+		exportButton.setOnAction(ae -> {
+			toolBar.setDisable(true);
+
+			FileChooser fileChooser = new FileChooser();
+			File selectedFile = fileChooser.showSaveDialog(CommitGraphView.this.getScene().getWindow());
+
+			if (selectedFile != null) {
+				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
+				try {
+					out.writeAll(CommitGraphView.this.graph, selectedFile.toString());
+					out.flush();
+				} catch (IOException e) {
+					new ExceptionAlert(e).show();
+				}
+			}
+
+			toolBar.setDisable(false);
+		});
+		toolBar.getItems().add(new Separator());
 
 
-		System.setProperty("gs.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
 
 		this.graph = new SingleGraph("CommitGraph");
@@ -186,7 +176,7 @@ public class CommitGraphView extends BorderPane implements RepositoryListener {
 			}
 		}
 
-		for (Association association : this.service.getAssociations()) {
+		for (Association association : this.service.getRepository().getAssociations()) {
 			Node associationNode = this.graph.getNode("A" + association.getId());
 			if (associationNode == null) {
 				associationNode = this.graph.addNode("A" + association.getId());
@@ -220,6 +210,7 @@ public class CommitGraphView extends BorderPane implements RepositoryListener {
 		this.viewer.enableAutoLayout(this.layout);
 	}
 
+
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
@@ -228,25 +219,8 @@ public class CommitGraphView extends BorderPane implements RepositoryListener {
 				this.setDisable(false);
 			});
 		} else {
-			Platform.runLater(() -> {
-				this.setDisable(true);
-			});
+			Platform.runLater(() -> this.setDisable(true));
 		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
-	}
-
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
 	}
 
 }

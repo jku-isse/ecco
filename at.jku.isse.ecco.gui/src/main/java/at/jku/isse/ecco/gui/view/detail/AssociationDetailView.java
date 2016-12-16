@@ -81,49 +81,49 @@ public class AssociationDetailView extends BorderPane {
 		row++;
 
 
-		updateButton.setOnAction(event -> {
-			AssociationDetailView.this.toolBar.setDisable(true);
-
-			Task updateTask = new Task<Void>() {
-				@Override
-				public Void call() throws EccoException {
-					PresenceCondition pc = AssociationDetailView.this.service.parsePresenceConditionString(AssociationDetailView.this.associationPC.getText());
-					AssociationDetailView.this.currentAssociation.setPresenceCondition(pc);
-					AssociationDetailView.this.service.updateAssociation(AssociationDetailView.this.currentAssociation);
-					return null;
-				}
-
-				public void finished() {
-					AssociationDetailView.this.showAssociation(AssociationDetailView.this.currentAssociation);
-					AssociationDetailView.this.toolBar.setDisable(false);
-				}
-
-				@Override
-				public void succeeded() {
-					super.succeeded();
-					this.finished();
-				}
-
-				@Override
-				public void cancelled() {
-					super.cancelled();
-				}
-
-				@Override
-				public void failed() {
-					super.failed();
-					this.finished();
-
-					ExceptionAlert alert = new ExceptionAlert(this.getException());
-					alert.setTitle("Checkout Error");
-					alert.setHeaderText("Checkout Error");
-
-					alert.showAndWait();
-				}
-			};
-
-			new Thread(updateTask).start();
-		});
+//		updateButton.setOnAction(event -> {
+//			AssociationDetailView.this.toolBar.setDisable(true);
+//
+//			Task updateTask = new Task<Void>() {
+//				@Override
+//				public Void call() throws EccoException {
+//					PresenceCondition pc = AssociationDetailView.this.service.parsePresenceConditionString(AssociationDetailView.this.associationPC.getText());
+//					AssociationDetailView.this.currentAssociation.setPresenceCondition(pc);
+//					AssociationDetailView.this.service.updateAssociation(AssociationDetailView.this.currentAssociation);
+//					return null;
+//				}
+//
+//				public void finished() {
+//					AssociationDetailView.this.showAssociation(AssociationDetailView.this.currentAssociation);
+//					AssociationDetailView.this.toolBar.setDisable(false);
+//				}
+//
+//				@Override
+//				public void succeeded() {
+//					super.succeeded();
+//					this.finished();
+//				}
+//
+//				@Override
+//				public void cancelled() {
+//					super.cancelled();
+//				}
+//
+//				@Override
+//				public void failed() {
+//					super.failed();
+//					this.finished();
+//
+//					ExceptionAlert alert = new ExceptionAlert(this.getException());
+//					alert.setTitle("Checkout Error");
+//					alert.setHeaderText("Checkout Error");
+//
+//					alert.showAndWait();
+//				}
+//			};
+//
+//			new Thread(updateTask).start();
+//		});
 
 
 		splitPane.getItems().add(associationDetails);

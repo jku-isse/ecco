@@ -4,7 +4,6 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
@@ -95,15 +94,15 @@ public class CommitDetailView extends BorderPane {
 		associationsTable.setEditable(false);
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<AssociationInfo, Integer> idAssociationsCol = new TableColumn<AssociationInfo, Integer>("Id");
-		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<AssociationInfo, String>("Name");
-		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<AssociationInfo, String>("Condition");
-		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<AssociationInfo, String>("Associations");
+		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
+		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
+		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
+		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
 		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
-		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getAssociation().getId()));
+		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
 		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
 		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getPresenceCondition().toString()));
 

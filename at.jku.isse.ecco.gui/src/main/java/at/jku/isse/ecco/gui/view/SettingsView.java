@@ -142,26 +142,26 @@ public class SettingsView extends BorderPane implements RepositoryListener {
 			gridPane.add(setBaseDirButton, 2, row, 1, 1);
 			row++;
 
-			// manual mode
-			Label manualModeLabel = new Label("Manual Mode: ");
-			gridPane.add(manualModeLabel, 0, row, 1, 1);
-			this.settingsManualModeCheckBox = new CheckBox("Manual Mode");
-			gridPane.add(this.settingsManualModeCheckBox, 1, row, 1, 1);
-
-			this.setModeButton = new Button("Set Mode");
-			setModeButton.setOnAction(new EventHandler<ActionEvent>() {
-				@Override
-				public void handle(ActionEvent e) {
-					try {
-						SettingsView.this.service.setManualMode(SettingsView.this.settingsManualModeCheckBox.isSelected());
-					} catch (EccoException eccoException) {
-						new ExceptionAlert(eccoException).show();
-					}
-					SettingsView.this.updateValues();
-				}
-			});
-			gridPane.add(setModeButton, 2, row, 1, 1);
-			row++;
+//			// manual mode
+//			Label manualModeLabel = new Label("Manual Mode: ");
+//			gridPane.add(manualModeLabel, 0, row, 1, 1);
+//			this.settingsManualModeCheckBox = new CheckBox("Manual Mode");
+//			gridPane.add(this.settingsManualModeCheckBox, 1, row, 1, 1);
+//
+//			this.setModeButton = new Button("Set Mode");
+//			setModeButton.setOnAction(new EventHandler<ActionEvent>() {
+//				@Override
+//				public void handle(ActionEvent e) {
+//					try {
+//						SettingsView.this.service.setManualMode(SettingsView.this.settingsManualModeCheckBox.isSelected());
+//					} catch (EccoException eccoException) {
+//						new ExceptionAlert(eccoException).show();
+//					}
+//					SettingsView.this.updateValues();
+//				}
+//			});
+//			gridPane.add(setModeButton, 2, row, 1, 1);
+//			row++;
 
 
 			this.settingsBaseDirUrl.textProperty().addListener((observableValue, oldValue, newValue) -> {
@@ -172,13 +172,13 @@ public class SettingsView extends BorderPane implements RepositoryListener {
 				}
 			});
 
-			this.settingsManualModeCheckBox.selectedProperty().addListener((observableValue, oldValue, newValue) -> {
-				if (newValue != SettingsView.this.service.isManualMode()) {
-					SettingsView.this.setModeButton.setDisable(false);
-				} else {
-					SettingsView.this.setModeButton.setDisable(true);
-				}
-			});
+//			this.settingsManualModeCheckBox.selectedProperty().addListener((observableValue, oldValue, newValue) -> {
+//				if (newValue != SettingsView.this.service.isManualMode()) {
+//					SettingsView.this.setModeButton.setDisable(false);
+//				} else {
+//					SettingsView.this.setModeButton.setDisable(true);
+//				}
+//			});
 		}
 
 
@@ -213,7 +213,7 @@ public class SettingsView extends BorderPane implements RepositoryListener {
 			this.baseDirUrl.setText(service.getBaseDir().toString());
 			this.repositoryDirUrl.setText(service.getRepositoryDir().toString());
 			this.settingsBaseDirUrl.setText(service.getBaseDir().toString());
-			this.settingsManualModeCheckBox.setSelected(service.isManualMode());
+//			this.settingsManualModeCheckBox.setSelected(service.isManualMode());
 
 			if (!Paths.get(this.settingsBaseDirUrl.getText()).equals(SettingsView.this.service.getBaseDir())) {
 				setBaseDirButton.setDisable(false);
@@ -221,11 +221,11 @@ public class SettingsView extends BorderPane implements RepositoryListener {
 				setBaseDirButton.setDisable(true);
 			}
 
-			if (this.settingsManualModeCheckBox.isSelected() != SettingsView.this.service.isManualMode()) {
-				SettingsView.this.setModeButton.setDisable(false);
-			} else {
-				SettingsView.this.setModeButton.setDisable(true);
-			}
+//			if (this.settingsManualModeCheckBox.isSelected() != SettingsView.this.service.isManualMode()) {
+//				SettingsView.this.setModeButton.setDisable(false);
+//			} else {
+//				SettingsView.this.setModeButton.setDisable(true);
+//			}
 		} else {
 			this.statusLabel.setText("The ECCO Service has not been initialized yet.");
 		}

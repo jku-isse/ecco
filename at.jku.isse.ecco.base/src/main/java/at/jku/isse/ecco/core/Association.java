@@ -83,14 +83,14 @@ public interface Association extends Persistable {
 	 *
 	 * @return The id of the association.
 	 */
-	public int getId();
+	public String getId();
 
 	/**
 	 * Sets the id of the association.
 	 *
 	 * @param id The id of the association.
 	 */
-	public void setId(int id);
+	public void setId(String id);
 
 	/**
 	 * Returns the name of the association or the empty string if it does not have a name yet.

@@ -2,23 +2,16 @@ package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.RepositoryListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
-import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
@@ -35,7 +28,6 @@ import org.graphstream.ui.view.Viewer;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 
 public class DependencyGraphView extends BorderPane implements RepositoryListener {
 
@@ -49,6 +41,7 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 	private boolean showLabels = true;
 	private boolean simplifyLabels = true;
 	private boolean hideImpliedDependencies = true;
+	private boolean hideTransitiveDependencies = true;
 
 
 	private DependencyGraph dg = null;
@@ -62,99 +55,91 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
-
-		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-				SwingUtilities.invokeLater(new Runnable() {
-					@Override
-					public void run() {
-						dg = new DependencyGraph(DependencyGraphView.this.service.getAssociations());
-						DependencyGraphView.this.updateGraph();
-					}
-				});
-				Task refreshTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						//ArtifactsGraphView.this.updateGraph();
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
-						return null;
-					}
-				};
-
-				new Thread(refreshTask).start();
-			}
-		});
-
-
 		toolBar.getItems().add(refreshButton);
+		refreshButton.setOnAction(e -> {
+			toolBar.setDisable(true);
+			SwingUtilities.invokeLater(() -> {
+				dg = new DependencyGraph(DependencyGraphView.this.service.getRepository().getAssociations());
+				DependencyGraphView.this.updateGraph();
+			});
+			Task refreshTask = new Task<Void>() {
+				@Override
+				public Void call() throws EccoException {
+					//ArtifactsGraphView.this.updateGraph();
+					Platform.runLater(() -> toolBar.setDisable(false));
+					return null;
+				}
+			};
+
+			new Thread(refreshTask).start();
+		});
+		toolBar.getItems().add(new Separator());
 
 
 		Button exportButton = new Button("Export");
-
-		exportButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent ae) {
-				toolBar.setDisable(true);
-
-				FileChooser fileChooser = new FileChooser();
-				File selectedFile = fileChooser.showSaveDialog(DependencyGraphView.this.getScene().getWindow());
-
-				if (selectedFile != null) {
-					FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-					try {
-						out.writeAll(DependencyGraphView.this.graph, selectedFile.toString());
-						out.flush();
-					} catch (IOException e) {
-						new ExceptionAlert(e).show();
-					}
-				}
-
-				toolBar.setDisable(false);
-			}
-		});
-
 		toolBar.getItems().add(exportButton);
+		exportButton.setOnAction(ae -> {
+			toolBar.setDisable(true);
+
+			FileChooser fileChooser = new FileChooser();
+			File selectedFile = fileChooser.showSaveDialog(DependencyGraphView.this.getScene().getWindow());
+
+			if (selectedFile != null) {
+				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
+				try {
+					out.writeAll(DependencyGraphView.this.graph, selectedFile.toString());
+					out.flush();
+				} catch (IOException e) {
+					new ExceptionAlert(e).show();
+				}
+			}
+
+			toolBar.setDisable(false);
+		});
+		toolBar.getItems().add(new Separator());
 
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		showLabelsCheckbox.setSelected(this.hideImpliedDependencies);
 		toolBar.getItems().add(showLabelsCheckbox);
-		showLabelsCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
-			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
-				DependencyGraphView.this.showLabels = new_val;
-				DependencyGraphView.this.updateGraphStylehseet();
-			}
+		showLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
+			DependencyGraphView.this.showLabels = new_val;
+			DependencyGraphView.this.updateGraphStylehseet();
 		});
+		toolBar.getItems().add(new Separator());
 
 
 		CheckBox simplifyLabelsCheckbox = new CheckBox("Simplified Labels");
 		simplifyLabelsCheckbox.setSelected(this.simplifyLabels);
 		toolBar.getItems().add(simplifyLabelsCheckbox);
-		simplifyLabelsCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
-			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
-				DependencyGraphView.this.simplifyLabels = new_val;
-				DependencyGraphView.this.updateGraph();
-			}
+		simplifyLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
+			DependencyGraphView.this.simplifyLabels = new_val;
+			DependencyGraphView.this.updateGraph();
 		});
+		toolBar.getItems().add(new Separator());
 
 
-		CheckBox hideImpliedDependenciesCheckbox = new CheckBox("Hide Implied Dependencies");
-		hideImpliedDependenciesCheckbox.setSelected(this.hideImpliedDependencies);
-		toolBar.getItems().add(hideImpliedDependenciesCheckbox);
-		hideImpliedDependenciesCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
-			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
-				DependencyGraphView.this.hideImpliedDependencies = new_val;
-				DependencyGraphView.this.updateGraph();
-			}
+		CheckBox hideImpliedDependenciesCheckBox = new CheckBox("Hide Implied Dependencies");
+		hideImpliedDependenciesCheckBox.setSelected(this.hideImpliedDependencies);
+		toolBar.getItems().add(hideImpliedDependenciesCheckBox);
+		hideImpliedDependenciesCheckBox.selectedProperty().addListener((ov, old_val, new_val) -> {
+			DependencyGraphView.this.hideImpliedDependencies = new_val;
+			DependencyGraphView.this.updateGraph();
 		});
+		toolBar.getItems().add(new Separator());
 
 
-		//System.clearProperty("gs.ui.renderer");
-		System.setProperty("gs.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+		CheckBox hideTransitiveDependenciesCheckBox = new CheckBox("Hide Transitive Dependencies");
+		hideTransitiveDependenciesCheckBox.setSelected(this.hideTransitiveDependencies);
+		toolBar.getItems().add(hideTransitiveDependenciesCheckBox);
+		hideTransitiveDependenciesCheckBox.selectedProperty().addListener((ov, old_val, new_val) -> {
+			DependencyGraphView.this.hideImpliedDependencies = new_val;
+			DependencyGraphView.this.updateGraph();
+		});
+		toolBar.getItems().add(new Separator());
+
+
+		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
 
 		this.graph = new SingleGraph("DependencyGraph");
@@ -169,20 +154,10 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 
 		SwingNode swingNode = new SwingNode();
 
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				swingNode.setContent(view);
-			}
-		});
+		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
 
 
-		this.setOnScroll(new EventHandler<ScrollEvent>() {
-			@Override
-			public void handle(ScrollEvent event) {
-				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-			}
-		});
+		this.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
 
 
 		this.setCenter(swingNode);
@@ -228,7 +203,7 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 
 
 		if (dg == null)
-			dg = new DependencyGraph(this.service.getAssociations());
+			dg = new DependencyGraph(this.service.getRepository().getAssociations());
 
 		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
 			if (!hideImpliedDependencies || !dep.getFrom().getPresenceCondition().implies(dep.getTo().getPresenceCondition())) {
@@ -291,25 +266,8 @@ public class DependencyGraphView extends BorderPane implements RepositoryListene
 				this.setDisable(false);
 			});
 		} else {
-			Platform.runLater(() -> {
-				this.setDisable(true);
-			});
+			Platform.runLater(() -> this.setDisable(true));
 		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
-	}
-
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
 	}
 
 }

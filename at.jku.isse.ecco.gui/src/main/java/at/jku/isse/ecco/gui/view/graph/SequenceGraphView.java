@@ -32,7 +32,7 @@ public class SequenceGraphView extends BorderPane {
 	public SequenceGraphView() {
 
 
-		System.setProperty("gs.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
 
 		this.graph = new SingleGraph("SequenceGraph");

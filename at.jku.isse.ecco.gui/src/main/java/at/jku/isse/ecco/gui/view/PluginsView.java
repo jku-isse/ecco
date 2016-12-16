@@ -1,11 +1,8 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.listener.RepositoryListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
@@ -13,7 +10,6 @@ import javafx.collections.ObservableList;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
-import java.nio.file.Path;
 import java.util.Collection;
 
 public class PluginsView extends TableView<PluginsView.PluginInfo> implements RepositoryListener {
@@ -75,21 +71,6 @@ public class PluginsView extends TableView<PluginsView.PluginInfo> implements Re
 				this.setDisable(true);
 			});
 		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
-	}
-
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
 	}
 
 

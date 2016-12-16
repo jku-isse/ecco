@@ -41,7 +41,7 @@ public class DependencyGraph {
 
 	}
 
-	public DependencyGraph(Collection<Association> associations) {
+	public DependencyGraph(Collection<? extends Association> associations) {
 		this.compute(associations);
 	}
 
@@ -55,11 +55,11 @@ public class DependencyGraph {
 	}
 
 
-	public void compute(Collection<Association> associations) {
+	public void compute(Collection<? extends Association> associations) {
 		this.compute(associations, ReferencesResolveMode.LEAVE_REFERENCES_UNRESOLVED);
 	}
 
-	public void compute(Collection<Association> associations, ReferencesResolveMode referencesResolveMode) {
+	public void compute(Collection<? extends Association> associations, ReferencesResolveMode referencesResolveMode) {
 		this.dependencies.clear();
 		this.unresolvedDependencies.clear();
 		this.dependencyMap.clear();

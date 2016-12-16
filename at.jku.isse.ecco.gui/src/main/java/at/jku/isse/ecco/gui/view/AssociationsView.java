@@ -3,29 +3,22 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
 import at.jku.isse.ecco.listener.RepositoryListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
+import javafx.beans.binding.When;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 
-import java.nio.file.Path;
 import java.util.Collection;
 
 public class AssociationsView extends BorderPane implements RepositoryListener {
@@ -33,8 +26,6 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 	private EccoService service;
 
 	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
-
-	private boolean showEmptyAssociations = false;
 
 
 	public AssociationsView(EccoService service) {
@@ -44,50 +35,41 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
+		toolBar.getItems().add(refreshButton);
+		refreshButton.setOnAction(e -> {
+			toolBar.setDisable(true);
 
-		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-				AssociationsView.this.associationsData.clear();
+			Task refreshTask = new Task<Void>() {
+				@Override
+				public Void call() throws EccoException {
+					Collection<? extends Association> associations = AssociationsView.this.service.getRepository().getAssociations();
+					Platform.runLater(() -> AssociationsView.this.updateAssociations(associations));
+					Platform.runLater(() -> toolBar.setDisable(false));
+					return null;
+				}
+			};
 
-				Task refreshTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						Collection<Association> associations = AssociationsView.this.service.getAssociations();
-						Platform.runLater(() -> {
-							AssociationsView.this.updateAssociations(associations);
-						});
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
-						return null;
-					}
-				};
-
-				new Thread(refreshTask).start();
-			}
+			new Thread(refreshTask).start();
 		});
 
-		toolBar.getItems().add(refreshButton);
+		toolBar.getItems().add(new Separator());
 
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
 
 		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
 		toolBar.getItems().add(showEmptyAssociationsCheckBox);
-		showEmptyAssociationsCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
-			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldValue, Boolean newValue) {
-				AssociationsView.this.showEmptyAssociations = newValue;
-				filteredData.setPredicate(associationInfo -> {
-					if (newValue) {
-						return true;
-					} else {
-						return (associationInfo.getNumArtifacts() > 0);
-					}
-				});
-			}
+		showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) -> {
+			filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0));
 		});
+
+		toolBar.getItems().add(new Separator());
+
+		CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
+		toolBar.getItems().add(useSimplifiedLabelsCheckBox);
+
+
+		toolBar.getItems().add(new Separator());
 
 
 		SplitPane splitPane = new SplitPane();
@@ -95,23 +77,23 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 
 
 		// list of associations
-		TableView<AssociationInfo> associationsTable = new TableView<AssociationInfo>();
+		TableView<AssociationInfo> associationsTable = new TableView<>();
 		associationsTable.setEditable(false);
 		associationsTable.setTableMenuButtonVisible(true);
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<AssociationInfo, Integer> idAssociationsCol = new TableColumn<AssociationInfo, Integer>("Id");
-		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<AssociationInfo, String>("Name");
-		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<AssociationInfo, String>("Condition");
+		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
+		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
+		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
 		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
-		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<AssociationInfo, String>("Associations");
+		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
 		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
-		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getAssociation().getId()));
+		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
 		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getPresenceCondition().toString()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().getPresenceCondition().getSimpleLabel()).otherwise(param.getValue().getAssociation().getPresenceCondition().getLabel()));
 		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 
 
@@ -121,7 +103,7 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 		associationsTable.setItems(sortedData);
 
 
-		showEmptyAssociationsCheckBox.setSelected(true);
+		useSimplifiedLabelsCheckBox.setSelected(true);
 
 
 		// details view
@@ -141,6 +123,10 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 		splitPane.getItems().addAll(associationsTable, associationDetailView);
 
 
+		showEmptyAssociationsCheckBox.setSelected(false);
+		useSimplifiedLabelsCheckBox.setSelected(true);
+
+
 		service.addListener(this);
 
 		if (!service.isInitialized())
@@ -148,7 +134,8 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 	}
 
 
-	private void updateAssociations(Collection<Association> associations) {
+	private void updateAssociations(Collection<? extends Association> associations) {
+		AssociationsView.this.associationsData.clear();
 		for (Association association : associations) {
 			this.associationsData.add(new AssociationInfo(association));
 		}
@@ -158,41 +145,19 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
-			Platform.runLater(() -> {
-				this.setDisable(false);
-			});
-			Collection<Association> associations = service.getAssociations();
-			Platform.runLater(() -> {
-				this.updateAssociations(associations);
-			});
+			Platform.runLater(() -> this.setDisable(false));
+			Collection<? extends Association> associations = service.getRepository().getAssociations();
+			Platform.runLater(() -> this.updateAssociations(associations));
 		} else {
-			Platform.runLater(() -> {
-				this.setDisable(true);
-			});
+			Platform.runLater(() -> this.setDisable(true));
 		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
 	}
 
 	// TODO: add new associations
 	public void associationsChangedEvent(Collection<Association> associations) {
-		Platform.runLater(() -> {
-			this.updateAssociations(associations);
-		});
+		Platform.runLater(() -> this.updateAssociations(associations));
 	}
 
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
-	}
 
 	public static class AssociationInfo {
 		private Association association;
@@ -210,14 +175,6 @@ public class AssociationsView extends BorderPane implements RepositoryListener {
 
 		public int getNumArtifacts() {
 			return this.numArtifacts.get();
-		}
-
-		public void setNumArtifacts(int numArtifacts) {
-			this.numArtifacts.set(numArtifacts);
-		}
-
-		public IntegerProperty numArtifactsProperty() {
-			return this.numArtifacts;
 		}
 	}
 

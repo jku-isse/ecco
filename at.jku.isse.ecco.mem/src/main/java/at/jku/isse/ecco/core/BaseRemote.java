@@ -2,6 +2,7 @@ package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.feature.Feature;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 public class BaseRemote implements Remote {
@@ -10,17 +11,18 @@ public class BaseRemote implements Remote {
 	private String address;
 	private Type type;
 
+	private Collection<Feature> features;
+
 
 	public BaseRemote() {
-		this.name = "";
-		this.address = "";
-		this.type = Type.LOCAL;
+		this("", "", Type.LOCAL);
 	}
 
 	public BaseRemote(String name, String address, Type type) {
 		this.name = name;
 		this.address = address;
 		this.type = type;
+		this.features = new ArrayList<>();
 	}
 
 
@@ -56,7 +58,7 @@ public class BaseRemote implements Remote {
 
 	@Override
 	public Collection<Feature> getFeatures() {
-		return null; // TODO
+		return this.features;
 	}
 
 }

@@ -2,12 +2,9 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.gui.view.detail.FeatureDetailView;
 import at.jku.isse.ecco.listener.RepositoryListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -20,14 +17,13 @@ import javafx.event.EventHandler;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 
-import java.nio.file.Path;
 import java.util.Collection;
 
 public class FeaturesView extends BorderPane implements RepositoryListener {
 
-	private EccoService service;
+	private final EccoService service;
 
-	final ObservableList<FeatureInfo> featuresData = FXCollections.observableArrayList();
+	private final ObservableList<Feature> featuresData = FXCollections.observableArrayList();
 
 
 	public FeaturesView(EccoService service) {
@@ -38,7 +34,7 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
-
+		toolBar.getItems().add(refreshButton);
 		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
@@ -48,15 +44,13 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 				Task featuresRefreshTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						Collection<Feature> featureVersions = FeaturesView.this.service.getFeatures();
+						Collection<? extends Feature> featureVersions = FeaturesView.this.service.getRepository().getFeatures();
 						Platform.runLater(() -> {
 							for (Feature feature : featureVersions) {
-								FeaturesView.this.featuresData.add(new FeatureInfo(feature));
+								FeaturesView.this.featuresData.add(feature);
 							}
 						});
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
+						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;
 					}
 				};
@@ -65,13 +59,11 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 			}
 		});
 
-		toolBar.getItems().add(refreshButton);
-
+		toolBar.getItems().add(new Separator());
 
 		TextField searchField = new TextField();
 		Button searchButton = new Button("Search");
 		toolBar.getItems().addAll(searchField, searchButton);
-
 		searchButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
@@ -81,15 +73,13 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 				Task commitTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						Collection<Feature> featureVersions = FeaturesView.this.service.getFeatures();
+						Collection<? extends Feature> featureVersions = FeaturesView.this.service.getRepository().getFeatures();
 						Platform.runLater(() -> {
 							for (Feature feature : featureVersions) {
-								FeaturesView.this.featuresData.add(new FeatureInfo(feature));
+								FeaturesView.this.featuresData.add(feature);
 							}
 						});
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
+						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;
 					}
 				};
@@ -98,38 +88,34 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 			}
 		});
 
+		toolBar.getItems().add(new Separator());
+
 
 		SplitPane splitPane = new SplitPane();
 		this.setCenter(splitPane);
 
 
-		FilteredList<FeatureInfo> filteredData = new FilteredList<>(this.featuresData, p -> true);
-		filteredData.setPredicate(featureInfo -> {
-			if (featureInfo.getFeature().getName().contains(searchField.getText()) || featureInfo.getFeature().getDescription().contains(searchField.getText())) {
-				return true;
-			} else {
-				return false;
-			}
-		});
+		FilteredList<Feature> filteredData = new FilteredList<>(this.featuresData, p -> true);
+		filteredData.setPredicate(feature -> feature.getName().contains(searchField.getText()) || feature.getDescription().contains(searchField.getText()));
 
 		// list of features
-		TableView<FeatureInfo> featuresTable = new TableView<>();
+		TableView<Feature> featuresTable = new TableView<>();
 		featuresTable.setEditable(false);
 		featuresTable.setTableMenuButtonVisible(true);
 		featuresTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<FeatureInfo, String> featureNameCol = new TableColumn<>("Name");
-		TableColumn<FeatureInfo, String> featureDescriptionCol = new TableColumn<>("Description");
-		TableColumn<FeatureInfo, String> featuresCol = new TableColumn<>("Features");
+		TableColumn<Feature, String> featureNameCol = new TableColumn<>("Name");
+		TableColumn<Feature, String> featureDescriptionCol = new TableColumn<>("Description");
+		TableColumn<Feature, String> featuresCol = new TableColumn<>("Features");
 
 		featuresCol.getColumns().addAll(featureNameCol, featureDescriptionCol);
 		featuresTable.getColumns().setAll(featuresCol);
 
-		featureNameCol.setCellValueFactory((TableColumn.CellDataFeatures<FeatureInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getFeature().getName()));
-		featureDescriptionCol.setCellValueFactory((TableColumn.CellDataFeatures<FeatureInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getFeature().getDescription()));
+		featureNameCol.setCellValueFactory((TableColumn.CellDataFeatures<Feature, String> param) -> new ReadOnlyStringWrapper(param.getValue().getName()));
+		featureDescriptionCol.setCellValueFactory((TableColumn.CellDataFeatures<Feature, String> param) -> new ReadOnlyStringWrapper(param.getValue().getDescription()));
 
 
-		SortedList<FeatureInfo> sortedData = new SortedList<>(filteredData);
+		SortedList<Feature> sortedData = new SortedList<>(filteredData);
 		sortedData.comparatorProperty().bind(featuresTable.comparatorProperty());
 
 		featuresTable.setItems(sortedData);
@@ -141,7 +127,7 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 
 		featuresTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
 			if (newValue != null) {
-				featureDetailView.showFeature(newValue.getFeature());
+				featureDetailView.showFeature(newValue);
 			} else {
 				featureDetailView.showFeature(null);
 			}
@@ -162,48 +148,16 @@ public class FeaturesView extends BorderPane implements RepositoryListener {
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
-			Platform.runLater(() -> {
-				this.setDisable(false);
-			});
-			Collection<Feature> features = service.getFeatures();
+			Platform.runLater(() -> this.setDisable(false));
+			Collection<? extends Feature> features = service.getRepository().getFeatures();
 			Platform.runLater(() -> {
 				this.featuresData.clear();
 				for (Feature feature : features) {
-					this.featuresData.add(new FeatureInfo(feature));
+					this.featuresData.add(feature);
 				}
 			});
 		} else {
-			Platform.runLater(() -> {
-				this.setDisable(true);
-			});
-		}
-	}
-
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
-	@Override
-	public void fileReadEvent(Path file, ArtifactReader reader) {
-
-	}
-
-	@Override
-	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-
-	}
-
-
-	public static class FeatureInfo {
-		private Feature feature;
-
-		private FeatureInfo(Feature feature) {
-			this.feature = feature;
-		}
-
-		public Feature getFeature() {
-			return this.feature;
+			Platform.runLater(() -> this.setDisable(true));
 		}
 	}
 

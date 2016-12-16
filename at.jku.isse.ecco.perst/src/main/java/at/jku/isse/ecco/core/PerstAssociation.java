@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class PerstAssociation extends Persistent implements Association {
 
-	private int id;
+	private String id;
 	private String name = "";
 	private RootNode rootNode;
 	private PresenceCondition presenceCondition;
@@ -31,7 +31,7 @@ public class PerstAssociation extends Persistent implements Association {
 	private int presenceCount;
 
 	public PerstAssociation() {
-
+		this.id = UUID.randomUUID().toString();
 	}
 
 	@Override
@@ -100,12 +100,12 @@ public class PerstAssociation extends Persistent implements Association {
 	}
 
 	@Override
-	public int getId() {
+	public String getId() {
 		return this.id;
 	}
 
 	@Override
-	public void setId(final int id) {
+	public void setId(final String id) {
 		this.id = id;
 	}
 
