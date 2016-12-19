@@ -219,6 +219,7 @@ public class MainView extends BorderPane implements RepositoryListener {
 			fetchButton.setDisable(false);
 			pullButton.setDisable(false);
 			pushButton.setDisable(false);
+			serverButton.setDisable(false);
 		} else {
 			openButton.setDisable(false);
 			closeButton.setDisable(true);
@@ -229,6 +230,7 @@ public class MainView extends BorderPane implements RepositoryListener {
 			fetchButton.setDisable(true);
 			pullButton.setDisable(true);
 			pushButton.setDisable(true);
+			serverButton.setDisable(true);
 		}
 	}
 

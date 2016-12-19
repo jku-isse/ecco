@@ -31,11 +31,14 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -74,7 +77,9 @@ public class EccoService {
 	}
 
 	public void setBaseDir(Path baseDir) {
-		if (!this.baseDir.equals(baseDir)) {
+		checkNotNull(baseDir);
+
+		if (this.baseDir == null || !this.baseDir.equals(baseDir)) {
 			this.baseDir = baseDir;
 			this.fireStatusChangedEvent();
 		}
@@ -876,23 +881,28 @@ public class EccoService {
 
 	private ServerSocketChannel ssChannel = null;
 	private boolean serverShutdown = false;
-	//	private boolean serverRunning = false;
-	private Lock serverLock;
+	private boolean serverRunning = false;
+	private Lock serverLock = new ReentrantLock();
+
+	public boolean serverRunning() {
+		return this.serverRunning;
+	}
 
 	public void startServer(int port) {
 		if (!this.serverLock.tryLock())
 			throw new EccoException("Server is already running.");
-
 //		if (this.serverRunning)
 //			throw new EccoException("Server is already running.");
 
 		try (ServerSocketChannel ssChannel = ServerSocketChannel.open()) {
 			this.ssChannel = ssChannel;
-//			this.serverRunning = true;
+			this.serverRunning = true;
 			this.serverShutdown = false;
 
 			ssChannel.configureBlocking(true);
 			ssChannel.socket().bind(new InetSocketAddress(port));
+
+			LOGGER.debug("Server started on port " + port + ".");
 
 			while (!serverShutdown) {
 				try (SocketChannel sChannel = ssChannel.accept()) {
@@ -938,38 +948,45 @@ public class EccoService {
 						this.repositoryDao.store(repository);
 						this.transactionStrategy.end();
 					}
-				} catch (SocketException e) {
+				} catch (AsynchronousCloseException e) {
 					// server shut down
+					//e.printStackTrace();
+				} catch (SocketException | ClosedChannelException e) {
+					LOGGER.warn("Error receiving request.");
 					e.printStackTrace();
 				} catch (Exception e) {
-					throw new EccoException("Error receiving request.", e);
+					//throw new EccoException("Error receiving request.", e);
+					LOGGER.warn("Error receiving request.");
+					e.printStackTrace();
 				}
 			}
 		} catch (Exception e) {
 			throw new EccoException("Error starting server.", e);
 		} finally {
-//			this.serverRunning = false;
+			this.serverRunning = false;
 			this.serverLock.unlock();
 		}
 	}
 
 	public void stopServer() {
-		if (this.serverLock.tryLock()) {
-			this.serverLock.unlock();
+//		if (this.serverLock.tryLock()) {
+//			this.serverLock.unlock();
+//			throw new EccoException("Server is not running.");
+//		}
+		if (!this.serverRunning)
 			throw new EccoException("Server is not running.");
-		}
-//		if (this.serverRunning) {
+
 		this.serverShutdown = true;
 		try {
-			if (this.ssChannel != null)
+			if (this.ssChannel != null) {
 				this.ssChannel.close();
+
+				LOGGER.debug("Server stopped.");
+			}
 		} catch (IOException e) {
 			throw new EccoException("Error stopping server.", e);
 		}
 		this.ssChannel = null;
-//		} else {
-//			throw new EccoException("Server is not running.");
-//		}
 	}
 
 

@@ -1,42 +1,106 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.listener.RepositoryListener;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.control.ToolBar;
-import javafx.scene.layout.*;
+import javafx.scene.control.*;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
 
-public class ServerView extends OperationView {
+public class ServerView extends OperationView implements RepositoryListener {
 
 	private EccoService service;
+
+	final ObservableList<String> logData = FXCollections.observableArrayList();
+
+	private Spinner<Integer> portTextField;
+
+	private boolean stopStep = false;
+
 
 	public ServerView(EccoService service) {
 		super();
 		this.service = service;
 
+		this.portTextField = new Spinner<>(1000, Integer.MAX_VALUE, 3770);
 
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
+		service.addListener(this);
 
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
+		if (service.serverRunning())
+			this.pushStep(() -> this.stepStop(-1));
+		else
+			this.pushStep(() -> this.stepStart());
 
-		Label headerLabel = new Label("Server");
+//		if (service.serverRunning())
+//			this.stepStop(-1);
+//		else
+//			this.stepStart();
+//
+//		this.setOnKeyPressed(event -> {
+//			if (event.getCode() == KeyCode.ESCAPE && !this.stopStep) {
+//				((Stage) this.getScene().getWindow()).close();
+//			}
+//		});
+	}
 
-		toolBar.getItems().setAll(spacerLeft, headerLabel, spacerRight);
 
-		this.setTop(toolBar);
+	@Override
+	public void serverEvent(EccoService service, String message) {
+		this.logData.add(message);
+	}
+
+	@Override
+	public void serverStartEvent(EccoService service, int port) {
+		if (!this.stopStep)
+			this.pushStep(() -> this.stepStop(port));
+	}
+
+	@Override
+	public void serverStopEvent(EccoService service) {
+		if (this.stopStep)
+			this.pushStep(() -> this.stepStart());
+	}
+
+
+	private void stepStart() {
+		this.stopStep = false;
+
+//		// toolbar top
+//		ToolBar toolBar = new ToolBar();
+//
+//		final Pane spacerLeft = new Pane();
+//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
+//		final Pane spacerRight = new Pane();
+//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
+//
+//		HBox leftButtons = new HBox();
+//		leftButtons.setAlignment(Pos.CENTER_RIGHT);
+		Button cancelButton = new Button("Cancel");
+		//cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+		cancelButton.setOnAction(event -> this.popStep());
+		leftButtons.getChildren().setAll(cancelButton);
+//
+//		Label headerLabel = new Label("Server");
+		headerLabel.setText("Server");
+//
+//		HBox rightButtons = new HBox();
+//		rightButtons.setAlignment(Pos.CENTER_RIGHT);
+		Button startButton = new Button("Start");
+		rightButtons.getChildren().setAll(startButton);
+//
+//		leftButtons.minWidthProperty().bind(rightButtons.widthProperty());
+//		rightButtons.minWidthProperty().bind(leftButtons.widthProperty());
+//		toolBar.getItems().setAll(leftButtons, spacerLeft, headerLabel, spacerRight, rightButtons);
+//
+//		this.setTop(toolBar);
 
 
 		// main content
-
-		Button startButton = new Button("Start");
-		Button stopButton = new Button("Stop");
-
 
 		GridPane gridPane = new GridPane();
 		gridPane.setHgap(10);
@@ -54,15 +118,132 @@ public class ServerView extends OperationView {
 
 		int row = 0;
 
+		Label portLabel = new Label("Port: ");
+		gridPane.add(portLabel, 0, row, 1, 1);
+
+		portTextField.setDisable(false);
+		portTextField.setEditable(true);
+		portTextField.getEditor().textProperty().addListener((observable, oldValue, newValue) -> {
+			try {
+				Integer.parseInt(newValue);
+				portTextField.increment(0);
+			} catch (NumberFormatException e) {
+			}
+		}); // workaround for not committing value when editing value
+		portLabel.setLabelFor(portTextField);
+		gridPane.add(portTextField, 1, row, 1, 1);
+
+
+		startButton.setOnAction(event -> {
+			int port = portTextField.getValue();
+			Task serverTask = new Task<Void>() {
+				@Override
+				public Void call() {
+					ServerView.this.service.startServer(port);
+					return null;
+				}
+
+				@Override
+				public void succeeded() {
+					super.succeeded();
+					//ServerView.this.stepSuccess("Server stopped.");
+					ServerView.this.stepStart();
+					ServerView.this.popStep();
+				}
+
+				@Override
+				public void cancelled() {
+					super.cancelled();
+					//ServerView.this.stepSuccess("Server stopped.");
+					//ServerView.this.stepStart();
+					ServerView.this.popStep();
+				}
+
+				@Override
+				public void failed() {
+					super.failed();
+					ServerView.this.stepError("Server error.", this.getException());
+				}
+			};
+			new Thread(serverTask).start();
+
+			this.pushStep(() -> this.stepStop(port));
+		});
+
+
+		this.fit();
+	}
+
+
+	private void stepStop(int port) {
+		this.stopStep = true;
+
+//		// toolbar top
+//		ToolBar toolBar = new ToolBar();
+//
+//		final Pane spacerLeft = new Pane();
+//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
+//		final Pane spacerRight = new Pane();
+//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
+//
+//		Label headerLabel = new Label("Server running on port " + port);
+		headerLabel.setText("Server running on port " + port);
+
+		Button stopButton = new Button("Stop");
+		stopButton.setOnAction(event -> {
+			this.service.stopServer();
+			//this.pushStep(() -> this.stepStart());
+			this.popStep();
+		});
+//
+//		toolBar.getItems().setAll(stopButton, spacerLeft, headerLabel, spacerRight);
+//
+//		this.setTop(toolBar);
+
+
+		// main content
+
+		GridPane gridPane = new GridPane();
+		gridPane.setHgap(10);
+		gridPane.setVgap(10);
+		gridPane.setPadding(new Insets(10, 10, 10, 10));
+
+		ColumnConstraints col1constraint = new ColumnConstraints();
+		col1constraint.setFillWidth(true);
+		gridPane.getColumnConstraints().addAll(col1constraint);
+
+		this.setCenter(gridPane);
+
+		int row = 0;
+
+		// progress bar
 		ProgressBar progressBar = new ProgressBar();
+		progressBar.setMaxWidth(Double.MAX_VALUE);
+		//progressBar.setPrefWidth(Double.MAX_VALUE);
+		progressBar.prefWidthProperty().bind(gridPane.widthProperty().subtract(20));
 		progressBar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
 		gridPane.add(progressBar, 0, row, 1, 1);
 		row++;
 
-		gridPane.add(startButton, 1, row, 1, 1);
-		row++;
+		// server log
+		TableView<String> fileTable = new TableView<>();
+		fileTable.setEditable(false);
+		fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		gridPane.add(stopButton, 1, row, 1, 1);
+		TableColumn<String, String> timeCol = new TableColumn<>("Time");
+		TableColumn<String, String> messageCol = new TableColumn<>("Message");
+		fileTable.getColumns().setAll(timeCol, messageCol);
+		messageCol.setCellValueFactory((TableColumn.CellDataFeatures<String, String> param) -> new ReadOnlyStringWrapper(""));
+		//messageCol.setCellValueFactory(new PropertyValueFactory<>("action"));
+		fileTable.setItems(this.logData);
+
+		TitledPane titledPane = new TitledPane();
+		titledPane.setText("Log");
+		titledPane.setCollapsible(false);
+		titledPane.setContent(fileTable);
+		titledPane.setMaxWidth(Double.MAX_VALUE);
+		titledPane.setMaxHeight(Double.MAX_VALUE);
+		gridPane.add(titledPane, 0, row, 1, 1);
 		row++;
 
 
