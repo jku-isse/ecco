@@ -61,4 +61,10 @@ public class BaseRemote implements Remote {
 		return this.features;
 	}
 
+
+	@Override
+	public String toString() {
+		return name + " - " + address + " [" + type + "]";
+	}
+
 }

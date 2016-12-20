@@ -4,7 +4,8 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.gui.view.detail.RemoteDetailView;
+import at.jku.isse.ecco.listener.ServiceListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -15,7 +16,7 @@ import javafx.scene.layout.BorderPane;
 
 import java.util.Collection;
 
-public class RemotesView extends BorderPane implements RepositoryListener {
+public class RemotesView extends BorderPane implements ServiceListener {
 
 	private EccoService service;
 
@@ -64,6 +65,10 @@ public class RemotesView extends BorderPane implements RepositoryListener {
 		toolBar.getItems().addAll(refreshButton, new Separator(), nameLabel, nameTextField, addressLabel, addressTextField, addButton, new Separator(), removeButton, new Separator());
 
 
+		SplitPane splitPane = new SplitPane();
+		this.setCenter(splitPane);
+
+
 		// list of remotes
 		TableView<Remote> remotesTable = new TableView<>();
 		remotesTable.setEditable(true);
@@ -80,13 +85,22 @@ public class RemotesView extends BorderPane implements RepositoryListener {
 
 		remoteNameCol.setCellValueFactory((TableColumn.CellDataFeatures<Remote, String> param) -> new ReadOnlyStringWrapper(param.getValue().getName()));
 		remoteAddressCol.setCellValueFactory((TableColumn.CellDataFeatures<Remote, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAddress()));
-		remoteTypeCol.setCellValueFactory((TableColumn.CellDataFeatures<Remote, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAddress()));
-
+		remoteTypeCol.setCellValueFactory((TableColumn.CellDataFeatures<Remote, String> param) -> new ReadOnlyStringWrapper(param.getValue().getType().toString()));
 
 		remotesTable.setItems(this.remotesData);
 
 
-		this.setCenter(remotesTable);
+		// remote details view
+		RemoteDetailView remoteDetailView = new RemoteDetailView(service);
+
+
+		remotesTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
+			if (newValue != null) {
+				remoteDetailView.showRemote(newValue);
+			} else {
+				remoteDetailView.showRemote(null);
+			}
+		});
 
 
 		addButton.setOnAction(event -> {
@@ -104,8 +118,13 @@ public class RemotesView extends BorderPane implements RepositoryListener {
 		removeButton.setOnAction(event -> {
 			for (Remote remote : remotesTable.getSelectionModel().getSelectedItems()) {
 				this.service.removeRemote(remote.getName());
+				this.remotesData.remove(remote);
 			}
 		});
+
+
+		// add to split pane
+		splitPane.getItems().addAll(remotesTable, remoteDetailView);
 
 
 		service.addListener(this);

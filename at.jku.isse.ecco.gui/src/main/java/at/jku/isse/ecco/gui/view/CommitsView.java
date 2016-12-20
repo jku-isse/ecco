@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -18,7 +18,7 @@ import javafx.scene.layout.BorderPane;
 
 import java.util.Collection;
 
-public class CommitsView extends BorderPane implements RepositoryListener {
+public class CommitsView extends BorderPane implements ServiceListener {
 
 	private EccoService service;
 

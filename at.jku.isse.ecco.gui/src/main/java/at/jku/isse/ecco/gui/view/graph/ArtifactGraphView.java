@@ -5,7 +5,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.plugin.artifact.DirectoryArtifactData;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import javafx.application.Platform;
@@ -39,7 +39,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ArtifactGraphView extends BorderPane implements RepositoryListener {
+public class ArtifactGraphView extends BorderPane implements ServiceListener {
 
 	private EccoService service;
 

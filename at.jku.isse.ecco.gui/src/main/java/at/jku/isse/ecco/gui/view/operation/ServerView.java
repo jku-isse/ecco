@@ -1,7 +1,8 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -11,8 +12,9 @@ import javafx.scene.control.*;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.stage.Stage;
 
-public class ServerView extends OperationView implements RepositoryListener {
+public class ServerView extends OperationView implements ServiceListener {
 
 	private EccoService service;
 
@@ -27,20 +29,15 @@ public class ServerView extends OperationView implements RepositoryListener {
 		super();
 		this.service = service;
 
-		this.portTextField = new Spinner<>(1000, Integer.MAX_VALUE, 3770);
+		this.portTextField = new Spinner<>(0, Integer.MAX_VALUE, 3770);
 
 		service.addListener(this);
 
 		if (service.serverRunning())
-			this.pushStep(() -> this.stepStop(-1));
+			this.stepStop(-1);
 		else
-			this.pushStep(() -> this.stepStart());
+			this.stepStart();
 
-//		if (service.serverRunning())
-//			this.stepStop(-1);
-//		else
-//			this.stepStart();
-//
 //		this.setOnKeyPressed(event -> {
 //			if (event.getCode() == KeyCode.ESCAPE && !this.stopStep) {
 //				((Stage) this.getScene().getWindow()).close();
@@ -57,47 +54,27 @@ public class ServerView extends OperationView implements RepositoryListener {
 	@Override
 	public void serverStartEvent(EccoService service, int port) {
 		if (!this.stopStep)
-			this.pushStep(() -> this.stepStop(port));
+			Platform.runLater(() -> this.stepStop(port));
 	}
 
 	@Override
 	public void serverStopEvent(EccoService service) {
 		if (this.stopStep)
-			this.pushStep(() -> this.stepStart());
+			Platform.runLater(() -> this.stepStart());
 	}
 
 
 	private void stepStart() {
 		this.stopStep = false;
 
-//		// toolbar top
-//		ToolBar toolBar = new ToolBar();
-//
-//		final Pane spacerLeft = new Pane();
-//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-//		final Pane spacerRight = new Pane();
-//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-//
-//		HBox leftButtons = new HBox();
-//		leftButtons.setAlignment(Pos.CENTER_RIGHT);
 		Button cancelButton = new Button("Cancel");
-		//cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
-		cancelButton.setOnAction(event -> this.popStep());
+		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		leftButtons.getChildren().setAll(cancelButton);
-//
-//		Label headerLabel = new Label("Server");
+
 		headerLabel.setText("Server");
-//
-//		HBox rightButtons = new HBox();
-//		rightButtons.setAlignment(Pos.CENTER_RIGHT);
+
 		Button startButton = new Button("Start");
 		rightButtons.getChildren().setAll(startButton);
-//
-//		leftButtons.minWidthProperty().bind(rightButtons.widthProperty());
-//		rightButtons.minWidthProperty().bind(leftButtons.widthProperty());
-//		toolBar.getItems().setAll(leftButtons, spacerLeft, headerLabel, spacerRight, rightButtons);
-//
-//		this.setTop(toolBar);
 
 
 		// main content
@@ -144,30 +121,12 @@ public class ServerView extends OperationView implements RepositoryListener {
 				}
 
 				@Override
-				public void succeeded() {
-					super.succeeded();
-					//ServerView.this.stepSuccess("Server stopped.");
-					ServerView.this.stepStart();
-					ServerView.this.popStep();
-				}
-
-				@Override
-				public void cancelled() {
-					super.cancelled();
-					//ServerView.this.stepSuccess("Server stopped.");
-					//ServerView.this.stepStart();
-					ServerView.this.popStep();
-				}
-
-				@Override
 				public void failed() {
 					super.failed();
 					ServerView.this.stepError("Server error.", this.getException());
 				}
 			};
 			new Thread(serverTask).start();
-
-			this.pushStep(() -> this.stepStop(port));
 		});
 
 
@@ -178,27 +137,13 @@ public class ServerView extends OperationView implements RepositoryListener {
 	private void stepStop(int port) {
 		this.stopStep = true;
 
-//		// toolbar top
-//		ToolBar toolBar = new ToolBar();
-//
-//		final Pane spacerLeft = new Pane();
-//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-//		final Pane spacerRight = new Pane();
-//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-//
-//		Label headerLabel = new Label("Server running on port " + port);
 		headerLabel.setText("Server running on port " + port);
 
 		Button stopButton = new Button("Stop");
-		stopButton.setOnAction(event -> {
-			this.service.stopServer();
-			//this.pushStep(() -> this.stepStart());
-			this.popStep();
-		});
-//
-//		toolBar.getItems().setAll(stopButton, spacerLeft, headerLabel, spacerRight);
-//
-//		this.setTop(toolBar);
+		stopButton.setOnAction(event -> this.service.stopServer());
+		leftButtons.getChildren().setAll(stopButton);
+
+		rightButtons.getChildren().clear();
 
 
 		// main content
@@ -249,6 +194,5 @@ public class ServerView extends OperationView implements RepositoryListener {
 
 		this.fit();
 	}
-
 
 }

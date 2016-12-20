@@ -5,8 +5,9 @@ import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToolBar;
-import javafx.scene.layout.*;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
@@ -20,6 +21,7 @@ public class InitView extends OperationView {
 	private EccoService service;
 
 	public InitView(EccoService service) {
+		super();
 		this.service = service;
 
 		this.step1();
@@ -27,26 +29,14 @@ public class InitView extends OperationView {
 
 
 	private void step1() {
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
-
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-
 		Button cancelButton = new Button("Cancel");
-		cancelButton.setOnAction(event1 -> {
-			((Stage) this.getScene().getWindow()).close();
-		});
+		cancelButton.setOnAction(event1 -> ((Stage) this.getScene().getWindow()).close());
+		this.leftButtons.getChildren().setAll(cancelButton);
 
-		Label headerLabel = new Label("Repository Directory");
+		this.headerLabel.setText("Repository Directory");
 
 		Button initButton = new Button("Init");
-
-		toolBar.getItems().setAll(cancelButton, spacerLeft, headerLabel, spacerRight, initButton);
-
-		this.setTop(toolBar);
+		this.rightButtons.getChildren().setAll(initButton);
 
 
 		// main content

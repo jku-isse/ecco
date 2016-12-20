@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import javafx.application.Platform;
 import javafx.beans.binding.When;
 import javafx.beans.property.IntegerProperty;
@@ -21,7 +21,7 @@ import javafx.scene.layout.BorderPane;
 
 import java.util.Collection;
 
-public class AssociationsView extends BorderPane implements RepositoryListener {
+public class AssociationsView extends BorderPane implements ServiceListener {
 
 	private EccoService service;
 

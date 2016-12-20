@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.gui.view.detail.FeatureDetailView;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -19,7 +19,7 @@ import javafx.scene.layout.BorderPane;
 
 import java.util.Collection;
 
-public class FeaturesView extends BorderPane implements RepositoryListener {
+public class FeaturesView extends BorderPane implements ServiceListener {
 
 	private final EccoService service;
 

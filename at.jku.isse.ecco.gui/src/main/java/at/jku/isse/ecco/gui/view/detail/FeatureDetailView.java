@@ -5,7 +5,6 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -26,7 +25,7 @@ public class FeatureDetailView extends BorderPane {
 
 	private Feature currentFeature;
 
-	final ObservableList<FeatureVersionInfo> featureVersionsData = FXCollections.observableArrayList();
+	final ObservableList<FeatureVersion> featureVersionsData = FXCollections.observableArrayList();
 
 	private TextField featureName;
 	private TextArea featureDescription;
@@ -45,7 +44,7 @@ public class FeatureDetailView extends BorderPane {
 		this.setTop(toolBar);
 
 		Button saveButton = new Button("Save");
-		toolBar.getItems().add(saveButton);
+		toolBar.getItems().setAll(saveButton, new Separator());
 
 
 		// splitpane
@@ -109,17 +108,17 @@ public class FeatureDetailView extends BorderPane {
 
 
 		// list of feature versions
-		TableView<FeatureVersionInfo> versionsTable = new TableView<FeatureVersionInfo>();
+		TableView<FeatureVersion> versionsTable = new TableView<>();
 		versionsTable.setEditable(false);
 		versionsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<FeatureVersionInfo, String> versionCol = new TableColumn<FeatureVersionInfo, String>("Version");
-		TableColumn<FeatureVersionInfo, String> featureVersionsCol = new TableColumn<FeatureVersionInfo, String>("Feature Versions");
+		TableColumn<FeatureVersion, String> versionCol = new TableColumn<>("Version");
+		TableColumn<FeatureVersion, String> featureVersionsCol = new TableColumn<>("Feature Versions");
 
 		featureVersionsCol.getColumns().setAll(versionCol);
 		versionsTable.getColumns().setAll(featureVersionsCol);
 
-		versionCol.setCellValueFactory(new PropertyValueFactory<FeatureVersionInfo, String>("version"));
+		versionCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
 		versionsTable.setItems(this.featureVersionsData);
 
@@ -146,7 +145,7 @@ public class FeatureDetailView extends BorderPane {
 
 			// show feature versions
 			for (FeatureVersion featureVersion : feature.getVersions()) {
-				FeatureDetailView.this.featureVersionsData.add(new FeatureVersionInfo(featureVersion.getId()));
+				FeatureDetailView.this.featureVersionsData.add(featureVersion);
 			}
 		} else {
 			this.setCenter(null);
@@ -158,20 +157,20 @@ public class FeatureDetailView extends BorderPane {
 	}
 
 
-	public static class FeatureVersionInfo {
-		private final SimpleStringProperty version;
-
-		private FeatureVersionInfo(String version) {
-			this.version = new SimpleStringProperty(version);
-		}
-
-		public String getVersion() {
-			return this.version.get();
-		}
-
-		public void setVersion(String version) {
-			this.version.set(version);
-		}
-	}
+//	public static class FeatureVersionInfo {
+//		private final SimpleStringProperty version;
+//
+//		private FeatureVersionInfo(String version) {
+//			this.version = new SimpleStringProperty(version);
+//		}
+//
+//		public String getVersion() {
+//			return this.version.get();
+//		}
+//
+//		public void setVersion(String version) {
+//			this.version.set(version);
+//		}
+//	}
 
 }

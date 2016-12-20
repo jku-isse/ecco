@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -12,7 +12,7 @@ import javafx.scene.control.TableView;
 
 import java.util.Collection;
 
-public class PluginsView extends TableView<PluginsView.PluginInfo> implements RepositoryListener {
+public class PluginsView extends TableView<PluginsView.PluginInfo> implements ServiceListener {
 
 	private EccoService service;
 

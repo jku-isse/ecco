@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 
-public interface RepositoryListener extends ReadListener, WriteListener, ServerListener {
+public interface ServiceListener extends ReadListener, WriteListener, ServerListener {
 
 	public default void statusChangedEvent(EccoService service) {
 		// do nothing

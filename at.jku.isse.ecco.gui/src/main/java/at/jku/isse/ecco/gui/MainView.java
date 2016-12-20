@@ -7,7 +7,7 @@ import at.jku.isse.ecco.gui.view.graph.CommitGraphView;
 import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
 import at.jku.isse.ecco.gui.view.operation.*;
 import at.jku.isse.ecco.gui.view.operation.InitView;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -17,7 +17,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-public class MainView extends BorderPane implements RepositoryListener {
+public class MainView extends BorderPane implements ServiceListener {
 
 	private EccoService eccoService;
 
@@ -49,18 +49,23 @@ public class MainView extends BorderPane implements RepositoryListener {
 //		this.setTop(menuBar);
 
 		this.openButton.setOnAction(event -> this.openDialog("Open", new OpenView(eccoService)));
-		this.closeButton.setOnAction(event -> this.eccoService.close());
 		this.initButton.setOnAction(event -> this.openDialog("Init", new InitView(eccoService)));
-		this.forkButton.setOnAction(event -> this.openDialog("Fork", new ForkView(eccoService)));
-		this.pullButton.setOnAction(event -> this.openDialog("Pull", new PullView(eccoService)));
+		//this.forkButton.setOnAction(event -> this.openDialog("Fork", new ForkView(eccoService)));
+		this.closeButton.setOnAction(event -> this.eccoService.close());
 
+		// commit
+		// checkout
+
+		this.fetchButton.setOnAction(event -> this.openDialog("Fetch", new FetchView(eccoService)));
+		this.pullButton.setOnAction(event -> this.openDialog("Pull", new PullView(eccoService)));
+		// push
 
 		this.serverButton.setOnAction(event -> this.openDialog("Server", new ServerView(eccoService)));
 
 
 		// toolbar
 		ToolBar toolBar = new ToolBar();
-		toolBar.getItems().addAll(openButton, initButton, forkButton, new Separator(), commitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), closeButton, new Separator(), serverButton, new Separator());
+		toolBar.getItems().addAll(openButton, initButton, new Separator(), closeButton, new Separator(), commitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), serverButton, new Separator());
 		this.setTop(toolBar);
 
 

@@ -6,7 +6,7 @@ import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import javafx.application.Platform;
 import javafx.beans.binding.When;
 import javafx.beans.property.*;
@@ -26,7 +26,7 @@ import javafx.scene.layout.BorderPane;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class ArtifactsView extends BorderPane implements RepositoryListener {
+public class ArtifactsView extends BorderPane implements ServiceListener {
 
 	private final EccoService service;
 

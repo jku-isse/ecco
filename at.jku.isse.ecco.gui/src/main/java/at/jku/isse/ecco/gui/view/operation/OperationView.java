@@ -16,6 +16,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Stack;
 
+// TODO: forward, backward, enter, escape, etc.
+
 public abstract class OperationView extends BorderPane {
 
 	public interface StepActivator {
@@ -49,6 +51,9 @@ public abstract class OperationView extends BorderPane {
 	}
 
 
+	// -----------------------------------------------------------------------------------------------------------------
+
+
 	protected HBox leftButtons;
 	protected HBox rightButtons;
 	protected Label headerLabel;
@@ -58,8 +63,8 @@ public abstract class OperationView extends BorderPane {
 		//Scene scene = this.getScene();
 		this.setOnKeyPressed(event -> {
 			if (event.getCode() == KeyCode.ESCAPE) {
-				//((Stage) this.getScene().getWindow()).close();
-				this.popStep();
+				((Stage) this.getScene().getWindow()).close();
+				//this.popStep();
 			}
 		});
 
@@ -76,12 +81,14 @@ public abstract class OperationView extends BorderPane {
 		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
 
 		leftButtons = new HBox();
-		leftButtons.setAlignment(Pos.CENTER_RIGHT);
+		leftButtons.setAlignment(Pos.CENTER_LEFT);
+		leftButtons.setSpacing(10);
 
 		headerLabel = new Label();
 
 		rightButtons = new HBox();
 		rightButtons.setAlignment(Pos.CENTER_RIGHT);
+		rightButtons.setSpacing(10);
 
 		leftButtons.minWidthProperty().bind(rightButtons.widthProperty());
 		rightButtons.minWidthProperty().bind(leftButtons.widthProperty());
@@ -106,7 +113,7 @@ public abstract class OperationView extends BorderPane {
 
 
 	protected void stepSuccess(String text) {
-		this.clearSteps();
+//		this.clearSteps();
 
 		// toolbar top
 		ToolBar toolBar = new ToolBar();
@@ -138,7 +145,7 @@ public abstract class OperationView extends BorderPane {
 
 
 	protected void stepError(String text, Throwable ex) {
-		this.clearSteps();
+//		this.clearSteps();
 
 		// toolbar top
 		ToolBar toolBar = new ToolBar();

@@ -7,7 +7,7 @@ import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.util.Trees;
@@ -24,7 +24,7 @@ import java.nio.file.Paths;
 /**
  * This class implements all the CLI commands.
  */
-public class CLI implements RepositoryListener {
+public class CLI implements ServiceListener {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(CLI.class);
 
@@ -237,14 +237,14 @@ public class CLI implements RepositoryListener {
 			path = null;
 		}
 
-		if (path != null) {
-			this.eccoService.fork(path);
-			this.eccoService.close();
-		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
+		if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
 			String[] pair = remoteUriString.split(":");
 			String hostname = pair[0];
 			int port = Integer.parseInt(pair[1]);
 			this.eccoService.fork(hostname, port);
+			this.eccoService.close();
+		} else if (path != null) {
+			this.eccoService.fork(path);
 			this.eccoService.close();
 		} else {
 			System.err.println("ERROR: Invalid remote address provided.");
@@ -259,14 +259,14 @@ public class CLI implements RepositoryListener {
 			path = null;
 		}
 
-		if (path != null) {
-			this.eccoService.fork(path, excludedFeatureVersionsString);
-			this.eccoService.close();
-		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
+		if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
 			String[] pair = remoteUriString.split(":");
 			String hostname = pair[0];
 			int port = Integer.parseInt(pair[1]);
 			this.eccoService.fork(hostname, port, excludedFeatureVersionsString);
+			this.eccoService.close();
+		} else if (path != null) {
+			this.eccoService.fork(path, excludedFeatureVersionsString);
 			this.eccoService.close();
 		} else {
 			System.err.println("ERROR: Invalid remote address provided.");
@@ -314,25 +314,27 @@ public class CLI implements RepositoryListener {
 	}
 
 	public void addRemote(String remoteName, String remoteUriString) {
-		Path path;
-		try {
-			path = Paths.get(remoteUriString);
-		} catch (InvalidPathException | NullPointerException ex) {
-			path = null;
-		}
+		this.eccoService.addRemote(remoteName, remoteUriString);
 
-		Remote.Type remoteType;
-		if (path != null) {
-			this.initRepo();
-			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.LOCAL);
-			this.eccoService.close();
-		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
-			this.initRepo();
-			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.REMOTE);
-			this.eccoService.close();
-		} else {
-			System.err.println("ERROR: Invalid remote address provided.");
-		}
+//		Path path;
+//		try {
+//			path = Paths.get(remoteUriString);
+//		} catch (InvalidPathException | NullPointerException ex) {
+//			path = null;
+//		}
+//
+//		Remote.Type remoteType;
+//		if (path != null) {
+//			this.initRepo();
+//			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.LOCAL);
+//			this.eccoService.close();
+//		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
+//			this.initRepo();
+//			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.REMOTE);
+//			this.eccoService.close();
+//		} else {
+//			System.err.println("ERROR: Invalid remote address provided.");
+//		}
 	}
 
 	public void removeRemote(String remoteName) {
@@ -414,7 +416,7 @@ public class CLI implements RepositoryListener {
 		this.initRepo();
 
 		for (Association association : this.eccoService.getRepository().getAssociations()) {
-			if (association.getId() == Integer.valueOf(traceId)) {
+			if (association.getId().equals(traceId)) {
 				System.out.println("[" + association.getId() + "] " + association.getPresenceCondition().getLabel());
 				Trees.print(association.getRootNode());
 			}

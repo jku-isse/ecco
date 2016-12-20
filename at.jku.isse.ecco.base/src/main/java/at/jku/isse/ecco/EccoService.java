@@ -9,7 +9,7 @@ import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.plugin.CoreModule;
 import at.jku.isse.ecco.plugin.artifact.*;
 import at.jku.isse.ecco.plugin.data.DataPlugin;
@@ -234,31 +234,49 @@ public class EccoService {
 
 	// # LISTENERS #####################################################################################################
 
-	private Collection<RepositoryListener> listeners = new ArrayList<>();
+	private Collection<ServiceListener> listeners = new ArrayList<>();
 
-	public void addListener(RepositoryListener listener) {
+	public void addListener(ServiceListener listener) {
 		this.listeners.add(listener);
 	}
 
-	public void removeListener(RepositoryListener listener) {
+	public void removeListener(ServiceListener listener) {
 		this.listeners.remove(listener);
 	}
 
 	protected void fireStatusChangedEvent() {
-		for (RepositoryListener listener : this.listeners) {
+		for (ServiceListener listener : this.listeners) {
 			listener.statusChangedEvent(this);
 		}
 	}
 
 	protected void fireCommitsChangedEvent(Commit commit) {
-		for (RepositoryListener listener : this.listeners) {
+		for (ServiceListener listener : this.listeners) {
 			listener.commitsChangedEvent(this, commit);
 		}
 	}
 
 	protected void fireAssociationSelectedEvent(Association association) {
-		for (RepositoryListener listener : this.listeners) {
+		for (ServiceListener listener : this.listeners) {
 			listener.associationSelectedEvent(this, association);
+		}
+	}
+
+	protected void fireServerEvent(String message) {
+		for (ServiceListener listener : this.listeners) {
+			listener.serverEvent(this, message);
+		}
+	}
+
+	protected void fireServerStartedEvent(int port) {
+		for (ServiceListener listener : this.listeners) {
+			listener.serverStartEvent(this, port);
+		}
+	}
+
+	protected void fireServerStoppedEvent() {
+		for (ServiceListener listener : this.listeners) {
+			listener.serverStopEvent(this);
 		}
 	}
 
@@ -493,10 +511,13 @@ public class EccoService {
 		} catch (InvalidPathException | NullPointerException ex) {
 			path = null;
 		}
-		if (path != null) {
-			return this.addRemote(name, address, Remote.Type.LOCAL);
-		} else if (address.matches("[a-zA-Z]+:[0-9]+")) {
+//		if (path != null) {
+//			return this.addRemote(name, address, Remote.Type.LOCAL);
+//		} else
+		if (address.matches("[a-zA-Z]+:[0-9]+")) {
 			return this.addRemote(name, address, Remote.Type.REMOTE);
+		} else if (path != null) {
+			return this.addRemote(name, address, Remote.Type.LOCAL);
 		} else {
 			throw new EccoException("Invalid remote address provided.");
 		}
@@ -813,7 +834,7 @@ public class EccoService {
 	}
 
 
-	protected Collection<FeatureVersion> parseFeatureVersionString(String featureVersionsString) {
+	protected Collection<FeatureVersion> parseFeatureVersionsString(String featureVersionsString) {
 		if (featureVersionsString == null)
 			throw new EccoException("No feature versions string provided.");
 
@@ -903,6 +924,8 @@ public class EccoService {
 			ssChannel.socket().bind(new InetSocketAddress(port));
 
 			LOGGER.debug("Server started on port " + port + ".");
+			this.fireServerEvent("Server started on port " + port + ".");
+			this.fireServerStartedEvent(port);
 
 			while (!serverShutdown) {
 				try (SocketChannel sChannel = ssChannel.accept()) {
@@ -911,7 +934,8 @@ public class EccoService {
 
 					// determine if it is a push (receive data) or a pull (send data)
 					String command = (String) ois.readObject();
-					System.out.println("COMMAND: " + command);
+					LOGGER.debug("COMMAND: " + command);
+					this.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
 
 					if (command.equals("FETCH")) { // if fetch, send data
 						// copy features using mem entity factory
@@ -924,7 +948,9 @@ public class EccoService {
 						oos.writeObject(copiedFeatures);
 					} else if (command.equals("PULL")) { // if pull, send data
 						// retrieve deselection
-						Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
+						//Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
+						String deselectedFeatureVersionsString = (String) ois.readObject();
+						Collection<FeatureVersion> deselected = this.parseFeatureVersionsString(deselectedFeatureVersionsString);
 
 						// compute subset repository using mem entity factory
 						this.transactionStrategy.begin();
@@ -953,10 +979,12 @@ public class EccoService {
 					//e.printStackTrace();
 				} catch (SocketException | ClosedChannelException e) {
 					LOGGER.warn("Error receiving request.");
+					this.fireServerEvent("Error receiving request: " + e.getMessage());
 					e.printStackTrace();
 				} catch (Exception e) {
 					//throw new EccoException("Error receiving request.", e);
 					LOGGER.warn("Error receiving request.");
+					this.fireServerEvent("Error receiving request: " + e.getMessage());
 					e.printStackTrace();
 				}
 			}
@@ -966,6 +994,10 @@ public class EccoService {
 			this.serverRunning = false;
 			this.serverLock.unlock();
 		}
+
+		LOGGER.debug("Server stopped.");
+		this.fireServerEvent("Server stopped.");
+		this.fireServerStoppedEvent();
 	}
 
 	public void stopServer() {
@@ -1136,7 +1168,7 @@ public class EccoService {
 			originService.transactionStrategy.begin();
 
 			RepositoryOperand originRepository = originService.repositoryDao.load();
-			subsetOriginRepository = originRepository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
+			subsetOriginRepository = originRepository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
 
 			originService.transactionStrategy.end();
 		} catch (Exception e) {
@@ -1179,7 +1211,7 @@ public class EccoService {
 	/**
 	 * Pulls the changes from the parent repository to this repository.
 	 */
-	public void pull(String deselectedFeatureVersionsString, String remoteName) {
+	public void pull(String remoteName, String deselectedFeatureVersionsString) {
 		try {
 			this.transactionStrategy.begin();
 
@@ -1228,7 +1260,7 @@ public class EccoService {
 					parentService.transactionStrategy.begin();
 
 					RepositoryOperand parentRepository = parentService.repositoryDao.load();
-					subsetParentRepository = parentRepository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
+					subsetParentRepository = parentRepository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
 
 					parentService.transactionStrategy.end();
 				} catch (Exception e) {
@@ -1262,7 +1294,7 @@ public class EccoService {
 	/**
 	 * Pushes the changes from this repository to its parent repository.
 	 */
-	public void push(String deselectedFeatureVersionsString, String remoteName) {
+	public void push(String remoteName, String deselectedFeatureVersionsString) {
 		try {
 			this.transactionStrategy.begin();
 
@@ -1284,7 +1316,7 @@ public class EccoService {
 						// compute subset repository using mem entity factory
 						this.transactionStrategy.begin();
 						RepositoryOperand repository = this.repositoryDao.load();
-						RepositoryOperand subsetRepository = repository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.entityFactory); // TODO: change entity factory to mem
+						RepositoryOperand subsetRepository = repository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.entityFactory); // TODO: change entity factory to mem
 						this.transactionStrategy.end();
 
 						// send subset repository
@@ -1307,7 +1339,7 @@ public class EccoService {
 
 				// create subset repository
 				RepositoryOperand repository = this.repositoryDao.load();
-				RepositoryOperand subsetRepository = repository.subset(this.parseFeatureVersionString(deselectedFeatureVersionsString), repository.getMaxOrder(), parentService.entityFactory);
+				RepositoryOperand subsetRepository = repository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), parentService.entityFactory);
 
 				// merge into parent repository
 				try {

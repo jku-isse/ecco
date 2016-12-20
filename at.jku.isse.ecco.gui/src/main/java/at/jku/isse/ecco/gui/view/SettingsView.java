@@ -1,10 +1,8 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
@@ -20,7 +18,7 @@ import java.nio.file.Paths;
 /**
  * TODO: avoid rebuilding the whole scene with every event!
  */
-public class SettingsView extends BorderPane implements RepositoryListener {
+public class SettingsView extends BorderPane implements ServiceListener {
 
 	private EccoService service;
 

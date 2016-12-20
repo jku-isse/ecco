@@ -8,7 +8,7 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
@@ -29,7 +29,7 @@ import javafx.scene.layout.Priority;
 
 import java.nio.file.Path;
 
-public class OperationsView extends BorderPane implements RepositoryListener {
+public class OperationsView extends BorderPane implements ServiceListener {
 
 	private EccoService service;
 

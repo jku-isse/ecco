@@ -21,7 +21,7 @@ public class EccoUtil {
 
 
 	public static Collection<Feature> deepCopyFeatures(Collection<? extends Feature> features, EntityFactory entityFactory) {
-		Collection<Feature> copiedFeatures = new ArrayList<Feature>();
+		Collection<Feature> copiedFeatures = new ArrayList<>();
 		for (Feature feature : features) {
 			Feature copiedFeature = entityFactory.createFeature(feature.getId(), feature.getName(), feature.getDescription());
 
@@ -29,6 +29,8 @@ public class EccoUtil {
 				FeatureVersion copiedFeatureVersion = copiedFeature.addVersion(featureVersion.getId());
 				copiedFeatureVersion.setDescription(featureVersion.getDescription());
 			}
+
+			copiedFeatures.add(copiedFeature);
 		}
 
 		return copiedFeatures;

@@ -6,7 +6,7 @@ import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.listener.RepositoryListener;
+import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -19,17 +19,14 @@ import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.VPos;
 import javafx.scene.chart.*;
-import javafx.scene.control.Button;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TitledPane;
-import javafx.scene.control.ToolBar;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 
 import java.nio.file.Path;
 import java.util.Map;
 
-public class ChartsView extends BorderPane implements RepositoryListener {
+public class ChartsView extends BorderPane implements ServiceListener {
 
 	private EccoService service;
 
@@ -48,8 +45,6 @@ public class ChartsView extends BorderPane implements RepositoryListener {
 		this.setTop(toolBar);
 
 		Button refreshButton = new Button("Refresh");
-		toolBar.getItems().add(refreshButton);
-
 		refreshButton.setOnAction(e -> {
 			toolBar.setDisable(true);
 
@@ -120,7 +115,9 @@ public class ChartsView extends BorderPane implements RepositoryListener {
 		});
 
 		Button exportButton = new Button("Export");
-		toolBar.getItems().add(exportButton);
+
+		toolBar.getItems().setAll(refreshButton, new Separator(), exportButton, new Separator());
+
 
 		ScrollPane scrollPane = new ScrollPane();
 		this.setCenter(scrollPane);

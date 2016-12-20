@@ -5,10 +5,14 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTreeCell;
-import javafx.scene.layout.*;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.RowConstraints;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
@@ -22,6 +26,8 @@ public class PullView extends OperationView {
 
 	private Button pullButton;
 	private ComboBox<Remote> remoteComboBox;
+	private TextField deselectionTextField;
+	private ProgressBar progressBar;
 
 
 	public PullView(EccoService service) {
@@ -30,50 +36,73 @@ public class PullView extends OperationView {
 
 		this.pullButton = new Button("Pull |");
 		this.remoteComboBox = new ComboBox<>();
+		this.deselectionTextField = new TextField();
+		this.progressBar = new ProgressBar();
 
-		this.pullButton.setOnAction(event1 -> {
-			try {
-				Remote remote = this.remoteComboBox.getValue();
+		this.pullButton.setOnAction(event -> {
+			this.setDisable(true);
 
-				this.service.fetch(remote.getName());
-				this.service.pull(remote.getName());
-				this.stepSuccess("Pull operation was successful.");
-			} catch (Exception e) {
-				this.stepError("Error during pull operation.", e);
-			}
+			Remote remote = this.remoteComboBox.getValue();
+
+			Task pullTask = new Task<Void>() {
+				@Override
+				public Void call() {
+					updateProgress(Double.NaN, 1.0);
+					PullView.this.service.fetch(remote.getName());
+					updateProgress(0.0, 1.0);
+					PullView.this.service.pull(remote.getName(), deselectionTextField.getText());
+					updateProgress(1.0, 1.0);
+					return null;
+				}
+
+				@Override
+				public void succeeded() {
+					super.succeeded();
+					PullView.this.stepSuccess("Pull operation was successful.");
+					PullView.this.setDisable(false);
+				}
+
+				@Override
+				public void cancelled() {
+					super.cancelled();
+					PullView.this.stepError("Pull operation was cancelled.", this.getException());
+					PullView.this.setDisable(false);
+				}
+
+				@Override
+				public void failed() {
+					super.failed();
+					PullView.this.stepError("Error during pull operation.", this.getException());
+					PullView.this.setDisable(false);
+				}
+			};
+			PullView.this.progressBar.progressProperty().bind(pullTask.progressProperty());
+			this.stepProgress();
+			new Thread(pullTask).start();
 		});
 
-		this.step1();
+		pullButton.disableProperty().bind(remoteComboBox.getSelectionModel().selectedItemProperty().isNull());
+
+		this.stepRemote();
 	}
 
 
-	private void step1() {
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
-
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-
+	private void stepRemote() {
 		Button cancelButton = new Button("Cancel");
-		cancelButton.setOnAction(event1 -> {
-			((Stage) this.getScene().getWindow()).close();
-		});
+		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+		this.leftButtons.getChildren().setAll(cancelButton);
 
-		Label headerLabel = new Label("Remote");
+		this.headerLabel.setText("Remote");
 
 		Button selectButton = new Button("Select >");
-		selectButton.setOnAction(event1 -> {
-			this.stepSelect();
+		selectButton.setOnAction(event -> {
+			this.stepDeselect();
 		});
-
-		toolBar.getItems().setAll(cancelButton, spacerLeft, headerLabel, spacerRight, selectButton, pullButton);
-
-		this.setTop(toolBar);
+		this.rightButtons.getChildren().setAll(selectButton, pullButton);
 
 
 		// main content
+
 		GridPane gridPane = new GridPane();
 		gridPane.setHgap(10);
 		gridPane.setVgap(10);
@@ -106,89 +135,23 @@ public class PullView extends OperationView {
 
 
 		selectButton.disableProperty().bind(remoteComboBox.getSelectionModel().selectedItemProperty().isNull());
-		pullButton.disableProperty().bind(remoteComboBox.getSelectionModel().selectedItemProperty().isNull());
 
 
 		this.fit();
 	}
 
 
-	private void stepSelect() {
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
-
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-
+	private void stepDeselect() {
 		Button remoteButton = new Button("< Remote");
-		remoteButton.setOnAction(event1 -> {
-			this.step1();
-		});
+		remoteButton.setOnAction(event -> this.stepRemote());
+		this.leftButtons.getChildren().setAll(remoteButton);
 
-		Label headerLabel = new Label("Selection");
+		this.headerLabel.setText("Selection");
 
-		toolBar.getItems().setAll(remoteButton, spacerLeft, headerLabel, spacerRight, pullButton);
-
-		this.setTop(toolBar);
+		this.rightButtons.getChildren().setAll(pullButton);
 
 
 		// main content
-//		TreeTableView<FeatureInfo> featureSelectionTreeTable = new TreeTableView<>();
-//		featureSelectionTreeTable.setEditable(true);
-//		featureSelectionTreeTable.setTableMenuButtonVisible(true);
-//		featureSelectionTreeTable.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
-//		featureSelectionTreeTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-//		//featureSelectionTreeTable.setRowFactory(item -> new CheckBoxTreeTableRow<>());
-//
-//		// create columns
-//		TreeTableColumn<FeatureInfo, String> idCol = new TreeTableColumn<>("Identifier");
-//		idCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<FeatureInfo, String> param) -> new ReadOnlyStringWrapper("aa"));
-//
-//		TreeTableColumn<FeatureInfo, String> nameCol = new TreeTableColumn<>("Name");
-//		nameCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<FeatureInfo, String> param) -> new ReadOnlyStringWrapper("bb"));
-//
-//		TreeTableColumn<FeatureInfo, Boolean> isSelectedCol = new TreeTableColumn<>("Selected");
-//		isSelectedCol.setCellValueFactory(
-//				(TreeTableColumn.CellDataFeatures<FeatureInfo, Boolean> param) ->
-//				{
-////					FeatureInfo featureInfo = param.getValue().getValue();
-//////					if (featureInfo.getFeatureVersion() != null) {
-////					return featureInfo.isSelectedProperty();
-//////					} else {
-//////						for (FeatureInfo child : param.)
-//////					}
-////					return new ReadOnlyBooleanWrapper(false);
-//				}
-//		);
-//		isSelectedCol.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(isSelectedCol));
-//		isSelectedCol.setEditable(true);
-//
-//
-//		TreeTableColumn<FeatureInfo, String> featuresCol = new TreeTableColumn<>("Features");
-//		featuresCol.getColumns().setAll(idCol, nameCol, isSelectedCol);
-//
-//		featureSelectionTreeTable.getColumns().setAll(featuresCol);
-//
-//
-//		this.setCenter(featureSelectionTreeTable);
-//
-//
-//		CheckBoxTreeItem<FeatureInfo> rootTreeItem = new CheckBoxTreeItem<FeatureInfo>();
-//		//for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
-//		for (Feature feature : this.service.getRepository().getFeatures()) {
-//			TreeItem<FeatureInfo> featureTreeItem = new TreeItem<>();
-//			featureTreeItem.setValue(new FeatureInfo(feature, null));
-//			for (FeatureVersion featureVersion : feature.getVersions()) {
-//				TreeItem<FeatureInfo> featureVersionTreeItem = new TreeItem<FeatureInfo>();
-//				featureVersionTreeItem.setValue(new FeatureInfo(feature, featureVersion));
-//				featureTreeItem.getChildren().add(featureVersionTreeItem);
-//			}
-//			rootTreeItem.getChildren().add(featureTreeItem);
-//		}
-//		featureSelectionTreeTable.setRoot(rootTreeItem);
-
 
 		GridPane gridPane = new GridPane();
 		gridPane.setHgap(10);
@@ -213,15 +176,11 @@ public class PullView extends OperationView {
 		int row = 0;
 
 
-		gridPane.setStyle("-fx-border-color: red;");
-
-
 		Label selectionLabel = new Label("Deselection: ");
 		gridPane.add(selectionLabel, 0, row, 1, 1);
-		TextField selectionTextField = new TextField();
-		selectionTextField.setDisable(false);
-		selectionLabel.setLabelFor(selectionTextField);
-		gridPane.add(selectionTextField, 1, row, 1, 1);
+		deselectionTextField.setDisable(false);
+		selectionLabel.setLabelFor(deselectionTextField);
+		gridPane.add(deselectionTextField, 1, row, 1, 1);
 		row++;
 
 
@@ -229,7 +188,6 @@ public class PullView extends OperationView {
 		featureSelectionTreeView.setCellFactory(CheckBoxTreeCell.<FeatureInfo>forTreeView());
 		featureSelectionTreeView.setShowRoot(true);
 		featureSelectionTreeView.setEditable(false);
-		//this.setCenter(featureSelectionTreeView);
 
 		TitledPane titledPane = new TitledPane();
 		titledPane.setText("Features");
@@ -242,9 +200,8 @@ public class PullView extends OperationView {
 
 
 		Collection<CheckBoxTreeItem<FeatureInfo>> deselectedFeatureVersionTreeItems = new ArrayList<>();
-		CheckBoxTreeItem<FeatureInfo> rootTreeItem = new CheckBoxTreeItem<FeatureInfo>();
-		//for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
-		for (Feature feature : this.service.getRepository().getFeatures()) {
+		CheckBoxTreeItem<FeatureInfo> rootTreeItem = new CheckBoxTreeItem<>();
+		for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
 			CheckBoxTreeItem<FeatureInfo> featureTreeItem = new CheckBoxTreeItem<>();
 			featureTreeItem.setValue(new FeatureInfo(feature, null));
 			for (FeatureVersion featureVersion : feature.getVersions()) {
@@ -261,10 +218,8 @@ public class PullView extends OperationView {
 						deselectedFeatureVersionTreeItems.remove(featureVersionTreeItem);
 					}
 
-					String deselectionString = deselectedFeatureVersionTreeItems.stream().map(featureInfoCheckBoxTreeItem -> {
-						return featureInfoCheckBoxTreeItem.getValue().getFeatureVersion().toString();
-					}).collect(Collectors.joining(", "));
-					selectionTextField.setText(deselectionString);
+					String deselectionString = deselectedFeatureVersionTreeItems.stream().map(featureInfoCheckBoxTreeItem -> featureInfoCheckBoxTreeItem.getValue().getFeatureVersion().toString()).collect(Collectors.joining(", "));
+					deselectionTextField.setText(deselectionString);
 
 //					StringBuilder sb = new StringBuilder();
 //					for (CheckBoxTreeItem<FeatureInfo> featureInfoCheckBoxTreeItem : deselectedFeatureVersionTreeItems) {
@@ -280,6 +235,40 @@ public class PullView extends OperationView {
 		rootTreeItem.setSelected(true);
 		featureSelectionTreeView.setRoot(rootTreeItem);
 		rootTreeItem.setExpanded(true);
+
+
+		this.fit();
+	}
+
+
+	private void stepProgress() {
+		this.leftButtons.getChildren().clear();
+
+		this.headerLabel.setText("Progress");
+
+		this.rightButtons.getChildren().clear();
+
+
+		// main content
+
+		GridPane gridPane = new GridPane();
+		gridPane.setHgap(10);
+		gridPane.setVgap(10);
+		gridPane.setPadding(new Insets(10, 10, 10, 10));
+
+		ColumnConstraints col1constraint = new ColumnConstraints();
+		col1constraint.setFillWidth(true);
+		gridPane.getColumnConstraints().addAll(col1constraint);
+
+		this.setCenter(gridPane);
+
+		int row = 0;
+
+		// progress bar
+		progressBar.setMaxWidth(Double.MAX_VALUE);
+		progressBar.prefWidthProperty().bind(gridPane.widthProperty().subtract(20));
+		gridPane.add(progressBar, 0, row, 1, 1);
+		row++;
 
 
 		this.fit();
