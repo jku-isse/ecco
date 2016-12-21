@@ -250,11 +250,6 @@ public class OperationsView extends BorderPane implements ServiceListener {
 		}
 	}
 
-	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-
-	}
-
 	private static final String READ_ACTION_STRING = "READ";
 	private static final String WRITE_ACTION_STRING = "WRITE";
 	private static final String ASSOCIATION_SELECTION_STRING = "SELECT";

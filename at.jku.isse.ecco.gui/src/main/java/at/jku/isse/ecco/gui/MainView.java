@@ -54,11 +54,11 @@ public class MainView extends BorderPane implements ServiceListener {
 		this.closeButton.setOnAction(event -> this.eccoService.close());
 
 		// commit
-		// checkout
+		this.checkoutButton.setOnAction(event -> this.openDialog("Checkout", new CheckoutView(eccoService)));
 
 		this.fetchButton.setOnAction(event -> this.openDialog("Fetch", new FetchView(eccoService)));
 		this.pullButton.setOnAction(event -> this.openDialog("Pull", new PullView(eccoService)));
-		// push
+		this.pushButton.setOnAction(event -> this.openDialog("Push", new PushView(eccoService)));
 
 		this.serverButton.setOnAction(event -> this.openDialog("Server", new ServerView(eccoService)));
 

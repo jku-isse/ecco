@@ -40,8 +40,6 @@ public class PullView extends OperationView {
 		this.progressBar = new ProgressBar();
 
 		this.pullButton.setOnAction(event -> {
-			this.setDisable(true);
-
 			Remote remote = this.remoteComboBox.getValue();
 
 			Task pullTask = new Task<Void>() {
@@ -59,21 +57,21 @@ public class PullView extends OperationView {
 				public void succeeded() {
 					super.succeeded();
 					PullView.this.stepSuccess("Pull operation was successful.");
-					PullView.this.setDisable(false);
+					PullView.this.progressBar.progressProperty().unbind();
 				}
 
 				@Override
 				public void cancelled() {
 					super.cancelled();
 					PullView.this.stepError("Pull operation was cancelled.", this.getException());
-					PullView.this.setDisable(false);
+					PullView.this.progressBar.progressProperty().unbind();
 				}
 
 				@Override
 				public void failed() {
 					super.failed();
 					PullView.this.stepError("Error during pull operation.", this.getException());
-					PullView.this.setDisable(false);
+					PullView.this.progressBar.progressProperty().unbind();
 				}
 			};
 			PullView.this.progressBar.progressProperty().bind(pullTask.progressProperty());
@@ -201,7 +199,7 @@ public class PullView extends OperationView {
 
 		Collection<CheckBoxTreeItem<FeatureInfo>> deselectedFeatureVersionTreeItems = new ArrayList<>();
 		CheckBoxTreeItem<FeatureInfo> rootTreeItem = new CheckBoxTreeItem<>();
-		for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
+		for (Feature feature : this.service.getRemote(this.remoteComboBox.getValue().getName()).getFeatures()) {
 			CheckBoxTreeItem<FeatureInfo> featureTreeItem = new CheckBoxTreeItem<>();
 			featureTreeItem.setValue(new FeatureInfo(feature, null));
 			for (FeatureVersion featureVersion : feature.getVersions()) {

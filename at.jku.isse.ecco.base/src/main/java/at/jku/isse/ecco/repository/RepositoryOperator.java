@@ -572,7 +572,7 @@ public class RepositoryOperator {
 
 
 	public Checkout compose(Configuration configuration) {
-		return this.compose(configuration, false);
+		return this.compose(configuration, true);
 	}
 
 	public Checkout compose(Configuration configuration, boolean lazy) {
@@ -586,6 +586,7 @@ public class RepositoryOperator {
 		}
 
 		Checkout checkout = this.compose(selectedAssociations, lazy);
+		checkout.setConfiguration(configuration);
 
 
 		Set<at.jku.isse.ecco.module.Module> desiredModules = configuration.computeModules(this.repository.getMaxOrder());

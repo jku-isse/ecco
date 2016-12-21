@@ -1,19 +1,17 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 
+import at.jku.isse.ecco.gui.ExceptionTextArea;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Stack;
 
 // TODO: forward, backward, enter, escape, etc.
@@ -54,6 +52,7 @@ public abstract class OperationView extends BorderPane {
 	// -----------------------------------------------------------------------------------------------------------------
 
 
+	protected ToolBar toolBar;
 	protected HBox leftButtons;
 	protected HBox rightButtons;
 	protected Label headerLabel;
@@ -73,7 +72,7 @@ public abstract class OperationView extends BorderPane {
 
 
 		// toolbar top
-		ToolBar toolBar = new ToolBar();
+		this.toolBar = new ToolBar();
 
 		final Pane spacerLeft = new Pane();
 		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
@@ -112,26 +111,42 @@ public abstract class OperationView extends BorderPane {
 	}
 
 
-	protected void stepSuccess(String text) {
-//		this.clearSteps();
+	protected void showSuccessHeader() {
+		this.toolBar.setStyle("-fx-base: #00cc99;");
+		this.toolBar.getStyleClass().add("success");
 
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
-		toolBar.setStyle("-fx-base: #00cc99;");
-		toolBar.getStyleClass().add("success");
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
+		this.leftButtons.getChildren().clear();
+
+		this.headerLabel.setText("");
 
 		Button finishButton = new Button("Done");
 		finishButton.getStyleClass().add("success");
-
 		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+		this.rightButtons.getChildren().setAll(finishButton);
+	}
 
-		toolBar.getItems().setAll(spacerLeft, finishButton);
+	protected void stepSuccess(String text) {
+//		this.clearSteps();
 
-		this.setTop(toolBar);
+//		// toolbar top
+//		ToolBar toolBar = new ToolBar();
+//		toolBar.setStyle("-fx-base: #00cc99;");
+//		toolBar.getStyleClass().add("success");
+//		final Pane spacerLeft = new Pane();
+//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
+//		final Pane spacerRight = new Pane();
+//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
+//
+//		Button finishButton = new Button("Done");
+//		finishButton.getStyleClass().add("success");
+//
+//		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+//
+//		toolBar.getItems().setAll(spacerLeft, finishButton);
+//
+//		this.setTop(toolBar);
+
+		this.showSuccessHeader();
 
 
 		// main content
@@ -144,26 +159,41 @@ public abstract class OperationView extends BorderPane {
 	}
 
 
-	protected void stepError(String text, Throwable ex) {
-//		this.clearSteps();
+	protected void showErrorHeader() {
+		this.toolBar.setStyle("-fx-base: #ff6666;");
+		this.toolBar.getStyleClass().add("error");
 
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
-		toolBar.setStyle("-fx-base: #ff6666;");
-		toolBar.getStyleClass().add("error");
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
+		this.leftButtons.getChildren().clear();
+
+		this.headerLabel.setText("");
 
 		Button finishButton = new Button("Done");
 		finishButton.getStyleClass().add("error");
+		this.rightButtons.getChildren().setAll(finishButton);
+	}
 
-		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+	protected void stepError(String text, Throwable ex) {
+//		this.clearSteps();
 
-		toolBar.getItems().setAll(spacerLeft, finishButton);
+//		// toolbar top
+//		ToolBar toolBar = new ToolBar();
+//		toolBar.setStyle("-fx-base: #ff6666;");
+//		toolBar.getStyleClass().add("error");
+//		final Pane spacerLeft = new Pane();
+//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
+//		final Pane spacerRight = new Pane();
+//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
+//
+//		Button finishButton = new Button("Done");
+//		finishButton.getStyleClass().add("error");
+//
+//		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+//
+//		toolBar.getItems().setAll(spacerLeft, finishButton);
+//
+//		this.setTop(toolBar);
 
-		this.setTop(toolBar);
+		this.showErrorHeader();
 
 
 		// main content
@@ -177,21 +207,22 @@ public abstract class OperationView extends BorderPane {
 		gridPane.add(label, 0, 0);
 
 		if (ex != null) {
-			StringWriter sw = new StringWriter();
-			PrintWriter pw = new PrintWriter(sw);
-			ex.printStackTrace(pw);
-			String exceptionText = sw.toString();
-
-			TextArea textArea = new TextArea(exceptionText);
-			textArea.setEditable(false);
-			textArea.setWrapText(true);
-			textArea.setMaxWidth(Double.MAX_VALUE);
-			textArea.setMaxHeight(Double.MAX_VALUE);
-
-			GridPane.setVgrow(textArea, Priority.ALWAYS);
-			GridPane.setHgrow(textArea, Priority.ALWAYS);
-
-			gridPane.add(textArea, 0, 1);
+//			StringWriter sw = new StringWriter();
+//			PrintWriter pw = new PrintWriter(sw);
+//			ex.printStackTrace(pw);
+//			String exceptionText = sw.toString();
+//
+//			TextArea textArea = new TextArea(exceptionText);
+//			textArea.setEditable(false);
+//			textArea.setWrapText(true);
+//			textArea.setMaxWidth(Double.MAX_VALUE);
+//			textArea.setMaxHeight(Double.MAX_VALUE);
+//
+//			GridPane.setVgrow(textArea, Priority.ALWAYS);
+//			GridPane.setHgrow(textArea, Priority.ALWAYS);
+//
+//			gridPane.add(textArea, 0, 1);
+			gridPane.add(new ExceptionTextArea(ex), 0, 1);
 		}
 
 		this.setCenter(gridPane);
