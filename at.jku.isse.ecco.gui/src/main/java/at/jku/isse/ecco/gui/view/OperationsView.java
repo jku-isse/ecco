@@ -66,7 +66,7 @@ public class OperationsView extends BorderPane implements ServiceListener {
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
 				OperationsView.this.logData.clear();
-				OperationsView.this.service.getReader().addListener(OperationsView.this);
+				OperationsView.this.service.addListener(OperationsView.this);
 
 				final String configurationString = configurationStringInput.getText();
 
@@ -82,7 +82,7 @@ public class OperationsView extends BorderPane implements ServiceListener {
 					}
 
 					public void finished() {
-						OperationsView.this.service.getReader().removeListener(OperationsView.this);
+						OperationsView.this.service.removeListener(OperationsView.this);
 						toolBar.setDisable(false);
 					}
 
@@ -138,7 +138,7 @@ public class OperationsView extends BorderPane implements ServiceListener {
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
 				OperationsView.this.logData.clear();
-				OperationsView.this.service.getWriter().addListener(OperationsView.this);
+				OperationsView.this.service.addListener(OperationsView.this);
 
 				Task checkoutTask = new Task<Checkout>() {
 					@Override
@@ -148,7 +148,7 @@ public class OperationsView extends BorderPane implements ServiceListener {
 					}
 
 					public void finished() {
-						OperationsView.this.service.getWriter().removeListener(OperationsView.this);
+						OperationsView.this.service.removeListener(OperationsView.this);
 						toolBar.setDisable(false);
 					}
 

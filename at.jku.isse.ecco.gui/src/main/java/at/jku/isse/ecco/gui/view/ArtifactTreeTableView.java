@@ -14,9 +14,9 @@ import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
-public class ArtifactTreeView extends TreeTableView<Node> {
+public class ArtifactTreeTableView extends TreeTableView<Node> {
 
-	public ArtifactTreeView() {
+	public ArtifactTreeTableView() {
 		super();
 
 		// create columns
@@ -117,7 +117,7 @@ public class ArtifactTreeView extends TreeTableView<Node> {
 		this.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 	}
 
-	public ArtifactTreeView(RootNode rootNode) {
+	public ArtifactTreeTableView(RootNode rootNode) {
 		this();
 
 		this.setRootNode(rootNode);

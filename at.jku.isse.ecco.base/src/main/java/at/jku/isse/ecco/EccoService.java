@@ -9,7 +9,10 @@ import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.listener.ServerListener;
 import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.plugin.CoreModule;
 import at.jku.isse.ecco.plugin.artifact.*;
 import at.jku.isse.ecco.plugin.data.DataPlugin;
@@ -46,7 +49,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
-public class EccoService {
+public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener {
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
@@ -66,7 +69,6 @@ public class EccoService {
 
 	private Path baseDir;
 	private Path repositoryDir;
-
 
 	public Properties getProperties() {
 		return this.properties;
@@ -90,6 +92,8 @@ public class EccoService {
 	}
 
 	public void setRepositoryDir(Path repositoryDir) {
+		checkNotNull(repositoryDir);
+
 		if (this.initialized)
 			throw new EccoException("The repository directory cannot be changed after the service has been initialized.");
 
@@ -171,13 +175,13 @@ public class EccoService {
 	@Inject
 	private DispatchWriter writer;
 
-	public ArtifactReader getReader() {
-		return this.reader;
-	}
-
-	public ArtifactWriter getWriter() {
-		return this.writer;
-	}
+//	public ArtifactReader getReader() {
+//		return this.reader;
+//	}
+//
+//	public ArtifactWriter getWriter() {
+//		return this.writer;
+//	}
 
 	@Inject
 	private EntityFactory entityFactory;
@@ -244,11 +248,58 @@ public class EccoService {
 		this.listeners.remove(listener);
 	}
 
+
+	// relay reader, writer, and progress events
+
+	@Override
+	public void readProgressEvent(double progress, long bytes) {
+		this.fireOperationProgressEvent("READ", progress);
+	}
+
+	@Override
+	public void writeProgressEvent(double progress, long bytes) {
+		this.fireOperationProgressEvent("WRITE", progress);
+	}
+
+	@Override
+	public void fileReadEvent(Path file, ArtifactReader reader) {
+		this.fireReadEvent(file, reader);
+	}
+
+	@Override
+	public void fileWriteEvent(Path file, ArtifactWriter writer) {
+		this.fireWriteEvent(file, writer);
+	}
+
+
+	// service events
+
 	protected void fireStatusChangedEvent() {
 		for (ServiceListener listener : this.listeners) {
 			listener.statusChangedEvent(this);
 		}
 	}
+
+	protected void fireOperationProgressEvent(String operationString, double progress) {
+		for (ServiceListener listener : this.listeners) {
+			listener.operationProgressEvent(this, operationString, progress);
+		}
+	}
+
+	protected void fireReadEvent(Path path, ArtifactReader reader) {
+		for (ReadListener listener : this.listeners) {
+			listener.fileReadEvent(path, reader);
+		}
+	}
+
+	protected void fireWriteEvent(Path path, ArtifactWriter writer) {
+		for (WriteListener listener : this.listeners) {
+			listener.fileWriteEvent(path, writer);
+		}
+	}
+
+
+	// repository events
 
 	protected void fireCommitsChangedEvent(Commit commit) {
 		for (ServiceListener listener : this.listeners) {
@@ -262,20 +313,23 @@ public class EccoService {
 		}
 	}
 
+
+	// server events
+
 	protected void fireServerEvent(String message) {
-		for (ServiceListener listener : this.listeners) {
+		for (ServerListener listener : this.listeners) {
 			listener.serverEvent(this, message);
 		}
 	}
 
 	protected void fireServerStartedEvent(int port) {
-		for (ServiceListener listener : this.listeners) {
+		for (ServerListener listener : this.listeners) {
 			listener.serverStartEvent(this, port);
 		}
 	}
 
 	protected void fireServerStoppedEvent() {
-		for (ServiceListener listener : this.listeners) {
+		for (ServerListener listener : this.listeners) {
 			listener.serverStopEvent(this);
 		}
 	}
@@ -380,21 +434,12 @@ public class EccoService {
 		return this.detectRepository(Paths.get(""));
 	}
 
-	/**
-	 * Initializes the service.
-	 */
-	public void open() throws EccoException {
+
+	protected Collection<Module> initService() {
 		if (this.isInitialized()) {
 			LOGGER.error("Repository is already open.");
 			throw new EccoException("Repository is already open.");
 		}
-		if (!this.repositoryDirectoryExists()) {
-			LOGGER.error("Repository does not exist.");
-			throw new EccoException("Repository does not exist.");
-		}
-
-		LOGGER.debug("BASE_DIR: " + this.baseDir);
-		LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
 
 		LOGGER.debug("PROPERTIES: " + this.properties);
 		if (this.properties.getProperty(ECCO_PROPERTIES_DATA) == null) {
@@ -406,25 +451,6 @@ public class EccoService {
 			LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
 		}
 
-
-		Properties moduleProperties = new Properties();
-		//properties.setProperty("plugin.data", "at.jku.isse.ecco.perst");
-		moduleProperties.setProperty("repositoryDir", this.repositoryDir.toString());
-		moduleProperties.setProperty("connectionString", this.repositoryDir.resolve("ecco.db").toString());
-		moduleProperties.setProperty("clientConnectionString", this.repositoryDir.resolve("client.db").toString());
-		moduleProperties.setProperty("serverConnectionString", this.repositoryDir.resolve("server.db").toString());
-
-		// create modules
-		final Module settingsModule = new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(String.class).annotatedWith(Names.named("repositoryDir")).toInstance(moduleProperties.getProperty("repositoryDir"));
-
-				bind(String.class).annotatedWith(Names.named("connectionString")).toInstance(moduleProperties.getProperty("connectionString"));
-				bind(String.class).annotatedWith(Names.named("clientConnectionString")).toInstance(moduleProperties.getProperty("clientConnectionString"));
-				bind(String.class).annotatedWith(Names.named("serverConnectionString")).toInstance(moduleProperties.getProperty("serverConnectionString"));
-			}
-		};
 		// artifact modules
 		List<Module> artifactModules = new ArrayList<>();
 		List<Module> allArtifactModules = new ArrayList<>();
@@ -438,6 +464,7 @@ public class EccoService {
 		}
 		LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
 		LOGGER.debug("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
+
 		// data modules
 		List<Module> dataModules = new ArrayList<>();
 		List<Module> allDataModules = new ArrayList<>();
@@ -450,11 +477,39 @@ public class EccoService {
 		}
 		LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
 		LOGGER.debug("ALL DATA PLUGINS: " + allDataModules.toString());
-		// put them together
+
+		// put modules together
 		List<Module> modules = new ArrayList<>();
-		modules.addAll(Arrays.asList(new CoreModule(), settingsModule));
+		modules.addAll(Arrays.asList(new CoreModule()));
 		modules.addAll(artifactModules);
 		modules.addAll(dataModules);
+
+		return modules;
+	}
+
+	/**
+	 * Initializes the service.
+	 */
+	public void open() throws EccoException {
+		if (!this.repositoryDirectoryExists()) {
+			LOGGER.error("Repository does not exist.");
+			throw new EccoException("Repository does not exist.");
+		}
+
+		LOGGER.debug("BASE_DIR: " + this.baseDir);
+		LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
+
+		Collection<Module> modules = this.initService();
+
+		// create settings module
+		final Module settingsModule = new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(Path.class).annotatedWith(Names.named("repositoryDir")).toInstance(EccoService.this.repositoryDir);
+			}
+		};
+		modules.add(settingsModule);
+
 
 		// create injector
 		Injector injector = Guice.createInjector(modules);
@@ -474,6 +529,9 @@ public class EccoService {
 		this.reader.getIgnorePatterns().addAll(this.customIgnorePatterns);
 		this.reader.getIgnorePatterns().addAll(this.defaultIgnorePatterns);
 
+		this.reader.addListener(this);
+		this.writer.addListener(this);
+
 		this.initialized = true;
 
 		this.fireStatusChangedEvent();
@@ -489,6 +547,9 @@ public class EccoService {
 			return;
 
 		this.initialized = false;
+
+		this.reader.removeListener(this);
+		this.writer.removeListener(this);
 
 		this.repositoryDao.close();
 		this.settingsDao.close();
@@ -932,6 +993,17 @@ public class EccoService {
 					ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
 					ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
 
+
+//					ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+//					ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
+//					// write object to temp_oos
+//					// TODO
+//					// get size of data
+//					int size = byteOutputStream.size();
+//					// send data
+//					byteOutputStream.writeTo(sChannel.socket().getOutputStream());
+
+
 					// determine if it is a push (receive data) or a pull (send data)
 					String command = (String) ois.readObject();
 					LOGGER.debug("COMMAND: " + command);
@@ -1099,14 +1171,30 @@ public class EccoService {
 		try (SocketChannel sChannel = SocketChannel.open()) {
 			sChannel.configureBlocking(true);
 			if (sChannel.connect(new InetSocketAddress(hostname, port))) {
-				ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-				ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+				ProgressOutputStream progressOutputStream = new ProgressOutputStream(sChannel.socket().getOutputStream());
+				ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+
+				ObjectOutputStream oos = new ObjectOutputStream(progressOutputStream);
+				ObjectInputStream ois = new ObjectInputStream(progressInputStream);
 
 				oos.writeObject("PULL");
 				oos.writeObject(deselectedFeatureVersionsString);
 
+
+//				// TODO
+//				progressOutputStream.addListener(this);
+//				progressInputStream.addListener(this);
+//
+//				Integer size = (Integer) ois.readObject();
+//				progressInputStream.setMaxBytes(size);
+//				progressInputStream.resetProgress();
+
 				// retrieve remote repository
 				RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
+
+//				progressOutputStream.removeListener(this);
+//				progressInputStream.removeListener(this);
+
 
 				// copy it using this entity factory
 				copiedRepository = subsetRepository.copy(this.entityFactory);
@@ -1483,18 +1571,21 @@ public class EccoService {
 		this.writer.write(this.baseDir, nodes);
 
 		// write config file into base directory
-		if (Files.exists(this.baseDir.resolve(CONFIG_FILE_NAME))) {
+		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
+		if (Files.exists(configFile)) {
 			throw new EccoException("Configuration file already exists in base directory.");
 		} else {
 			try {
-				Files.write(this.baseDir.resolve(CONFIG_FILE_NAME), configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				Files.write(configFile, configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 			} catch (IOException e) {
 				throw new EccoException("Could not create configuration file.", e);
 			}
+			this.fireWriteEvent(configFile, this.writer);
 		}
 
 		// write warnings file into base directory
-		if (Files.exists(this.baseDir.resolve(WARNINGS_FILE_NAME))) {
+		Path warningsFile = this.baseDir.resolve(WARNINGS_FILE_NAME);
+		if (Files.exists(warningsFile)) {
 			throw new EccoException("Warnings file already exists in base directory.");
 		} else {
 			try {
@@ -1521,10 +1612,11 @@ public class EccoService {
 					sb.append("UNRESOLVED: " + association + System.lineSeparator());
 				}
 
-				Files.write(this.baseDir.resolve(WARNINGS_FILE_NAME), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 			} catch (IOException e) {
 				throw new EccoException("Could not create warnings file.", e);
 			}
+			this.fireWriteEvent(warningsFile, this.writer);
 		}
 
 		return checkout;

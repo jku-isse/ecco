@@ -51,7 +51,7 @@ public class ProgressInputStream extends FilterInputStream {
 	protected Collection<ProgressListener> progressListeners;
 
 	public interface ProgressListener {
-		public void progress(double progress);
+		public void readProgressEvent(double progress, long bytes);
 	}
 
 	public void addListener(ProgressListener progressListener) {
@@ -69,7 +69,7 @@ public class ProgressInputStream extends FilterInputStream {
 		if (this.lastProgress - progress >= 1.0) {
 			this.lastProgress = progress;
 			for (ProgressListener progressListener : this.progressListeners) {
-				progressListener.progress(progress);
+				progressListener.readProgressEvent(progress, bytesRead);
 			}
 		}
 	}

@@ -105,7 +105,7 @@ public class ArtifactsView extends BorderPane implements ServiceListener {
 		associationsTable.setItems(sortedData);
 
 
-		ArtifactTreeView artifactTreeView = new ArtifactTreeView();
+		ArtifactTreeTableView artifactTreeView = new ArtifactTreeTableView();
 
 		artifactTreeView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
 			if (newValue != null) {

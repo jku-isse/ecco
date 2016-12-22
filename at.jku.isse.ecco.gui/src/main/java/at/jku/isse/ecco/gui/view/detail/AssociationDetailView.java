@@ -1,13 +1,9 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.module.PresenceCondition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;

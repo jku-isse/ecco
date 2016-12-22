@@ -18,4 +18,8 @@ public interface ServiceListener extends ReadListener, WriteListener, ServerList
 		// do nothing
 	}
 
+	public default void operationProgressEvent(EccoService service, String operationString, double progress) {
+		// do nothing
+	}
+
 }

@@ -28,9 +28,9 @@ public class DispatchWriter implements ArtifactWriter<Set<Node>, Path> {
 	private Path repositoryDir;
 
 	@Inject
-	public DispatchWriter(Set<ArtifactWriter<Set<Node>, Path>> writers, @Named("repositoryDir") String repositoryDir) {
+	public DispatchWriter(Set<ArtifactWriter<Set<Node>, Path>> writers, @Named("repositoryDir") Path repositoryDir) {
 		this.writers = writers;
-		this.repositoryDir = Paths.get(repositoryDir);
+		this.repositoryDir = repositoryDir;
 	}
 
 	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();

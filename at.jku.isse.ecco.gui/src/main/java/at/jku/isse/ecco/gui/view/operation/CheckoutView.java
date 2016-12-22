@@ -156,7 +156,7 @@ public class CheckoutView extends OperationView implements ServiceListener {
 			this.service.setBaseDir(baseDir);
 
 			this.logData.clear();
-			this.service.getWriter().addListener(this);
+			this.service.addListener(this);
 
 			Task<Checkout> checkoutTask = new Task<Checkout>() {
 				@Override
@@ -167,7 +167,7 @@ public class CheckoutView extends OperationView implements ServiceListener {
 				@Override
 				public void succeeded() {
 					super.succeeded();
-					CheckoutView.this.service.getWriter().removeListener(CheckoutView.this);
+					CheckoutView.this.service.removeListener(CheckoutView.this);
 					//CheckoutView.this.stepSuccess("Checkout successful.");
 					// show value in checkout detail view
 					CheckoutView.this.checkoutDetailView.showCheckout(this.getValue());
@@ -178,7 +178,7 @@ public class CheckoutView extends OperationView implements ServiceListener {
 				@Override
 				public void cancelled() {
 					super.cancelled();
-					CheckoutView.this.service.getWriter().removeListener(CheckoutView.this);
+					CheckoutView.this.service.removeListener(CheckoutView.this);
 					//CheckoutView.this.stepError("Checkout operation was cancelled.", this.getException());
 					// show exception textarea instead of checkout detail view
 					CheckoutView.this.checkoutDetailView.showCheckout(null);
@@ -189,7 +189,7 @@ public class CheckoutView extends OperationView implements ServiceListener {
 				@Override
 				public void failed() {
 					super.failed();
-					CheckoutView.this.service.getWriter().removeListener(CheckoutView.this);
+					CheckoutView.this.service.removeListener(CheckoutView.this);
 					//CheckoutView.this.stepError("Error during checkout operation.", this.getException());
 					// show exception textarea instead of checkout detail view
 					CheckoutView.this.checkoutDetailView.showCheckout(null);
@@ -197,13 +197,13 @@ public class CheckoutView extends OperationView implements ServiceListener {
 					CheckoutView.this.showErrorHeader();
 				}
 			};
-			checkoutTask.valueProperty().addListener((obs, oldValue, newValue) -> {
-				if (newValue != null) {
-					this.checkoutDetailView.showCheckout(newValue);
-
-					this.splitPane.getItems().setAll(this.logTable, this.checkoutDetailView);
-				}
-			});
+//			checkoutTask.valueProperty().addListener((obs, oldValue, newValue) -> {
+//				if (newValue != null) {
+//					this.checkoutDetailView.showCheckout(newValue);
+//
+//					this.splitPane.getItems().setAll(this.logTable, this.checkoutDetailView);
+//				}
+//			});
 			new Thread(checkoutTask).start();
 		});
 

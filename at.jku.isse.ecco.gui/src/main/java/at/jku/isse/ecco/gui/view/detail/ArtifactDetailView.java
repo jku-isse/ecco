@@ -36,6 +36,7 @@ public class ArtifactDetailView extends BorderPane {
 		this.sequenceGraphView = new SequenceGraphView();
 	}
 
+
 	public void showTree(Node node) {
 		SplitPane splitPane = new SplitPane();
 		this.setCenter(splitPane);
@@ -45,7 +46,7 @@ public class ArtifactDetailView extends BorderPane {
 		detailsSplitPane.setOrientation(Orientation.VERTICAL);
 		splitPane.getItems().add(detailsSplitPane);
 
-		// TODO: show some general info, like sequence graph if it is an ordered node.
+		// TODO: show some general info
 		HBox detailView = new HBox(new Label("Detail View"));
 		detailsSplitPane.getItems().add(detailView);
 
@@ -70,12 +71,6 @@ public class ArtifactDetailView extends BorderPane {
 					String pluginId = Trees.getPluginId(node);
 					if (tempArtifactViewer.getPluginId().equals(pluginId))
 						artifactViewer = tempArtifactViewer;
-
-//					if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData) {
-//						PluginArtifactData pad = (PluginArtifactData) node.getArtifact().getData();
-//						if (tempArtifactViewer.getPluginId().equals(pad.getPluginId()))
-//							artifactViewer = tempArtifactViewer;
-//					}
 				}
 			}
 

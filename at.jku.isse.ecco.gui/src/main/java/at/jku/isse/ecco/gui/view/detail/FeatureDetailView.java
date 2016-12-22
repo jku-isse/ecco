@@ -8,16 +8,10 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Priority;
+import javafx.scene.layout.*;
 
 public class FeatureDetailView extends BorderPane {
 
@@ -29,7 +23,7 @@ public class FeatureDetailView extends BorderPane {
 
 	private TextField featureName;
 	private TextArea featureDescription;
-	private SplitPane splitPane;
+	private Pane centerPane;
 	private ToolBar toolBar;
 
 
@@ -47,17 +41,13 @@ public class FeatureDetailView extends BorderPane {
 		toolBar.getItems().setAll(saveButton, new Separator());
 
 
-		// splitpane
-		this.splitPane = new SplitPane();
-		splitPane.setOrientation(Orientation.VERTICAL);
-		this.setCenter(splitPane);
-
-
 		// feature details
 		GridPane featureDetails = new GridPane();
+		this.centerPane = featureDetails;
 		featureDetails.setHgap(10);
 		featureDetails.setVgap(10);
 		featureDetails.setPadding(new Insets(10, 10, 10, 10));
+		this.setCenter(this.centerPane);
 
 		ColumnConstraints col1constraint = new ColumnConstraints();
 		ColumnConstraints col2constraint = new ColumnConstraints();
@@ -79,31 +69,23 @@ public class FeatureDetailView extends BorderPane {
 		featureDetails.add(this.featureDescription, 1, row, 1, 1);
 		row++;
 
-		splitPane.getItems().add(featureDetails);
 
+		saveButton.setOnAction(e -> {
+			toolBar.setDisable(true);
 
-		saveButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-
-				Task saveTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						if (FeatureDetailView.this.currentFeature != null) {
-							FeatureDetailView.this.currentFeature.setDescription(FeatureDetailView.this.featureDescription.getText());
-							// TODO: implement saving/updating features
-							//FeatureDetailView.this.service.saveFeature(feature);
-						}
-						Platform.runLater(() -> {
-							toolBar.setDisable(false);
-						});
-						return null;
+			Task saveTask = new Task<Void>() {
+				@Override
+				public Void call() throws EccoException {
+					if (FeatureDetailView.this.currentFeature != null) {
+						FeatureDetailView.this.currentFeature.setDescription(FeatureDetailView.this.featureDescription.getText());
+						// TODO: implement saving/updating features
 					}
-				};
+					Platform.runLater(() -> toolBar.setDisable(false));
+					return null;
+				}
+			};
 
-				new Thread(saveTask).start();
-			}
+			new Thread(saveTask).start();
 		});
 
 
@@ -122,7 +104,8 @@ public class FeatureDetailView extends BorderPane {
 
 		versionsTable.setItems(this.featureVersionsData);
 
-		splitPane.getItems().add(versionsTable);
+		featureDetails.add(versionsTable, 1, row, 1, 1);
+		row++;
 
 
 		// show nothing initially
@@ -136,7 +119,7 @@ public class FeatureDetailView extends BorderPane {
 		this.featureVersionsData.clear();
 
 		if (feature != null) {
-			this.setCenter(this.splitPane);
+			this.setCenter(this.centerPane);
 			this.toolBar.setDisable(false);
 
 			// show feature details
@@ -155,22 +138,5 @@ public class FeatureDetailView extends BorderPane {
 			this.featureDescription.setText("");
 		}
 	}
-
-
-//	public static class FeatureVersionInfo {
-//		private final SimpleStringProperty version;
-//
-//		private FeatureVersionInfo(String version) {
-//			this.version = new SimpleStringProperty(version);
-//		}
-//
-//		public String getVersion() {
-//			return this.version.get();
-//		}
-//
-//		public void setVersion(String version) {
-//			this.version.set(version);
-//		}
-//	}
 
 }

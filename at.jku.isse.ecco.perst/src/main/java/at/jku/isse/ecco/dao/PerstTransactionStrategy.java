@@ -13,24 +13,24 @@ import org.garret.perst.FieldIndex;
 import org.garret.perst.Storage;
 import org.garret.perst.StorageFactory;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import java.nio.file.Path;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @Singleton
 public class PerstTransactionStrategy implements TransactionStrategy {
 
-	protected final String connectionString;
+	protected final Path repositoryDir;
 	protected Storage database = null;
 	protected boolean initialized = false;
 
 	protected int numBegin = 0;
 
 	@Inject
-	public PerstTransactionStrategy(@Named("connectionString") final String connectionString) {
-		checkNotNull(connectionString);
-		checkArgument(!connectionString.isEmpty());
+	public PerstTransactionStrategy(@Named("repositoryDir") final Path repositoryDir) {
+		checkNotNull(repositoryDir);
 
-		this.connectionString = connectionString;
+		this.repositoryDir = repositoryDir;
 	}
 
 
@@ -44,6 +44,8 @@ public class PerstTransactionStrategy implements TransactionStrategy {
 
 			// enable multiclient access
 			this.database.setProperty("perst.multiclient.support", Boolean.TRUE);
+
+			String connectionString = this.repositoryDir.resolve("ecco.db").toString();
 
 			this.database.open(connectionString);
 			this.database.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);

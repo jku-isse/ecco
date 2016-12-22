@@ -53,7 +53,7 @@ public class MainView extends BorderPane implements ServiceListener {
 		//this.forkButton.setOnAction(event -> this.openDialog("Fork", new ForkView(eccoService)));
 		this.closeButton.setOnAction(event -> this.eccoService.close());
 
-		// commit
+		this.commitButton.setOnAction(event -> this.openDialog("Commit", new CommitView(eccoService)));
 		this.checkoutButton.setOnAction(event -> this.openDialog("Checkout", new CheckoutView(eccoService)));
 
 		this.fetchButton.setOnAction(event -> this.openDialog("Fetch", new FetchView(eccoService)));
@@ -82,14 +82,14 @@ public class MainView extends BorderPane implements ServiceListener {
 		SettingsView statusView = new SettingsView(eccoService);
 		statusTab.setContent(statusView);
 
-		// operations
-		Tab operationsTab = new Tab();
-		operationsTab.setText("Operations");
-		operationsTab.setClosable(false);
-		tabPane.getTabs().add(operationsTab);
-
-		OperationsView operationsView = new OperationsView(eccoService);
-		operationsTab.setContent(operationsView);
+//		// operations
+//		Tab operationsTab = new Tab();
+//		operationsTab.setText("Operations");
+//		operationsTab.setClosable(false);
+//		tabPane.getTabs().add(operationsTab);
+//
+//		OperationsView operationsView = new OperationsView(eccoService);
+//		operationsTab.setContent(operationsView);
 
 
 		// CORE

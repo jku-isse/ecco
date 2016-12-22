@@ -8,12 +8,8 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Priority;
+import javafx.scene.layout.*;
 
 public class RemoteDetailView extends BorderPane {
 
@@ -25,10 +21,10 @@ public class RemoteDetailView extends BorderPane {
 
 	private TextField remoteName;
 	private TextField remoteAddress;
-	private SplitPane splitPane;
+	private Pane centerPane;
 	private ToolBar toolBar;
 	private ComboBox<Remote.Type> remoteType;
-	private TreeView<FeatureInfo> featureSelectionTreeView;
+	private TreeView<FeatureInfo> featuresTreeView;
 
 
 	public RemoteDetailView(EccoService service) {
@@ -46,17 +42,13 @@ public class RemoteDetailView extends BorderPane {
 		toolBar.getItems().setAll(saveButton, new Separator(), fetchButton, new Separator());
 
 
-		// splitpane
-		this.splitPane = new SplitPane();
-		splitPane.setOrientation(Orientation.VERTICAL);
-		this.setCenter(splitPane);
-
-
 		// remote details
 		GridPane remoteDetails = new GridPane();
+		this.centerPane = remoteDetails;
 		remoteDetails.setHgap(10);
 		remoteDetails.setVgap(10);
 		remoteDetails.setPadding(new Insets(10, 10, 10, 10));
+		this.setCenter(this.centerPane);
 
 		ColumnConstraints col1constraint = new ColumnConstraints();
 		ColumnConstraints col2constraint = new ColumnConstraints();
@@ -84,15 +76,13 @@ public class RemoteDetailView extends BorderPane {
 		row++;
 
 
-		splitPane.getItems().add(remoteDetails);
-
-
 		// list of feature versions
 
-		featureSelectionTreeView = new TreeView<>();
-		featureSelectionTreeView.setShowRoot(true);
-		featureSelectionTreeView.setEditable(false);
-		splitPane.getItems().add(featureSelectionTreeView);
+		featuresTreeView = new TreeView<>();
+		featuresTreeView.setShowRoot(true);
+		featuresTreeView.setEditable(false);
+		remoteDetails.add(featuresTreeView, 1, row, 1, 1);
+		row++;
 
 
 		// show nothing initially
@@ -103,7 +93,7 @@ public class RemoteDetailView extends BorderPane {
 		this.currentRemote = remote;
 
 		if (remote != null) {
-			this.setCenter(this.splitPane);
+			this.setCenter(this.centerPane);
 			this.toolBar.setDisable(false);
 
 			// show remote details
@@ -123,7 +113,7 @@ public class RemoteDetailView extends BorderPane {
 				}
 				rootTreeItem.getChildren().add(featureTreeItem);
 			}
-			featureSelectionTreeView.setRoot(rootTreeItem);
+			featuresTreeView.setRoot(rootTreeItem);
 			rootTreeItem.setExpanded(true);
 		} else {
 			this.setCenter(null);
@@ -132,7 +122,7 @@ public class RemoteDetailView extends BorderPane {
 			this.remoteName.setText("");
 			this.remoteAddress.setText("");
 			this.remoteType.getSelectionModel().select(0);
-			this.featureSelectionTreeView.setRoot(null);
+			this.featuresTreeView.setRoot(null);
 		}
 	}
 

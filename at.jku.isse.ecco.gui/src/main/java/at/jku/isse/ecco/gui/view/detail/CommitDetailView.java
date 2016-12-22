@@ -9,12 +9,8 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Priority;
+import javafx.scene.layout.*;
 
 public class CommitDetailView extends BorderPane {
 
@@ -25,7 +21,7 @@ public class CommitDetailView extends BorderPane {
 	final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
 
 
-	private SplitPane splitPane;
+	private Pane centerPane;
 	private ToolBar toolBar;
 
 
@@ -45,17 +41,13 @@ public class CommitDetailView extends BorderPane {
 		this.setTop(toolBar);
 
 
-		// splitpane
-		this.splitPane = new SplitPane();
-		splitPane.setOrientation(Orientation.VERTICAL);
-		this.setCenter(splitPane);
-
-
 		// details
 		GridPane detailsPane = new GridPane();
+		this.centerPane = detailsPane;
 		detailsPane.setHgap(10);
 		detailsPane.setVgap(10);
 		detailsPane.setPadding(new Insets(10, 10, 10, 10));
+		this.setCenter(this.centerPane);
 
 		ColumnConstraints col1constraint = new ColumnConstraints();
 		ColumnConstraints col2constraint = new ColumnConstraints();
@@ -86,11 +78,9 @@ public class CommitDetailView extends BorderPane {
 		detailsPane.add(this.commitCommitter, 1, row, 1, 1);
 		row++;
 
-		splitPane.getItems().add(detailsPane);
-
 
 		// list of associations
-		TableView<AssociationInfo> associationsTable = new TableView<AssociationInfo>();
+		TableView<AssociationInfo> associationsTable = new TableView<>();
 		associationsTable.setEditable(false);
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -108,7 +98,8 @@ public class CommitDetailView extends BorderPane {
 
 		associationsTable.setItems(this.associationsData);
 
-		splitPane.getItems().add(associationsTable);
+		detailsPane.add(associationsTable, 1, row, 1, 1);
+		row++;
 
 
 		// show nothing initially
@@ -122,7 +113,7 @@ public class CommitDetailView extends BorderPane {
 		this.associationsData.clear();
 
 		if (commit != null) {
-			this.setCenter(this.splitPane);
+			this.setCenter(this.centerPane);
 			this.toolBar.setDisable(false);
 
 			this.commitId.setText(String.valueOf(commit.getId()));

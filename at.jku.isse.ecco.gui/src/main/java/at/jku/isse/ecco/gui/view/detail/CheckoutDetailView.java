@@ -7,12 +7,8 @@ import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Priority;
+import javafx.scene.layout.*;
 
 public class CheckoutDetailView extends BorderPane {
 
@@ -23,7 +19,7 @@ public class CheckoutDetailView extends BorderPane {
 	final ObservableList<WarningInfo> warningsData = FXCollections.observableArrayList();
 
 
-	private SplitPane splitPane;
+	private Pane centerPane;
 	private ToolBar toolBar;
 
 
@@ -41,23 +37,26 @@ public class CheckoutDetailView extends BorderPane {
 		this.setTop(toolBar);
 
 
-		// splitpane
-		this.splitPane = new SplitPane();
-		splitPane.setOrientation(Orientation.VERTICAL);
-		this.setCenter(splitPane);
-
-
 		// details
 		GridPane detailsPane = new GridPane();
+		this.centerPane = detailsPane;
 		detailsPane.setHgap(10);
 		detailsPane.setVgap(10);
 		detailsPane.setPadding(new Insets(10, 10, 10, 10));
+		this.setCenter(this.centerPane);
 
 		ColumnConstraints col1constraint = new ColumnConstraints();
 		ColumnConstraints col2constraint = new ColumnConstraints();
 		col2constraint.setFillWidth(true);
 		col2constraint.setHgrow(Priority.ALWAYS);
 		detailsPane.getColumnConstraints().addAll(col1constraint, col2constraint);
+
+		RowConstraints emptyRowConstraint = new RowConstraints();
+		RowConstraints heightRowConstraint = new RowConstraints();
+		heightRowConstraint.setVgrow(Priority.ALWAYS);
+		heightRowConstraint.setFillHeight(true);
+		detailsPane.getRowConstraints().addAll(emptyRowConstraint, emptyRowConstraint, heightRowConstraint);
+
 
 		this.checkoutConfiguration = new TextField();
 		this.checkoutConfiguration.setEditable(false);
@@ -68,11 +67,9 @@ public class CheckoutDetailView extends BorderPane {
 		detailsPane.add(this.checkoutConfiguration, 1, row, 1, 1);
 		row++;
 
-		splitPane.getItems().add(detailsPane);
-
 
 		// list of warnings
-		TableView<WarningInfo> warningsTable = new TableView<WarningInfo>();
+		TableView<WarningInfo> warningsTable = new TableView<>();
 		warningsTable.setEditable(false);
 		warningsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -86,7 +83,8 @@ public class CheckoutDetailView extends BorderPane {
 
 		warningsTable.setItems(this.warningsData);
 
-		splitPane.getItems().add(warningsTable);
+		detailsPane.add(warningsTable, 1, row, 1, 1);
+		row++;
 
 
 		// show nothing initially
@@ -100,7 +98,7 @@ public class CheckoutDetailView extends BorderPane {
 		this.warningsData.clear();
 
 		if (checkout != null) {
-			this.setCenter(this.splitPane);
+			this.setCenter(this.centerPane);
 			this.toolBar.setDisable(false);
 
 			if (checkout.getConfiguration() != null)
