@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.plugin.artifact.java;
 
 import at.jku.isse.ecco.listener.WriteListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;

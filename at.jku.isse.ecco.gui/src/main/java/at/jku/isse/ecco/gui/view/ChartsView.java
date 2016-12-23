@@ -6,7 +6,7 @@ import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -26,7 +26,7 @@ import javafx.scene.layout.FlowPane;
 import java.nio.file.Path;
 import java.util.Map;
 
-public class ChartsView extends BorderPane implements ServiceListener {
+public class ChartsView extends BorderPane implements EccoListener {
 
 	private EccoService service;
 

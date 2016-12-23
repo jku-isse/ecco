@@ -7,7 +7,7 @@ import at.jku.isse.ecco.gui.view.graph.CommitGraphView;
 import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
 import at.jku.isse.ecco.gui.view.operation.*;
 import at.jku.isse.ecco.gui.view.operation.InitView;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -17,7 +17,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-public class MainView extends BorderPane implements ServiceListener {
+public class MainView extends BorderPane implements EccoListener {
 
 	private EccoService eccoService;
 

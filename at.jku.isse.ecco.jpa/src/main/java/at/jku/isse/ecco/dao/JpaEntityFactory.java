@@ -7,7 +7,7 @@ import at.jku.isse.ecco.artifact.JpaArtifactReference;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.tree.JpaNode;
 import at.jku.isse.ecco.tree.JpaRootNode;
 import at.jku.isse.ecco.tree.Node;

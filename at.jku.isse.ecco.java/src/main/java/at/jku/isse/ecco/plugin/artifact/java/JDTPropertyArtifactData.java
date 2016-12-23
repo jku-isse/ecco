@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.plugin.artifact.java;
 
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

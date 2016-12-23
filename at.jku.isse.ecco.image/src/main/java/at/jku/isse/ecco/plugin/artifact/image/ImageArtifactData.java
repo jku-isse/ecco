@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.plugin.artifact.image;
 
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Arrays;
 import java.util.Objects;

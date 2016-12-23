@@ -5,7 +5,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.view.detail.RemoteDetailView;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -16,7 +16,7 @@ import javafx.scene.layout.BorderPane;
 
 import java.util.Collection;
 
-public class RemotesView extends BorderPane implements ServiceListener {
+public class RemotesView extends BorderPane implements EccoListener {
 
 	private EccoService service;
 

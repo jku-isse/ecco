@@ -5,7 +5,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import javafx.application.Platform;
@@ -28,7 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class CheckoutView extends OperationView implements ServiceListener {
+public class CheckoutView extends OperationView implements EccoListener {
 
 	private EccoService service;
 

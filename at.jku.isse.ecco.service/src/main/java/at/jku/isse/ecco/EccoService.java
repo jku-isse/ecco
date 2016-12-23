@@ -9,9 +9,9 @@ import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.listener.ServerListener;
-import at.jku.isse.ecco.listener.ServiceListener;
 import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.plugin.CoreModule;
 import at.jku.isse.ecco.plugin.artifact.*;
@@ -28,10 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.channels.AsynchronousCloseException;
@@ -53,6 +50,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
+	public enum Operation {
+		OPEN, INIT, FORK, CLOSE, COMMIT, CHECKOUT, FETCH, PULL, PUSH, SERVER, OTHER
+	}
+
 	public static final String ORIGIN_REMOTE_NAME = "origin";
 
 	public static final String ECCO_PROPERTIES_FILE = "ecco.properties";
@@ -64,6 +65,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	public static final Path DEFAULT_REPOSITORY_DIR = DEFAULT_BASE_DIR.resolve(REPOSITORY_DIR_NAME);
 	public static final Path CONFIG_FILE_NAME = Paths.get(".config");
 	public static final Path WARNINGS_FILE_NAME = Paths.get(".warnings");
+	public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
 
 	private Properties properties = new Properties();
 
@@ -102,6 +104,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.fireStatusChangedEvent();
 		}
 	}
+
+
+	// TODO: set current operation. update progress during operations (instead of just relaying the progress from input and output streams) and notify listeners.
+	private Operation currentOperation;
+	private int maxAbsoluteProgress;
 
 
 	/**
@@ -238,13 +245,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	// # LISTENERS #####################################################################################################
 
-	private Collection<ServiceListener> listeners = new ArrayList<>();
+	private Collection<EccoListener> listeners = new ArrayList<>();
 
-	public void addListener(ServiceListener listener) {
+	public void addListener(EccoListener listener) {
 		this.listeners.add(listener);
 	}
 
-	public void removeListener(ServiceListener listener) {
+	public void removeListener(EccoListener listener) {
 		this.listeners.remove(listener);
 	}
 
@@ -275,13 +282,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	// service events
 
 	protected void fireStatusChangedEvent() {
-		for (ServiceListener listener : this.listeners) {
+		for (EccoListener listener : this.listeners) {
 			listener.statusChangedEvent(this);
 		}
 	}
 
 	protected void fireOperationProgressEvent(String operationString, double progress) {
-		for (ServiceListener listener : this.listeners) {
+		for (EccoListener listener : this.listeners) {
 			listener.operationProgressEvent(this, operationString, progress);
 		}
 	}
@@ -302,13 +309,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	// repository events
 
 	protected void fireCommitsChangedEvent(Commit commit) {
-		for (ServiceListener listener : this.listeners) {
+		for (EccoListener listener : this.listeners) {
 			listener.commitsChangedEvent(this, commit);
 		}
 	}
 
 	protected void fireAssociationSelectedEvent(Association association) {
-		for (ServiceListener listener : this.listeners) {
+		for (EccoListener listener : this.listeners) {
 			listener.associationSelectedEvent(this, association);
 		}
 	}
@@ -435,7 +442,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	protected Collection<Module> initService() {
+	protected void checkInitialized() {
+		if (!this.isInitialized()) {
+			throw new EccoException("Service is not initialized. No repository is loaded.");
+		}
+	}
+
+	protected Collection<Module> inititializeService() {
 		if (this.isInitialized()) {
 			LOGGER.error("Repository is already open.");
 			throw new EccoException("Repository is already open.");
@@ -480,7 +493,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		// put modules together
 		List<Module> modules = new ArrayList<>();
-		modules.addAll(Arrays.asList(new CoreModule()));
+		modules.add(new CoreModule());
 		modules.addAll(artifactModules);
 		modules.addAll(dataModules);
 
@@ -490,7 +503,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Initializes the service.
 	 */
-	public void open() throws EccoException {
+	public synchronized void open() throws EccoException {
 		if (!this.repositoryDirectoryExists()) {
 			LOGGER.error("Repository does not exist.");
 			throw new EccoException("Repository does not exist.");
@@ -499,7 +512,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		LOGGER.debug("BASE_DIR: " + this.baseDir);
 		LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
 
-		Collection<Module> modules = this.initService();
+		Collection<Module> modules = this.inititializeService();
 
 		// create settings module
 		final Module settingsModule = new AbstractModule() {
@@ -542,7 +555,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Properly shuts down the service.
 	 */
-	public void close() throws EccoException {
+	public synchronized void close() throws EccoException {
 		if (!this.initialized)
 			return;
 
@@ -565,7 +578,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	// # UTILS #########################################################################################################
 
-	public Remote addRemote(String name, String address) {
+	public synchronized Remote addRemote(String name, String address) {
+		this.checkInitialized();
+
 		Path path;
 		try {
 			path = Paths.get(address);
@@ -584,7 +599,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
-	public Remote addRemote(String name, String address, Remote.Type type) {
+	public synchronized Remote addRemote(String name, String address, Remote.Type type) {
+		this.checkInitialized();
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -605,7 +622,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
-	public void removeRemote(String name) {
+	public synchronized void removeRemote(String name) {
+		this.checkInitialized();
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -619,7 +638,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
-	public Remote getRemote(String name) {
+	public synchronized Remote getRemote(String name) {
+		this.checkInitialized();
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -637,7 +658,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
-	public Collection<Remote> getRemotes() {
+	public synchronized Collection<Remote> getRemotes() {
+		this.checkInitialized();
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -652,6 +675,42 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			throw new EccoException("Error retrieving remotes.", e);
 		} finally {
 
+		}
+	}
+
+
+	public synchronized Repository getRepository() {
+		this.checkInitialized();
+
+		try {
+			this.repositoryDao.init();
+			this.transactionStrategy.begin();
+			Repository repository = this.repositoryDao.load();
+			this.transactionStrategy.end();
+			return repository;
+		} catch (EccoException e) {
+			this.transactionStrategy.rollback();
+			throw new EccoException("Error when retrieving repository.", e);
+		}
+	}
+
+	/**
+	 * Get all commit objects.
+	 *
+	 * @return Collection containing all commit objects.
+	 */
+	public synchronized Collection<Commit> getCommits() {
+		this.checkInitialized();
+
+		try {
+			this.commitDao.init();
+			this.transactionStrategy.begin();
+			List<Commit> commits = this.commitDao.loadAllCommits();
+			this.transactionStrategy.end();
+			return commits;
+		} catch (EccoException e) {
+			this.transactionStrategy.rollback();
+			throw new EccoException("Error when retrieving commits.", e);
 		}
 	}
 
@@ -970,7 +1029,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		return this.serverRunning;
 	}
 
-	public void startServer(int port) {
+	public synchronized void startServer(int port) {
+		this.checkInitialized();
+
 		if (!this.serverLock.tryLock())
 			throw new EccoException("Server is already running.");
 //		if (this.serverRunning)
@@ -994,57 +1055,84 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
 
 
-//					ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-//					ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
-//					// write object to temp_oos
-//					// TODO
-//					// get size of data
-//					int size = byteOutputStream.size();
-//					// send data
-//					byteOutputStream.writeTo(sChannel.socket().getOutputStream());
-
-
 					// determine if it is a push (receive data) or a pull (send data)
 					String command = (String) ois.readObject();
 					LOGGER.debug("COMMAND: " + command);
 					this.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
 
-					if (command.equals("FETCH")) { // if fetch, send data
-						// copy features using mem entity factory
-						this.transactionStrategy.begin();
-						RepositoryOperand repository = this.repositoryDao.load();
-						Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), this.entityFactory); // TODO: change entity factory to mem
-						this.transactionStrategy.end();
+					switch (command) {
+						case "FETCH": { // if fetch, send data
+							// copy features using mem entity factory
+							this.transactionStrategy.begin();
+							RepositoryOperand repository = this.repositoryDao.load();
+							Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), this.entityFactory); // TODO: change entity factory to mem
+							this.transactionStrategy.end();
 
-						// send features
-						oos.writeObject(copiedFeatures);
-					} else if (command.equals("PULL")) { // if pull, send data
-						// retrieve deselection
-						//Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
-						String deselectedFeatureVersionsString = (String) ois.readObject();
-						Collection<FeatureVersion> deselected = this.parseFeatureVersionsString(deselectedFeatureVersionsString);
 
-						// compute subset repository using mem entity factory
-						this.transactionStrategy.begin();
-						RepositoryOperand repository = this.repositoryDao.load();
-						RepositoryOperand subsetRepository = repository.subset(deselected, repository.getMaxOrder(), this.entityFactory); // TODO: change entity factory to mem
-						this.transactionStrategy.end();
+							// send features
+							// with size:
+							ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+							ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
+							// write object to temp_oos
+							temp_oos.writeObject(copiedFeatures);
+							// get size of data
+							int size = byteOutputStream.size();
+							// send size
+							oos.writeObject(size);
+							// send data
+							byteOutputStream.writeTo(sChannel.socket().getOutputStream());
+							byteOutputStream.close();
+							// without size:
+							//oos.writeObject(copiedFeatures);
 
-						// send subset repository
-						oos.writeObject(subsetRepository);
-					} else if (command.equals("PUSH")) { // if push, receive data
-						// retrieve repository
-						RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
+							break;
+						}
+						case "PULL": { // if pull, send data
+							// retrieve deselection
+							//Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
+							String deselectedFeatureVersionsString = (String) ois.readObject();
+							Collection<FeatureVersion> deselected = this.parseFeatureVersionsString(deselectedFeatureVersionsString);
 
-						// copy it using this entity factory
-						RepositoryOperand copiedRepository = subsetRepository.copy(this.entityFactory);
+							// compute subset repository using mem entity factory
+							this.transactionStrategy.begin();
+							RepositoryOperand repository = this.repositoryDao.load();
+							RepositoryOperand subsetRepository = repository.subset(deselected, repository.getMaxOrder(), this.entityFactory); // TODO: change entity factory to mem
+							this.transactionStrategy.end();
 
-						// merge into this repository
-						this.transactionStrategy.begin();
-						RepositoryOperand repository = this.repositoryDao.load();
-						repository.merge(copiedRepository);
-						this.repositoryDao.store(repository);
-						this.transactionStrategy.end();
+
+							// send subset repository
+							// with size:
+							ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+							ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
+							// write object to temp_oos
+							temp_oos.writeObject(subsetRepository);
+							// get size of data
+							int size = byteOutputStream.size();
+							// send size
+							oos.writeObject(size);
+							// send data
+							byteOutputStream.writeTo(sChannel.socket().getOutputStream());
+							byteOutputStream.close();
+							// without size:
+							//oos.writeObject(subsetRepository);
+
+							break;
+						}
+						case "PUSH": { // if push, receive data
+							// retrieve repository
+							RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
+
+							// copy it using this entity factory
+							RepositoryOperand copiedRepository = subsetRepository.copy(this.entityFactory);
+
+							// merge into this repository
+							this.transactionStrategy.begin();
+							RepositoryOperand repository = this.repositoryDao.load();
+							repository.merge(copiedRepository);
+							this.repositoryDao.store(repository);
+							this.transactionStrategy.end();
+							break;
+						}
 					}
 				} catch (AsynchronousCloseException e) {
 					// server shut down
@@ -1094,7 +1182,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	public void fetch(String remoteName) {
+	public synchronized void fetch(String remoteName) {
+		this.checkInitialized();
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -1108,13 +1198,24 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					sChannel.configureBlocking(true);
 					String[] pair = remote.getAddress().split(":");
 					if (sChannel.connect(new InetSocketAddress(pair[0], Integer.valueOf(pair[1])))) {
+						ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+
 						ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-						ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+						ObjectInputStream ois = new ObjectInputStream(progressInputStream);
 
 						oos.writeObject("FETCH");
 
+
+						int size = (Integer) ois.readObject();
+						progressInputStream.setMaxBytes(size);
+						progressInputStream.resetProgress();
+						progressInputStream.addListener(this);
+
 						// retrieve features
 						Collection<Feature> features = (Collection<Feature>) ois.readObject();
+
+						progressInputStream.removeListener(this);
+
 
 						// copy it using this entity factory
 						Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(features, this.entityFactory);
@@ -1157,13 +1258,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	public void fork(String hostname, int port) {
+	public synchronized void fork(String hostname, int port) {
 		this.fork(hostname, port, "");
 	}
 
-	public void fork(String hostname, int port, String deselectedFeatureVersionsString) {
+	public synchronized void fork(String hostname, int port, String deselectedFeatureVersionsString) {
 		if (this.isInitialized())
-			throw new EccoException("ECCO Service must not be initialized for fork operation.");
+			throw new EccoException("Service must not be initialized for fork operation.");
 		if (this.repositoryDirectoryExists())
 			throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
 
@@ -1171,29 +1272,24 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try (SocketChannel sChannel = SocketChannel.open()) {
 			sChannel.configureBlocking(true);
 			if (sChannel.connect(new InetSocketAddress(hostname, port))) {
-				ProgressOutputStream progressOutputStream = new ProgressOutputStream(sChannel.socket().getOutputStream());
 				ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
-				ObjectOutputStream oos = new ObjectOutputStream(progressOutputStream);
+				ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
 				ObjectInputStream ois = new ObjectInputStream(progressInputStream);
 
 				oos.writeObject("PULL");
 				oos.writeObject(deselectedFeatureVersionsString);
 
 
-//				// TODO
-//				progressOutputStream.addListener(this);
-//				progressInputStream.addListener(this);
-//
-//				Integer size = (Integer) ois.readObject();
-//				progressInputStream.setMaxBytes(size);
-//				progressInputStream.resetProgress();
+				int size = (Integer) ois.readObject();
+				progressInputStream.setMaxBytes(size);
+				progressInputStream.resetProgress();
+				progressInputStream.addListener(this);
 
 				// retrieve remote repository
 				RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
 
-//				progressOutputStream.removeListener(this);
-//				progressInputStream.removeListener(this);
+				progressInputStream.removeListener(this);
 
 
 				// copy it using this entity factory
@@ -1226,7 +1322,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
-	public void fork(Path originRepositoryDir) {
+	public synchronized void fork(Path originRepositoryDir) {
 		this.fork(originRepositoryDir, "");
 	}
 
@@ -1238,10 +1334,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @param originRepositoryDir The directory of the repository from which to fork.
 	 */
-	public void fork(Path originRepositoryDir, String deselectedFeatureVersionsString) {
+	public synchronized void fork(Path originRepositoryDir, String deselectedFeatureVersionsString) {
 		// check that this service has not yet been initialized and that no repository already exists,
 		if (this.isInitialized())
-			throw new EccoException("ECCO Service must not be initialized for fork operation.");
+			throw new EccoException("Service must not be initialized for fork operation.");
 		if (this.repositoryDirectoryExists())
 			throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
 
@@ -1292,14 +1388,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	public void pull(String remoteName) {
+	public synchronized void pull(String remoteName) {
 		this.pull("", remoteName);
 	}
 
 	/**
 	 * Pulls the changes from the parent repository to this repository.
 	 */
-	public void pull(String remoteName, String deselectedFeatureVersionsString) {
+	public synchronized void pull(String remoteName, String deselectedFeatureVersionsString) {
+		this.checkInitialized();
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -1313,14 +1411,25 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					sChannel.configureBlocking(true);
 					String[] pair = remote.getAddress().split(":");
 					if (sChannel.connect(new InetSocketAddress(pair[0], Integer.valueOf(pair[1])))) {
+						ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
+
 						ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-						ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+						ObjectInputStream ois = new ObjectInputStream(progressInputStream);
 
 						oos.writeObject("PULL");
 						oos.writeObject(deselectedFeatureVersionsString);
 
+
+						int size = (Integer) ois.readObject();
+						progressInputStream.setMaxBytes(size);
+						progressInputStream.resetProgress();
+						progressInputStream.addListener(this);
+
 						// retrieve remote repository
 						RepositoryOperand subsetRepository = (RepositoryOperand) ois.readObject();
+
+						progressInputStream.removeListener(this);
+
 
 						// copy it using this entity factory
 						RepositoryOperand copiedRepository = subsetRepository.copy(this.entityFactory);
@@ -1375,14 +1484,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	public void push(String remoteName) {
+	public synchronized void push(String remoteName) {
 		this.push("", remoteName);
 	}
 
 	/**
 	 * Pushes the changes from this repository to its parent repository.
 	 */
-	public void push(String remoteName, String deselectedFeatureVersionsString) {
+	public synchronized void push(String remoteName, String deselectedFeatureVersionsString) {
+		this.checkInitialized();
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -1407,8 +1518,25 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						RepositoryOperand subsetRepository = repository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.entityFactory); // TODO: change entity factory to mem
 						this.transactionStrategy.end();
 
+
 						// send subset repository
-						oos.writeObject(subsetRepository);
+						// without size:
+						//oos.writeObject(subsetRepository);
+						// with size:
+						ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+						ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
+						temp_oos.writeObject(subsetRepository);
+						// get size of data
+						int size = byteOutputStream.size();
+						byteOutputStream.close();
+						// send data
+						ProgressOutputStream pos = new ProgressOutputStream(sChannel.socket().getOutputStream());
+						pos.setMaxBytes(size);
+						pos.resetProgress();
+						pos.addListener(this);
+						byteOutputStream.writeTo(pos);
+						pos.removeListener(this);
+
 					} else {
 						throw new EccoException("Error connecting to remote: " + pair[0] + ":" + pair[1]);
 					}
@@ -1464,7 +1592,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @return True if the repository was created, false otherwise.
 	 */
-	public boolean init() throws EccoException {
+	public synchronized boolean init() throws EccoException {
+		if (this.isInitialized()) {
+			throw new EccoException("Service must not be initialized for init operation.");
+		}
+
 		try {
 			if (!this.repositoryDirectoryExists())
 				Files.createDirectory(this.repositoryDir);
@@ -1488,7 +1620,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return The resulting commit object.
 	 * @throws EccoException When the configuration file does not exist or cannot be read.
 	 */
-	public Commit commit() throws EccoException {
+	public synchronized Commit commit() throws EccoException {
 		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
 		try {
 			String configurationString = "";
@@ -1507,7 +1639,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return The resulting commit object.
 	 * @throws EccoException
 	 */
-	public Commit commit(String configurationString) throws EccoException {
+	public synchronized Commit commit(String configurationString) throws EccoException {
 		return this.commit(this.parseConfigurationString(configurationString));
 	}
 
@@ -1517,7 +1649,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configuration The configuration to be commited.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	public Commit commit(Configuration configuration) throws EccoException {
+	public synchronized Commit commit(Configuration configuration) throws EccoException {
+		this.checkInitialized();
+
+		checkNotNull(configuration);
+
 		try {
 			this.transactionStrategy.begin();
 
@@ -1545,7 +1681,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configurationString The configuration string representing the configuration that shall be checked out.
 	 * @throws EccoException
 	 */
-	public Checkout checkout(String configurationString) throws EccoException {
+	public synchronized Checkout checkout(String configurationString) throws EccoException {
 		return this.checkout(this.parseConfigurationString(configurationString));
 	}
 
@@ -1554,7 +1690,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @param configuration The configuration to be checked out.
 	 */
-	public Checkout checkout(Configuration configuration) throws EccoException {
+	public synchronized Checkout checkout(Configuration configuration) throws EccoException {
+		this.checkInitialized();
+
 		checkNotNull(configuration);
 
 
@@ -1619,10 +1757,26 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.fireWriteEvent(warningsFile, this.writer);
 		}
 
+		// write hashes file into base directory
+		Path hashesFile = this.baseDir.resolve(HASHES_FILE_NAME);
+		if (Files.exists(hashesFile)) {
+			throw new EccoException("Hashes file already exists in base directory.");
+		} else {
+			try {
+				// TODO: compute file hashes
+				Files.write(hashesFile, "TODO: compute file hashes and put them here.".getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+			} catch (IOException e) {
+				throw new EccoException("Could not create hashes file.", e);
+			}
+			this.fireWriteEvent(hashesFile, this.writer);
+		}
+
 		return checkout;
 	}
 
-	public Checkout checkout(Node node) {
+	public synchronized Checkout checkout(Node node) {
+		this.checkInitialized();
+
 		Checkout checkout = new Checkout();
 		checkout.setNode(node);
 
@@ -1634,37 +1788,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 
 	// OTHERS //////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	public Repository getRepository() {
-		try {
-			this.repositoryDao.init();
-			this.transactionStrategy.begin();
-			Repository repository = this.repositoryDao.load();
-			this.transactionStrategy.end();
-			return repository;
-		} catch (EccoException e) {
-			this.transactionStrategy.rollback();
-			throw new EccoException("Error when retrieving repository.", e);
-		}
-	}
-
-	/**
-	 * Get all commit objects.
-	 *
-	 * @return Collection containing all commit objects.
-	 */
-	public Collection<Commit> getCommits() {
-		try {
-			this.commitDao.init();
-			this.transactionStrategy.begin();
-			List<Commit> commits = this.commitDao.loadAllCommits();
-			this.transactionStrategy.end();
-			return commits;
-		} catch (EccoException e) {
-			this.transactionStrategy.rollback();
-			throw new EccoException("Error when retrieving commits.", e);
-		}
-	}
 
 	/**
 	 * Gets the list of loaded artifact plugins.

@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.plugin.artifact;
+package at.jku.isse.ecco.artifact;
 
 import java.io.Serializable;
 

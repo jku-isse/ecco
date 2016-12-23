@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -14,7 +14,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.stage.Stage;
 
-public class ServerView extends OperationView implements ServiceListener {
+public class ServerView extends OperationView implements EccoListener {
 
 	private EccoService service;
 

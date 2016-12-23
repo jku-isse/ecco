@@ -3,7 +3,7 @@ package at.jku.isse.ecco.genericAdapter.eccoModelAdapter.builder;
 
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.TokenValue;
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.ArrayList;
 import java.util.Collections;

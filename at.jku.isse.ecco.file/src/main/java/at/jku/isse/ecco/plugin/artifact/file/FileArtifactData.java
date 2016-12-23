@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.plugin.artifact.file;
 
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.io.IOException;
 import java.io.InputStream;

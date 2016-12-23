@@ -3,7 +3,6 @@ package at.jku.isse.ecco.util;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -553,25 +552,6 @@ public class Trees {
 		}
 		for (Node child : node.getChildren()) {
 			computeArtifactsPerDepthRec(child, map, depth + 1);
-		}
-	}
-
-
-	/**
-	 * Retreives the ID of the plugin that created the given node. If the node was created by an artifact plugin the plugin's ID is returned. If the node was not creaetd by a plugin, as is for example the case with directories, null is returned.
-	 *
-	 * @param node The node for which the plugin ID shall be retreived.
-	 * @return The plugin ID of the given node or null if the node was not created by a plugin.
-	 */
-	public static String getPluginId(Node node) {
-		if (node == null || node.getArtifact() == null)
-			return null;
-		else {
-			if (node.getArtifact().getData() instanceof PluginArtifactData)
-				return ((PluginArtifactData) node.getArtifact().getData()).getPluginId();
-			else {
-				return getPluginId(node.getParent());
-			}
 		}
 	}
 

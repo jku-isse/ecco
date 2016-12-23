@@ -13,7 +13,7 @@ import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PresenceCondition;
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.repository.RepositoryOperand;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;

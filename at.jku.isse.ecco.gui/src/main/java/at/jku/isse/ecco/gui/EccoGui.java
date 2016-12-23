@@ -2,7 +2,7 @@ package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Group;
@@ -11,7 +11,7 @@ import javafx.stage.Stage;
 
 import java.nio.file.Paths;
 
-public class EccoGui extends Application implements ServiceListener {
+public class EccoGui extends Application implements EccoListener {
 
 	public static void main(String[] args) {
 		Application.launch(args);

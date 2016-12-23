@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.test;
 
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 

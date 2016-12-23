@@ -4,7 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.DispatchReader;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;

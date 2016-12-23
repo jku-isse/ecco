@@ -7,7 +7,7 @@ import at.jku.isse.ecco.artifact.BaseArtifactReference;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
-import at.jku.isse.ecco.plugin.artifact.ArtifactData;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.repository.MemRepository;
 import at.jku.isse.ecco.repository.RepositoryOperand;
 import at.jku.isse.ecco.tree.BaseNode;

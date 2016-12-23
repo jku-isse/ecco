@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
@@ -29,7 +29,7 @@ import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 
-public class DependencyGraphView extends BorderPane implements ServiceListener {
+public class DependencyGraphView extends BorderPane implements EccoListener {
 
 	private EccoService service;
 

@@ -7,7 +7,7 @@ import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.listener.ServiceListener;
+import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.util.Trees;
@@ -24,7 +24,7 @@ import java.nio.file.Paths;
 /**
  * This class implements all the CLI commands.
  */
-public class CLI implements ServiceListener {
+public class CLI implements EccoListener {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(CLI.class);
 
