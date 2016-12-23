@@ -48,7 +48,17 @@ public class CLI implements EccoListener {
 		System.out.println("SELECTED: [" + association.getId() + "] " + association.getPresenceCondition().getLabel());
 	}
 
-	// TODO: other events
+	@Override
+	public void operationProgressEvent(EccoService service, String operationString, double progress) {
+		System.out.print("\r[");
+		for (int i = 0; i < 100; i += 10) {
+			if (i < progress)
+				System.out.print("=");
+			else
+				System.out.print(" ");
+		}
+		System.out.print("] " + (progress * 100.0) + "%");
+	}
 
 
 	// # CLI #########################################

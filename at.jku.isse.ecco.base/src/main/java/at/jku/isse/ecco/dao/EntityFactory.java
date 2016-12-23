@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
@@ -13,7 +14,6 @@ import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PresenceCondition;
-import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.repository.RepositoryOperand;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -22,13 +22,23 @@ import java.util.Collection;
 import java.util.Set;
 
 /**
- * Creates database entities depending on the underlying database implementation.
+ * Creates entities depending on the used data implementation.
  *
- * @author Hannes Thaller
+ * @author JKU, ISSE
  * @version 1.0
  */
 public interface EntityFactory {
 
+	public RepositoryOperand createRepository();
+
+	/**
+	 * Creates a remote with given name, address and type.
+	 *
+	 * @param name    The name of the remote.
+	 * @param address The address of the remote.
+	 * @param type    The type of the remote, either LOCAL or REMOTE.
+	 * @return The created remote.
+	 */
 	public Remote createRemote(String name, String address, Remote.Type type);
 
 	/**
@@ -84,7 +94,6 @@ public interface EntityFactory {
 	 * @param data The artifact data.
 	 * @return
 	 */
-	//public Artifact createArtifact(ArtifactData data);
 	public <T extends ArtifactData> Artifact<T> createArtifact(T data);
 
 	/**
@@ -217,7 +226,5 @@ public interface EntityFactory {
 	 * @return A root node that is contained in the given association.
 	 */
 	public RootNode createRootNode(final Association association);
-
-	RepositoryOperand createRepository();
 
 }
