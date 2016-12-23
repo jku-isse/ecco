@@ -8,18 +8,15 @@ dependencies {
 	compile 'org.graphstream:gs-ui:1.3'
 
 	compile project(':at.jku.isse.ecco.base')
+	compile project(':at.jku.isse.ecco.service')
 
-	testCompile project(':at.jku.isse.ecco.perst')
 	testCompile project(':at.jku.isse.ecco.mem')
-	//testCompile project(':at.jku.isse.ecco.jpa')
+	testCompile project(':at.jku.isse.ecco.perst')
 
 	testRuntime project(':at.jku.isse.ecco.file')
 	testRuntime project(':at.jku.isse.ecco.text')
 	testRuntime project(':at.jku.isse.ecco.image')
-	testRuntime project(':at.jku.isse.ecco.php')
 	testRuntime project(':at.jku.isse.ecco.java')
-
-	testRuntime project(':at.jku.isse.ecco.genericAdapter')
 }
 
 ospackage {

@@ -27,7 +27,6 @@ dependencies {
 	testRuntime project(':at.jku.isse.ecco.file')
 	testRuntime project(':at.jku.isse.ecco.text')
 	testRuntime project(':at.jku.isse.ecco.image')
-	testRuntime project(':at.jku.isse.ecco.php')
 	testRuntime project(':at.jku.isse.ecco.java')
 }
 
