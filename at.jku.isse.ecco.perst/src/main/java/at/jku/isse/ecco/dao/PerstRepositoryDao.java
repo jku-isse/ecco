@@ -7,7 +7,7 @@ import at.jku.isse.ecco.feature.PerstFeatureVersion;
 import at.jku.isse.ecco.module.PerstPresenceCondition;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.repository.PerstRepository;
-import at.jku.isse.ecco.repository.RepositoryOperand;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.sg.PerstSequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.PerstNode;
@@ -30,14 +30,14 @@ public class PerstRepositoryDao extends PerstAbstractGenericDao implements Repos
 	}
 
 	@Override
-	public RepositoryOperand load() {
+	public Repository.Op load() {
 		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
 
 		return root.getRepository();
 	}
 
 	@Override
-	public void store(RepositoryOperand repository) {
+	public void store(Repository.Op repository) {
 		PerstRepository perstRepository = (PerstRepository) repository;
 
 		perstRepository.store();

@@ -2,7 +2,7 @@ package at.jku.isse.ecco.tree;
 
 import at.jku.isse.ecco.core.Association;
 
-public class BaseRootNode extends BaseNode implements RootNode {
+public class BaseRootNode extends BaseNode implements RootNode, RootNode.Op {
 
 	private Association containingAssociation;
 
@@ -24,13 +24,13 @@ public class BaseRootNode extends BaseNode implements RootNode {
 
 
 	@Override
-	public Node createNode() {
+	public RootNode.Op createNode() {
 		return new BaseRootNode();
 	}
 
 
 	@Override
-	public void setContainingAssociation(Association containingAssociation) {
+	public void setContainingAssociation(Association.Op containingAssociation) {
 		this.containingAssociation = containingAssociation;
 	}
 

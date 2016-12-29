@@ -21,7 +21,7 @@ import java.util.Set;
 i would say we include the folder structure in our artifact tree! that way we can even store folder properties (in case it ever becomes relevant).
  */
 
-public class FileReader implements ArtifactReader<Path, Set<Node>> {
+public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
 
@@ -50,21 +50,21 @@ public class FileReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 	@Override
-	public Set<Node> read(Path[] input) {
+	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
 	}
 
 	@Override
-	public Set<Node> read(Path base, Path[] input) {
-		Set<Node> nodes = new HashSet<Node>();
+	public Set<Node.Op> read(Path base, Path[] input) {
+		Set<Node.Op> nodes = new HashSet<>();
 		for (Path path : input) {
 			try {
-				Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-				Node pluginNode = this.entityFactory.createNode(pluginArtifact);
+				Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+				Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
 				nodes.add(pluginNode);
 
 				FileArtifactData fileArtifactData = new FileArtifactData(base, path);
-				Node fileNode = this.entityFactory.createNode(this.entityFactory.createArtifact(fileArtifactData));
+				Node.Op fileNode = this.entityFactory.createNode(this.entityFactory.createArtifact(fileArtifactData));
 				pluginNode.addChild(fileNode);
 			} catch (IOException e) {
 				e.printStackTrace();

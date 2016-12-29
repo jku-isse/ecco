@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.tree;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import org.garret.perst.Persistent;
@@ -14,30 +15,30 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstNode extends Persistent implements Node, NodeOperator.NodeOperand {
+public class PerstNode extends Persistent implements Node, Node.Op {
 
 	private transient NodeOperator operator = new NodeOperator(this);
 
 
 	private boolean unique = true;
 
-	private final List<Node> children = new ArrayList<>();
+	private final List<Op> children = new ArrayList<>();
 
-	private Artifact artifact = null;
+	private Artifact.Op<?> artifact = null;
 
-	private Node parent = null;
+	private Op parent = null;
 
 
 	public PerstNode() {
 	}
 
-	public PerstNode(Artifact artifact) {
+	public PerstNode(Artifact.Op<?> artifact) {
 		this.artifact = artifact;
 	}
 
 
 	@Override
-	public Node createNode() {
+	public Op createNode() {
 		return new PerstNode();
 	}
 
@@ -63,25 +64,25 @@ public class PerstNode extends Persistent implements Node, NodeOperator.NodeOper
 
 
 	@Override
-	public Artifact getArtifact() {
+	public Artifact.Op<?> getArtifact() {
 		this.load();
 		return artifact;
 	}
 
 	@Override
-	public void setArtifact(Artifact artifact) {
+	public void setArtifact(Artifact.Op<?> artifact) {
 		this.load();
 		this.artifact = artifact;
 	}
 
 	@Override
-	public Node getParent() {
+	public Op getParent() {
 		this.load();
 		return parent;
 	}
 
 	@Override
-	public void setParent(Node parent) {
+	public void setParent(Op parent) {
 		this.load();
 		this.parent = parent;
 	}
@@ -100,23 +101,26 @@ public class PerstNode extends Persistent implements Node, NodeOperator.NodeOper
 
 
 	@Override
-	public void addChild(Node child) {
+	public void addChild(Op child) {
 		checkNotNull(child);
 
 		this.load();
+
+		if (this.getArtifact() != null && !this.getArtifact().isOrdered() && this.children.contains(child))
+			throw new EccoException("An equivalent child is already contained. If multiple equivalent children are allowed use an ordered node.");
 
 		this.children.add(child);
 		child.setParent(this);
 	}
 
 	@Override
-	public void addChildren(Node... children) {
-		for (Node child : children)
+	public void addChildren(Op... children) {
+		for (Op child : children)
 			this.addChild(child);
 	}
 
 	@Override
-	public void removeChild(Node child) {
+	public void removeChild(Op child) {
 		checkNotNull(child);
 
 		this.load();
@@ -127,7 +131,7 @@ public class PerstNode extends Persistent implements Node, NodeOperator.NodeOper
 
 
 	@Override
-	public List<Node> getChildren() {
+	public List<Op> getChildren() {
 		this.load();
 		return this.children;
 	}
@@ -172,12 +176,12 @@ public class PerstNode extends Persistent implements Node, NodeOperator.NodeOper
 
 
 	@Override
-	public void slice(Node node) {
+	public void slice(Op node) {
 		this.operator.slice(node);
 	}
 
 	@Override
-	public void merge(Node node) {
+	public void merge(Op node) {
 		this.operator.merge(node);
 	}
 

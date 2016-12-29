@@ -11,14 +11,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Entity
-public class JpaSequenceGraphNode implements SequenceGraphNode, Serializable {
+public class JpaSequenceGraphNode implements SequenceGraph.Node, Serializable {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private int id;
 
 
-	private HashMap<Artifact<?>, SequenceGraphNode> children = new HashMap<>(); // maybe use linked hash map?
+	private HashMap<Artifact<?>, SequenceGraph.Node> children = new HashMap<>(); // maybe use linked hash map?
 
 	private boolean pol;
 
@@ -37,7 +37,7 @@ public class JpaSequenceGraphNode implements SequenceGraphNode, Serializable {
 	}
 
 	@Override
-	public Map<Artifact<?>, SequenceGraphNode> getChildren() {
+	public Map<Artifact<?>, SequenceGraph.Node> getChildren() {
 		return this.children;
 	}
 

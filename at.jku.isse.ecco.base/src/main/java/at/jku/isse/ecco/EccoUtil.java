@@ -45,20 +45,20 @@ public class EccoUtil {
 	 *
 	 * @param associations Associations that contain artifacts to retain in the sequence graphs.
 	 */
-	public static void trimSequenceGraph(Collection<Association> associations) {
-		for (Association association : associations) {
+	public static void trimSequenceGraph(Collection<? extends Association.Op> associations) {
+		for (Association.Op association : associations) {
 			EccoUtil.trimSequenceGraphRec(associations, association.getRootNode());
 		}
 	}
 
-	private static void trimSequenceGraphRec(Collection<Association> associations, Node node) {
+	private static void trimSequenceGraphRec(Collection<? extends Association.Op> associations, Node.Op node) {
 
 		if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
 			// get all symbols from sequence graph
-			Collection<Artifact<?>> symbols = node.getArtifact().getSequenceGraph().getSymbols();
+			Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().getSymbols();
 
 			// remove symbols that are not contained in the given associations
-			Iterator<Artifact<?>> symbolsIterator = symbols.iterator();
+			Iterator<? extends Artifact.Op<?>> symbolsIterator = symbols.iterator();
 			while (symbolsIterator.hasNext()) {
 				Artifact<?> symbol = symbolsIterator.next();
 				if (!associations.contains(symbol.getContainingNode().getContainingAssociation())) {
@@ -70,7 +70,7 @@ public class EccoUtil {
 			node.getArtifact().getSequenceGraph().trim(symbols);
 		}
 
-		for (Node child : node.getChildren()) {
+		for (Node.Op child : node.getChildren()) {
 			EccoUtil.trimSequenceGraphRec(associations, child);
 		}
 	}
@@ -83,29 +83,29 @@ public class EccoUtil {
 	 * @param entityFactory
 	 * @return
 	 */
-	public static Node deepCopyTree(Node node, EntityFactory entityFactory) {
-		Node node2 = EccoUtil.deepCopyTreeRec(node, entityFactory);
+	public static Node.Op deepCopyTree(Node.Op node, EntityFactory entityFactory) {
+		Node.Op node2 = EccoUtil.deepCopyTreeRec(node, entityFactory);
 
 		Trees.updateArtifactReferences(node2);
 
 		return node2;
 	}
 
-	private static Node deepCopyTreeRec(Node node, EntityFactory entityFactory) {
-		Node node2 = entityFactory.createNode();
+	private static Node.Op deepCopyTreeRec(Node.Op node, EntityFactory entityFactory) {
+		Node.Op node2 = entityFactory.createNode();
 
 		node2.setUnique(node.isUnique());
 
 		if (node.getArtifact() != null) {
-			Artifact<?> artifact = node.getArtifact();
-			Artifact<?> artifact2;
+			Artifact.Op<?> artifact = node.getArtifact();
+			Artifact.Op<?> artifact2;
 
 			boolean firstMatch = false;
-			if (artifact.getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-				artifact2 = artifact.<Artifact<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+			if (artifact.hasReplacingArtifact()) {
+				artifact2 = artifact.getReplacingArtifact();
 			} else {
 				artifact2 = entityFactory.createArtifact(artifact.getData());
-				artifact.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, artifact2);
+				artifact.setReplacingArtifact(artifact2);
 				firstMatch = true;
 			}
 
@@ -121,8 +121,8 @@ public class EccoUtil {
 
 			// sequence graph
 			if (artifact.getSequenceGraph() != null && firstMatch) {
-				SequenceGraph sequenceGraph = artifact.getSequenceGraph();
-				SequenceGraph sequenceGraph2 = artifact2.createSequenceGraph();
+				SequenceGraph.Op sequenceGraph = artifact.getSequenceGraph();
+				SequenceGraph.Op sequenceGraph2 = artifact2.createSequenceGraph();
 
 				artifact2.setSequenceGraph(sequenceGraph2);
 
@@ -133,23 +133,32 @@ public class EccoUtil {
 
 			// TODO: make source and target artifacts both use the same artifact reference instance?
 			// references
-			for (ArtifactReference artifactReference : artifact.getUses()) {
-				ArtifactReference artifactReference2 = entityFactory.createArtifactReference(artifact2, artifactReference.getTarget(), artifactReference.getType());
-				artifact2.addUses(artifactReference2);
-			}
-			for (ArtifactReference artifactReference : artifact.getUsedBy()) {
-				ArtifactReference artifactReference2 = entityFactory.createArtifactReference(artifactReference.getSource(), artifact2, artifactReference.getType());
-				artifact2.addUsedBy(artifactReference2);
+			// if the target has already been replaced set the uses artifact reference. if not, wait until the target is being processed and set it there as a usedBy. this way no reference is processed twice either. and if the target is never processed, then there is no inconsistent reference.
+			if (firstMatch) {
+				for (ArtifactReference.Op artifactReference : artifact.getUses()) {
+//				ArtifactReference artifactReference2 = entityFactory.createArtifactReference(artifact2, artifactReference.getTarget(), artifactReference.getType());
+//				artifact2.addUses(artifactReference2);
+
+					if (artifactReference.getTarget().hasReplacingArtifact())
+						artifact2.addUses(artifactReference.getTarget().getReplacingArtifact(), artifactReference.getType());
+				}
+				for (ArtifactReference.Op artifactReference : artifact.getUsedBy()) {
+//				ArtifactReference artifactReference2 = entityFactory.createArtifactReference(artifactReference.getSource(), artifact2, artifactReference.getType());
+//				artifact2.addUsedBy(artifactReference2);
+
+					if (artifactReference.getSource().hasReplacingArtifact())
+						artifactReference.getSource().getReplacingArtifact().addUses(artifact2, artifactReference.getType());
+				}
 			}
 
 		} else {
 			node2.setArtifact(null);
 		}
 
-		for (Node childNode : node.getChildren()) {
-			Node childNode2 = EccoUtil.deepCopyTreeRec(childNode, entityFactory);
+		for (Node.Op childNode : node.getChildren()) {
+			Node.Op childNode2 = EccoUtil.deepCopyTreeRec(childNode, entityFactory);
 			node2.addChild(childNode2);
-			childNode2.setParent(node2);
+			//childNode2.setParent(node2); // not necessary
 		}
 
 		return node2;

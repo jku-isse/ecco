@@ -8,9 +8,9 @@ import at.jku.isse.ecco.core.Association;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstRootNode extends PerstNode implements RootNode {
+public class PerstRootNode extends PerstNode implements RootNode, RootNode.Op {
 
-	private Association containingAssociation;
+	private Association.Op containingAssociation;
 
 
 	public PerstRootNode() {
@@ -18,7 +18,7 @@ public class PerstRootNode extends PerstNode implements RootNode {
 	}
 
 
-	public Node createNode() {
+	public RootNode.Op createNode() {
 		return new PerstRootNode();
 	}
 
@@ -41,7 +41,7 @@ public class PerstRootNode extends PerstNode implements RootNode {
 	}
 
 	@Override
-	public void setContainingAssociation(Association containingAssociation) {
+	public void setContainingAssociation(Association.Op containingAssociation) {
 		this.load();
 		this.containingAssociation = containingAssociation;
 	}

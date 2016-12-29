@@ -30,4 +30,9 @@ public class TestArtifactData implements ArtifactData {
 		return identifier.hashCode();
 	}
 
+	@Override
+	public String toString() {
+		return this.identifier;
+	}
+
 }

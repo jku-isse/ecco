@@ -6,7 +6,7 @@ import org.garret.perst.Persistent;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PerstSequenceGraphNode extends Persistent implements SequenceGraphNode {
+public class PerstSequenceGraphNode extends Persistent implements SequenceGraph.Node, SequenceGraph.Node.Op {
 
 	public PerstSequenceGraphNode() {
 		this(false);
@@ -17,7 +17,7 @@ public class PerstSequenceGraphNode extends Persistent implements SequenceGraphN
 	}
 
 
-	private HashMap<Artifact<?>, SequenceGraphNode> children = new HashMap<>(); // maybe use linked hash map?
+	private HashMap<Artifact.Op<?>, SequenceGraph.Node.Op> children = new HashMap<>(); // maybe use linked hash map?
 
 	private boolean pol;
 
@@ -32,7 +32,7 @@ public class PerstSequenceGraphNode extends Persistent implements SequenceGraphN
 	}
 
 	@Override
-	public Map<Artifact<?>, SequenceGraphNode> getChildren() {
+	public Map<Artifact.Op<?>, SequenceGraph.Node.Op> getChildren() {
 		return this.children;
 	}
 

@@ -4,7 +4,7 @@ import at.jku.isse.ecco.core.BaseCommit;
 import at.jku.isse.ecco.core.BaseRemote;
 import at.jku.isse.ecco.core.BaseVariant;
 import at.jku.isse.ecco.repository.MemRepository;
-import at.jku.isse.ecco.repository.RepositoryOperand;
+import at.jku.isse.ecco.repository.Repository;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,7 +13,7 @@ import java.util.Set;
 
 public class Database {
 
-	private final RepositoryOperand repository;
+	private final Repository.Op repository;
 
 	private final Map<Integer, BaseCommit> commitIndex;
 	private final Map<String, BaseVariant> variantIndex;
@@ -53,7 +53,7 @@ public class Database {
 	}
 
 
-	public RepositoryOperand getRepository() {
+	public Repository.Op getRepository() {
 		return this.repository;
 	}
 

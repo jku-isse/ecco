@@ -15,11 +15,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class BaseAssociation implements Association {
+public class BaseAssociation implements Association, Association.Op {
 
 	private String id;
 	private String name = "";
-	private RootNode artifactTreeRoot;
+	private RootNode.Op artifactTreeRoot;
 	private PresenceCondition presenceCondition;
 	private List<Association> parents = new ArrayList<>();
 	private List<Association> children = new ArrayList<>();
@@ -123,12 +123,12 @@ public class BaseAssociation implements Association {
 	}
 
 	@Override
-	public RootNode getRootNode() {
+	public RootNode.Op getRootNode() {
 		return artifactTreeRoot;
 	}
 
 	@Override
-	public void setRootNode(final RootNode root) {
+	public void setRootNode(final RootNode.Op root) {
 		this.artifactTreeRoot = root;
 		root.setContainingAssociation(this);
 	}

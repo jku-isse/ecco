@@ -19,13 +19,13 @@ import java.util.*;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class MemRepository implements Repository, RepositoryOperand {
+public class MemRepository implements Repository, Repository.Op {
 
 	private transient RepositoryOperator operator;
 
 
 	private Map<String, Feature> features;
-	private Collection<Association> associations;
+	private Collection<Association.Op> associations;
 
 	private EntityFactory entityFactory;
 
@@ -43,7 +43,7 @@ public class MemRepository implements Repository, RepositoryOperand {
 
 
 	@Override
-	public Commit extract(Configuration configuration, Set<Node> nodes) {
+	public Commit extract(Configuration configuration, Set<Node.Op> nodes) {
 		return this.operator.extract(configuration, nodes);
 	}
 
@@ -53,17 +53,17 @@ public class MemRepository implements Repository, RepositoryOperand {
 	}
 
 	@Override
-	public RepositoryOperand subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
+	public Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
 		return this.operator.subset(deselected, maxOrder, entityFactory);
 	}
 
 	@Override
-	public RepositoryOperand copy(EntityFactory entityFactory) {
+	public Op copy(EntityFactory entityFactory) {
 		return this.operator.copy(entityFactory);
 	}
 
 	@Override
-	public void merge(RepositoryOperand repository) {
+	public void merge(Op repository) {
 		this.operator.merge(repository);
 	}
 
@@ -75,8 +75,9 @@ public class MemRepository implements Repository, RepositoryOperand {
 
 
 	@Override
-	public Collection<Association> getAssociations() {
-		return new ArrayList<>(this.associations);
+	public Collection<Association.Op> getAssociations() {
+		//return new ArrayList<>(this.associations);
+		return Collections.unmodifiableCollection(this.associations);
 	}
 
 
@@ -109,12 +110,12 @@ public class MemRepository implements Repository, RepositoryOperand {
 
 
 	@Override
-	public void addAssociation(Association association) {
+	public void addAssociation(Association.Op association) {
 		this.associations.add(association);
 	}
 
 	@Override
-	public void removeAssociation(Association association) {
+	public void removeAssociation(Association.Op association) {
 		this.associations.remove(association);
 	}
 

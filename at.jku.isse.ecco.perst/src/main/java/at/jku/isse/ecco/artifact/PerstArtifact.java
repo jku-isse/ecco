@@ -8,7 +8,6 @@ import org.garret.perst.Persistent;
 import java.io.*;
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -18,7 +17,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstArtifact<DataType extends ArtifactData> extends Persistent implements Artifact<DataType> {
+public class PerstArtifact<DataType extends ArtifactData> extends Persistent implements Artifact<DataType>, Artifact.Op<DataType> {
+
+	private transient ArtifactOperator operator = new ArtifactOperator(this);
+
 
 	// data
 
@@ -61,7 +63,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 	private boolean ordered;
 
-	private SequenceGraph sequenceGraph;
+	private SequenceGraph.Op sequenceGraph;
 
 	private int sequenceNumber;
 
@@ -89,8 +91,6 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	public int hashCode() {
 		int result = getData().hashCode();
 		result = 31 * result + (ordered ? 1 : 0);
-//		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
-//			result = 31 * result + sequenceNumber;
 		return result;
 	}
 
@@ -167,12 +167,12 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	}
 
 	@Override
-	public SequenceGraph getSequenceGraph() {
+	public SequenceGraph.Op getSequenceGraph() {
 		return this.sequenceGraph;
 	}
 
 	@Override
-	public void setSequenceGraph(SequenceGraph sequenceGraph) {
+	public void setSequenceGraph(SequenceGraph.Op sequenceGraph) {
 		this.sequenceGraph = sequenceGraph;
 	}
 
@@ -193,71 +193,104 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 
 	@Override
-	public SequenceGraph createSequenceGraph() {
+	public SequenceGraph.Op createSequenceGraph() {
 		return new PerstSequenceGraph();
+	}
+
+
+	@Override
+	public void checkConsistency() {
+		this.operator.checkConsistency();
+	}
+
+	@Override
+	public boolean hasReplacingArtifact() {
+		return this.operator.hasReplacingArtifact();
+	}
+
+	@Override
+	public Op getReplacingArtifact() {
+		return this.operator.getReplacingArtifact();
+	}
+
+	@Override
+	public void setReplacingArtifact(Op replacingArtifact) {
+		this.operator.setReplacingArtifact(replacingArtifact);
+	}
+
+	@Override
+	public void updateArtifactReferences() {
+		this.operator.updateArtifactReferences();
 	}
 
 
 	// containing node
 
-	private Node containingNode;
+	private Node.Op containingNode;
 
 	@Override
-	public Node getContainingNode() {
+	public Node.Op getContainingNode() {
 		return containingNode;
 	}
 
 	@Override
-	public void setContainingNode(final Node node) {
+	public void setContainingNode(final Node.Op node) {
 		containingNode = node;
 	}
 
 
 	// uses and usedBy
 
-	private final List<ArtifactReference> uses = new ArrayList<>();
-	private final List<ArtifactReference> usedBy = new ArrayList<>();
+	private final List<ArtifactReference.Op> uses = new ArrayList<>();
+	private final List<ArtifactReference.Op> usedBy = new ArrayList<>();
 
 	@Override
-	public List<ArtifactReference> getUsedBy() {
+	public List<ArtifactReference.Op> getUsedBy() {
 		return usedBy;
 	}
 
 	@Override
-	public List<ArtifactReference> getUses() {
+	public List<ArtifactReference.Op> getUses() {
 		return uses;
 	}
 
 	@Override
-	public void setUsedBy(final List<ArtifactReference> references) {
-		checkNotNull(references);
-
-		usedBy.clear();
-		if (!references.isEmpty())
-			usedBy.addAll(references);
+	public boolean uses(Op target) {
+		return this.operator.uses(target);
 	}
 
 	@Override
-	public void setUses(final List<ArtifactReference> references) {
-		checkNotNull(references);
-
-		uses.clear();
-		if (!references.isEmpty())
-			uses.addAll(references);
-	}
-
-	@Override
-	public void addUsedBy(final ArtifactReference reference) {
+	public void addUses(final ArtifactReference.Op reference) {
 		checkNotNull(reference);
 
-		usedBy.add(reference);
+		this.uses.add(reference);
 	}
 
 	@Override
-	public void addUses(final ArtifactReference reference) {
+	public void addUsedBy(final ArtifactReference.Op reference) {
 		checkNotNull(reference);
 
-		uses.add(reference);
+		this.usedBy.add(reference);
+	}
+
+	@Override
+	public void addUses(Op target) {
+		this.addUses(target, "");
+	}
+
+	@Override
+	public void addUses(Op target, String type) {
+		checkNotNull(target);
+		checkNotNull(type);
+
+		if (this.uses(target))
+			return;
+
+		ArtifactReference.Op artifactReference = new PerstArtifactReference();
+		artifactReference.setSource(this);
+		artifactReference.setTarget(target);
+		this.addUses(artifactReference);
+		target.addUsedBy(artifactReference);
 	}
 
 
@@ -266,39 +299,23 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	private transient Map<String, Object> properties = new HashMap<>();
 
 	@Override
+	public Map<String, Object> getProperties() {
+		return this.properties;
+	}
+
+	@Override
 	public <T> Optional<T> getProperty(final String name) {
-		checkNotNull(name);
-		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
-
-		Optional<T> result = Optional.empty();
-		if (properties.containsKey(name)) {
-			final Object obj = properties.get(name);
-			try {
-				@SuppressWarnings("unchecked")
-				final T item = (T) obj;
-				result = Optional.of(item);
-			} catch (final ClassCastException e) {
-				System.err.println("Expected a different type of the property.");
-			}
-		}
-
-		return result;
+		return this.operator.getProperty(name);
 	}
 
 	@Override
 	public <T> void putProperty(final String name, final T property) {
-		checkNotNull(name);
-		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
-		checkNotNull(property);
-
-		properties.put(name, property);
+		this.operator.putProperty(name, property);
 	}
 
 	@Override
 	public void removeProperty(String name) {
-		checkNotNull(name);
-
-		properties.remove(name);
+		this.operator.removeProperty(name);
 	}
 
 }

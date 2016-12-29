@@ -3,19 +3,20 @@ package at.jku.isse.ecco.tree;
 import at.jku.isse.ecco.core.Association;
 
 /**
- * The root of a artifact tree containing a back-pointer to the association containing the tree.
- *
- * @author JKU, ISSE
- * @author Hannes Thaller
- * @version 1.0
+ * Public interface for the root node of an artifact tree containing a reference to the association containing the tree.
  */
-public interface RootNode extends Node {
+public interface RootNode extends Node, Node.Op {
 
 	/**
-	 * Sets the association that contains this node.
-	 *
-	 * @param containingAssociation that contains this node
+	 * Private interface for root nodes.
 	 */
-	void setContainingAssociation(Association containingAssociation);
+	public interface Op extends RootNode, Node.Op {
+		/**
+		 * Sets the association that contains this node.
+		 *
+		 * @param containingAssociation that contains this node
+		 */
+		public void setContainingAssociation(Association.Op containingAssociation);
+	}
 
 }

@@ -23,7 +23,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class PerstRepository extends Persistent implements Repository, RepositoryOperand {
+public class PerstRepository extends Persistent implements Repository, Repository.Op {
 
 	private transient RepositoryOperator operator;
 
@@ -47,7 +47,7 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 
 	@Override
-	public Commit extract(Configuration configuration, Set<Node> nodes) {
+	public Commit extract(Configuration configuration, Set<Node.Op> nodes) {
 		return this.operator.extract(configuration, nodes);
 	}
 
@@ -57,17 +57,17 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 	}
 
 	@Override
-	public RepositoryOperand subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
+	public Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
 		return this.operator.subset(deselected, maxOrder, entityFactory);
 	}
 
 	@Override
-	public RepositoryOperand copy(EntityFactory entityFactory) {
+	public Op copy(EntityFactory entityFactory) {
 		return this.operator.copy(entityFactory);
 	}
 
 	@Override
-	public void merge(RepositoryOperand repository) {
+	public void merge(Op repository) {
 		this.operator.merge(repository);
 	}
 
@@ -80,7 +80,8 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 	@Override
 	public Collection<PerstAssociation> getAssociations() {
-		return new ArrayList<>(this.associations);
+		//return new ArrayList<>(this.associations);
+		return Collections.unmodifiableCollection(this.associations);
 	}
 
 
@@ -113,13 +114,13 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 
 	@Override
-	public void addAssociation(Association association) {
+	public void addAssociation(Association.Op association) {
 		checkArgument(association instanceof PerstAssociation);
 		this.associations.add((PerstAssociation) association);
 	}
 
 	@Override
-	public void removeAssociation(Association association) {
+	public void removeAssociation(Association.Op association) {
 		this.associations.remove(association);
 	}
 

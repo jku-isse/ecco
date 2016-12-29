@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.plugin.artifact.java;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
@@ -20,7 +19,7 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class JavaReader implements ArtifactReader<Path, Set<Node>> {
+public class JavaReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
 
@@ -32,7 +31,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 
-	private Collection<ReadListener> listeners = new ArrayList<ReadListener>();
+	private Collection<ReadListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(ReadListener listener) {
@@ -68,18 +67,18 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 
 
 	@Override
-	public Set<Node> read(Path[] input) {
+	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
 	}
 
 	@Override
-	public Set<Node> read(Path base, Path[] input) {
-		Set<Node> nodes = new HashSet<>();
+	public Set<Node.Op> read(Path base, Path[] input) {
+		Set<Node.Op> nodes = new HashSet<>();
 
 //		referencing.clear();
 //		referenced.clear();
 		referencing = new LinkedList<Pair>();
-		referenced = new IdentityHashMap<IBinding, Artifact>();
+		referenced = new IdentityHashMap<>();
 
 
 		parse(input, base, nodes, true);
@@ -105,12 +104,12 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 	private static List<Pair> referencing = new LinkedList<>();
-	private static IdentityHashMap<IBinding, Artifact> referenced = new IdentityHashMap<>();
+	private static IdentityHashMap<IBinding, Artifact.Op<?>> referenced = new IdentityHashMap<>();
 
 
 	@SuppressWarnings("unchecked")
 	//private void parse(String[] sources, final String[] sourcePath, final HashSet<Node> nodes, final boolean saveLocationInfromtation) {
-	private void parse(Path[] sources, final Path sourcePath, final Set<Node> nodes, final boolean saveLocationInfromtation) {
+	private void parse(Path[] sources, final Path sourcePath, final Set<Node.Op> nodes, final boolean saveLocationInfromtation) {
 
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
@@ -153,7 +152,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 				cuString += cuName;
 
 				JDTNodeArtifactData cuArtifactData = new JDTNodeArtifactData(cuString, cuString, cu.getClass().getName() + ":" + cu.getNodeType());
-				Artifact cuArtifact = entityFactory.createArtifact(cuArtifactData);
+				Artifact.Op<?> cuArtifact = entityFactory.createArtifact(cuArtifactData);
 				int pos = cu.getStartPosition();
 				int line = cu.getLineNumber(pos);
 				int col = cu.getColumnNumber(pos);
@@ -168,11 +167,11 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 				cuArtifactData.setSource(source);
 				cuArtifactData.setSourceType(SOURCE_TYPE);
 
-				final Node cuNode = entityFactory.createNode(cuArtifact);
+				final Node.Op cuNode = entityFactory.createNode(cuArtifact);
 
 				//nodes.add(cuNode);
-				Artifact<PluginArtifactData> pluginArtifact = entityFactory.createArtifact(new PluginArtifactData(JavaReader.this.getPluginId(), sourcePath.toAbsolutePath().relativize(Paths.get(sourceFilePath))));
-				Node pluginNode = entityFactory.createOrderedNode(pluginArtifact);
+				Artifact.Op<PluginArtifactData> pluginArtifact = entityFactory.createArtifact(new PluginArtifactData(JavaReader.this.getPluginId(), sourcePath.toAbsolutePath().relativize(Paths.get(sourceFilePath))));
+				Node.Op pluginNode = entityFactory.createOrderedNode(pluginArtifact);
 				nodes.add(pluginNode);
 				pluginNode.addChild(cuNode);
 
@@ -193,7 +192,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void traverseAST(ASTNode astNode, Node parent, final boolean saveLocationInfromtation, final CompilationUnit cu, final String source) {
+	private void traverseAST(ASTNode astNode, Node.Op parent, final boolean saveLocationInfromtation, final CompilationUnit cu, final String source) {
 //		if(astNode instanceof Expression){
 //			return;
 //		}
@@ -213,7 +212,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 			if (obj != null) {
 				if (desc instanceof ChildPropertyDescriptor) {
 					JDTPropertyArtifactData propertyArtifactData = new JDTPropertyArtifactData(desc.toString(), desc.getId(), desc.getClass().getName(), ((ChildPropertyDescriptor) desc).isMandatory());
-					Node propertyNode = entityFactory.createNode(propertyArtifactData);
+					Node.Op propertyNode = entityFactory.createNode(propertyArtifactData);
 					if (CREATE_PROPERTY_NODES) {
 						parent.addChild(propertyNode);
 					}
@@ -229,14 +228,14 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 					} else {
 						String ident = getIdentifier(objNode);
 						JDTNodeArtifactData jdtArtifactData = new JDTNodeArtifactData(ident, ident, objNode.getClass().getName() + ":" + objNode.getNodeType());
-						Artifact jdtArtifact = entityFactory.createArtifact(jdtArtifactData);
+						Artifact.Op<?> jdtArtifact = entityFactory.createArtifact(jdtArtifactData);
 						addProperties(jdtArtifact, objNode, saveLocationInfromtation, cu);
 						checkForReferences(jdtArtifact, objNode);
 
 						jdtArtifactData.setSource(source);
 						jdtArtifactData.setSourceType(SOURCE_TYPE);
 
-						Node node = entityFactory.createNode(jdtArtifact);
+						Node.Op node = entityFactory.createNode(jdtArtifact);
 
 						traverseAST(objNode, node, saveLocationInfromtation, cu, source);
 
@@ -251,7 +250,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 					List<ASTNode> list = (List<ASTNode>) obj;
 					if (!list.isEmpty()) {
 						JDTPropertyArtifactData propertyArtifactData = new JDTPropertyArtifactData(desc.toString(), desc.getId(), desc.getClass().getName(), false);
-						Node propertyNode = entityFactory.createNode(propertyArtifactData);
+						Node.Op propertyNode = entityFactory.createNode(propertyArtifactData);
 						if (isOrdered((ChildListPropertyDescriptor) desc)) {
 							propertyNode = entityFactory.createOrderedNode(propertyArtifactData);
 						} else {
@@ -277,14 +276,14 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 								String ident = getIdentifier(objNode);
 
 								JDTNodeArtifactData jdtArtifactData = new JDTNodeArtifactData(ident, ident, objNode.getClass().getName() + ":" + objNode.getNodeType());
-								Artifact jdtArtifact = entityFactory.createArtifact(jdtArtifactData);
+								Artifact.Op<?> jdtArtifact = entityFactory.createArtifact(jdtArtifactData);
 								addProperties(jdtArtifact, objNode, saveLocationInfromtation, cu);
 								checkForReferences(jdtArtifact, objNode);
 
 								jdtArtifactData.setSource(source);
 								jdtArtifactData.setSourceType(SOURCE_TYPE);
 
-								Node node = entityFactory.createNode(jdtArtifact);
+								Node.Op node = entityFactory.createNode(jdtArtifact);
 
 								traverseAST(objNode, node, saveLocationInfromtation, cu, source);
 
@@ -298,8 +297,8 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 					}
 				} else if (desc instanceof SimplePropertyDescriptor) {
 					JDTPropertyArtifactData propertyArtifactData = new JDTPropertyArtifactData(desc.toString(), desc.getId(), desc.getClass().getName(), ((SimplePropertyDescriptor) desc).isMandatory());
-					Artifact propertyArtifact = entityFactory.createArtifact(propertyArtifactData);
-					Node propertyNode = entityFactory.createNode(propertyArtifact);
+					Artifact.Op<?> propertyArtifact = entityFactory.createArtifact(propertyArtifactData);
+					Node.Op propertyNode = entityFactory.createNode(propertyArtifact);
 					if (CREATE_PROPERTY_NODES) {
 						parent.addChild(propertyNode);
 					}
@@ -308,12 +307,12 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 					propertyArtifactData.setSourceType(SOURCE_TYPE);
 
 					JDTNodeArtifactData jdtArtifactData = new JDTNodeArtifactData(obj.toString(), obj.toString(), obj.getClass().getName(), true);
-					Artifact jdtArtifact = entityFactory.createArtifact(jdtArtifactData);
+					Artifact.Op<?> jdtArtifact = entityFactory.createArtifact(jdtArtifactData);
 
 					jdtArtifactData.setSource(source);
 					jdtArtifactData.setSourceType(SOURCE_TYPE);
 
-					Node node = entityFactory.createNode(jdtArtifact);
+					Node.Op node = entityFactory.createNode(jdtArtifact);
 					if (CREATE_PROPERTY_NODES) {
 						propertyNode.addChild(node);
 					} else {
@@ -333,7 +332,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 	 * @param cu
 	 */
 	@SuppressWarnings("unchecked")
-	private void variable(ASTNode var, Node parent, final boolean saveLocationInfromtation, final CompilationUnit cu, final String source) {
+	private void variable(ASTNode var, Node.Op parent, final boolean saveLocationInfromtation, final CompilationUnit cu, final String source) {
 		List<VariableDeclarationFragment> fragments;
 		List<IExtendedModifier> modifiers;
 		Type type;
@@ -353,25 +352,25 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 		for (VariableDeclarationFragment fragment : fragments) {
 			String ident = suffix + fragment.getName();
 			JDTNodeArtifactData artifactData = new JDTNodeArtifactData(ident, ident, var.getClass().getName() + ":" + var.getNodeType());
-			Artifact artifact = entityFactory.createArtifact(artifactData);
+			Artifact.Op<?> artifact = entityFactory.createArtifact(artifactData);
 
 			addProperties(artifact, fragment, saveLocationInfromtation, cu);
 			checkForReferences(artifact, fragment);
 			artifactData.setSource(source);
 			artifactData.setSourceType(SOURCE_TYPE);
 
-			Node node = entityFactory.createNode(artifact);
+			Node.Op node = entityFactory.createNode(artifact);
 			parent.addChild(node);
 
 			//modifiers
 			if (!modifiers.isEmpty()) {
 				JDTPropertyArtifactData modifiersArtifactData = new JDTPropertyArtifactData("modifiers", "modifiers", ChildListPropertyDescriptor.class.getName(), false);
-				Artifact modifiersArtifact = entityFactory.createArtifact(modifiersArtifactData);
+				Artifact.Op<?> modifiersArtifact = entityFactory.createArtifact(modifiersArtifactData);
 
 				modifiersArtifactData.setSource(source);
 				modifiersArtifactData.setSourceType(SOURCE_TYPE);
 
-				Node modifiersNode = entityFactory.createNode(modifiersArtifact);
+				Node.Op modifiersNode = entityFactory.createNode(modifiersArtifact);
 				if (CREATE_PROPERTY_NODES) {
 					node.addChild(modifiersNode);
 				}
@@ -379,13 +378,13 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 				for (IExtendedModifier modifier : modifiers) {
 					String modifierIdent = getIdentifier((ASTNode) modifier);
 					JDTNodeArtifactData modifierArtifactData = new JDTNodeArtifactData(modifierIdent, modifierIdent, modifier.getClass().getName() + ":" + ((ASTNode) modifier).getNodeType());
-					Artifact modifierArtifact = entityFactory.createArtifact(modifierArtifactData);
+					Artifact.Op<?> modifierArtifact = entityFactory.createArtifact(modifierArtifactData);
 
 					addProperties(modifierArtifact, fragment, saveLocationInfromtation, cu);
 					modifierArtifactData.setSource(source);
 					modifierArtifactData.setSourceType(SOURCE_TYPE);
 
-					Node modifierNode = entityFactory.createNode(modifierArtifact);
+					Node.Op modifierNode = entityFactory.createNode(modifierArtifact);
 					if (CREATE_PROPERTY_NODES) {
 						modifiersNode.addChild(modifierNode);
 					} else {
@@ -399,22 +398,22 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 
 			//type
 			JDTPropertyArtifactData typeArtifactData = new JDTPropertyArtifactData("type", "type", ChildPropertyDescriptor.class.getName(), true);
-			Artifact typeArtifact = entityFactory.createArtifact(typeArtifactData);
-			Node typeNode = entityFactory.createNode(typeArtifact);
+			Artifact.Op<?> typeArtifact = entityFactory.createArtifact(typeArtifactData);
+			Node.Op typeNode = entityFactory.createNode(typeArtifact);
 			if (CREATE_PROPERTY_NODES) {
 				node.addChild(typeNode);
 			}
 
 			String typeIdent = getIdentifier(type);
 			JDTNodeArtifactData tyArtifactData = new JDTNodeArtifactData(typeIdent, typeIdent, type.getClass().getName() + ":" + type.getNodeType());
-			Artifact tyArtifact = entityFactory.createArtifact(tyArtifactData);
+			Artifact.Op<?> tyArtifact = entityFactory.createArtifact(tyArtifactData);
 
 			addProperties(tyArtifact, type, saveLocationInfromtation, cu);
 			checkForReferences(tyArtifact, type);
 			tyArtifactData.setSource(source);
 			tyArtifactData.setSourceType(SOURCE_TYPE);
 
-			Node tyNode = entityFactory.createNode(tyArtifact);
+			Node.Op tyNode = entityFactory.createNode(tyArtifact);
 			if (CREATE_PROPERTY_NODES) {
 				typeNode.addChild(tyNode);
 			} else {
@@ -425,26 +424,26 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 
 			//fragments
 			JDTPropertyArtifactData fragmentsArtifactData = new JDTPropertyArtifactData("fragments", "fragments", ChildListPropertyDescriptor.class.getName(), false);
-			Artifact fragmentsArtifact = entityFactory.createArtifact(fragmentsArtifactData);
+			Artifact.Op<?> fragmentsArtifact = entityFactory.createArtifact(fragmentsArtifactData);
 
 			fragmentsArtifactData.setSource(source);
 			fragmentsArtifactData.setSourceType(SOURCE_TYPE);
 
-			Node fragmentsNode = entityFactory.createNode(fragmentsArtifact);
+			Node.Op fragmentsNode = entityFactory.createNode(fragmentsArtifact);
 			if (CREATE_PROPERTY_NODES) {
 				node.addChild(fragmentsNode);
 			}
 
 			String fragmentIdent = getIdentifier(fragment);
 			JDTNodeArtifactData fragmentArtifactData = new JDTNodeArtifactData(fragmentIdent, fragmentIdent, fragment.getClass().getName() + ":" + fragment.getNodeType());
-			Artifact fragmentArtifact = entityFactory.createArtifact(fragmentArtifactData);
+			Artifact.Op<?> fragmentArtifact = entityFactory.createArtifact(fragmentArtifactData);
 
 			addProperties(fragmentArtifact, fragment, saveLocationInfromtation, cu);
 			checkForReferences(fragmentArtifact, fragment);
 			fragmentArtifactData.setSource(source);
 			fragmentArtifactData.setSourceType(SOURCE_TYPE);
 
-			Node fragmentNode = entityFactory.createNode(fragmentArtifact);
+			Node.Op fragmentNode = entityFactory.createNode(fragmentArtifact);
 			if (CREATE_PROPERTY_NODES) {
 				fragmentsNode.addChild(fragmentNode);
 			} else {
@@ -470,7 +469,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 		}
 	}
 
-	private void checkForReferences(Artifact artifact, ASTNode node) {
+	private void checkForReferences(Artifact.Op<?> artifact, ASTNode node) {
 		//referenced node types
 		if (node instanceof PackageDeclaration) {
 			referenced.put(((PackageDeclaration) node).resolveBinding(), artifact);
@@ -529,13 +528,14 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 
 	private void resolveReverences() {
 		for (Pair pair : referencing) {
-			Artifact ref = referenced.get(pair.binding);
+			Artifact.Op<?> ref = referenced.get(pair.binding);
 			if (ref != null) {
-				ArtifactReference reference = entityFactory.createArtifactReference(pair.artifact, ref);
-				//TODO check if reference already exists
+				pair.artifact.addUses(ref);
 
-				pair.artifact.addUses(reference);
-				ref.addUsedBy(reference);
+//				ArtifactOperator.ArtifactReferenceOperand reference = entityFactory.createArtifactReference(pair.artifact, ref);
+//				//TODO check if reference already exists
+//				pair.artifact.addUses(reference);
+//				ref.addUsedBy(reference);
 			}
 		}
 	}
@@ -665,14 +665,14 @@ public class JavaReader implements ArtifactReader<Path, Set<Node>> {
 
 	private class Pair {
 		protected IBinding binding;
-		protected Artifact artifact;
+		protected Artifact.Op<?> artifact;
 
-		public Pair(IBinding binding, Artifact artifact) {
+		public Pair(IBinding binding, Artifact.Op<?> artifact) {
 			this.binding = binding;
 			this.artifact = artifact;
 		}
 
-		public Pair(Artifact artifact, IBinding binding) {
+		public Pair(Artifact.Op<?> artifact, IBinding binding) {
 			this.binding = binding;
 			this.artifact = artifact;
 		}

@@ -6,7 +6,6 @@ import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -15,7 +14,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class BaseArtifact<DataType extends ArtifactData> implements Artifact<DataType> {
+public class BaseArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
+
+	private transient ArtifactOperator operator = new ArtifactOperator(this);
+
 
 	// fields
 
@@ -25,7 +27,7 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 	private boolean ordered;
 
-	private SequenceGraph sequenceGraph;
+	private SequenceGraph.Op sequenceGraph;
 
 	private int sequenceNumber;
 
@@ -52,10 +54,8 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 	@Override
 	public int hashCode() {
-		int result = data.hashCode();
-		result = 31 * result + (ordered ? 1 : 0);
-//		if (this.sequenceNumber != Artifact.UNASSIGNED_SEQUENCE_NUMBER)
-//			result = 31 * result + sequenceNumber;
+		int result = this.data.hashCode();
+		result = 31 * result + (this.ordered ? 1 : 0);
 		return result;
 	}
 
@@ -138,12 +138,12 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 	}
 
 	@Override
-	public SequenceGraph getSequenceGraph() {
+	public SequenceGraph.Op getSequenceGraph() {
 		return this.sequenceGraph;
 	}
 
 	@Override
-	public void setSequenceGraph(SequenceGraph sequenceGraph) {
+	public void setSequenceGraph(SequenceGraph.Op sequenceGraph) {
 		this.sequenceGraph = sequenceGraph;
 	}
 
@@ -164,112 +164,129 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 
 	@Override
-	public SequenceGraph createSequenceGraph() {
+	public SequenceGraph.Op createSequenceGraph() {
 		return new BaseSequenceGraph();
 	}
 
 
-	// containing node
-
-	private Node containingNode;
-
 	@Override
-	public Node getContainingNode() {
-		return containingNode;
+	public void checkConsistency() {
+		this.operator.checkConsistency();
 	}
 
 	@Override
-	public void setContainingNode(final Node node) {
-		containingNode = node;
-	}
-
-
-	// uses and usedBy
-
-	private final List<ArtifactReference> uses = new ArrayList<>();
-	private final List<ArtifactReference> usedBy = new ArrayList<>();
-
-	@Override
-	public List<ArtifactReference> getUsedBy() {
-		return usedBy;
+	public boolean hasReplacingArtifact() {
+		return this.operator.hasReplacingArtifact();
 	}
 
 	@Override
-	public List<ArtifactReference> getUses() {
-		return uses;
+	public Op getReplacingArtifact() {
+		return this.operator.getReplacingArtifact();
 	}
 
 	@Override
-	public void setUsedBy(final List<ArtifactReference> references) {
-		checkNotNull(references);
-
-		usedBy.clear();
-		if (!references.isEmpty())
-			usedBy.addAll(references);
+	public void setReplacingArtifact(Op replacingArtifact) {
+		this.operator.setReplacingArtifact(replacingArtifact);
 	}
 
 	@Override
-	public void setUses(final List<ArtifactReference> references) {
-		checkNotNull(references);
+	public void updateArtifactReferences() {
+		this.operator.updateArtifactReferences();
+	}
 
-		uses.clear();
-		if (!references.isEmpty())
-			uses.addAll(references);
+
+	// CONTAINING NODE
+
+	private Node.Op containingNode;
+
+	@Override
+	public Node.Op getContainingNode() {
+		return this.containingNode;
 	}
 
 	@Override
-	public void addUsedBy(final ArtifactReference reference) {
+	public void setContainingNode(final Node.Op node) {
+		this.containingNode = node;
+	}
+
+
+	// REFERENCES
+
+	private final Collection<ArtifactReference.Op> uses = new ArrayList<>();
+	private final Collection<ArtifactReference.Op> usedBy = new ArrayList<>();
+
+	@Override
+	public Collection<ArtifactReference.Op> getUses() {
+		return Collections.unmodifiableCollection(this.uses);
+	}
+
+	@Override
+	public Collection<ArtifactReference.Op> getUsedBy() {
+		return Collections.unmodifiableCollection(this.usedBy);
+	}
+
+	@Override
+	public boolean uses(Op target) {
+		return this.operator.uses(target);
+	}
+
+	@Override
+	public void addUses(final ArtifactReference.Op reference) {
 		checkNotNull(reference);
 
-		usedBy.add(reference);
+		this.uses.add(reference);
 	}
 
 	@Override
-	public void addUses(final ArtifactReference reference) {
+	public void addUsedBy(final ArtifactReference.Op reference) {
 		checkNotNull(reference);
 
-		uses.add(reference);
+		this.usedBy.add(reference);
+	}
+
+	@Override
+	public void addUses(Op target) {
+		this.addUses(target, "");
+	}
+
+	@Override
+	public void addUses(Op target, String type) {
+		checkNotNull(target);
+		checkNotNull(type);
+
+		if (this.uses(target))
+			return;
+
+		ArtifactReference.Op artifactReference = new BaseArtifactReference();
+		artifactReference.setSource(this);
+		artifactReference.setTarget(target);
+		this.addUses(artifactReference);
+		target.addUsedBy(artifactReference);
 	}
 
 
-	// properties
+	// PROPERTIES
 
 	private transient Map<String, Object> properties = new HashMap<>();
 
 	@Override
+	public Map<String, Object> getProperties() {
+		return this.properties;
+	}
+
+	@Override
 	public <T> Optional<T> getProperty(final String name) {
-		checkNotNull(name);
-		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
-
-		Optional<T> result = Optional.empty();
-		if (properties.containsKey(name)) {
-			final Object obj = properties.get(name);
-			try {
-				@SuppressWarnings("unchecked")
-				final T item = (T) obj;
-				result = Optional.of(item);
-			} catch (final ClassCastException e) {
-				System.err.println("Expected a different type of the property.");
-			}
-		}
-
-		return result;
+		return this.operator.getProperty(name);
 	}
 
 	@Override
 	public <T> void putProperty(final String name, final T property) {
-		checkNotNull(name);
-		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
-		checkNotNull(property);
-
-		properties.put(name, property);
+		this.operator.putProperty(name, property);
 	}
 
 	@Override
 	public void removeProperty(String name) {
-		checkNotNull(name);
-
-		properties.remove(name);
+		this.operator.removeProperty(name);
 	}
 
 }

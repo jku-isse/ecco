@@ -12,7 +12,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * A lazy composition node.
  */
-public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
+public class LazyCompositionNode implements Node, Node.Op {
 
 	private transient NodeOperator operator = new NodeOperator(this);
 
@@ -30,7 +30,7 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 	private boolean activated = false;
 
-	private List<Node> origNodes;
+	private List<Op> origNodes;
 
 
 	public LazyCompositionNode() {
@@ -44,7 +44,7 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 	}
 
 
-	public void addOrigNode(Node origNode) {
+	public void addOrigNode(Op origNode) {
 		this.origNodes.add(origNode);
 	}
 
@@ -57,8 +57,8 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 		List<LazyCompositionNode> allChildren = new ArrayList<>();
 
-		for (Node origNode : this.origNodes) {
-			for (Node origChildNode : origNode.getChildren()) {
+		for (Op origNode : this.origNodes) {
+			for (Op origChildNode : origNode.getChildren()) {
 				LazyCompositionNode newChildNode = null;
 				if (!allChildren.contains(origChildNode)) {
 					newChildNode = new LazyCompositionNode(this.orderSelector);
@@ -91,7 +91,7 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 
 	@Override
-	public List<Node> getChildren() {
+	public List<Op> getChildren() {
 		this.activate();
 
 		//return Collections.unmodifiableList(this.children);
@@ -100,7 +100,7 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 
 	@Override
-	public Node createNode() {
+	public Op createNode() {
 		return new LazyCompositionNode();
 	}
 
@@ -110,11 +110,11 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 	private boolean unique = true;
 
-	private final List<Node> children = new ArrayList<>();
+	private final List<Op> children = new ArrayList<>();
 
-	private Artifact artifact = null;
+	private Artifact.Op<?> artifact = null;
 
-	private Node parent = null;
+	private Op parent = null;
 
 
 	@Override
@@ -136,22 +136,22 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 
 	@Override
-	public Artifact getArtifact() {
+	public Artifact.Op<?> getArtifact() {
 		return artifact;
 	}
 
 	@Override
-	public void setArtifact(Artifact artifact) {
+	public void setArtifact(Artifact.Op<?> artifact) {
 		this.artifact = artifact;
 	}
 
 	@Override
-	public Node getParent() {
+	public Op getParent() {
 		return parent;
 	}
 
 	@Override
-	public void setParent(Node parent) {
+	public void setParent(Op parent) {
 		this.parent = parent;
 	}
 
@@ -167,7 +167,7 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 
 	@Override
-	public void addChild(Node child) {
+	public void addChild(Op child) {
 //		throw new UnsupportedOperationException("Cannot add children to a lazy composition node.");
 
 		checkNotNull(child);
@@ -177,13 +177,13 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 	}
 
 	@Override
-	public void addChildren(Node... children) {
-		for (Node child : children)
+	public void addChildren(Op... children) {
+		for (Op child : children)
 			this.addChild(child);
 	}
 
 	@Override
-	public void removeChild(Node child) {
+	public void removeChild(Op child) {
 		checkNotNull(child);
 
 		this.children.remove(child);
@@ -207,12 +207,12 @@ public class LazyCompositionNode implements Node, NodeOperator.NodeOperand {
 
 
 	@Override
-	public void slice(Node node) {
+	public void slice(Op node) {
 		this.operator.slice(node);
 	}
 
 	@Override
-	public void merge(Node node) {
+	public void merge(Op node) {
 		this.operator.merge(node);
 	}
 

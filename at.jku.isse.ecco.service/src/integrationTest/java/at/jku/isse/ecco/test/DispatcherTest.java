@@ -35,7 +35,7 @@ public class DispatcherTest {
 		Path[] inputFiles = new Path[]{Paths.get("variant1"), Paths.get("variant1/file.txt"), Paths.get("variant1/1.png"), Paths.get("variant1/subdir"), Paths.get("variant1/subdir/file")};
 
 		System.out.println("READ");
-		Set<Node> nodes = this.reader.read(Paths.get("data/input"), inputFiles);
+		Set<Node.Op> nodes = this.reader.read(Paths.get("data/input"), inputFiles);
 
 		// TODO: sequence the nodes?
 

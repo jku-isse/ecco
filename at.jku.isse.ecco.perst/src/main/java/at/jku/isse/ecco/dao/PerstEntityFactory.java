@@ -1,15 +1,13 @@
 package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactReference;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.PerstArtifact;
-import at.jku.isse.ecco.artifact.PerstArtifactReference;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
-import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.repository.PerstRepository;
-import at.jku.isse.ecco.repository.RepositoryOperand;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.PerstNode;
 import at.jku.isse.ecco.tree.PerstRootNode;
@@ -77,55 +75,29 @@ public class PerstEntityFactory implements EntityFactory {
 	// # ARTIFACTS ################################################################
 
 	@Override
-	public <T extends ArtifactData> Artifact<T> createArtifact(T data) {
+	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
 		return new PerstArtifact<T>(data);
-	}
-
-	@Override
-	public ArtifactReference createArtifactReference(final Artifact source, final Artifact target) {
-		checkNotNull(source);
-		checkNotNull(target);
-
-		final ArtifactReference reference = new PerstArtifactReference();
-		reference.setSource(source);
-		reference.setTarget(target);
-
-		return reference;
-	}
-
-	@Override
-	public ArtifactReference createArtifactReference(final Artifact source, final Artifact target, final String type) {
-		checkNotNull(source);
-		checkNotNull(target);
-//		checkNotNull(type);
-
-		final ArtifactReference reference = new PerstArtifactReference(type);
-		reference.setSource(source);
-		reference.setTarget(target);
-
-		return reference;
-
 	}
 
 
 	// # ASSOCIATIONS ################################################################
 
 	@Override
-	public Association createAssociation() {
+	public Association.Op createAssociation() {
 		return new PerstAssociation();
 	}
 
 	@Override
-	public Association createAssociation(PresenceCondition presenceCondition, Set<Node> nodes) {
+	public Association.Op createAssociation(PresenceCondition presenceCondition, Set<Node.Op> nodes) {
 		checkNotNull(presenceCondition);
 		checkNotNull(nodes);
 
-		final Association association = new PerstAssociation();
+		final Association.Op association = new PerstAssociation();
 
-		RootNode rootNode = this.createRootNode();
+		RootNode.Op rootNode = this.createRootNode();
 		rootNode.setContainingAssociation(association);
 
-		for (Node node : nodes) {
+		for (Node.Op node : nodes) {
 			rootNode.addChild(node);
 		}
 
@@ -139,14 +111,6 @@ public class PerstEntityFactory implements EntityFactory {
 	// # FEATURES ################################################################
 
 	@Override
-	public Feature createFeature(final String name) {
-		checkNotNull(name);
-		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
-
-		return new PerstFeature(name);
-	}
-
-	@Override
 	public Feature createFeature(final String id, final String name, final String description) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
@@ -155,11 +119,6 @@ public class PerstEntityFactory implements EntityFactory {
 		final Feature feature = new PerstFeature(id, name, description);
 
 		return feature;
-	}
-
-	@Override
-	public FeatureVersion createFeatureVersion(Feature feature, String id) {
-		return new PerstFeatureVersion(feature, id);
 	}
 
 	@Override
@@ -175,16 +134,6 @@ public class PerstEntityFactory implements EntityFactory {
 	public Module createModule() {
 		return new PerstModule();
 	}
-
-//	@Override
-//	public Module createModule(final Set<FeatureInstance> featureInstances) {
-//		checkNotNull(featureInstances);
-//
-//		final Module module = new PerstModule();
-//		module.addAll(featureInstances);
-//
-//		return module;
-//	}
 
 	@Override
 	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
@@ -205,15 +154,15 @@ public class PerstEntityFactory implements EntityFactory {
 	// # NODES ################################################################
 
 	@Override
-	public Node createNode() {
+	public Node.Op createNode() {
 		return new PerstNode();
 	}
 
 	@Override
-	public Node createNode(final Artifact artifact) {
+	public Node.Op createNode(final Artifact.Op<?> artifact) {
 		checkNotNull(artifact);
 
-		final Node node = new PerstNode();
+		final Node.Op node = new PerstNode();
 		node.setArtifact(artifact);
 		artifact.setContainingNode(node);
 
@@ -221,90 +170,34 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Node createNode(ArtifactData artifactData) {
+	public Node.Op createNode(ArtifactData artifactData) {
 		return this.createNode(this.createArtifact(artifactData));
 	}
 
 	@Override
-	public Node createOrderedNode(final Artifact artifact) {
+	public Node.Op createOrderedNode(final Artifact.Op<?> artifact) {
 		checkNotNull(artifact);
 
-		final Node node = new PerstNode();
-		node.setArtifact(artifact);
-		artifact.setContainingNode(node);
-
+		final Node.Op node = this.createNode(artifact);
 		artifact.setOrdered(true);
 
 		return node;
 	}
 
 	@Override
-	public Node createOrderedNode(ArtifactData artifactData) {
+	public Node.Op createOrderedNode(ArtifactData artifactData) {
 		return this.createOrderedNode(this.createArtifact(artifactData));
 	}
 
 	@Override
-	public RootNode createRootNode() {
+	public RootNode.Op createRootNode() {
 		return new PerstRootNode();
 	}
 
-	@Override
-	public RootNode createRootNode(final Association association) {
-		checkNotNull(association);
-
-		final RootNode root = new PerstRootNode();
-		root.setContainingAssociation(association);
-
-		return root;
-	}
 
 	@Override
-	public RepositoryOperand createRepository() {
+	public Repository.Op createRepository() {
 		return new PerstRepository();
 	}
-
-
-//	/**
-//	 * Creates a new {@link PerstFeature} from the given feature. If it is already an instance of <code>PerstFeature</code> than the instance will be cast and returned.
-//	 *
-//	 * @param feature that should be used to create a new perst feature.
-//	 * @return A new perst feature instance containing the properties of the given feature, or the cast of the given feature.
-//	 */
-//	public PerstFeature createPerstFeature(final Feature feature) {
-//		checkNotNull(feature);
-//
-//		if (feature instanceof PerstFeature) {
-//			return (PerstFeature) feature;
-//		}
-//
-//		final PerstFeature perstFeature = new PerstFeature();
-//
-//		perstFeature.setDescription(feature.getDescription());
-//		if (!feature.getName().isEmpty()) {
-//			perstFeature.setName(feature.getName());
-//		}
-//
-//		return perstFeature;
-//	}
-
-//	/**
-//	 * Creates a new {@link PerstAssociation} from the given association. If it is already an instance of <code>PerstAssociation</code> than the instance will be cast and returned.
-//	 *
-//	 * @param association that should be used to create a new perst association.
-//	 * @return A new perst association instance containing the properties of the given association, or the cast of the given association.
-//	 */
-//	public PerstAssociation createPerstAssociation(final Association association) {
-//		checkNotNull(association);
-//
-//		if (association instanceof PerstAssociation) {
-//			return (PerstAssociation) association;
-//		}
-//
-//		final PerstAssociation perstAssociation = new PerstAssociation();
-//
-//		// do "translation"
-//
-//		return perstAssociation;
-//	}
 
 }

@@ -5,9 +5,9 @@ import at.jku.isse.ecco.artifact.Artifact;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BaseSequenceGraphNode implements SequenceGraphNode {
+public class BaseSequenceGraphNode implements SequenceGraph.Node, SequenceGraph.Node.Op {
 
-	private HashMap<Artifact<?>, SequenceGraphNode> children = new HashMap<>(); // maybe use linked hash map?
+	private HashMap<Artifact.Op<?>, SequenceGraph.Node.Op> children = new HashMap<>(); // maybe use linked hash map?
 
 	private boolean pol;
 
@@ -26,7 +26,7 @@ public class BaseSequenceGraphNode implements SequenceGraphNode {
 	}
 
 	@Override
-	public Map<Artifact<?>, SequenceGraphNode> getChildren() {
+	public Map<Artifact.Op<?>, SequenceGraph.Node.Op> getChildren() {
 		return this.children;
 	}
 

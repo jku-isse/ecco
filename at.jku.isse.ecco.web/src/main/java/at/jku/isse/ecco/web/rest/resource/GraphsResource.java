@@ -68,7 +68,7 @@ public class GraphsResource {
 
 		// traverse trees and add nodes
 		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
-		for (Association association : this.service.getAssociations()) {
+		for (Association association : this.service.getRepository().getAssociations()) {
 			compRootNode.addOrigNode(association.getRootNode());
 		}
 		this.traverseTree(compRootNode, 0);
@@ -105,7 +105,7 @@ public class GraphsResource {
 	private ArrayList<ArtifactsGraphDTO.EdgeDTO> edges;
 
 	private ArtifactsGraphDTO.NodeDTO traverseTree(at.jku.isse.ecco.tree.Node eccoNode, int depth) {
-		int assocId = 0;
+		String assocId;
 
 		ArtifactsGraphDTO.NodeDTO graphNode = null;
 		if (eccoNode.getArtifact() != null) {

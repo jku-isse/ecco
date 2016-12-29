@@ -2,9 +2,6 @@ package at.jku.isse.ecco.perst.test;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.PerstEntityFactory;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.feature.PerstFeature;
 import at.jku.isse.ecco.module.ModuleFeature;
 import at.jku.isse.ecco.module.PerstModule;
@@ -157,48 +154,6 @@ public class PerstTest {
 	@BeforeTest(alwaysRun = true)
 	public void beforeTest() {
 		System.out.println("BEFORE");
-	}
-
-
-	public Configuration parseConfigurationString(String value) throws EccoException {
-		if (value == null || value.isEmpty()) throw new EccoException("No configuration string provided.");
-
-		if (!value.matches("(\\+|\\-)?[a-zA-Z]+('?|(\\.([0-9])+)?)(|,[a-zA-Z]+('?|(\\.([0-9])+)?))"))
-			throw new EccoException("Invalid configuration string provided.");
-
-		Configuration configuration = this.entityFactory.createConfiguration();
-
-		String[] featureInstanceStrings = value.split(",");
-		for (String featureInstanceString : featureInstanceStrings) {
-			if (featureInstanceString.contains(".")) {
-				String[] pair = featureInstanceString.split("\\.");
-				//String featureName = pair[0].replace("!", "").replace("+", "").replace("-", "");
-				String featureName = pair[0];
-				if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
-					featureName = featureName.substring(1);
-				String version = pair[1];
-				boolean featureSign = !(pair[0].startsWith("!") || pair[0].startsWith("-"));
-
-				Feature feature = this.entityFactory.createFeature(featureName);
-				FeatureVersion featureVersion = this.entityFactory.createFeatureVersion(feature, version);
-
-				configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
-			} else {
-				String featureName = featureInstanceString;
-				if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
-					featureName = featureName.substring(1);
-
-				String version = "-1"; // TODO: how to deal with this? always use newest?
-				boolean featureSign = !(featureInstanceString.startsWith("!") || featureInstanceString.startsWith("-"));
-
-				Feature feature = this.entityFactory.createFeature(featureName);
-				FeatureVersion featureVersion = this.entityFactory.createFeatureVersion(feature, version);
-
-				configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
-			}
-		}
-
-		return configuration;
 	}
 
 }

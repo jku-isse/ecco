@@ -21,7 +21,7 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class ImageReader implements ArtifactReader<Path, Set<Node>> {
+public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ImageReader.class);
 
@@ -61,20 +61,20 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 	@Override
-	public Set<Node> read(Path[] input) {
+	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
 	}
 
 	@Override
-	public Set<Node> read(Path base, Path[] input) {
-		final Set<Node> nodes = new LinkedHashSet<>();
+	public Set<Node.Op> read(Path base, Path[] input) {
+		final Set<Node.Op> nodes = new LinkedHashSet<>();
 
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
 
 			try {
-				Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-				Node pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+				Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+				Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
 				nodes.add(pluginNode);
 
 				final BufferedImage image = ImageIO.read(resolvedPath.toFile());
@@ -92,12 +92,12 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 		return nodes;
 	}
 
-	private Node parseImage(final BufferedImage image) {
+	private Node.Op parseImage(final BufferedImage image) {
 		final ImageArtifactData imageArtifactData = new ImageArtifactData(new int[]{image.getWidth(), image.getHeight()}, TYPE_IMAGE);
 
-		final Node imageNode = this.entityFactory.createNode(this.entityFactory.createArtifact(imageArtifactData));
+		final Node.Op imageNode = this.entityFactory.createNode(this.entityFactory.createArtifact(imageArtifactData));
 
-		List<Node> pixelNode = parsePixelData(image);
+		List<Node.Op> pixelNode = parsePixelData(image);
 
 		pixelNode.forEach(imageNode::addChild);
 
@@ -118,10 +118,10 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 		};
 	}
 
-	private List<Node> parsePixelData(final BufferedImage image) {
+	private List<Node.Op> parsePixelData(final BufferedImage image) {
 		assert image != null;
 
-		List<Node> nodes = new ArrayList<>();
+		List<Node.Op> nodes = new ArrayList<>();
 		for (int y = 0; y < image.getHeight(); y++) {
 			for (int x = 0; x < image.getWidth(); x++) {
 				final int[] position = new int[]{x, y};
@@ -130,9 +130,9 @@ public class ImageReader implements ArtifactReader<Path, Set<Node>> {
 				final int[] rgb = this.getPixel(image, x, y);
 				final ImageArtifactData colorArtifactData = new ImageArtifactData(rgb, TYPE_COLOR);
 
-				final Node positionNode = this.entityFactory.createNode(this.entityFactory.createArtifact(posArtifactData));
+				final Node.Op positionNode = this.entityFactory.createNode(this.entityFactory.createArtifact(posArtifactData));
 
-				final Node colorNode = this.entityFactory.createNode(this.entityFactory.createArtifact(colorArtifactData));
+				final Node.Op colorNode = this.entityFactory.createNode(this.entityFactory.createArtifact(colorArtifactData));
 
 				positionNode.addChild(colorNode);
 

@@ -24,10 +24,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class RepositoryOperator {
 
-	private RepositoryOperand repository;
+	private Repository.Op repository;
 	private EntityFactory entityFactory;
 
-	public RepositoryOperator(RepositoryOperand repository) {
+	public RepositoryOperator(Repository.Op repository) {
 		this.repository = repository;
 		this.entityFactory = repository.getEntityFactory();
 	}
@@ -48,7 +48,7 @@ public class RepositoryOperator {
 	 *
 	 * @return The copy of the repository.
 	 */
-	public RepositoryOperand copy(EntityFactory entityFactory) {
+	public Repository.Op copy(EntityFactory entityFactory) {
 		return this.subset(new ArrayList<>(), this.repository.getMaxOrder(), entityFactory);
 	}
 
@@ -60,13 +60,13 @@ public class RepositoryOperator {
 	 * @param maxOrder   The maximum order of modules.
 	 * @return The subset repository.
 	 */
-	public RepositoryOperand subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
+	public Repository.Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
 		checkNotNull(deselected);
 		checkArgument(maxOrder <= this.repository.getMaxOrder());
 
 
 		// create empty repository using the given entity factory
-		RepositoryOperand newRepository = entityFactory.createRepository();
+		Repository.Op newRepository = entityFactory.createRepository();
 		newRepository.setMaxOrder(maxOrder);
 
 
@@ -99,9 +99,9 @@ public class RepositoryOperator {
 
 
 		// copy associations in this repository and add them to new repository, but exclude modules or module features that evaluate to false given the deselected feature versions
-		Collection<Association> copiedAssociations = new ArrayList<>();
+		Collection<Association.Op> copiedAssociations = new ArrayList<>();
 		for (Association association : this.repository.getAssociations()) {
-			Association copiedAssociation = entityFactory.createAssociation();
+			Association.Op copiedAssociation = entityFactory.createAssociation();
 
 			PresenceCondition thisPresenceCondition = association.getPresenceCondition();
 
@@ -174,11 +174,11 @@ public class RepositoryOperator {
 
 
 			// copy artifact tree
-			RootNode copiedRootNode = entityFactory.createRootNode();
+			RootNode.Op copiedRootNode = entityFactory.createRootNode();
 			copiedAssociation.setRootNode(copiedRootNode);
 			// clone tree
-			for (Node parentChildNode : association.getRootNode().getChildren()) {
-				Node copiedChildNode = EccoUtil.deepCopyTree(parentChildNode, entityFactory);
+			for (Node.Op parentChildNode : association.getRootNode().getChildren()) {
+				Node.Op copiedChildNode = EccoUtil.deepCopyTree(parentChildNode, entityFactory);
 				copiedRootNode.addChild(copiedChildNode);
 				copiedChildNode.setParent(copiedRootNode);
 			}
@@ -193,9 +193,9 @@ public class RepositoryOperator {
 		// this is already done in the previous step
 
 		// remove cloned associations with empty PCs.
-		Iterator<Association> associationIterator = copiedAssociations.iterator();
+		Iterator<Association.Op> associationIterator = copiedAssociations.iterator();
 		while (associationIterator.hasNext()) {
-			Association association = associationIterator.next();
+			Association.Op association = associationIterator.next();
 			if (association.getPresenceCondition().isEmpty())
 				associationIterator.remove();
 		}
@@ -212,7 +212,7 @@ public class RepositoryOperator {
 		// trim sequence graphs to only contain artifacts from the selected associations.
 		EccoUtil.trimSequenceGraph(copiedAssociations);
 
-		for (Association copiedAssociation : copiedAssociations) {
+		for (Association.Op copiedAssociation : copiedAssociations) {
 			newRepository.addAssociation(copiedAssociation);
 		}
 
@@ -225,7 +225,7 @@ public class RepositoryOperator {
 	 *
 	 * @param other The other repository.
 	 */
-	public void merge(RepositoryOperand other) {
+	public void merge(Repository.Op other) {
 		checkNotNull(other);
 		checkArgument(other.getClass().equals(this.repository.getClass()));
 
@@ -299,14 +299,14 @@ public class RepositoryOperator {
 	public Commit split() { // TODO: the presence condition must also somehow be marked and extracted! otherwise the repo becomes inconsistent.
 		Commit commit = this.entityFactory.createCommit();
 
-		Collection<? extends Association> originalAssociations = this.repository.getAssociations();
-		Collection<Association> newAssociations = new ArrayList<>();
+		Collection<? extends Association.Op> originalAssociations = this.repository.getAssociations();
+		Collection<Association.Op> newAssociations = new ArrayList<>();
 
 		// extract from every  original association
-		for (Association origA : originalAssociations) {
+		for (Association.Op origA : originalAssociations) {
 
 			// ASSOCIATION
-			Association extractedA = this.entityFactory.createAssociation();
+			Association.Op extractedA = this.entityFactory.createAssociation();
 
 
 			// PRESENCE CONDITION
@@ -315,7 +315,7 @@ public class RepositoryOperator {
 
 
 			// ARTIFACT TREE
-			RootNode extractedTree = (RootNode) Trees.extractMarked(origA.getRootNode());
+			RootNode.Op extractedTree = (RootNode.Op) Trees.extractMarked(origA.getRootNode());
 			if (extractedTree != null)
 				extractedA.setRootNode(extractedTree);
 
@@ -335,7 +335,7 @@ public class RepositoryOperator {
 				Trees.checkConsistency(extractedA.getRootNode());
 		}
 
-		for (Association newA : newAssociations) {
+		for (Association.Op newA : newAssociations) {
 			this.repository.addAssociation(newA);
 
 			commit.addAssociation(newA);
@@ -352,7 +352,7 @@ public class RepositoryOperator {
 	 * @param nodes         The artifact nodes that implement the given configuration.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	public Commit extract(Configuration configuration, Set<Node> nodes) {
+	public Commit extract(Configuration configuration, Set<Node.Op> nodes) {
 		checkNotNull(configuration);
 		checkNotNull(nodes);
 
@@ -386,7 +386,7 @@ public class RepositoryOperator {
 		PresenceCondition presenceCondition = this.entityFactory.createPresenceCondition(newConfiguration, this.repository.getMaxOrder());
 
 		// create association
-		Association association = this.entityFactory.createAssociation(presenceCondition, nodes);
+		Association.Op association = this.entityFactory.createAssociation(presenceCondition, nodes);
 
 		// commit association
 		Commit commit = this.extract(association);
@@ -430,10 +430,10 @@ public class RepositoryOperator {
 	 * @param association The association to be committed.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	protected Commit extract(Association association) {
+	protected Commit extract(Association.Op association) {
 		checkNotNull(association);
 
-		Collection<Association> associations = new ArrayList<>(1);
+		Collection<Association.Op> associations = new ArrayList<>(1);
 		associations.add(association);
 		return this.extract(associations);
 	}
@@ -444,14 +444,14 @@ public class RepositoryOperator {
 	 * @param inputAs The collection of associations to be committed.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	protected Commit extract(Collection<? extends Association> inputAs) {
+	protected Commit extract(Collection<? extends Association.Op> inputAs) {
 		checkNotNull(inputAs);
 
 		Commit commit = this.entityFactory.createCommit();
 
-		Collection<? extends Association> originalAssociations = this.repository.getAssociations();
-		Collection<Association> newAssociations = new ArrayList<>();
-		Collection<Association> removedAssociations = new ArrayList<>();
+		Collection<? extends Association.Op> originalAssociations = this.repository.getAssociations();
+		Collection<Association.Op> newAssociations = new ArrayList<>();
+		Collection<Association.Op> removedAssociations = new ArrayList<>();
 
 		Association emptyAssociation = null;
 		// find initial empty association if there is any
@@ -463,17 +463,17 @@ public class RepositoryOperator {
 		}
 
 		// process each new association individually
-		for (Association inputA : inputAs) {
-			Collection<Association> toAdd = new ArrayList<>();
-			Collection<Association> toRemove = new ArrayList<>();
+		for (Association.Op inputA : inputAs) {
+			Collection<Association.Op> toAdd = new ArrayList<>();
+			Collection<Association.Op> toRemove = new ArrayList<>();
 
 			// slice new association with every original association
-			for (Association origA : originalAssociations) {
+			for (Association.Op origA : originalAssociations) {
 
 				// ASSOCIATION
 				// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
 				//Association intA = origA.slice(inputA);
-				Association intA = this.entityFactory.createAssociation();
+				Association.Op intA = this.entityFactory.createAssociation();
 
 
 				// PRESENCE CONDITION
@@ -483,7 +483,7 @@ public class RepositoryOperator {
 
 				// ARTIFACT TREE
 				//intA.setRootNode((origA.getRootNode().slice(inputA.getRootNode())));
-				intA.setRootNode((RootNode) Trees.slice(origA.getRootNode(), inputA.getRootNode()));
+				intA.setRootNode((RootNode.Op) Trees.slice(origA.getRootNode(), inputA.getRootNode()));
 
 				// INTERSECTION
 				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
@@ -558,12 +558,12 @@ public class RepositoryOperator {
 		}
 
 		// remove associations
-		for (Association origA : removedAssociations) {
+		for (Association.Op origA : removedAssociations) {
 			this.repository.removeAssociation(origA);
 		}
 
 		// add associations
-		for (Association newA : newAssociations) {
+		for (Association.Op newA : newAssociations) {
 			this.repository.addAssociation(newA);
 		}
 
@@ -659,7 +659,7 @@ public class RepositoryOperator {
 	public void map(Collection<RootNode> nodes) {
 		Collection<? extends Association> associations = this.repository.getAssociations();
 
-		for (Node node : nodes) {
+		for (Node.Op node : nodes) {
 			for (Association association : associations) {
 				Trees.map(association.getRootNode(), node);
 			}
@@ -682,15 +682,15 @@ public class RepositoryOperator {
 	 * Merges all associations that have the same presence condition.
 	 */
 	protected void consolidateAssociations() {
-		Collection<Association> toRemove = new ArrayList<>();
+		Collection<Association.Op> toRemove = new ArrayList<>();
 
-		Map<PresenceCondition, Association> pcToAssocMap = new HashMap<>();
+		Map<PresenceCondition, Association.Op> pcToAssocMap = new HashMap<>();
 
-		Collection<? extends Association> associations = this.repository.getAssociations();
-		Iterator<? extends Association> it = associations.iterator();
+		Collection<? extends Association.Op> associations = this.repository.getAssociations();
+		Iterator<? extends Association.Op> it = associations.iterator();
 		while (it.hasNext()) {
-			Association association = it.next();
-			Association equalAssoc = pcToAssocMap.get(association.getPresenceCondition());
+			Association.Op association = it.next();
+			Association.Op equalAssoc = pcToAssocMap.get(association.getPresenceCondition());
 			if (equalAssoc == null) {
 				pcToAssocMap.put(association.getPresenceCondition(), association);
 			} else {
@@ -701,14 +701,14 @@ public class RepositoryOperator {
 		}
 
 		// delete removed associations
-		for (Association a : toRemove) {
+		for (Association.Op a : toRemove) {
 			repository.removeAssociation(a);
 		}
 	}
 
 	protected void mergeEmptyAssociations() {
-		Collection<? extends Association> originalAssociations = this.repository.getAssociations();
-		Collection<Association> toRemove = new ArrayList<>();
+		Collection<? extends Association.Op> originalAssociations = this.repository.getAssociations();
+		Collection<Association.Op> toRemove = new ArrayList<>();
 		Association emptyAssociation = null;
 
 		// look for empty association
@@ -727,10 +727,9 @@ public class RepositoryOperator {
 
 
 		// delete removed associations
-		for (Association a : toRemove) {
+		for (Association.Op a : toRemove) {
 			this.repository.removeAssociation(a);
 		}
 	}
-
 
 }

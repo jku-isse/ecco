@@ -2,14 +2,14 @@ package at.jku.isse.ecco.web.rest.dto;
 
 public class FeatureVersionDTO {
 
-	private int version;
+	private String version;
 	private String description;
 
-	public int getVersion() {
+	public String getVersion() {
 		return version;
 	}
 
-	public void setVersion(int version) {
+	public void setVersion(String version) {
 		this.version = version;
 	}
 

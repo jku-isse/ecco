@@ -45,7 +45,7 @@ public class DependencyGraph {
 		this.compute(associations);
 	}
 
-	public DependencyGraph(Collection<Association> associations, ReferencesResolveMode referencesResolveMode) {
+	public DependencyGraph(Collection<? extends Association> associations, ReferencesResolveMode referencesResolveMode) {
 		this.compute(associations, referencesResolveMode);
 	}
 
@@ -74,7 +74,7 @@ public class DependencyGraph {
 	private void computeRec(Association fromA, Node node, ReferencesResolveMode referencesResolveMode) {
 		if (node.isUnique() && node.getArtifact() != null) {
 			// cross references
-			Iterator<ArtifactReference> it = node.getArtifact().getUses().iterator();
+			Iterator<? extends ArtifactReference> it = node.getArtifact().getUses().iterator();
 			while (it.hasNext()) {
 				ArtifactReference ar = it.next();
 

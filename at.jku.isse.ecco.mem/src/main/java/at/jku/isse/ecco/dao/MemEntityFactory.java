@@ -1,15 +1,13 @@
 package at.jku.isse.ecco.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactReference;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.BaseArtifact;
-import at.jku.isse.ecco.artifact.BaseArtifactReference;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
-import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.repository.MemRepository;
-import at.jku.isse.ecco.repository.RepositoryOperand;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.BaseNode;
 import at.jku.isse.ecco.tree.BaseRootNode;
 import at.jku.isse.ecco.tree.Node;
@@ -68,55 +66,29 @@ public class MemEntityFactory implements EntityFactory {
 	// # ARTIFACTS ################################################################
 
 	@Override
-	public <T extends ArtifactData> Artifact<T> createArtifact(T data) {
+	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
 		return new BaseArtifact<T>(data);
-	}
-
-	@Override
-	public ArtifactReference createArtifactReference(final Artifact source, final Artifact target) {
-		checkNotNull(source);
-		checkNotNull(target);
-
-		final ArtifactReference reference = new BaseArtifactReference();
-		reference.setSource(source);
-		reference.setTarget(target);
-
-		return reference;
-	}
-
-	@Override
-	public ArtifactReference createArtifactReference(final Artifact source, final Artifact target, final String type) {
-		checkNotNull(source);
-		checkNotNull(target);
-//		checkNotNull(type);
-
-		final ArtifactReference reference = new BaseArtifactReference(type);
-		reference.setSource(source);
-		reference.setTarget(target);
-
-		return reference;
-
 	}
 
 
 	// # ASSOCIATIONS ################################################################
 
 	@Override
-	public Association createAssociation() {
+	public Association.Op createAssociation() {
 		return new BaseAssociation();
 	}
 
 	@Override
-	public Association createAssociation(PresenceCondition presenceCondition, Set<Node> nodes) {
+	public Association.Op createAssociation(PresenceCondition presenceCondition, Set<Node.Op> nodes) {
 		checkNotNull(presenceCondition);
 		checkNotNull(nodes);
 
-		final Association association = new BaseAssociation();
+		final Association.Op association = new BaseAssociation();
 
-		RootNode rootNode = this.createRootNode();
+		RootNode.Op rootNode = this.createRootNode();
 		rootNode.setContainingAssociation(association);
 
-		for (Node node : nodes) {
+		for (Node.Op node : nodes) {
 			rootNode.addChild(node);
 		}
 
@@ -130,14 +102,6 @@ public class MemEntityFactory implements EntityFactory {
 	// # FEATURES ################################################################
 
 	@Override
-	public Feature createFeature(final String name) {
-		checkNotNull(name);
-		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
-
-		return new BaseFeature(name);
-	}
-
-	@Override
 	public Feature createFeature(final String id, final String name, final String description) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
@@ -146,11 +110,6 @@ public class MemEntityFactory implements EntityFactory {
 		final Feature feature = new BaseFeature(id, name, description);
 
 		return feature;
-	}
-
-	@Override
-	public FeatureVersion createFeatureVersion(Feature feature, String id) {
-		return new BaseFeatureVersion(feature, id);
 	}
 
 	@Override
@@ -186,15 +145,15 @@ public class MemEntityFactory implements EntityFactory {
 	// # NODES ################################################################
 
 	@Override
-	public Node createNode() {
+	public Node.Op createNode() {
 		return new BaseNode();
 	}
 
 	@Override
-	public Node createNode(final Artifact artifact) {
+	public Node.Op createNode(final Artifact.Op artifact) {
 		checkNotNull(artifact);
 
-		final Node node = new BaseNode();
+		final Node.Op node = new BaseNode();
 		node.setArtifact(artifact);
 		artifact.setContainingNode(node);
 
@@ -202,45 +161,32 @@ public class MemEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Node createNode(ArtifactData artifactData) {
+	public Node.Op createNode(ArtifactData artifactData) {
 		return this.createNode(this.createArtifact(artifactData));
 	}
 
 	@Override
-	public Node createOrderedNode(final Artifact artifact) {
+	public Node.Op createOrderedNode(final Artifact.Op artifact) {
 		checkNotNull(artifact);
 
-		final Node node = new BaseNode();
-		node.setArtifact(artifact);
-		artifact.setContainingNode(node);
-
+		final Node.Op node = this.createNode(artifact);
 		artifact.setOrdered(true);
 
 		return node;
 	}
 
 	@Override
-	public Node createOrderedNode(ArtifactData artifactData) {
+	public Node.Op createOrderedNode(ArtifactData artifactData) {
 		return this.createOrderedNode(this.createArtifact(artifactData));
 	}
 
 	@Override
-	public RootNode createRootNode() {
+	public RootNode.Op createRootNode() {
 		return new BaseRootNode();
 	}
 
 	@Override
-	public RootNode createRootNode(final Association association) {
-		checkNotNull(association);
-
-		final RootNode root = new BaseRootNode();
-		root.setContainingAssociation(association);
-
-		return root;
-	}
-
-	@Override
-	public RepositoryOperand createRepository() {
+	public Repository.Op createRepository() {
 		return new MemRepository();
 	}
 

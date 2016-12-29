@@ -113,11 +113,24 @@ public interface Association extends Persistable {
 	 */
 	public RootNode getRootNode();
 
+
 	/**
-	 * Sets the root node of the artifact tree.
-	 *
-	 * @param root The root of the artifact tree (may be null).
+	 * Private association interface.
 	 */
-	public void setRootNode(RootNode root);
+	public interface Op extends Association {
+		/**
+		 * Returns the root node operand.
+		 *
+		 * @return The root node operand.
+		 */
+		public RootNode.Op getRootNode();
+
+		/**
+		 * Sets the root node of the artifact tree.
+		 *
+		 * @param root The root of the artifact tree (may be null).
+		 */
+		public void setRootNode(RootNode.Op root);
+	}
 
 }

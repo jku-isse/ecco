@@ -10,9 +10,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class NodeOperator {
 
-	private NodeOperand node;
+	private Node.Op node;
 
-	public NodeOperator(NodeOperand node) {
+	public NodeOperator(Node.Op node) {
 		this.node = node;
 	}
 
@@ -54,16 +54,16 @@ public class NodeOperator {
 	// # OPERATIONS ####################################################################################################
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#slice(Node, Node)}
+	 * See {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}
 	 */
-	public void slice(Node node) {
+	public void slice(Node.Op node) {
 		Trees.slice(this.node, node);
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#merge(Node, Node)}
+	 * See {@link at.jku.isse.ecco.util.Trees#merge(Node.Op, Node.Op)}
 	 */
-	public void merge(Node node) {
+	public void merge(Node.Op node) {
 		Trees.merge(this.node, node);
 	}
 
@@ -75,16 +75,16 @@ public class NodeOperator {
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node)}
+	 * See {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}
 	 */
 	public void updateArtifactReferences() {
 		Trees.updateArtifactReferences(this.node);
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#extractMarked(Node)}
+	 * See {@link at.jku.isse.ecco.util.Trees#extractMarked(Node.Op)}
 	 */
-	public Node extractMarked() {
+	public Node.Op extractMarked() {
 		return Trees.extractMarked(this.node);
 	}
 
@@ -110,7 +110,7 @@ public class NodeOperator {
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Node)}
+	 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Node.Op)}
 	 */
 	public void checkConsistency() {
 		Trees.checkConsistency(this.node);
@@ -150,13 +150,6 @@ public class NodeOperator {
 		checkNotNull(name);
 
 		this.node.getProperties().remove(name);
-	}
-
-
-	// # INTERFACE #####################################################################################################
-
-	public interface NodeOperand extends Node {
-		public Map<String, Object> getProperties();
 	}
 
 }

@@ -6,7 +6,7 @@ import at.jku.isse.ecco.core.PerstRemote;
 import at.jku.isse.ecco.core.PerstVariant;
 import at.jku.isse.ecco.feature.PerstFeature;
 import at.jku.isse.ecco.repository.PerstRepository;
-import at.jku.isse.ecco.repository.RepositoryOperand;
+import at.jku.isse.ecco.repository.Repository;
 import org.garret.perst.FieldIndex;
 import org.garret.perst.Persistent;
 
@@ -25,7 +25,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class DatabaseRoot extends Persistent {
 
-	private final RepositoryOperand repository;
+	private final Repository.Op repository;
 
 	private final FieldIndex<PerstCommit> commitIndex;
 	private final FieldIndex<PerstVariant> variantIndex;
@@ -78,7 +78,7 @@ public class DatabaseRoot extends Persistent {
 	}
 
 
-	public RepositoryOperand getRepository() {
+	public Repository.Op getRepository() {
 		return this.repository;
 	}
 

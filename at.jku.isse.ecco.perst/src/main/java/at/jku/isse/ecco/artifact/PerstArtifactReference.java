@@ -11,18 +11,18 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstArtifactReference extends Persistent implements ArtifactReference {
+public class PerstArtifactReference extends Persistent implements ArtifactReference, ArtifactReference.Op {
 
 	private final String type;
 
-	private Artifact source;
-	private Artifact target;
+	private Artifact.Op<?> source;
+	private Artifact.Op<?> target;
 
 	/**
 	 * Constructs a new artifact reference with the type initiliazed to an empty string.
 	 */
 	public PerstArtifactReference() {
-		this(null);
+		this("");
 	}
 
 	/**
@@ -34,28 +34,28 @@ public class PerstArtifactReference extends Persistent implements ArtifactRefere
 
 	@Override
 	public String getType() {
-		return type;
+		return this.type;
 	}
 
 	@Override
-	public Artifact getSource() {
-		return source;
+	public Artifact.Op<?> getSource() {
+		return this.source;
 	}
 
 	@Override
-	public Artifact getTarget() {
-		return target;
+	public Artifact.Op<?> getTarget() {
+		return this.target;
 	}
 
 	@Override
-	public void setSource(final Artifact source) {
+	public void setSource(final Artifact.Op<?> source) {
 		checkNotNull(source);
 
 		this.source = source;
 	}
 
 	@Override
-	public void setTarget(final Artifact target) {
+	public void setTarget(final Artifact.Op<?> target) {
 		checkNotNull(target);
 
 		this.target = target;
@@ -63,10 +63,9 @@ public class PerstArtifactReference extends Persistent implements ArtifactRefere
 
 	@Override
 	public int hashCode() {
-		int result = super.hashCode();
-		result = 31 * result + (type != null ? type.hashCode() : 0);
-		result = 31 * result + (source != null ? source.hashCode() : 0);
-		result = 31 * result + (target != null ? target.hashCode() : 0);
+		int result = this.type != null ? this.type.hashCode() : 0;
+		result = 31 * result + (this.source != null ? this.source.hashCode() : 0);
+		result = 31 * result + (this.target != null ? this.target.hashCode() : 0);
 		return result;
 	}
 
@@ -74,13 +73,12 @@ public class PerstArtifactReference extends Persistent implements ArtifactRefere
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		//if (!super.equals(o)) return false;
 
 		PerstArtifactReference that = (PerstArtifactReference) o;
 
-		if (type != null ? !type.equals(that.type) : that.type != null) return false;
-		if (source != null ? !source.equals(that.source) : that.source != null) return false;
-		return !(target != null ? !target.equals(that.target) : that.target != null);
+		if (this.type != null ? !this.type.equals(that.type) : that.type != null) return false;
+		if (this.source != null ? !this.source.equals(that.source) : that.source != null) return false;
+		return !(this.target != null ? !this.target.equals(that.target) : that.target != null);
 	}
 
 	@Override

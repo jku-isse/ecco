@@ -2,20 +2,19 @@ package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
 
-public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.SequenceGraphOperand {
+public class BaseSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
 	private transient SequenceGraphOperator operator = new SequenceGraphOperator(this);
 
 
-	private SequenceGraphNode root = null;
+	private Node.Op root = null;
 
 	private int cur_seq_number = 1;
 
-	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
+	private Map<Set<Artifact<?>>, Node> nodes = new HashMap<>();
 
 	private boolean pol = true;
 
@@ -28,32 +27,32 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.S
 
 
 	@Override
-	public SequenceGraphNode getRoot() {
+	public Node.Op getRoot() {
 		return this.root;
 	}
 
 	@Override
-	public void sequence(Node node) throws EccoException {
+	public void sequence(at.jku.isse.ecco.tree.Node.Op node) throws EccoException {
 		this.operator.sequence(node);
 	}
 
 	@Override
-	public void sequenceNodes(List<Node> nodes) throws EccoException {
+	public void sequenceNodes(List<? extends at.jku.isse.ecco.tree.Node.Op> nodes) throws EccoException {
 		this.operator.sequenceNodes(nodes);
 	}
 
 	@Override
-	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException {
+	public void sequenceArtifacts(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
 		this.operator.sequenceArtifacts(artifacts);
 	}
 
 	@Override
-	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
+	public int[] align(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
 		return this.operator.align(artifacts);
 	}
 
 	@Override
-	public void sequence(SequenceGraph other) {
+	public void sequence(SequenceGraph.Op other) {
 		this.operator.sequence(other);
 	}
 
@@ -63,24 +62,24 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.S
 	}
 
 	@Override
-	public void copy(SequenceGraph other) {
+	public void copy(SequenceGraph.Op other) {
 		this.operator.copy(other);
 	}
 
 	@Override
-	public Collection<Artifact<?>> getSymbols() {
+	public Collection<? extends Artifact.Op<?>> getSymbols() {
 		return this.operator.collectSymbols();
 	}
 
 	@Override
-	public void trim(Collection<Artifact<?>> symbols) {
+	public void trim(Collection<? extends Artifact.Op<?>> symbols) {
 		this.operator.trim(symbols);
 	}
 
 
 	// operand
 
-	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
+	public Map<Set<Artifact<?>>, Node> getNodes() {
 		return this.nodes;
 	}
 
@@ -110,7 +109,7 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraphOperator.S
 	}
 
 
-	public SequenceGraphNode createSequenceGraphNode(boolean pol) {
+	public Node.Op createSequenceGraphNode(boolean pol) {
 		return new BaseSequenceGraphNode(pol);
 	}
 

@@ -1,13 +1,12 @@
 package at.jku.isse.ecco.composition;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**
  * A lazy composition root node.
  */
-public class LazyCompositionRootNode extends LazyCompositionNode implements RootNode {
+public class LazyCompositionRootNode extends LazyCompositionNode implements RootNode, RootNode.Op {
 
 	public LazyCompositionRootNode() {
 		this(new DefaultOrderSelector());
@@ -30,13 +29,13 @@ public class LazyCompositionRootNode extends LazyCompositionNode implements Root
 
 
 	@Override
-	public Node createNode() {
+	public RootNode.Op createNode() {
 		return new LazyCompositionRootNode();
 	}
 
 
 	@Override
-	public void setContainingAssociation(Association containingAssociation) {
+	public void setContainingAssociation(Association.Op containingAssociation) {
 		// do nothing
 	}
 

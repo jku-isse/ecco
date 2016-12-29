@@ -2,7 +2,6 @@ package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.tree.Node;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -19,13 +18,13 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 	private int id;
 
 
-	private SequenceGraphNode root = null;
+	private Node root = null;
 
 	private int cur_seq_number = 1;
 
 	private int cur_best_cost = Integer.MAX_VALUE;
 
-	private Map<Set<Artifact<?>>, SequenceGraphNode> nodes = new HashMap<>();
+	private Map<Set<Artifact<?>>, Node> nodes = new HashMap<>();
 
 	private boolean pol = true;
 
@@ -37,17 +36,17 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 	}
 
 
-	public SequenceGraphNode getRoot() {
+	public Node getRoot() {
 		return this.root;
 	}
 
 	@Override
-	public void sequence(Node node) throws EccoException {
+	public void sequence(at.jku.isse.ecco.tree.Node node) throws EccoException {
 
 	}
 
 	@Override
-	public void sequenceNodes(List<Node> nodes) throws EccoException {
+	public void sequenceNodes(List<at.jku.isse.ecco.tree.Node> nodes) throws EccoException {
 
 	}
 
@@ -61,7 +60,7 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 		return new int[0];
 	}
 
-	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
+	public Map<Set<Artifact<?>>, Node> getNodes() {
 		return this.nodes;
 	}
 
@@ -94,7 +93,7 @@ public class JpaSequenceGraph implements SequenceGraph, Serializable {
 	}
 
 
-	public SequenceGraphNode createSequenceGraphNode(boolean pol) {
+	public Node createSequenceGraphNode(boolean pol) {
 		return new JpaSequenceGraphNode(pol);
 	}
 

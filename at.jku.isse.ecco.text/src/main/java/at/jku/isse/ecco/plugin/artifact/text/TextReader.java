@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class TextReader implements ArtifactReader<Path, Set<Node>> {
+public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
 
@@ -50,24 +50,24 @@ public class TextReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 	@Override
-	public Set<Node> read(Path[] input) {
+	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
 	}
 
 	@Override
-	public Set<Node> read(Path base, Path[] input) {
-		Set<Node> nodes = new HashSet<Node>();
+	public Set<Node.Op> read(Path base, Path[] input) {
+		Set<Node.Op> nodes = new HashSet<>();
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
-			Artifact<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-			Node pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+			Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+			Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
 			nodes.add(pluginNode);
 
 			try (Stream<String> lines = Files.lines(resolvedPath)) {
 				Iterator<String> it = lines.iterator();
 				while (it.hasNext()) {
 					String line = it.next();
-					Artifact<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
+					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
 					pluginNode.addChild(this.entityFactory.createNode(lineArtifact));
 				}
 			} catch (IOException e) {

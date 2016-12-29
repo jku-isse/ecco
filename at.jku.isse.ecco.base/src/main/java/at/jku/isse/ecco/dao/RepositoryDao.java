@@ -1,11 +1,11 @@
 package at.jku.isse.ecco.dao;
 
-import at.jku.isse.ecco.repository.RepositoryOperand;
+import at.jku.isse.ecco.repository.Repository;
 
 public interface RepositoryDao extends GenericDao {
 
-	public RepositoryOperand load();
+	public Repository.Op load();
 
-	public void store(RepositoryOperand repository);
+	public void store(Repository.Op repository);
 
 }

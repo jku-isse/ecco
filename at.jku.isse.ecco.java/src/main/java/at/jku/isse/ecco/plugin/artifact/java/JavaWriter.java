@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.plugin.artifact.java;
 
-import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
@@ -102,8 +102,8 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 	}
 
 
-	public List<ASTNode> buildAST(Collection<Node> nodes, Map<Path, List<ASTNode>> fileMap) {
-		List<ASTNode> astNodes = new LinkedList<ASTNode>();
+	public List<ASTNode> buildAST(Collection<? extends Node> nodes, Map<Path, List<ASTNode>> fileMap) {
+		List<ASTNode> astNodes = new LinkedList<>();
 		AST ast = AST.newAST(AST.JLS8);
 		for (Node n : nodes) {
 			if (n instanceof RootNode) { // when node is root node (i.e. contains no artifact) process its children
@@ -268,7 +268,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 		return astNode;
 	}
 
-	private Node findNode(List<Node> path, Collection<Node> in) {
+	private Node findNode(List<? extends Node> path, Collection<? extends Node> in) {
 		for (Node n : in) {
 			Node ret = findNode(path, n);
 			if (ret != null) {
@@ -278,7 +278,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 		return null;
 	}
 
-	private Node findNode(List<Node> path, Node in) {
+	private Node findNode(List<? extends Node> path, Node in) {
 		if (path.isEmpty()) {
 			return in.getParent();
 		}

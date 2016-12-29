@@ -2,19 +2,18 @@ package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.tree.Node;
 import org.garret.perst.Persistent;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-public class PerstSequenceGraph extends Persistent implements SequenceGraph, SequenceGraphOperator.SequenceGraphOperand {
+public class PerstSequenceGraph extends Persistent implements SequenceGraph, SequenceGraph.Op {
 
 	private transient SequenceGraphOperator operator = new SequenceGraphOperator(this);
 
 
-	private SequenceGraphNode root = null;
+	private Node.Op root = null;
 
 	private int cur_seq_number = 1;
 
@@ -33,32 +32,32 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 
 
 	@Override
-	public SequenceGraphNode getRoot() {
+	public Node.Op getRoot() {
 		return this.root;
 	}
 
 	@Override
-	public void sequence(Node node) throws EccoException {
+	public void sequence(at.jku.isse.ecco.tree.Node.Op node) throws EccoException {
 		this.operator.sequence(node);
 	}
 
 	@Override
-	public void sequenceNodes(List<Node> nodes) throws EccoException {
+	public void sequenceNodes(List<? extends at.jku.isse.ecco.tree.Node.Op> nodes) throws EccoException {
 		this.operator.sequenceNodes(nodes);
 	}
 
 	@Override
-	public void sequenceArtifacts(List<Artifact<?>> artifacts) throws EccoException {
+	public void sequenceArtifacts(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
 		this.operator.sequenceArtifacts(artifacts);
 	}
 
 	@Override
-	public int[] align(List<Artifact<?>> artifacts) throws EccoException {
+	public int[] align(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
 		return this.operator.align(artifacts);
 	}
 
 	@Override
-	public void sequence(SequenceGraph other) {
+	public void sequence(SequenceGraph.Op other) {
 		this.operator.sequence(other);
 	}
 
@@ -68,17 +67,17 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 	}
 
 	@Override
-	public void copy(SequenceGraph other) {
+	public void copy(SequenceGraph.Op other) {
 		this.operator.copy(other);
 	}
 
 	@Override
-	public Collection<Artifact<?>> getSymbols() {
+	public Collection<? extends Artifact.Op<?>> getSymbols() {
 		return this.operator.collectSymbols();
 	}
 
 	@Override
-	public void trim(Collection<Artifact<?>> symbols) {
+	public void trim(Collection<? extends Artifact.Op<?>> symbols) {
 		this.operator.trim(symbols);
 	}
 
@@ -97,16 +96,16 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 //			((PerstSequenceGraphNode) node).store();
 //		}
 
-		for (SequenceGraphNode node : this.operator.collectNodes()) {
+		for (Node node : this.operator.collectNodes()) {
 			((PerstSequenceGraphNode) node).store();
 		}
 	}
 
 	// TODO: this is a bad implementation! every node is visited multiple times!
-	protected void collectNodes(SequenceGraphNode node, Set<SequenceGraphNode> nodeSet) {
+	protected void collectNodes(Node node, Set<Node> nodeSet) {
 		//if (node instanceof PerstSequenceGraphNode) {
 		nodeSet.add(node);
-		for (SequenceGraphNode child : ((PerstSequenceGraphNode) node).getChildren().values()) {
+		for (Node child : ((PerstSequenceGraphNode) node).getChildren().values()) {
 			this.collectNodes(child, nodeSet);
 		}
 		//}
@@ -146,7 +145,7 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 	}
 
 
-	public SequenceGraphNode createSequenceGraphNode(boolean pol) {
+	public Node.Op createSequenceGraphNode(boolean pol) {
 		return new PerstSequenceGraphNode(pol);
 	}
 

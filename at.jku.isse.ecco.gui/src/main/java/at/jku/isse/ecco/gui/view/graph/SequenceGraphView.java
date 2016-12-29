@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
-import at.jku.isse.ecco.sg.SequenceGraphNode;
 import javafx.embed.swing.SwingNode;
 import javafx.event.EventHandler;
 import javafx.scene.input.ScrollEvent;
@@ -105,8 +104,8 @@ public class SequenceGraphView extends BorderPane {
 	}
 
 
-	private void traverseSequenceGraph(SequenceGraphNode sgn, org.graphstream.graph.Node parent, String currentPath, Set<Artifact<?>> nodeSet) {
-		for (Map.Entry<Artifact<?>, SequenceGraphNode> entry : sgn.getChildren().entrySet()) {
+	private void traverseSequenceGraph(SequenceGraph.Node sgn, org.graphstream.graph.Node parent, String currentPath, Set<Artifact<?>> nodeSet) {
+		for (Map.Entry<? extends Artifact<?>, ? extends SequenceGraph.Node> entry : sgn.getChildren().entrySet()) {
 			Set<Artifact<?>> newNodeSet = new HashSet<>(nodeSet);
 			newNodeSet.add(entry.getKey());
 

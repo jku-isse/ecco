@@ -115,7 +115,7 @@ public class ArtifactsGraphDTO {
 
 	public class NodeDTO {
 		private int id;
-		private int associationId;
+		private String associationId;
 		private int numArtifacts;
 		private int depth;
 		private String label;
@@ -128,11 +128,11 @@ public class ArtifactsGraphDTO {
 			this.id = id;
 		}
 
-		public int getAssociationId() {
+		public String getAssociationId() {
 			return associationId;
 		}
 
-		public void setAssociationId(int associationId) {
+		public void setAssociationId(String associationId) {
 			this.associationId = associationId;
 		}
 

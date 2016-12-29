@@ -5,6 +5,9 @@ import at.jku.isse.ecco.tree.Node;
 
 import java.util.Collection;
 
+/**
+ * Interface for order selection during the composition of artifact trees with ordered artifacts where the order of their children is ambiguous.
+ */
 public interface OrderSelector {
 
 	public Collection<Artifact<?>> getUncertainOrders();
@@ -14,6 +17,6 @@ public interface OrderSelector {
 	 *
 	 * @param node The node for which to select an order.
 	 */
-	public void select(Node node);
+	public void select(Node.Op node);
 
 }

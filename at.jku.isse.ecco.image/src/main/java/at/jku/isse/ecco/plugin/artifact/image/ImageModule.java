@@ -17,8 +17,8 @@ public class ImageModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		final Multibinder<ArtifactReader<Path, Set<Node>>> readerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<ArtifactReader<Path, Set<Node>>>() {
+		final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<ArtifactReader<Path, Set<Node.Op>>>() {
 				});
 		readerMultibinder.addBinding().to(ImageReader.class);
 

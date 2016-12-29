@@ -20,8 +20,8 @@ public class FileModule extends AbstractModule {
 		// bind(new TypeLiteral<ArtifactWriter<Set<Node>, File[]>>() {
 		// }).to(FileWriter.class);
 
-		final Multibinder<ArtifactReader<Path, Set<Node>>> readerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<ArtifactReader<Path, Set<Node>>>() {
+		final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<ArtifactReader<Path, Set<Node.Op>>>() {
 				});
 		readerMultibinder.addBinding().to(FileReader.class);
 

@@ -14,10 +14,10 @@ public class Associations {
 	}
 
 
-	public static void consolidate(Collection<Association> associations) {
+	public static void consolidate(Collection<? extends Association> associations) {
 		Map<PresenceCondition, Association> pcToAssocMap = new HashMap<>();
 
-		Iterator<Association> it = associations.iterator();
+		Iterator<? extends Association> it = associations.iterator();
 		while (it.hasNext()) {
 			Association association = it.next();
 			Association equalAssoc = pcToAssocMap.get(association.getPresenceCondition());

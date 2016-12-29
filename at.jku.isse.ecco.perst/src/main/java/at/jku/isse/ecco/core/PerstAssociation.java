@@ -17,11 +17,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstAssociation extends Persistent implements Association {
+public class PerstAssociation extends Persistent implements Association, Association.Op {
 
 	private String id;
 	private String name = "";
-	private RootNode rootNode;
+	private RootNode.Op rootNode;
 	private PresenceCondition presenceCondition;
 	private List<Association> parents = new ArrayList<>();
 	private List<Association> children = new ArrayList<>();
@@ -122,12 +122,12 @@ public class PerstAssociation extends Persistent implements Association {
 	}
 
 	@Override
-	public RootNode getRootNode() {
+	public RootNode.Op getRootNode() {
 		return rootNode;
 	}
 
 	@Override
-	public void setRootNode(final RootNode root) {
+	public void setRootNode(final RootNode.Op root) {
 		this.rootNode = root;
 		root.setContainingAssociation(this);
 	}

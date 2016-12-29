@@ -13,7 +13,7 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
+public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
 
@@ -32,13 +32,13 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 	/**
 	 * The collection of readers to which should be dispatched.
 	 */
-	private Collection<ArtifactReader<Path, Set<Node>>> readers;
+	private Collection<ArtifactReader<Path, Set<Node.Op>>> readers;
 
 	/**
 	 * @param readers The collection of readers to which should be dispatched.
 	 */
 	@Inject
-	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node>>> readers) {
+	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node.Op>>> readers) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
@@ -65,7 +65,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 
 	@Override
 	public boolean canRead(Path file) {
-		for (ArtifactReader<Path, Set<Node>> reader : this.readers) {
+		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
 			if (reader.canRead(file))
 				return true;
 		}
@@ -76,9 +76,9 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 	 * @param file The file to be read.
 	 * @return The reader best suited for reading the file.
 	 */
-	private ArtifactReader<Path, Set<Node>> getReaderForFile(Path base, Path file) {
-		ArtifactReader<Path, Set<Node>> currentReader = null;
-		for (ArtifactReader<Path, Set<Node>> reader : this.readers) {
+	private ArtifactReader<Path, Set<Node.Op>> getReaderForFile(Path base, Path file) {
+		ArtifactReader<Path, Set<Node.Op>> currentReader = null;
+		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
 			if (reader.canRead(base.resolve(file)) && (currentReader == null || currentReader.getTypeHierarchy().length < reader.getTypeHierarchy().length))
 				currentReader = reader;
 		}
@@ -86,12 +86,12 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 	@Override
-	public Set<Node> read(Path[] input) {
+	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
 	}
 
 	@Override
-	public Set<Node> read(Path base, Path[] input) {
+	public Set<Node.Op> read(Path base, Path[] input) {
 		if (!Files.exists(base)) {
 			throw new EccoException("Base directory does not exist.");
 		} else if (!Files.isDirectory(base)) {
@@ -99,35 +99,35 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 		}
 
 
-		Set<Node> nodes = new HashSet<>();
+		Set<Node.Op> nodes = new HashSet<>();
 
 		base = base.normalize();
 
 		for (Path path : input) {
 
-			Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap = new HashMap<>();
+			Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap = new HashMap<>();
 
 			// this reader itself is responsible for the directory tree structure (unless there is an adapter that deals with a directory)
-			Map<Path, Node> directoryNodes = new HashMap<>();
-			Node baseDirectoryNode = this.readDirectories(base, base.resolve(path), readerToFilesMap, directoryNodes);
+			Map<Path, Node.Op> directoryNodes = new HashMap<>();
+			Node.Op baseDirectoryNode = this.readDirectories(base, base.resolve(path), readerToFilesMap, directoryNodes);
 			nodes.add(baseDirectoryNode);
 
 			// let readers read the assigned files
-			for (ArtifactReader<Path, Set<Node>> reader : this.readers) {
+			for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
 				ArrayList<Path> filesList = readerToFilesMap.get(reader);
 
 				if (filesList != null) {
 					Path[] pluginInput = filesList.toArray(new Path[filesList.size()]);
 
-					Set<Node> pluginNodes = reader.read(base, pluginInput);
-					for (Node pluginNode : pluginNodes) {
+					Set<Node.Op> pluginNodes = reader.read(base, pluginInput);
+					for (Node.Op pluginNode : pluginNodes) {
 						if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData))
 							throw new EccoException("Plugin must return valid plugin nodes as root nodes in order for it to be compatible with dispatchers.");
 						PluginArtifactData pluginArtifactData = (PluginArtifactData) pluginNode.getArtifact().getData();
 						Path parent = pluginArtifactData.getPath().getParent();
 						if (parent == null)
 							parent = Paths.get(".").normalize();
-						Node parentNode = directoryNodes.get(parent);
+						Node.Op parentNode = directoryNodes.get(parent);
 						if (parentNode != null)
 							parentNode.addChild(pluginNode);
 						else
@@ -170,21 +170,21 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 	}
 
 
-	private Node readDirectories(Path base, Path current, Map<ArtifactReader<Path, Set<Node>>, ArrayList<Path>> readerToFilesMap, Map<Path, Node> directoryNodes) {
+	private Node.Op readDirectories(Path base, Path current, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap, Map<Path, Node.Op> directoryNodes) {
 		Path relativeCurrent = base.relativize(current);
 
 		try {
 			if (Files.isDirectory(current) && this.getReaderForFile(base, relativeCurrent) == null) { // deal with directories that cannot be dispatched
 				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
-					Artifact directoryArtifact = entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
-					Node directoryNode = entityFactory.createNode(directoryArtifact);
+					Artifact.Op<?> directoryArtifact = entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
+					Node.Op directoryNode = entityFactory.createNode(directoryArtifact);
 					directoryNodes.put(relativeCurrent, directoryNode);
 
 					this.fireReadEvent(base.relativize(current), this);
 
 					// go into sub directories
 					Files.list(current).forEach(d -> {
-						Node child = this.readDirectories(base, d, readerToFilesMap, directoryNodes);
+						Node.Op child = this.readDirectories(base, d, readerToFilesMap, directoryNodes);
 						if (child != null)
 							directoryNode.addChild(child);
 					});
@@ -194,7 +194,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node>> {
 			} else { // deal with files and directories that can be dispatched
 				if (!this.isIgnored(relativeCurrent)) { // if file is not ignored add it to readerToFilesMap
 					// assign file to reader
-					ArtifactReader<Path, Set<Node>> reader = this.getReaderForFile(base, relativeCurrent);
+					ArtifactReader<Path, Set<Node.Op>> reader = this.getReaderForFile(base, relativeCurrent);
 
 					if (reader != null) {
 						ArrayList<Path> fileList = readerToFilesMap.get(reader);

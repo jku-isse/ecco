@@ -17,8 +17,8 @@ public class TreesTest {
 	public void Trees_Full() {
 		EntityFactory ef = new MemEntityFactory();
 
-		Node root1 = this.createTestTree1();
-		Node root2 = this.createTestTree2();
+		Node.Op root1 = this.createTestTree1();
+		Node.Op root2 = this.createTestTree2();
 
 		Trees.checkConsistency(root1); // TODO: have this return true/false or an error code instead of throwing an exception?
 		Trees.checkConsistency(root2);
@@ -34,15 +34,15 @@ public class TreesTest {
 
 		Trees.map(root1, root2);
 
-		Node copy1 = EccoUtil.deepCopyTree(root1, ef);
+		Node.Op copy1 = EccoUtil.deepCopyTree(root1, ef);
 
-		Node root3 = Trees.slice(root1, root2);
+		Node.Op root3 = Trees.slice(root1, root2);
 
 		Trees.sequence(root1);
 		Trees.sequence(root2);
 		Trees.sequence(root3);
 
-		//Node merge1 = Trees.merge(root1, root3); // TODO: should it be like this?
+		//NodeOperator.NodeOperand merge1 = Trees.merge(root1, root3); // TODO: should it be like this?
 
 		//Trees.merge(root1, root3);
 		root1.merge(root3);
@@ -77,54 +77,54 @@ public class TreesTest {
 	 *
 	 * @return Root of the tree.
 	 */
-	public Node createTestTree1() {
+	public Node.Op createTestTree1() {
 		EntityFactory ef = new MemEntityFactory();
 
 		RootNode root = ef.createRootNode();
 
 		// first level
-		Node n00 = ef.createNode(new TestArtifactData("00"));
-		Node n01 = ef.createNode(new TestArtifactData("01"));
+		Node.Op n00 = ef.createNode(new TestArtifactData("00"));
+		Node.Op n01 = ef.createNode(new TestArtifactData("01"));
 		root.addChild(n00);
 		root.addChild(n01);
 
-		// TODO: make node.getChildren() read only and use addChild and removeChild for manipulating children? this can also make sure that parent pointers are always set correctly.
-		// TODO: the "unique" (i.e. "solid") property is redundant. determine "uniqueness" via "node.getArtifact().getContainingNode() == node".
+		// TODO: make nodeOperator.NodeOperand.getChildren() read only and use addChild and removeChild for manipulating children? this can also make sure that parent pointers are always set correctly.
+		// TODO: the "unique" (i.e. "solid") property is redundant. determine "uniqueness" via "nodeOperator.NodeOperand.getArtifact().getContainingNode() == nodeOperator.NodeOperand".
 		// TODO: make sure that in non-ordered nodes artifacts that are equal cannot be added multiple times! add that check to "Trees.checkConsistency()".
 
 		// second level
-		Node n10 = ef.createNode(new TestArtifactData("10"));
-		Node n11 = ef.createOrderedNode(new TestArtifactData("11"));
+		Node.Op n10 = ef.createNode(new TestArtifactData("10"));
+		Node.Op n11 = ef.createOrderedNode(new TestArtifactData("11"));
 		n00.addChild(n10);
 		n00.addChild(n11);
 
 		// TODO: should there also be a cycle check? either in "Trees.checkConsistency()" or during "addChild"? actually not needed if the addChild method not only "corrects" the parent but also removes the child from the old parent.
 
 		// third level
-		Node n20 = ef.createNode(new TestArtifactData("oa0"));
+		Node.Op n20 = ef.createNode(new TestArtifactData("oa0"));
 		n20.getArtifact().setAtomic(true);
-		Node n21 = ef.createNode(new TestArtifactData("oa1"));
-		Node n22 = ef.createNode(new TestArtifactData("oa2"));
-		Node n23 = ef.createNode(new TestArtifactData("oa3"));
-		Node n25 = ef.createNode(new TestArtifactData("oa5"));
+		Node.Op n21 = ef.createNode(new TestArtifactData("oa1"));
+		Node.Op n22 = ef.createNode(new TestArtifactData("oa2"));
+		Node.Op n23 = ef.createNode(new TestArtifactData("oa3"));
+		Node.Op n25 = ef.createNode(new TestArtifactData("oa5"));
 		n11.addChildren(n20, n21, n22, n23, n25);
 
 		// fourth level
-		Node n30 = ef.createNode(new TestArtifactData("atomic0"));
-		Node n31 = ef.createNode(new TestArtifactData("atomic1"));
-		Node n32 = ef.createNode(new TestArtifactData("atomic2"));
+		Node.Op n30 = ef.createNode(new TestArtifactData("atomic0"));
+		Node.Op n31 = ef.createNode(new TestArtifactData("atomic1"));
+		Node.Op n32 = ef.createNode(new TestArtifactData("atomic2"));
 		n20.addChildren(n30, n31, n32);
 
 		// fifth level
-		Node n40 = ef.createNode(new TestArtifactData("atomic3"));
-		Node n41 = ef.createNode(new TestArtifactData("atomic4"));
-		Node n42 = ef.createNode(new TestArtifactData("atomic5"));
+		Node.Op n40 = ef.createNode(new TestArtifactData("atomic3"));
+		Node.Op n41 = ef.createNode(new TestArtifactData("atomic4"));
+		Node.Op n42 = ef.createNode(new TestArtifactData("atomic5"));
 		n31.addChildren(n40, n41, n42);
 
 		// TODO: children of atomic nodes are always treated as atomic, even if they themselves are noted marked as such (via "setAtomic(true)").
 
 		// 6th level
-		Node n50 = ef.createNode(new TestArtifactData("atomic6"));
+		Node.Op n50 = ef.createNode(new TestArtifactData("atomic6"));
 		n42.addChild(n50);
 
 
@@ -133,47 +133,47 @@ public class TreesTest {
 		return root;
 	}
 
-	public Node createTestTree2() {
+	public Node.Op createTestTree2() {
 		EntityFactory ef = new MemEntityFactory();
 
 		RootNode root = ef.createRootNode();
 
 		// first level
-		Node n00 = ef.createNode(new TestArtifactData("00"));
-		Node n02 = ef.createNode(new TestArtifactData("02"));
+		Node.Op n00 = ef.createNode(new TestArtifactData("00"));
+		Node.Op n02 = ef.createNode(new TestArtifactData("02"));
 		root.addChild(n00);
 		root.addChild(n02);
 
 		// second level
-		Node n10 = ef.createNode(new TestArtifactData("10"));
-		Node n11 = ef.createOrderedNode(new TestArtifactData("11"));
+		Node.Op n10 = ef.createNode(new TestArtifactData("10"));
+		Node.Op n11 = ef.createOrderedNode(new TestArtifactData("11"));
 		n00.addChild(n10);
 		n00.addChild(n11);
 
 		// third level
-		Node n20 = ef.createNode(new TestArtifactData("oa0"));
+		Node.Op n20 = ef.createNode(new TestArtifactData("oa0"));
 		n20.getArtifact().setAtomic(true);
-		Node n21 = ef.createNode(new TestArtifactData("oa1"));
-		Node n26 = ef.createNode(new TestArtifactData("oa6"));
-		Node n23 = ef.createNode(new TestArtifactData("oa3"));
-		Node n24 = ef.createNode(new TestArtifactData("oa4"));
-		Node n25 = ef.createNode(new TestArtifactData("oa5"));
+		Node.Op n21 = ef.createNode(new TestArtifactData("oa1"));
+		Node.Op n26 = ef.createNode(new TestArtifactData("oa6"));
+		Node.Op n23 = ef.createNode(new TestArtifactData("oa3"));
+		Node.Op n24 = ef.createNode(new TestArtifactData("oa4"));
+		Node.Op n25 = ef.createNode(new TestArtifactData("oa5"));
 		n11.addChildren(n20, n21, n26, n23, n24, n25);
 
 		// fourth level
-		Node n30 = ef.createNode(new TestArtifactData("atomic0"));
-		Node n31 = ef.createNode(new TestArtifactData("atomic1"));
-		Node n32 = ef.createNode(new TestArtifactData("atomic2"));
+		Node.Op n30 = ef.createNode(new TestArtifactData("atomic0"));
+		Node.Op n31 = ef.createNode(new TestArtifactData("atomic1"));
+		Node.Op n32 = ef.createNode(new TestArtifactData("atomic2"));
 		n20.addChildren(n30, n31, n32);
 
 		// fifth level
-		Node n40 = ef.createNode(new TestArtifactData("atomic3"));
-		Node n41 = ef.createNode(new TestArtifactData("atomic4"));
-		Node n42 = ef.createNode(new TestArtifactData("atomic5"));
+		Node.Op n40 = ef.createNode(new TestArtifactData("atomic3"));
+		Node.Op n41 = ef.createNode(new TestArtifactData("atomic4"));
+		Node.Op n42 = ef.createNode(new TestArtifactData("atomic5"));
 		n31.addChildren(n40, n41, n42);
 
 		// 6th level
-		Node n50 = ef.createNode(new TestArtifactData("atomic6"));
+		Node.Op n50 = ef.createNode(new TestArtifactData("atomic6"));
 		n42.addChild(n50);
 
 		return root;

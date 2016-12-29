@@ -50,7 +50,7 @@ public class FeaturesResource extends EccoResource {
 		LOGGER.info("getFeatures(filter: " + filter + ")");
 
 		ArrayList<FeatureDTO> features = new ArrayList<>();
-		for (Feature feature : eccoService.getFeatures()) {
+		for (Feature feature : eccoService.getRepository().getFeatures()) {
 			if (filter == null || feature.getName().contains(filter) || feature.getDescription().contains(filter)) {
 				FeatureDTO featureDTO = new FeatureDTO();
 				featureDTO.setName(feature.getName());
@@ -70,7 +70,7 @@ public class FeaturesResource extends EccoResource {
 
 		LOGGER.info("getFeature(name: " + name + ")");
 
-		for (Feature feature : eccoService.getFeatures()) {
+		for (Feature feature : eccoService.getRepository().getFeatures()) {
 			if (feature.getName().equals(name)) {
 				FeatureDTO featureDTO = new FeatureDTO();
 				featureDTO.setName(feature.getName());
@@ -92,7 +92,7 @@ public class FeaturesResource extends EccoResource {
 		LOGGER.info("getFeatureVersions(name: " + name + ")");
 
 		ArrayList<FeatureVersionDTO> featuresVersions = new ArrayList<>();
-		for (Feature feature : eccoService.getFeatures()) {
+		for (Feature feature : eccoService.getRepository().getFeatures()) {
 			if (feature.getName().equals(name)) {
 				for (FeatureVersion featureVersion : feature.getVersions()) {
 					FeatureVersionDTO featureVersionDTO = new FeatureVersionDTO();
@@ -111,15 +111,15 @@ public class FeaturesResource extends EccoResource {
 	@GET
 	@Path("/{name}/version/{version}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public FeatureVersionDTO getFeatureVersion(@PathParam("name") String name, @PathParam("version") int version) {
+	public FeatureVersionDTO getFeatureVersion(@PathParam("name") String name, @PathParam("version") String version) {
 		EccoService eccoService = this.getService();
 
 		LOGGER.info("getFeatureVersion(name: " + name + ", version: " + version + ") ");
 
-		for (Feature feature : eccoService.getFeatures()) {
+		for (Feature feature : eccoService.getRepository().getFeatures()) {
 			if (feature.getName().equals(name)) {
 				for (FeatureVersion featureVersion : feature.getVersions()) {
-					if (featureVersion.getId() == version) {
+					if (featureVersion.getId().equals(version)) {
 						FeatureVersionDTO featureVersionDTO = new FeatureVersionDTO();
 						featureVersionDTO.setVersion(featureVersion.getId());
 						featureVersionDTO.setDescription(featureVersion.getDescription());

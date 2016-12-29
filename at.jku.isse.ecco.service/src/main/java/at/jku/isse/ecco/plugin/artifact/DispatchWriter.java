@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class DispatchWriter implements ArtifactWriter<Set<Node>, Path> {
+public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path> {
 
 	@Override
 	public String getPluginId() {
@@ -61,12 +61,12 @@ public class DispatchWriter implements ArtifactWriter<Set<Node>, Path> {
 	}
 
 	@Override
-	public Path[] write(Set<Node> input) {
+	public Path[] write(Set<? extends Node> input) {
 		return this.write(Paths.get("."), input);
 	}
 
 	@Override
-	public Path[] write(Path base, Set<Node> input) {
+	public Path[] write(Path base, Set<? extends Node> input) {
 		if (!Files.exists(base)) {
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
