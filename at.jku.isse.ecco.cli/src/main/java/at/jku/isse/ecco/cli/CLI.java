@@ -14,8 +14,6 @@ import at.jku.isse.ecco.util.Trees;
 import org.perf4j.LoggingStopWatch;
 import org.perf4j.StopWatch;
 import org.perf4j.aop.Profiled;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -25,8 +23,6 @@ import java.nio.file.Paths;
  * This class implements all the CLI commands.
  */
 public class CLI implements EccoListener {
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(CLI.class);
 
 	private EccoService eccoService;
 

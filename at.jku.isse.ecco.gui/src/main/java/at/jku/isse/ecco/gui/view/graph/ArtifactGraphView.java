@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.gui.view.graph;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
@@ -11,7 +10,6 @@ import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -60,29 +58,12 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 		Button refreshButton = new Button("Refresh");
 		toolBar.getItems().add(refreshButton);
-		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-				SwingUtilities.invokeLater(new Runnable() {
-					@Override
-					public void run() {
-						ArtifactGraphView.this.updateGraph(ArtifactGraphView.this.depthFade, ArtifactGraphView.this.showLabels);
-
-						Task refreshTask = new Task<Void>() {
-							@Override
-							public Void call() throws EccoException {
-								//ArtifactsGraphView.this.updateGraph();
-								Platform.runLater(() -> {
-									toolBar.setDisable(false);
-								});
-								return null;
-							}
-						};
-						new Thread(refreshTask).start();
-					}
-				});
-			}
+		refreshButton.setOnAction(e -> {
+			toolBar.setDisable(true);
+			SwingUtilities.invokeLater(() -> {
+				ArtifactGraphView.this.updateGraph(ArtifactGraphView.this.depthFade, ArtifactGraphView.this.showLabels);
+				Platform.runLater(() -> toolBar.setDisable(false));
+			});
 		});
 		toolBar.getItems().add(new Separator());
 

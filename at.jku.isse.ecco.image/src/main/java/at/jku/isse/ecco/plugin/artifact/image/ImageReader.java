@@ -8,8 +8,6 @@ import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -22,8 +20,6 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(ImageReader.class);
 
 	public static final String TYPE_IMAGE = "IMAGE";
 	public static final String TYPE_POS = "POS";
@@ -83,8 +79,6 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 				System.out.println(image.getColorModel());
 				System.out.println(image.getType());
 			} catch (IOException e) {
-				LOGGER.error("Could not read the image: " + resolvedPath, e);
-
 				throw new EccoException("Could not read the image: " + resolvedPath, e);
 			}
 		}

@@ -1,12 +1,10 @@
 package at.jku.isse.ecco.gui.view.graph;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -61,17 +59,8 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 			SwingUtilities.invokeLater(() -> {
 				dg = new DependencyGraph(DependencyGraphView.this.service.getRepository().getAssociations());
 				DependencyGraphView.this.updateGraph();
+				Platform.runLater(() -> toolBar.setDisable(false));
 			});
-			Task refreshTask = new Task<Void>() {
-				@Override
-				public Void call() throws EccoException {
-					//ArtifactsGraphView.this.updateGraph();
-					Platform.runLater(() -> toolBar.setDisable(false));
-					return null;
-				}
-			};
-
-			new Thread(refreshTask).start();
 		});
 		toolBar.getItems().add(new Separator());
 
@@ -100,7 +89,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
-		showLabelsCheckbox.setSelected(this.hideImpliedDependencies);
+		showLabelsCheckbox.setSelected(this.showLabels);
 		toolBar.getItems().add(showLabelsCheckbox);
 		showLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
 			DependencyGraphView.this.showLabels = new_val;
@@ -133,7 +122,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 		hideTransitiveDependenciesCheckBox.setSelected(this.hideTransitiveDependencies);
 		toolBar.getItems().add(hideTransitiveDependenciesCheckBox);
 		hideTransitiveDependenciesCheckBox.selectedProperty().addListener((ov, old_val, new_val) -> {
-			DependencyGraphView.this.hideImpliedDependencies = new_val;
+			DependencyGraphView.this.hideTransitiveDependencies = new_val;
 			DependencyGraphView.this.updateGraph();
 		});
 		toolBar.getItems().add(new Separator());

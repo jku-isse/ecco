@@ -67,7 +67,7 @@ public abstract class OperationView extends BorderPane {
 			}
 		});
 
-		this.setMinWidth(400);
+		this.setMinWidth(600);
 		//this.setMinHeight(200);
 
 

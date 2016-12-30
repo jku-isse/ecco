@@ -18,7 +18,7 @@ public class AssociationDetailView extends BorderPane {
 	final ObservableList<ModuleInfo> modulesData = FXCollections.observableArrayList();
 
 	private TextField associationId;
-	private TextArea associationName;
+	private TextField associationName;
 	private SplitPane splitPane;
 	private ToolBar toolBar;
 	private TextField associationPC;
@@ -55,7 +55,7 @@ public class AssociationDetailView extends BorderPane {
 
 		this.associationId = new TextField();
 		this.associationId.setEditable(false);
-		this.associationName = new TextArea();
+		this.associationName = new TextField();
 		this.associationPC = new TextField();
 
 		Button updateButton = new Button("Update");
