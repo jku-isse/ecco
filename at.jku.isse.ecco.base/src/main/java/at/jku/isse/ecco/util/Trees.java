@@ -532,6 +532,20 @@ public class Trees {
 
 
 	/**
+	 * Computes the depth of a node in the tree.
+	 *
+	 * @param node The node of the artifact tree.
+	 * @return The depth of the node in the tree.
+	 */
+	public static int computeDepth(Node node) {
+		if (node.getParent() == null)
+			return 0;
+		else
+			return 1 + computeDepth(node.getParent());
+	}
+
+
+	/**
 	 * Computes the number of artifacts contained in the tree grouped by depth.
 	 *
 	 * @param node The root of the artifact tree.

@@ -162,7 +162,10 @@ public class CommitView extends OperationView implements EccoListener {
 			Task<Commit> commitTask = new Task<Commit>() {
 				@Override
 				public Commit call() {
-					return CommitView.this.service.commit(configurationString);
+					if (!configurationString.isEmpty())
+						return CommitView.this.service.commit(configurationString);
+					else
+						return CommitView.this.service.commit();
 				}
 
 				@Override

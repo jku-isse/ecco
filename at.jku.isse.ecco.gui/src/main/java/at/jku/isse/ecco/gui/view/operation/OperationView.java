@@ -169,6 +169,7 @@ public abstract class OperationView extends BorderPane {
 
 		Button finishButton = new Button("Done");
 		finishButton.getStyleClass().add("error");
+		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		this.rightButtons.getChildren().setAll(finishButton);
 	}
 

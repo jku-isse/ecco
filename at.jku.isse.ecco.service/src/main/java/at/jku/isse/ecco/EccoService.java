@@ -1624,7 +1624,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			String configurationString = "";
 			if (Files.exists(configFile))
-				configurationString = new String(Files.readAllBytes(configFile));
+				configurationString = new String(Files.readAllBytes(configFile)).trim();
 			return this.commit(configurationString);
 		} catch (IOException e) {
 			throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
@@ -1754,20 +1754,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				throw new EccoException("Could not create warnings file.", e);
 			}
 			this.fireWriteEvent(warningsFile, this.writer);
-		}
-
-		// write hashes file into base directory
-		Path hashesFile = this.baseDir.resolve(HASHES_FILE_NAME);
-		if (Files.exists(hashesFile)) {
-			throw new EccoException("Hashes file already exists in base directory.");
-		} else {
-			try {
-				// TODO: compute file hashes
-				Files.write(hashesFile, "TODO: compute file hashes and put them here.".getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-			} catch (IOException e) {
-				throw new EccoException("Could not create hashes file.", e);
-			}
-			this.fireWriteEvent(hashesFile, this.writer);
 		}
 
 		return checkout;

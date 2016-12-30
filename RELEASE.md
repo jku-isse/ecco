@@ -4,8 +4,10 @@
 
 
 * 0.1.5
-  * major refactoring, most notably separation of service and repository
-  * added fetch, fork, push, pull commands
+  * major refactorings
+  	* separation of service and repository (types as well as projects)
+  	* separations of interfaces into public and private
+  * added fetch, fork, push, pull operations
   * added simple server functionality
   * (in progress) unit and integration tests
   * ...

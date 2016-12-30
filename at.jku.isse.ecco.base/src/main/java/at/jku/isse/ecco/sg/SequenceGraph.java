@@ -69,15 +69,14 @@ public interface SequenceGraph {
 	 * Sequence graph node.
 	 */
 	public interface Node {
-		public boolean getPol();
-
-		public void setPol(boolean pol);
-
 		public Map<? extends Artifact.Op<?>, ? extends Node> getChildren();
-
 
 		public interface Op extends Node {
 			public Map<Artifact.Op<?>, Op> getChildren();
+
+			public boolean getPol();
+
+			public void setPol(boolean pol);
 		}
 	}
 

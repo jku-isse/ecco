@@ -2,6 +2,7 @@ package at.jku.isse.ecco.plugin.artifact.file;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
+import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -15,32 +16,34 @@ import java.util.Objects;
 public class FileArtifactData implements ArtifactData {
 
 	private static byte[] getSHADigest(Path path) throws IOException, NoSuchAlgorithmException {
-		//InputStream fis = new FileInputStream(path.toFile());
-		InputStream fis = Files.newInputStream(path);
-		byte[] buffer = new byte[1024];
 		MessageDigest complete = MessageDigest.getInstance("SHA1");
-		int numRead;
-		do {
-			numRead = fis.read(buffer);
-			if (numRead > 0) {
-				complete.update(buffer, 0, numRead);
+
+		try (InputStream fis = Files.newInputStream(path)) {
+			byte[] buffer = new byte[1024];
+			int numRead = 0;
+			while (numRead != -1) {
+				numRead = fis.read(buffer);
+				if (numRead > 0) {
+					complete.update(buffer, 0, numRead);
+				}
 			}
-		} while (numRead != -1);
-		fis.close();
+		}
+
 		return complete.digest();
 	}
 
-	private static final String HEXES = "0123456789ABCDEF";
+//	private static final String HEXES = "0123456789ABCDEF";
 
 	private static String getHex(byte[] raw) {
-		if (raw == null) {
-			return null;
-		}
-		final StringBuilder hex = new StringBuilder(2 * raw.length);
-		for (final byte b : raw) {
-			hex.append(HEXES.charAt((b & 0xF0) >> 4)).append(HEXES.charAt((b & 0x0F)));
-		}
-		return hex.toString();
+//		if (raw == null) {
+//			return null;
+//		}
+//		final StringBuilder hex = new StringBuilder(2 * raw.length);
+//		for (final byte b : raw) {
+//			hex.append(HEXES.charAt((b & 0xF0) >> 4)).append(HEXES.charAt((b & 0x0F)));
+//		}
+//		return hex.toString();
+		return new HexBinaryAdapter().marshal(raw);
 	}
 
 	private static byte[] getData(Path path) throws IOException {

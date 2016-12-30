@@ -21,7 +21,6 @@ public class EccoGui extends Application implements EccoListener {
 	private EccoService eccoService;
 
 	private MainView mainView;
-	private InitView initView;
 
 	private Group root;
 
@@ -53,11 +52,6 @@ public class EccoGui extends Application implements EccoListener {
 		mainView.prefWidthProperty().bind(scene.widthProperty());
 
 
-//		this.initView = new InitView(eccoService);
-//		initView.prefHeightProperty().bind(scene.heightProperty());
-//		initView.prefWidthProperty().bind(scene.widthProperty());
-
-
 		this.eccoService.addListener(this);
 
 
@@ -77,17 +71,10 @@ public class EccoGui extends Application implements EccoListener {
 		} catch (EccoException e) {
 			e.printStackTrace();
 		}
-
-		System.exit(0); // TODO: this is to work around the graphstream swing thread bug!
 	}
 
 
 	private void updateView() {
-//		if (this.eccoService.isInitialized()) {
-//			this.root.getChildren().setAll(this.mainView);
-//		} else {
-//			this.root.getChildren().setAll(this.initView);
-//		}
 		this.root.getChildren().setAll(this.mainView);
 	}
 

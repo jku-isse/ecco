@@ -8,16 +8,11 @@ import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.DirectoryArtifactData;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.embed.swing.SwingNode;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
-import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
@@ -70,47 +65,40 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 		Button exportButton = new Button("Export");
 		toolBar.getItems().add(exportButton);
-		exportButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent ae) {
-				toolBar.setDisable(true);
+		exportButton.setOnAction(ae -> {
+			toolBar.setDisable(true);
 
-				FileChooser fileChooser = new FileChooser();
-				File selectedFile = fileChooser.showSaveDialog(ArtifactGraphView.this.getScene().getWindow());
+			FileChooser fileChooser = new FileChooser();
+			File selectedFile = fileChooser.showSaveDialog(ArtifactGraphView.this.getScene().getWindow());
 
-				if (selectedFile != null) {
-					FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-					try {
-						out.writeAll(ArtifactGraphView.this.graph, selectedFile.toString());
-						out.flush();
-					} catch (IOException e) {
-						new ExceptionAlert(e).show();
-					}
+			if (selectedFile != null) {
+				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
+				try {
+					out.writeAll(ArtifactGraphView.this.graph, selectedFile.toString());
+					out.flush();
+				} catch (IOException e) {
+					new ExceptionAlert(e).show();
 				}
-
-				toolBar.setDisable(false);
 			}
+
+			toolBar.setDisable(false);
 		});
 		toolBar.getItems().add(new Separator());
 
 
 		CheckBox depthFadeCheckBox = new CheckBox("Depth Fade");
 		toolBar.getItems().add(depthFadeCheckBox);
-		depthFadeCheckBox.selectedProperty().addListener(new ChangeListener<Boolean>() {
-			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
-				ArtifactGraphView.this.depthFade = new_val;
-				ArtifactGraphView.this.updateNodesAndEdgesStyles(new_val);
-			}
+		depthFadeCheckBox.selectedProperty().addListener((ov, old_val, new_val) -> {
+			ArtifactGraphView.this.depthFade = new_val;
+			ArtifactGraphView.this.updateNodesAndEdgesStyles(new_val);
 		});
 		toolBar.getItems().add(new Separator());
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		toolBar.getItems().add(showLabelsCheckbox);
-		showLabelsCheckbox.selectedProperty().addListener(new ChangeListener<Boolean>() {
-			public void changed(ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) {
-				ArtifactGraphView.this.showLabels = new_val;
-				ArtifactGraphView.this.updateGraphStylehseet(new_val);
-			}
+		showLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
+			ArtifactGraphView.this.showLabels = new_val;
+			ArtifactGraphView.this.updateGraphStylehseet(new_val);
 		});
 		toolBar.getItems().add(new Separator());
 
@@ -130,20 +118,10 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 		SwingNode swingNode = new SwingNode();
 
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				swingNode.setContent(view);
-			}
-		});
+		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
 
 
-		this.setOnScroll(new EventHandler<ScrollEvent>() {
-			@Override
-			public void handle(ScrollEvent event) {
-				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-			}
-		});
+		this.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
 
 
 		this.setCenter(swingNode);
@@ -219,20 +197,20 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		this.graph.addAttribute("ui.stylesheet",
 				"edge { size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
 						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: " + DEFAULT_SIZE + "px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } " +
-						"edge.A1 { fill-color: #ffaaaa; } " +
-						"edge.A2 { fill-color: #aaffaa; } " +
-						"edge.A3 { fill-color: #aaaaff; } " +
-						"edge.A4 { fill-color: #ffffaa; } " +
-						"edge.A5 { fill-color: #ffaaff; } " +
-						"edge.A6 { fill-color: #aaffff; } " +
-						"edge.A7 { fill-color: #aaaaaa; } " +
-						"node.A1 { fill-color: #ffaaaa; } " +
-						"node.A2 { fill-color: #aaffaa; } " +
-						"node.A3 { fill-color: #aaaaff; } " +
-						"node.A4 { fill-color: #ffffaa; } " +
-						"node.A5 { fill-color: #ffaaff; } " +
-						"node.A6 { fill-color: #aaffff; } " +
-						"node.A7 { fill-color: #aaaaaa; } ");
+						"edge.A1 { fill-color: #ffaaaa88; } " +
+						"edge.A2 { fill-color: #aaffaa88; } " +
+						"edge.A3 { fill-color: #aaaaff88; } " +
+						"edge.A4 { fill-color: #ffffaa88; } " +
+						"edge.A5 { fill-color: #ffaaff88; } " +
+						"edge.A6 { fill-color: #aaffff88; } " +
+						"edge.A7 { fill-color: #aaaaaa88; } " +
+						"node.A1 { fill-color: #ffaaaa88; } " +
+						"node.A2 { fill-color: #aaffaa88; } " +
+						"node.A3 { fill-color: #aaaaff88; } " +
+						"node.A4 { fill-color: #ffffaa88; } " +
+						"node.A5 { fill-color: #ffaaff88; } " +
+						"node.A6 { fill-color: #aaffff88; } " +
+						"node.A7 { fill-color: #aaaaaa88; } ");
 	}
 
 	private void updateGraph(boolean depthFade, boolean showLabels) {
@@ -266,10 +244,6 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		this.updateNodesAndEdgesStyles(depthFade);
 		this.updateGraphStylehseet(showLabels);
 
-//		while (this.layout.getStabilization() < 0.9) {
-//			this.layout.compute();
-//		}
-
 
 		this.graph.addSink(this.layout);
 		this.layout.addAttributeSink(this.graph);
@@ -278,7 +252,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	}
 
 
-	private static final int CHILD_COUNT_LIMIT = 100;
+	private static final int CHILD_COUNT_LIMIT = 20;
+	private static final int DEPTH_LIMIT = 10;
 	private static final int MAX_SIZE = 100;
 	private static final int MIN_SIZE = 30;
 	private static final int DEFAULT_SIZE = 20;
@@ -328,7 +303,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 //				graphNode.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
 //			}
 
-			if (eccoNode.getChildren().size() >= CHILD_COUNT_LIMIT) {
+			if (eccoNode.getChildren().size() >= CHILD_COUNT_LIMIT || depth >= DEPTH_LIMIT) {
 				// group children by association
 				Map<Association, Integer> groupMap = new HashMap<>();
 				this.groupArtifactsByAssocRec(eccoNode, groupMap);
@@ -383,7 +358,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		}
 
 
-		if (eccoNode.getChildren().size() < CHILD_COUNT_LIMIT) {
+		if (eccoNode.getChildren().size() < CHILD_COUNT_LIMIT && depth < DEPTH_LIMIT) {
 			for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
 				Node graphChildNode = this.traverseTree(eccoChildNode, depth + 1);
 

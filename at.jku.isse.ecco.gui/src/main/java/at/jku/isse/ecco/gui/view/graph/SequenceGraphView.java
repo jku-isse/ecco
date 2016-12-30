@@ -3,8 +3,6 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import javafx.embed.swing.SwingNode;
-import javafx.event.EventHandler;
-import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
@@ -30,7 +28,6 @@ public class SequenceGraphView extends BorderPane {
 
 	public SequenceGraphView() {
 
-
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
 
@@ -46,20 +43,10 @@ public class SequenceGraphView extends BorderPane {
 
 		SwingNode swingNode = new SwingNode();
 
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				swingNode.setContent(view);
-			}
-		});
+		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
 
 
-		this.setOnScroll(new EventHandler<ScrollEvent>() {
-			@Override
-			public void handle(ScrollEvent event) {
-				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-			}
-		});
+		this.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
 
 
 		this.setCenter(swingNode);
@@ -89,12 +76,7 @@ public class SequenceGraphView extends BorderPane {
 		org.graphstream.graph.Node root = this.graph.addNode("N");
 		root.setAttribute("ui.class", "start");
 
-		this.traverseSequenceGraph(sg.getRoot(), root, "", new HashSet<Artifact<?>>());
-
-
-//		while (this.layout.getStabilization() < 0.9) {
-//			this.layout.compute();
-//		}
+		this.traverseSequenceGraph(sg.getRoot(), root, "", new HashSet<>());
 
 
 		this.graph.addSink(this.layout);

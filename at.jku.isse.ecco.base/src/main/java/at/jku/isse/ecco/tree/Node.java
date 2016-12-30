@@ -71,6 +71,11 @@ public interface Node {
 	public int countArtifacts();
 
 	/**
+	 * See {@link at.jku.isse.ecco.util.Trees#countArtifacts(Node)}
+	 */
+	public int computeDepth();
+
+	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#countArtifactsPerDepth(Node)}
 	 */
 	public Map<Integer, Integer> countArtifactsPerDepth();

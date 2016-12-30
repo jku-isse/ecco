@@ -235,11 +235,6 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 		}
 
 
-//		while (this.layout.getStabilization() < 0.9) {
-//			this.layout.compute();
-//		}
-
-
 		this.graph.addSink(this.layout);
 		this.layout.addAttributeSink(this.graph);
 

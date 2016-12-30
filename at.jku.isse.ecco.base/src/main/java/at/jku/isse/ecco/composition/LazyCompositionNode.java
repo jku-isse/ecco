@@ -237,6 +237,11 @@ public class LazyCompositionNode implements Node, Node.Op {
 	}
 
 	@Override
+	public int computeDepth() {
+		return this.operator.computeDepth();
+	}
+
+	@Override
 	public Map<Integer, Integer> countArtifactsPerDepth() {
 		return this.operator.countArtifactsPerDepth();
 	}

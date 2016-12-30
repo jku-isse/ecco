@@ -9,12 +9,9 @@ import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
-import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
@@ -50,25 +47,18 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 		Button refreshButton = new Button("Refresh");
 		toolBar.getItems().add(refreshButton);
-		refreshButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-//				//SwingUtilities.invokeLater(() -> {
-//				Platform.runLater(() -> {
-//					CommitGraphView.this.updateGraph();
-//				});
-				Task refreshTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						CommitGraphView.this.updateGraph();
-						Platform.runLater(() -> toolBar.setDisable(false));
-						return null;
-					}
-				};
+		refreshButton.setOnAction(e -> {
+			toolBar.setDisable(true);
+			Task refreshTask = new Task<Void>() {
+				@Override
+				public Void call() throws EccoException {
+					CommitGraphView.this.updateGraph();
+					Platform.runLater(() -> toolBar.setDisable(false));
+					return null;
+				}
+			};
 
-				new Thread(refreshTask).start();
-			}
+			new Thread(refreshTask).start();
 		});
 		toolBar.getItems().add(new Separator());
 
@@ -111,22 +101,12 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 		SwingNode swingNode = new SwingNode();
 
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				swingNode.setContent(view);
-			}
-		});
+		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
 
 		this.setCenter(swingNode);
 
 
-		swingNode.setOnScroll(new EventHandler<ScrollEvent>() {
-			@Override
-			public void handle(ScrollEvent event) {
-				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-			}
-		});
+		swingNode.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
 
 
 		service.addListener(this);
@@ -197,11 +177,6 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 				associationEdge.setAttribute("ui.class", "assoc");
 			}
 		}
-
-
-//		while (this.layout.getStabilization() < 0.9) {
-//			this.layout.compute();
-//		}
 
 
 		this.graph.addSink(this.layout);

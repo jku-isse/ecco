@@ -96,6 +96,13 @@ public class NodeOperator {
 	}
 
 	/**
+	 * See {@link at.jku.isse.ecco.util.Trees#computeDepth(Node)}
+	 */
+	public int computeDepth() {
+		return Trees.computeDepth(this.node);
+	}
+
+	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#countArtifactsPerDepth(Node)}
 	 */
 	public Map<Integer, Integer> countArtifactsPerDepth() {

@@ -32,8 +32,8 @@ public class ChartsView extends BorderPane implements EccoListener {
 
 	private ObservableList<PieChart.Data> artifactsPerAssociationData;
 	private ObservableList<PieChart.Data> versionsPerFeature;
-	private XYChart.Series artifactsPerDepthSeries;
-	private XYChart.Series modulesPerOrderSeries;
+	private XYChart.Series<Number, Number> artifactsPerDepthSeries;
+	private XYChart.Series<String, Number> modulesPerOrderSeries;
 	private XYChart.Series artifactsPerDepthAndOrderSeries;
 
 	public ChartsView(EccoService service) {
@@ -92,13 +92,13 @@ public class ChartsView extends BorderPane implements EccoListener {
 						// artifacts per depth
 						ChartsView.this.artifactsPerDepthSeries.getData().clear();
 						for (Map.Entry<Integer, Integer> entry : artifactsPerDepth.entrySet()) {
-							ChartsView.this.artifactsPerDepthSeries.getData().add(new XYChart.Data(entry.getKey(), entry.getValue()));
+							ChartsView.this.artifactsPerDepthSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
 						}
 
 						// modules per order
 						ChartsView.this.modulesPerOrderSeries.getData().clear();
 						for (int i = 0; i < maxOrder; i++) {
-							ChartsView.this.modulesPerOrderSeries.getData().add(new XYChart.Data(Integer.toString(i), modulesPerOrderMap[i]));
+							ChartsView.this.modulesPerOrderSeries.getData().add(new XYChart.Data<>(Integer.toString(i), modulesPerOrderMap[i]));
 						}
 
 //						// artifacts per depth and order

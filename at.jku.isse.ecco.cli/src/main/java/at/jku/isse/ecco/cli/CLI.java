@@ -11,9 +11,6 @@ import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.util.Trees;
-import org.perf4j.LoggingStopWatch;
-import org.perf4j.StopWatch;
-import org.perf4j.aop.Profiled;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -81,12 +78,11 @@ public class CLI implements EccoListener {
 	 * - ignored files: those in ignore list
 	 * - changed and unchanged files (during checkout save hash for every checked out file. this needs to be done in base directory, similar to .config or .warnings. for simplicity, initially i could generate .hashes or .ecco/.hashes).
 	 * - current configuration: see .config
+	 * - list loaded plugins
 	 */
 
 
-	@Profiled // this annotation requires aspectj or spring aop to work.
 	public void init() {
-		StopWatch stopWatch = new LoggingStopWatch();
 		if (this.eccoService.repositoryDirectoryExists()) {
 			System.err.println("ERROR: Repository already exists at this location.");
 		} else {
@@ -96,7 +92,6 @@ public class CLI implements EccoListener {
 			} else
 				System.err.println("ERROR: Error during repository initialization.");
 		}
-		stopWatch.stop();
 	}
 
 	public void status() {

@@ -3,6 +3,11 @@ ext {
 }
 
 dependencies {
+	compile 'org.slf4j:slf4j-api:1.7.12'
+
+	compile 'com.google.inject:guice:4.0'
+	compile 'com.google.inject.extensions:guice-multibindings:4.0'
+
 	compile project(':at.jku.isse.ecco.base')
 	compile project(':at.jku.isse.ecco.mem')
 
