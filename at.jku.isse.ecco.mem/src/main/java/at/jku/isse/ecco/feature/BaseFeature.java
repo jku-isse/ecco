@@ -24,13 +24,17 @@ public class BaseFeature implements Feature {
 
 //	private int nextVersion = 0;
 
-	public BaseFeature() {
-
-	}
-
-	public BaseFeature(String name) {
-		this(UUID.randomUUID().toString(), name, "");
-	}
+//	public BaseFeature() {
+//		this(UUID.randomUUID().toString(), "", "");
+//	}
+//
+//	public BaseFeature(String name) {
+//		this(UUID.randomUUID().toString(), name, "");
+//	}
+//
+//	public BaseFeature(String name, String description) {
+//		this(UUID.randomUUID().toString(), name, description);
+//	}
 
 	public BaseFeature(String id, String name, String description) {
 		checkNotNull(id);

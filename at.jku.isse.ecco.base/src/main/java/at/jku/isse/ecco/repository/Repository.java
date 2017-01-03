@@ -103,10 +103,6 @@ public interface Repository {
 
 		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
 
-		public Feature addFeature(String name);
-
-		public Feature addFeature(String name, String description);
-
 		public Feature addFeature(String id, String name, String description);
 
 

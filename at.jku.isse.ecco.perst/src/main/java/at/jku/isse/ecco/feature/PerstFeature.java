@@ -27,13 +27,13 @@ public class PerstFeature extends Persistent implements Feature {
 
 //	private int nextVersion = 0;
 
-	public PerstFeature() {
-
-	}
-
-	public PerstFeature(String name) {
-		this(UUID.randomUUID().toString(), name, "");
-	}
+//	public PerstFeature() {
+//
+//	}
+//
+//	public PerstFeature(String name) {
+//		this(UUID.randomUUID().toString(), name, "");
+//	}
 
 	public PerstFeature(String id, String name, String description) {
 		checkNotNull(id);

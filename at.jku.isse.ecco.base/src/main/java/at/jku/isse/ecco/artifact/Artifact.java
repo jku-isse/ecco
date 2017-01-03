@@ -15,6 +15,11 @@ import java.util.Optional;
 public interface Artifact<DataType extends ArtifactData> {
 
 	/**
+	 * Setting this property indicates that the artifact's file representation was not modified since it was written.
+	 */
+	public static final String PROPERTY_UNMODIFIED = "unmodified";
+
+	/**
 	 * This property is set by some tree operations (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)} and then subsequently used by other tree operations (see for example {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}.
 	 */
 	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
@@ -186,21 +191,33 @@ public interface Artifact<DataType extends ArtifactData> {
 	 */
 	public interface Op<DataType extends ArtifactData> extends Artifact<DataType> {
 
+		/**
+		 * Sets whether this artifact is atomic or not (see {@link Artifact#isAtomic()}).
+		 *
+		 * @param atomic Whether the artifact is atomic (true) or not (false).
+		 */
 		public void setAtomic(boolean atomic);
 
+		/**
+		 * Sets whether this artifact is ordered or not (see {@link Artifact#isOrdered()}).
+		 *
+		 * @param ordered Whether the artifact is ordered (true) or not (false).
+		 */
 		public void setOrdered(boolean ordered);
 
+		/**
+		 * Sets the sequence graph of this artifact.
+		 *
+		 * @param sequenceGraph The sequence graph.
+		 */
 		public void setSequenceGraph(SequenceGraph.Op sequenceGraph);
 
+		/**
+		 * Sets the sequence number of the artifact. This is used by the sequence graph.
+		 *
+		 * @param sequenceNumber
+		 */
 		public void setSequenceNumber(int sequenceNumber);
-
-
-		public boolean useReferencesInEquals();
-
-		public void setUseReferencesInEquals(boolean useReferenesInEquals);
-
-
-		public SequenceGraph.Op createSequenceGraph();
 
 
 		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
@@ -251,6 +268,15 @@ public interface Artifact<DataType extends ArtifactData> {
 
 		@Override
 		public Node.Op getContainingNode();
+
+
+		public SequenceGraph.Op createSequenceGraph();
+
+		// TODO: possibly remove these:
+
+		public boolean useReferencesInEquals();
+
+		public void setUseReferencesInEquals(boolean useReferenesInEquals);
 	}
 
 }

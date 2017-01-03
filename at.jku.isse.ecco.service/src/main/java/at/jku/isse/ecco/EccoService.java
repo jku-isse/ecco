@@ -65,6 +65,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	public static final Path CONFIG_FILE_NAME = Paths.get(".config");
 	public static final Path WARNINGS_FILE_NAME = Paths.get(".warnings");
 	public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
+	public static final Path IGNORES_FILE_NAME = Paths.get(".ignores");
+
 
 	private Properties properties = new Properties();
 
@@ -147,6 +149,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.defaultIgnorePatterns.add("glob:" + REPOSITORY_DIR_NAME.toString());
 		this.defaultIgnorePatterns.add("glob:" + CONFIG_FILE_NAME.toString());
 		this.defaultIgnorePatterns.add("glob:" + WARNINGS_FILE_NAME.toString());
+		this.defaultIgnorePatterns.add("glob:" + HASHES_FILE_NAME.toString());
 
 
 		// load properties file
@@ -210,35 +213,38 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	private Set<String> customIgnorePatterns = new HashSet<>(); // TODO: set this
 
 	public Set<String> getIgnorePatterns() {
-		return this.settingsDao.loadIgnorePatterns();
+		//return this.settingsDao.loadIgnorePatterns();
+		return Collections.unmodifiableSet(this.customIgnorePatterns);
 	}
 
 	public void addIgnorePattern(String ignorePattern) {
-		try {
-			this.transactionStrategy.begin();
-
-			this.settingsDao.addIgnorePattern(ignorePattern);
-
-			this.transactionStrategy.end();
-		} catch (Exception e) {
-			this.transactionStrategy.rollback();
-
-			throw new EccoException("Error adding ignore pattern.", e);
-		}
+//		try {
+//			this.transactionStrategy.begin();
+//
+//			this.settingsDao.addIgnorePattern(ignorePattern);
+//
+//			this.transactionStrategy.end();
+//		} catch (Exception e) {
+//			this.transactionStrategy.rollback();
+//
+//			throw new EccoException("Error adding ignore pattern.", e);
+//		}
+		this.customIgnorePatterns.add(ignorePattern);
 	}
 
 	public void removeIgnorePattern(String ignorePattern) {
-		try {
-			this.transactionStrategy.begin();
-
-			this.settingsDao.removeIgnorePattern(ignorePattern);
-
-			this.transactionStrategy.end();
-		} catch (Exception e) {
-			this.transactionStrategy.rollback();
-
-			throw new EccoException("Error removing ignore pattern.", e);
-		}
+//		try {
+//			this.transactionStrategy.begin();
+//
+//			this.settingsDao.removeIgnorePattern(ignorePattern);
+//
+//			this.transactionStrategy.end();
+//		} catch (Exception e) {
+//			this.transactionStrategy.rollback();
+//
+//			throw new EccoException("Error removing ignore pattern.", e);
+//		}
+		this.customIgnorePatterns.remove(ignorePattern);
 	}
 
 
@@ -374,6 +380,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 	/**
+	 * Checks if a repository exists at the current path (the working directory from which ecco was started) or any of its parents.
+	 *
+	 * @return True if a repository was found, false otherwise.
+	 */
+	public boolean repositoryExists() {
+		return this.repositoryExists(Paths.get(""));
+	}
+
+	/**
 	 * Checks if a repository exists at the given path or any of its parents.
 	 *
 	 * @param path The path at which to start looking for a repository.
@@ -392,15 +407,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		} else { // repository was found
 			return true;
 		}
-	}
-
-	/**
-	 * Checks if a repository exists at the current path (the working directory from which ecco was started) or any of its parents.
-	 *
-	 * @return True if a repository was found, false otherwise.
-	 */
-	public boolean repositoryExists() {
-		return this.repositoryExists(Paths.get(""));
 	}
 
 	/**
@@ -536,7 +542,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.settingsDao.init();
 		this.commitDao.init();
 
-//			this.reader.setIgnoredFiles(this.ignoredFiles);
+
+		// ignored file patterns
+		try {
+			Path ignoresFile = this.repositoryDir.resolve(IGNORES_FILE_NAME);
+			if (!Files.exists(ignoresFile))
+				Files.createFile(ignoresFile);
+			this.defaultIgnorePatterns.addAll(Files.readAllLines(ignoresFile));
+		} catch (IOException e) {
+			throw new EccoException("Error creating or reading ignores file.", e);
+		}
 		this.reader.getIgnorePatterns().clear();
 		this.reader.getIgnorePatterns().addAll(this.customIgnorePatterns);
 		this.reader.getIgnorePatterns().addAll(this.defaultIgnorePatterns);
@@ -856,7 +871,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					} else { // name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
 						if (features.isEmpty()) {
-							feature = repository.addFeature(featureName);
+							feature = repository.addFeature(UUID.randomUUID().toString(), featureName, "");
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
 						} else {
@@ -882,7 +897,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					} else { // name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
 						if (features.isEmpty()) {
-							feature = repository.addFeature(featureName);
+							feature = repository.addFeature(UUID.randomUUID().toString(), featureName, "");
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
 						} else {
@@ -890,7 +905,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						}
 					}
 
-					FeatureVersion featureVersion = feature.createNewVersion();
+					//FeatureVersion featureVersion = feature.createNewVersion();
+					FeatureVersion featureVersion = feature.addVersion(UUID.randomUUID().toString());
 					newFeatureVersions.add(featureVersion);
 
 					boolean featureSign = !(featureInstanceString.startsWith("!") || featureInstanceString.startsWith("-"));
@@ -910,7 +926,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					} else { // name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
 						if (features.isEmpty()) {
-							feature = repository.addFeature(featureName, "");
+							feature = repository.addFeature(UUID.randomUUID().toString(), featureName, "");
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
 						} else {
@@ -920,7 +936,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 					FeatureVersion featureVersion = feature.getLatestVersion();
 					if (featureVersion == null) {
-						featureVersion = feature.createNewVersion();
+						//featureVersion = feature.createNewVersion();
+						featureVersion = feature.addVersion(UUID.randomUUID().toString());
 						newFeatureVersions.add(featureVersion);
 					}
 
@@ -1592,9 +1609,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return True if the repository was created, false otherwise.
 	 */
 	public synchronized boolean init() throws EccoException {
-		if (this.isInitialized()) {
+		if (this.isInitialized())
 			throw new EccoException("Service must not be initialized for init operation.");
-		}
+
+		if (this.repositoryDirectoryExists())
+			throw new EccoException("Repository already exists at this location.");
 
 		try {
 			if (!this.repositoryDirectoryExists())

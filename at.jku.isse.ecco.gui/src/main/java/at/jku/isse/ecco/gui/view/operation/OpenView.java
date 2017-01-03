@@ -31,7 +31,7 @@ public class OpenView extends OperationView {
 
 	private void step1() {
 		Button cancelButton = new Button("Cancel");
-		cancelButton.setOnAction(event1 -> ((Stage) this.getScene().getWindow()).close());
+		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		this.leftButtons.getChildren().setAll(cancelButton);
 
 		this.headerLabel.setText("Repository Directory");
@@ -87,7 +87,7 @@ public class OpenView extends OperationView {
 		});
 
 
-		openButton.setOnAction(event1 -> {
+		openButton.setOnAction(event -> {
 			try {
 				Path repositoryDir = Paths.get(repositoryDirTextField.getText());
 				this.service.setRepositoryDir(repositoryDir);
@@ -102,7 +102,7 @@ public class OpenView extends OperationView {
 
 		this.fit();
 
-		Platform.runLater(() -> repositoryDirTextField.requestFocus());
+		Platform.runLater(repositoryDirTextField::requestFocus);
 	}
 
 

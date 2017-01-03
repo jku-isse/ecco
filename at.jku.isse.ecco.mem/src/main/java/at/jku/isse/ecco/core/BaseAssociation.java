@@ -32,7 +32,8 @@ public class BaseAssociation implements Association, Association.Op {
 	 * Constructs a new association.
 	 */
 	public BaseAssociation() {
-		this.id = UUID.randomUUID().toString();
+		//this.id = id;
+		//this.id = UUID.randomUUID().toString();
 	}
 
 	@Override

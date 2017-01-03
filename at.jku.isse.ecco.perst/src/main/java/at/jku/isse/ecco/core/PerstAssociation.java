@@ -31,7 +31,8 @@ public class PerstAssociation extends Persistent implements Association, Associa
 	private int presenceCount;
 
 	public PerstAssociation() {
-		this.id = UUID.randomUUID().toString();
+		//this.id = id;
+		//this.id = UUID.randomUUID().toString();
 	}
 
 	@Override

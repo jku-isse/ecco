@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.plugin.artifact;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
@@ -8,6 +9,7 @@ import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
 
@@ -105,14 +107,26 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		for (Path path : input) {
 
+			// read file hashes if they exist
+			Properties hashes = new Properties();
+			Path hashesFile = base.resolve(EccoService.HASHES_FILE_NAME);
+			if (Files.exists(hashesFile)) {
+				try (Reader reader = Files.newBufferedReader(hashesFile)) {
+					hashes.load(reader);
+				} catch (IOException e) {
+					throw new EccoException("Error reading hashes file.", e);
+				}
+			}
+
 			Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap = new HashMap<>();
+			Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToUnmodifiedFilesMap = new HashMap<>();
 
 			// this reader itself is responsible for the directory tree structure (unless there is an adapter that deals with a directory)
 			Map<Path, Node.Op> directoryNodes = new HashMap<>();
-			Node.Op baseDirectoryNode = this.readDirectories(base, base.resolve(path), readerToFilesMap, directoryNodes);
+			Node.Op baseDirectoryNode = this.readDirectories(base, base.resolve(path), hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes);
 			nodes.add(baseDirectoryNode);
 
-			// let readers read the assigned files
+			// let readers read the assigned, modified files
 			for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
 				ArrayList<Path> filesList = readerToFilesMap.get(reader);
 
@@ -123,6 +137,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					for (Node.Op pluginNode : pluginNodes) {
 						if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData))
 							throw new EccoException("Plugin must return valid plugin nodes as root nodes in order for it to be compatible with dispatchers.");
+
 						PluginArtifactData pluginArtifactData = (PluginArtifactData) pluginNode.getArtifact().getData();
 						Path parent = pluginArtifactData.getPath().getParent();
 						if (parent == null)
@@ -132,6 +147,29 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 							parentNode.addChild(pluginNode);
 						else
 							throw new EccoException("Plugin '" + pluginArtifactData.getPluginId() + "' returned an invalid plugin node: " + pluginNode);
+					}
+				}
+			}
+
+			// deal with unmodified files
+			for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
+				ArrayList<Path> unmodifiedFilesList = readerToFilesMap.get(reader);
+
+				if (unmodifiedFilesList != null) {
+					for (Path unmodifiedFilePath : unmodifiedFilesList) {
+						Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), unmodifiedFilePath));
+						Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
+						pluginArtifact.putProperty(Artifact.PROPERTY_UNMODIFIED, true);
+
+						PluginArtifactData pluginArtifactData = (PluginArtifactData) pluginNode.getArtifact().getData();
+						Path parent = pluginArtifactData.getPath().getParent();
+						if (parent == null)
+							parent = Paths.get(".").normalize();
+						Node.Op parentNode = directoryNodes.get(parent);
+						if (parentNode != null)
+							parentNode.addChild(pluginNode);
+						else
+							throw new EccoException("Plugin '" + this.getPluginId() + "' returned an invalid plugin node: " + pluginNode);
 					}
 				}
 			}
@@ -170,7 +208,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
-	private Node.Op readDirectories(Path base, Path current, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap, Map<Path, Node.Op> directoryNodes) {
+	private Node.Op readDirectories(Path base, Path current, Properties hashes, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToUnmodifiedFilesMap, Map<Path, Node.Op> directoryNodes) {
 		Path relativeCurrent = base.relativize(current);
 
 		try {
@@ -184,7 +222,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 					// go into sub directories
 					Files.list(current).forEach(d -> {
-						Node.Op child = this.readDirectories(base, d, readerToFilesMap, directoryNodes);
+						Node.Op child = this.readDirectories(base, d, hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes);
 						if (child != null)
 							directoryNode.addChild(child);
 					});
@@ -193,15 +231,28 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				}
 			} else { // deal with files and directories that can be dispatched
 				if (!this.isIgnored(relativeCurrent)) { // if file is not ignored add it to readerToFilesMap
-					// assign file to reader
+					Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> filesMap;
+
+					// get reader for file
 					ArtifactReader<Path, Set<Node.Op>> reader = this.getReaderForFile(base, relativeCurrent);
 
+//					// check if file was modified
+//					String hash = hashes.getProperty(relativeCurrent.toString());
+//					if (hash != null && hash.equals(EccoUtil.getSHA(base.resolve(relativeCurrent)))) { // hashes match
+//						filesMap = readerToUnmodifiedFilesMap;
+//					} else {
+//						filesMap = readerToFilesMap;
+//					}
+					// TODO: for now, always read all the files.
+					filesMap = readerToFilesMap;
+
+					// assign file to reader
 					if (reader != null) {
-						ArrayList<Path> fileList = readerToFilesMap.get(reader);
+						ArrayList<Path> fileList = filesMap.get(reader);
 						if (fileList == null)
-							fileList = new ArrayList<Path>();
+							fileList = new ArrayList<>();
 						fileList.add(relativeCurrent);
-						readerToFilesMap.put(reader, fileList);
+						filesMap.put(reader, fileList);
 						this.fireReadEvent(relativeCurrent, reader);
 
 //						// add artifact plugin node

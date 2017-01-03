@@ -10,6 +10,13 @@ import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 
+import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -162,6 +169,28 @@ public class EccoUtil {
 		}
 
 		return node2;
+	}
+
+
+	public static String getSHA(Path path) {
+		try {
+			MessageDigest complete = MessageDigest.getInstance("SHA1");
+
+			try (InputStream fis = Files.newInputStream(path)) {
+				byte[] buffer = new byte[1024];
+				int numRead = 0;
+				while (numRead != -1) {
+					numRead = fis.read(buffer);
+					if (numRead > 0) {
+						complete.update(buffer, 0, numRead);
+					}
+				}
+			}
+
+			return new HexBinaryAdapter().marshal(complete.digest());
+		} catch (IOException | NoSuchAlgorithmException e) {
+			throw new EccoException("Could not compute hash for " + path, e);
+		}
 	}
 
 }

@@ -47,7 +47,7 @@ public class PerstTest {
 		this.closeDatabase();
 
 		// do work
-		PerstFeature feature = new PerstFeature("F1");
+		PerstFeature feature = new PerstFeature("F1", "F1", "");
 		ModuleFeature moduleFeature = new PerstModuleFeature(feature, true);
 
 //		root.module.add(moduleFeature);

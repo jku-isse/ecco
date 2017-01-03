@@ -30,7 +30,7 @@ public class InitView extends OperationView {
 
 	private void step1() {
 		Button cancelButton = new Button("Cancel");
-		cancelButton.setOnAction(event1 -> ((Stage) this.getScene().getWindow()).close());
+		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		this.leftButtons.getChildren().setAll(cancelButton);
 
 		this.headerLabel.setText("Repository Directory");
@@ -86,7 +86,7 @@ public class InitView extends OperationView {
 		});
 
 
-		initButton.setOnAction(event1 -> {
+		initButton.setOnAction(event -> {
 			try {
 				Path repositoryDir = Paths.get(repositoryDirTextField.getText());
 				this.service.setRepositoryDir(repositoryDir);

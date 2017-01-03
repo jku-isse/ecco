@@ -2,6 +2,7 @@ package at.jku.isse.ecco.plugin.artifact;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
@@ -10,16 +11,12 @@ import com.google.inject.name.Named;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path> {
@@ -145,35 +142,13 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 
 			Path[] outputPaths = writer.write(base, pluginInput);
 			for (Path outputPath : outputPaths) {
-				try {
-					hashes.put(outputPath.toString(), getSHA(base.resolve(outputPath)));
-				} catch (Exception e) {
-					LOGGER.error("Could not compute hash for " + outputPath);
-				}
+				hashes.put(outputPath.toString(), EccoUtil.getSHA(base.resolve(outputPath)));
 			}
 
 			output.addAll(Arrays.asList(outputPaths));
 
 			this.fireWriteEvent(pluginArtifactData.getPath(), writer);
 		}
-	}
-
-
-	private static String getSHA(Path path) throws IOException, NoSuchAlgorithmException {
-		MessageDigest complete = MessageDigest.getInstance("SHA1");
-
-		try (InputStream fis = Files.newInputStream(path)) {
-			byte[] buffer = new byte[1024];
-			int numRead = 0;
-			while (numRead != -1) {
-				numRead = fis.read(buffer);
-				if (numRead > 0) {
-					complete.update(buffer, 0, numRead);
-				}
-			}
-		}
-
-		return new HexBinaryAdapter().marshal(complete.digest());
 	}
 
 }

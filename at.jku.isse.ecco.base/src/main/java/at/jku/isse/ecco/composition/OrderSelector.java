@@ -10,6 +10,11 @@ import java.util.Collection;
  */
 public interface OrderSelector {
 
+	/**
+	 * Returns a collection of ordered artifacts for which multiple possible orders of children existed.
+	 *
+	 * @return The ordered artifacts with ambiguous order of children.
+	 */
 	public Collection<Artifact<?>> getUncertainOrders();
 
 	/**

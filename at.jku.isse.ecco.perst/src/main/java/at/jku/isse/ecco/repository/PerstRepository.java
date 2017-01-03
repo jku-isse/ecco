@@ -96,16 +96,6 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 	}
 
 	@Override
-	public Feature addFeature(String name) {
-		return this.addFeature(name, "");
-	}
-
-	@Override
-	public Feature addFeature(String name, String description) {
-		return this.addFeature(UUID.randomUUID().toString(), name, description);
-	}
-
-	@Override
 	public Feature addFeature(String id, String name, String description) {
 		PerstFeature feature = new PerstFeature(id, name, description);
 		this.features.put(feature.getId(), feature);

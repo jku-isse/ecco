@@ -117,29 +117,23 @@ public interface Node {
 
 	// OPERAND INTERFACE
 
-
-	// TODO: move these to the private interface
-
-	/**
-	 * Sets the node to be unique or not.
-	 *
-	 * @param unique Whether the node is unique or not.
-	 */
-	public void setUnique(boolean unique);
-
-	/**
-	 * Creates a new instance of this type of node.
-	 *
-	 * @return The new node instance.
-	 */
-	public Op createNode();
-
-
 	/**
 	 * Private interface for node operands that are used internally and not passed outside.
 	 */
 	public interface Op extends Node {
+		/**
+		 * Returns the transient properties of this artifact.
+		 *
+		 * @return The properties map of this artifact.
+		 */
 		public Map<String, Object> getProperties();
+
+		/**
+		 * Sets the node to be unique or not.
+		 *
+		 * @param unique Whether the node is unique or not.
+		 */
+		public void setUnique(boolean unique);
 
 		@Override
 		public Artifact.Op<?> getArtifact();
@@ -171,16 +165,21 @@ public interface Node {
 		/**
 		 * Adds a new child node to this node.
 		 *
-		 * @param child that should be added
+		 * @param child Child node to be added.
 		 */
 		public void addChild(Op child);
 
+		/**
+		 * Adds a list of children to this node.
+		 *
+		 * @param children List of child nodes to be added.
+		 */
 		public void addChildren(Op... children);
 
 		/**
 		 * Removes the given child from the node.
 		 *
-		 * @param child that should be removed
+		 * @param child Child node that is to be removed.
 		 */
 		public void removeChild(Op child);
 
@@ -213,6 +212,15 @@ public interface Node {
 		 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Op)}
 		 */
 		public void checkConsistency();
+
+
+		/**
+		 * Creates a new instance of this type of node.
+		 *
+		 * @return The new node instance.
+		 */
+		public Op createNode();
+
 	}
 
 }

@@ -102,6 +102,7 @@ public class RepositoryOperator {
 		Collection<Association.Op> copiedAssociations = new ArrayList<>();
 		for (Association association : this.repository.getAssociations()) {
 			Association.Op copiedAssociation = entityFactory.createAssociation();
+			copiedAssociation.setId(UUID.randomUUID().toString());
 
 			PresenceCondition thisPresenceCondition = association.getPresenceCondition();
 
@@ -307,6 +308,7 @@ public class RepositoryOperator {
 
 			// ASSOCIATION
 			Association.Op extractedA = this.entityFactory.createAssociation();
+			extractedA.setId(UUID.randomUUID().toString());
 
 
 			// PRESENCE CONDITION
@@ -387,6 +389,7 @@ public class RepositoryOperator {
 
 		// create association
 		Association.Op association = this.entityFactory.createAssociation(presenceCondition, nodes);
+		association.setId(UUID.randomUUID().toString());
 
 		// commit association
 		Commit commit = this.extract(association);
@@ -474,6 +477,7 @@ public class RepositoryOperator {
 				// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
 				//Association intA = origA.slice(inputA);
 				Association.Op intA = this.entityFactory.createAssociation();
+				intA.setId(UUID.randomUUID().toString());
 
 
 				// PRESENCE CONDITION

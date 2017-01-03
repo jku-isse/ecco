@@ -50,6 +50,33 @@ public class ArtifactOperator {
 	}
 
 
+//	// TODO: either move this into NodeOperator or remove it entirely.
+//	public void sequence(Artifact.Op<?> other) {
+//		checkNotNull(other);
+//
+//		if (!this.artifact.isOrdered() || !other.isOrdered())
+//			throw new EccoException("Artifacts must be ordered for sequencing.");
+//		if (!this.artifact.equals(other))
+//			throw new EccoException("Artifacts must be equal for sequencing.");
+//
+//		if (this.artifact.isSequenced() && other.isSequenced() && this.artifact.getSequenceGraph() != other.getSequenceGraph()) {
+//			this.artifact.getSequenceGraph().sequence(other.getSequenceGraph());
+//			other.setSequenceGraph(this.artifact.getSequenceGraph());
+//		} else if (!this.artifact.isSequenced() && !other.isSequenced()) {
+//			this.artifact.setSequenceGraph(this.artifact.createSequenceGraph());
+//			this.artifact.getSequenceGraph().sequence(left);
+//		}
+//
+//		if (this.artifact.isSequenced() && !other.isSequenced()) {
+//			this.artifact.getSequenceGraph().sequence(right);
+//		} else if (!this.artifact.isSequenced() && other.isSequenced()) {
+//			other.getSequenceGraph().sequence(left);
+//			this.artifact.setSequenceGraph(other.getSequenceGraph());
+//			throw new EccoException("Left node was not sequenced but right node was!");
+//		}
+//	}
+
+
 	// # REFERENCES ####################################################################################################
 
 	public boolean uses(Artifact.Op<?> target) {
