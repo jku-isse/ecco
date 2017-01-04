@@ -37,7 +37,7 @@ public class ConfigurationOperator {
 
 
 	protected String createConfigurationString() {
-		return configuration.getFeatureInstances().stream().map((FeatureInstance fi) -> {
+		return this.configuration.getFeatureInstances().stream().map((FeatureInstance fi) -> {
 			StringBuffer sb = new StringBuffer();
 			if (fi.getSign())
 				sb.append("+");
@@ -52,7 +52,8 @@ public class ConfigurationOperator {
 
 	@Override
 	public String toString() {
-		return this.createConfigurationString();
+		//return this.createConfigurationString();
+		return this.configuration.getFeatureInstances().stream().map(fi -> fi.toString()).collect(Collectors.joining(", "));
 	}
 
 

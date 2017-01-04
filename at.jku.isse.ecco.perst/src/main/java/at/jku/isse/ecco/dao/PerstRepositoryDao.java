@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.dao;
 
+import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.artifact.PerstArtifact;
+import at.jku.isse.ecco.artifact.PerstArtifactReference;
 import at.jku.isse.ecco.core.PerstAssociation;
 import at.jku.isse.ecco.feature.PerstFeature;
 import at.jku.isse.ecco.feature.PerstFeatureVersion;
@@ -81,10 +83,19 @@ public class PerstRepositoryDao extends PerstAbstractGenericDao implements Repos
 				this.saveNode(child);
 			}
 			if (node.getArtifact() != null) {
+				// store artifact itself
 				((PerstArtifact) node.getArtifact()).store();
+				// store sequence graph
 				if (node.getArtifact().getSequenceGraph() != null && node.getArtifact().getSequenceGraph() instanceof PerstSequenceGraph) {
 					((PerstSequenceGraph) node.getArtifact().getSequenceGraph()).storeRecursively();
 				}
+				// store artifact references
+				for (ArtifactReference ref : node.getArtifact().getUses())
+					if (ref instanceof PerstArtifactReference)
+						((PerstArtifactReference) ref).store();
+				for (ArtifactReference ref : node.getArtifact().getUsedBy())
+					if (ref instanceof PerstArtifactReference)
+						((PerstArtifactReference) ref).store();
 			}
 			//this.closeDatabase();
 			return node;

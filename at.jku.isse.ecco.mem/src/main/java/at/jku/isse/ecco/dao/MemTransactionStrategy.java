@@ -39,8 +39,9 @@ public class MemTransactionStrategy implements TransactionStrategy {
 	}
 
 	@Override
-	public void rollback() throws EccoException {
+	public void rollback() {
 		System.err.println("Rollback not supported by backend.");
+		//throw new EccoException("Rollback not supported by backend.");
 	}
 
 }

@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Memory implementation of {@link Configuration}.
@@ -58,7 +57,7 @@ public class BaseConfiguration implements Configuration, ConfigurationOperator.C
 
 	@Override
 	public String toString() {
-		return this.featureInstances.stream().map(fi -> fi.toString()).collect(Collectors.joining(", "));
+		return this.operator.toString();
 	}
 
 
