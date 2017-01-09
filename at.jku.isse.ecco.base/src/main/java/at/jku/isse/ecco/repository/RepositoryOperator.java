@@ -374,13 +374,15 @@ public class RepositoryOperator {
 				repoFeatureVersion.setDescription(featureVersion.getDescription());
 				newFeatureVersions.add(repoFeatureVersion);
 			}
-			FeatureInstance newFeatureInstance = this.entityFactory.createFeatureInstance(repoFeature, repoFeatureVersion, featureInstance.getSign());
+			//FeatureInstance newFeatureInstance = this.entityFactory.createFeatureInstance(repoFeature, repoFeatureVersion, featureInstance.getSign());
+			FeatureInstance newFeatureInstance = repoFeatureVersion.getInstance(featureInstance.getSign());
 			newConfiguration.addFeatureInstance(newFeatureInstance);
 		}
 		for (Association childAssociation : this.repository.getAssociations()) {
 			for (FeatureVersion newFeatureVersion : newFeatureVersions) {
 				childAssociation.getPresenceCondition().addFeatureVersion(newFeatureVersion);
-				childAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), this.repository.getMaxOrder());
+				//childAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), this.repository.getMaxOrder());
+				childAssociation.getPresenceCondition().addFeatureInstance(newFeatureVersion.getInstance(false), this.repository.getMaxOrder());
 			}
 		}
 

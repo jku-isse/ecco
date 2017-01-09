@@ -14,6 +14,9 @@ public class BaseFeatureVersion implements FeatureVersion {
 	private String id;
 	private String description;
 
+	private FeatureInstance pos;
+	private FeatureInstance neg;
+
 	public BaseFeatureVersion(Feature feature, String id) {
 		checkNotNull(feature);
 		checkNotNull(id);
@@ -21,9 +24,30 @@ public class BaseFeatureVersion implements FeatureVersion {
 		this.feature = feature;
 		this.id = id;
 
+		this.pos = new BaseFeatureInstance(feature, this, true);
+		this.neg = new BaseFeatureInstance(feature, this, false);
+
 //		this.feature.addVersion(this);
 	}
 
+
+	@Override
+	public FeatureInstance getPositiveInstance() {
+		return this.pos;
+	}
+
+	@Override
+	public FeatureInstance getNegativeInstance() {
+		return this.neg;
+	}
+
+	@Override
+	public FeatureInstance getInstance(boolean sign) {
+		if (sign)
+			return this.pos;
+		else
+			return this.neg;
+	}
 
 	@Override
 	public Feature getFeature() {

@@ -121,24 +121,24 @@ public class PerstEntityFactory implements EntityFactory {
 		return feature;
 	}
 
-	@Override
-	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign) {
-		checkNotNull(feature);
-		checkNotNull(featureVersion);
-
-		PerstFeatureInstance featureInstance = new PerstFeatureInstance(feature, featureVersion, sign);
-		return featureInstance;
-	}
+//	@Override
+//	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign) {
+//		checkNotNull(feature);
+//		checkNotNull(featureVersion);
+//
+//		PerstFeatureInstance featureInstance = new PerstFeatureInstance(feature, featureVersion, sign);
+//		return featureInstance;
+//	}
 
 	@Override
 	public Module createModule() {
 		return new PerstModule();
 	}
 
-	@Override
-	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
-		return this.createModuleFeature(moduleFeature.getFeature(), moduleFeature, moduleFeature.getSign());
-	}
+//	@Override
+//	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
+//		return this.createModuleFeature(moduleFeature.getFeature(), moduleFeature, moduleFeature.getSign());
+//	}
 
 	@Override
 	public ModuleFeature createModuleFeature(Feature feature, boolean sign) {

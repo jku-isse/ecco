@@ -14,6 +14,13 @@ public interface FeatureVersion extends Persistable {
 //	public static final int ANY = -2;
 
 
+	public FeatureInstance getPositiveInstance();
+
+	public FeatureInstance getNegativeInstance();
+
+	public FeatureInstance getInstance(boolean sign);
+
+
 	/**
 	 * Returns the feature belonging to this version.
 	 *

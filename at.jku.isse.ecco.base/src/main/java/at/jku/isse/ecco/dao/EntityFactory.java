@@ -8,7 +8,6 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleFeature;
@@ -127,7 +126,7 @@ public interface EntityFactory {
 	 */
 	public Feature createFeature(final String id, final String name, final String description);
 
-	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign);
+//	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign);
 
 	/**
 	 * Creates a new module.
@@ -136,7 +135,7 @@ public interface EntityFactory {
 	 */
 	public Module createModule();
 
-	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature);
+//	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature);
 
 	public ModuleFeature createModuleFeature(Feature feature, boolean sign);
 

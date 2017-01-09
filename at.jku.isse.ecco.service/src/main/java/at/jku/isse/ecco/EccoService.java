@@ -45,7 +45,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
-public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener {
+public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
@@ -508,7 +508,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Initializes the service.
 	 */
-	public synchronized void open() throws EccoException {
+	public synchronized void open() {
 		if (!this.repositoryDirectoryExists()) {
 			LOGGER.error("Repository does not exist.");
 			throw new EccoException("Repository does not exist.");
@@ -569,7 +569,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Properly shuts down the service.
 	 */
-	public synchronized void close() throws EccoException {
+	@Override
+	public synchronized void close() {
 		if (!this.initialized)
 			return;
 
@@ -885,7 +886,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						newFeatureVersions.add(featureVersion);
 					}
 
-					configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
+					//configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
+					configuration.addFeatureInstance(featureVersion.getInstance(featureSign));
 				} else if (featureInstanceString.endsWith("'")) { // create new feature version for feature
 					String featureName = featureInstanceString.substring(0, featureInstanceString.length() - 1);
 					if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
@@ -911,7 +913,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 					boolean featureSign = !(featureInstanceString.startsWith("!") || featureInstanceString.startsWith("-"));
 
-					configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
+					//configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
+					configuration.addFeatureInstance(featureVersion.getInstance(featureSign));
 				} else { // use most recent feature version of feature (or create a new one if none existed so far)
 					String featureName = featureInstanceString;
 					if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
@@ -943,7 +946,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 					boolean featureSign = !(featureInstanceString.startsWith("!") || featureInstanceString.startsWith("-"));
 
-					configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
+					//configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
+					configuration.addFeatureInstance(featureVersion.getInstance(featureSign));
 				}
 			}
 
@@ -952,7 +956,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			for (Association association : associations) {
 				for (FeatureVersion newFeatureVersion : newFeatureVersions) {
 					association.getPresenceCondition().addFeatureVersion(newFeatureVersion);
-					association.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), repository.getMaxOrder());
+					//association.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), repository.getMaxOrder());
+					association.getPresenceCondition().addFeatureInstance(newFeatureVersion.getInstance(false), repository.getMaxOrder());
 				}
 			}
 
@@ -1608,7 +1613,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @return True if the repository was created, false otherwise.
 	 */
-	public synchronized boolean init() throws EccoException {
+	public synchronized boolean init() {
 		if (this.isInitialized())
 			throw new EccoException("Service must not be initialized for init operation.");
 
@@ -1636,9 +1641,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * Commits the files in the base directory using the configuration string given in file {@link #CONFIG_FILE_NAME} or an empty configuration string if the file does not exist.
 	 *
 	 * @return The resulting commit object.
-	 * @throws EccoException When the configuration file does not exist or cannot be read.
 	 */
-	public synchronized Commit commit() throws EccoException {
+	public synchronized Commit commit() {
 		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
 		try {
 			String configurationString = "";
@@ -1655,9 +1659,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @param configurationString The configuration string.
 	 * @return The resulting commit object.
-	 * @throws EccoException
 	 */
-	public synchronized Commit commit(String configurationString) throws EccoException {
+	public synchronized Commit commit(String configurationString) {
 		return this.commit(this.parseConfigurationString(configurationString));
 	}
 
@@ -1667,7 +1670,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configuration The configuration to be commited.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	public synchronized Commit commit(Configuration configuration) throws EccoException {
+	public synchronized Commit commit(Configuration configuration) {
 		this.checkInitialized();
 
 		checkNotNull(configuration);
@@ -1697,9 +1700,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * Checks out the implementation of the configuration (given as configuration string) into the base directory.
 	 *
 	 * @param configurationString The configuration string representing the configuration that shall be checked out.
-	 * @throws EccoException
 	 */
-	public synchronized Checkout checkout(String configurationString) throws EccoException {
+	public synchronized Checkout checkout(String configurationString) {
 		return this.checkout(this.parseConfigurationString(configurationString));
 	}
 
@@ -1708,7 +1710,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @param configuration The configuration to be checked out.
 	 */
-	public synchronized Checkout checkout(Configuration configuration) throws EccoException {
+	public synchronized Checkout checkout(Configuration configuration) {
 		this.checkInitialized();
 
 		checkNotNull(configuration);
