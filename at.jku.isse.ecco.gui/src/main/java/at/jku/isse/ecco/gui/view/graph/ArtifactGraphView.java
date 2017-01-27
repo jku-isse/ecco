@@ -3,16 +3,14 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.plugin.artifact.DirectoryArtifactData;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Separator;
-import javafx.scene.control.ToolBar;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
@@ -44,6 +42,9 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	private boolean depthFade = false;
 	private boolean showLabels = true;
 
+	private int childCountLimit = CHILD_COUNT_LIMIT;
+	private int depthLimit = DEPTH_LIMIT;
+
 	public ArtifactGraphView(EccoService service) {
 		this.service = service;
 
@@ -51,20 +52,26 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
+		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, 100, CHILD_COUNT_LIMIT);
+		childCountLimitSpinner.setEditable(true);
+		Label childCountLimitLabel = new Label("Child Count Limit: ");
+
+		Spinner<Integer> depthLimitSpinner = new EditableSpinner(1, 100, DEPTH_LIMIT);
+		depthLimitSpinner.setEditable(true);
+		Label depthLimitLabel = new Label("Depth Limit: ");
+
 		Button refreshButton = new Button("Refresh");
-		toolBar.getItems().add(refreshButton);
 		refreshButton.setOnAction(e -> {
 			toolBar.setDisable(true);
+			childCountLimit = childCountLimitSpinner.getValue();
+			depthLimit = depthLimitSpinner.getValue();
 			SwingUtilities.invokeLater(() -> {
 				ArtifactGraphView.this.updateGraph(ArtifactGraphView.this.depthFade, ArtifactGraphView.this.showLabels);
 				Platform.runLater(() -> toolBar.setDisable(false));
 			});
 		});
-		toolBar.getItems().add(new Separator());
-
 
 		Button exportButton = new Button("Export");
-		toolBar.getItems().add(exportButton);
 		exportButton.setOnAction(ae -> {
 			toolBar.setDisable(true);
 
@@ -73,34 +80,38 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 			if (selectedFile != null) {
 				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-				try {
-					out.writeAll(ArtifactGraphView.this.graph, selectedFile.toString());
-					out.flush();
-				} catch (IOException e) {
-					new ExceptionAlert(e).show();
+				if (out != null) {
+					try {
+						out.writeAll(ArtifactGraphView.this.graph, selectedFile.toString());
+						out.flush();
+					} catch (IOException e) {
+						new ExceptionAlert(e).show();
+					}
+				} else {
+					Alert alert = new Alert(Alert.AlertType.ERROR);
+					alert.setHeaderText("Unknown file extension.");
+					alert.setContentText("Unknown file extension.");
+					alert.show();
 				}
 			}
 
 			toolBar.setDisable(false);
 		});
-		toolBar.getItems().add(new Separator());
-
 
 		CheckBox depthFadeCheckBox = new CheckBox("Depth Fade");
-		toolBar.getItems().add(depthFadeCheckBox);
 		depthFadeCheckBox.selectedProperty().addListener((ov, old_val, new_val) -> {
 			ArtifactGraphView.this.depthFade = new_val;
 			ArtifactGraphView.this.updateNodesAndEdgesStyles(new_val);
 		});
-		toolBar.getItems().add(new Separator());
 
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
-		toolBar.getItems().add(showLabelsCheckbox);
 		showLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
 			ArtifactGraphView.this.showLabels = new_val;
 			ArtifactGraphView.this.updateGraphStylehseet(new_val);
 		});
-		toolBar.getItems().add(new Separator());
+
+
+		toolBar.getItems().setAll(refreshButton, new Separator(), exportButton, new Separator(), depthFadeCheckBox, new Separator(), showLabelsCheckbox, new Separator(), childCountLimitLabel, childCountLimitSpinner, new Separator(), depthLimitLabel, depthLimitSpinner, new Separator());
 
 
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
@@ -303,7 +314,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 //				graphNode.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
 //			}
 
-			if (eccoNode.getChildren().size() >= CHILD_COUNT_LIMIT || depth >= DEPTH_LIMIT) {
+			if (eccoNode.getChildren().size() >= this.childCountLimit || depth >= this.depthLimit) {
 				// group children by association
 				Map<Association, Integer> groupMap = new HashMap<>();
 				this.groupArtifactsByAssocRec(eccoNode, groupMap);
@@ -358,7 +369,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		}
 
 
-		if (eccoNode.getChildren().size() < CHILD_COUNT_LIMIT && depth < DEPTH_LIMIT) {
+		if (eccoNode.getChildren().size() < this.childCountLimit && depth < this.depthLimit) {
 			for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
 				Node graphChildNode = this.traverseTree(eccoChildNode, depth + 1);
 

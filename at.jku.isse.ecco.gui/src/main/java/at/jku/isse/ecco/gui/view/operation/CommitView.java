@@ -135,7 +135,7 @@ public class CommitView extends OperationView implements EccoListener {
 		selectBaseDirectoryButton.setOnAction(event -> {
 			final DirectoryChooser directoryChooser = new DirectoryChooser();
 			try {
-				Path directory = Paths.get(configurationStringTextField.getText());
+				Path directory = Paths.get(baseDirTextField.getText());
 				if (Files.exists(directory) && Files.isDirectory(directory))
 					directoryChooser.setInitialDirectory(directory.toFile());
 			} catch (Exception e) {
@@ -143,7 +143,7 @@ public class CommitView extends OperationView implements EccoListener {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory != null) {
-				configurationStringTextField.setText(selectedDirectory.toPath().toString());
+				baseDirTextField.setText(selectedDirectory.toPath().toString());
 			}
 		});
 
@@ -214,7 +214,7 @@ public class CommitView extends OperationView implements EccoListener {
 		Button cancelButton = new Button("Cancel");
 		this.leftButtons.getChildren().setAll(cancelButton);
 
-		this.headerLabel.setText("Checking out ...");
+		this.headerLabel.setText("Committing ...");
 
 		this.rightButtons.getChildren().clear();
 

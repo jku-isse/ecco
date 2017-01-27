@@ -9,6 +9,7 @@ import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
@@ -73,11 +74,18 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 			if (selectedFile != null) {
 				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-				try {
-					out.writeAll(CommitGraphView.this.graph, selectedFile.toString());
-					out.flush();
-				} catch (IOException e) {
-					new ExceptionAlert(e).show();
+				if (out != null) {
+					try {
+						out.writeAll(CommitGraphView.this.graph, selectedFile.toString());
+						out.flush();
+					} catch (IOException e) {
+						new ExceptionAlert(e).show();
+					}
+				} else {
+					Alert alert = new Alert(Alert.AlertType.ERROR);
+					alert.setHeaderText("Unknown file extension.");
+					alert.setContentText("Unknown file extension.");
+					alert.show();
 				}
 			}
 

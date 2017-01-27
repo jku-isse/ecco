@@ -153,7 +153,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			// deal with unmodified files
 			for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
-				ArrayList<Path> unmodifiedFilesList = readerToFilesMap.get(reader);
+				ArrayList<Path> unmodifiedFilesList = readerToUnmodifiedFilesMap.get(reader);
 
 				if (unmodifiedFilesList != null) {
 					for (Path unmodifiedFilePath : unmodifiedFilesList) {

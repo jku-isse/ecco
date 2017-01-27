@@ -134,7 +134,7 @@ public class CheckoutView extends OperationView implements EccoListener {
 		selectBaseDirectoryButton.setOnAction(event -> {
 			final DirectoryChooser directoryChooser = new DirectoryChooser();
 			try {
-				Path directory = Paths.get(configurationStringTextField.getText());
+				Path directory = Paths.get(baseDirTextField.getText());
 				if (Files.exists(directory) && Files.isDirectory(directory))
 					directoryChooser.setInitialDirectory(directory.toFile());
 			} catch (Exception e) {
@@ -142,7 +142,7 @@ public class CheckoutView extends OperationView implements EccoListener {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory != null) {
-				configurationStringTextField.setText(selectedDirectory.toPath().toString());
+				baseDirTextField.setText(selectedDirectory.toPath().toString());
 			}
 		});
 

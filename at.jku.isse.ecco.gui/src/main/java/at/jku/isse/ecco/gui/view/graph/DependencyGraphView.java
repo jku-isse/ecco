@@ -6,10 +6,7 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Separator;
-import javafx.scene.control.ToolBar;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
@@ -75,11 +72,18 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 
 			if (selectedFile != null) {
 				FileSink out = FileSinkFactory.sinkFor(selectedFile.toString());
-				try {
-					out.writeAll(DependencyGraphView.this.graph, selectedFile.toString());
-					out.flush();
-				} catch (IOException e) {
-					new ExceptionAlert(e).show();
+				if (out != null) {
+					try {
+						out.writeAll(DependencyGraphView.this.graph, selectedFile.toString());
+						out.flush();
+					} catch (IOException e) {
+						new ExceptionAlert(e).show();
+					}
+				} else {
+					Alert alert = new Alert(Alert.AlertType.ERROR);
+					alert.setHeaderText("Unknown file extension.");
+					alert.setContentText("Unknown file extension.");
+					alert.show();
 				}
 			}
 
