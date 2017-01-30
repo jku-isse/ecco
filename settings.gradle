@@ -8,10 +8,10 @@ include 'at.jku.isse.ecco.base',
 		'at.jku.isse.ecco.text',
 		'at.jku.isse.ecco.image',
 		'at.jku.isse.ecco.java',
-		'at.jku.isse.ecco.web',
+		'at.jku.isse.ecco.web'
 
-		'extras/at.jku.isse.ecco.jpa',
-		'extras/at.jku.isse.ecco.php',
-		'extras/at.jku.isse.ecco.uml',
-		'extras/at.jku.isse.ecco.genericAdapter',
-		'extras/at.jku.isse.ecco.runtime'
+//		'extras/at.jku.isse.ecco.jpa',
+//		'extras/at.jku.isse.ecco.php',
+//		'extras/at.jku.isse.ecco.uml',
+//		'extras/at.jku.isse.ecco.genericAdapter',
+//		'extras/at.jku.isse.ecco.runtime'
