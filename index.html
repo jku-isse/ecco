@@ -7,8 +7,22 @@ active: home
 
 
 
-<div class="container">
+<div id="home" class="container">
 
-here go news posts and such.
+	<!--<h1>News</h1>-->
+
+	{% for post in site.posts %}
+	<h3>{{ post.title }}</h3>
+	<p>{{ post.content }}</p>
+	<div>
+		<span class="badge">{{ post.date }}</span>
+		<div class="pull-right">
+			{% for tag in post.tags %}
+			<span class="label label-default">{{ tag }}</span>
+			{% endfor %}
+		</div>
+	</div>
+	<hr>
+	{% endfor %}
 
 </div>
