@@ -193,6 +193,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 //	}
 
 	@Inject
+	private MemEntityFactory memEntityFactory;
+
+	@Inject
 	private EntityFactory entityFactory;
 
 	@Inject
@@ -1086,7 +1089,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							// copy features using mem entity factory
 							this.transactionStrategy.begin();
 							Repository.Op repository = this.repositoryDao.load();
-							Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), new MemEntityFactory());
+							Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), this.memEntityFactory);
 							this.transactionStrategy.end();
 
 
@@ -1117,7 +1120,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							// compute subset repository using mem entity factory
 							this.transactionStrategy.begin();
 							Repository.Op repository = this.repositoryDao.load();
-							Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), new MemEntityFactory());
+							Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), this.memEntityFactory);
 							this.transactionStrategy.end();
 
 
@@ -1536,7 +1539,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						// compute subset repository using mem entity factory
 						this.transactionStrategy.begin();
 						Repository.Op repository = this.repositoryDao.load();
-						Repository.Op subsetRepository = repository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), new MemEntityFactory());
+						Repository.Op subsetRepository = repository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.memEntityFactory);
 						this.transactionStrategy.end();
 
 

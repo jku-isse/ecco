@@ -8,7 +8,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.tree.Node;
-import com.sun.istack.internal.Nullable;
 
 import java.util.Collection;
 import java.util.Set;
@@ -89,7 +88,6 @@ public interface Repository {
 		 * @param id The id of the feature.
 		 * @return The feature with the given id, or null if there is no such feature.
 		 */
-		@Nullable
 		public Feature getFeature(String id);
 
 		/**

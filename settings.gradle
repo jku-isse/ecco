@@ -1,6 +1,5 @@
 include 'at.jku.isse.ecco.base',
 		'at.jku.isse.ecco.service',
-		'at.jku.isse.ecco.mem',
 		'at.jku.isse.ecco.cli',
 		'at.jku.isse.ecco.gui',
 		'at.jku.isse.ecco.perst',

@@ -9,7 +9,6 @@ dependencies {
 	compile project(':at.jku.isse.ecco.base')
 	compile project(':at.jku.isse.ecco.service')
 
-	testCompile project(':at.jku.isse.ecco.mem')
 	testCompile project(':at.jku.isse.ecco.perst')
 
 	testCompile project(':at.jku.isse.ecco.file')

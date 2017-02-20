@@ -10,7 +10,6 @@ dependencies {
 	compile 'com.google.inject.extensions:guice-multibindings:4.0'
 
 	compile project(':at.jku.isse.ecco.base')
-	compile project(':at.jku.isse.ecco.mem')
 
 	testCompile project(':at.jku.isse.ecco.perst')
 

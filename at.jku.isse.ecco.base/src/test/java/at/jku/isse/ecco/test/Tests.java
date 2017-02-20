@@ -114,7 +114,7 @@ public class Tests {
 				sChannel.close();
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			throw new EccoException("Error starting client.", e);
+//			throw new EccoException("Error starting client.", e);
 		}
 	}
 
