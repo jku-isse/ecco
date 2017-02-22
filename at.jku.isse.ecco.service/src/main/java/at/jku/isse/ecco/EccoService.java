@@ -179,6 +179,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		return this.initialized;
 	}
 
+	private MemEntityFactory memEntityFactory = new MemEntityFactory();
+
 	@Inject
 	private DispatchReader reader;
 	@Inject
@@ -191,9 +193,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 //	public ArtifactWriter getWriter() {
 //		return this.writer;
 //	}
-
-	@Inject
-	private MemEntityFactory memEntityFactory;
 
 	@Inject
 	private EntityFactory entityFactory;
