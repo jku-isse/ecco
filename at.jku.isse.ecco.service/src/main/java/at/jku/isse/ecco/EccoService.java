@@ -982,7 +982,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			throw new EccoException("No feature versions string provided.");
 
 		if (!featureVersionsString.matches("(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+)(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+))*)?"))
-			throw new EccoException("Invalid configuration string provided.");
+			throw new EccoException("Invalid feature versions string provided.");
 
 		try {
 			this.transactionStrategy.begin();
@@ -1375,7 +1375,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			originService.transactionStrategy.begin();
 
 			Repository.Op originRepository = originService.repositoryDao.load();
-			subsetOriginRepository = originRepository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
+			subsetOriginRepository = originRepository.subset(originService.parseFeatureVersionsString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
 
 			originService.transactionStrategy.end();
 		} catch (Exception e) {
@@ -1480,7 +1480,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					parentService.transactionStrategy.begin();
 
 					Repository.Op parentRepository = parentService.repositoryDao.load();
-					subsetParentRepository = parentRepository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
+					subsetParentRepository = parentRepository.subset(parentService.parseFeatureVersionsString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
 
 					parentService.transactionStrategy.end();
 				} catch (Exception e) {

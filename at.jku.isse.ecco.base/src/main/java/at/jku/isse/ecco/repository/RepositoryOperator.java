@@ -126,50 +126,49 @@ public class RepositoryOperator {
 						Feature toFeature;
 						if (featureReplacementMap.containsKey(fromFeature)) {
 							toFeature = featureReplacementMap.get(fromFeature);
-						} else {
-							toFeature = fromFeature;
 
-							throw new EccoException("This should not happen!");
-						}
+							// if a deselected feature version is contained in module feature:
+							//  if module feature is positive: remove / do not add feature version from module feature
+							//   if module feature is empty: remove it / do not add it
+							//  else if module feature is negative: remove module feature from module
+							//   if module is empty (should not happen?) then leave it! module is always TRUE (again: should not happen, because at least one positive module feature should be in every module, but that might currently not be the case)
 
+							ModuleFeature toModuleFeature = entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
+							boolean addToModule = true;
+							for (FeatureVersion fromFeatureVersion : fromModuleFeature) {
+								if (deselected.contains(fromFeatureVersion)) { // if a deselected feature version is contained in module feature
 
-						// if a deselected feature version is contained in module feature:
-						//  if module feature is positive: remove / do not add feature version from module feature
-						//   if module feature is empty: remove it / do not add it
-						//  else if module feature is negative: remove module feature from module
-						//   if module is empty (should not happen?) then leave it! module is always TRUE (again: should not happen, because at least one positive module feature should be in every module, but that might currently not be the case)
+									if (fromModuleFeature.getSign()) {  // if module feature is positive
+										// do not add feature version to module feature
+									} else {
+										// do not add module feature to module because it is always true
+										addToModule = false;
+										break;
+									}
 
-						ModuleFeature toModuleFeature = entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
-						boolean addToModule = true;
-						for (FeatureVersion fromFeatureVersion : fromModuleFeature) {
-							if (deselected.contains(fromFeatureVersion)) { // if a deselected feature version is contained in module feature
+								} else { // ordinary copy
+									FeatureVersion toFeatureVersion;
+									if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
+										toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
+									} else {
+										toFeatureVersion = fromFeatureVersion;
 
-								if (fromModuleFeature.getSign()) {  // if module feature is positive
-									// do not add feature version to module feature
-								} else {
-									// do not add module feature to module because it is always true
-									addToModule = false;
-									break;
+										throw new EccoException("This should not happen!");
+									}
+									toModuleFeature.add(toFeatureVersion);
 								}
-
-							} else { // ordinary copy
-								FeatureVersion toFeatureVersion;
-								if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
-									toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
-								} else {
-									toFeatureVersion = fromFeatureVersion;
-
-									throw new EccoException("This should not happen!");
-								}
-								toModuleFeature.add(toFeatureVersion);
 							}
-						}
-						if (!toModuleFeature.isEmpty() && addToModule) { // if module feature is empty: do not add it
-							toModule.add(toModuleFeature);
+							if (!toModuleFeature.isEmpty() && addToModule) { // if module feature is empty: do not add it
+								toModule.add(toModuleFeature);
+							}
+						} else {
+							//toFeature = fromFeature;
+							//throw new EccoException("This should not happen!");
 						}
 
 					}
-					toModuleSet.add(toModule);
+					if (!toModule.isEmpty())
+						toModuleSet.add(toModule);
 				}
 			}
 
