@@ -1381,7 +1381,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		} catch (Exception e) {
 			originService.transactionStrategy.rollback();
 
-			throw new EccoException("Error during fork.", e);
+			throw new EccoException("Error during local fork.", e);
 		} finally {
 			// close parent repository
 			originService.close();
@@ -1406,7 +1406,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
 
-			throw new EccoException("Error during fork.", e);
+			throw new EccoException("Error during local fork.", e);
 		}
 	}
 
@@ -1486,7 +1486,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				} catch (Exception e) {
 					parentService.transactionStrategy.rollback();
 
-					throw new EccoException("Error during pull.", e);
+					throw new EccoException("Error during local pull.", e);
 				}
 
 				// close parent repository
@@ -1564,13 +1564,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						throw new EccoException("Error connecting to remote: " + pair[0] + ":" + pair[1]);
 					}
 				} catch (Exception e) {
-					throw new EccoException("Error during remote fork.", e);
+					throw new EccoException("Error during remote push.", e);
 				}
 
 			} else if (remote.getType() == Remote.Type.LOCAL) {
-				// init this repo
-				this.open();
-
 				// open parent repo
 				EccoService parentService = new EccoService();
 				parentService.setRepositoryDir(Paths.get(remote.getAddress()));
@@ -1592,7 +1589,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				} catch (Exception e) {
 					parentService.transactionStrategy.rollback();
 
-					throw new EccoException("Error during push.", e);
+					throw new EccoException("Error during local push.", e);
 				}
 
 				// close parent repository
