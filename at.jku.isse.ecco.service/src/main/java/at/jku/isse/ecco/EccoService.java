@@ -115,8 +115,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Creates the service and tries to detect an existing repository automatically using {@link #detectRepository(Path path) detectRepository}. If no existing repository was found the base directory (directory from which files are committed and checked out) and repository directory (directory at which the repository data is stored) are set to their defaults:
 	 * <p>
-	 * <br/>Base Directory (baseDir) Default: current directory
-	 * <br/>Repository Directory (repoDir) Default: .ecco
+	 * <br>Base Directory (baseDir) Default: current directory
+	 * <br>Repository Directory (repoDir) Default: .ecco
 	 */
 	public EccoService() {
 		this(DEFAULT_BASE_DIR, DEFAULT_REPOSITORY_DIR);
