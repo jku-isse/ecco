@@ -25,51 +25,33 @@ import java.util.Set;
  */
 public class EmfReaderTest {
 
-
-    private ResourceSet rs;
-    private EPackage p;
-
-    @Before
-    public void setup() {
-        // FIXME We need to load the ecore and register it
-        // Register Ecore because people must load their metamodels
-        Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
-                .put("ecore", new EcoreResourceFactoryImpl());
+    @Test
+    public void testRegisterMetamodelFromEcore() {
+        EmfReader reader = new EmfReader(new PerstEntityFactory(), new ResourceSetImpl());
         ClassLoader classLoader = getClass().getClassLoader();
         URI uri = URI.createURI(classLoader.getResource("Library.ecore").toString());
-        // FIXME this should go in the EmfReader somehow
-        rs = new ResourceSetImpl();
-        Resource r = rs.getResource(uri, true);
-        EObject eObject = r.getContents().get(0);
-        if (eObject instanceof EPackage) {
-            p = (EPackage)eObject;
-            //rs.getPackageRegistry().put(p.getNsURI(), p);
-        }
+        reader.registerMetamodel(uri);
+        assertTrue(reader.getResourceSet().getPackageRegistry().containsKey("http://www.eclipse.org/emf/jcrm/samples/emf/sample/Library"));
     }
 
     @Test
-    public void testRegisterMetamodel() {
-        EmfReader reader = new EmfReader(new PerstEntityFactory(), rs);
+    public void testRegisterMetamodelFromEPackage() {
+
+        ResourceSetImpl resourceSet = new ResourceSetImpl();
+        EmfReader reader = new EmfReader(new PerstEntityFactory(), resourceSet);
+        ClassLoader classLoader = getClass().getClassLoader();
+        URI uri = URI.createURI(classLoader.getResource("Library.ecore").toString());
+        Resource r = resourceSet.getResource(uri, true);
+        EObject eObject = r.getContents().get(0);
+        assertTrue(eObject instanceof EPackage);
+        EPackage p = (EPackage)eObject;
         reader.registerMetamodel(p);
         assertTrue(reader.getResourceSet().getPackageRegistry().containsKey(p.getNsURI()));
-    }
-    
-    @Test public void testRead() {
-
-        EmfReader reader = new EmfReader(new PerstEntityFactory());
-        ClassLoader classLoader = getClass().getClassLoader();
-        URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
-        Set<Node> nodes = reader.read(new URI[]{uri});
-        for (Node node : nodes) {
-            Trees.print(node);
-        }
-        
     }
 
     @Test
     public void testCanRead() {
-        EmfReader reader = new EmfReader(new PerstEntityFactory());
-        reader.registerMetamodel(p);
+        EmfReader reader = new EmfReader(new PerstEntityFactory(), new ResourceSetImpl());
         ClassLoader classLoader = getClass().getClassLoader();
         URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
         boolean canread = reader.canRead(uri);
@@ -78,6 +60,16 @@ public class EmfReaderTest {
         canread = reader.canRead(uri);
         assertFalse(canread);
     }
+    
+    @Test public void testRead() {
 
-
+        EmfReader reader = new EmfReader(new PerstEntityFactory(), new ResourceSetImpl());
+        ClassLoader classLoader = getClass().getClassLoader();
+        URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
+        Set<Node> nodes = reader.read(new URI[]{uri});
+        assertEquals(1, nodes.size());
+        Node root = nodes.iterator().next();
+        assertEquals(51, root.countArtifacts());
+        assertEquals(7, root.getChildren().size());
+    }
 }
