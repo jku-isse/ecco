@@ -14,7 +14,10 @@ import static org.junit.Assert.*;
 
 import at.jku.isse.ecco.dao.PerstEntityFactory;
 
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Set;
 
 /*
@@ -50,23 +53,25 @@ public class EmfReaderTest {
     }
 
     @Test
-    public void testCanRead() {
+    public void testCanRead() throws URISyntaxException {
         EmfReader reader = new EmfReader(new PerstEntityFactory(), new ResourceSetImpl());
         ClassLoader classLoader = getClass().getClassLoader();
-        URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
-        boolean canread = reader.canRead(uri);
+        //URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
+        Path path = Paths.get(classLoader.getResource("Library.xmi").toURI());
+        boolean canread = reader.canRead(path);
         assertTrue(canread);
-        uri = uri.appendFileExtension(".err");
-        canread = reader.canRead(uri);
+        path = Paths.get(path.toString(),".err");
+        canread = reader.canRead(path);
         assertFalse(canread);
     }
     
-    @Test public void testRead() {
+    @Test public void testRead() throws URISyntaxException {
 
         EmfReader reader = new EmfReader(new PerstEntityFactory(), new ResourceSetImpl());
         ClassLoader classLoader = getClass().getClassLoader();
-        URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
-        Set<Node> nodes = reader.read(new URI[]{uri});
+        //URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
+        Path path = Paths.get(classLoader.getResource("Library.xmi").toURI());
+        Set<Node.Op> nodes = reader.read(new Path[]{path});
         assertEquals(1, nodes.size());
         Node root = nodes.iterator().next();
         assertEquals(51, root.countArtifacts());
