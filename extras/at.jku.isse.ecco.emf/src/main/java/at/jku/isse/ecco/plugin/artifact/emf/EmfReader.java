@@ -49,7 +49,7 @@ import org.eclipse.emf.ecore.xmi.impl.XMLParserPoolImpl;
  * @author Horacio Hoyos
  * @since 1.1
  */
-public class EmfReader implements ArtifactReader<URI, Set<Node>> {
+public class EmfReader implements ArtifactReader<URI, Set<Node.Op>> {
 
     private final EntityFactory entityFactory;
     private final ResourceSet resourceSet;
@@ -149,8 +149,8 @@ public class EmfReader implements ArtifactReader<URI, Set<Node>> {
      * @return
      */
     @Override
-    public Set<Node> read(URI base, URI[] input) {
-        Set<Node> nodes = new HashSet<>();
+    public Set<Node.Op> read(URI base, URI[] input) {
+        Set<Node.Op> nodes = new HashSet<>();
         for (URI uri : input) {
             URI fullUri =  base.resolve(uri);
             if (canRead(fullUri)) {
@@ -281,7 +281,7 @@ public class EmfReader implements ArtifactReader<URI, Set<Node>> {
     }
 
     @Override
-    public Set<Node> read(URI[] input) {
+    public Set<Node.Op> read(URI[] input) {
         return this.read(URI.createURI(""), input);
     }
 
