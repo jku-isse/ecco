@@ -9,6 +9,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import org.eclipse.emf.common.util.URI;
 
+import java.nio.file.Path;
 import java.util.Set;
 
 /**
@@ -18,8 +19,8 @@ public class EmfModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        final Multibinder<ArtifactReader<URI, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
-                new TypeLiteral<ArtifactReader<URI, Set<Node.Op>>>() {
+        final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
+                new TypeLiteral<ArtifactReader<Path, Set<Node.Op>>>() {
                 });
         readerMultibinder.addBinding().to(EmfReader.class);
 

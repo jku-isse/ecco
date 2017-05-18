@@ -8,6 +8,7 @@ import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import com.google.inject.Inject;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
@@ -49,7 +50,7 @@ import org.eclipse.emf.ecore.xmi.impl.XMLParserPoolImpl;
  * @author Horacio Hoyos
  * @since 1.1
  */
-public class EmfReader implements ArtifactReader<URI, Set<Node.Op>> {
+public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     private final EntityFactory entityFactory;
     private final ResourceSet resourceSet;
@@ -136,10 +137,12 @@ public class EmfReader implements ArtifactReader<URI, Set<Node.Op>> {
     }
 
     @Override
-    public boolean canRead(URI input) {
+    public boolean canRead(Path input) {
+        // FileURI from Path
+        URI input_uri = URI.createFileURI(input.toString());
         Map<Object, Object> existsOptions = new HashMap<>();
         existsOptions.put(ExtensibleURIConverterImpl.OPTION_TIMEOUT, 10000);    // 10s timeout
-        return resourceSet.getURIConverter().exists(input, existsOptions);
+        return resourceSet.getURIConverter().exists(input_uri, existsOptions);
     }
 
     /**
@@ -149,11 +152,12 @@ public class EmfReader implements ArtifactReader<URI, Set<Node.Op>> {
      * @return
      */
     @Override
-    public Set<Node.Op> read(URI base, URI[] input) {
+    public Set<Node.Op> read(Path base, Path[] input) {
         Set<Node.Op> nodes = new HashSet<>();
-        for (URI uri : input) {
-            URI fullUri =  base.resolve(uri);
-            if (canRead(fullUri)) {
+        for (Path path : input) {
+            Path resolvedPath = base.resolve(path);
+            if (canRead(resolvedPath)) {
+                URI fullUri =  URI.createFileURI(resolvedPath.toString());
                 //Resource resource = resourceSet.getResource(fullUri, false);
                 Resource resource = resourceSet.createResource(fullUri);
                 ((ResourceImpl) resource).setIntrinsicIDToEObjectMap(new HashMap<>());
@@ -281,8 +285,9 @@ public class EmfReader implements ArtifactReader<URI, Set<Node.Op>> {
     }
 
     @Override
-    public Set<Node.Op> read(URI[] input) {
-        return this.read(URI.createURI(""), input);
+    public Set<Node.Op> read(Path[] input) {
+
+        return this.read(Paths.get("."), input);
     }
 
     @Override
