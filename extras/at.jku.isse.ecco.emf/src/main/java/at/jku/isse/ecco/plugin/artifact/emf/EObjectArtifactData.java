@@ -12,6 +12,11 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  */
 public class EObjectArtifactData extends EmfArtifactData {
 
+    /**
+     * We need to know the package that owns the class.
+     */
+    private final String ePackageUri;
+
     // The name of the EObject EClass so we can reconstruct it.
     // Al features can be reconstructed from the nodes
     private final String eClassName;
@@ -23,6 +28,7 @@ public class EObjectArtifactData extends EmfArtifactData {
         super(value, feature, container);
         EClass eClass = value.eClass();
         this.eClassName = eClass.getName();
+        this.ePackageUri = eClass.getEPackage().getNsURI();
         EAttribute idAttr = eClass.getEIDAttribute();
         try {
             id = value.eGet(idAttr);
@@ -39,6 +45,10 @@ public class EObjectArtifactData extends EmfArtifactData {
         return id;
     }
 
+    public String getePackageUri() {
+        return ePackageUri;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -46,6 +56,7 @@ public class EObjectArtifactData extends EmfArtifactData {
         if (! super.equals(o)) return false;
 
         EObjectArtifactData that = (EObjectArtifactData) o;
+        if (!ePackageUri.equals(that.ePackageUri)) return false;
         if (!eClassName.equals(that.eClassName)) return false;
         return id.equals(that.id);
     }
@@ -53,6 +64,7 @@ public class EObjectArtifactData extends EmfArtifactData {
     @Override
     public int hashCode() {
         int result = super.hashCode();
+        result = 31 * result + ePackageUri.hashCode();
         result = 31 * result + eClassName.hashCode();
         result = 31 * result + id.hashCode();
         return result;

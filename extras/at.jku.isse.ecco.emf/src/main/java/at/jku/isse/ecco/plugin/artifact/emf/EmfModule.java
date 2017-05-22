@@ -5,6 +5,8 @@ import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import org.eclipse.emf.common.util.URI;
@@ -21,7 +23,7 @@ public class EmfModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(ResourceSet.class).to(ResourceSetImpl.class);
+        //bind(ResourceSet.class).to(ResourceSetImpl.class);
         final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
                 new TypeLiteral<ArtifactReader<Path, Set<Node.Op>>>() {
                 });
@@ -34,6 +36,16 @@ public class EmfModule extends AbstractModule {
 //                new TypeLiteral<ArtifactViewer>() {
 //                });
 //        viewerMultibinder.addBinding().to(EmfViewer.class);
+    }
+
+    /**
+     * Make the resource set a singleton so it is shared by all EMF tasks (readers, writers, viewers) in the ECCO
+     * application.
+     * @return
+     */
+    @Provides @Singleton
+    ResourceSet provideResourceSet() {
+        return new ResourceSetImpl();
     }
 
 }

@@ -5,9 +5,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
+import at.jku.isse.ecco.plugin.artifact.emf.util.EmfPluginUtils;
 import com.google.inject.Inject;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,14 +26,11 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.tree.Node;
-import org.eclipse.emf.ecore.resource.impl.ExtensibleURIConverterImpl;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
-import org.eclipse.emf.ecore.xmi.XMIResource;
 import org.eclipse.emf.ecore.xmi.impl.EcoreResourceFactoryImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
-import org.eclipse.emf.ecore.xmi.impl.XMLParserPoolImpl;
 
 /**
  * This class can transform an EMF model into an ECCO artifact tree.
@@ -71,6 +68,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
         EcorePackage.eINSTANCE.eClass();
         Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
                 .put("ecore", new EcoreResourceFactoryImpl());
+
         resourceSet.getResourceFactoryRegistry()
                 .getExtensionToFactoryMap()
                 .put("xmi", new XMIResourceFactoryImpl());
@@ -195,20 +193,35 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                 }
                 Artifact.Op<PluginArtifactData> pluginArtifact =
                         this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-                Node.Op resourceNode = this.entityFactory.createNode(pluginArtifact);
-                nodes.add(resourceNode);
-
+                Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
+                nodes.add(pluginNode);
+                // A resource node to save resource and metamodel information
+                String name = path.getFileName().toString();
+                String ext = name.substring(name.lastIndexOf('.')+1);
+                String factoryClass = resourceSet.getResourceFactoryRegistry()
+                        .getExtensionToFactoryMap()
+                        .get(ext)
+                        .getClass()
+                        .getCanonicalName();
+                EmfResourceData resourceData = new EmfResourceData(ext, factoryClass);
+                Node.Op resourceNode = this.entityFactory.createNode(resourceData);
+                pluginNode.addChild(resourceNode);
                 for (EObject eObject : resource.getContents()) {
                     Node.Op eObjectNode = createEObjectSubtree(eObject, null, null);
                     resourceNode.addChild(eObjectNode);
                 }
                 // References have to be done at the end when all nodes have been created.
+                // We also use the loop to capture the EPackage data, to avoid doing the loop twice
                 // TODO how are cross-resource references handled
                 // FIXME, perhaps use a ECrossReferenceAdapter if we want to be faster
                 //EcoreUtil.UsageCrossReferencer crossRef = new EcoreUtil.UsageCrossReferencer(resource);
                 TreeIterator<EObject> it = resource.getAllContents();
                 while (it.hasNext()) {
                     EObject eObject = it.next();
+                    EClass eClass = eObject.eClass();
+                    EPackage ePackage = eClass.getEPackage();
+                    Resource ePackageResource = resourceSet.getResource(URI.createURI(ePackage.getNsURI()), false);
+                    resourceData.addEPackageInformation(ePackage, ePackageResource);
                     Collection<EStructuralFeature.Setting> uses = EcoreUtil.UsageCrossReferencer.find(eObject, resource);
                     for (EStructuralFeature.Setting ref : uses) {
                         Node.Op sourceNode = nodeMapping.get(ref.getEObject());
@@ -248,13 +261,13 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
             if (attr.isMany()) {
                 EList vals = (EList) value;
                 for (Object v : vals) {
-                    EmfArtifactData emfArtifactData = new DataTypeArtifactData(v, attr, vals);
+                    EmfArtifactData emfArtifactData = new EDataTypeArtifactData(v, attr, vals);
                     Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
                     parentNode.addChild(attrNode);
                 }
             }
             else {
-                EmfArtifactData emfArtifactData = new DataTypeArtifactData(value, attr, null);
+                EmfArtifactData emfArtifactData = new EDataTypeArtifactData(value, attr, null);
                 Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
                 parentNode.addChild(attrNode);
             }
@@ -297,8 +310,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
         {
             loadOptions = new HashMap<Object, Object>();
         }
-        loadOptions.put(XMIResource.OPTION_DEFER_IDREF_RESOLUTION, Boolean.TRUE);
-        loadOptions.put(XMIResource.OPTION_USE_PARSER_POOL, new XMLParserPoolImpl());
+        loadOptions.putAll(EmfPluginUtils.getDefaultLoadOptions());
     }
 
     @Override

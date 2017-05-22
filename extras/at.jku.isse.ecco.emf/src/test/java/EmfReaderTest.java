@@ -72,9 +72,13 @@ public class EmfReaderTest {
         //URI uri = URI.createURI(classLoader.getResource("Library.xmi").toString());
         Path path = Paths.get(classLoader.getResource("Library.xmi").toURI());
         Set<Node.Op> nodes = reader.read(new Path[]{path});
+        // PluginArtifact
         assertEquals(1, nodes.size());
         Node root = nodes.iterator().next();
-        assertEquals(51, root.countArtifacts());
-        assertEquals(7, root.getChildren().size());
+        assertEquals(52, root.countArtifacts());
+        assertEquals(1, root.getChildren().size());
+        Node rn = root.getChildren().get(0);
+        assertEquals(51, rn.countArtifacts());
+        assertEquals(7, rn.getChildren().size());
     }
 }

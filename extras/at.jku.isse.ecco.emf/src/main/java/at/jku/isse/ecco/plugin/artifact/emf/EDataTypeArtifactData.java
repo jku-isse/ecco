@@ -5,13 +5,16 @@ import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EFactory;
 import org.eclipse.emf.ecore.EStructuralFeature;
-import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 
 /**
  * Created by hhoyos on 15/05/2017.
  */
-public class DataTypeArtifactData extends EmfArtifactData {
+public class EDataTypeArtifactData extends EmfArtifactData {
+
+    /**
+     * We need to know the package that owns the datatype.
+     */
+    private final String ePackageUri;
 
     // The name can be used to retrieve the EClassifier from the Package
     private final String dataTypeName;
@@ -19,7 +22,7 @@ public class DataTypeArtifactData extends EmfArtifactData {
     // In EMF all DataTypes must be serializable and de-serializable from a string representation
     private final String value;
 
-    public DataTypeArtifactData(Object value, EStructuralFeature feature, EList container) {
+    public EDataTypeArtifactData(Object value, EStructuralFeature feature, EList container) {
         super(value, feature, container);
 
         EDataType dataType = (EDataType) feature.getEType();
@@ -32,7 +35,20 @@ public class DataTypeArtifactData extends EmfArtifactData {
             EFactory eFactory = dataType.getEPackage().getEFactoryInstance();
             this.value = eFactory.convertToString(dataType, value);
             this.dataTypeName = dataType.getName();
+            this.ePackageUri = dataType.getEPackage().getNsURI();
         }
+    }
+
+    public String getDataTypeName() {
+        return dataTypeName;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public String getePackageUri() {
+        return ePackageUri;
     }
 
     @Override
@@ -41,8 +57,9 @@ public class DataTypeArtifactData extends EmfArtifactData {
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
 
-        DataTypeArtifactData that = (DataTypeArtifactData) o;
+        EDataTypeArtifactData that = (EDataTypeArtifactData) o;
 
+        if (!ePackageUri.equals(that.ePackageUri)) return false;
         if (!dataTypeName.equals(that.dataTypeName)) return false;
         return value.equals(that.value);
     }
@@ -50,6 +67,7 @@ public class DataTypeArtifactData extends EmfArtifactData {
     @Override
     public int hashCode() {
         int result = super.hashCode();
+        result = 31 * result + ePackageUri.hashCode();
         result = 31 * result + dataTypeName.hashCode();
         result = 31 * result + value.hashCode();
         return result;
