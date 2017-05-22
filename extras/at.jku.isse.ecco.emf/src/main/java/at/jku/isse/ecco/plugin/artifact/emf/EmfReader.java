@@ -7,7 +7,9 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import com.google.inject.Inject;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -137,12 +139,29 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     @Override
-    public boolean canRead(Path input) {
-        // FileURI from Path
-        URI input_uri = URI.createFileURI(input.toString());
-        Map<Object, Object> existsOptions = new HashMap<>();
-        existsOptions.put(ExtensibleURIConverterImpl.OPTION_TIMEOUT, 10000);    // 10s timeout
-        return resourceSet.getURIConverter().exists(input_uri, existsOptions);
+    public boolean canRead(Path path) {
+        // Since we are dealing with local resources, we can just est for File existence
+        if (!Files.exists(path)) {
+            return false;
+        }
+        if (Files.isDirectory(path)) {
+            return false;
+        }
+        if (!Files.isRegularFile(path))
+            return false;
+        if (!Files.isReadable(path)) {
+            return false;
+        }
+        // Check that the extension is registered.
+        String name = path.getFileName().toString();
+        String ext = name.substring(name.lastIndexOf('.')+1);
+        return resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().containsKey(ext);
+        // FIXME Bring back the URI check when we handle more than local resources
+//        // FileURI from Path
+//        URI input_uri = URI.createFileURI(input.toString());
+//        Map<Object, Object> existsOptions = new HashMap<>();
+//        existsOptions.put(ExtensibleURIConverterImpl.OPTION_TIMEOUT, 10000);    // 10s timeout
+//        return resourceSet.getURIConverter().exists(input_uri, existsOptions);
     }
 
     /**
@@ -157,6 +176,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
         for (Path path : input) {
             Path resolvedPath = base.resolve(path);
             if (canRead(resolvedPath)) {
+                // TODO The defaul Path mechanism used by ECCO is not compatible with resources in remote locations
                 URI fullUri =  URI.createFileURI(resolvedPath.toString());
                 //Resource resource = resourceSet.getResource(fullUri, false);
                 Resource resource = resourceSet.createResource(fullUri);
@@ -173,11 +193,8 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                     // No factory or malformed URI
                     throw new EccoException("There was a problem loading model " + fullUri.toString(), ex);
                 }
-
-                // TODO The defaul Path mechanism used by ECCO is not compatible with resources in remote locations
                 Artifact.Op<PluginArtifactData> pluginArtifact =
-                        this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(),
-                                Paths.get(fullUri.toFileString())));
+                        this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
                 Node.Op resourceNode = this.entityFactory.createNode(pluginArtifact);
                 nodes.add(resourceNode);
 
