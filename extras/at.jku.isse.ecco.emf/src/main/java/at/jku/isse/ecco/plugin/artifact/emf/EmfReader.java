@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
+import at.jku.isse.ecco.plugin.artifact.emf.data.*;
 import at.jku.isse.ecco.plugin.artifact.emf.util.EmfPluginUtils;
 import com.google.inject.Inject;
 
@@ -225,10 +226,10 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                     Resource ePackageResource = resourceSet.getResource(URI.createURI(ePackage.getNsURI()), false);
                     resourceData.addEPackageInformation(ePackage, ePackageResource);
                     Collection<EStructuralFeature.Setting> uses = EcoreUtil.UsageCrossReferencer.find(eObject, resource);
+                    Node.Op targetNode = nodeMapping.get(eObject);
                     for (EStructuralFeature.Setting ref : uses) {
                         Node.Op sourceNode = nodeMapping.get(ref.getEObject());
                         EStructuralFeature sf = ref.getEStructuralFeature();
-                        Node.Op targetNode = nodeMapping.get(ref.get(true));
                         EObjectArtifactData targetData = (EObjectArtifactData) targetNode.getArtifact().getData();
                         Node.Op refNode;
                         if (sf.isMany()) {

@@ -2,6 +2,10 @@ package at.jku.isse.ecco.plugin.artifact.emf;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
+import at.jku.isse.ecco.plugin.artifact.emf.data.EDataTypeArtifactData;
+import at.jku.isse.ecco.plugin.artifact.emf.data.EObjectArtifactData;
+import at.jku.isse.ecco.plugin.artifact.emf.data.EmfResourceData;
+import at.jku.isse.ecco.plugin.artifact.emf.data.NonContainmentReferenceData;
 import at.jku.isse.ecco.plugin.artifact.emf.util.EmfPluginUtils;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.emf.common.util.EList;

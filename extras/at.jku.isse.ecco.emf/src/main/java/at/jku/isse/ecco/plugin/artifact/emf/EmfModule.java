@@ -23,7 +23,6 @@ public class EmfModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        //bind(ResourceSet.class).to(ResourceSetImpl.class);
         final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
                 new TypeLiteral<ArtifactReader<Path, Set<Node.Op>>>() {
                 });
@@ -32,10 +31,10 @@ public class EmfModule extends AbstractModule {
                 new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {
                 });
         writerMultibinder.addBinding().to(EmfWriter.class);
-//        final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-//                new TypeLiteral<ArtifactViewer>() {
-//                });
-//        viewerMultibinder.addBinding().to(EmfViewer.class);
+        final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+                new TypeLiteral<ArtifactViewer>() {
+                });
+        viewerMultibinder.addBinding().to(EmfViewer.class);
     }
 
     /**
