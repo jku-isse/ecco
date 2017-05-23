@@ -191,10 +191,12 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                     // No factory or malformed URI
                     throw new EccoException("There was a problem loading model " + fullUri.toString(), ex);
                 }
+
                 Artifact.Op<PluginArtifactData> pluginArtifact =
                         this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
                 Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
                 nodes.add(pluginNode);
+
                 // A resource node to save resource and metamodel information
                 String name = path.getFileName().toString();
                 String ext = name.substring(name.lastIndexOf('.')+1);
@@ -225,19 +227,19 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                     Collection<EStructuralFeature.Setting> uses = EcoreUtil.UsageCrossReferencer.find(eObject, resource);
                     for (EStructuralFeature.Setting ref : uses) {
                         Node.Op sourceNode = nodeMapping.get(ref.getEObject());
-                        EObjectArtifactData sourceData = (EObjectArtifactData) sourceNode.getArtifact().getData();
                         EStructuralFeature sf = ref.getEStructuralFeature();
+                        Node.Op targetNode = nodeMapping.get(ref.get(true));
+                        EObjectArtifactData targetData = (EObjectArtifactData) targetNode.getArtifact().getData();
                         Node.Op refNode;
                         if (sf.isMany()) {
                             EList<EObject> vals = (EList<EObject>) ref.get(true);
                             EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
-                                    sf, vals, sourceData);
+                                    sf, vals, targetData);
                             refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
                         }
                         else {
-
                             EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
-                                    sf, null, sourceData);
+                                    sf, null, targetData);
                             refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
                         }
                         sourceNode.addChild(refNode);
