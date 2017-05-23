@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.plugin.artifact.emf;
+package at.jku.isse.ecco.plugin.artifact.emf.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 import org.eclipse.emf.common.util.EList;
