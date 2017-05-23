@@ -17,6 +17,10 @@ public class NonContainmentReferenceData extends EmfArtifactData {
         this.reference = reference;
     }
 
+    public EObjectArtifactData getReference() {
+        return reference;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

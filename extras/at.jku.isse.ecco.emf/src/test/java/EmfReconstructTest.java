@@ -45,7 +45,10 @@ public class EmfReconstructTest {
 
     @Test
     public void testReconstructResource() {
-        Resource r = EmfReconstruct.reconstructResource(root, reader.getResourceSet());
+        EmfReconstruct rc = new EmfReconstruct();
+        Resource r = rc.reconstructResource(root, reader.getResourceSet());
         assertTrue(r.getContents().size() > 0);
+        // Maybe create another reader and compare?
+
     }
 }
