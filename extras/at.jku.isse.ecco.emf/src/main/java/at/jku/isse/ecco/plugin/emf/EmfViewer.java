@@ -1,8 +1,10 @@
-package at.jku.isse.ecco.plugin.artifact.emf;
+package at.jku.isse.ecco.plugin.emf;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
+import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import javafx.collections.ObservableList;
+import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
@@ -13,6 +15,7 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 
 import javax.inject.Inject;
+import java.util.*;
 
 /**
  * Created by hhoyos on 23/05/2017.
@@ -21,11 +24,14 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
 
     private ResourceSet resourceSet;
     private TreeView<EObject> treeView;
+    Map<EObject, TreeItem<EObject>> eObjectTreeItemMap;
     private Resource resource;
+    private EmfReconstruct rc;
 
     @Inject
     public EmfViewer(ResourceSet resourceSet) {
         this.resourceSet = resourceSet;
+        eObjectTreeItemMap = new HashMap<>();
     }
 
     @Override
@@ -35,16 +41,55 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
 
     @Override
     public void showTree(Node node) {
-        EmfReconstruct rc = new EmfReconstruct();
-        resource = rc.reconstructResource((Node.Op) node, resourceSet);
-        TreeItem<EObject> dummyRoot = new TreeItem<>();
-        TreeView<EObject> tree = new TreeView<EObject> (dummyRoot);
-        for (EObject eObject : resource.getContents()) {
-            //TreeItem<EObject> item = createEObjectSubtree(eObject);
-            TreeItem<EObject> item = new LazyTreeItem(eObject);
-            dummyRoot.getChildren().add(item);
+        if (resource == null) {
+            rc = new EmfReconstruct();
+            // Get root node
+            Node.Op root = null;
+            do {
+                root = (Node.Op) node.getParent();
+            } while (!(root.getArtifact().getData() instanceof PluginArtifactData));
+            resource = rc.reconstructResource(root, resourceSet);
+            TreeItem<EObject> dummyRoot = new TreeItem<>();
+            treeView = new TreeView<>(dummyRoot);
+            for (EObject eObject : resource.getContents()) {
+                TreeItem<EObject> item = new LazyTreeItem(eObject);
+                eObjectTreeItemMap.put(eObject, item);
+                dummyRoot.getChildren().add(item);
+            }
+            this.setLeft(treeView);
         }
-        this.setLeft(tree);
+        MultipleSelectionModel msm = treeView.getSelectionModel();
+        EObject nodeEObject = rc.getEObjectForNode((Node.Op) node);
+        // Go up until firstVisible
+        EObject firstVisible= nodeEObject;
+        List<EObject> branch = new ArrayList<>();
+        branch.add(firstVisible);
+        while (!eObjectTreeItemMap.containsKey(firstVisible)) {
+            EObject eContainer = firstVisible.eContainer();
+            branch.add(eContainer);
+            firstVisible = eContainer;
+        }
+        if (firstVisible != nodeEObject) {
+            // Expand branch
+            Collections.reverse(branch);
+            expandBranch(eObjectTreeItemMap.get(firstVisible), branch);
+        }
+        TreeItem<EObject> treeItem = eObjectTreeItemMap.get(nodeEObject);
+        int row = treeView.getRow( treeItem );
+        // Now the row can be selected.
+        msm.select( row );
+    }
+
+    private void expandBranch(TreeItem<?> item, List<EObject> branch){
+        if(item != null && !item.isLeaf()){
+            item.setExpanded(true);
+            for(TreeItem<?> child : item.getChildren()){
+                Object childEObject = child.getValue();
+                if (branch.contains(childEObject)) {
+                    expandBranch(child, branch);
+                }
+            }
+        }
     }
 
     /**

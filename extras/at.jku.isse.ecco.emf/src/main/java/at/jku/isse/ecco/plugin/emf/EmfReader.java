@@ -1,12 +1,12 @@
-package at.jku.isse.ecco.plugin.artifact.emf;
+package at.jku.isse.ecco.plugin.emf;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
-import at.jku.isse.ecco.plugin.artifact.emf.data.*;
-import at.jku.isse.ecco.plugin.artifact.emf.util.EmfPluginUtils;
+import at.jku.isse.ecco.plugin.emf.data.*;
+import at.jku.isse.ecco.plugin.emf.util.EmfPluginUtils;
 import com.google.inject.Inject;
 
 import java.io.IOException;
@@ -129,7 +129,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     @Override
     public String getPluginId() {
-        return EmfReader.class.getName();
+        return EmfPlugin.class.getName();
     }
 
     @Override

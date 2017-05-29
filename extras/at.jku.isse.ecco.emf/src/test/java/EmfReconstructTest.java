@@ -1,6 +1,6 @@
 import at.jku.isse.ecco.dao.PerstEntityFactory;
-import at.jku.isse.ecco.plugin.artifact.emf.EmfReader;
-import at.jku.isse.ecco.plugin.artifact.emf.EmfReconstruct;
+import at.jku.isse.ecco.plugin.emf.EmfReader;
+import at.jku.isse.ecco.plugin.emf.EmfReconstruct;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;

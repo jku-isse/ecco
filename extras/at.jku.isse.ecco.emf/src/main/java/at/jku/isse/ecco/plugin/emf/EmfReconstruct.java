@@ -1,12 +1,12 @@
-package at.jku.isse.ecco.plugin.artifact.emf;
+package at.jku.isse.ecco.plugin.emf;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
-import at.jku.isse.ecco.plugin.artifact.emf.data.EDataTypeArtifactData;
-import at.jku.isse.ecco.plugin.artifact.emf.data.EObjectArtifactData;
-import at.jku.isse.ecco.plugin.artifact.emf.data.EmfResourceData;
-import at.jku.isse.ecco.plugin.artifact.emf.data.NonContainmentReferenceData;
-import at.jku.isse.ecco.plugin.artifact.emf.util.EmfPluginUtils;
+import at.jku.isse.ecco.plugin.emf.data.EDataTypeArtifactData;
+import at.jku.isse.ecco.plugin.emf.data.EObjectArtifactData;
+import at.jku.isse.ecco.plugin.emf.data.EmfResourceData;
+import at.jku.isse.ecco.plugin.emf.data.NonContainmentReferenceData;
+import at.jku.isse.ecco.plugin.emf.util.EmfPluginUtils;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
@@ -29,7 +29,9 @@ public class EmfReconstruct {
     /**
      * When creating non-containment references we need to find the node that represents the EObject
      */
-    Map<EObjectArtifactData, EObject> nodeMapping = new HashMap<>();
+    Map<EObjectArtifactData, EObject> dataEObjectMap = new HashMap<>();
+
+    Map<Node.Op, EObject> nodeEObjectMap = new HashMap<>();
 
     public Resource reconstructResource(Node.Op node, ResourceSet resourceSet) {
         Resource resource = null;
@@ -42,6 +44,7 @@ public class EmfReconstruct {
             resource = resourceSet.createResource(URI.createURI("." + ext));
             for (Node.Op child : resourceNode.getChildren()) {
                 EObject eObject = createEObjectStructure(child, resourceSet);
+                nodeEObjectMap.put(child, eObject);
                 resource.getContents().add(eObject);
             }
             for (Node.Op child : resourceNode.getChildren()) {
@@ -54,6 +57,10 @@ public class EmfReconstruct {
         return resource;
     }
 
+    public EObject getEObjectForNode(Node.Op node) {
+        return nodeEObjectMap.get(node);
+    }
+
     private EObject createEObjectStructure(Node.Op parentNode, ResourceSet resourceSet) throws EccoException {
         EObject parentEObject = null;
         if (parentNode.getArtifact().getData() instanceof EObjectArtifactData) {
@@ -64,7 +71,7 @@ public class EmfReconstruct {
             EClassifier eClass = ePackage.getEClassifier(eClassName);
             assert eClass instanceof EClass;
             parentEObject = ePackage.getEFactoryInstance().create((EClass) eClass);
-            nodeMapping.put(parentData, parentEObject);
+            dataEObjectMap.put(parentData, parentEObject);
             // Add all features
             for (Node.Op child : parentNode.getChildren()) {
                 if (child.getArtifact().getData() instanceof EDataTypeArtifactData) {
@@ -79,6 +86,8 @@ public class EmfReconstruct {
                     } else {
                         parentEObject.eSet(sf, value);
                     }
+                    // Attributes are shown in the parent EObject
+                    nodeEObjectMap.put(child, parentEObject);
                 } else if (child.getArtifact().getData() instanceof EObjectArtifactData) {
                     // Containment is trickier, as we need to account for positions, if needed
                     EObjectArtifactData eObjectData = (EObjectArtifactData) child.getArtifact().getData();
@@ -86,6 +95,7 @@ public class EmfReconstruct {
                     EStructuralFeature sf = ((EClass) eClass).getEStructuralFeature(sfId);
                     EObject childEObject = createEObjectStructure(child, resourceSet);
                     assert childEObject != null;
+                    nodeEObjectMap.put(child, childEObject);
                     if (sf.isMany()) {
                         // FIXME Ignores position for the moment
                         EList<EObject> values = (EList<EObject>) parentEObject.eGet(sf);
@@ -109,7 +119,7 @@ public class EmfReconstruct {
             EPackage ePackage = resourceSet.getPackageRegistry().getEPackage(ePackageUri);
             EClassifier eClass = ePackage.getEClassifier(eClassName);
             assert eClass instanceof EClass;
-            EObject parentEObject = nodeMapping.get(parentData);
+            EObject parentEObject = dataEObjectMap.get(parentData);
             assert parentEObject != null;
             for (Node.Op child : parentNode.getChildren()) {
                 createEReferences(child, resourceSet);
@@ -117,7 +127,7 @@ public class EmfReconstruct {
                     NonContainmentReferenceData eReferenceData = (NonContainmentReferenceData) child.getArtifact().getData();
                     int sfId = eReferenceData.getFeatureId();
                     EStructuralFeature sf = ((EClass) eClass).getEStructuralFeature(sfId);
-                    EObject referenceEObject = nodeMapping.get(eReferenceData.getReference());
+                    EObject referenceEObject = dataEObjectMap.get(eReferenceData.getReference());
                     assert referenceEObject != null;
                     if (sf.isMany()) {
                         // FIXME Ignores position for the moment

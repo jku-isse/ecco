@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.plugin.artifact.emf.data;
+package at.jku.isse.ecco.plugin.emf.data;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EStructuralFeature;

@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.plugin.artifact.emf.util;
+package at.jku.isse.ecco.plugin.emf.util;
 
 import org.eclipse.emf.ecore.xmi.XMIResource;
 import org.eclipse.emf.ecore.xmi.impl.XMLParserPoolImpl;

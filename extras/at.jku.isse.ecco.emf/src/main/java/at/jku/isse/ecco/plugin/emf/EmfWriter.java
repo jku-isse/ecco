@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.plugin.artifact.emf;
+package at.jku.isse.ecco.plugin.emf;
 
 import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
@@ -14,7 +14,7 @@ public class EmfWriter implements ArtifactWriter<Set<Node>, Path> {
 
     @Override
     public String getPluginId() {
-        return EmfWriter.class.getName();
+        return EmfPlugin.class.getName();
     }
 
     @Override

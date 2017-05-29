@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.plugin.artifact.emf;
+package at.jku.isse.ecco.plugin.emf;
 
 import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
 import com.google.inject.Module;
@@ -6,9 +6,8 @@ import com.google.inject.Module;
 /**
  * Created by hhoyos on 18/05/2017.
  */
-public class EmfPlugin extends ArtifactPlugin{
+public class EmfPlugin extends ArtifactPlugin {
 
-    public static final String PLUGIN_ID = "Ecco EMF Plugin";
     public static final String PLUGIN_NAME = "EMF Artifact Plugin";
     public static final String PLUGIN_DESC = "Ecco Plugin to support EMF models.";
 
@@ -16,7 +15,6 @@ public class EmfPlugin extends ArtifactPlugin{
 
     @Override
     public String getPluginId() {
-        // return PLUGIN_ID; ?
         return EmfPlugin.class.getName();
     }
 
