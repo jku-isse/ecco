@@ -1,18 +1,21 @@
 package at.jku.isse.ecco.plugin.emf;
 
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
+import at.jku.isse.ecco.plugin.emf.data.EmfResourceData;
+import at.jku.isse.ecco.plugin.emf.util.ReflectiveItemProvider;
 import at.jku.isse.ecco.tree.Node;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
-import org.eclipse.emf.ecore.EClass;
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.*;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.util.FeatureMap;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -23,8 +26,8 @@ import java.util.*;
 public class EmfViewer extends BorderPane implements ArtifactViewer {
 
     private ResourceSet resourceSet;
-    private TreeView<EObject> treeView;
-    Map<EObject, TreeItem<EObject>> eObjectTreeItemMap;
+    private TreeView<Object> treeView;
+    Map<EObject, TreeItem<Object>> eObjectTreeItemMap;
     private Resource resource;
     private EmfReconstruct rc;
 
@@ -41,23 +44,28 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
 
     @Override
     public void showTree(Node node) {
+        ArtifactData data = node.getArtifact().getData();
+        // Initial tree nodes must be ignored
+        if (data instanceof PluginArtifactData) {
+            return;
+        }
         if (resource == null) {
             rc = new EmfReconstruct();
-            // Get root node
-            Node.Op root = null;
-            do {
-                root = (Node.Op) node.getParent();
-            } while (!(root.getArtifact().getData() instanceof PluginArtifactData));
-            resource = rc.reconstructResource(root, resourceSet);
-            TreeItem<EObject> dummyRoot = new TreeItem<>();
-            treeView = new TreeView<>(dummyRoot);
+            while (!(data instanceof EmfResourceData)) {
+                node = node.getParent();
+                data = node.getArtifact().getData();
+            }
+            resource = rc.reconstructResource((Node.Op) node, resourceSet);
+            TreeItem<Object> dummyRoot = new TreeItem<>();
+            treeView = new TreeView<Object>(dummyRoot);
             for (EObject eObject : resource.getContents()) {
-                TreeItem<EObject> item = new LazyTreeItem(eObject);
+                TreeItem<Object> item = new EmfTreeItem(eObject);
                 eObjectTreeItemMap.put(eObject, item);
                 dummyRoot.getChildren().add(item);
             }
-            this.setLeft(treeView);
+
         }
+        this.setLeft(treeView);
         MultipleSelectionModel msm = treeView.getSelectionModel();
         EObject nodeEObject = rc.getEObjectForNode((Node.Op) node);
         // Go up until firstVisible
@@ -74,7 +82,7 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
             Collections.reverse(branch);
             expandBranch(eObjectTreeItemMap.get(firstVisible), branch);
         }
-        TreeItem<EObject> treeItem = eObjectTreeItemMap.get(nodeEObject);
+        TreeItem<Object> treeItem = eObjectTreeItemMap.get(nodeEObject);
         int row = treeView.getRow( treeItem );
         // Now the row can be selected.
         msm.select( row );
@@ -92,55 +100,72 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
         }
     }
 
-    /**
-     * Taken from http://www.loop81.com/2011/11/javafx-20-mastering-treeview.html (last visited 23/05/2017)
-     */
-    private class LazyTreeItem extends TreeItem<EObject> {
+    private class EmfTreeItem extends TreeItem<Object> {
 
-        /** The depth of this tree item in the {@link TreeView}. */
-//        private final int depth;
+        /** An EMF item is a leaf if it is an EAttribute, or if it's EClass does not have any EStructuralFeatures  */
+        private boolean isLeaf;
 
         /** Control if the children of this tree item has been loaded. */
         private boolean hasLoadedChildren = false;
 
-        public LazyTreeItem(EObject eObject) {
-            super(eObject);
-//            this.depth = depth;
+        public EmfTreeItem(Object object) {
+            super(object);
+            if (object instanceof  EObject) {
+                isLeaf = !((EObject) object).eClass().getEAllReferences().isEmpty();
+            }
+            else {
+                isLeaf = true;
+            }
         }
 
         @Override
-        public ObservableList<TreeItem<EObject>> getChildren() {
+        public ObservableList<TreeItem<Object>> getChildren() {
             if (hasLoadedChildren == false) {
-                loadChildren();
+                super.getChildren().setAll(buildChildren(this));
             }
             return super.getChildren();
         }
 
         @Override
         public boolean isLeaf() {
-            if (hasLoadedChildren == false) {
-                loadChildren();
-            }
-            return super.getChildren().isEmpty();
+            return isLeaf;
         }
 
-        private void loadChildren() {
+        private ObservableList<TreeItem<Object>> buildChildren(EmfTreeItem emfTreeItem) {
             hasLoadedChildren = true;
-            EObject eObject = this.getValue();
+            EObject eObject = (EObject) emfTreeItem.getValue();
             EClass eClass = eObject.eClass();
-            for (EReference ref : eClass.getEAllContainments()) {
-                EObject value = (EObject) eObject.eGet(ref);
-                LazyTreeItem valueItem = new LazyTreeItem(value);
-                this.getChildren().add(valueItem);
+            ObservableList<TreeItem<Object>> children = FXCollections.observableArrayList();
+            for (EStructuralFeature eStructuralFeature : eClass.getEAllStructuralFeatures()) {
+                // Want to keep al metamodel features + eContainer (a la modisco)
+                Object value = eObject.eGet(eStructuralFeature);
+                EmfTreeItem valueItem = new EmfTreeItem(value);
+                children.add(valueItem);
+            }
+            return children;
+        }
+
+        @Override
+        public String toString() {
+            Object object = getValue();
+            if (object instanceof EObject) {
+                EObject eObject = (EObject)object;
+                EClass eClass = eObject.eClass();
+                String label = String.format("[%s]", ReflectiveItemProvider.format(
+                        ReflectiveItemProvider.capName(eClass.getName()), ' '));
+                EStructuralFeature feature = ReflectiveItemProvider.getLabelFeature(eClass);
+                if (feature != null) {
+                    Object value = eObject.eGet(feature);
+                    if (value != null) {
+                        return label + " " + value.toString();
+                    }
+                }
+                return label;
+            }
+            else {
+                return object.toString();
             }
         }
 
-//        /** Return the depth of this item within the {@link TreeView}.*/
-//        public int getDepth() {
-//            return depth;
-//        }
     }
-
-
-
 }

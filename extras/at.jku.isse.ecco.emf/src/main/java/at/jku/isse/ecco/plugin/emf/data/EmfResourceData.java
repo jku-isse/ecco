@@ -6,6 +6,7 @@ import com.sun.istack.internal.Nullable;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.Resource;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +16,8 @@ import java.util.Map;
  */
 public class EmfResourceData implements ArtifactData {
 
-    private final Map<String, EPackageLocation> usedPacakges;
+
+    private final transient Map<String, EPackageLocation> usedPacakges;
 
     /** The extension used to persist the model. It will be used in the future to
      * reconstruct the resource from the Ecco tree.
@@ -60,6 +62,10 @@ public class EmfResourceData implements ArtifactData {
         return factoryClass;
     }
 
+    public String toString() {
+        return String.format("Emf Resource, extension: %s.", this.extension);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -77,7 +83,7 @@ public class EmfResourceData implements ArtifactData {
 
 
 
-    public class EPackageLocation {
+    public class EPackageLocation implements Serializable {
 
         /** If the metamodel can be loadad from a local file */
         @NotNull
@@ -90,6 +96,7 @@ public class EmfResourceData implements ArtifactData {
         /** If the EPacakge is not loaded, we have to loaded from this location */
         @Nullable
         private final String locationuri;
+        
 
         public EPackageLocation(boolean isLocal, String nsuri, String locationuri) {
             this.isLocal = isLocal;
