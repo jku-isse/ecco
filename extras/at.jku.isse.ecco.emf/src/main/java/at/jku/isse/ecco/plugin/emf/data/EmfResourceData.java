@@ -16,8 +16,10 @@ import java.util.Map;
  */
 public class EmfResourceData implements ArtifactData {
 
-
-    private final transient Map<String, EPackageLocation> usedPacakges;
+    /**
+     * Keep track of all packages used by the resource.
+     */
+    private final Map<String, EPackageLocation> usedPacakges;
 
     /** The extension used to persist the model. It will be used in the future to
      * reconstruct the resource from the Ecco tree.

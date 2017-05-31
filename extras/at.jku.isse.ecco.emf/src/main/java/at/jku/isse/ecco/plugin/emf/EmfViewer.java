@@ -4,18 +4,22 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.plugin.emf.data.EmfResourceData;
-import at.jku.isse.ecco.plugin.emf.util.ReflectiveItemProvider;
+import at.jku.isse.ecco.plugin.emf.treeview.EmfTreeCellImpl;
+import at.jku.isse.ecco.plugin.emf.treeview.EmfTreeNode;
 import at.jku.isse.ecco.tree.Node;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.MultipleSelectionModel;
+import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
+import javafx.util.Callback;
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.*;
+import org.eclipse.emf.ecore.impl.BasicEObjectImpl;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.util.FeatureMap;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -26,8 +30,8 @@ import java.util.*;
 public class EmfViewer extends BorderPane implements ArtifactViewer {
 
     private ResourceSet resourceSet;
-    private TreeView<Object> treeView;
-    Map<EObject, TreeItem<Object>> eObjectTreeItemMap;
+    private TreeView<EmfTreeNode> treeView;
+    Map<EObject, TreeItem<EmfTreeNode>> eObjectTreeItemMap;
     private Resource resource;
     private EmfReconstruct rc;
 
@@ -56,33 +60,47 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
                 data = node.getArtifact().getData();
             }
             resource = rc.reconstructResource((Node.Op) node, resourceSet);
-            TreeItem<Object> dummyRoot = new TreeItem<>();
-            treeView = new TreeView<Object>(dummyRoot);
+            TreeItem<EmfTreeNode> dummyRoot = new TreeItem<>();
+            treeView = new TreeView<>(dummyRoot);
             for (EObject eObject : resource.getContents()) {
-                TreeItem<Object> item = new EmfTreeItem(eObject);
+                EmfTreeNode eNode = new EmfTreeNode.EObjectNode(eObject);
+                TreeItem<EmfTreeNode> item = new EmfTreeItem(eNode);
                 eObjectTreeItemMap.put(eObject, item);
                 dummyRoot.getChildren().add(item);
             }
-
+            treeView.setShowRoot(false);
+            // Cell factory
+            treeView.setCellFactory(new Callback<TreeView<EmfTreeNode>, TreeCell<EmfTreeNode>>(){
+                @Override
+                public TreeCell<EmfTreeNode> call(TreeView<EmfTreeNode> tree) {
+                    return new EmfTreeCellImpl();
+                }
+            });
         }
-        this.setLeft(treeView);
+        this.setCenter(treeView);
         MultipleSelectionModel msm = treeView.getSelectionModel();
-        EObject nodeEObject = rc.getEObjectForNode((Node.Op) node);
-        // Go up until firstVisible
-        EObject firstVisible= nodeEObject;
-        List<EObject> branch = new ArrayList<>();
-        branch.add(firstVisible);
-        while (!eObjectTreeItemMap.containsKey(firstVisible)) {
-            EObject eContainer = firstVisible.eContainer();
-            branch.add(eContainer);
-            firstVisible = eContainer;
+        TreeItem<EmfTreeNode> treeItem;
+        if (node.getArtifact().getData() instanceof EmfResourceData) {  // If the node is for an EmfResourceData artifact, show from the root
+            treeItem= treeView.getRoot();
         }
-        if (firstVisible != nodeEObject) {
-            // Expand branch
-            Collections.reverse(branch);
-            expandBranch(eObjectTreeItemMap.get(firstVisible), branch);
+        else {      // if (node.getArtifact().getData() instanceof EmfResourceData)
+            EObject nodeEObject = rc.getEObjectForNode((Node.Op) node);
+            // Go up until firstVisible
+            EObject firstVisible= nodeEObject;
+            List<EObject> branch = new ArrayList<>();
+            branch.add(firstVisible);
+            while (!eObjectTreeItemMap.containsKey(firstVisible)) {
+                EObject eContainer = firstVisible.eContainer();
+                branch.add(eContainer);
+                firstVisible = eContainer;
+            }
+            if (firstVisible != nodeEObject) {
+                // Expand branch
+                Collections.reverse(branch);
+                expandBranch(eObjectTreeItemMap.get(firstVisible), branch);
+            }
+            treeItem = eObjectTreeItemMap.get(nodeEObject);
         }
-        TreeItem<Object> treeItem = eObjectTreeItemMap.get(nodeEObject);
         int row = treeView.getRow( treeItem );
         // Now the row can be selected.
         msm.select( row );
@@ -100,26 +118,17 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
         }
     }
 
-    private class EmfTreeItem extends TreeItem<Object> {
-
-        /** An EMF item is a leaf if it is an EAttribute, or if it's EClass does not have any EStructuralFeatures  */
-        private boolean isLeaf;
+    private class EmfTreeItem extends TreeItem<EmfTreeNode> {
 
         /** Control if the children of this tree item has been loaded. */
         private boolean hasLoadedChildren = false;
 
-        public EmfTreeItem(Object object) {
+        public EmfTreeItem(EmfTreeNode object) {
             super(object);
-            if (object instanceof  EObject) {
-                isLeaf = !((EObject) object).eClass().getEAllReferences().isEmpty();
-            }
-            else {
-                isLeaf = true;
-            }
         }
 
         @Override
-        public ObservableList<TreeItem<Object>> getChildren() {
+        public ObservableList<TreeItem<EmfTreeNode>> getChildren() {
             if (hasLoadedChildren == false) {
                 super.getChildren().setAll(buildChildren(this));
             }
@@ -128,44 +137,60 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
 
         @Override
         public boolean isLeaf() {
-            return isLeaf;
+            return getValue().isLeaf();
         }
 
-        private ObservableList<TreeItem<Object>> buildChildren(EmfTreeItem emfTreeItem) {
+        private ObservableList<TreeItem<EmfTreeNode>> buildChildren(EmfTreeItem emfTreeItem) {
             hasLoadedChildren = true;
-            EObject eObject = (EObject) emfTreeItem.getValue();
-            EClass eClass = eObject.eClass();
-            ObservableList<TreeItem<Object>> children = FXCollections.observableArrayList();
-            for (EStructuralFeature eStructuralFeature : eClass.getEAllStructuralFeatures()) {
-                // Want to keep al metamodel features + eContainer (a la modisco)
-                Object value = eObject.eGet(eStructuralFeature);
-                EmfTreeItem valueItem = new EmfTreeItem(value);
-                children.add(valueItem);
+            EmfTreeNode itemNode = emfTreeItem.getValue();
+            ObservableList<TreeItem<EmfTreeNode>> children = FXCollections.observableArrayList();
+            if (itemNode instanceof EmfTreeNode.EObjectNode) {
+                EmfTreeNode.EObjectNode eObjectNode = (EmfTreeNode.EObjectNode) itemNode;
+                EObject eObject = eObjectNode.getEObject();
+                EClass eClass = eObject.eClass();
+                for (EStructuralFeature feature : eClass.getEAllStructuralFeatures()) {
+                    // Want to keep al metamodel features + eContainer (a la modisco)
+                    EmfTreeNode node;
+                    if (feature.isMany()) {
+                        node = new EmfTreeNode.MultiFeatureNode(feature, eObject);
+                    }
+                    else {
+                        if (feature instanceof  EReference) {
+                            node = new EmfTreeNode.SingleReferenceNode(feature, eObject);
+                        }
+                        else {
+                            node = new EmfTreeNode.SingleFeatureNode(feature, eObject);
+                        }
+                    }
+                    children.add(new EmfTreeItem(node));
+                }
+            }
+            else if (itemNode instanceof EmfTreeNode.SingleReferenceNode) {
+                EObject eObject = (EObject) ((EmfTreeNode.SingleReferenceNode) itemNode).getValue();
+                EmfTreeNode node = new EmfTreeNode.EObjectNode(eObject);
+                children.add(new EmfTreeItem(node));
+            }
+            else if (itemNode instanceof EmfTreeNode.MultiFeatureNode) {
+                Object value = ((EmfTreeNode.MultiFeatureNode) itemNode).getValue();
+                assert value instanceof EList;
+
+                EClassifier eType = ((EmfTreeNode.MultiFeatureNode) itemNode).getFeature().getEType();
+                if (eType instanceof EClass) {
+                    for (EObject child : (EList<EObject>) value) {
+                        EmfTreeNode node = new EmfTreeNode.EObjectNode(child);
+                        children.add(new EmfTreeItem(node));
+                    }
+                }
+                else if (eType instanceof EDataType) {  // Works for all data types?
+                    for (Object child : (EList<Object>) value) {
+                        EmfTreeNode node = new EmfTreeNode.PrimitiveValueNode(child);
+                        children.add(new EmfTreeItem(node));
+                    }
+                }
             }
             return children;
         }
 
-        @Override
-        public String toString() {
-            Object object = getValue();
-            if (object instanceof EObject) {
-                EObject eObject = (EObject)object;
-                EClass eClass = eObject.eClass();
-                String label = String.format("[%s]", ReflectiveItemProvider.format(
-                        ReflectiveItemProvider.capName(eClass.getName()), ' '));
-                EStructuralFeature feature = ReflectiveItemProvider.getLabelFeature(eClass);
-                if (feature != null) {
-                    Object value = eObject.eGet(feature);
-                    if (value != null) {
-                        return label + " " + value.toString();
-                    }
-                }
-                return label;
-            }
-            else {
-                return object.toString();
-            }
-        }
-
     }
+
 }
