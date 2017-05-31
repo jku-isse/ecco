@@ -46,6 +46,18 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	public void setData(DataType data) {
 		this.data = data;
 
+//		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+//			try (ObjectOutput out = new ObjectOutputStream(bos)) {
+//				out.writeObject(this.data);
+//				this.buffer = bos.toByteArray();
+//			}
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+	}
+
+	@Override
+	public void store() {
 		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 			try (ObjectOutput out = new ObjectOutputStream(bos)) {
 				out.writeObject(this.data);
@@ -54,6 +66,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		super.store();
 	}
 
 
