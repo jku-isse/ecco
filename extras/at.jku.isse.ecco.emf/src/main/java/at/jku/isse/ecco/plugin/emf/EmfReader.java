@@ -69,7 +69,6 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
         EcorePackage.eINSTANCE.eClass();
         Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap()
                 .put("ecore", new EcoreResourceFactoryImpl());
-
         resourceSet.getResourceFactoryRegistry()
                 .getExtensionToFactoryMap()
                 .put("xmi", new XMIResourceFactoryImpl());
@@ -207,24 +206,20 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                         .getClass()
                         .getCanonicalName();
                 EmfResourceData resourceData = new EmfResourceData(ext, factoryClass);
+                Artifact.Op<EmfResourceData> resourceArtifact =
+                        this.entityFactory.createArtifact(resourceData);
                 Node.Op resourceNode = this.entityFactory.createNode(resourceData);
                 pluginNode.addChild(resourceNode);
                 for (EObject eObject : resource.getContents()) {
-                    Node.Op eObjectNode = createEObjectSubtree(eObject, null, null);
+                    Node.Op eObjectNode = createEObjectSubtree(eObject, null, null, resourceData);
                     resourceNode.addChild(eObjectNode);
                 }
-                // References have to be done at the end when all nodes have been created.
-                // We also use the loop to capture the EPackage data, to avoid doing the loop twice
                 // TODO how are cross-resource references handled
                 // FIXME, perhaps use a ECrossReferenceAdapter if we want to be faster
                 //EcoreUtil.UsageCrossReferencer crossRef = new EcoreUtil.UsageCrossReferencer(resource);
                 TreeIterator<EObject> it = resource.getAllContents();
                 while (it.hasNext()) {
                     EObject eObject = it.next();
-                    EClass eClass = eObject.eClass();
-                    EPackage ePackage = eClass.getEPackage();
-                    Resource ePackageResource = resourceSet.getResource(URI.createURI(ePackage.getNsURI()), false);
-                    resourceData.addEPackageInformation(ePackage, ePackageResource);
                     Collection<EStructuralFeature.Setting> uses = EcoreUtil.UsageCrossReferencer.find(eObject, resource);
                     Node.Op targetNode = nodeMapping.get(eObject);
                     for (EStructuralFeature.Setting ref : uses) {
@@ -256,8 +251,9 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
      * Non containment EReferences are added as?
      * @param parentNode The ECCO parent node
      * @param eObject   The EObject to get the child nodes from
+     * @param resourceData The ResourceData to capture the used package information
      */
-    private void addChildNodes(Node.Op parentNode, EObject eObject) {
+    private void addChildNodes(Node.Op parentNode, EObject eObject, EmfResourceData resourceData) {
         EClass eClass = eObject.eClass();
         for (EAttribute attr : eClass.getEAllAttributes()) {
             Object value = eObject.eGet(attr);
@@ -281,13 +277,13 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
             if (ref.isMany()) {
                 EList<EObject> vals = (EList<EObject>) value;
                 for (EObject child : vals) {
-                    refNode = createEObjectSubtree(child, ref, vals);
+                    refNode = createEObjectSubtree(child, ref, vals, resourceData);
                     parentNode.addChild(refNode);
                 }
             }
             else {
                 EObject child = (EObject) value;
-                refNode = createEObjectSubtree(child, ref, null);
+                refNode = createEObjectSubtree(child, ref, null, resourceData);
                 parentNode.addChild(refNode);
             }
         }
@@ -298,13 +294,17 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
      * @param eObject the EObject to traverse
      * @param ref   the EReference that pointed to the eObject, null if in the root
      * @param container If the EReference is multivalued, then this is the EList that contains the eObject, else null
+     * @param resourceData The ResourceData to capture the used package information
      * @return The Node that is the root of the subtree
      */
-    private Node.Op createEObjectSubtree(EObject eObject, EReference ref, EList<EObject> container) {
-        EmfArtifactData emfArtifactData = new EObjectArtifactData(eObject, ref, container);
+    private Node.Op createEObjectSubtree(EObject eObject, EReference ref, EList<EObject> container, EmfResourceData resourceData) {
+        EObjectArtifactData emfArtifactData = new EObjectArtifactData(eObject, ref, container);
+        EClass eClass = eObject.eClass();
+        Resource ePackageResource = resourceSet.getResource(URI.createURI(emfArtifactData.getePackageUri()), false);
+        resourceData.addEPackageInformation(eClass.getEPackage(), ePackageResource);
         Node.Op refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
         nodeMapping.put(eObject, refNode);
-        addChildNodes(refNode, eObject);
+        addChildNodes(refNode, eObject, resourceData);
         return refNode;
     }
 

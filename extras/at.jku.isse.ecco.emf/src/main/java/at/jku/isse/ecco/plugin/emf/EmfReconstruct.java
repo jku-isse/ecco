@@ -33,26 +33,20 @@ public class EmfReconstruct {
 
     Map<Node.Op, EObject> nodeEObjectMap = new HashMap<>();
 
-    public Resource reconstructResource(Node.Op node, ResourceSet resourceSet) {
+    public Resource reconstructResource(Node.Op resourceNode, ResourceSet resourceSet) {
+        assert resourceNode.getArtifact().getData() instanceof EmfResourceData;
         Resource resource = null;
-        if (node.getArtifact().getData() instanceof PluginArtifactData) {
-            // The plugin single child should be the resource node
-            Node.Op resourceNode = node.getChildren().get(0);
-            checkMetamodels(resourceNode, resourceSet);
-            // Create the resource, the uri can be assigned later, e.g. the writer will assing an uri to persist.
-            String ext = ((EmfResourceData) resourceNode.getArtifact().getData()).getExtension();
-            resource = resourceSet.createResource(URI.createURI("." + ext));
-            for (Node.Op child : resourceNode.getChildren()) {
-                EObject eObject = createEObjectStructure(child, resourceSet);
-                nodeEObjectMap.put(child, eObject);
-                resource.getContents().add(eObject);
-            }
-            for (Node.Op child : resourceNode.getChildren()) {
-                createEReferences(child, resourceSet);
-            }
+        checkMetamodels(resourceNode, resourceSet);
+        // Create the resource, the uri can be assigned later, e.g. the writer will assing an uri to persist.
+        String ext = ((EmfResourceData) resourceNode.getArtifact().getData()).getExtension();
+        resource = resourceSet.createResource(URI.createURI("." + ext));
+        for (Node.Op child : resourceNode.getChildren()) {
+            EObject eObject = createEObjectStructure(child, resourceSet);
+            nodeEObjectMap.put(child, eObject);
+            resource.getContents().add(eObject);
         }
-        else {
-            System.out.println("Handle other type of nodes: " + node.getArtifact().getData());
+        for (Node.Op child : resourceNode.getChildren()) {
+            createEReferences(child, resourceSet);
         }
         return resource;
     }
@@ -169,6 +163,12 @@ public class EmfReconstruct {
             HashMap<Object, Object> loadOptions = new HashMap<Object, Object>();
             loadOptions.putAll(EmfPluginUtils.getDefaultLoadOptions());
             EmfResourceData data = (EmfResourceData) resourceNode.getArtifact().getData();
+            if (data.getUsedPacakges().isEmpty()) {
+                throw new EccoException("There was no EPackage information found for the given resource node. The " +
+                        "Emf Resource can not he reconstructed without the EPackage information. Perhaps the Ecco " +
+                        "tree was not created with the Emf Reader and as a result the EmfResourceData usedPackages map " +
+                        "is empty.");
+            }
             for (Map.Entry<String, EmfResourceData.EPackageLocation> entry : data.getUsedPacakges().entrySet()) {
                 String uri = entry.getKey();
                 Resource ePackageResource = resourceSet.getResource(URI.createURI(uri), false);
@@ -191,7 +191,7 @@ public class EmfReconstruct {
 //                                        .put("xmi", new XMIResourceFactoryImpl());
                             }
                         } catch (IOException e) {
-                            throw new EccoException(String.format("Package %s was found to be rigistered locally from %s, but there " +
+                            throw new EccoException(String.format("Package %s was found to be registered locally from %s, but there " +
                                     "was an error when trying to reload the packge.", uri, loc.getLocationuri()), e);
                         }
                     }
