@@ -118,8 +118,12 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 		if (this.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
 			return false;
 
-		if (!this.useReferencesInEquals())
-			return getData().equals(that.getData());
+		if (!this.useReferencesInEquals()) {
+			if (this.getData() == null)
+				return that.getData() == null;
+			else
+				return getData().equals(that.getData());
+		}
 		else {
 			if (!this.getData().equals(that.getData()))
 				return false;
