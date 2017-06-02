@@ -149,6 +149,8 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 	@Override
 	public String toString() {
+		if (this.getData() == null)
+			return "NULL";
 		return this.getData().toString();
 	}
 

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -221,11 +222,13 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					this.fireReadEvent(base.relativize(current), this);
 
 					// go into sub directories
-					Files.list(current).forEach(d -> {
-						Node.Op child = this.readDirectories(base, d, hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes);
-						if (child != null)
-							directoryNode.addChild(child);
-					});
+					try (Stream<Path> filesStream = Files.list(current)) {
+						filesStream.forEach(d -> {
+							Node.Op child = this.readDirectories(base, d, hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes);
+							if (child != null)
+								directoryNode.addChild(child);
+						});
+					}
 
 					return directoryNode;
 				}
