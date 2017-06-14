@@ -175,7 +175,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
             Path resolvedPath = base.resolve(path);
             if (canRead(resolvedPath)) {
                 // TODO The defaul Path mechanism used by ECCO is not compatible with resources in remote locations
-                URI fullUri =  URI.createFileURI(resolvedPath.toString());
+                URI fullUri = URI.createFileURI(resolvedPath.toString());
                 //Resource resource = resourceSet.getResource(fullUri, false);
                 Resource resource = resourceSet.createResource(fullUri);
                 ((ResourceImpl) resource).setIntrinsicIDToEObjectMap(new HashMap<>());
@@ -199,7 +199,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
 
                 // A resource node to save resource and metamodel information
                 String name = path.getFileName().toString();
-                String ext = name.substring(name.lastIndexOf('.')+1);
+                String ext = name.substring(name.lastIndexOf('.') + 1);
                 String factoryClass = resourceSet.getResourceFactoryRegistry()
                         .getExtensionToFactoryMap()
                         .get(ext)
@@ -208,37 +208,41 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                 EmfResourceData resourceData = new EmfResourceData(ext, factoryClass);
                 Artifact.Op<EmfResourceData> resourceArtifact =
                         this.entityFactory.createArtifact(resourceData);
-                Node.Op resourceNode = this.entityFactory.createNode(resourceData);
+                Node.Op resourceNode = this.entityFactory.createNode(resourceArtifact);
                 pluginNode.addChild(resourceNode);
-                for (EObject eObject : resource.getContents()) {
-                    Node.Op eObjectNode = createEObjectSubtree(eObject, null, null, resourceData);
+                TreeIterator<EObject> it = resource.getAllContents();
+                // Since we have the nodeMapping and tree is no longer deep, perhaps we can do it in one pass
+                while (it.hasNext()) {
+                    Node.Op eObjectNode = createEObjectNode(it.next(), resourceData);
                     resourceNode.addChild(eObjectNode);
                 }
                 // TODO how are cross-resource references handled
                 // FIXME, perhaps use a ECrossReferenceAdapter if we want to be faster
                 //EcoreUtil.UsageCrossReferencer crossRef = new EcoreUtil.UsageCrossReferencer(resource);
-                TreeIterator<EObject> it = resource.getAllContents();
+                it = resource.getAllContents();
                 while (it.hasNext()) {
                     EObject eObject = it.next();
+                    // These are all non-containment
                     Collection<EStructuralFeature.Setting> uses = EcoreUtil.UsageCrossReferencer.find(eObject, resource);
                     Node.Op targetNode = nodeMapping.get(eObject);
-                    for (EStructuralFeature.Setting ref : uses) {
-                        Node.Op sourceNode = nodeMapping.get(ref.getEObject());
-                        EStructuralFeature sf = ref.getEStructuralFeature();
-                        EObjectArtifactData targetData = (EObjectArtifactData) targetNode.getArtifact().getData();
-                        Node.Op refNode;
-                        if (sf.isMany()) {
-                            EList<EObject> vals = (EList<EObject>) ref.get(true);
-                            EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
-                                    sf, vals, targetData);
-                            refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+                    for (EStructuralFeature.Setting setting : uses) {
+                        if (setting.getEStructuralFeature() instanceof EReference) {
+                            EReference ref = (EReference) setting.getEStructuralFeature();
+                            Node.Op sourceNode = nodeMapping.get(setting.getEObject());
+                            EObjectArtifactData targetData = (EObjectArtifactData) targetNode.getArtifact().getData();
+                            Node.Op refNode;
+                            if (ref.isMany()) {
+                                EList<EObject> vals = (EList<EObject>) setting.get(true);
+                                EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
+                                        ref, vals, targetData);
+                                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+                            } else {
+                                EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
+                                        ref, null, targetData);
+                                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+                            }
+                            sourceNode.addChild(refNode);
                         }
-                        else {
-                            EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
-                                    sf, null, targetData);
-                            refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-                        }
-                        sourceNode.addChild(refNode);
                     }
                 }
             }
@@ -247,65 +251,75 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     /**
-     * Add a child node for each EAttribute and for each containment EReference.
-     * Non containment EReferences are added as?
-     * @param parentNode The ECCO parent node
-     * @param eObject   The EObject to get the child nodes from
+     * Creates the ArtifactData for the EObject and adds all its child nodes.
+     * @param eObject the EObject to traverse
      * @param resourceData The ResourceData to capture the used package information
+     * @return The Node that represents the EObject
      */
-    private void addChildNodes(Node.Op parentNode, EObject eObject, EmfResourceData resourceData) {
+    private Node.Op createEObjectNode(EObject eObject, EmfResourceData resourceData) {
+        EObjectArtifactData emfArtifactData = new EObjectArtifactData(eObject);
         EClass eClass = eObject.eClass();
-        for (EAttribute attr : eClass.getEAllAttributes()) {
-            Object value = eObject.eGet(attr);
-            if (attr.isMany()) {
-                EList vals = (EList) value;
-                for (Object v : vals) {
-                    EmfArtifactData emfArtifactData = new EDataTypeArtifactData(v, attr, vals);
-                    Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-                    parentNode.addChild(attrNode);
-                }
-            }
-            else {
-                EmfArtifactData emfArtifactData = new EDataTypeArtifactData(value, attr, null);
-                Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-                parentNode.addChild(attrNode);
-            }
+        Resource ePackageResource = resourceSet.getResource(URI.createURI(emfArtifactData.getePackageUri()), false);
+        resourceData.addEPackageInformation(eClass.getEPackage(), ePackageResource);
+        Node.Op eObjectNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+        nodeMapping.put(eObject, eObjectNode);
+        addContainerNode(eObject, eObjectNode, resourceData);
+        addEAttributeNodes(eObjectNode, eObject, resourceData);
+        return eObjectNode;
+    }
+
+    private void addContainerNode(EObject eObject, Node.Op eObjectNode, EmfResourceData resourceData) {
+        if (eObject.eContainer() == null) {
+            ResourceContainerData eContainerArtifact = new ResourceContainerData(resourceData);
+            Node.Op eContainerNode = this.entityFactory.createNode(this.entityFactory.createArtifact(eContainerArtifact));
+            eObjectNode.addChild(eContainerNode);
         }
-        for (EReference ref : eClass.getEAllContainments()) {
-            Object value = eObject.eGet(ref);
+        else {
+            EStructuralFeature ref = eObject.eContainingFeature();
+            EObject owner = eObject.eContainer();
+            assert nodeMapping.containsKey(owner);
+            EObjectArtifactData ownerData = (EObjectArtifactData) nodeMapping.get(owner).getArtifact().getData();
             Node.Op refNode;
             if (ref.isMany()) {
-                EList<EObject> vals = (EList<EObject>) value;
-                for (EObject child : vals) {
-                    refNode = createEObjectSubtree(child, ref, vals, resourceData);
-                    parentNode.addChild(refNode);
-                }
+                EList<EObject> vals = (EList<EObject>) owner.eGet(ref);
+                EmfArtifactData containerData = new EContainerData(eObject, ownerData, ref, vals);
+                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(containerData));
+            } else {
+                EmfArtifactData containerData = new EContainerData(eObject, ownerData, ref, null);
+                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(containerData));
             }
-            else {
-                EObject child = (EObject) value;
-                refNode = createEObjectSubtree(child, ref, null, resourceData);
-                parentNode.addChild(refNode);
-            }
+            eObjectNode.addChild(refNode);
         }
     }
 
     /**
-     * Creates the ArtifactData for the EObject and adds all its child nodes.
-     * @param eObject the EObject to traverse
-     * @param ref   the EReference that pointed to the eObject, null if in the root
-     * @param container If the EReference is multivalued, then this is the EList that contains the eObject, else null
+     * Add a child node for each EAttribute.
+     * Derived and volatile features are ignored. Derived because with dynamic EMF it is very difficult to calculate
+     * a derived value.
+     * Volatile because these are not persisted and hence should not be persisted in Ecco either.
+     * @param parentNode The ECCO parent node
+     * @param eObject   The EObject to get the child nodes from
      * @param resourceData The ResourceData to capture the used package information
-     * @return The Node that is the root of the subtree
      */
-    private Node.Op createEObjectSubtree(EObject eObject, EReference ref, EList<EObject> container, EmfResourceData resourceData) {
-        EObjectArtifactData emfArtifactData = new EObjectArtifactData(eObject, ref, container);
+    private void addEAttributeNodes(Node.Op parentNode, EObject eObject, EmfResourceData resourceData) {
         EClass eClass = eObject.eClass();
-        Resource ePackageResource = resourceSet.getResource(URI.createURI(emfArtifactData.getePackageUri()), false);
-        resourceData.addEPackageInformation(eClass.getEPackage(), ePackageResource);
-        Node.Op refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-        nodeMapping.put(eObject, refNode);
-        addChildNodes(refNode, eObject, resourceData);
-        return refNode;
+        for (EAttribute attr : eClass.getEAllAttributes()) {
+            if (!attr.isVolatile()) {       // Derived attributes should be volatile too
+                Object value = eObject.eGet(attr);
+                if (attr.isMany()) {
+                    EList vals = (EList) value;
+                    for (Object v : vals) {
+                        EmfArtifactData emfArtifactData = new EDataTypeArtifactData(v, attr, vals);
+                        Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+                        parentNode.addChild(attrNode);
+                    }
+                } else {
+                    EmfArtifactData emfArtifactData = new EDataTypeArtifactData(value, attr, null);
+                    Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+                    parentNode.addChild(attrNode);
+                }
+            }
+        }
     }
 
     private void loadDefaultLoadOptions() {
@@ -318,7 +332,6 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     @Override
     public Set<Node.Op> read(Path[] input) {
-
         return this.read(Paths.get("."), input);
     }
 

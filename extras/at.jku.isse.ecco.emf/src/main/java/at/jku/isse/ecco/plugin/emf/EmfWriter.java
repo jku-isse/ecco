@@ -1,16 +1,35 @@
 package at.jku.isse.ecco.plugin.emf;
 
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
+import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
+import at.jku.isse.ecco.plugin.emf.data.EmfResourceData;
 import at.jku.isse.ecco.tree.Node;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.xmi.XMIResource;
 
+import javax.inject.Inject;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Set;
+import java.nio.file.Paths;
+import java.util.*;
 
 /**
  * Created by hhoyos on 19/05/2017.
  */
 public class EmfWriter implements ArtifactWriter<Set<Node>, Path> {
+
+    private final ResourceSet resourceSet;
+
+    @Inject
+    public EmfWriter(ResourceSet resourceSet) {
+        this.resourceSet = resourceSet;
+    }
+
 
     @Override
     public String getPluginId() {
@@ -19,12 +38,31 @@ public class EmfWriter implements ArtifactWriter<Set<Node>, Path> {
 
     @Override
     public Path[] write(Path base, Set<Node> input) {
-        return new Path[0];
+        EmfReconstruct reconstruct = new EmfReconstruct();
+        Map<Object, Object> saveOptions = new HashMap<>();
+        saveOptions.put(XMIResource.OPTION_SCHEMA_LOCATION, Boolean.TRUE);
+        List<Path> output = new ArrayList();
+        for (Node pluginNode : input) {
+            Artifact<PluginArtifactData> pluginArtifact = (Artifact<PluginArtifactData>) pluginNode.getArtifact();
+            Path resourcePath = base.resolve(pluginArtifact.getData().getPath());
+            output.add(resourcePath);
+            // Get the resource data
+            for (Node resourceNode : pluginNode.getChildren()) {
+                Resource resource = reconstruct.reconstructResource((Node.Op) resourceNode, resourceSet);
+                resource.setURI(URI.createFileURI(resourcePath.toString()));
+                try {
+                    resource.save(saveOptions);
+                } catch (IOException e) {
+                    throw new EccoException(e);
+                }
+            }
+        }
+        return output.toArray(new Path[0]);
     }
 
     @Override
     public Path[] write(Set<Node> input) {
-        return new Path[0];
+        return this.write(Paths.get("."), input);
     }
 
     @Override

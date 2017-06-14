@@ -1,11 +1,7 @@
 package at.jku.isse.ecco.plugin.emf;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
-import at.jku.isse.ecco.plugin.emf.data.EDataTypeArtifactData;
-import at.jku.isse.ecco.plugin.emf.data.EObjectArtifactData;
-import at.jku.isse.ecco.plugin.emf.data.EmfResourceData;
-import at.jku.isse.ecco.plugin.emf.data.NonContainmentReferenceData;
+import at.jku.isse.ecco.plugin.emf.data.*;
 import at.jku.isse.ecco.plugin.emf.util.EmfPluginUtils;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.emf.common.util.EList;
@@ -37,16 +33,18 @@ public class EmfReconstruct {
         assert resourceNode.getArtifact().getData() instanceof EmfResourceData;
         Resource resource = null;
         checkMetamodels(resourceNode, resourceSet);
-        // Create the resource, the uri can be assigned later, e.g. the writer will assing an uri to persist.
+        // Create the resource, the uri can be assigned later, e.g. the writer will assign an uri to persist.
         String ext = ((EmfResourceData) resourceNode.getArtifact().getData()).getExtension();
         resource = resourceSet.createResource(URI.createURI("." + ext));
+        // First, only add the EObjectNodes
         for (Node.Op child : resourceNode.getChildren()) {
-            EObject eObject = createEObjectStructure(child, resourceSet);
-            nodeEObjectMap.put(child, eObject);
-            resource.getContents().add(eObject);
+            EObject eObject = createEObject(child, resourceSet);
+            if (eObject != null) {
+                resource.getContents().add(eObject);
+            }
         }
         for (Node.Op child : resourceNode.getChildren()) {
-            createEReferences(child, resourceSet);
+            createReferences(child, resourceSet);
         }
         return resource;
     }
@@ -55,57 +53,48 @@ public class EmfReconstruct {
         return nodeEObjectMap.get(node);
     }
 
-    private EObject createEObjectStructure(Node.Op parentNode, ResourceSet resourceSet) throws EccoException {
-        EObject parentEObject = null;
-        if (parentNode.getArtifact().getData() instanceof EObjectArtifactData) {
-            EObjectArtifactData parentData = (EObjectArtifactData) parentNode.getArtifact().getData();
-            String eClassName = parentData.geteClassName();
-            String ePackageUri = parentData.getePackageUri();
+    private EObject createEObject(Node.Op eObjectNode, ResourceSet resourceSet) throws EccoException {
+        EObject eObject = null;
+        if (eObjectNode.getArtifact().getData() instanceof EObjectArtifactData) {
+            EObjectArtifactData eObjectData = (EObjectArtifactData) eObjectNode.getArtifact().getData();
+            String eClassName = eObjectData.geteClassName();
+            String ePackageUri = eObjectData.getePackageUri();
             EPackage ePackage = resourceSet.getPackageRegistry().getEPackage(ePackageUri);
             EClassifier eClass = ePackage.getEClassifier(eClassName);
             assert eClass instanceof EClass;
-            parentEObject = ePackage.getEFactoryInstance().create((EClass) eClass);
-            dataEObjectMap.put(parentData, parentEObject);
+            eObject = ePackage.getEFactoryInstance().create((EClass) eClass);
+            nodeEObjectMap.put(eObjectNode, eObject);
+            dataEObjectMap.put(eObjectData, eObject);
             // Add all features
-            for (Node.Op child : parentNode.getChildren()) {
+            for (Node.Op child : eObjectNode.getChildren()) {
                 if (child.getArtifact().getData() instanceof EDataTypeArtifactData) {
                     EDataTypeArtifactData dataTypeData = (EDataTypeArtifactData) child.getArtifact().getData();
                     int sfId = dataTypeData.getFeatureId();
                     EStructuralFeature sf = ((EClass) eClass).getEStructuralFeature(sfId);
-                    Object value = getEDataTypeValue(resourceSet, ePackage, dataTypeData);
-                    if (sf.isMany()) {
-                        // FIXME Ignores position for the moment
-                        EList<Object> values = (EList<Object>) parentEObject.eGet(sf);
-                        values.add(value);
-                    } else {
-                        parentEObject.eSet(sf, value);
-                    }
-                    // Attributes are shown in the parent EObject
-                    nodeEObjectMap.put(child, parentEObject);
-                } else if (child.getArtifact().getData() instanceof EObjectArtifactData) {
-                    // Containment is trickier, as we need to account for positions, if needed
-                    EObjectArtifactData eObjectData = (EObjectArtifactData) child.getArtifact().getData();
-                    int sfId = eObjectData.getFeatureId();
-                    EStructuralFeature sf = ((EClass) eClass).getEStructuralFeature(sfId);
-                    EObject childEObject = createEObjectStructure(child, resourceSet);
-                    assert childEObject != null;
-                    nodeEObjectMap.put(child, childEObject);
-                    if (sf.isMany()) {
-                        // FIXME Ignores position for the moment
-                        EList<EObject> values = (EList<EObject>) parentEObject.eGet(sf);
-                        values.add(childEObject);
-                    } else {
-                        parentEObject.eSet(sf, childEObject);
+                    if (!sf.isUnsettable() && !sf.isDerived() && sf.isChangeable()) {
+                        Object value = getEDataTypeValue(resourceSet, ePackage, dataTypeData);
+                        assignObjectToFeatureValue(eObject, sf, value);
                     }
                 }
             }
-
         }
-        return parentEObject;
+        return eObject;
     }
 
-    private void createEReferences(Node.Op parentNode, ResourceSet resourceSet) {
-        // FIXME do we need to do at the end like when reading?
+    private void assignObjectToFeatureValue(EObject owner, EStructuralFeature sf, Object value) {
+        if (sf.isMany()) {
+            // FIXME Ignores position for the moment
+            EList<Object> values = (EList<Object>) owner.eGet(sf);
+            values.add(value);
+        } else {
+            if (owner.eIsSet(sf)) {
+                System.out.println("Feature " + sf.getName() + " is being set multiple times for " + owner);
+            }
+            owner.eSet(sf, value);
+        }
+    }
+
+    private void createReferences(Node.Op parentNode, ResourceSet resourceSet) {
         if (parentNode.getArtifact().getData() instanceof EObjectArtifactData) {
             EObjectArtifactData parentData = (EObjectArtifactData) parentNode.getArtifact().getData();
             String eClassName = parentData.geteClassName();
@@ -116,20 +105,26 @@ public class EmfReconstruct {
             EObject parentEObject = dataEObjectMap.get(parentData);
             assert parentEObject != null;
             for (Node.Op child : parentNode.getChildren()) {
-                createEReferences(child, resourceSet);
                 if (child.getArtifact().getData() instanceof NonContainmentReferenceData) {
                     NonContainmentReferenceData eReferenceData = (NonContainmentReferenceData) child.getArtifact().getData();
                     int sfId = eReferenceData.getFeatureId();
                     EStructuralFeature sf = ((EClass) eClass).getEStructuralFeature(sfId);
-                    EObject referenceEObject = dataEObjectMap.get(eReferenceData.getReference());
-                    assert referenceEObject != null;
-                    if (sf.isMany()) {
-                        // FIXME Ignores position for the moment
-                        EList<EObject> values = (EList<EObject>) parentEObject.eGet(sf);
-                        values.add(referenceEObject);
-                    } else {
-                        parentEObject.eSet(sf, referenceEObject);
+                    if (!sf.isUnsettable() && !sf.isDerived() && sf.isChangeable()) {
+                        EObject referenceEObject = dataEObjectMap.get(eReferenceData.getReference());
+                        assert referenceEObject != null;
+                        assignObjectToFeatureValue(parentEObject, sf, referenceEObject);
                     }
+                }
+                else if (child.getArtifact().getData() instanceof EContainerData) {
+                    EContainerData eObjectData = (EContainerData) child.getArtifact().getData();
+                    int sfId = eObjectData.getFeatureId();
+                    EStructuralFeature sf = ((EClass) eClass).getEStructuralFeature(sfId);
+                    EObject containerEObject = dataEObjectMap.get(eObjectData);
+                    assert containerEObject != null;
+                    assignObjectToFeatureValue(parentEObject, sf, containerEObject);
+                }
+                else if (child.getArtifact().getData() instanceof ResourceContainerData) {
+                    // All non contained EObjects will remain in the resource root.
                 }
             }
         }

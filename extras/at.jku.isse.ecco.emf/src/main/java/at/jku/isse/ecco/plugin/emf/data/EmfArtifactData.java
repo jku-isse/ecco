@@ -20,7 +20,6 @@ public abstract class EmfArtifactData implements ArtifactData {
      * It can be null for nodes in the root.
      * Since we need to serialize the data, we save the id, not the feature
      */
-    //private EStructuralFeature feature;
     private final Integer featureId;
 
     /**
@@ -35,12 +34,13 @@ public abstract class EmfArtifactData implements ArtifactData {
      * For multivalue-nonunique-unordered features, there is a choice of how many times an element is referenced.
      */
     private final int repetitions;
+
     /**
-     *  @param value
+     * @param value
      * @param feature
-     * @param container If the feature is multivalued, the collection that holds the value
+     * @param multiValue If the feature is multivalued, the collection that holds the value
      */
-    public EmfArtifactData(Object value, EStructuralFeature feature, EList<? extends Object> container) {
+    public EmfArtifactData(Object value, EStructuralFeature feature, EList<? extends Object> multiValue) {
         checkNotNull(value);
         if (feature != null) {
             this.featureId = feature.getFeatureID();
@@ -54,12 +54,12 @@ public abstract class EmfArtifactData implements ArtifactData {
                 this.repetitions = 1;
             }
             else if (feature.isUnique() && feature.isOrdered()) {       // OrderedSet
-                int index = container.indexOf(value);
+                int index = multiValue.indexOf(value);
                 this.position = new Integer[]{index};                   // HOw to say that position is irrelevant? -1?
                 this.repetitions = 1;
             }
             else if (!feature.isUnique() && feature.isOrdered()) {      // List
-                Iterator<? extends Object> it = container.iterator();
+                Iterator<? extends Object> it = multiValue.iterator();
                 ArrayList<Integer> positions = new ArrayList<Integer>();
                 int index = 0;
                 while (it.hasNext()) {
@@ -72,7 +72,7 @@ public abstract class EmfArtifactData implements ArtifactData {
                 this.repetitions = positions.size();
             }
             else if (!feature.isUnique() && !feature.isOrdered()) {     // Bag
-                Iterator<? extends Object> it = container.iterator();
+                Iterator<? extends Object> it = multiValue.iterator();
                 int reps = 0;
                 while (it.hasNext()) {
                     if (it.next().equals(value)) {

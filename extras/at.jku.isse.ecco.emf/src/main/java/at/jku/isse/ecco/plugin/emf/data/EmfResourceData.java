@@ -16,6 +16,7 @@ import java.util.Map;
  */
 public class EmfResourceData implements ArtifactData {
 
+    private static final long serialVersionUID = -1820846448223404470L;
     /**
      * Keep track of all packages used by the resource.
      */

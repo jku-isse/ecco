@@ -11,6 +11,7 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  */
 public class EDataTypeArtifactData extends EmfArtifactData {
 
+    private static final long serialVersionUID = -1192257386498985489L;
     /**
      * We need to know the package that owns the datatype.
      */
@@ -49,6 +50,11 @@ public class EDataTypeArtifactData extends EmfArtifactData {
 
     public String getePackageUri() {
         return ePackageUri;
+    }
+
+    @Override
+    public String toString() {
+        return this.dataTypeName + " = " + this.value;
     }
 
     @Override

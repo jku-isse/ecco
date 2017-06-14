@@ -8,15 +8,23 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  */
 public class NonContainmentReferenceData extends EmfArtifactData {
 
+    private static final long serialVersionUID = 9136613555386474489L;
+
     private final EObjectArtifactData reference;
 
-    public NonContainmentReferenceData(Object value, EStructuralFeature feature, EList<?> container, EObjectArtifactData reference) {
+    public NonContainmentReferenceData(Object value, EStructuralFeature feature,
+                                       EList<?> container, EObjectArtifactData targetData) {
         super(value, feature, container);
-        this.reference = reference;
+        this.reference = targetData;
     }
 
     public EObjectArtifactData getReference() {
         return reference;
+    }
+
+    @Override
+    public String toString() {
+        return "referenceTo " + reference.toString();
     }
 
     @Override
