@@ -90,7 +90,6 @@ public class ServiceTest {
 		EccoService parentService = new EccoService();
 		parentService.setRepositoryDir(outputDir.resolve(Paths.get("parent_repo/.ecco")));
 		parentService.init();
-		parentService.open();
 
 		// commit first variant to parent
 		parentService.setBaseDir(inputDir.resolve(Paths.get("V1")));
@@ -108,13 +107,13 @@ public class ServiceTest {
 		// commit second variant to parent
 		parentService = new EccoService();
 		parentService.setRepositoryDir(outputDir.resolve(Paths.get("parent_repo/.ecco")));
-		parentService.init();
 		parentService.open();
 		parentService.setBaseDir(inputDir.resolve(Paths.get("V2")));
 		parentService.commit();
 		System.out.println("OUTPUT1:");
 		for (Association a : parentService.getRepository().getAssociations()) {
 			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			a.getRootNode().print();
 		}
 		parentService.close();
 
@@ -141,8 +140,10 @@ public class ServiceTest {
 		Files.deleteIfExists(this.repositoryDir.resolve(".ecco/ecco.db"));
 		Files.deleteIfExists(this.repositoryDir.resolve(".ecco"));
 
+		Files.deleteIfExists(this.outputDir.resolve("parent_repo/.ecco/.ignores"));
 		Files.deleteIfExists(this.outputDir.resolve("parent_repo/.ecco/ecco.db"));
 		Files.deleteIfExists(this.outputDir.resolve("parent_repo/.ecco"));
+		Files.deleteIfExists(this.outputDir.resolve("forked_repo/.ecco/.ignores"));
 		Files.deleteIfExists(this.outputDir.resolve("forked_repo/.ecco/ecco.db"));
 		Files.deleteIfExists(this.outputDir.resolve("forked_repo/.ecco"));
 

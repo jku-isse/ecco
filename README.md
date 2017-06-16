@@ -37,4 +37,3 @@ Select all shown projects and import them.
 
 Disable errors for cyclic dependencies in Eclipse: `Window > Preferences > Java > Compiler > Building > Build path problems > Circular dependencies > Warning`.
 
-

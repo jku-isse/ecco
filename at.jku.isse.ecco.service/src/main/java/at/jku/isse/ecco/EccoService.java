@@ -1364,6 +1364,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		if (this.repositoryDirectoryExists())
 			throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
 
+		// the repository must be initialized here or the entity factory needed during the subset operation is null
+		this.init();
+
 		// create another ecco service and init it on the parent repository directory.
 		EccoService originService = new EccoService();
 		originService.setRepositoryDir(originRepositoryDir);
@@ -1388,9 +1391,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 
 		try {
-			this.init();
-			this.open();
-
 			this.transactionStrategy.begin();
 
 			// merge into this repository
@@ -1412,7 +1412,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 
 	public synchronized void pull(String remoteName) {
-		this.pull("", remoteName);
+		this.pull(remoteName, "");
 	}
 
 	/**
@@ -1608,7 +1608,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	// INIT ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
-	 * Creates a repository at the current location if no repository already exists at the current location or any of its parents.
+	 * Creates and initializes a repository at the current location if no repository already exists at the current location or any of its parents.
+	 * The newly created repository is opened right away.
 	 *
 	 * @return True if the repository was created, false otherwise.
 	 */

@@ -1,9 +1,11 @@
 
-# ecco release history
+# ECCO CHANGELOG
 
 
+## 0.1.6
 
-* 0.1.5
+
+## 0.1.5
   * major refactorings
   	* separation of service and repository (types as well as projects)
   	* separations of interfaces into public and private
@@ -13,8 +15,7 @@
   * ...
 
 
-
-* 0.1.4
+## 0.1.4
   * removed ordered node
   * unified all children and ordered children in a single list
   * change unique children from list in parent to boolean in child
@@ -37,8 +38,6 @@
   * added order selector to composition
 
 
-
-* 0.1.3
+## 0.1.3
   * first running version
-
 

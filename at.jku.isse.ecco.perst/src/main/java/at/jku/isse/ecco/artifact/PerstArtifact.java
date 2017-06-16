@@ -31,12 +31,16 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	@Override
 	public DataType getData() {
 		if (this.data == null) {
-			try (ByteArrayInputStream bis = new ByteArrayInputStream(this.buffer)) {
-				try (ObjectInput in = new ObjectInputStream(bis)) {
-					this.data = (DataType) in.readObject();
+			if (this.buffer == null)
+				return null;
+			else {
+				try (ByteArrayInputStream bis = new ByteArrayInputStream(this.buffer)) {
+					try (ObjectInput in = new ObjectInputStream(bis)) {
+						this.data = (DataType) in.readObject();
+					}
+				} catch (IOException | ClassNotFoundException e) {
+					e.printStackTrace();
 				}
-			} catch (IOException | ClassNotFoundException e) {
-				e.printStackTrace();
 			}
 		}
 
@@ -46,21 +50,21 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	public void setData(DataType data) {
 		this.data = data;
 
-//		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-//			try (ObjectOutput out = new ObjectOutputStream(bos)) {
-//				out.writeObject(this.data);
-//				this.buffer = bos.toByteArray();
-//			}
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
+		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+			try (ObjectOutput out = new ObjectOutputStream(bos)) {
+				out.writeObject(this.data);
+				this.buffer = bos.toByteArray();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
 	public void store() {
 		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 			try (ObjectOutput out = new ObjectOutputStream(bos)) {
-				out.writeObject(this.data);
+				out.writeObject(this.getData());
 				this.buffer = bos.toByteArray();
 			}
 		} catch (IOException e) {
@@ -86,7 +90,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	// constructors
 
 	public PerstArtifact() {
-		this(null);
+		//this(null);
 	}
 
 	public PerstArtifact(DataType data) {
