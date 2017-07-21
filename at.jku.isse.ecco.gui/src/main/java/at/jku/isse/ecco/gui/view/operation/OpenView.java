@@ -2,10 +2,9 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.EccoService;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
@@ -37,6 +36,7 @@ public class OpenView extends OperationView {
 		this.headerLabel.setText("Repository Directory");
 
 		Button openButton = new Button("Open");
+		openButton.setDefaultButton(true);
 		this.rightButtons.getChildren().setAll(openButton);
 
 
@@ -68,6 +68,12 @@ public class OpenView extends OperationView {
 		Button selectRepositoryDirectoryButton = new Button("...");
 		gridPane.add(selectRepositoryDirectoryButton, 2, row, 1, 1);
 		row++;
+		final ProgressBar pb = new ProgressBar();
+		pb.setMaxWidth(Double.MAX_VALUE);
+		pb.setVisible(false);
+		pb.setProgress(0.0f);
+		gridPane.add(pb, 0, row, 3, 1);
+		gridPane.setFillWidth(pb, true);
 
 		selectRepositoryDirectoryButton.setOnAction(event -> {
 			final DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -86,24 +92,26 @@ public class OpenView extends OperationView {
 			}
 		});
 
-
-		openButton.setOnAction(event -> {
-			try {
-				Path repositoryDir = Paths.get(repositoryDirTextField.getText());
-				this.service.setRepositoryDir(repositoryDir);
-				this.service.setBaseDir(repositoryDir.getParent());
-				this.service.open();
-				this.stepSuccess("Repository was sucessfully opened.");
-			} catch (Exception e) {
-				this.stepError("Error opening repository.", e);
+		Task<Void> task = new Task<Void>() {
+			@Override
+			protected Void call() throws Exception {
+				service.open();
+				return null;
 			}
+		};
+		task.setOnFailed(event -> stepError("Error opening repository.", task.getException()));
+		task.setOnSucceeded(event -> stepSuccess("Repository was successfully opened."));
+		openButton.setOnAction(event -> {
+			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
+			this.service.setRepositoryDir(repositoryDir);
+			this.service.setBaseDir(repositoryDir.getParent());
+			pb.setProgress(-1.0f);
+			pb.setVisible(true);
+			Thread th = new Thread(task);
+			th.setDaemon(true);
+			th.start();
 		});
-
-
 		this.fit();
-
 		Platform.runLater(repositoryDirTextField::requestFocus);
 	}
-
-
 }

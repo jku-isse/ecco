@@ -29,8 +29,14 @@ public class EContainerData extends EmfArtifactData {
         this.container = container;
     }
 
+
     public EObjectArtifactData getContainer() {
         return container;
+    }
+
+    @Override
+    public String toString() {
+        return "eContainer = " + container;
     }
 
     @Override

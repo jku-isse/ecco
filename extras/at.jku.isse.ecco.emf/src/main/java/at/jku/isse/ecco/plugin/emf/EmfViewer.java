@@ -4,20 +4,18 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.plugin.emf.data.EmfResourceData;
+import at.jku.isse.ecco.plugin.emf.treeview.AmbiguousEmfTree;
 import at.jku.isse.ecco.plugin.emf.treeview.EmfTreeCellImpl;
+import at.jku.isse.ecco.plugin.emf.treeview.EmfTreeItem;
 import at.jku.isse.ecco.plugin.emf.treeview.EmfTreeNode;
 import at.jku.isse.ecco.tree.Node;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
 import javafx.util.Callback;
-import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.*;
-import org.eclipse.emf.ecore.impl.BasicEObjectImpl;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 
@@ -29,16 +27,12 @@ import java.util.*;
  */
 public class EmfViewer extends BorderPane implements ArtifactViewer {
 
-    private ResourceSet resourceSet;
     private TreeView<EmfTreeNode> treeView;
-    Map<EObject, TreeItem<EmfTreeNode>> eObjectTreeItemMap;
-    private Resource resource;
-    private EmfReconstruct rc;
+    private AmbiguousEmfTree emfTree;
 
     @Inject
     public EmfViewer(ResourceSet resourceSet) {
-        this.resourceSet = resourceSet;
-        eObjectTreeItemMap = new HashMap<>();
+        this.getStylesheets().add("emf-plugin.css");
     }
 
     @Override
@@ -53,144 +47,98 @@ public class EmfViewer extends BorderPane implements ArtifactViewer {
         if (data instanceof PluginArtifactData) {
             return;
         }
-        if (resource == null) {
-            rc = new EmfReconstruct();
+        if (emfTree == null) {
+            Node rootnode = node;
             while (!(data instanceof EmfResourceData)) {
-                node = node.getParent();
-                data = node.getArtifact().getData();
+                rootnode = node.getParent();
+                data = rootnode.getArtifact().getData();
             }
-            resource = rc.reconstructResource((Node.Op) node, resourceSet);
+            emfTree = new AmbiguousEmfTree((Node.Op) rootnode);
             TreeItem<EmfTreeNode> dummyRoot = new TreeItem<>();
             treeView = new TreeView<>(dummyRoot);
-            for (EObject eObject : resource.getContents()) {
-                EmfTreeNode eNode = new EmfTreeNode.EObjectNode(eObject);
-                TreeItem<EmfTreeNode> item = new EmfTreeItem(eNode);
-                eObjectTreeItemMap.put(eObject, item);
+            for (EmfTreeNode treenode : emfTree.getChildren()) {
+                TreeItem<EmfTreeNode> item = new EmfTreeItem(treenode);
                 dummyRoot.getChildren().add(item);
             }
-            treeView.setShowRoot(false);
+            if (emfTree.isAmbiguous()) {
+                // Add a label to the root so it telss it is ambiguous!
+            }
+            else {
+                treeView.setShowRoot(false);
+            }
             // Cell factory
-            treeView.setCellFactory(new Callback<TreeView<EmfTreeNode>, TreeCell<EmfTreeNode>>(){
-                @Override
-                public TreeCell<EmfTreeNode> call(TreeView<EmfTreeNode> tree) {
-                    return new EmfTreeCellImpl();
-                }
-            });
+            treeView.setCellFactory(tree -> new EmfTreeCellImpl());
         }
         this.setCenter(treeView);
         MultipleSelectionModel msm = treeView.getSelectionModel();
         TreeItem<EmfTreeNode> treeItem;
         if (node.getArtifact().getData() instanceof EmfResourceData) {  // If the node is for an EmfResourceData artifact, show from the root
-            treeItem= treeView.getRoot();
+            treeItem = treeView.getRoot();
         }
         else {      // if (node.getArtifact().getData() instanceof EmfResourceData)
-            EObject nodeEObject = rc.getEObjectForNode((Node.Op) node);
-            // Go up until firstVisible
-            EObject firstVisible= nodeEObject;
-            List<EObject> branch = new ArrayList<>();
-            branch.add(firstVisible);
-            while (!eObjectTreeItemMap.containsKey(firstVisible)) {
-                EObject eContainer = firstVisible.eContainer();
-                branch.add(eContainer);
-                firstVisible = eContainer;
-            }
-            if (firstVisible != nodeEObject) {
-                // Expand branch
-                Collections.reverse(branch);
-                expandBranch(eObjectTreeItemMap.get(firstVisible), branch);
-            }
-            treeItem = eObjectTreeItemMap.get(nodeEObject);
+//            // FIXME They can click an attribute too
+//            EObject nodeEObject = rc.getEObjectForNode((Node.Op) node);
+//            List<EObject> branches = new ArrayList<>();
+//            branches.add(nodeEObject);
+//            // List the ancestors till the root
+//            EObject eContainer = nodeEObject.eContainer();
+//            while (eContainer != null) {
+//                if (!(eContainer instanceof AmbiguousEObject)) {
+//                    eContainer = AmbiguousEObject.wrap(eContainer);
+//                }
+//                branches.add(eContainer);
+//                eContainer = eContainer.eContainer();
+//            }
+//            // Expand ancestors
+//            Collections.reverse(branches);
+//            treeItem = expandBranches(branches);
         }
-        int row = treeView.getRow( treeItem );
-        // Now the row can be selected.
-        msm.select( row );
+//        int row = treeView.getRow( treeItem );
+//        // Now the row can be selected.
+//        msm.select( row );
     }
 
-    private void expandBranch(TreeItem<?> item, List<EObject> branch){
-        if(item != null && !item.isLeaf()){
-            item.setExpanded(true);
-            for(TreeItem<?> child : item.getChildren()){
-                Object childEObject = child.getValue();
-                if (branch.contains(childEObject)) {
-                    expandBranch(child, branch);
-                }
-            }
-        }
-    }
-
-    private class EmfTreeItem extends TreeItem<EmfTreeNode> {
-
-        /** Control if the children of this tree item has been loaded. */
-        private boolean hasLoadedChildren = false;
-
-        public EmfTreeItem(EmfTreeNode object) {
-            super(object);
-        }
-
-        @Override
-        public ObservableList<TreeItem<EmfTreeNode>> getChildren() {
-            if (hasLoadedChildren == false) {
-                super.getChildren().setAll(buildChildren(this));
-            }
-            return super.getChildren();
-        }
-
-        @Override
-        public boolean isLeaf() {
-            return getValue().isLeaf();
-        }
-
-        private ObservableList<TreeItem<EmfTreeNode>> buildChildren(EmfTreeItem emfTreeItem) {
-            hasLoadedChildren = true;
-            EmfTreeNode itemNode = emfTreeItem.getValue();
-            ObservableList<TreeItem<EmfTreeNode>> children = FXCollections.observableArrayList();
-            if (itemNode instanceof EmfTreeNode.EObjectNode) {
-                EmfTreeNode.EObjectNode eObjectNode = (EmfTreeNode.EObjectNode) itemNode;
-                EObject eObject = eObjectNode.getEObject();
-                EClass eClass = eObject.eClass();
-                for (EStructuralFeature feature : eClass.getEAllStructuralFeatures()) {
-                    // Want to keep al metamodel features + eContainer (a la modisco)
-                    EmfTreeNode node;
-                    if (feature.isMany()) {
-                        node = new EmfTreeNode.MultiFeatureNode(feature, eObject);
-                    }
-                    else {
-                        if (feature instanceof  EReference) {
-                            node = new EmfTreeNode.SingleReferenceNode(feature, eObject);
-                        }
-                        else {
-                            node = new EmfTreeNode.SingleFeatureNode(feature, eObject);
-                        }
-                    }
-                    children.add(new EmfTreeItem(node));
-                }
-            }
-            else if (itemNode instanceof EmfTreeNode.SingleReferenceNode) {
-                EObject eObject = (EObject) ((EmfTreeNode.SingleReferenceNode) itemNode).getValue();
-                EmfTreeNode node = new EmfTreeNode.EObjectNode(eObject);
-                children.add(new EmfTreeItem(node));
-            }
-            else if (itemNode instanceof EmfTreeNode.MultiFeatureNode) {
-                Object value = ((EmfTreeNode.MultiFeatureNode) itemNode).getValue();
-                assert value instanceof EList;
-
-                EClassifier eType = ((EmfTreeNode.MultiFeatureNode) itemNode).getFeature().getEType();
-                if (eType instanceof EClass) {
-                    for (EObject child : (EList<EObject>) value) {
-                        EmfTreeNode node = new EmfTreeNode.EObjectNode(child);
-                        children.add(new EmfTreeItem(node));
-                    }
-                }
-                else if (eType instanceof EDataType) {  // Works for all data types?
-                    for (Object child : (EList<Object>) value) {
-                        EmfTreeNode node = new EmfTreeNode.PrimitiveValueNode(child);
-                        children.add(new EmfTreeItem(node));
-                    }
-                }
-            }
-            return children;
-        }
-
-    }
-
+//    private TreeItem<EmfTreeNode> expandBranches(List<EObject> branches) {
+//        TreeItem<EmfTreeNode> item = treeView.getRoot();
+//        item.setExpanded(true);
+//        for (int i = 0; i < branches.size(); i++) {
+//            EObject eObject = branches.get(i);
+//            // Find the child with the next item, and expand
+//            item = findTreeItemForEObject(eObject, item);
+//        }
+//        return item;
+//    }
+//
+//    private TreeItem<EmfTreeNode> findTreeItemForEObject(EObject eObject, TreeItem<EmfTreeNode> item) {
+//        TreeItem<EmfTreeNode> founditem = null;
+//        if(!item.isLeaf()){
+//            for(TreeItem<EmfTreeNode> child : item.getChildren()){
+//                // FIXME We would need to search inside each of the children children looking for reference nodes, and
+//                // then for EObject nodes... Is ti worth it? SInce the artifact tree is not really a tree that
+//                // reresents the resouce I dont see why people would want to dig into it too much... still makes thinkgs work nicer
+//                Object childNode = child.getValue();
+//                if (childNode instanceof EmfTreeNode.EObjectNode) {
+//                    EmfTreeNode.EObjectNode eNode = (EmfTreeNode.EObjectNode) childNode;
+//                    if (eObject.equals(eNode.getEObject())) {
+//                        founditem =  child;
+//                        item.setExpanded(true);
+//                    }
+//                }
+//                else if (childNode instanceof EmfTreeNode.MultiFeatureNode) {
+//                    EmfTreeNode.MultiFeatureNode multiFeatureNode = (EmfTreeNode.MultiFeatureNode) childNode;
+//                    EStructuralFeature feature = multiFeatureNode.getFeature();
+//                    if (feature instanceof EReference) {
+//                        if (((EReference)feature).isContainment()) {
+//                            founditem = findTreeItemForEObject(eObject, child);
+//                        }
+//                    }
+//                }
+//                if (founditem != null) {
+//                    child.setExpanded(true);
+//                    break;
+//                }
+//            }
+//        }
+//        return founditem;
+//    }
 }

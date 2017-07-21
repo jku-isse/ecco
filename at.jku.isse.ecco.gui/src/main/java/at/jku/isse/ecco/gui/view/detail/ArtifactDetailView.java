@@ -98,9 +98,9 @@ public class ArtifactDetailView extends BorderPane {
 
 
 	/**
-	 * Retreives the ID of the plugin that created the given node. If the node was created by an artifact plugin the plugin's ID is returned. If the node was not creaetd by a plugin, as is for example the case with directories, null is returned.
+	 * Retrieves the ID of the plugin that created the given node. If the node was created by an artifact plugin the plugin's ID is returned. If the node was not creaetd by a plugin, as is for example the case with directories, null is returned.
 	 *
-	 * @param node The node for which the plugin ID shall be retreived.
+	 * @param node The node for which the plugin ID shall be retrieved.
 	 * @return The plugin ID of the given node or null if the node was not created by a plugin.
 	 */
 	public static String getPluginId(Node node) {

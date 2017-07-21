@@ -8,6 +8,11 @@ import java.util.ServiceLoader;
 
 public abstract class ArtifactPlugin {
 
+	/**
+	 * Must always return the plugin class name:
+	 * 	<SomePlugin extends ArtifactPlugin>.class.getName().
+	 * @return
+	 */
 	public abstract String getPluginId();
 
 	public abstract Module getModule();

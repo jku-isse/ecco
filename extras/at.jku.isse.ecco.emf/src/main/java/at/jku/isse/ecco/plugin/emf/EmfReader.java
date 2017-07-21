@@ -29,7 +29,6 @@ import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.EcoreResourceFactoryImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 
@@ -56,6 +55,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
     private final ResourceSet resourceSet;
     private List<String> typeHierarchy = new ArrayList<String>();
     private Map<Object, Object> loadOptions;
+
     /**
      * When creating non-containment references we need to find the node that represents the EObject
      */
@@ -218,33 +218,41 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
                 }
                 // TODO how are cross-resource references handled
                 // FIXME, perhaps use a ECrossReferenceAdapter if we want to be faster
-                //EcoreUtil.UsageCrossReferencer crossRef = new EcoreUtil.UsageCrossReferencer(resource);
                 it = resource.getAllContents();
+                EObject eObject;
                 while (it.hasNext()) {
-                    EObject eObject = it.next();
-                    // These are all non-containment
-                    Collection<EStructuralFeature.Setting> uses = EcoreUtil.UsageCrossReferencer.find(eObject, resource);
-                    Node.Op targetNode = nodeMapping.get(eObject);
-                    for (EStructuralFeature.Setting setting : uses) {
-                        if (setting.getEStructuralFeature() instanceof EReference) {
-                            EReference ref = (EReference) setting.getEStructuralFeature();
-                            Node.Op sourceNode = nodeMapping.get(setting.getEObject());
-                            EObjectArtifactData targetData = (EObjectArtifactData) targetNode.getArtifact().getData();
-                            Node.Op refNode;
-                            if (ref.isMany()) {
-                                EList<EObject> vals = (EList<EObject>) setting.get(true);
-                                EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
-                                        ref, vals, targetData);
-                                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-                            } else {
-                                EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
-                                        ref, null, targetData);
-                                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-                            }
-                            sourceNode.addChild(refNode);
-                        }
-                    }
+                    eObject = it.next();
+                    Node.Op eObjectNode = nodeMapping.get(eObject);
+                    addEReferenceNodes(eObjectNode, eObject);
                 }
+
+                //EcoreUtil.UsageCrossReferencer crossRef = new EcoreUtil.UsageCrossReferencer(resource);
+//                it = resource.getAllContents();
+//                while (it.hasNext()) {
+//                    EObject eObject = it.next();
+//                    // These are all non-containment
+//                    Collection<EStructuralFeature.Setting> uses = EcoreUtil.UsageCrossReferencer.find(eObject, resource);
+//                    Node.Op targetNode = nodeMapping.get(eObject);
+//                    for (EStructuralFeature.Setting setting : uses) {
+//                        if (setting.getEStructuralFeature() instanceof EReference) {
+//                            EReference ref = (EReference) setting.getEStructuralFeature();
+//                            Node.Op sourceNode = nodeMapping.get(setting.getEObject());
+//                            EObjectArtifactData targetData = (EObjectArtifactData) targetNode.getArtifact().getData();
+//                            Node.Op refNode;
+//                            if (ref.isMany()) {
+//                                EList<EObject> vals = (EList<EObject>) setting.get(true);
+//                                EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
+//                                        ref, vals, targetData);
+//                                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+//                            } else {
+//                                EmfArtifactData emfArtifactData = new NonContainmentReferenceData(eObject,
+//                                        ref, null, targetData);
+//                                refNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+//                            }
+//                            sourceNode.addChild(refNode);
+//                        }
+//                    }
+//                }
             }
         }
         return nodes;
@@ -264,7 +272,7 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
         Node.Op eObjectNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
         nodeMapping.put(eObject, eObjectNode);
         addContainerNode(eObject, eObjectNode, resourceData);
-        addEAttributeNodes(eObjectNode, eObject, resourceData);
+        addEAttributeNodes(eObjectNode, eObject);
         return eObjectNode;
     }
 
@@ -299,25 +307,65 @@ public class EmfReader implements ArtifactReader<Path, Set<Node.Op>> {
      * Volatile because these are not persisted and hence should not be persisted in Ecco either.
      * @param parentNode The ECCO parent node
      * @param eObject   The EObject to get the child nodes from
-     * @param resourceData The ResourceData to capture the used package information
      */
-    private void addEAttributeNodes(Node.Op parentNode, EObject eObject, EmfResourceData resourceData) {
+    private void addEAttributeNodes(Node.Op parentNode, EObject eObject) {
         EClass eClass = eObject.eClass();
         for (EAttribute attr : eClass.getEAllAttributes()) {
             if (!attr.isVolatile()) {       // Derived attributes should be volatile too
                 Object value = eObject.eGet(attr);
+                Node.Op attrNode;
                 if (attr.isMany()) {
                     EList vals = (EList) value;
+                    List<EDataTypeArtifactData> subnodes = new ArrayList<>();
                     for (Object v : vals) {
-                        EmfArtifactData emfArtifactData = new EDataTypeArtifactData(v, attr, vals);
-                        Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-                        parentNode.addChild(attrNode);
+                        EDataTypeArtifactData emfArtifactData = new EDataTypeArtifactData(v, attr, vals);
+                        subnodes.add(emfArtifactData);
+                    }
+                    MultivalueAttributteData attrData = new MultivalueAttributteData(attr, eObject.eIsSet(attr),
+                            subnodes, attr.isUnique());
+                    attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(attrData));
+                    for (EmfArtifactData sn : subnodes) {
+                        Node.Op subNode = this.entityFactory.createNode(this.entityFactory.createArtifact(sn));
+                        attrNode.addChild(subNode);
                     }
                 } else {
-                    EmfArtifactData emfArtifactData = new EDataTypeArtifactData(value, attr, null);
-                    Node.Op attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
-                    parentNode.addChild(attrNode);
+                    EDataTypeArtifactData emfArtifactData = new EDataTypeArtifactData(value, attr, null);
+                    SinglevalueAttributeData attrData = new SinglevalueAttributeData(attr, eObject.eIsSet(attr),
+                            emfArtifactData, attr.isUnique());
+                    attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(attrData));
+                    Node.Op dataNode = this.entityFactory.createNode(this.entityFactory.createArtifact(emfArtifactData));
+                    attrNode.addChild(dataNode);
                 }
+                parentNode.addChild(attrNode);
+            }
+        }
+    }
+
+    private void addEReferenceNodes(Node.Op parentNode, EObject eObject) {
+        EClass eClass = eObject.eClass();
+        for (EReference ref : eClass.getEAllReferences()) {
+            if (!ref.isVolatile()) {       // Derived attributes should be volatile too
+                Object value = eObject.eGet(ref);
+                Node.Op attrNode;
+                if (ref.isMany()) {
+                    EList vals = (EList) value;
+                    List<EObjectArtifactData> subnodes = new ArrayList<>();
+                    for (Object v : vals) {
+                        EObjectArtifactData refArtifactData = (EObjectArtifactData) nodeMapping.get(v)
+                                .getArtifact().getData();
+                        subnodes.add(refArtifactData);
+                    }
+                    MultivalueReferenceData attrData = new MultivalueReferenceData(ref, eObject.eIsSet(ref),
+                            subnodes, ref.isUnique());
+                    attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(attrData));
+                } else {
+                    EObjectArtifactData refArtifactData = (EObjectArtifactData) nodeMapping.get(value)
+                            .getArtifact().getData();
+                    SinglevalueReferenceData attrData = new SinglevalueReferenceData(ref, eObject.eIsSet(ref),
+                            refArtifactData, ref.isUnique());
+                    attrNode = this.entityFactory.createNode(this.entityFactory.createArtifact(attrData));
+                }
+                parentNode.addChild(attrNode);
             }
         }
     }

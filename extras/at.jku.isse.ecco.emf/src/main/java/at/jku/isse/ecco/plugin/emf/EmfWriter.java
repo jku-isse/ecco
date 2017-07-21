@@ -42,21 +42,21 @@ public class EmfWriter implements ArtifactWriter<Set<Node>, Path> {
         Map<Object, Object> saveOptions = new HashMap<>();
         saveOptions.put(XMIResource.OPTION_SCHEMA_LOCATION, Boolean.TRUE);
         List<Path> output = new ArrayList();
-        for (Node pluginNode : input) {
-            Artifact<PluginArtifactData> pluginArtifact = (Artifact<PluginArtifactData>) pluginNode.getArtifact();
-            Path resourcePath = base.resolve(pluginArtifact.getData().getPath());
-            output.add(resourcePath);
-            // Get the resource data
-            for (Node resourceNode : pluginNode.getChildren()) {
-                Resource resource = reconstruct.reconstructResource((Node.Op) resourceNode, resourceSet);
-                resource.setURI(URI.createFileURI(resourcePath.toString()));
-                try {
-                    resource.save(saveOptions);
-                } catch (IOException e) {
-                    throw new EccoException(e);
-                }
-            }
-        }
+//        for (Node pluginNode : input) {
+//            Artifact<PluginArtifactData> pluginArtifact = (Artifact<PluginArtifactData>) pluginNode.getArtifact();
+//            Path resourcePath = base.resolve(pluginArtifact.getData().getPath());
+//            output.add(resourcePath);
+//            // Get the resource data
+//            for (Node resourceNode : pluginNode.getChildren()) {
+//                Resource resource = reconstruct.reconstructResource((Node.Op) resourceNode, resourceSet);
+//                resource.setURI(URI.createFileURI(resourcePath.toString()));
+//                try {
+//                    resource.save(saveOptions);
+//                } catch (IOException e) {
+//                    throw new EccoException(e);
+//                }
+//            }
+//        }
         return output.toArray(new Path[0]);
     }
 
