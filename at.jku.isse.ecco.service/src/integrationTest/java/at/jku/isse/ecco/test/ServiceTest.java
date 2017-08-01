@@ -100,6 +100,9 @@ public class ServiceTest {
 		EccoService service = new EccoService();
 		service.setRepositoryDir(outputDir.resolve(Paths.get("forked_repo/.ecco")));
 		service.fork(outputDir.resolve(Paths.get("parent_repo/.ecco")));
+		//service.init();
+		//service.addRemote("origin", outputDir.resolve(Paths.get("parent_repo/.ecco")).toString());
+		//service.pull("origin");
 		service.close();
 
 		System.out.println("---");

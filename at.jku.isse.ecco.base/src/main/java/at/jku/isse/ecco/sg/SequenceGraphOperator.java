@@ -157,7 +157,8 @@ public class SequenceGraphOperator {
 			throw new EccoException("Copy requires two sequence graph operands.");
 		SequenceGraph.Op other = (SequenceGraph.Op) sg;
 
-		other.setPol(!other.getPol());
+		//other.setPol(!other.getPol());
+		other.setPol(!other.getRoot().getPol());
 
 		HashSet<Artifact.Op<?>> path = new HashSet<>();
 		Map<Set<Artifact.Op<?>>, SequenceGraph.Node.Op> leftNodes = new HashMap<>();
