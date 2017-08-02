@@ -66,7 +66,7 @@ public class DependencyGraph {
 		this.associations.clear();
 		this.associations.addAll(associations);
 
-		for (Association association : this.associations) {
+		for (Association association : associations) {
 			this.computeRec(association, association.getRootNode(), referencesResolveMode);
 		}
 	}

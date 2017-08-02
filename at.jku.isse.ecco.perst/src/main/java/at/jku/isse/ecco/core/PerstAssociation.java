@@ -135,7 +135,7 @@ public class PerstAssociation extends Persistent implements Association, Associa
 
 	@Override
 	public String toString() {
-		return String.format("Id: %d, Name: %s, Artifact Tree: %s", this.id, this.name, rootNode.toString());
+		return String.format("Id: %s, Name: %s, Artifact Tree: %s", this.id, this.name, rootNode.toString());
 	}
 
 }

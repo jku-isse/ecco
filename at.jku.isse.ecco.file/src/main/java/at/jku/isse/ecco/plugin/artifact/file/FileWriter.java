@@ -40,16 +40,30 @@ public class FileWriter implements ArtifactWriter<Set<Node>, Path> {
 			output.add(outputPath);
 
 			if (node.getChildren().size() != 1) {
-				// TODO: ERROR
-			} else {
-				FileArtifactData fileArtifact = (FileArtifactData) node.getChildren().get(0).getArtifact().getData(); // TODO: node type must have Type parameter for artifact type it contains?
-
+				// TODO: ERROR? OR: write empty file.
 				try {
-					// Path path = Files.write(artifact.getPath(), artifact.getData());
-					Files.write(outputPath, fileArtifact.getData());
+					Files.write(outputPath, new byte[]{});
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+			} else {
+				for (Node childNode : node.getChildren()) {
+					FileArtifactData fileArtifact = (FileArtifactData) childNode.getArtifact().getData(); // TODO: node type must have Type parameter for artifact type it contains?
+					try {
+						// Path path = Files.write(artifact.getPath(), artifact.getData());
+						Files.write(outputPath, fileArtifact.getData());
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+//				FileArtifactData fileArtifact = (FileArtifactData) node.getChildren().get(0).getArtifact().getData(); // TODO: node type must have Type parameter for artifact type it contains?
+//
+//				try {
+//					// Path path = Files.write(artifact.getPath(), artifact.getData());
+//					Files.write(outputPath, fileArtifact.getData());
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
 			}
 		}
 
