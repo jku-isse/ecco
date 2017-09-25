@@ -154,6 +154,8 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 				for (Node child : node.getChildren()) {
 					buildAST(child, ast, astNode);
 				}
+				if(node.getChildren().isEmpty() && astNode instanceof SwitchCase)
+					((SwitchCase) astNode).setExpression(null);
 			}
 		} else if (artifactData instanceof JDTPropertyArtifactData) {
 			JDTPropertyArtifactData propertyArtifactData = (JDTPropertyArtifactData) artifactData;
@@ -263,7 +265,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 		int nodeType = Integer.parseInt(split[1]);
 		ASTNode astNode = ast.createInstance(nodeType);
 		if (astNode instanceof ArrayType) {
-//			((ArrayType) astNode).dimensions().clear();
+			((ArrayType) astNode).dimensions().clear();
 		}
 		return astNode;
 	}
