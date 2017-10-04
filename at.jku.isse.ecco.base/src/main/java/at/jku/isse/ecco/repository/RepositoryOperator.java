@@ -182,10 +182,14 @@ public class RepositoryOperator {
 				copiedRootNode.addChild(copiedChildNode);
 				copiedChildNode.setParent(copiedRootNode);
 			}
-			Trees.checkConsistency(copiedRootNode);
+			//Trees.checkConsistency(copiedRootNode);
 
 
 			copiedAssociations.add(copiedAssociation);
+		}
+
+		for (Association a : copiedAssociations) {
+			Trees.checkConsistency(a.getRootNode());
 		}
 
 
