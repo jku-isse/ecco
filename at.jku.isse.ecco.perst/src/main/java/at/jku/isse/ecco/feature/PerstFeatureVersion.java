@@ -30,8 +30,8 @@ public class PerstFeatureVersion extends Persistent implements FeatureVersion {
 		this.feature = feature;
 		this.id = id;
 
-		this.pos = new BaseFeatureInstance(feature, this, true);
-		this.neg = new BaseFeatureInstance(feature, this, false);
+		this.pos = new PerstFeatureInstance(feature, this, true);
+		this.neg = new PerstFeatureInstance(feature, this, false);
 
 //		this.feature.addVersion(this);
 	}
