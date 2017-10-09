@@ -161,9 +161,17 @@ public class RepositoryOperator {
 							if (!toModuleFeature.isEmpty() && addToModule) { // if module feature is empty: do not add it
 								toModule.add(toModuleFeature);
 							}
+							if (fromModuleFeature.getSign() && toModuleFeature.isEmpty()) { // don't add module because it is false
+								toModule.clear();
+								break;
+							}
 						} else {
 							//toFeature = fromFeature;
 							//throw new EccoException("This should not happen!");
+							if (fromModuleFeature.getSign()) {
+								toModule.clear();
+								break;
+							}
 						}
 
 					}

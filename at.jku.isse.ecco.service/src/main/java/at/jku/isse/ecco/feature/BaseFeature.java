@@ -90,7 +90,7 @@ public class BaseFeature implements Feature {
 
 	@Override
 	public String getId() {
-		return this.name;
+		return this.id;
 	}
 
 	@Override

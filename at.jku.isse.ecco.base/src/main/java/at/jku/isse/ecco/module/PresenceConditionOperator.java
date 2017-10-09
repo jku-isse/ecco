@@ -160,7 +160,8 @@ public class PresenceConditionOperator {
 	}
 
 	public boolean isEmpty() {
-		if (this.presenceCondition.getMinModules().isEmpty() && this.presenceCondition.getMaxModules().isEmpty() && this.presenceCondition.getAllModules().isEmpty() && this.presenceCondition.getNotModules().isEmpty())
+		//if (this.presenceCondition.getMinModules().isEmpty() && this.presenceCondition.getMaxModules().isEmpty() && this.presenceCondition.getAllModules().isEmpty() && this.presenceCondition.getNotModules().isEmpty())
+		if (this.presenceCondition.getMinModules().isEmpty() && this.presenceCondition.getMaxModules().isEmpty())
 			return true;
 		else
 			return false;

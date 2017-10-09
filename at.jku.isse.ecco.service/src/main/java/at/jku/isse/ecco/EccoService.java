@@ -1628,10 +1628,20 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			// TODO: do some initialization in backend like generating root object, etc.?
 
-			// set max order for new repository
-			Repository.Op repository = this.repositoryDao.load();
-			repository.setMaxOrder(2);
-			this.repositoryDao.store(repository);
+			try {
+				this.transactionStrategy.begin();
+
+				// set max order for new repository
+				Repository.Op repository = this.repositoryDao.load();
+				repository.setMaxOrder(2);
+				this.repositoryDao.store(repository);
+
+				this.transactionStrategy.end();
+			} catch (Exception e) {
+				this.transactionStrategy.rollback();
+
+				throw new EccoException("Error setting max order.", e);
+			}
 
 		} catch (IOException e) {
 			throw new EccoException("Error while creating repository.", e);
