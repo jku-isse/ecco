@@ -4,8 +4,8 @@ ext {
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.gui.EccoGui"
 
-task rumWithEmf(type: JavaExec) {
-	classpath = sourceSets.main.runtimeClasspath
+task runGui(type: JavaExec) {
+	classpath = sourceSets.test.runtimeClasspath
 	main = "at.jku.isse.ecco.gui.EccoGui"
 }
 
@@ -19,12 +19,10 @@ dependencies {
 
 	testCompile project(':at.jku.isse.ecco.perst')
 
-	//testRuntime project(':at.jku.isse.ecco.file')
-	//testRuntime project(':at.jku.isse.ecco.text')
-	//testRuntime project(':at.jku.isse.ecco.image')
-	//testRuntime project(':at.jku.isse.ecco.java')
-	testRuntime project(':extras/at.jku.isse.ecco.emf')
-
+	testRuntime project(':at.jku.isse.ecco.file')
+	testRuntime project(':at.jku.isse.ecco.text')
+	testRuntime project(':at.jku.isse.ecco.image')
+	testRuntime project(':at.jku.isse.ecco.java')
 }
 
 ospackage {

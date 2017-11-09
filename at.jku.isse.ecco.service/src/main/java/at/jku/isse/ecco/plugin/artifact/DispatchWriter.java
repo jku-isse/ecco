@@ -79,15 +79,15 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 		if (!Files.exists(base)) {
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
-//			try {
-//				if (Files.list(base).filter(path -> {
-//					return !path.equals(this.repositoryDir);
-//				}).findAny().isPresent()) {
-//					throw new EccoException("Current base directory must be empty for checkout operation.");
-//				}
-//			} catch (IOException e) {
-//				throw new EccoException(e.getMessage());
-//			}
+			try {
+				if (Files.list(base).filter(path -> {
+					return !path.equals(this.repositoryDir);
+				}).findAny().isPresent()) {
+					throw new EccoException("Current base directory must be empty for checkout operation.");
+				}
+			} catch (IOException e) {
+				throw new EccoException(e.getMessage());
+			}
 		} else {
 			throw new EccoException("Current base directory is not a directory but a file.");
 		}
