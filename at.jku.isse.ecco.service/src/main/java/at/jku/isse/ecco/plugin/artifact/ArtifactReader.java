@@ -2,6 +2,12 @@ package at.jku.isse.ecco.plugin.artifact;
 
 import at.jku.isse.ecco.listener.ReadListener;
 
+/**
+ * An ArtifactReader is responsible for transforming a particular type of artifact into an Ecco tree.
+ *
+ * @param <I>
+ * @param <O>
+ */
 public interface ArtifactReader<I, O> {
 
 	public String getPluginId();

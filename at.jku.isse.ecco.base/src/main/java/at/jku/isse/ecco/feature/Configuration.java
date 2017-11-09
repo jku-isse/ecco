@@ -6,6 +6,14 @@ import java.util.Set;
 
 /**
  * A configuration of a variant that consists of a set of feature instances.
+ * A configuration defines a set of features. When committing a product, the configuration associated to the product
+ * can be provided. The format of the configuration description must comply to the regular expression {@see CONFIGURATION_STRING_REGULAR_EXPRESSION}.
+ * The configuration syntax allows representing features in the following way:
+ * <p>
+ * <ul>
+ *     <li>
+ * </ul>
+ * <p>
  */
 public interface Configuration {//extends Collection<FeatureInstance> {
 
