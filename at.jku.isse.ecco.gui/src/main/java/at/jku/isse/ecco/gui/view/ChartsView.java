@@ -25,6 +25,7 @@ import javafx.scene.layout.FlowPane;
 
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class ChartsView extends BorderPane implements EccoListener {
 
@@ -61,14 +62,11 @@ public class ChartsView extends BorderPane implements EccoListener {
 
 					// modules per order
 					Repository repository = ChartsView.this.service.getRepository();
-					int maxOrder = 5;
-					int[] modulesPerOrderMap = new int[maxOrder + 1];
-					for (int i = 0; i <= maxOrder; i++)
-						modulesPerOrderMap[i] = 0;
+					final Map<Integer, Integer> modulesPerOrderMap = new TreeMap<>();
 					for (Association association : repository.getAssociations()) {
 						for (Module module : association.getPresenceCondition().getMinModules()) {
-							if (module.getOrder() <= maxOrder)
-								modulesPerOrderMap[module.getOrder()]++;
+							//For the specified order -> If no order of this type is seen yet, it must be the first. Otherwise 1 is added to the old value
+							modulesPerOrderMap.compute(module.getOrder(), (key, oldValue) -> oldValue == null ? 1 : oldValue + 1);
 						}
 					}
 
@@ -96,9 +94,10 @@ public class ChartsView extends BorderPane implements EccoListener {
 						}
 
 						// modules per order
-						ChartsView.this.modulesPerOrderSeries.getData().clear();
-						for (int i = 0; i < maxOrder; i++) {
-							ChartsView.this.modulesPerOrderSeries.getData().add(new XYChart.Data<>(Integer.toString(i), modulesPerOrderMap[i]));
+						{
+							final ObservableList<XYChart.Data<String, Number>> maxOrderData = ChartsView.this.modulesPerOrderSeries.getData();
+							maxOrderData.clear();
+							modulesPerOrderMap.forEach((key, value) -> maxOrderData.add(new XYChart.Data<>(Integer.toString(key), value)));
 						}
 
 //						// artifacts per depth and order

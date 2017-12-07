@@ -15,6 +15,3 @@ include 'at.jku.isse.ecco.base',
 //		'extras/at.jku.isse.ecco.uml',
 //		'extras/at.jku.isse.ecco.genericAdapter',
 //		'extras/at.jku.isse.ecco.runtime'
-include 'extras/at.jku.isse.ecco.emf'
-include 'test'
-

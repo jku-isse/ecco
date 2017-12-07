@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<suite name="GUI Integration Tests" verbose="1">
+	<test name="GUI">
+		<groups>
+			<run>
+				<include name="integration"/>
+			</run>
+		</groups>
+		<packages>
+			<package name="at.jku.isse.ecco.gui.test"/>
+		</packages>
+	</test>
+</suite>

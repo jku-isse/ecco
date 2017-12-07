@@ -6,6 +6,7 @@ import at.jku.isse.ecco.artifact.PerstArtifact;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
+import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.PerstRepository;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
