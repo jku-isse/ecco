@@ -1,0 +1,15 @@
+ext {
+	eccoModule = true
+}
+
+dependencies {
+	compile project(':ecco-base')
+	compile project(':ecco-service')
+
+	testCompile project(':ecco-storage-perst')
+}
+
+ospackage {
+	requires('ecco-base', version, EQUAL)
+	requires('ecco-service', version, EQUAL)
+}

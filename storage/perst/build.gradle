@@ -1,0 +1,19 @@
+ext {
+	eccoModule = true
+}
+
+dependencies {
+	compile fileTree(dir: 'lib', include: '*.jar')
+
+	compile project(':ecco-base')
+	compile project(':ecco-service')
+
+	testCompile project(':ecco-adapter-file')
+}
+
+ospackage {
+	summary 'Perst database backend for ECCO.'
+	packageDescription 'This package provides a data backend module for ECCO which uses the Perst (http://www.mcobject.com/perst) database.'
+
+	requires('ecco-base', version, EQUAL)
+}

@@ -5,22 +5,17 @@ plugins {
 allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
-	group = 'at.jku.isse'
+	group = 'at.jku.isse.ecco'
 	version = '0.1.6'
 	ext {
 		eccoModule = false
 	}
 }
 
-task listModules << {
-	String header = "\n---------- ECCO " + version + " ----------\n"
-	String subprojects = "Searching for ECCO modules...\n"
-	println header + subprojects
-}
-
 subprojects {
 	apply plugin: 'nebula.os-package'
 	apply plugin: 'java'
+	apply plugin: 'maven-publish'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
@@ -87,7 +82,7 @@ subprojects {
 		}
 		//workingDir = 'src/integrationTest/data/'
 		workingDir = 'build/'
-		testClassesDir = sourceSets.integrationTest.output.classesDir
+		//testClassesDir = sourceSets.integrationTest.output.classesDir
 		classpath = sourceSets.integrationTest.runtimeClasspath
 		outputs.upToDateWhen { false }
 	}
@@ -113,6 +108,26 @@ subprojects {
 		classpath {
 			downloadSources = true
 			downloadJavadoc = true
+		}
+	}
+
+	publishing {
+		publications {
+			eccoMaven(MavenPublication) {
+				groupId project.group
+				artifactId project.name
+				version project.version
+
+				artifact jar {
+				}
+			}
+		}
+		repositories {
+			maven {
+				name 'ECCO'
+				description 'ECCO Maven repository.'
+				url "$buildDir/maven2"
+			}
 		}
 	}
 
@@ -206,15 +221,7 @@ subprojects {
 	}
 	task bundle(dependsOn: [copyJars, copyDependencies])
 
-	// # INFORMATION TASKS
-	task listModules << {
-		task -> println "Found module -> $task.project.name"
-	}
-	listModules.onlyIf {
-		eccoModule
-	}
-
-	task depTest << {
+	task depTest {
 		def temp = project.configurations.runtime
 		project.configurations.findAll { it.name.equals("runtime"); }.collectMany { it.allDependencies }.findAll {
 			it instanceof ProjectDependency
@@ -229,5 +236,5 @@ idea {
 }
 
 task wrapper(type: Wrapper) {
-	gradleVersion = '2.4'
+	gradleVersion = '4.4'
 }

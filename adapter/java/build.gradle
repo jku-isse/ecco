@@ -1,0 +1,9 @@
+
+dependencies {
+	compile fileTree(dir: 'lib', include: '*.jar')
+
+	compile project(':ecco-base')
+	compile project(':ecco-service')
+
+	testCompile project(':ecco-storage-perst')
+}
