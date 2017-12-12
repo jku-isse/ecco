@@ -10,7 +10,7 @@ public abstract class ArtifactPlugin {
 
 	/**
 	 * Must always return the plugin class name:
-	 * 	<SomePlugin extends ArtifactPlugin>.class.getName().
+	 * ArtifactPlugin.class.getName().
 	 * @return
 	 */
 	public abstract String getPluginId();

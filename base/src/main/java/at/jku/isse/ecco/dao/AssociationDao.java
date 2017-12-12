@@ -7,8 +7,6 @@ import java.util.List;
 
 /**
  * A data access object that handles {@link Association} entities.
- * <p>
- * This interface is part of the {@link at.jku.isse.ecco.plugin.CoreModule}.
  *
  * @author Hannes Thaller
  * @version 1.0

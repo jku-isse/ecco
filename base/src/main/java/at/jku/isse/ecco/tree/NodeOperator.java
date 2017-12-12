@@ -68,7 +68,7 @@ public class NodeOperator {
 	}
 
 	/**
-	 * See {@link at.jku.isse.ecco.util.Trees#sequence(Node)}
+	 * See {@link at.jku.isse.ecco.util.Trees#sequence(Node.Op)}
 	 */
 	public void sequence() {
 		Trees.sequence(this.node);

@@ -34,18 +34,18 @@ ospackage {
 	}
 }
 
-packageLinux {
+linuxZip {
 	into(archiveName - ('.' + extension)) {
 		from 'ecco'
 	}
 }
 
-packageSource {
+sourcesZip {
 	include 'ecco'
 	include 'ecco.bat'
 }
 
-packageWindows {
+windowsZip {
 	into(archiveName - ('.' + extension)) {
 		from 'ecco.bat'
 	}

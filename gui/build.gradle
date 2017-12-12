@@ -40,18 +40,18 @@ ospackage {
 	}
 }
 
-packageLinux {
+linuxZip {
 	into(archiveName - ('.' + extension)) {
 		from 'ecco-gui'
 	}
 }
 
-packageSource {
+sourcesZip {
 	include 'ecco-gui'
 	include 'ecco-gui.bat'
 }
 
-packageWindows {
+windowsZip {
 	into(archiveName - ('.' + extension)) {
 		from 'ecco-gui.bat'
 	}
