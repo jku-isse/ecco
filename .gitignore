@@ -13,5 +13,3 @@ ui
 *.project
 *.settings
 test-output
-gradlew
-gradlew.bat

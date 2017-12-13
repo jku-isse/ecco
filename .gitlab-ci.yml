@@ -1,2 +1,16 @@
 
 
+# build
+gradle build
+
+# create maven repository
+
+
+# create fedora repository (*.rpm files must be in current working directory)
+
+#!/bin/bash
+createrepo_c .
+
+
+
+
