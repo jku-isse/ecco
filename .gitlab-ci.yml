@@ -13,6 +13,7 @@ variables:
   JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
   RPM_DIR: "$BUILD_DIR/distributions/rpm"
   DEB_DIR: "$BUILD_DIR/distributions/deb"
+  DISTRIBUTION_DIR: "$BUILD_DIR/distributions"
 
   RPM_REPO_DIR: "$RPM_DIR/repo"
   DEB_REPO_DIR: "$DEB_DIR/repo"
@@ -29,10 +30,13 @@ build:fedora:
   image: $CI_REGISTRY_IMAGE/build:fedora
   script:
     - cd $CI_PROJECT_DIR
+    - chmod +x ./gradlew
     - ./gradlew build
     - ./gradlew combinedjavadoc
     - ./gradlew combinedrpm
     - ./gradlew combineddeb
+    - ./gradlew combinedWindowsZip
+    - ./gradlew combinedLinuxZip
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - createrepo_c $CI_PROJECT_DIR/$RPM_DIR
     - ls -la $CI_PROJECT_DIR/$RPM_DIR/.
@@ -50,10 +54,13 @@ build:ubuntu:
   image: $CI_REGISTRY_IMAGE/build:ubuntu
   script:
     - cd $CI_PROJECT_DIR
+    - chmod +x ./gradlew
     - ./gradlew build
     - ./gradlew combinedjavadoc
     - ./gradlew combinedrpm
     - ./gradlew combineddeb
+    - ./gradlew combinedWindowsZip
+    - ./gradlew combinedLinuxZip
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - ls -la $CI_PROJECT_DIR/$DEB_DIR/.
   #only:
@@ -64,6 +71,7 @@ build:ubuntu:
     paths:
       - $MAVEN_DIR
       - $JAVADOC_DIR
+      - $DISTRIBUTION_DIR
       - $DEB_DIR
 
 
@@ -81,6 +89,7 @@ pages:
     - cp -r $JAVADOC_DIR/. public/doc/
     - cp -r $RPM_DIR/. public/rpm/
     - cp -r $DEB_DIR/. public/deb/
+    - cp $BUILD_DIR/distributions/*.zip public
     - cd public
     - pwd
     - ls -la

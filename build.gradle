@@ -261,15 +261,33 @@ task combinedjavadoc(type: Javadoc, group: "documentation") {
 }
 
 task combinedrpm(type: Copy, group: 'packaging') {
-	dependsOn subprojects.collect { it.rpm }
+	dependsOn subprojects.rpm
 	into "$buildDir/distributions/rpm"
-	from project.subprojects.collect { it.rpm.archivePath }
+	//from project.subprojects.collect { it.rpm.archivePath }
+	from subprojects.rpm.archivePath
 }
 
 task combineddeb(type: Copy, group: 'packaging') {
-	dependsOn subprojects.collect { it.deb }
+	dependsOn subprojects.deb
 	into "$buildDir/distributions/deb"
-	from project.subprojects.collect { it.deb.archivePath }
+	//from project.subprojects.collect { it.deb.archivePath }
+	from subprojects.deb.archivePath
+}
+
+task combinedLinuxZip(type: Zip, group: 'packaging') {
+	into project.name
+	classifier = 'linux'
+	from { subprojects.linuxZip.source }
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task combinedWindowsZip(type: Zip, group: 'packaging') {
+	into project.name
+	classifier = 'windows'
+	//from { subprojects.jar }
+	//from { subprojects.configurations.runtime }
+	from { subprojects.windowsZip.source }
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 idea {
