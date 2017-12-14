@@ -106,8 +106,8 @@ subprojects {
 
 	eclipse {
 		classpath {
-			downloadSources = true
 			downloadJavadoc = true
+			downloadSources = true
 		}
 	}
 
@@ -122,6 +122,8 @@ subprojects {
 
 				artifact javadocJar {
 				}
+				artifact sourcesJar {
+				}
 			}
 		}
 		repositories {
@@ -129,6 +131,11 @@ subprojects {
 				name 'ECCO'
 				description 'ECCO Maven repository.'
 				url "$buildDir/maven2"
+			}
+			maven {
+				name 'RootECCO'
+				description 'Root ECCO Maven repository.'
+				url "$rootProject.buildDir/maven2"
 			}
 		}
 	}
@@ -187,12 +194,12 @@ subprojects {
 	}
 
 	task sourcesJar(type: Jar, group: 'packaging') {
-		classifier = 'src'
+		classifier = 'sources'
 		from sourceSets.main.allSource
 	}
 
 	task javadocJar(type: Jar, group: 'packaging', dependsOn: javadoc) {
-		classifier = 'doc'
+		classifier = 'javadoc'
 		from javadoc.destinationDir
 	}
 
@@ -242,6 +249,27 @@ subprojects {
 			it instanceof ProjectDependency
 		}.collect { it.dependencyProject.jar.outputs.files }.each { println it };
 	}
+}
+
+task combinedjavadoc(type: Javadoc, group: "documentation") {
+	description = 'Generates a global javadoc from all the modules.'
+	source project.subprojects.collect { it.sourceSets.main.allJava }
+	classpath = files(project.subprojects.collect { it.sourceSets.main.compileClasspath })
+	options.memberLevel = JavadocMemberLevel.PRIVATE
+	options.links = ['http://docs.oracle.com/javase/8/docs/api/']
+	destinationDir = file("${buildDir}/docs/javadoc")
+}
+
+task combinedrpm(type: Copy, group: 'packaging') {
+	dependsOn subprojects.collect { it.rpm }
+	into "$buildDir/distributions/rpm"
+	from project.subprojects.collect { it.rpm.archivePath }
+}
+
+task combineddeb(type: Copy, group: 'packaging') {
+	dependsOn subprojects.collect { it.deb }
+	into "$buildDir/distributions/deb"
+	from project.subprojects.collect { it.deb.archivePath }
 }
 
 idea {

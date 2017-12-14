@@ -14,3 +14,103 @@ createrepo_c .
 
 
 
+variables:
+  GIT_DEPTH: "3"
+
+  NATIVE_INSTALL_DIR: "native_install"
+  NATIVE_INSTALL_UBUNTU_DIR: "native_install_ubuntu"
+  NATIVE_INSTALL_MINGW_DIR: "native_install_mingw"
+  NATIVE_TEST_DIR: "native_tests"
+  NATIVE_TEST_UBUNTU_DIR: "native_tests_ubuntu"
+  WEB_INSTALL_DIR: "web_install"
+
+  BUILD_DIR: "build"
+  MAVEN_DIR: "$BUILD_DIR/maven2"
+  JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
+  RPM_DIR: "$BUILD_DIR/distributions/rpm"
+  DEB_DIR: "$BUILD_DIR/distributions/deb"
+
+  RPM_REPO_DIR: "$RPM_DIR/repo"
+  DEB_REPO_DIR: "$DEB_DIR/repo"
+
+
+stages:
+  - build
+  - test
+  - deploy
+
+
+build:fedora:
+  stage: build
+  image: $CI_REGISTRY_IMAGE/build:fedora
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./gradlew build
+    - ./gradlew combinedjavadoc
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
+    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
+    - createrepo_c $CI_PROJECT_DIR/$RPM_DIR
+    - ls -la $CI_PROJECT_DIR/$RPM_DIR/.
+  #only:
+  #  - master
+  when: on_success
+  allow_failure: false
+  artifacts:
+    paths:
+      - $RPM_DIR
+
+
+build:ubuntu:
+  stage: build
+  image: $CI_REGISTRY_IMAGE/build:ubuntu
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./gradlew build
+    - ./gradlew combinedjavadoc
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
+    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
+    - ls -la $CI_PROJECT_DIR/$DEB_DIR/.
+  #only:
+  #  - master
+  when: on_success
+  allow_failure: false
+  artifacts:
+    paths:
+      - $MAVEN_DIR
+      - $JAVADOC_DIR
+      - $DEB_DIR
+
+
+pages:
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  image: alpine:latest
+  script:
+    - cd $CI_PROJECT_DIR
+    - pwd
+    - ls -la
+    - mkdir public/
+    - cp -r $MAVEN_DIR/. public/maven2/
+    - cp -r $JAVADOC_DIR/. public/doc/
+    - cp -r $RPM_DIR/. public/rpm/
+    - cp -r $DEB_DIR/. public/deb/
+    - cd public
+    - pwd
+    - ls -la
+  #only:
+  #  - master
+  when: on_success
+  allow_failure: false
+  dependencies:
+    - build:fedora
+    - build:ubuntu
+  artifacts:
+    paths:
+      - public/
+  environment:
+    name: gitlab
+    url: https://llinsbauer.gitlab.io/ecco/
+
