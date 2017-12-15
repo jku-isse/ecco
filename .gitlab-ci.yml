@@ -73,6 +73,7 @@ build:ubuntu:
       - $JAVADOC_DIR
       - $DISTRIBUTION_DIR
       - $DEB_DIR
+      - index.html
 
 
 pages:
