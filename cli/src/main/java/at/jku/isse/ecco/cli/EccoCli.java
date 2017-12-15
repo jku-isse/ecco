@@ -19,7 +19,7 @@ import java.nio.file.Paths;
 /**
  * This class implements all the CLI commands.
  */
-public class CLI implements EccoListener {
+public class EccoCli implements EccoListener {
 
 	private EccoService eccoService;
 
@@ -56,7 +56,7 @@ public class CLI implements EccoListener {
 
 	// # CLI #########################################
 
-	public CLI() {
+	public EccoCli() {
 		this.eccoService = new EccoService();
 		this.eccoService.detectRepository();
 		this.eccoService.addListener(this);
@@ -172,7 +172,7 @@ public class CLI implements EccoListener {
 //		this.repository.detectRepository();
 //		this.repository.init();
 //
-//		// NOTE: maybe to this in the client service and not in the CLI.
+//		// NOTE: maybe do this in the client service and not in the CLI.
 //		try {
 //			// collect ecco files
 //			Set<Path> eccoFiles = new HashSet<Path>();

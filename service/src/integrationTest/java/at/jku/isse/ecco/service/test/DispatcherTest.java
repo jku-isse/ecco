@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.test;
+package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.plugin.CoreModule;
 import at.jku.isse.ecco.plugin.PerstModule;

@@ -1,5 +1,10 @@
-ext {
-	eccoModule = true
+
+apply plugin: 'application'
+mainClassName = "at.jku.isse.ecco.web.server.EccoWebServer"
+
+task runGUI(type: JavaExec) {
+	classpath = sourceSets.test.runtimeClasspath
+	main = "at.jku.isse.ecco.web.server.EccoWebServer"
 }
 
 //apply plugin: 'base'
