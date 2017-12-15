@@ -1,5 +1,10 @@
-ext {
-	eccoModule = true
+
+apply plugin: 'application'
+mainClassName = "at.jku.isse.ecco.cli.Main"
+
+task runCLI(type: JavaExec) {
+	classpath = sourceSets.test.runtimeClasspath
+	main = "at.jku.isse.ecco.cli.Main"
 }
 
 dependencies {

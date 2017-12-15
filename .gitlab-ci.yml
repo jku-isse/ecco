@@ -44,9 +44,9 @@ build:fedora:
   #  - master
   when: on_success
   allow_failure: true
-  artifacts:
-    paths:
-      - $RPM_DIR
+  #artifacts:
+  #  paths:
+  #    - $RPM_DIR
 
 
 build:ubuntu:
@@ -89,7 +89,8 @@ pages:
     - cp -r $JAVADOC_DIR/. public/doc/
     - cp -r $RPM_DIR/. public/rpm/
     - cp -r $DEB_DIR/. public/deb/
-    - cp $BUILD_DIR/distributions/*.zip public
+    - cp $BUILD_DIR/distributions/*.zip public/
+    - cp index.html public/
     - cd public
     - pwd
     - ls -la
