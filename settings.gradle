@@ -31,7 +31,7 @@ include 'adapter-file'
 include 'adapter-text'
 include 'adapter-image'
 include 'adapter-java'
-include 'adapter-java-8'
+//include 'adapter-java-8'
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
@@ -44,7 +44,8 @@ project(':storage-perst').projectDir = file('storage/perst')
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
-project(':adapter-java').projectDir = file('adapter/java')
-project(':adapter-java-8').projectDir = file('adapter/java8')
+//project(':adapter-java').projectDir = file('adapter/java')
+//project(':adapter-java-8').projectDir = file('adapter/java8')
+project(':adapter-java').projectDir = file('adapter/java8')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }

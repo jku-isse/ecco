@@ -1,5 +1,23 @@
-ext {
-	eccoModule = true
+
+publishing {
+	publications {
+		eccoMaven(MavenPublication) {
+			pom.withXml {
+				Node dependenciesNode = asNode().dependencies[0];
+				Node dependencyNode = dependenciesNode.appendNode('dependency');
+				Node groupIdNode = dependencyNode.appendNode('groupId','org.garret.perst');
+				Node artifactIdNode = dependencyNode.appendNode('artifactId','perst');
+				Node versionNode = dependencyNode.appendNode('version','4.38');
+				Node scopeNode = dependencyNode.appendNode('scope','compile');
+			}
+		}
+		perstMaven(MavenPublication) {
+			groupId 'org.garret.perst'
+			artifactId 'perst'
+			version '4.38'
+			artifact file('lib/perst-4.38.jar')
+		}
+	}
 }
 
 dependencies {
