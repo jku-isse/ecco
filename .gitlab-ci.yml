@@ -38,6 +38,7 @@ build:fedora:
     - ./gradlew combinedWindowsZip
     - ./gradlew combinedLinuxZip
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
+    - ./gradlew publishPerstMavenPublicationToRootEccoRepository
     - createrepo_c $CI_PROJECT_DIR/$RPM_DIR
     - ls -la $CI_PROJECT_DIR/$RPM_DIR/.
   #only:
@@ -62,6 +63,7 @@ build:ubuntu:
     - ./gradlew combinedWindowsZip
     - ./gradlew combinedLinuxZip
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
+    - ./gradlew publishPerstMavenPublicationToRootEccoRepository
     - ls -la $CI_PROJECT_DIR/$DEB_DIR/.
   #only:
   #  - master
