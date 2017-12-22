@@ -3,7 +3,7 @@
 <suite name="File Module Integration Test" verbose="1">
 	<test name="FileModuleTest">
 		<classes>
-			<class name="at.jku.isse.ecco.file.test.FileModuleTest"/>
+			<class name="at.jku.isse.ecco.adapter.file.test.FileModuleTest"/>
 		</classes>
 	</test>
 	<test name="File">
@@ -13,7 +13,7 @@
 			</run>
 		</groups>
 		<packages>
-			<package name="at.jku.isse.ecco.file.test"/>
+			<package name="at.jku.isse.ecco.adapter.file.test"/>
 		</packages>
 	</test>
 </suite>

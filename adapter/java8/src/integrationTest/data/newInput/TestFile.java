@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.plugin.artifact.java.eight.jdtast;
+package at.jku.isse.ecco.adapter.java.jdtast;
 
 import com.google.common.base.Function;
 import com.sun.istack.internal.NotNull;

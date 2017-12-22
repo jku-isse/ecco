@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.plugin;
 
-import at.jku.isse.ecco.plugin.data.DataPlugin;
+import at.jku.isse.ecco.plugin.storage.DataPlugin;
 import com.google.inject.Module;
 
 

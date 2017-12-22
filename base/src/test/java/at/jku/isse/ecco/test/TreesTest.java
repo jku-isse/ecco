@@ -2,7 +2,7 @@ package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;

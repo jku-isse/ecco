@@ -8,7 +8,7 @@
 			</run>
 		</groups>
 		<packages>
-			<package name="at.jku.isse.ecco.java.test"/>
+			<package name="at.jku.isse.ecco.adapter.java.test"/>
 		</packages>
 	</test>
 </suite>

@@ -3,7 +3,7 @@
 <suite name="Image Module Integration Test" verbose="1">
 	<test name="ImageModuleTest">
 		<classes>
-			<class name="at.jku.isse.ecco.image.test.ImageModuleTest"/>
+			<class name="at.jku.isse.ecco.adapter.image.test.ImageModuleTest"/>
 		</classes>
 	</test>
 	<test name="Image">

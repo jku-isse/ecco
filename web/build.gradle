@@ -2,7 +2,7 @@
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.web.server.EccoWebServer"
 
-task runGUI(type: JavaExec) {
+task runGUI(type: JavaExec, group: 'application') {
 	classpath = sourceSets.test.runtimeClasspath
 	main = "at.jku.isse.ecco.web.server.EccoWebServer"
 }

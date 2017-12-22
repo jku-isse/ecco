@@ -1,5 +1,10 @@
 package at.jku.isse.ecco;
 
+import at.jku.isse.ecco.adapter.ArtifactPlugin;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
+import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
@@ -13,10 +18,10 @@ import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.listener.ServerListener;
 import at.jku.isse.ecco.listener.WriteListener;
-import at.jku.isse.ecco.plugin.CoreModule;
-import at.jku.isse.ecco.plugin.artifact.*;
-import at.jku.isse.ecco.plugin.data.DataPlugin;
+import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
+import at.jku.isse.ecco.storage.StoragePlugin;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import com.google.inject.AbstractModule;
@@ -169,8 +174,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 
 	private Collection<ArtifactPlugin> artifactPlugins;
-	private Collection<DataPlugin> dataPlugins;
-	private DataPlugin dataPlugin;
+	private Collection<StoragePlugin> dataPlugins;
+	private StoragePlugin dataPlugin;
 
 	private Injector injector;
 
@@ -489,7 +494,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		// data modules
 		List<Module> dataModules = new ArrayList<>();
 		List<Module> allDataModules = new ArrayList<>();
-		for (DataPlugin dataPlugin : DataPlugin.getDataPlugins()) {
+		for (StoragePlugin dataPlugin : StoragePlugin.getDataPlugins()) {
 			if (dataPlugin.getPluginId().equals(this.properties.get(ECCO_PROPERTIES_DATA))) {
 				dataModules.add(dataPlugin.getModule());
 				this.dataPlugin = dataPlugin;
@@ -501,7 +506,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		// put modules together
 		List<Module> modules = new ArrayList<>();
-		modules.add(new CoreModule());
+		modules.add(new DispatchModule());
 		modules.addAll(artifactModules);
 		modules.addAll(dataModules);
 

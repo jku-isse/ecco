@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.BaseArtifact;
+import at.jku.isse.ecco.storage.mem.artifact.BaseArtifact;
 import at.jku.isse.ecco.gui.view.graph.SequenceGraphView;
-import at.jku.isse.ecco.sg.BaseSequenceGraph;
+import at.jku.isse.ecco.storage.mem.sg.BaseSequenceGraph;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import javafx.scene.Scene;
 import org.testng.annotations.AfterTest;

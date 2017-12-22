@@ -8,8 +8,8 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureVersion;
 import at.jku.isse.ecco.listener.EccoListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
-import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.util.Trees;
 
 import java.nio.file.InvalidPathException;

@@ -2,7 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.listener.EccoListener;
-import at.jku.isse.ecco.plugin.artifact.ArtifactPlugin;
+import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;

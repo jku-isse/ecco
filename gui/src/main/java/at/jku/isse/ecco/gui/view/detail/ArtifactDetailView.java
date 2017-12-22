@@ -2,8 +2,8 @@ package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.gui.view.graph.SequenceGraphView;
-import at.jku.isse.ecco.plugin.artifact.ArtifactViewer;
-import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
+import at.jku.isse.ecco.adapter.ArtifactViewer;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import javafx.geometry.Orientation;

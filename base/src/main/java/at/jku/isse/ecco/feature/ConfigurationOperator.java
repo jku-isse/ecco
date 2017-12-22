@@ -63,7 +63,7 @@ public class ConfigurationOperator {
 	 * @param maxOrder The maximum order up to which modules shall be computed.
 	 * @return The set of modules.
 	 */
-	protected Set<Module> computeModules(int maxOrder) {
+	public Set<Module> computeModules(int maxOrder) {
 		// first compute the ordinary powerset modules
 		Set<Module> modules = this.powerSet(this.configuration.getFeatureInstances(), maxOrder);
 

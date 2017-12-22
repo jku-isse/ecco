@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.listener;
 
-import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
+import at.jku.isse.ecco.adapter.ArtifactReader;
 
 import java.nio.file.Path;
 
