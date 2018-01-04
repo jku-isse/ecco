@@ -2,11 +2,16 @@ plugins {
 	id "nebula.ospackage" version "4.5.1"
 }
 
+private static String getDate() {
+	def dateFormat = new java.text.SimpleDateFormat("YYYY-MM-DD", Locale.ENGLISH)
+	return dateFormat.format(new Date())
+}
+
 allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
 	group = 'at.jku.isse.ecco'
-	version = '0.1.6'
+	version = '0.1.6-' + getDate()
 	ext {
 		eccoModule = false
 	}
