@@ -10,7 +10,7 @@ public class JavaIntegrityTests {
 
     @Test
     public void debugTest1() {
-        integrityTest("Constants.java");
+        integrityTest("InvisibleHandOverZoneImpl.java");
     }
 
     @Test
@@ -42,6 +42,13 @@ public class JavaIntegrityTests {
                 "JavaTreeArtifactData.java",
                 "LoginRequired.java",
                 "Looptest.java"
+        );
+    }
+
+    @Test
+    public void simpleIntegrityTest3() {
+        integrityTest(
+                "Constants.java"
         );
     }
 

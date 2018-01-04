@@ -2,6 +2,8 @@ package at.jku.isse.ecco.adapter.java;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
+import java.util.Objects;
+
 public class JavaTreeArtifactData implements ArtifactData {
 
     public enum NodeType {
@@ -96,21 +98,15 @@ public class JavaTreeArtifactData implements ArtifactData {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof JavaTreeArtifactData)) return false;
-
-        JavaTreeArtifactData data = (JavaTreeArtifactData) o;
-
-        if (ordered != data.ordered) return false;
-        if (type != data.type) return false;
-        return dataAsString != null ? dataAsString.equals(data.dataAsString) : data.dataAsString == null;
+        if (o == null || getClass() != o.getClass()) return false;
+        JavaTreeArtifactData that = (JavaTreeArtifactData) o;
+        return type == that.type &&
+                Objects.equals(dataAsString, that.dataAsString);
     }
 
     @Override
     public int hashCode() {
-        int result = type.hashCode();
-        result = 31 * result + (ordered ? 1 : 0);
-        result = 31 * result + (dataAsString != null ? dataAsString.hashCode() : 0);
-        return result;
+        return Objects.hash(type, dataAsString);
     }
 
     @Override
