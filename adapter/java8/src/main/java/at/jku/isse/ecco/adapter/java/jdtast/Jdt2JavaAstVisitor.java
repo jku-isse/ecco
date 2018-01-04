@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.adapter.java.jdtast;
 
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.adapter.java.JavaTreeArtifactData;
 import at.jku.isse.ecco.adapter.java.TODO;
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.jdt.core.dom.*;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -637,10 +637,13 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(Initializer node) {
         JavaTreeArtifactData data = new JavaTreeArtifactData();
         data.setType(BLOCK);
+        data.setOrdered(true);
         final Node.Op initializerNode = newNode.apply(data);
         parentEccoNode.addChild(initializerNode);
 
         handleModifiers(node.modifiers(), initializerNode);
+
+        ((List<Statement>) node.getBody().statements()).forEach(it -> recursiveReadAst.accept(it, initializerNode));
 
         return super.visit(node);
     }
@@ -1109,6 +1112,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         extendsDataMeta.setType(DECLARATION_EXTENDS);
         implementsDataMeta.setType(DECLARATION_IMPLEMENTS);
         body.setType(AFTER);
+        body.setOrdered(true);
 
         Node.Op typeDeclarationNode = newNode.apply(typeDeclarationData), extendsNode = newNode.apply(extendsDataMeta),
                 implementsNode = newNode.apply(implementsDataMeta), bodyNode = newNode.apply(body);

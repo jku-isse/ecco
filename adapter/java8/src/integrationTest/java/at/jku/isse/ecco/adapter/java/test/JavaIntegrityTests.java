@@ -9,6 +9,11 @@ import static at.jku.isse.ecco.adapter.java.test.JavaIntegrityTestHelper.*;
 public class JavaIntegrityTests {
 
     @Test
+    public void debugTest1() {
+        integrityTest("Constants.java");
+    }
+
+    @Test
     public void springIntegrityTest() {
         integrityTestSpring(
                 "ResolvableType.java",
