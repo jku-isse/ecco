@@ -1,10 +1,10 @@
 
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.gui.EccoGui"
+applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
 
-task runGUI(type: JavaExec, group: 'application') {
+run {
 	classpath = sourceSets.test.runtimeClasspath
-	main = "at.jku.isse.ecco.gui.EccoGui"
 }
 
 dependencies {
