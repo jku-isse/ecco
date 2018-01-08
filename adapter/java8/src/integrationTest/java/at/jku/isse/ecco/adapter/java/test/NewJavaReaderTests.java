@@ -59,7 +59,7 @@ public class NewJavaReaderTests {
     public void jdkRead() {
         JavaReader javaReader = new JavaReader(new PerstEntityFactory());
         readJDK(javaReader,
-                "ArrayList.java.java", "BatchUpdateException.java", "List.java", "Math.java", "Proxy.java"
+                "ArrayList.java", "BatchUpdateException.java", "List.java", "Math.java", "Proxy.java"
         ).forEach(this::print);
     }
 
