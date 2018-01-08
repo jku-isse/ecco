@@ -1,10 +1,10 @@
 
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.web.server.EccoWebServer"
+applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
 
-task runWEB(type: JavaExec, group: 'application') {
+run {
 	classpath = sourceSets.test.runtimeClasspath
-	main = "at.jku.isse.ecco.web.server.EccoWebServer"
 }
 
 //apply plugin: 'base'
