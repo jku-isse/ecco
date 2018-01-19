@@ -9,6 +9,11 @@ import static at.jku.isse.ecco.adapter.java.test.JavaIntegrityTestHelper.*;
 public class JavaIntegrityTests {
 
     @Test
+    public void debugTest1() {
+        integrityTest("StackPushControl.java");
+    }
+
+    @Test
     public void springIntegrityTest() {
         integrityTestSpring(
                 "ResolvableType.java",
@@ -37,6 +42,14 @@ public class JavaIntegrityTests {
                 "JavaTreeArtifactData.java",
                 "LoginRequired.java",
                 "Looptest.java"
+        );
+    }
+
+    @Test
+    public void simpleIntegrityTest3() {
+        integrityTest(
+                "Constants.java",
+                "InvisibleHandOverZoneImpl.java"
         );
     }
 

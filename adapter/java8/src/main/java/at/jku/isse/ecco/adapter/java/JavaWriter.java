@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.adapter.java;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.java.JavaTreeArtifactData.NodeType;
+import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.jdt.core.formatter.CodeFormatter;
 import org.eclipse.jdt.internal.formatter.DefaultCodeFormatter;
@@ -546,7 +546,8 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 
     private void handleBlockDeclaration(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
         stringBuilder.append('{');
-        curNode.getChildren().stream().map(NodeArtifactEntry::fromNode).forEach(nae -> processJavaAst(stringBuilder, nae));
+        curNode.getChildren().stream().map(NodeArtifactEntry::fromNode).filter(Objects::nonNull)
+                .filter(e -> e.getArtifact().getType() != MODIFIER).forEach(nae -> processJavaAst(stringBuilder, nae));
         stringBuilder.append('}');
     }
 
