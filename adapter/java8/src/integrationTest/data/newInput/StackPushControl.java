@@ -1,4 +1,3 @@
-//#if stack && stackCylinder
 package at.jku.mevss.ppu.control;
 
 /**
@@ -49,13 +48,19 @@ public class StackPushControl implements ControlComponent {
                 break;
             //#endif
             default:
+                // #ifdef somefeature.1
                 if (variablePool.isStackPushWithdrawn() && !variablePool.isHandOverZone1Active())
                     state = AirPressureState.ON;
                 else if (variablePool.isStackPushExtracted()) {
                     //#if stackCylinderDetectsEmptyStack
                     state = AirPressureState.WAIT_HANDOVERZONE;
-                    //#else
+                    //#endif
+                    //#if !stackCylinderDetectsEmptyStack
                     state = AirPressureState.OFF;
+                    //#endif
+                //#endif
+                    //#if somefeature.2 && !stackCylinderDetectsEmptyStack
+                    state = AirPressureState.OFF2;
                     //#endif
                 }
                 break;

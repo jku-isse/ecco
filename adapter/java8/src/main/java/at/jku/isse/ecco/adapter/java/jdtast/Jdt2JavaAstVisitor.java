@@ -43,7 +43,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         methodDeclarationData.setType(METHOD_DECLARATION);
         SimpleName methodName = node.getName();
 
-
         final Node.Op methodNode = newNode.apply(methodDeclarationData);
         parentEccoNode.addChild(methodNode);
         List<SingleVariableDeclaration> singleVariableDeclarationList = node.parameters();
@@ -149,6 +148,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         memberData.setType(ANNOTATIONMEMBER);
         memberData.setDataAsString(node.getType() + " " + node.getName() + "()");
         final Node.Op memberNode = newNode.apply(memberData);
+        referenceCheckingConsumer.accept(memberNode.getArtifact(), node);
         parentEccoNode.addChildren(memberNode);
         final Expression nodeDefault = node.getDefault();
         if (nodeDefault != null) {
@@ -166,6 +166,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         JavaTreeArtifactData anonymousClasDeclaration = new JavaTreeArtifactData();
         anonymousClasDeclaration.setType(ANONYMOUS_CLASS_DECLARATION);
         final Node.Op anonymousClassDeclarationNode = newNode.apply(anonymousClasDeclaration);
+        referenceCheckingConsumer.accept(anonymousClassDeclarationNode.getArtifact(), node);
         parentEccoNode.addChild(anonymousClassDeclarationNode);
 
         ((List<BodyDeclaration>) node.bodyDeclarations()).forEach(declaration -> recursiveReadAst.accept(declaration, anonymousClassDeclarationNode));
@@ -178,6 +179,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(ArrayAccess node) {
         final JavaTreeArtifactData arrayAccessData = artifactFromSimpleNode(node);
         final Node.Op arrayAccessNode = newNode.apply(arrayAccessData);
+        referenceCheckingConsumer.accept(arrayAccessNode.getArtifact(), node);
         parentEccoNode.addChildren(arrayAccessNode);
         return super.visit(node);
     }
@@ -186,6 +188,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(ArrayCreation node) {
         final JavaTreeArtifactData arrayCreationData = artifactFromSimpleNode(node);
         final Node.Op arrayCreationNode = newNode.apply(arrayCreationData);
+        referenceCheckingConsumer.accept(arrayCreationNode.getArtifact(), node);
         parentEccoNode.addChild(arrayCreationNode);
         //No recursion
         return super.visit(node);
@@ -195,6 +198,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(ArrayInitializer node) {
         final JavaTreeArtifactData data = artifactFromSimpleNode(node);
         final Node.Op eccoNode = newNode.apply(data);
+        referenceCheckingConsumer.accept(eccoNode.getArtifact(), node);
         parentEccoNode.addChild(eccoNode);
         return super.visit(node);
     }
@@ -203,6 +207,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(ArrayType node) {
         final Node.Op typeNode = newNode.apply(artifactFromSimpleNode(node));
         parentEccoNode.addChild(typeNode);
+        referenceCheckingConsumer.accept(typeNode.getArtifact(), node);
         return super.visit(node);
     }
 
@@ -217,6 +222,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final Node.Op assertNode = newNode.apply(assertData), assertConditionNode = newNode.apply(assertConditionData), assertMessageNode = newNode.apply(assertMessageData);
         parentEccoNode.addChild(assertNode);
         assertNode.addChildren(assertConditionNode, assertMessageNode);
+        referenceCheckingConsumer.accept(assertNode.getArtifact(), node);
 
         recursiveReadAst.accept(node.getExpression(), assertConditionNode);
         recursiveReadAst.accept(node.getMessage(), assertMessageNode);
@@ -285,6 +291,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         castData.setDataAsString('(' + castType.toString() + ')');
         final Node.Op castNode = newNode.apply(castData);
         parentEccoNode.addChild(castNode);
+        referenceCheckingConsumer.accept(castNode.getArtifact(), node);
         recursiveReadAst.accept(node.getExpression(), castNode);
 
         return super.visit(node);
@@ -300,6 +307,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final Node.Op catchNode = newNode.apply(catchClauseData), bodyNode = newNode.apply(bodyData);
         parentEccoNode.addChild(catchNode);
         catchNode.addChild(bodyNode);
+        referenceCheckingConsumer.accept(catchNode.getArtifact(), node);
 
         recursiveReadAst.accept(node.getBody(), bodyNode);
         return super.visit(node);
@@ -354,6 +362,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final List<AbstractTypeDeclaration> types = (List<AbstractTypeDeclaration>) node.getStructuralProperty(td);
 
         types.forEach(abstractTypeDeclaration -> recursiveReadAst.accept(abstractTypeDeclaration, parentEccoNode));
+        referenceCheckingConsumer.accept(parentEccoNode.getArtifact(), node);
 
         return super.visit(node);
     }
@@ -394,6 +403,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(CreationReference node) {
         final Node.Op referenceNode = newNode.apply(artifactFromSimpleNode(node));
+        referenceCheckingConsumer.accept(referenceNode.getArtifact(), node);
         parentEccoNode.addChild(referenceNode);
         return super.visit(node);
     }
@@ -480,6 +490,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         parentEccoNode.addChild(enumNode);
         enumNode.addChildren(implementsNode, enumConstantsNode, bodyDeclarations);
 
+        referenceCheckingConsumer.accept(enumNode.getArtifact(), node);
         handleModifiers(node.modifiers(), enumNode);
         enumDeclarationData.setDataAsString(" enum " + node.getName());
 
@@ -599,7 +610,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final Statement elseStatement = node.getElseStatement();
         if (elseStatement != null) {
             JavaTreeArtifactData.NodeType elseStatementType = elseStatement instanceof IfStatement ? STATEMENT_IF : STATEMENT_ELSE;
-            //TODO check if this is correct!
+
             if (elseStatementType == STATEMENT_IF) {
                 recursiveReadAst.accept(elseStatement, iffsNode);
             } else {
@@ -621,10 +632,12 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final JavaTreeArtifactData importData = artifactFromSimpleNode(node);
         final Node.Op importNode = newNode.apply(importData);
         parentEccoNode.addChild(importNode);
+        referenceCheckingConsumer.accept(importNode.getArtifact(), node);
         // End of recursion, no child nodes need to be visited
         return super.visit(node);
     }
 
+    //TODO maybe more fine granular handling
     @Override
     public boolean visit(InfixExpression node) {
         final JavaTreeArtifactData javaTreeArtifactData = artifactFromSimpleNode(node);
@@ -679,7 +692,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(Javadoc node) {
-        //Unused
         throw new IllegalStateException("Not supported in current implementation");
     }
 
@@ -710,6 +722,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         ASTNode body = node.getBody();
 
         recursiveReadAst.accept(body, lambdaNode);
+        referenceCheckingConsumer.accept(lambdaNode.getArtifact(), node);
+
         return super.visit(node);
     }
 

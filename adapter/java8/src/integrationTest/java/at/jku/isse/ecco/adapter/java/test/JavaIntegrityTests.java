@@ -10,7 +10,7 @@ public class JavaIntegrityTests {
 
     @Test
     public void debugTest1() {
-        integrityTest("StackPushControl.java");
+        integrityTestJdk("ArrayList.java");
     }
 
     @Test
