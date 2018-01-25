@@ -438,6 +438,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(EmptyStatement node) {
         JavaTreeArtifactData emptyStatement = new JavaTreeArtifactData();
+        emptyStatement.setDataAsString(";");
         final Node.Op emptyStatementNode = newNode.apply(emptyStatement);
 
         parentEccoNode.addChild(emptyStatementNode);
