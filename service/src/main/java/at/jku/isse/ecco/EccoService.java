@@ -1699,7 +1699,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			this.transactionStrategy.begin();
 
-			Set<Node.Op> nodes = this.reader.read(this.baseDir, new Path[]{Paths.get("")});
+			Set<Node.Op> nodes = readFiles();
 			Repository.Op repository = this.repositoryDao.load();
 			Commit commit = repository.extract(configuration, nodes);
 			this.repositoryDao.store(repository);
@@ -1712,6 +1712,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			throw new EccoException("Error during commit.", e);
 		}
+	}
+
+	public synchronized Set<Node.Op> readFiles(){
+		return  reader.read(this.baseDir, new Path[]{Paths.get("")});
 	}
 
 
