@@ -10,7 +10,7 @@ public class JavaIntegrityTests {
 
     @Test
     public void debugTest1() {
-        integrityTest("StackPushControl.java");
+        integrityTest("VariablePool.java");
     }
 
     @Test
@@ -49,7 +49,8 @@ public class JavaIntegrityTests {
     public void simpleIntegrityTest3() {
         integrityTest(
                 "Constants.java",
-                "InvisibleHandOverZoneImpl.java"
+                "InvisibleHandOverZoneImpl.java",
+                "VariablePool.java"
         );
     }
 

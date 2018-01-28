@@ -113,7 +113,6 @@ public class JavaTreeArtifactData implements ArtifactData {
     public String toString() {
         return "JavaTreeArtifactData{" +
                 "type=" + type +
-                ", ordered=" + ordered +
                 ", dataAsString='" + dataAsString + '\'' +
                 '}';
     }

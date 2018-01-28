@@ -113,7 +113,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 
     private void processJavaAst(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
         final NodeType curNodeType = artifactData.getType();
-        if (curNodeType == null)
+        if (curNodeType == null) // e.g. "EmptyStatement"
             stringBuilder.append(artifactData.getDataAsString());
         else {
             switch (curNodeType) {

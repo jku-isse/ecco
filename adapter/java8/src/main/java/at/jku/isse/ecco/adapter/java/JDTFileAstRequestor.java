@@ -80,7 +80,7 @@ public class JDTFileAstRequestor extends FileASTRequestor {
         final Optional<PackageDeclaration> packageDeclaration = Optional.ofNullable(cu.getPackage());
         String className = Files.getNameWithoutExtension(sourceFileName);
         // package.name + "."+ className
-        //maps add the dot bnetween package and classname
+        //maps add the dot between package and classname
         return packageDeclaration.map(PackageDeclaration::getName).map(Object::toString).map(s -> s + ".").orElse("") + className;
     }
 
