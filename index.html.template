@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head><title>ECCO</title></head>
+<body>
+<h3>Windows</h3>
+<a href="ecco-${project.version}-windows.zip">https://llinsbauer.gitlab.io/ecco/ecco-${project.version}-windows.zip</a>
+<h3>Linux</h3>
+<a href="ecco-${project.version}-linux.zip">https://llinsbauer.gitlab.io/ecco/ecco-${project.version}-linux.zip</a>
+<h3>Maven Repository</h3>
+<a href="maven2">https://llinsbauer.gitlab.io/ecco/maven2/</a>
+<h3>Javadoc</h3>
+<a href="doc">https://llinsbauer.gitlab.io/ecco/doc/</a>
+<h3>Fedora PPA</h3>
+<a href="rpm">https://llinsbauer.gitlab.io/ecco/rpm/</a><br/>
+<h3>RPMs</h3>
+<% project.subprojects.each { subproject -> %>
+<a href="rpm/${subproject.name}-${subproject.version.replace("-","~")}-1.noarch.rpm">https://llinsbauer.gitlab.io/ecco/rpm/${subproject.name}-${subproject.version.replace("-","~")}-1.noarch.rpm</a><br/>
+<% } %>
+<h3>Ubuntu PPA</h3>
+<a href="deb">https://llinsbauer.gitlab.io/ecco/deb/</a><br/>
+<h3>DEBs</h3>
+<% project.subprojects.each { subproject -> %>
+<a href="deb/${subproject.name}_${subproject.version.replace("-","~")}-1_noarch.deb">https://llinsbauer.gitlab.io/ecco/deb/${subproject.name}_${subproject.version.replace("-","~")}-1_noarch.deb</a><br/>
+<% } %>
+</body>
+</html>

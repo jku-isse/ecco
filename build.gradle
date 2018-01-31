@@ -295,6 +295,14 @@ task combinedWindowsZip(type: Zip, group: 'packaging') {
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+task html(type: Copy) {
+	from "."
+	into "$buildDir"
+	include "index.html.template"
+	rename { file -> 'index.html' }
+	expand(project: project)
+}
+
 idea {
 	project {
 		languageLevel = '1.8'
