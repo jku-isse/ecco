@@ -12,8 +12,10 @@ variables:
   MAVEN_DIR: "$BUILD_DIR/maven2"
   JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
   DISTRIBUTION_DIR: "$BUILD_DIR/distributions"
-  RPM_DIR: "$DISTRIBUTION_DIR/rpm"
-  DEB_DIR: "$DISTRIBUTION_DIR/deb"
+  #RPM_DIR: "$DISTRIBUTION_DIR/rpm"
+  #DEB_DIR: "$DISTRIBUTION_DIR/deb"
+  RPM_DIR: "$BUILD_DIR/distributions/rpm"
+  DEB_DIR: "$BUILD_DIR/distributions/deb"
 
   RPM_REPO_DIR: "$RPM_DIR/repo"
   DEB_REPO_DIR: "$DEB_DIR/repo"
