@@ -1207,6 +1207,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(VariableDeclarationExpression node) {
         JavaTreeArtifactData variableDeclaration = new JavaTreeArtifactData();
         variableDeclaration.setType(EXPRESSION_VARIABLE_DECLARATION);
+        variableDeclaration.setOrdered(true);
         final Node.Op variableDeclarationNode = newNode.apply(variableDeclaration);
         parentEccoNode.addChildren(variableDeclarationNode);
         handleModifiers(node.modifiers(), variableDeclarationNode);
@@ -1227,7 +1228,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(VariableDeclarationStatement node) {
         JavaTreeArtifactData variableDeclaration = new JavaTreeArtifactData();
-        variableDeclaration.setType(STATEMENT_VARIABLE_DECLARATION);
         variableDeclaration.setType(STATEMENT_VARIABLE_DECLARATION);
         variableDeclaration.setOrdered(true);
         final Node.Op variableDeclarationNode = newNode.apply(variableDeclaration);
