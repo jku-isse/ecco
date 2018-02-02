@@ -1,14 +1,25 @@
+package at.jku.isse.ecco.adapter.java.test;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
 public class Simple {
 
-    public Simple(String s) throws IllegalArgument {
-        super(s);
+    private String o;
+
+    public Simple(String s) throws IllegalArgumentException {
+        super();
+        o = s;
     }
 
     public Simple() {
         super();
     }
 
-    public <T, R extends Comparable<T> & T> void test(List<SpanShapeRenderer.Simple> uneedded, T... f) throws Exception {
+    public <T, R extends Comparable<T>> void test(List<Simple> uneedded, T... f) throws Exception {
         Supplier<String> a = (Serializable & Supplier<String>) () -> "TEST";
         Function<String, String> c = b -> b;
         synchronized (a) {
@@ -17,11 +28,10 @@ public class Simple {
 
                 };
                 try {
-                    int i = super.y;
-                } catch (OneException | OtherException e) {
+                    int ii = super.hashCode();
+                } catch (IllegalArgumentException | IllegalStateException e) {
                     throw e;
                 }
-                super.soManySpecialCases();
                 String[] test1 = new String[]{};
                 String[] test2 = new String[0];
             }

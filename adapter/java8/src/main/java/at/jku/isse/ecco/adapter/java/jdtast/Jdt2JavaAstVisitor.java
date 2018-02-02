@@ -354,7 +354,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final List<AbstractTypeDeclaration> types = (List<AbstractTypeDeclaration>) node.types();
         //Chefk if errors are detected
         IProblem[] problems = node.getProblems();
-        if (problems.length > 0)
+        boolean notCompiling = Arrays.stream(problems).anyMatch(p -> p.getMessage().startsWith("Syntax error"));
+        if (notCompiling)
             throw new IllegalStateException("Compilation problem detected at" + types.toString(), new Error(Arrays.toString(problems)));
         //No new node needs to be generated
         final PackageDeclaration packageDeclaration = node.getPackage();
