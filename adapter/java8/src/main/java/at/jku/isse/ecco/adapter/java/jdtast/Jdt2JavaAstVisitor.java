@@ -4,9 +4,11 @@ import at.jku.isse.ecco.adapter.java.JavaTreeArtifactData;
 import at.jku.isse.ecco.adapter.java.TODO;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
+import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.*;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
@@ -349,6 +351,12 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(final CompilationUnit node) {
+        final List<AbstractTypeDeclaration> types = (List<AbstractTypeDeclaration>) node.types();
+        //Chefk if errors are detected
+        IProblem[] problems = node.getProblems();
+        boolean notCompiling = Arrays.stream(problems).anyMatch(p -> p.getMessage().startsWith("Syntax error"));
+        if (notCompiling)
+            throw new IllegalStateException("Compilation problem detected at" + types.toString(), new Error(Arrays.toString(problems)));
         //No new node needs to be generated
         final PackageDeclaration packageDeclaration = node.getPackage();
         if (packageDeclaration != null)
@@ -357,9 +365,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         if (imports != null)
             imports.forEach(this::visit);
         // No new Ecco node should be created here TODO
-        final Optional<StructuralPropertyDescriptor> typeDescriptor = ((List<StructuralPropertyDescriptor>) node.structuralPropertiesForType()).stream().filter(cp -> cp.getId().equals("types")).findAny();
-        final StructuralPropertyDescriptor td = typeDescriptor.orElseThrow(() -> new IllegalStateException("Java file with no type!"));
-        final List<AbstractTypeDeclaration> types = (List<AbstractTypeDeclaration>) node.getStructuralProperty(td);
+
 
         types.forEach(abstractTypeDeclaration -> recursiveReadAst.accept(abstractTypeDeclaration, parentEccoNode));
         referenceCheckingConsumer.accept(parentEccoNode.getArtifact(), node);
@@ -1201,6 +1207,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(VariableDeclarationExpression node) {
         JavaTreeArtifactData variableDeclaration = new JavaTreeArtifactData();
         variableDeclaration.setType(EXPRESSION_VARIABLE_DECLARATION);
+        variableDeclaration.setOrdered(true);
         final Node.Op variableDeclarationNode = newNode.apply(variableDeclaration);
         parentEccoNode.addChildren(variableDeclarationNode);
         handleModifiers(node.modifiers(), variableDeclarationNode);
@@ -1221,7 +1228,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(VariableDeclarationStatement node) {
         JavaTreeArtifactData variableDeclaration = new JavaTreeArtifactData();
-        variableDeclaration.setType(STATEMENT_VARIABLE_DECLARATION);
         variableDeclaration.setType(STATEMENT_VARIABLE_DECLARATION);
         variableDeclaration.setOrdered(true);
         final Node.Op variableDeclarationNode = newNode.apply(variableDeclaration);

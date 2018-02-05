@@ -13,6 +13,16 @@ public class JavaIntegrityTests {
         integrityTest("VariablePool.java");
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void ensureFailure() {
+        try {
+            integrityTest("VariablePoolErr.java");
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
     @Test
     public void springIntegrityTest() {
         integrityTestSpring(

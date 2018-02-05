@@ -1,7 +1,8 @@
-package at.jku.isse.ecco.adapter.java.jdtast;
+package at.jku.isse.ecco.adapter.java.test;
 
 import com.google.common.base.Function;
 import com.sun.istack.internal.NotNull;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import java.beans.Transient;
@@ -21,11 +22,9 @@ public abstract class TestFile implements AutoCloseable {
 
     private void test() {
         @NotNull final String s = "";
-        super.field;
-        super.method();
         this.foo();
         String m = this.m;
-        final Function<Object, String> aNew = super::foo;
+        final Function<Object, Boolean> aNew = super::equals;
         final IntSupplier a = this::foo;
         Function<Collection<String>, Stream<String>> wow = Collection::stream;
     }
