@@ -2,8 +2,6 @@
 dependencies {
 	testCompile project(':ecco-service')
 
-	testCompile project(':ecco-storage-perst')
-
 	testCompile project(':ecco-adapter-file')
 	testCompile project(':ecco-adapter-text')
 	testCompile project(':ecco-adapter-image')

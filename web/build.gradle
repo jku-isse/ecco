@@ -13,7 +13,7 @@ run {
 //apply plugin: 'jetty'
 
 dependencies {
-	compile 'ch.qos.logback:logback-classic:1.1.3'
+	compile 'org.slf4j:slf4j-api:1.7.25'
 
 	compile 'org.glassfish.grizzly:grizzly-framework:2.3.24'
 	compile 'org.glassfish.grizzly:grizzly-http:2.3.24'
