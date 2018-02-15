@@ -336,7 +336,6 @@ public class RepositoryOperator {
 			// if the intersection association has artifacts or a not empty presence condition store it
 			if (extractedA.getRootNode() != null && (extractedA.getRootNode().getChildren().size() > 0 || !extractedA.getPresenceCondition().isEmpty())) {
 				// set parents for intersection association (and child for parents)
-				extractedA.addParent(origA);
 				extractedA.setName("EXTRACTED " + origA.getId());
 
 				// store association
@@ -351,7 +350,7 @@ public class RepositoryOperator {
 		for (Association.Op newA : newAssociations) {
 			this.repository.addAssociation(newA);
 
-			commit.addAssociation(newA);
+//			commit.addAssociation(newA);
 		}
 
 		return commit;
@@ -407,35 +406,6 @@ public class RepositoryOperator {
 		// commit association
 		Commit commit = this.extract(association);
 		commit.setConfiguration(configuration);
-
-		// TODO: consider this when committing associations that already have a presence table, or when merging repositories!
-		// update presence table in all affected associations
-		for (Association commitAssociation : commit.getAssociations()) {
-			for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-				// find module feature in the map that has same feature and sign
-				ModuleFeature moduleFeature = null;
-				int count = 0;
-				Iterator<Map.Entry<ModuleFeature, Integer>> iterator = commitAssociation.getPresenceTable().entrySet().iterator();
-				while (iterator.hasNext()) {
-					Map.Entry<ModuleFeature, Integer> entry = iterator.next();
-
-					if (entry.getKey().getSign() == featureInstance.getSign() && entry.getKey().getFeature().equals(featureInstance.getFeature())) {
-						moduleFeature = entry.getKey();
-						count = entry.getValue();
-
-						iterator.remove();
-						break;
-					}
-				}
-				if (moduleFeature == null) {
-					moduleFeature = this.entityFactory.createModuleFeature(featureInstance.getFeature(), featureInstance.getSign());
-				}
-				moduleFeature.add(featureInstance.getFeatureVersion());
-				count++;
-				commitAssociation.getPresenceTable().put(moduleFeature, count);
-			}
-			commitAssociation.incPresenceCount();
-		}
 
 		return commit;
 	}
@@ -505,14 +475,12 @@ public class RepositoryOperator {
 				// INTERSECTION
 				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
 					// set parents for intersection association (and child for parents)
-					intA.addParent(origA);
-					intA.addParent(inputA);
 					intA.setName(origA.getId() + " INT " + inputA.getId());
 
 					toAdd.add(intA);
 
-					commit.addUnmodified(intA);
-					commit.addAssociation(intA);
+//					commit.addUnmodified(intA);
+//					commit.addAssociation(intA);
 
 					Trees.checkConsistency(intA.getRootNode());
 				} else if (!intA.getPresenceCondition().isEmpty()) { // if it has no artifacts but a not empty presence condition merge it with other empty associations
@@ -539,7 +507,7 @@ public class RepositoryOperator {
 						toRemove.add(origA);
 					}
 				} else {
-					commit.addRemoved(origA);
+//					commit.addRemoved(origA);
 
 					Trees.checkConsistency(origA.getRootNode());
 				}
@@ -556,8 +524,8 @@ public class RepositoryOperator {
 
 				toAdd.add(inputA);
 
-				commit.addNew(inputA);
-				commit.addAssociation(inputA);
+//				commit.addNew(inputA);
+//				commit.addAssociation(inputA);
 			} else if (!inputA.getPresenceCondition().isEmpty()) {
 				if (emptyAssociation == null) {
 					emptyAssociation = inputA;

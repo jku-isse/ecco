@@ -150,18 +150,18 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 			commitNode.addAttribute("ui.class", "commit");
 			commitNode.addAttribute("label", commitNode.getId());
 
-			for (Association association : commit.getAssociations()) {
-				Node associationNode = this.graph.getNode("A" + association.getId());
-				if (associationNode == null) {
-					associationNode = this.graph.addNode("A" + association.getId());
-					associationNode.addAttribute("ui.class", "association");
-					associationNode.addAttribute("label", associationNode.getId());
-					associationNode.addAttribute("ui.style", "size: " + Math.max(24.0, Math.min(100.0, 100.0 * ((double) association.getRootNode().countArtifacts() / 1000.0))) + "px;");
-				}
-
-				Edge commitEdge = this.graph.addEdge(commitNode.getId() + associationNode.getId(), commitNode, associationNode, true);
-				commitEdge.setAttribute("ui.class", "commit");
-			}
+//			for (Association association : commit.getAssociations()) {
+//				Node associationNode = this.graph.getNode("A" + association.getId());
+//				if (associationNode == null) {
+//					associationNode = this.graph.addNode("A" + association.getId());
+//					associationNode.addAttribute("ui.class", "association");
+//					associationNode.addAttribute("label", associationNode.getId());
+//					associationNode.addAttribute("ui.style", "size: " + Math.max(24.0, Math.min(100.0, 100.0 * ((double) association.getRootNode().countArtifacts() / 1000.0))) + "px;");
+//				}
+//
+//				Edge commitEdge = this.graph.addEdge(commitNode.getId() + associationNode.getId(), commitNode, associationNode, true);
+//				commitEdge.setAttribute("ui.class", "commit");
+//			}
 		}
 
 		for (Association association : this.service.getRepository().getAssociations()) {
@@ -173,17 +173,17 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 				associationNode.addAttribute("ui.style", "size: " + Math.max(24.0, Math.min(100.0, 100.0 * ((double) association.getRootNode().countArtifacts() / 1000.0))) + "px;");
 			}
 
-			for (Association parent : association.getParents()) {
-				Node parentNode = this.graph.getNode("A" + parent.getId());
-				if (parentNode == null) {
-					parentNode = this.graph.addNode("A" + parent.getId());
-					parentNode.addAttribute("ui.class", "association");
-					parentNode.addAttribute("label", associationNode.getId());
-				}
-
-				Edge associationEdge = this.graph.addEdge(associationNode.getId() + parentNode.getId(), parentNode, associationNode, true);
-				associationEdge.setAttribute("ui.class", "assoc");
-			}
+//			for (Association parent : association.getParents()) {
+//				Node parentNode = this.graph.getNode("A" + parent.getId());
+//				if (parentNode == null) {
+//					parentNode = this.graph.addNode("A" + parent.getId());
+//					parentNode.addAttribute("ui.class", "association");
+//					parentNode.addAttribute("label", associationNode.getId());
+//				}
+//
+//				Edge associationEdge = this.graph.addEdge(associationNode.getId() + parentNode.getId(), parentNode, associationNode, true);
+//				associationEdge.setAttribute("ui.class", "assoc");
+//			}
 		}
 
 

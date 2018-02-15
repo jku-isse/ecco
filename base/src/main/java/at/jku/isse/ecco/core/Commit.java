@@ -22,38 +22,11 @@ public interface Commit extends Persistable {
 
 	public void setConfiguration(Configuration configuration);
 
-
-	/**
-	 * The list of associations that were committed.
-	 */
-	public List<Association> getAssociations();
-
-	/**
-	 * Adds an association to the commit.
-	 */
-	public void addAssociation(Association association);
-
-
 	/**
 	 * The name of the committer, usually a person's name or email address.
 	 */
 	public String getCommiter();
 
 	public void setCommitter(String committer);
-
-
-	public List<Association> getUnmodified();
-
-	public void addUnmodified(Association association);
-
-
-	public List<Association> getRemoved();
-
-	public void addRemoved(Association association);
-
-
-	public List<Association> getNew();
-
-	public void addNew(Association association);
 
 }

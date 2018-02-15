@@ -22,12 +22,6 @@ public class BaseAssociation implements Association, Association.Op {
 	private String name = "";
 	private RootNode.Op artifactTreeRoot;
 	private PresenceCondition presenceCondition;
-	private List<Association> parents = new ArrayList<>();
-	private List<Association> children = new ArrayList<>();
-
-	private Set<Module> modules = new HashSet<>();
-	private Map<ModuleFeature, Integer> presenceTable = new HashMap<>();
-	private int presenceCount;
 
 	/**
 	 * Constructs a new association.
@@ -45,61 +39,6 @@ public class BaseAssociation implements Association, Association.Op {
 	@Override
 	public void setPresenceCondition(PresenceCondition presenceCondition) {
 		this.presenceCondition = presenceCondition;
-	}
-
-	@Override
-	public Set<Module> getModules() {
-		return this.modules;
-	}
-
-	@Override
-	public Map<ModuleFeature, Integer> getPresenceTable() {
-		return this.presenceTable;
-	}
-
-	@Override
-	public int getPresenceCount() {
-		return this.presenceCount;
-	}
-
-	@Override
-	public int incPresenceCount() {
-		return (++this.presenceCount);
-	}
-
-	@Override
-	public int incPresenceCount(int val) {
-		return (this.presenceCount += val);
-	}
-
-	@Override
-	public List<Association> getParents() {
-		return this.parents;
-	}
-
-	@Override
-	public void addParent(Association parent) {
-		this.parents.add(parent);
-	}
-
-	@Override
-	public void removeParent(Association parent) {
-		this.parents.remove(parent);
-	}
-
-	@Override
-	public Collection<Association> getChildren() {
-		return this.children;
-	}
-
-	@Override
-	public void addChild(Association child) {
-		this.children.add(child);
-	}
-
-	@Override
-	public void removeChild(Association child) {
-		this.children.remove(child);
 	}
 
 	@Override

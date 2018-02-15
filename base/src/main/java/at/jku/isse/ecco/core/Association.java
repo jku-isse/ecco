@@ -15,50 +15,6 @@ import java.util.Set;
  */
 public interface Association extends Persistable {
 
-	/**
-	 * A simple set of modules for this association.
-	 *
-	 * @return The set of modules.
-	 */
-	public Set<Module> getModules();
-
-
-	// # PRESENCE TABLE #####################################################################
-
-	/**
-	 * Maps module features (i.e. set of feature versions with sign) to the number of commits/variants with at least one of the feature versions in which the artifacts were contained.
-	 *
-	 * @return The presence table.
-	 */
-	public Map<ModuleFeature, Integer> getPresenceTable();
-
-	/**
-	 * Returns the number of commits/variants that contained the artifacts in this association.
-	 *
-	 * @return The number of commits/variants in which the contained artifacts were present.
-	 */
-	public int getPresenceCount();
-
-	public int incPresenceCount();
-
-	public int incPresenceCount(int val);
-
-
-	// # PARENTS AND CHILDREN #####################################################################
-
-	public Collection<Association> getParents();
-
-	public void addParent(Association parent);
-
-	public void removeParent(Association parent);
-
-	public Collection<Association> getChildren();
-
-	public void addChild(Association child);
-
-	public void removeChild(Association child);
-
-
 	// # PRESENCE CONDITION #####################################################################
 
 	/**
