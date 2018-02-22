@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.storage.perst.feature;
 
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import org.garret.perst.Persistent;
 
 import java.util.ArrayList;
@@ -48,12 +48,12 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public List<PerstFeatureVersion> getVersions() {
+	public List<PerstFeatureVersion> getRevisions() {
 		return this.versions;
 	}
 
 	@Override
-	public FeatureVersion addVersion(String id) {
+	public FeatureRevision addRevision(String id) {
 		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, id);
 		if (!this.versions.contains(featureVersion)) {
 			this.versions.add(featureVersion);
@@ -65,8 +65,8 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public FeatureVersion getVersion(String id) {
-		for (FeatureVersion featureVersion : this.versions) {
+	public FeatureRevision getRevision(String id) {
+		for (FeatureRevision featureVersion : this.versions) {
 			if (featureVersion.getId().equals(id))
 				return featureVersion;
 		}
@@ -74,14 +74,14 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public FeatureVersion getLatestVersion() {
+	public FeatureRevision getLatestRevision() {
 		if (this.versions.isEmpty())
 			return null;
 		return this.versions.get(this.versions.size() - 1);
 	}
 
 	@Override
-	public FeatureVersion createNewVersion() {
+	public FeatureRevision createNewVersion() {
 		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, UUID.randomUUID().toString());
 //		this.nextVersion++;
 		this.versions.add(featureVersion);

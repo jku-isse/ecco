@@ -76,7 +76,7 @@ public class BaseConfiguration implements Configuration, ConfigurationOperator.C
 		return this.createModuleFeature(feature, new ArrayList<>(), sign);
 	}
 
-	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureRevision> featureVersions, boolean sign) {
 		return new BaseModuleFeature(feature, featureVersions, sign);
 	}
 

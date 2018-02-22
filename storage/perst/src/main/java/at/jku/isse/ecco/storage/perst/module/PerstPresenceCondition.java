@@ -70,12 +70,12 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	}
 
 	@Override
-	public void addFeatureVersion(FeatureVersion newFeatureVersion) {
+	public void addFeatureVersion(FeatureRevision newFeatureVersion) {
 		this.operator.addFeatureVersion(newFeatureVersion);
 	}
 
 	@Override
-	public void removeFeatureVersion(FeatureVersion featureVersion) {
+	public void removeFeatureVersion(FeatureRevision featureVersion) {
 		// TODO
 	}
 
@@ -138,7 +138,7 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	}
 
 	@Override
-	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureRevision> featureVersions, boolean sign) {
 		return new PerstModuleFeature(feature, featureVersions, sign);
 	}
 
@@ -169,7 +169,7 @@ public class PerstPresenceCondition extends Persistent implements PresenceCondit
 	}
 
 	@Override
-	public void addFeatureInstance(FeatureVersion featureVersion, boolean sign, int maxOrder) {
+	public void addFeatureInstance(FeatureRevision featureVersion, boolean sign, int maxOrder) {
 		this.addFeatureInstance(new PerstFeatureInstance(featureVersion.getFeature(), featureVersion, sign), maxOrder);
 	}
 

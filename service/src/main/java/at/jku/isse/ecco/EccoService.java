@@ -13,7 +13,7 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.listener.ServerListener;
@@ -860,7 +860,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			Repository.Op repository = this.repositoryDao.load();
 
-			Set<FeatureVersion> newFeatureVersions = new HashSet<>();
+			Set<FeatureRevision> newFeatureVersions = new HashSet<>();
 
 			String[] featureInstanceStrings = configurationString.split(",");
 			for (String featureInstanceString : featureInstanceStrings) {
@@ -888,9 +888,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						}
 					}
 
-					FeatureVersion featureVersion = feature.getVersion(id);
+					FeatureRevision featureVersion = feature.getRevision(id);
 					if (featureVersion == null) {
-						featureVersion = feature.addVersion(id);
+						featureVersion = feature.addRevision(id);
 						newFeatureVersions.add(featureVersion);
 					}
 
@@ -916,7 +916,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					}
 
 					//FeatureVersion featureVersion = feature.createNewVersion();
-					FeatureVersion featureVersion = feature.addVersion(UUID.randomUUID().toString());
+					FeatureRevision featureVersion = feature.addRevision(UUID.randomUUID().toString());
 					newFeatureVersions.add(featureVersion);
 
 					boolean featureSign = !(featureInstanceString.startsWith("!") || featureInstanceString.startsWith("-"));
@@ -945,10 +945,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						}
 					}
 
-					FeatureVersion featureVersion = feature.getLatestVersion();
+					FeatureRevision featureVersion = feature.getLatestRevision();
 					if (featureVersion == null) {
 						//featureVersion = feature.createNewVersion();
-						featureVersion = feature.addVersion(UUID.randomUUID().toString());
+						featureVersion = feature.addRevision(UUID.randomUUID().toString());
 						newFeatureVersions.add(featureVersion);
 					}
 
@@ -962,7 +962,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			// update existing associations with new (features and) feature versions. NOTE: update with negative features is not necessary if the configurations contain also all the negative features!
 			Collection<? extends Association> associations = repository.getAssociations();
 			for (Association association : associations) {
-				for (FeatureVersion newFeatureVersion : newFeatureVersions) {
+				for (FeatureRevision newFeatureVersion : newFeatureVersions) {
 					association.getPresenceCondition().addFeatureVersion(newFeatureVersion);
 					//association.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), repository.getMaxOrder());
 					association.getPresenceCondition().addFeatureInstance(newFeatureVersion.getInstance(false), repository.getMaxOrder());
@@ -983,7 +983,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	protected Collection<FeatureVersion> parseFeatureVersionsString(String featureVersionsString) {
+	protected Collection<FeatureRevision> parseFeatureVersionsString(String featureVersionsString) {
 		if (featureVersionsString == null)
 			throw new EccoException("No feature versions string provided.");
 
@@ -993,7 +993,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			this.transactionStrategy.begin();
 
-			Collection<FeatureVersion> featureVersions = new ArrayList<>();
+			Collection<FeatureRevision> featureVersions = new ArrayList<>();
 
 			if (featureVersionsString.isEmpty()) {
 				this.transactionStrategy.end();
@@ -1027,7 +1027,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					}
 				}
 
-				FeatureVersion featureVersion = feature.getVersion(versionId);
+				FeatureRevision featureVersion = feature.getRevision(versionId);
 				if (featureVersion != null) {
 					featureVersions.add(featureVersion);
 				}
@@ -1120,7 +1120,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							// retrieve deselection
 							//Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
 							String deselectedFeatureVersionsString = (String) ois.readObject();
-							Collection<FeatureVersion> deselected = this.parseFeatureVersionsString(deselectedFeatureVersionsString);
+							Collection<FeatureRevision> deselected = this.parseFeatureVersionsString(deselectedFeatureVersionsString);
 
 							// compute subset repository using mem entity factory
 							this.transactionStrategy.begin();

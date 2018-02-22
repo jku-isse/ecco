@@ -8,7 +8,7 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.perst.dao.PerstEntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.repository.RepositoryOperator;
@@ -59,7 +59,7 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 	}
 
 	@Override
-	public Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
+	public Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory) {
 		return this.operator.subset(deselected, maxOrder, entityFactory);
 	}
 

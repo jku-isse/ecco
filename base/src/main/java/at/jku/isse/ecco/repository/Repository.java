@@ -6,7 +6,9 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.Collection;
@@ -32,6 +34,8 @@ public interface Repository {
 
 		@Override
 		public Collection<? extends Association.Op> getAssociations();
+
+		public Collection<? extends Module> getModules();
 
 
 		// operations
@@ -62,7 +66,7 @@ public interface Repository {
 		 * @param entityFactory The entity factory used for creating the subset repository.
 		 * @return The subset repository.
 		 */
-		public Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory);
+		public Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory);
 
 		/**
 		 * Makes a copy of this repository.
@@ -117,6 +121,33 @@ public interface Repository {
 
 
 		public EntityFactory getEntityFactory();
+
+
+		/**
+		 * Retrieves the module instance with given positive and negative features from repository.
+		 * If such a module does not already exist it is created.
+		 *
+		 * @param pos
+		 * @param neg
+		 * @return
+		 */
+		public Module getModule(Feature[] pos, Feature[] neg);
+
+		/**
+		 * Retrieves the module revision instance with given positive feature revisions and negative features from the repository.
+		 * If such a module revision does not already exist it is created.
+		 * If the corresponding module does not already exist it is created.
+		 *
+		 * @param pos
+		 * @param neg
+		 * @return
+		 */
+		public ModuleRevision getModuleRevision(FeatureRevision[] pos, Feature[] neg);
+
+		public boolean hasModule(Feature[] pos, Feature[] neg);
+
+		public boolean hasModuleRevision(FeatureRevision[] pos, Feature[] neg);
+
 	}
 
 }

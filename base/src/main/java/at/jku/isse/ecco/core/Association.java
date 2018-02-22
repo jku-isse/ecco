@@ -1,14 +1,14 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleFeature;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.RootNode;
 
 import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.HashMap;
 
 /**
  * Represents a trace between a presence condition and an artifact tree. An association can have a set of parents.
@@ -74,6 +74,33 @@ public interface Association extends Persistable {
 	 * Private association interface.
 	 */
 	public interface Op extends Association {
+
+		public HashMap<Module, SubTable> getFeatureModules();
+
+
+		public interface SubTable {
+			public Counter getCounter();
+
+			public HashMap<ModuleRevision, Counter> getRevisionModules();
+		}
+
+
+		public void add(Association.Op association);
+
+		public void updateWithNewModules(Collection<ModuleRevision> moduleRevisions);
+
+		public void addObservation(ModuleRevision moduleRevision);
+
+		public int getCount();
+
+		public void setCount(int value);
+
+		public void incCount();
+
+
+		public EntityFactory getEntityFactory();
+
+
 		/**
 		 * Returns the root node operand.
 		 *

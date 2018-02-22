@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.storage.mem.module;
 
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.ModuleFeature;
 
 import java.util.Collection;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 public class BaseModuleFeature implements ModuleFeature {
 
-	protected Set<FeatureVersion> featureVersions;
+	protected Set<FeatureRevision> featureVersions;
 
 	private Feature feature;
 	private boolean sign;
@@ -21,21 +21,21 @@ public class BaseModuleFeature implements ModuleFeature {
 		this.feature = null;
 		this.sign = true;
 
-		this.featureVersions = new HashSet<FeatureVersion>();
+		this.featureVersions = new HashSet<FeatureRevision>();
 	}
 
 	public BaseModuleFeature(Feature feature, boolean sign) {
 		this.feature = feature;
 		this.sign = sign;
 
-		this.featureVersions = new HashSet<FeatureVersion>();
+		this.featureVersions = new HashSet<FeatureRevision>();
 	}
 
-	public BaseModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+	public BaseModuleFeature(Feature feature, Collection<FeatureRevision> featureVersions, boolean sign) {
 		this.feature = feature;
 		this.sign = sign;
 
-		this.featureVersions = new HashSet<FeatureVersion>(featureVersions);
+		this.featureVersions = new HashSet<FeatureRevision>(featureVersions);
 	}
 
 	@Override
@@ -91,7 +91,7 @@ public class BaseModuleFeature implements ModuleFeature {
 	}
 
 	@Override
-	public Iterator<FeatureVersion> iterator() {
+	public Iterator<FeatureRevision> iterator() {
 		return this.featureVersions.iterator();
 	}
 
@@ -106,7 +106,7 @@ public class BaseModuleFeature implements ModuleFeature {
 	}
 
 	@Override
-	public boolean add(FeatureVersion moduleFeature) {
+	public boolean add(FeatureRevision moduleFeature) {
 		return this.featureVersions.add(moduleFeature);
 	}
 
@@ -121,7 +121,7 @@ public class BaseModuleFeature implements ModuleFeature {
 	}
 
 	@Override
-	public boolean addAll(Collection<? extends FeatureVersion> collection) {
+	public boolean addAll(Collection<? extends FeatureRevision> collection) {
 		return this.featureVersions.addAll(collection);
 	}
 

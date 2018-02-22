@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ public class BaseFeature implements Feature {
 	private String name = "";
 	private String description = "";
 
-	private List<FeatureVersion> versions = new ArrayList<FeatureVersion>();
+	private List<FeatureRevision> versions = new ArrayList<FeatureRevision>();
 
 //	private int nextVersion = 0;
 
@@ -50,12 +50,12 @@ public class BaseFeature implements Feature {
 	}
 
 	@Override
-	public List<FeatureVersion> getVersions() {
+	public List<FeatureRevision> getRevisions() {
 		return this.versions;
 	}
 
 	@Override
-	public FeatureVersion addVersion(String id) {
+	public FeatureRevision addRevision(String id) {
 		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, id);
 		if (!this.versions.contains(featureVersion)) {
 			this.versions.add(featureVersion);
@@ -67,8 +67,8 @@ public class BaseFeature implements Feature {
 	}
 
 	@Override
-	public FeatureVersion getVersion(String id) {
-		for (FeatureVersion featureVersion : this.versions) {
+	public FeatureRevision getRevision(String id) {
+		for (FeatureRevision featureVersion : this.versions) {
 			if (featureVersion.getId().equals(id))
 				return featureVersion;
 		}
@@ -76,14 +76,14 @@ public class BaseFeature implements Feature {
 	}
 
 	@Override
-	public FeatureVersion getLatestVersion() {
+	public FeatureRevision getLatestRevision() {
 		if (this.versions.isEmpty())
 			return null;
 		return this.versions.get(this.versions.size() - 1);
 	}
 
 	@Override
-	public FeatureVersion createNewVersion() {
+	public FeatureRevision createNewVersion() {
 		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, UUID.randomUUID().toString());
 //		this.nextVersion++;
 		this.versions.add(featureVersion);

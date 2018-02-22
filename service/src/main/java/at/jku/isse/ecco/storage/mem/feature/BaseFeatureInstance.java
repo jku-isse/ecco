@@ -2,7 +2,7 @@ package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -15,10 +15,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class BaseFeatureInstance implements FeatureInstance {
 
 	private Feature feature;
-	private FeatureVersion featureVersion;
+	private FeatureRevision featureVersion;
 	private boolean sign;
 
-	public BaseFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
+	public BaseFeatureInstance(Feature feature, FeatureRevision featureVersion, boolean sign) {
 		checkNotNull(feature);
 		checkNotNull(featureVersion);
 
@@ -33,7 +33,7 @@ public class BaseFeatureInstance implements FeatureInstance {
 	}
 
 	@Override
-	public FeatureVersion getFeatureVersion() {
+	public FeatureRevision getFeatureVersion() {
 		return this.featureVersion;
 	}
 

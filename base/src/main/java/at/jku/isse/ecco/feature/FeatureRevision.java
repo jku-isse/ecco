@@ -8,11 +8,7 @@ import at.jku.isse.ecco.dao.Persistable;
  * @author JKU, ISSE
  * @version 1.0
  */
-public interface FeatureVersion extends Persistable {
-
-//	public static final int NEWEST = -1;
-//	public static final int ANY = -2;
-
+public interface FeatureRevision extends Persistable {
 
 	public FeatureInstance getPositiveInstance();
 

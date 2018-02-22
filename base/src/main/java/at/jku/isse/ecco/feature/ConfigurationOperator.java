@@ -69,7 +69,7 @@ public class ConfigurationOperator {
 
 		// add different feature versions to modules
 		for (FeatureInstance featureInstance : this.configuration.getFeatureInstances()) {
-			for (FeatureVersion featureVersion : featureInstance.getFeature().getVersions()) { // for every version of every feature
+			for (FeatureRevision featureVersion : featureInstance.getFeature().getRevisions()) { // for every version of every feature
 				if (!featureVersion.equals(featureInstance.getFeatureVersion())) {
 					this.addVersionToModules(featureVersion, modules);
 				}
@@ -79,7 +79,7 @@ public class ConfigurationOperator {
 		return modules;
 	}
 
-	private void addVersionToModules(FeatureVersion featureVersion, Set<Module> modules) {
+	private void addVersionToModules(FeatureRevision featureVersion, Set<Module> modules) {
 		Set<Module> modulesToAdd = new HashSet<Module>();
 		for (Module module : modules) { // for every module
 
@@ -152,7 +152,7 @@ public class ConfigurationOperator {
 
 		public ModuleFeature createModuleFeature(Feature feature, boolean sign);
 
-		public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign);
+		public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureRevision> featureVersions, boolean sign);
 	}
 
 }

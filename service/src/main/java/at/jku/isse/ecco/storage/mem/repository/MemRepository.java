@@ -8,7 +8,7 @@ import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.mem.feature.BaseFeature;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.repository.RepositoryOperator;
 import at.jku.isse.ecco.tree.Node;
@@ -55,7 +55,7 @@ public class MemRepository implements Repository, Repository.Op {
 	}
 
 	@Override
-	public Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
+	public Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory) {
 		return this.operator.subset(deselected, maxOrder, entityFactory);
 	}
 

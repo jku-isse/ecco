@@ -5,18 +5,16 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleFeature;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
-import java.util.Collection;
 import java.util.Set;
 
 /**
@@ -45,13 +43,6 @@ public interface EntityFactory {
 	 * @return
 	 */
 	public Configuration createConfiguration();
-
-	/**
-	 * Creates an empty variant without a name.
-	 *
-	 * @return
-	 */
-	public Variant createVariant();
 
 	/**
 	 * Creates an empty commit.
@@ -107,14 +98,13 @@ public interface EntityFactory {
 	/**
 	 * Creates an association initialized with the given condition and artifact nodes.
 	 *
-	 * @param presenceCondition
 	 * @param nodes
 	 * @return
 	 */
-	public Association.Op createAssociation(PresenceCondition presenceCondition, Set<Node.Op> nodes);
+	public Association.Op createAssociation(Set<Node.Op> nodes);
 
 
-	// # FEATURES ################################################################
+	// # FEATURES and MODULES ################################################################
 
 	/**
 	 * Creates a new instance of a {@link Feature} with the given name and description.
@@ -126,20 +116,14 @@ public interface EntityFactory {
 	 */
 	public Feature createFeature(final String id, final String name, final String description);
 
-//	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign);
-
 	/**
 	 * Creates a new module.
 	 *
 	 * @return Returns a new initialized module.
 	 */
-	public Module createModule();
+	public Module createModule(Feature[] pos, Feature[] neg);
 
-//	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature);
-
-	public ModuleFeature createModuleFeature(Feature feature, boolean sign);
-
-	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign);
+	public ModuleRevision createModuleRevision(FeatureRevision[] pos, Feature[] neg);
 
 
 	// # NODES ################################################################

@@ -3,7 +3,7 @@ package at.jku.isse.ecco.module;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.util.Set;
 
@@ -19,10 +19,10 @@ public interface PresenceCondition {
 
 	public void addFeatureInstance(FeatureInstance featureInstance, int maxOrder);
 
-	public void addFeatureVersion(FeatureVersion featureVersion);
+	public void addFeatureVersion(FeatureRevision featureVersion);
 
 
-	public void removeFeatureVersion(FeatureVersion featureVersion);
+	public void removeFeatureVersion(FeatureRevision featureVersion);
 
 
 	public void removeModules(Set<Module> modules);
@@ -65,6 +65,6 @@ public interface PresenceCondition {
 
 	public String getSimpleLabel();
 
-	void addFeatureInstance(FeatureVersion featureVersion, boolean sign, int maxOrder);
+	void addFeatureInstance(FeatureRevision featureVersion, boolean sign, int maxOrder);
 
 }

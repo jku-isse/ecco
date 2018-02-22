@@ -2,19 +2,19 @@ package at.jku.isse.ecco.storage.perst.feature;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import org.garret.perst.Persistent;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Perst implementation of {@link FeatureVersion}.
+ * Perst implementation of {@link FeatureRevision}.
  *
  * @author JKU, ISSE
  * @author Hannes Thaller
  * @version 1.0
  */
-public class PerstFeatureVersion extends Persistent implements FeatureVersion {
+public class PerstFeatureVersion extends Persistent implements FeatureRevision {
 
 	private Feature feature;
 	private String id;

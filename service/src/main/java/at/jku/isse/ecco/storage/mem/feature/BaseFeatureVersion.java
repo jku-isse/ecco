@@ -2,17 +2,17 @@ package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link FeatureVersion}.
+ * Memory implementation of {@link FeatureRevision}.
  *
  * @author JKU, ISSE
  * @version 1.0
  */
-public class BaseFeatureVersion implements FeatureVersion {
+public class BaseFeatureVersion implements FeatureRevision {
 
 	private Feature feature;
 	private String id;

@@ -82,7 +82,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 						// versions per feature
 						ChartsView.this.versionsPerFeature.clear();
 						for (Feature feature : ChartsView.this.service.getRepository().getFeatures()) {
-							int numVersions = feature.getVersions().size();
+							int numVersions = feature.getRevisions().size();
 							if (numVersions > 0)
 								ChartsView.this.versionsPerFeature.add(new PieChart.Data(feature.getName(), numVersions));
 						}

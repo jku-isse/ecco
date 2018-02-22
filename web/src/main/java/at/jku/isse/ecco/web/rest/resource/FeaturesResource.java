@@ -2,7 +2,7 @@ package at.jku.isse.ecco.web.rest.resource;
 
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.web.rest.EccoApplication;
 import at.jku.isse.ecco.web.rest.EccoResource;
 import at.jku.isse.ecco.web.rest.dto.FeatureDTO;
@@ -94,7 +94,7 @@ public class FeaturesResource extends EccoResource {
 		ArrayList<FeatureVersionDTO> featuresVersions = new ArrayList<>();
 		for (Feature feature : eccoService.getRepository().getFeatures()) {
 			if (feature.getName().equals(name)) {
-				for (FeatureVersion featureVersion : feature.getVersions()) {
+				for (FeatureRevision featureVersion : feature.getRevisions()) {
 					FeatureVersionDTO featureVersionDTO = new FeatureVersionDTO();
 					featureVersionDTO.setVersion(featureVersion.getId());
 					featureVersionDTO.setDescription(featureVersion.getDescription());
@@ -118,7 +118,7 @@ public class FeaturesResource extends EccoResource {
 
 		for (Feature feature : eccoService.getRepository().getFeatures()) {
 			if (feature.getName().equals(name)) {
-				for (FeatureVersion featureVersion : feature.getVersions()) {
+				for (FeatureRevision featureVersion : feature.getRevisions()) {
 					if (featureVersion.getId().equals(version)) {
 						FeatureVersionDTO featureVersionDTO = new FeatureVersionDTO();
 						featureVersionDTO.setVersion(featureVersion.getId());

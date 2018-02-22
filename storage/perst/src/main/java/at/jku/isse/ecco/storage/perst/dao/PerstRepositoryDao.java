@@ -48,7 +48,7 @@ public class PerstRepositoryDao extends PerstAbstractGenericDao implements Repos
 		// features
 		for (PerstFeature feature : perstRepository.getFeatures()) {
 			feature.store();
-			for (PerstFeatureVersion featureVersion : feature.getVersions()) {
+			for (PerstFeatureVersion featureVersion : feature.getRevisions()) {
 				featureVersion.store();
 			}
 		}

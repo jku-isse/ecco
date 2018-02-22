@@ -5,7 +5,7 @@ import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
@@ -32,8 +32,8 @@ public class EccoUtil {
 		for (Feature feature : features) {
 			Feature copiedFeature = entityFactory.createFeature(feature.getId(), feature.getName(), feature.getDescription());
 
-			for (FeatureVersion featureVersion : feature.getVersions()) {
-				FeatureVersion copiedFeatureVersion = copiedFeature.addVersion(featureVersion.getId());
+			for (FeatureRevision featureVersion : feature.getRevisions()) {
+				FeatureRevision copiedFeatureVersion = copiedFeature.addRevision(featureVersion.getId());
 				copiedFeatureVersion.setDescription(featureVersion.getDescription());
 			}
 

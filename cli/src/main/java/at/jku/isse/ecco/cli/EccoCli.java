@@ -6,7 +6,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -366,7 +366,7 @@ public class EccoCli implements EccoListener {
 			if (remote.getFeatures() != null) {
 				for (Feature feature : remote.getFeatures()) {
 					System.out.println(feature.toString());
-					for (FeatureVersion fv : feature.getVersions()) {
+					for (FeatureRevision fv : feature.getRevisions()) {
 						System.out.println("\t" + fv);
 					}
 				}
@@ -394,7 +394,7 @@ public class EccoCli implements EccoListener {
 		for (Feature feature : this.eccoService.getRepository().getFeatures()) {
 			if (feature.getName().equals(featureName)) {
 				System.out.println(feature.toString());
-				for (FeatureVersion fv : feature.getVersions()) {
+				for (FeatureRevision fv : feature.getRevisions()) {
 					System.out.println("\t" + fv);
 				}
 			}

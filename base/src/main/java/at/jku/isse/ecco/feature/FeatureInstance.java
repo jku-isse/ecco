@@ -9,7 +9,7 @@ public interface FeatureInstance extends Persistable {
 
 	public Feature getFeature();
 
-	public FeatureVersion getFeatureVersion();
+	public FeatureRevision getFeatureVersion();
 
 	public boolean getSign();
 

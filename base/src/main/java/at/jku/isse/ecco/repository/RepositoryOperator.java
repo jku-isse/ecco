@@ -9,8 +9,9 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.module.ModuleFeature;
+import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -33,8 +34,14 @@ public class RepositoryOperator {
 	}
 
 
+	/**
+	 * Returns a collection of all features in this repository with the given name.
+	 *
+	 * @param name Name of the features.
+	 * @return Collection of features with given name.
+	 */
 	public Collection<Feature> getFeaturesByName(String name) {
-		Collection<Feature> features = new ArrayList<Feature>();
+		Collection<Feature> features = new ArrayList<>();
 		for (Feature feature : this.repository.getFeatures()) {
 			if (feature.getName().equals(name))
 				features.add(feature);
@@ -44,316 +51,145 @@ public class RepositoryOperator {
 
 
 	/**
-	 * Creates a copy of this repository using the same entity factory and maximum order of modules. This repository is not changed.
+	 * Copies every existing module and adds every new feature negatively.
 	 *
-	 * @return The copy of the repository.
+	 * @param newFeatures
+	 * @return
 	 */
-	public Repository.Op copy(EntityFactory entityFactory) {
-		return this.subset(new ArrayList<>(), this.repository.getMaxOrder(), entityFactory);
+	private Collection<ModuleRevision> addFeatures(Collection<Feature> newFeatures) {
+		Collection<ModuleRevision> allNewRevisionModules = new ArrayList<>();
+		for (Feature feature : newFeatures) {
+			allNewRevisionModules.addAll(this.addFeature(feature));
+		}
+		return allNewRevisionModules;
 	}
 
-
 	/**
-	 * Creates a subset repository of this repository using the given entity factory. This repository is not changed.
+	 * Copies every existing module and adds the new feature negatively.
 	 *
-	 * @param deselected The deselected feature versions (i.e. feature versions that are set to false).
-	 * @param maxOrder   The maximum order of modules.
-	 * @return The subset repository.
+	 * @param feature
+	 * @return
 	 */
-	public Repository.Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
-		checkNotNull(deselected);
-		checkArgument(maxOrder <= this.repository.getMaxOrder());
+	private Collection<ModuleRevision> addFeature(Feature feature) {
+		// TODO: also add feature to repository here? move code from "extract" method to here?
 
-
-		// create empty repository using the given entity factory
-		Repository.Op newRepository = entityFactory.createRepository();
-		newRepository.setMaxOrder(maxOrder);
-
-
-		// add all features and versions in this repository to new repository, excluding the deselected feature versions.
-		Map<Feature, Feature> featureReplacementMap = new HashMap<>();
-		Map<FeatureVersion, FeatureVersion> featureVersionReplacementMap = new HashMap<>();
-		Collection<FeatureVersion> newFeatureVersions = new ArrayList<>();
-		for (Feature feature : this.repository.getFeatures()) {
-			Feature newFeature = newRepository.addFeature(feature.getId(), feature.getName(), feature.getDescription());
-
-			for (FeatureVersion featureVersion : feature.getVersions()) {
-				if (!deselected.contains(featureVersion)) {
-					FeatureVersion newFeatureVersion = newFeature.addVersion(featureVersion.getId());
-					newFeatureVersion.setDescription(featureVersion.getDescription());
-					newFeatureVersions.add(newFeatureVersion);
-					featureVersionReplacementMap.put(featureVersion, newFeatureVersion);
-				}
-			}
-
-			if (!newFeature.getVersions().isEmpty()) {
-				featureReplacementMap.put(feature, newFeature);
+		Collection<ModuleRevision> newModuleRevisions = new ArrayList<>();
+		for (Module module : this.repository.getModules()) {
+			// create array of negative features. to be reused also by every revision module.
+			Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
+			negFeatures[negFeatures.length - 1] = feature;
+			// create copy of feature module with new feature negative
+			Module newModule = this.entityFactory.createModule(module.getPos(), negFeatures);
+			newModule.setCount(module.getCount());
+			// make sure it does not already exist. TODO: remove this later. simply check if the feature already exists.
+			if (this.repository.getModules().contains(newModule))
+				throw new EccoException("ERROR: feature module already exists.");
+			// do the same for the revision modules
+			for (ModuleRevision revisionModule : module.getRevisions()) {
+				// create copy of module revision with new feature negative
+//				ModuleRevision newModuleRevision = newModule.createModuleRevision(revisionModule.getPos(), negFeatures);
+//				newModuleRevision.setCount(revisionModule.getCount());
+//				newModule.addRevision(newModuleRevision);
+				ModuleRevision newModuleRevision = newModule.addRevision(revisionModule.getPos(), negFeatures);
+				newModuleRevision.setCount(revisionModule.getCount());
+				newModuleRevisions.add(newModuleRevision);
 			}
 		}
-		for (Association newAssociation : newRepository.getAssociations()) {
-			for (FeatureVersion newFeatureVersion : newFeatureVersions) {
-				newAssociation.getPresenceCondition().addFeatureVersion(newFeatureVersion);
-				newAssociation.getPresenceCondition().addFeatureInstance(newFeatureVersion, false, newRepository.getMaxOrder());
-			}
-		}
-
-
-		// copy associations in this repository and add them to new repository, but exclude modules or module features that evaluate to false given the deselected feature versions
-		Collection<Association.Op> copiedAssociations = new ArrayList<>();
-		for (Association association : this.repository.getAssociations()) {
-			Association.Op copiedAssociation = entityFactory.createAssociation();
-			copiedAssociation.setId(UUID.randomUUID().toString());
-
-			PresenceCondition thisPresenceCondition = association.getPresenceCondition();
-
-
-			// copy presence condition
-			PresenceCondition copiedPresenceCondition = entityFactory.createPresenceCondition();
-			copiedAssociation.setPresenceCondition(copiedPresenceCondition);
-
-			Set<at.jku.isse.ecco.module.Module>[][] moduleSetPairs = new Set[][]{{thisPresenceCondition.getMinModules(), copiedPresenceCondition.getMinModules()}, {thisPresenceCondition.getMaxModules(), copiedPresenceCondition.getMaxModules()}, {thisPresenceCondition.getNotModules(), copiedPresenceCondition.getNotModules()}, {thisPresenceCondition.getAllModules(), copiedPresenceCondition.getAllModules()}};
-
-			for (Set<at.jku.isse.ecco.module.Module>[] moduleSetPair : moduleSetPairs) {
-				Set<at.jku.isse.ecco.module.Module> fromModuleSet = moduleSetPair[0];
-				Set<at.jku.isse.ecco.module.Module> toModuleSet = moduleSetPair[1];
-
-				for (at.jku.isse.ecco.module.Module fromModule : fromModuleSet) {
-					at.jku.isse.ecco.module.Module toModule = entityFactory.createModule();
-					for (ModuleFeature fromModuleFeature : fromModule) {
-
-						// feature
-						Feature fromFeature = fromModuleFeature.getFeature();
-						Feature toFeature;
-						if (featureReplacementMap.containsKey(fromFeature)) {
-							toFeature = featureReplacementMap.get(fromFeature);
-
-							// if a deselected feature version is contained in module feature:
-							//  if module feature is positive: remove / do not add feature version from module feature
-							//   if module feature is empty: remove it / do not add it
-							//  else if module feature is negative: remove module feature from module
-							//   if module is empty (should not happen?) then leave it! module is always TRUE (again: should not happen, because at least one positive module feature should be in every module, but that might currently not be the case)
-
-							ModuleFeature toModuleFeature = entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
-							boolean addToModule = true;
-							for (FeatureVersion fromFeatureVersion : fromModuleFeature) {
-								if (deselected.contains(fromFeatureVersion)) { // if a deselected feature version is contained in module feature
-
-									if (fromModuleFeature.getSign()) {  // if module feature is positive
-										// do not add feature version to module feature
-									} else {
-										// do not add module feature to module because it is always true
-										addToModule = false;
-										break;
-									}
-
-								} else { // ordinary copy
-									FeatureVersion toFeatureVersion;
-									if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
-										toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
-									} else {
-										toFeatureVersion = fromFeatureVersion;
-
-										throw new EccoException("This should not happen!");
-									}
-									toModuleFeature.add(toFeatureVersion);
-								}
-							}
-							if (!toModuleFeature.isEmpty() && addToModule) { // if module feature is empty: do not add it
-								toModule.add(toModuleFeature);
-							}
-							if (fromModuleFeature.getSign() && toModuleFeature.isEmpty()) { // don't add module because it is false
-								toModule.clear();
-								break;
-							}
-						} else {
-							//toFeature = fromFeature;
-							//throw new EccoException("This should not happen!");
-							if (fromModuleFeature.getSign()) {
-								toModule.clear();
-								break;
-							}
-						}
-
-					}
-					if (!toModule.isEmpty())
-						toModuleSet.add(toModule);
-				}
-			}
-
-
-			// copy artifact tree
-			RootNode.Op copiedRootNode = entityFactory.createRootNode();
-			copiedAssociation.setRootNode(copiedRootNode);
-			// clone tree
-			for (Node.Op parentChildNode : association.getRootNode().getChildren()) {
-				Node.Op copiedChildNode = EccoUtil.deepCopyTree(parentChildNode, entityFactory);
-				copiedRootNode.addChild(copiedChildNode);
-				copiedChildNode.setParent(copiedRootNode);
-			}
-			//Trees.checkConsistency(copiedRootNode);
-
-
-			copiedAssociations.add(copiedAssociation);
-		}
-
-		for (Association a : copiedAssociations) {
-			Trees.checkConsistency(a.getRootNode());
-		}
-
-
-		// remove (fixate) all provided (selected) feature instances in the presence conditions of the copied associations.
-		// this is already done in the previous step
-
-		// remove cloned associations with empty PCs.
-		Iterator<Association.Op> associationIterator = copiedAssociations.iterator();
-		while (associationIterator.hasNext()) {
-			Association.Op association = associationIterator.next();
-			if (association.getPresenceCondition().isEmpty())
-				associationIterator.remove();
-		}
-
-		// compute dependency graph for selected associations and check if there are any unresolved dependencies.
-		DependencyGraph dg = new DependencyGraph(copiedAssociations, DependencyGraph.ReferencesResolveMode.LEAVE_REFERENCES_UNRESOLVED); // we do not trim unresolved references. instead we abort.
-		if (!dg.getUnresolvedDependencies().isEmpty()) {
-			throw new EccoException("Unresolved dependencies in selection.");
-		}
-
-		// merge cloned associations with equal PCs.
-		Associations.consolidate(copiedAssociations);
-
-		// trim sequence graphs to only contain artifacts from the selected associations.
-		EccoUtil.trimSequenceGraph(copiedAssociations);
-
-		for (Association.Op copiedAssociation : copiedAssociations) {
-			newRepository.addAssociation(copiedAssociation);
-		}
-
-		return newRepository;
+		return newModuleRevisions;
 	}
 
-
 	/**
-	 * Merges other repository into this repository. The other repository is destroyed in the process.
+	 * Uses all positive feature revisions of the configuration.
+	 * Ignores all negative features and revisions (there should be none in the configuration). TODO: change configuration and remove feature instance type such that this is not possible anymore.
+	 * <p>
+	 * Expects all features and feature revisions to already exist in the repository.
+	 * Uses feature and feature revision instances contained in the repository and discards the instances in the configuration.
+	 * <p>
+	 * Uses module and module revision instances contained in the repository.
+	 * If a module or module revision does not yet exist in the repository it is created and added to the repository.
 	 *
-	 * @param other The other repository.
+	 * @param configuration The configuration to be added to the repository.
+	 * @return All module revisions that are contained in the configuration.
 	 */
-	public void merge(Repository.Op other) {
-		checkNotNull(other);
-		checkArgument(other.getClass().equals(this.repository.getClass()));
+	private Collection<ModuleRevision> addConfiguration(Configuration configuration) {
+		checkNotNull(configuration);
 
-		// step 1: add new features and versions in other repository to associations in this repository,
-		Map<Feature, Feature> featureReplacementMap = new HashMap<>();
-		Map<FeatureVersion, FeatureVersion> featureVersionReplacementMap = new HashMap<>();
-		Collection<FeatureVersion> newThisFeatureVersions = new ArrayList<>();
-		for (Feature otherFeature : other.getFeatures()) {
-			Feature thisFeature = this.repository.getFeature(otherFeature.getId()); // TODO: what to do when parent and child feature have different description? e.g. because it was changed on one of the two before the pull.
-			if (thisFeature == null) {
-				thisFeature = this.repository.addFeature(otherFeature.getId(), otherFeature.getName(), otherFeature.getDescription());
-			}
+		Collection<FeatureInstance> featureInstances = configuration.getFeatureInstances();
 
-			for (FeatureVersion otherFeatureVersion : otherFeature.getVersions()) {
-				FeatureVersion thisFeatureVersion = thisFeature.getVersion(otherFeatureVersion.getId());
-				if (thisFeatureVersion == null) {
-					thisFeatureVersion = thisFeature.addVersion(otherFeatureVersion.getId());
-					thisFeatureVersion.setDescription(otherFeatureVersion.getDescription());
-					newThisFeatureVersions.add(thisFeatureVersion);
-				}
-				featureVersionReplacementMap.put(otherFeatureVersion, thisFeatureVersion);
-			}
-
-			if (!thisFeature.getVersions().isEmpty()) {
-				featureReplacementMap.put(otherFeature, thisFeature);
-			}
-		}
-		for (Association thisAssociation : this.repository.getAssociations()) {
-			for (FeatureVersion newThisFeatureVersion : newThisFeatureVersions) {
-				thisAssociation.getPresenceCondition().addFeatureVersion(newThisFeatureVersion);
-				thisAssociation.getPresenceCondition().addFeatureInstance(newThisFeatureVersion, false, this.repository.getMaxOrder());
-			}
-		}
-
-		// step 2: add new features in this repository to associations in other repository.
-		Collection<FeatureVersion> newOtherFeatureVersions = new ArrayList<>();
-		for (Feature thisFeature : this.repository.getFeatures()) {
-			Feature otherFeature = other.getFeature(thisFeature.getId());
-			if (otherFeature == null) {
-				// add all its versions to list
-				for (FeatureVersion thisFeatureVersion : thisFeature.getVersions()) {
-					newOtherFeatureVersions.add(thisFeatureVersion);
-				}
+		// collect positive feature revisions
+		Collection<FeatureRevision> pos = new ArrayList();
+		for (FeatureInstance featureInstance : featureInstances) {
+			if (featureInstance.getSign()) {
+				// get feature from repository
+				Feature repoFeature = this.repository.getFeature(featureInstance.getFeature().getId());
+				if (repoFeature == null)
+					throw new EccoException("ERROR: feature does not exist in repository: " + featureInstance.getFeature());
+				// get feature revision from repository
+				FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureInstance.getFeatureVersion().getId());
+				if (repoFeatureRevision == null)
+					throw new EccoException("ERROR: feature revision does not exist inr epository: " + featureInstance.getFeatureVersion());
+				pos.add(featureInstance.getFeatureVersion());
 			} else {
-				// compare versions and add new ones to list
-				for (FeatureVersion thisFeatureVersion : thisFeature.getVersions()) {
-					FeatureVersion otherFeatureVersion = otherFeature.getVersion(thisFeatureVersion.getId());
-					if (otherFeatureVersion == null) {
-						newOtherFeatureVersions.add(thisFeatureVersion);
-					}
+				//neg.add(featureInstance.getFeature());
+			}
+		}
+
+		// collect negative features
+		Collection<Feature> neg = new ArrayList();
+		for (Feature feature : this.repository.getFeatures()) {
+			if (!pos.stream().anyMatch(featureRevision -> featureRevision.getFeature().equals(feature))) {
+				neg.add(feature);
+			}
+		}
+
+		// add empty module initially
+		Collection<ModuleRevision> modules = new ArrayList();
+		ModuleRevision emptyModule = this.entityFactory.createModuleRevision(new FeatureRevision[]{}, new Feature[]{});
+		modules.add(emptyModule); // add empty module to power set
+
+		// compute powerset
+		for (final FeatureRevision featureRevision : pos) {
+			final Collection<ModuleRevision> toAdd = new ArrayList<>();
+
+			for (final ModuleRevision module : modules) {
+				if (module.getOrder() < this.repository.getMaxOrder()) {
+					FeatureRevision[] posFeatureRevisions = Arrays.copyOf(module.getPos(), module.getPos().length + 1);
+					posFeatureRevisions[posFeatureRevisions.length - 1] = featureRevision;
+
+					// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
+					ModuleRevision newModule = this.repository.getModuleRevision(posFeatureRevisions, module.getNeg());
+					newModule.incCount();
+
+					toAdd.add(newModule);
 				}
 			}
-		}
-		for (Association otherAssociation : other.getAssociations()) {
-			for (FeatureVersion newOtherFeatureVersion : newOtherFeatureVersions) {
-				otherAssociation.getPresenceCondition().addFeatureVersion(newOtherFeatureVersion);
-				otherAssociation.getPresenceCondition().addFeatureInstance(newOtherFeatureVersion, false, other.getMaxOrder());
-			}
+
+			modules.addAll(toAdd);
 		}
 
-		// step 3: commit associations in other repository to this repository.
-		this.extract(other.getAssociations());
-	}
+		// remove the empty module again
+		modules.remove(emptyModule);
 
+		for (final Feature feature : neg) {
+			final Collection<ModuleRevision> toAdd = new ArrayList<>();
 
-	/**
-	 * Splits all marked artifacts in the repository from their previous association into a new one.
-	 *
-	 * @return The commit object containing the affected associations.
-	 */
-	public Commit split() { // TODO: the presence condition must also somehow be marked and extracted! otherwise the repo becomes inconsistent.
-		Commit commit = this.entityFactory.createCommit();
+			for (final ModuleRevision module : modules) {
+				if (module.getOrder() < this.repository.getMaxOrder() && module.getPos().length > 0) {
+					Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
+					negFeatures[negFeatures.length - 1] = feature;
 
-		Collection<? extends Association.Op> originalAssociations = this.repository.getAssociations();
-		Collection<Association.Op> newAssociations = new ArrayList<>();
+					// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
+					ModuleRevision newModule = this.repository.getModuleRevision(module.getPos(), negFeatures);
+					newModule.incCount();
 
-		// extract from every  original association
-		for (Association.Op origA : originalAssociations) {
-
-			// ASSOCIATION
-			Association.Op extractedA = this.entityFactory.createAssociation();
-			extractedA.setId(UUID.randomUUID().toString());
-
-
-			// PRESENCE CONDITION
-			//extractedA.setPresenceCondition(this.entityFactory.createPresenceCondition(origA.getPresenceCondition())); // copy presence condition
-			extractedA.setPresenceCondition(this.entityFactory.createPresenceCondition()); // new empty presence condition
-
-
-			// ARTIFACT TREE
-			RootNode.Op extractedTree = (RootNode.Op) Trees.extractMarked(origA.getRootNode());
-			if (extractedTree != null)
-				extractedA.setRootNode(extractedTree);
-
-
-			// if the intersection association has artifacts or a not empty presence condition store it
-			if (extractedA.getRootNode() != null && (extractedA.getRootNode().getChildren().size() > 0 || !extractedA.getPresenceCondition().isEmpty())) {
-				// set parents for intersection association (and child for parents)
-				extractedA.setName("EXTRACTED " + origA.getId());
-
-				// store association
-				newAssociations.add(extractedA);
+					toAdd.add(newModule);
+				}
 			}
 
-			Trees.checkConsistency(origA.getRootNode());
-			if (extractedA.getRootNode() != null)
-				Trees.checkConsistency(extractedA.getRootNode());
+			modules.addAll(toAdd);
 		}
 
-		for (Association.Op newA : newAssociations) {
-			this.repository.addAssociation(newA);
-
-//			commit.addAssociation(newA);
-		}
-
-		return commit;
+		return modules;
 	}
 
 
@@ -368,191 +204,138 @@ public class RepositoryOperator {
 		checkNotNull(configuration);
 		checkNotNull(nodes);
 
-		// add new features and versions from configuration to this repository
-		Collection<FeatureVersion> newFeatureVersions = new ArrayList<>();
+		// TODO: restructure the following code together with this.addFeatures and this.addConfiguration!
+
+		// add new features and feature revisions from configuration to this repository
+		Collection<Feature> newFeatures = new ArrayList<>();
+		Collection<FeatureRevision> newFeatureRevisions = new ArrayList<>();
 		Configuration newConfiguration = this.entityFactory.createConfiguration();
 		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
 			Feature feature = featureInstance.getFeature();
 			Feature repoFeature = this.repository.getFeature(featureInstance.getFeature().getId());
 			if (repoFeature == null) {
 				repoFeature = this.repository.addFeature(feature.getId(), feature.getName(), feature.getDescription());
+				newFeatures.add(repoFeature);
 			}
-			FeatureVersion featureVersion = featureInstance.getFeatureVersion();
-			FeatureVersion repoFeatureVersion = repoFeature.getVersion(featureVersion.getId());
-			if (repoFeatureVersion == null) {
-				repoFeatureVersion = repoFeature.addVersion(featureVersion.getId());
-				repoFeatureVersion.setDescription(featureVersion.getDescription());
-				newFeatureVersions.add(repoFeatureVersion);
+			FeatureRevision featureRevision = featureInstance.getFeatureVersion();
+			FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureRevision.getId());
+			if (repoFeatureRevision == null) {
+				repoFeatureRevision = repoFeature.addRevision(featureRevision.getId());
+				repoFeatureRevision.setDescription(featureRevision.getDescription());
+				newFeatureRevisions.add(repoFeatureRevision);
 			}
-			//FeatureInstance newFeatureInstance = this.entityFactory.createFeatureInstance(repoFeature, repoFeatureVersion, featureInstance.getSign());
-			FeatureInstance newFeatureInstance = repoFeatureVersion.getInstance(featureInstance.getSign());
+			FeatureInstance newFeatureInstance = repoFeatureRevision.getInstance(featureInstance.getSign());
 			newConfiguration.addFeatureInstance(newFeatureInstance);
 		}
-		for (Association childAssociation : this.repository.getAssociations()) {
-			for (FeatureVersion newFeatureVersion : newFeatureVersions) {
-				childAssociation.getPresenceCondition().addFeatureVersion(newFeatureVersion);
-				//childAssociation.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), this.repository.getMaxOrder());
-				childAssociation.getPresenceCondition().addFeatureInstance(newFeatureVersion.getInstance(false), this.repository.getMaxOrder());
-			}
+
+		// add new modules to the repository that contain the new features negatively
+		Collection<ModuleRevision> newModuleRevisions = this.addFeatures(newFeatures);
+
+		// update existing associations that have matching old modules with the new modules
+		for (Association.Op association : this.repository.getAssociations()) {
+			association.updateWithNewModules(newModuleRevisions);
 		}
 
-		// create presence condition
-		PresenceCondition presenceCondition = this.entityFactory.createPresenceCondition(newConfiguration, this.repository.getMaxOrder());
+		// -------------------------------------------------------------------------------------
+
+		// compute modules for configuration. new modules are added to the repository. old ones have their counter incremented.
+		Collection<ModuleRevision> moduleRevisions = this.addConfiguration(newConfiguration);
 
 		// create association
-		Association.Op association = this.entityFactory.createAssociation(presenceCondition, nodes);
+		Association.Op association = this.entityFactory.createAssociation(nodes);
 		association.setId(UUID.randomUUID().toString());
 
-		// commit association
-		Commit commit = this.extract(association);
-		commit.setConfiguration(configuration);
+		// initialize new association
+		association.setCount(1);
+		for (ModuleRevision moduleRevision : moduleRevisions) {
+			association.addObservation(moduleRevision);
+		}
+
+		// do actual extraction
+		this.extract(association);
+
+		// -------------------------------------------------------------------------------------
+
+		// create commit object
+		Commit commit = this.entityFactory.createCommit();
+		commit.setConfiguration(newConfiguration);
 
 		return commit;
-	}
-
-	/**
-	 * When an association is committed directly then the corresponding configuration must be added manually first!
-	 *
-	 * @param association The association to be committed.
-	 * @return The resulting commit object or null in case of an error.
-	 */
-	protected Commit extract(Association.Op association) {
-		checkNotNull(association);
-
-		Collection<Association.Op> associations = new ArrayList<>(1);
-		associations.add(association);
-		return this.extract(associations);
 	}
 
 	/**
 	 * When associations are committed directly then the corresponding configuration must be added manually first!
 	 *
 	 * @param inputAs The collection of associations to be committed.
-	 * @return The resulting commit object or null in case of an error.
 	 */
-	protected Commit extract(Collection<? extends Association.Op> inputAs) {
+	protected void extract(Collection<? extends Association.Op> inputAs) {
 		checkNotNull(inputAs);
 
-		Commit commit = this.entityFactory.createCommit();
+		for (Association.Op inputA : inputAs) {
+			this.extract(inputA);
+		}
+	}
+
+	/**
+	 * When an association is committed directly then the corresponding configuration must be added manually first!
+	 *
+	 * @param association The association to be committed.
+	 */
+	protected void extract(Association.Op association) {
+		checkNotNull(association);
 
 		Collection<? extends Association.Op> originalAssociations = this.repository.getAssociations();
-		Collection<Association.Op> newAssociations = new ArrayList<>();
-		Collection<Association.Op> removedAssociations = new ArrayList<>();
 
-		Association emptyAssociation = null;
-		// find initial empty association if there is any
-		for (Association origA : originalAssociations) {
-			if (origA.getRootNode().getChildren().isEmpty()) {
-				emptyAssociation = origA;
-				break;
+		Collection<Association.Op> toAdd = new ArrayList<>();
+		Collection<Association.Op> toRemove = new ArrayList<>();
+
+		// slice new association with every original association
+		for (Association.Op origA : originalAssociations) {
+			// ASSOCIATION
+			// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
+			Association.Op intA = this.entityFactory.createAssociation();
+			intA.setId(UUID.randomUUID().toString());
+
+			// ARTIFACT TREE
+			//intA.setRootNode((origA.getRootNode().slice(inputA.getRootNode())));
+			intA.setRootNode((RootNode.Op) Trees.slice(origA.getRootNode(), association.getRootNode()));
+
+			// INTERSECTION
+			if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
+				toAdd.add(intA);
+
+				Trees.checkConsistency(intA.getRootNode());
+
+				intA.add(origA);
+				intA.add(association);
+			}
+
+			// ORIGINAL
+			if (!origA.getRootNode().getChildren().isEmpty()) { // if the original association has artifacts left
+				Trees.checkConsistency(origA.getRootNode());
+			} else {
+				toRemove.add(origA);
 			}
 		}
 
-		// process each new association individually
-		for (Association.Op inputA : inputAs) {
-			Collection<Association.Op> toAdd = new ArrayList<>();
-			Collection<Association.Op> toRemove = new ArrayList<>();
+		// REMAINDER
+		if (!association.getRootNode().getChildren().isEmpty()) { // if the remainder is not empty store it
+			toAdd.add(association);
 
-			// slice new association with every original association
-			for (Association.Op origA : originalAssociations) {
-
-				// ASSOCIATION
-				// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
-				//Association intA = origA.slice(inputA);
-				Association.Op intA = this.entityFactory.createAssociation();
-				intA.setId(UUID.randomUUID().toString());
-
-
-				// PRESENCE CONDITION
-				//intA.setPresenceCondition(FeatureUtil.slice(origA.getPresenceCondition(), inputA.getPresenceCondition()));
-				intA.setPresenceCondition(origA.getPresenceCondition().slice(inputA.getPresenceCondition()));
-
-
-				// ARTIFACT TREE
-				//intA.setRootNode((origA.getRootNode().slice(inputA.getRootNode())));
-				intA.setRootNode((RootNode.Op) Trees.slice(origA.getRootNode(), inputA.getRootNode()));
-
-				// INTERSECTION
-				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
-					// set parents for intersection association (and child for parents)
-					intA.setName(origA.getId() + " INT " + inputA.getId());
-
-					toAdd.add(intA);
-
-//					commit.addUnmodified(intA);
-//					commit.addAssociation(intA);
-
-					Trees.checkConsistency(intA.getRootNode());
-				} else if (!intA.getPresenceCondition().isEmpty()) { // if it has no artifacts but a not empty presence condition merge it with other empty associations
-					if (emptyAssociation == null) {
-						emptyAssociation = intA;
-						emptyAssociation.setName("EMPTY");
-						toAdd.add(intA);
-					} else if (emptyAssociation != intA) {
-						emptyAssociation.getPresenceCondition().merge(intA.getPresenceCondition());
-					}
-				}
-
-				// ORIGINAL
-				if (origA.getRootNode().getChildren().isEmpty()) { // if the original association has no artifacts left
-					if (!origA.getPresenceCondition().isEmpty()) { // if presence condition is not empty merge it
-						if (emptyAssociation == null) {
-							emptyAssociation = origA;
-							emptyAssociation.setName("EMPTY");
-						} else if (emptyAssociation != origA) {
-							emptyAssociation.getPresenceCondition().merge(origA.getPresenceCondition());
-							toRemove.add(origA);
-						}
-					} else {
-						toRemove.add(origA);
-					}
-				} else {
-//					commit.addRemoved(origA);
-
-					Trees.checkConsistency(origA.getRootNode());
-				}
-
-
-			}
-
-			// REMAINDER
-			// if the remainder is not empty store it
-			if (!inputA.getRootNode().getChildren().isEmpty()) {
-				Trees.sequence(inputA.getRootNode());
-				Trees.updateArtifactReferences(inputA.getRootNode());
-				Trees.checkConsistency(inputA.getRootNode());
-
-				toAdd.add(inputA);
-
-//				commit.addNew(inputA);
-//				commit.addAssociation(inputA);
-			} else if (!inputA.getPresenceCondition().isEmpty()) {
-				if (emptyAssociation == null) {
-					emptyAssociation = inputA;
-					emptyAssociation.setName("EMPTY");
-					toAdd.add(inputA);
-				} else if (emptyAssociation != inputA) {
-					emptyAssociation.getPresenceCondition().merge(inputA.getPresenceCondition());
-				}
-			}
-
-			//originalAssociations.removeAll(toRemove);
-			//originalAssociations.addAll(toAdd); // add new associations to original associations so that they can be sliced with the next input association
-			newAssociations.addAll(toAdd);
-			removedAssociations.addAll(toRemove);
+			Trees.sequence(association.getRootNode());
+			Trees.updateArtifactReferences(association.getRootNode());
+			Trees.checkConsistency(association.getRootNode());
 		}
 
-		// remove associations
-		for (Association.Op origA : removedAssociations) {
+		// remove associations from repository
+		for (Association.Op origA : toRemove) {
 			this.repository.removeAssociation(origA);
 		}
 
-		// add associations
-		for (Association.Op newA : newAssociations) {
+		// add associations to repository
+		for (Association.Op newA : toAdd) {
 			this.repository.addAssociation(newA);
 		}
-
-		return commit;
 	}
 
 
@@ -660,6 +443,320 @@ public class RepositoryOperator {
 	public Diff diff() {
 		// TODO
 		return null;
+	}
+
+
+	/**
+	 * Creates a copy of this repository using the same entity factory and maximum order of modules. This repository is not changed.
+	 *
+	 * @return The copy of the repository.
+	 */
+	public Repository.Op copy(EntityFactory entityFactory) {
+		return this.subset(new ArrayList<>(), this.repository.getMaxOrder(), entityFactory);
+	}
+
+
+	/**
+	 * Creates a subset repository of this repository using the given entity factory. This repository is not changed.
+	 *
+	 * @param deselected The deselected feature versions (i.e. feature versions that are set to false).
+	 * @param maxOrder   The maximum order of modules.
+	 * @return The subset repository.
+	 */
+	public Repository.Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory) {
+		checkNotNull(deselected);
+		checkArgument(maxOrder <= this.repository.getMaxOrder());
+
+
+		// create empty repository using the given entity factory
+		Repository.Op newRepository = entityFactory.createRepository();
+		newRepository.setMaxOrder(maxOrder);
+
+
+		// add all features and versions in this repository to new repository, excluding the deselected feature versions.
+		Map<Feature, Feature> featureReplacementMap = new HashMap<>();
+		Map<FeatureRevision, FeatureRevision> featureVersionReplacementMap = new HashMap<>();
+		Collection<FeatureRevision> newFeatureVersions = new ArrayList<>();
+		for (Feature feature : this.repository.getFeatures()) {
+			Feature newFeature = newRepository.addFeature(feature.getId(), feature.getName(), feature.getDescription());
+
+			for (FeatureRevision featureVersion : feature.getRevisions()) {
+				if (!deselected.contains(featureVersion)) {
+					FeatureRevision newFeatureVersion = newFeature.addRevision(featureVersion.getId());
+					newFeatureVersion.setDescription(featureVersion.getDescription());
+					newFeatureVersions.add(newFeatureVersion);
+					featureVersionReplacementMap.put(featureVersion, newFeatureVersion);
+				}
+			}
+
+			if (!newFeature.getRevisions().isEmpty()) {
+				featureReplacementMap.put(feature, newFeature);
+			}
+		}
+		for (Association newAssociation : newRepository.getAssociations()) {
+			for (FeatureRevision newFeatureVersion : newFeatureVersions) {
+				newAssociation.getPresenceCondition().addFeatureVersion(newFeatureVersion);
+				newAssociation.getPresenceCondition().addFeatureInstance(newFeatureVersion, false, newRepository.getMaxOrder());
+			}
+		}
+
+
+		// copy associations in this repository and add them to new repository, but exclude modules or module features that evaluate to false given the deselected feature versions
+		Collection<Association.Op> copiedAssociations = new ArrayList<>();
+		for (Association association : this.repository.getAssociations()) {
+			Association.Op copiedAssociation = entityFactory.createAssociation();
+			copiedAssociation.setId(UUID.randomUUID().toString());
+
+			PresenceCondition thisPresenceCondition = association.getPresenceCondition();
+
+
+			// copy presence condition
+			PresenceCondition copiedPresenceCondition = entityFactory.createPresenceCondition();
+			copiedAssociation.setPresenceCondition(copiedPresenceCondition);
+
+			Set<at.jku.isse.ecco.module.Module>[][] moduleSetPairs = new Set[][]{{thisPresenceCondition.getMinModules(), copiedPresenceCondition.getMinModules()}, {thisPresenceCondition.getMaxModules(), copiedPresenceCondition.getMaxModules()}, {thisPresenceCondition.getNotModules(), copiedPresenceCondition.getNotModules()}, {thisPresenceCondition.getAllModules(), copiedPresenceCondition.getAllModules()}};
+
+			for (Set<at.jku.isse.ecco.module.Module>[] moduleSetPair : moduleSetPairs) {
+				Set<at.jku.isse.ecco.module.Module> fromModuleSet = moduleSetPair[0];
+				Set<at.jku.isse.ecco.module.Module> toModuleSet = moduleSetPair[1];
+
+				for (at.jku.isse.ecco.module.Module fromModule : fromModuleSet) {
+					at.jku.isse.ecco.module.Module toModule = entityFactory.createModule();
+					for (ModuleFeature fromModuleFeature : fromModule) {
+
+						// feature
+						Feature fromFeature = fromModuleFeature.getFeature();
+						Feature toFeature;
+						if (featureReplacementMap.containsKey(fromFeature)) {
+							toFeature = featureReplacementMap.get(fromFeature);
+
+							// if a deselected feature version is contained in module feature:
+							//  if module feature is positive: remove / do not add feature version from module feature
+							//   if module feature is empty: remove it / do not add it
+							//  else if module feature is negative: remove module feature from module
+							//   if module is empty (should not happen?) then leave it! module is always TRUE (again: should not happen, because at least one positive module feature should be in every module, but that might currently not be the case)
+
+							ModuleFeature toModuleFeature = entityFactory.createModuleFeature(toFeature, fromModuleFeature.getSign());
+							boolean addToModule = true;
+							for (FeatureRevision fromFeatureVersion : fromModuleFeature) {
+								if (deselected.contains(fromFeatureVersion)) { // if a deselected feature version is contained in module feature
+
+									if (fromModuleFeature.getSign()) {  // if module feature is positive
+										// do not add feature version to module feature
+									} else {
+										// do not add module feature to module because it is always true
+										addToModule = false;
+										break;
+									}
+
+								} else { // ordinary copy
+									FeatureRevision toFeatureVersion;
+									if (featureVersionReplacementMap.containsKey(fromFeatureVersion)) {
+										toFeatureVersion = featureVersionReplacementMap.get(fromFeatureVersion);
+									} else {
+										toFeatureVersion = fromFeatureVersion;
+
+										throw new EccoException("This should not happen!");
+									}
+									toModuleFeature.add(toFeatureVersion);
+								}
+							}
+							if (!toModuleFeature.isEmpty() && addToModule) { // if module feature is empty: do not add it
+								toModule.add(toModuleFeature);
+							}
+							if (fromModuleFeature.getSign() && toModuleFeature.isEmpty()) { // don't add module because it is false
+								toModule.clear();
+								break;
+							}
+						} else {
+							//toFeature = fromFeature;
+							//throw new EccoException("This should not happen!");
+							if (fromModuleFeature.getSign()) {
+								toModule.clear();
+								break;
+							}
+						}
+
+					}
+					if (!toModule.isEmpty())
+						toModuleSet.add(toModule);
+				}
+			}
+
+
+			// copy artifact tree
+			RootNode.Op copiedRootNode = entityFactory.createRootNode();
+			copiedAssociation.setRootNode(copiedRootNode);
+			// clone tree
+			for (Node.Op parentChildNode : association.getRootNode().getChildren()) {
+				Node.Op copiedChildNode = EccoUtil.deepCopyTree(parentChildNode, entityFactory);
+				copiedRootNode.addChild(copiedChildNode);
+				copiedChildNode.setParent(copiedRootNode);
+			}
+			//Trees.checkConsistency(copiedRootNode);
+
+
+			copiedAssociations.add(copiedAssociation);
+		}
+
+		for (Association a : copiedAssociations) {
+			Trees.checkConsistency(a.getRootNode());
+		}
+
+
+		// remove (fixate) all provided (selected) feature instances in the presence conditions of the copied associations.
+		// this is already done in the previous step
+
+		// remove cloned associations with empty PCs.
+		Iterator<Association.Op> associationIterator = copiedAssociations.iterator();
+		while (associationIterator.hasNext()) {
+			Association.Op association = associationIterator.next();
+			if (association.getPresenceCondition().isEmpty())
+				associationIterator.remove();
+		}
+
+		// compute dependency graph for selected associations and check if there are any unresolved dependencies.
+		DependencyGraph dg = new DependencyGraph(copiedAssociations, DependencyGraph.ReferencesResolveMode.LEAVE_REFERENCES_UNRESOLVED); // we do not trim unresolved references. instead we abort.
+		if (!dg.getUnresolvedDependencies().isEmpty()) {
+			throw new EccoException("Unresolved dependencies in selection.");
+		}
+
+		// merge cloned associations with equal PCs.
+		Associations.consolidate(copiedAssociations);
+
+		// trim sequence graphs to only contain artifacts from the selected associations.
+		EccoUtil.trimSequenceGraph(copiedAssociations);
+
+		for (Association.Op copiedAssociation : copiedAssociations) {
+			newRepository.addAssociation(copiedAssociation);
+		}
+
+		return newRepository;
+	}
+
+
+	/**
+	 * Merges other repository into this repository. The other repository is destroyed in the process.
+	 *
+	 * @param other The other repository.
+	 */
+	public void merge(Repository.Op other) {
+		checkNotNull(other);
+		checkArgument(other.getClass().equals(this.repository.getClass()));
+
+		// step 1: add new features and versions in other repository to associations in this repository,
+		Map<Feature, Feature> featureReplacementMap = new HashMap<>();
+		Map<FeatureRevision, FeatureRevision> featureVersionReplacementMap = new HashMap<>();
+		Collection<FeatureRevision> newThisFeatureVersions = new ArrayList<>();
+		for (Feature otherFeature : other.getFeatures()) {
+			Feature thisFeature = this.repository.getFeature(otherFeature.getId()); // TODO: what to do when parent and child feature have different description? e.g. because it was changed on one of the two before the pull.
+			if (thisFeature == null) {
+				thisFeature = this.repository.addFeature(otherFeature.getId(), otherFeature.getName(), otherFeature.getDescription());
+			}
+
+			for (FeatureRevision otherFeatureVersion : otherFeature.getRevisions()) {
+				FeatureRevision thisFeatureVersion = thisFeature.getRevision(otherFeatureVersion.getId());
+				if (thisFeatureVersion == null) {
+					thisFeatureVersion = thisFeature.addRevision(otherFeatureVersion.getId());
+					thisFeatureVersion.setDescription(otherFeatureVersion.getDescription());
+					newThisFeatureVersions.add(thisFeatureVersion);
+				}
+				featureVersionReplacementMap.put(otherFeatureVersion, thisFeatureVersion);
+			}
+
+			if (!thisFeature.getRevisions().isEmpty()) {
+				featureReplacementMap.put(otherFeature, thisFeature);
+			}
+		}
+		for (Association thisAssociation : this.repository.getAssociations()) {
+			for (FeatureRevision newThisFeatureVersion : newThisFeatureVersions) {
+				thisAssociation.getPresenceCondition().addFeatureVersion(newThisFeatureVersion);
+				thisAssociation.getPresenceCondition().addFeatureInstance(newThisFeatureVersion, false, this.repository.getMaxOrder());
+			}
+		}
+
+		// step 2: add new features in this repository to associations in other repository.
+		Collection<FeatureRevision> newOtherFeatureVersions = new ArrayList<>();
+		for (Feature thisFeature : this.repository.getFeatures()) {
+			Feature otherFeature = other.getFeature(thisFeature.getId());
+			if (otherFeature == null) {
+				// add all its versions to list
+				for (FeatureRevision thisFeatureVersion : thisFeature.getRevisions()) {
+					newOtherFeatureVersions.add(thisFeatureVersion);
+				}
+			} else {
+				// compare versions and add new ones to list
+				for (FeatureRevision thisFeatureVersion : thisFeature.getRevisions()) {
+					FeatureRevision otherFeatureVersion = otherFeature.getRevision(thisFeatureVersion.getId());
+					if (otherFeatureVersion == null) {
+						newOtherFeatureVersions.add(thisFeatureVersion);
+					}
+				}
+			}
+		}
+		for (Association otherAssociation : other.getAssociations()) {
+			for (FeatureRevision newOtherFeatureVersion : newOtherFeatureVersions) {
+				otherAssociation.getPresenceCondition().addFeatureVersion(newOtherFeatureVersion);
+				otherAssociation.getPresenceCondition().addFeatureInstance(newOtherFeatureVersion, false, other.getMaxOrder());
+			}
+		}
+
+		// step 3: commit associations in other repository to this repository.
+		this.extract(other.getAssociations());
+	}
+
+
+	/**
+	 * Splits all marked artifacts in the repository from their previous association into a new one.
+	 *
+	 * @return The commit object containing the affected associations.
+	 */
+	public Commit split() { // TODO: the presence condition must also somehow be marked and extracted! otherwise the repo becomes inconsistent.
+		Commit commit = this.entityFactory.createCommit();
+
+		Collection<? extends Association.Op> originalAssociations = this.repository.getAssociations();
+		Collection<Association.Op> newAssociations = new ArrayList<>();
+
+		// extract from every  original association
+		for (Association.Op origA : originalAssociations) {
+
+			// ASSOCIATION
+			Association.Op extractedA = this.entityFactory.createAssociation();
+			extractedA.setId(UUID.randomUUID().toString());
+
+
+			// PRESENCE CONDITION
+			//extractedA.setPresenceCondition(this.entityFactory.createPresenceCondition(origA.getPresenceCondition())); // copy presence condition
+			extractedA.setPresenceCondition(this.entityFactory.createPresenceCondition()); // new empty presence condition
+
+
+			// ARTIFACT TREE
+			RootNode.Op extractedTree = (RootNode.Op) Trees.extractMarked(origA.getRootNode());
+			if (extractedTree != null)
+				extractedA.setRootNode(extractedTree);
+
+
+			// if the intersection association has artifacts or a not empty presence condition store it
+			if (extractedA.getRootNode() != null && (extractedA.getRootNode().getChildren().size() > 0 || !extractedA.getPresenceCondition().isEmpty())) {
+				// set parents for intersection association (and child for parents)
+				extractedA.setName("EXTRACTED " + origA.getId());
+
+				// store association
+				newAssociations.add(extractedA);
+			}
+
+			Trees.checkConsistency(origA.getRootNode());
+			if (extractedA.getRootNode() != null)
+				Trees.checkConsistency(extractedA.getRootNode());
+		}
+
+		for (Association.Op newA : newAssociations) {
+			this.repository.addAssociation(newA);
+
+//			commit.addAssociation(newA);
+		}
+
+		return commit;
 	}
 
 

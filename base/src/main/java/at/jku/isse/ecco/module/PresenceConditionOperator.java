@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,7 +32,7 @@ public class PresenceConditionOperator {
 	/**
 	 * Removes a feature version from a presence condition. This removes all modules that contain the feature version positively, and removes the feature version from all modules that contain it negatively.
 	 */
-	public void removeFeatureVersion(FeatureVersion featureVersion) {
+	public void removeFeatureVersion(FeatureRevision featureVersion) {
 		for (Set<Module> modules : new Set[]{this.presenceCondition.getMinModules(), this.presenceCondition.getMaxModules(), this.presenceCondition.getNotModules(), this.presenceCondition.getAllModules()}) {
 			Iterator<Module> it = modules.iterator();
 			while (it.hasNext()) {
@@ -90,7 +90,7 @@ public class PresenceConditionOperator {
 		}
 	}
 
-	public void addFeatureVersion(FeatureVersion featureVersion) {
+	public void addFeatureVersion(FeatureRevision featureVersion) {
 		for (Set<Module> modules : new Set[]{this.presenceCondition.getMinModules(), this.presenceCondition.getMaxModules(), this.presenceCondition.getNotModules(), this.presenceCondition.getAllModules()}) {
 			Set<Module> modulesToAdd = new HashSet<Module>();
 			for (Module module : modules) { // for every module
@@ -290,9 +290,9 @@ public class PresenceConditionOperator {
 				while (moduleFeatureIterator.hasNext()) {
 					ModuleFeature mf = moduleFeatureIterator.next();
 
-					Iterator<FeatureVersion> featureVersionIterator = mf.iterator();
+					Iterator<FeatureRevision> featureVersionIterator = mf.iterator();
 					while (featureVersionIterator.hasNext()) {
-						FeatureVersion fv = featureVersionIterator.next();
+						FeatureRevision fv = featureVersionIterator.next();
 
 						if (fi.getFeature().equals(fv.getFeature())) {
 							if (mf.getSign() == fi.getSign()) {
@@ -409,7 +409,7 @@ public class PresenceConditionOperator {
 
 		public ModuleFeature createModuleFeature(Feature feature, boolean sign);
 
-		public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign);
+		public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureRevision> featureVersions, boolean sign);
 
 		public PresenceConditionOperand createPresenceCondition();
 	}

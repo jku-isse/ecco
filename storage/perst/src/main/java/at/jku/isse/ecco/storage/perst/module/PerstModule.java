@@ -3,7 +3,7 @@ package at.jku.isse.ecco.storage.perst.module;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleFeature;
 import org.garret.perst.Persistent;
@@ -60,7 +60,7 @@ public class PerstModule extends Persistent implements Module {
 		for (ModuleFeature mf : this) {
 
 			boolean atLeastOneVersionMatched = false;
-			for (FeatureVersion fv : mf) {
+			for (FeatureRevision fv : mf) {
 				for (FeatureInstance fi : featureInstances) {
 					if (fi.getFeatureVersion().equals(fv) && fi.getSign() == mf.getSign()) {
 						atLeastOneVersionMatched = true;

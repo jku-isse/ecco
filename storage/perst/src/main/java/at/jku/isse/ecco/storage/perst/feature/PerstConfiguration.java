@@ -82,7 +82,7 @@ public class PerstConfiguration extends Persistent implements Configuration, Con
 		return this.createModuleFeature(feature, new ArrayList<>(), sign);
 	}
 
-	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureRevision> featureVersions, boolean sign) {
 		return new PerstModuleFeature(feature, featureVersions, sign);
 	}
 

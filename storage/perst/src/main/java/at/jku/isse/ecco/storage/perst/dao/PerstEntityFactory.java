@@ -157,7 +157,7 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
+	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureRevision> featureVersions, boolean sign) {
 		return new PerstModuleFeature(feature, featureVersions, sign);
 	}
 

@@ -12,16 +12,14 @@ import java.util.List;
  */
 public interface Feature extends Persistable {
 
-	public List<? extends FeatureVersion> getVersions();
+	public List<? extends FeatureRevision> getRevisions();
 
-	public FeatureVersion addVersion(String id);
+	public FeatureRevision addRevision(String id);
 
-	public FeatureVersion getVersion(String id);
+	public FeatureRevision getRevision(String id);
 
 
-	public FeatureVersion getLatestVersion();
-
-	public FeatureVersion createNewVersion();
+	public FeatureRevision getLatestRevision();
 
 
 	/**

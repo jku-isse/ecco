@@ -2,7 +2,7 @@ package at.jku.isse.ecco.storage.perst.feature;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import org.garret.perst.Persistent;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class PerstFeatureInstance extends Persistent implements FeatureInstance {
 
 	private Feature feature;
-	private FeatureVersion featureVersion;
+	private FeatureRevision featureVersion;
 	private boolean sign;
 
 	protected PerstFeatureInstance() {
@@ -26,7 +26,7 @@ public class PerstFeatureInstance extends Persistent implements FeatureInstance 
 		this.sign = false;
 	}
 
-	public PerstFeatureInstance(Feature feature, FeatureVersion featureVersion, boolean sign) {
+	public PerstFeatureInstance(Feature feature, FeatureRevision featureVersion, boolean sign) {
 		checkNotNull(feature);
 		checkNotNull(featureVersion);
 
@@ -41,7 +41,7 @@ public class PerstFeatureInstance extends Persistent implements FeatureInstance 
 	}
 
 	@Override
-	public FeatureVersion getFeatureVersion() {
+	public FeatureRevision getFeatureVersion() {
 		return this.featureVersion;
 	}
 
