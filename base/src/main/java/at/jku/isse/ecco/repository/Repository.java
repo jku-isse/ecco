@@ -125,13 +125,15 @@ public interface Repository {
 
 		/**
 		 * Retrieves the module instance with given positive and negative features from repository.
-		 * If such a module does not already exist it is created.
+		 * If such a module does not already exist it is created. // TODO: should it really?
 		 *
 		 * @param pos
 		 * @param neg
 		 * @return
 		 */
 		public Module getModule(Feature[] pos, Feature[] neg);
+
+		public Module addModule(Feature[] pos, Feature[] neg);
 
 		/**
 		 * Retrieves the module revision instance with given positive feature revisions and negative features from the repository.

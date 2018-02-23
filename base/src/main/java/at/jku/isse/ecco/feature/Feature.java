@@ -6,9 +6,6 @@ import java.util.List;
 
 /**
  * Contains id, name and description of a feature.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public interface Feature extends Persistable {
 

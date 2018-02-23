@@ -19,9 +19,6 @@ import java.util.Set;
 
 /**
  * Creates entities depending on the used data implementation.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public interface EntityFactory {
 
@@ -38,18 +35,21 @@ public interface EntityFactory {
 	public Remote createRemote(String name, String address, Remote.Type type);
 
 	/**
+	 * Creates an empty commit.
+	 *
+	 * @return
+	 */
+	public Commit createCommit();
+
+	/**
 	 * Creates an empty configuration.
 	 *
 	 * @return
 	 */
 	public Configuration createConfiguration();
 
-	/**
-	 * Creates an empty commit.
-	 *
-	 * @return
-	 */
-	public Commit createCommit();
+	public Configuration createConfiguration(FeatureRevision[] featureRevisions);
+
 
 	/**
 	 * Creates an empty presence condition.
@@ -58,24 +58,6 @@ public interface EntityFactory {
 	 */
 	public PresenceCondition createPresenceCondition();
 
-	/**
-	 * Creates a presence condition that is initialized with the given configuration.
-	 *
-	 * @param configuration The configuration to compute the presence condition from.
-	 * @return
-	 */
-	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder);
-
-	/**
-	 * Creates a clone/copy of the given presence condition.
-	 *
-	 * @param pc The presence condition that is to be cloned.
-	 * @return
-	 */
-	public PresenceCondition createPresenceCondition(PresenceCondition pc);
-
-
-	// # ARTIFACTS ################################################################
 
 	/**
 	 * Creates an artifact containing the given data.
@@ -85,8 +67,6 @@ public interface EntityFactory {
 	 */
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data);
 
-
-	// # ASSOCIATIONS ################################################################
 
 	/**
 	 * Creates a new empty instance of an association with all fields being initialized to the standard value.
@@ -104,8 +84,6 @@ public interface EntityFactory {
 	public Association.Op createAssociation(Set<Node.Op> nodes);
 
 
-	// # FEATURES and MODULES ################################################################
-
 	/**
 	 * Creates a new instance of a {@link Feature} with the given name and description.
 	 *
@@ -116,6 +94,7 @@ public interface EntityFactory {
 	 */
 	public Feature createFeature(final String id, final String name, final String description);
 
+
 	/**
 	 * Creates a new module.
 	 *
@@ -125,8 +104,6 @@ public interface EntityFactory {
 
 	public ModuleRevision createModuleRevision(FeatureRevision[] pos, Feature[] neg);
 
-
-	// # NODES ################################################################
 
 	/**
 	 * Creates a new empty node.

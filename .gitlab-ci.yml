@@ -103,8 +103,9 @@ pages:
     - cd public
     - pwd
     - ls -la
-  #only:
-  #  - master
+  only:
+    - master
+    - develop
   when: on_success
   allow_failure: false
   dependencies:

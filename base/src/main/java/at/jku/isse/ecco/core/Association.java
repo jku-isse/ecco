@@ -75,21 +75,35 @@ public interface Association extends Persistable {
 	 */
 	public interface Op extends Association {
 
-		public HashMap<Module, SubTable> getFeatureModules();
+		public HashMap<Counter<Module>, Collection<Counter<ModuleRevision>>> getModules();
 
 
-		public interface SubTable {
-			public Counter getCounter();
+		/**
+		 * Adds another association's observations to this association.
+		 *
+		 * @param association
+		 */
+		public default void add(Association.Op association) {
 
-			public HashMap<ModuleRevision, Counter> getRevisionModules();
 		}
 
+		/**
+		 * Adds an observation of the given revision module either with the artifacts present or not present.
+		 *
+		 * @param revisionModule
+		 */
+		public default void addObservation(ModuleRevision revisionModule) {
 
-		public void add(Association.Op association);
+		}
 
-		public void updateWithNewModules(Collection<ModuleRevision> moduleRevisions);
+		public default Module[] getTracingFeatureModules() {
+			return null;
+		}
 
-		public void addObservation(ModuleRevision moduleRevision);
+		public default ModuleRevision[] getTracingRevisionModules() {
+			return null;
+		}
+
 
 		public int getCount();
 

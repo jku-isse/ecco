@@ -8,7 +8,6 @@ import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
@@ -29,6 +28,7 @@ public class RepositoryOperator {
 	private EntityFactory entityFactory;
 
 	public RepositoryOperator(Repository.Op repository) {
+		checkNotNull(repository);
 		this.repository = repository;
 		this.entityFactory = repository.getEntityFactory();
 	}
@@ -50,55 +50,57 @@ public class RepositoryOperator {
 	}
 
 
-	/**
-	 * Copies every existing module and adds every new feature negatively.
-	 *
-	 * @param newFeatures
-	 * @return
-	 */
-	private Collection<ModuleRevision> addFeatures(Collection<Feature> newFeatures) {
-		Collection<ModuleRevision> allNewRevisionModules = new ArrayList<>();
-		for (Feature feature : newFeatures) {
-			allNewRevisionModules.addAll(this.addFeature(feature));
-		}
-		return allNewRevisionModules;
-	}
+	private Collection<FeatureRevision> addConfigurationFeatures(Configuration configuration) {
+		checkNotNull(configuration);
 
-	/**
-	 * Copies every existing module and adds the new feature negatively.
-	 *
-	 * @param feature
-	 * @return
-	 */
-	private Collection<ModuleRevision> addFeature(Feature feature) {
-		// TODO: also add feature to repository here? move code from "extract" method to here?
+		// add new features and feature revisions from configuration to this repository
+		Collection<FeatureRevision> repoFeatureRevisions = new ArrayList<>();
+		for (FeatureRevision featureRevision : configuration.getFeatureRevisions()) {
+			Feature feature = featureRevision.getFeature();
+			// get/add feature from/to repository
+			Feature repoFeature = this.repository.getFeature(feature.getId());
+			if (repoFeature == null) {
+				repoFeature = this.repository.addFeature(feature.getId(), feature.getName(), feature.getDescription());
 
-		Collection<ModuleRevision> newModuleRevisions = new ArrayList<>();
-		for (Module module : this.repository.getModules()) {
-			// create array of negative features. to be reused also by every revision module.
-			Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
-			negFeatures[negFeatures.length - 1] = feature;
-			// create copy of feature module with new feature negative
-			Module newModule = this.entityFactory.createModule(module.getPos(), negFeatures);
-			newModule.setCount(module.getCount());
-			// make sure it does not already exist. TODO: remove this later. simply check if the feature already exists.
-			if (this.repository.getModules().contains(newModule))
-				throw new EccoException("ERROR: feature module already exists.");
-			// do the same for the revision modules
-			for (ModuleRevision revisionModule : module.getRevisions()) {
-				// create copy of module revision with new feature negative
-//				ModuleRevision newModuleRevision = newModule.createModuleRevision(revisionModule.getPos(), negFeatures);
-//				newModuleRevision.setCount(revisionModule.getCount());
-//				newModule.addRevision(newModuleRevision);
-				ModuleRevision newModuleRevision = newModule.addRevision(revisionModule.getPos(), negFeatures);
-				newModuleRevision.setCount(revisionModule.getCount());
-				newModuleRevisions.add(newModuleRevision);
+				// add new modules to the repository that contain the new feature negatively. copies every existing module and adds the new feature negatively.
+				for (Module module : this.repository.getModules()) {
+					// TODO: there is a concurrent modification here!?
+					// create array of negative features. to be reused also by every revision module.
+					Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
+					negFeatures[negFeatures.length - 1] = repoFeature;
+					// create copy of module with new feature negative
+					//Module newModule = this.entityFactory.createModule(module.getPos(), negFeatures);
+					Module newModule = this.repository.addModule(module.getPos(), negFeatures); // TODO: this should check if the module already exists!
+					newModule.setCount(module.getCount());
+					// do the same for the revision modules
+					for (ModuleRevision moduleRevision : module.getRevisions()) {
+						// create copy of module revision with new feature negative
+						ModuleRevision newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
+						newModuleRevision.setCount(moduleRevision.getCount());
+						// update existing associations that have matching old module with the new module
+						for (Association.Op association : this.repository.getAssociations()) {
+							//association.updateWithNewModule(newModuleRevision);
+							ModuleRevisionCounter existingModuleRevision = association.getModuleRevisionCounter(moduleRevision);
+							if (existingModuleRevision != null)
+								association.addObservation(newModuleRevision, existingModuleRevision.getCount());
+						}
+					}
+				}
 			}
+			// get/add feature revision from/to repository
+			FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureRevision.getId());
+			if (repoFeatureRevision == null) {
+				repoFeatureRevision = repoFeature.addRevision(featureRevision.getId());
+				repoFeatureRevision.setDescription(featureRevision.getDescription());
+			}
+			repoFeatureRevisions.add(repoFeatureRevision);
 		}
-		return newModuleRevisions;
+		return repoFeatureRevisions;
 	}
 
 	/**
+	 * Compute modules for configuration. New modules are added to the repository. Old ones have their counter incremented.
+	 * <p>
 	 * Uses all positive feature revisions of the configuration.
 	 * Ignores all negative features and revisions (there should be none in the configuration). TODO: change configuration and remove feature instance type such that this is not possible anymore.
 	 * <p>
@@ -111,39 +113,33 @@ public class RepositoryOperator {
 	 * @param configuration The configuration to be added to the repository.
 	 * @return All module revisions that are contained in the configuration.
 	 */
-	private Collection<ModuleRevision> addConfiguration(Configuration configuration) {
+	private Collection<ModuleRevision> addConfigurationModules(Configuration configuration) {
 		checkNotNull(configuration);
 
-		Collection<FeatureInstance> featureInstances = configuration.getFeatureInstances();
-
 		// collect positive feature revisions
-		Collection<FeatureRevision> pos = new ArrayList();
-		for (FeatureInstance featureInstance : featureInstances) {
-			if (featureInstance.getSign()) {
-				// get feature from repository
-				Feature repoFeature = this.repository.getFeature(featureInstance.getFeature().getId());
-				if (repoFeature == null)
-					throw new EccoException("ERROR: feature does not exist in repository: " + featureInstance.getFeature());
-				// get feature revision from repository
-				FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureInstance.getFeatureVersion().getId());
-				if (repoFeatureRevision == null)
-					throw new EccoException("ERROR: feature revision does not exist inr epository: " + featureInstance.getFeatureVersion());
-				pos.add(featureInstance.getFeatureVersion());
-			} else {
-				//neg.add(featureInstance.getFeature());
-			}
+		Collection<FeatureRevision> pos = new ArrayList<>();
+		for (FeatureRevision featureRevision : configuration.getFeatureRevisions()) {
+			// get feature from repository
+			Feature repoFeature = this.repository.getFeature(featureRevision.getFeature().getId());
+			if (repoFeature == null)
+				throw new EccoException("ERROR: feature does not exist in repository: " + featureRevision.getFeature());
+			// get feature revision from repository
+			FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureRevision.getId());
+			if (repoFeatureRevision == null)
+				throw new EccoException("ERROR: feature revision does not exist in repository: " + featureRevision);
+			pos.add(repoFeatureRevision);
 		}
 
 		// collect negative features
-		Collection<Feature> neg = new ArrayList();
+		Collection<Feature> neg = new ArrayList<>();
 		for (Feature feature : this.repository.getFeatures()) {
-			if (!pos.stream().anyMatch(featureRevision -> featureRevision.getFeature().equals(feature))) {
+			if (pos.stream().noneMatch(featureRevision -> featureRevision.getFeature().equals(feature))) {
 				neg.add(feature);
 			}
 		}
 
 		// add empty module initially
-		Collection<ModuleRevision> modules = new ArrayList();
+		Collection<ModuleRevision> modules = new ArrayList<>();
 		ModuleRevision emptyModule = this.entityFactory.createModuleRevision(new FeatureRevision[]{}, new Feature[]{});
 		modules.add(emptyModule); // add empty module to power set
 
@@ -204,48 +200,18 @@ public class RepositoryOperator {
 		checkNotNull(configuration);
 		checkNotNull(nodes);
 
-		// TODO: restructure the following code together with this.addFeatures and this.addConfiguration!
+		// add configuration features and revisions
+		Collection<FeatureRevision> repoFeatureRevisions = this.addConfigurationFeatures(configuration);
 
-		// add new features and feature revisions from configuration to this repository
-		Collection<Feature> newFeatures = new ArrayList<>();
-		Collection<FeatureRevision> newFeatureRevisions = new ArrayList<>();
-		Configuration newConfiguration = this.entityFactory.createConfiguration();
-		for (FeatureInstance featureInstance : configuration.getFeatureInstances()) {
-			Feature feature = featureInstance.getFeature();
-			Feature repoFeature = this.repository.getFeature(featureInstance.getFeature().getId());
-			if (repoFeature == null) {
-				repoFeature = this.repository.addFeature(feature.getId(), feature.getName(), feature.getDescription());
-				newFeatures.add(repoFeature);
-			}
-			FeatureRevision featureRevision = featureInstance.getFeatureVersion();
-			FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureRevision.getId());
-			if (repoFeatureRevision == null) {
-				repoFeatureRevision = repoFeature.addRevision(featureRevision.getId());
-				repoFeatureRevision.setDescription(featureRevision.getDescription());
-				newFeatureRevisions.add(repoFeatureRevision);
-			}
-			FeatureInstance newFeatureInstance = repoFeatureRevision.getInstance(featureInstance.getSign());
-			newConfiguration.addFeatureInstance(newFeatureInstance);
-		}
+		// create configuration with repo feature revisions
+		Configuration repoConfiguration = this.entityFactory.createConfiguration(repoFeatureRevisions.toArray(new FeatureRevision[repoFeatureRevisions.size()]));
 
-		// add new modules to the repository that contain the new features negatively
-		Collection<ModuleRevision> newModuleRevisions = this.addFeatures(newFeatures);
+		// add configuration modules and module revisions
+		Collection<ModuleRevision> moduleRevisions = this.addConfigurationModules(repoConfiguration);
 
-		// update existing associations that have matching old modules with the new modules
-		for (Association.Op association : this.repository.getAssociations()) {
-			association.updateWithNewModules(newModuleRevisions);
-		}
-
-		// -------------------------------------------------------------------------------------
-
-		// compute modules for configuration. new modules are added to the repository. old ones have their counter incremented.
-		Collection<ModuleRevision> moduleRevisions = this.addConfiguration(newConfiguration);
-
-		// create association
+		// create and initialize new association
 		Association.Op association = this.entityFactory.createAssociation(nodes);
 		association.setId(UUID.randomUUID().toString());
-
-		// initialize new association
 		association.setCount(1);
 		for (ModuleRevision moduleRevision : moduleRevisions) {
 			association.addObservation(moduleRevision);
@@ -254,11 +220,9 @@ public class RepositoryOperator {
 		// do actual extraction
 		this.extract(association);
 
-		// -------------------------------------------------------------------------------------
-
 		// create commit object
 		Commit commit = this.entityFactory.createCommit();
-		commit.setConfiguration(newConfiguration);
+		commit.setConfiguration(repoConfiguration);
 
 		return commit;
 	}
@@ -268,7 +232,7 @@ public class RepositoryOperator {
 	 *
 	 * @param inputAs The collection of associations to be committed.
 	 */
-	protected void extract(Collection<? extends Association.Op> inputAs) {
+	private void extract(Collection<? extends Association.Op> inputAs) {
 		checkNotNull(inputAs);
 
 		for (Association.Op inputA : inputAs) {
@@ -281,7 +245,7 @@ public class RepositoryOperator {
 	 *
 	 * @param association The association to be committed.
 	 */
-	protected void extract(Association.Op association) {
+	private void extract(Association.Op association) {
 		checkNotNull(association);
 
 		Collection<? extends Association.Op> originalAssociations = this.repository.getAssociations();
@@ -343,7 +307,7 @@ public class RepositoryOperator {
 		return this.compose(configuration, true);
 	}
 
-	public Checkout compose(Configuration configuration, boolean lazy) {
+	private Checkout compose(Configuration configuration, boolean lazy) {
 		checkNotNull(configuration);
 
 		Set<Association> selectedAssociations = new HashSet<>();
@@ -382,7 +346,7 @@ public class RepositoryOperator {
 		return checkout;
 	}
 
-	public Checkout compose(Collection<Association> selectedAssociations, boolean lazy) {
+	private Checkout compose(Collection<Association> selectedAssociations, boolean lazy) {
 		Node compRootNode;
 		Collection<Artifact<?>> orderWarnings;
 		if (lazy) {

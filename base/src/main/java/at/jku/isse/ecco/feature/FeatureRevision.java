@@ -4,18 +4,8 @@ import at.jku.isse.ecco.dao.Persistable;
 
 /**
  * Represents a version of a feature.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public interface FeatureRevision extends Persistable {
-
-	public FeatureInstance getPositiveInstance();
-
-	public FeatureInstance getNegativeInstance();
-
-	public FeatureInstance getInstance(boolean sign);
-
 
 	/**
 	 * Returns the feature belonging to this version.
