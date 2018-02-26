@@ -3,7 +3,7 @@ package at.jku.isse.ecco.feature;
 import at.jku.isse.ecco.dao.Persistable;
 
 /**
- * Represents a version of a feature.
+ * Represents a revision of a feature.
  */
 public interface FeatureRevision extends Persistable {
 
@@ -13,6 +13,7 @@ public interface FeatureRevision extends Persistable {
 	 * @return The feature belonging to this version.
 	 */
 	public Feature getFeature();
+
 
 	public String getId();
 
@@ -26,5 +27,18 @@ public interface FeatureRevision extends Persistable {
 
 	@Override
 	public boolean equals(Object object);
+
+
+	public default String getFeatureRevisionString() {
+		return this.getFeature().getName() + "." + this.getId();
+	}
+
+	/**
+	 * Should call {@link #getFeatureRevisionString}.
+	 *
+	 * @return The feature revision string representing this feature revision.
+	 */
+	@Override
+	public String toString();
 
 }

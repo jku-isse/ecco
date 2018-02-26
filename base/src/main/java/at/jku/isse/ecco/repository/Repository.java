@@ -35,6 +35,11 @@ public interface Repository {
 		@Override
 		public Collection<? extends Association.Op> getAssociations();
 
+		/**
+		 * Returns a (not backed) collection of modules in the repository.
+		 *
+		 * @return
+		 */
 		public Collection<? extends Module> getModules();
 
 
@@ -133,6 +138,14 @@ public interface Repository {
 		 */
 		public Module getModule(Feature[] pos, Feature[] neg);
 
+		/**
+		 * Checks if the given module already exists and throws an exception if it does.
+		 * Otherwise the new module is added to the repository.
+		 *
+		 * @param pos
+		 * @param neg
+		 * @return The module instance that was added to the repository.
+		 */
 		public Module addModule(Feature[] pos, Feature[] neg);
 
 		/**

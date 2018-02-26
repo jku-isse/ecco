@@ -120,7 +120,7 @@ public class BasePresenceCondition implements PresenceCondition, PresenceConditi
 
 	@Override
 	public Module createModule() {
-		return new BaseModule();
+		return new MemModule();
 	}
 
 	@Override

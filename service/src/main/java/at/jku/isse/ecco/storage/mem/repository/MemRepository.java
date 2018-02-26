@@ -5,7 +5,7 @@ import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
-import at.jku.isse.ecco.storage.mem.feature.BaseFeature;
+import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -95,7 +95,7 @@ public class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public Feature addFeature(String id, String name, String description) {
-		Feature feature = new BaseFeature(id, name, description);
+		Feature feature = new MemFeature(id, name, description);
 		this.features.put(feature.getId(), feature);
 		return feature;
 	}

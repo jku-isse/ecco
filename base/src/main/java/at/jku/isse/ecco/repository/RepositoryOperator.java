@@ -5,6 +5,9 @@ import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.counter.CounterNode;
+import at.jku.isse.ecco.counter.ModuleCounter;
+import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -50,6 +53,14 @@ public class RepositoryOperator {
 	}
 
 
+	/**
+	 * Adds all features and feature revisions in the given configuration that are not already contained in the repository to the repository.
+	 * In the process, all associations in the repository are updated with new modules containing the new features negatively.
+	 * Returns a collection of all feature revisions instances in the repository that are contained in the repository, those that already existed and those that were added.
+	 *
+	 * @param configuration The configuration whose features are added to the repository.
+	 * @return Collection of all feature revision instances of the repository that are contained in the configuration.
+	 */
 	private Collection<FeatureRevision> addConfigurationFeatures(Configuration configuration) {
 		checkNotNull(configuration);
 
@@ -64,13 +75,11 @@ public class RepositoryOperator {
 
 				// add new modules to the repository that contain the new feature negatively. copies every existing module and adds the new feature negatively.
 				for (Module module : this.repository.getModules()) {
-					// TODO: there is a concurrent modification here!?
 					// create array of negative features. to be reused also by every revision module.
 					Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
 					negFeatures[negFeatures.length - 1] = repoFeature;
 					// create copy of module with new feature negative
-					//Module newModule = this.entityFactory.createModule(module.getPos(), negFeatures);
-					Module newModule = this.repository.addModule(module.getPos(), negFeatures); // TODO: this should check if the module already exists!
+					Module newModule = this.repository.addModule(module.getPos(), negFeatures);
 					newModule.setCount(module.getCount());
 					// do the same for the revision modules
 					for (ModuleRevision moduleRevision : module.getRevisions()) {
@@ -79,10 +88,20 @@ public class RepositoryOperator {
 						newModuleRevision.setCount(moduleRevision.getCount());
 						// update existing associations that have matching old module with the new module
 						for (Association.Op association : this.repository.getAssociations()) {
-							//association.updateWithNewModule(newModuleRevision);
-							ModuleRevisionCounter existingModuleRevision = association.getModuleRevisionCounter(moduleRevision);
-							if (existingModuleRevision != null)
-								association.addObservation(newModuleRevision, existingModuleRevision.getCount());
+
+
+
+
+							ModuleCounter existingModuleCounter = association.getCounter().getChild(moduleRevision.getModule());
+							if (existingModuleCounter != null) {
+								ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
+								if (existingModuleRevisionCounter != null) {
+									association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
+								}
+							}
+
+
+
 						}
 					}
 				}
@@ -101,17 +120,15 @@ public class RepositoryOperator {
 	/**
 	 * Compute modules for configuration. New modules are added to the repository. Old ones have their counter incremented.
 	 * <p>
-	 * Uses all positive feature revisions of the configuration.
-	 * Ignores all negative features and revisions (there should be none in the configuration). TODO: change configuration and remove feature instance type such that this is not possible anymore.
+	 * Uses all feature revisions of the configuration positively and all other features contained in the repository but not in the configuration negatively.
 	 * <p>
-	 * Expects all features and feature revisions to already exist in the repository.
 	 * Uses feature and feature revision instances contained in the repository and discards the instances in the configuration.
 	 * <p>
 	 * Uses module and module revision instances contained in the repository.
 	 * If a module or module revision does not yet exist in the repository it is created and added to the repository.
 	 *
-	 * @param configuration The configuration to be added to the repository.
-	 * @return All module revisions that are contained in the configuration.
+	 * @param configuration The configuration whose modules are computed and added to the repository.
+	 * @return All module revision instances of the repository that are contained in the configuration.
 	 */
 	private Collection<ModuleRevision> addConfigurationModules(Configuration configuration) {
 		checkNotNull(configuration);
@@ -132,9 +149,9 @@ public class RepositoryOperator {
 
 		// collect negative features
 		Collection<Feature> neg = new ArrayList<>();
-		for (Feature feature : this.repository.getFeatures()) {
-			if (pos.stream().noneMatch(featureRevision -> featureRevision.getFeature().equals(feature))) {
-				neg.add(feature);
+		for (Feature repoFeature : this.repository.getFeatures()) {
+			if (pos.stream().noneMatch(featureRevision -> featureRevision.getFeature().equals(repoFeature))) {
+				neg.add(repoFeature);
 			}
 		}
 

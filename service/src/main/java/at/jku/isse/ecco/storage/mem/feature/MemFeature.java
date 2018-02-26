@@ -6,40 +6,22 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Memory implementation of {@link Feature}.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
-public class BaseFeature implements Feature {
+public class MemFeature implements Feature {
 
 	private String id = "";
 	private String name = "";
 	private String description = "";
 
-	private List<FeatureRevision> versions = new ArrayList<FeatureRevision>();
+	private List<FeatureRevision> versions = new ArrayList<>();
 
-//	private int nextVersion = 0;
-
-//	public BaseFeature() {
-//		this(UUID.randomUUID().toString(), "", "");
-//	}
-//
-//	public BaseFeature(String name) {
-//		this(UUID.randomUUID().toString(), name, "");
-//	}
-//
-//	public BaseFeature(String name, String description) {
-//		this(UUID.randomUUID().toString(), name, description);
-//	}
-
-	public BaseFeature(String id, String name, String description) {
+	public MemFeature(String id, String name, String description) {
 		checkNotNull(id);
 		checkNotNull(name);
 		checkNotNull(description);
@@ -56,7 +38,7 @@ public class BaseFeature implements Feature {
 
 	@Override
 	public FeatureRevision addRevision(String id) {
-		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, id);
+		MemFeatureRevision featureVersion = new MemFeatureRevision(this, id);
 		if (!this.versions.contains(featureVersion)) {
 			this.versions.add(featureVersion);
 //			if (this.nextVersion <= version)
@@ -80,14 +62,6 @@ public class BaseFeature implements Feature {
 		if (this.versions.isEmpty())
 			return null;
 		return this.versions.get(this.versions.size() - 1);
-	}
-
-	@Override
-	public FeatureRevision createNewVersion() {
-		BaseFeatureVersion featureVersion = new BaseFeatureVersion(this, UUID.randomUUID().toString());
-//		this.nextVersion++;
-		this.versions.add(featureVersion);
-		return featureVersion;
 	}
 
 
@@ -130,7 +104,7 @@ public class BaseFeature implements Feature {
 	@Override
 	public boolean equals(final Object obj) {
 		if (this == obj) return true;
-		if (!(obj instanceof BaseFeature)) return false;
+		if (!(obj instanceof MemFeature)) return false;
 
 		final Feature other = (Feature) obj;
 		return this.id.equals(other.getId());

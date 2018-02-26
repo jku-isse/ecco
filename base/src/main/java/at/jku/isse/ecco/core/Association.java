@@ -1,38 +1,18 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.counter.AssociationCounter;
+import at.jku.isse.ecco.counter.CounterNode;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleCondition;
 import at.jku.isse.ecco.module.ModuleRevision;
-import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.RootNode;
-
-import java.util.Collection;
-import java.util.HashMap;
 
 /**
  * Represents a trace between a presence condition and an artifact tree. An association can have a set of parents.
  */
 public interface Association extends Persistable {
-
-	// # PRESENCE CONDITION #####################################################################
-
-	/**
-	 * Returns the presence condition of the association.
-	 *
-	 * @return The presence condition.
-	 */
-	public PresenceCondition getPresenceCondition();
-
-	/**
-	 * Sets the presence condition of the association.
-	 *
-	 * @param presenceCondition The presence condition.
-	 */
-	public void setPresenceCondition(PresenceCondition presenceCondition);
-
-
-	// ######################################################################
 
 	/**
 	 * Returns the id of the association or the empty string if it does not have an id yet.
@@ -75,7 +55,10 @@ public interface Association extends Persistable {
 	 */
 	public interface Op extends Association {
 
-		public HashMap<Counter<Module>, Collection<Counter<ModuleRevision>>> getModules();
+		public AssociationCounter getCounter();
+
+
+		public CounterNode<Association, Module> getCounterNode();
 
 
 		/**
@@ -83,33 +66,20 @@ public interface Association extends Persistable {
 		 *
 		 * @param association
 		 */
-		public default void add(Association.Op association) {
-
-		}
+		public void add(Association.Op association);
 
 		/**
 		 * Adds an observation of the given revision module either with the artifacts present or not present.
 		 *
 		 * @param revisionModule
 		 */
-		public default void addObservation(ModuleRevision revisionModule) {
+		public void addObservation(ModuleRevision revisionModule);
 
-		}
+//		public Module[] getTracingFeatureModules();
+//
+//		public ModuleRevision[] getTracingRevisionModules();
 
-		public default Module[] getTracingFeatureModules() {
-			return null;
-		}
-
-		public default ModuleRevision[] getTracingRevisionModules() {
-			return null;
-		}
-
-
-		public int getCount();
-
-		public void setCount(int value);
-
-		public void incCount();
+		public ModuleCondition getModuleCondition();
 
 
 		public EntityFactory getEntityFactory();

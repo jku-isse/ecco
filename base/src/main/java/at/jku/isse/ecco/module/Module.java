@@ -4,7 +4,9 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -37,5 +39,24 @@ public interface Module {
 	public void setCount(int value);
 
 	public void incCount();
+
+
+	@Override
+	public int hashCode();
+
+	@Override
+	public boolean equals(Object object);
+
+
+	public default String getModuleString() {
+		String moduleString = Arrays.stream(this.getPos()).map(feature -> feature.toString()).collect(Collectors.joining(", "));
+		if (this.getNeg().length > 0)
+			moduleString += Arrays.stream(this.getNeg()).map(feature -> feature.toString()).collect(Collectors.joining(", "));
+
+		return "d^" + this.getOrder() + "(" + moduleString + ")";
+	}
+
+	@Override
+	public String toString();
 
 }

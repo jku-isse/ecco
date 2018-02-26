@@ -10,14 +10,14 @@ import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.storage.mem.core.BaseCommit;
 import at.jku.isse.ecco.storage.mem.core.BaseRemote;
-import at.jku.isse.ecco.storage.mem.feature.BaseConfiguration;
-import at.jku.isse.ecco.storage.mem.feature.BaseFeature;
+import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
+import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.BasePresenceCondition;
 import at.jku.isse.ecco.storage.mem.repository.MemRepository;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.core.BaseAssociation;
 import at.jku.isse.ecco.storage.mem.core.BaseVariant;
-import at.jku.isse.ecco.storage.mem.module.BaseModule;
+import at.jku.isse.ecco.storage.mem.module.MemModule;
 import at.jku.isse.ecco.storage.mem.module.BaseModuleFeature;
 import at.jku.isse.ecco.storage.mem.tree.BaseNode;
 import at.jku.isse.ecco.storage.mem.tree.BaseRootNode;
@@ -40,7 +40,7 @@ public class MemEntityFactory implements EntityFactory {
 
 	@Override
 	public Configuration createConfiguration() {
-		return new BaseConfiguration();
+		return new MemConfiguration();
 	}
 
 	@Override
@@ -118,7 +118,7 @@ public class MemEntityFactory implements EntityFactory {
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
 		checkNotNull(description);
 
-		final Feature feature = new BaseFeature(id, name, description);
+		final Feature feature = new MemFeature(id, name, description);
 
 		return feature;
 	}
@@ -134,7 +134,7 @@ public class MemEntityFactory implements EntityFactory {
 
 	@Override
 	public Module createModule() {
-		return new BaseModule();
+		return new MemModule();
 	}
 
 //	@Override

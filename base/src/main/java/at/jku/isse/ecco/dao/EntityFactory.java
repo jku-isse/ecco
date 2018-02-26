@@ -96,7 +96,7 @@ public interface EntityFactory {
 
 
 	/**
-	 * Creates a new module.
+	 * Creates a new module. TODO: move this from here to repository. nobody else should be allowed to create modules. same with features?
 	 *
 	 * @return Returns a new initialized module.
 	 */

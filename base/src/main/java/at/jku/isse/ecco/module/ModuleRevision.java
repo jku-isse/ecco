@@ -4,6 +4,12 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
+/**
+ *
+ */
 public interface ModuleRevision {
 
 	/**
@@ -28,5 +34,24 @@ public interface ModuleRevision {
 	public void setCount(int value);
 
 	public void incCount();
+
+
+	@Override
+	public int hashCode();
+
+	@Override
+	public boolean equals(Object object);
+
+
+	public default String getModuleRevisionString() {
+		String moduleRevisionString = Arrays.stream(this.getPos()).map(featureRevision -> featureRevision.toString()).collect(Collectors.joining(", "));
+		if (this.getNeg().length > 0)
+			moduleRevisionString += Arrays.stream(this.getNeg()).map(feature -> feature.toString()).collect(Collectors.joining(", "));
+
+		return "d^" + this.getOrder() + "(" + moduleRevisionString + ")";
+	}
+
+	@Override
+	public String toString();
 
 }

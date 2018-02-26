@@ -1,57 +1,27 @@
 package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureInstance;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Memory implementation of {@link FeatureRevision}.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
-public class BaseFeatureVersion implements FeatureRevision {
+public class MemFeatureRevision implements FeatureRevision {
 
 	private Feature feature;
 	private String id;
 	private String description;
 
-	private FeatureInstance pos;
-	private FeatureInstance neg;
-
-	public BaseFeatureVersion(Feature feature, String id) {
+	public MemFeatureRevision(Feature feature, String id) {
 		checkNotNull(feature);
 		checkNotNull(id);
 
 		this.feature = feature;
 		this.id = id;
-
-		this.pos = new BaseFeatureInstance(feature, this, true);
-		this.neg = new BaseFeatureInstance(feature, this, false);
-
-//		this.feature.addVersion(this);
 	}
 
-
-	@Override
-	public FeatureInstance getPositiveInstance() {
-		return this.pos;
-	}
-
-	@Override
-	public FeatureInstance getNegativeInstance() {
-		return this.neg;
-	}
-
-	@Override
-	public FeatureInstance getInstance(boolean sign) {
-		if (sign)
-			return this.pos;
-		else
-			return this.neg;
-	}
 
 	@Override
 	public Feature getFeature() {
@@ -84,9 +54,9 @@ public class BaseFeatureVersion implements FeatureRevision {
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (!(o instanceof BaseFeatureVersion)) return false;
+		if (!(o instanceof MemFeatureRevision)) return false;
 
-		BaseFeatureVersion that = (BaseFeatureVersion) o;
+		MemFeatureRevision that = (MemFeatureRevision) o;
 
 		if (!getFeature().equals(that.getFeature())) return false;
 		return getId().equals(that.getId());
