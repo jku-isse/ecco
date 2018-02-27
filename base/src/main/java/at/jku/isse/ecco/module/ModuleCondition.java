@@ -18,6 +18,7 @@ public interface ModuleCondition {
 
 	public TYPE getType();
 
+
 	public Map<Module, Collection<ModuleRevision>> getModules();
 
 	public default void addModule(Module module) {
@@ -30,9 +31,62 @@ public interface ModuleCondition {
 	}
 
 
-	public boolean holds(Configuration configuration);
+	public default boolean contains(Module module) {
+		return this.getModules().containsKey(module);
+	}
 
-	public boolean implies(ModuleCondition other);
+	public default boolean contains(ModuleRevision moduleRevision) {
+		Collection<ModuleRevision> moduleRevisions = this.getModules().get(moduleRevision.getModule());
+		if (moduleRevisions == null)
+			return false;
+		return moduleRevisions.contains(moduleRevision);
+	}
+
+
+	/**
+	 * Checks if the condition holds for a given configuration.
+	 * A condition holds in a configuration when at least one of its module revisions holds. A module revision holds if all its feature revisions are contained in a configuration.
+	 *
+	 * @param configuration The configuration against which the presence condition should be checked.
+	 * @return True if the presence condition holds for configuration, false otherwise.
+	 */
+	public default boolean holds(Configuration configuration) {
+		for (Map.Entry<Module, Collection<ModuleRevision>> entry : this.getModules().entrySet()) {
+			// if the module holds check if also a concrete revision holds
+			if (entry.getKey().holds(configuration) && entry.getValue() != null) {
+				for (ModuleRevision moduleRevision : entry.getValue()) {
+					if (moduleRevision.holds(configuration))
+						return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Checks if this condition implies other condition.
+	 * This imeans every module in this must be implied by at least one module in other.
+	 *
+	 * @param other
+	 * @return
+	 */
+	public default boolean implies(ModuleCondition other) {
+		// TODO: !!!
+		for (Module m2 : other.getMinModules()) {
+			boolean moduleImplied = false;
+			for (Module m1 : this.presenceCondition.getMinModules()) {
+				if (m1.containsAll(m2)) {
+					moduleImplied = true;
+					break;
+				}
+			}
+			if (!moduleImplied) {
+				return false;
+			}
+
+		}
+		return true;
+	}
 
 
 	public default String getModuleConditionString() {

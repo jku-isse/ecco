@@ -1,7 +1,8 @@
 package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.counter.AssociationCounter;
-import at.jku.isse.ecco.counter.CounterNode;
+import at.jku.isse.ecco.counter.ModuleCounter;
+import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.module.Module;
@@ -50,36 +51,109 @@ public interface Association extends Persistable {
 	public RootNode getRootNode();
 
 
+	public ModuleCondition computeCondition();
+
+
 	/**
-	 * Private association interface.
+	 * Private association operand interface.
 	 */
 	public interface Op extends Association {
 
-		public AssociationCounter getCounter();
+		public default ModuleCondition computeCondition() {
+			ModuleCondition moduleCondition = this.getEntityFactory().createModuleCondition();
+			AssociationCounter associationCounter = this.getCounter();
 
+			// for every module check if it traces uniquely
+			for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
+				// condition for unique trace
+				if (moduleCounter.getCount() == moduleCounter.getObject().getCount() && moduleCounter.getCount() == associationCounter.getCount()) {
+					moduleCondition.addModule(moduleCounter.getObject());
+					// now check to which revisions it traces
+					for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
+						if (moduleRevisionCounter.getCount() > 0) {
+							moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
+						}
+					}
+				}
+			}
 
-		public CounterNode<Association, Module> getCounterNode();
+			// if the module condition is empty check if it traces disjunctively
+			if (moduleCondition.getModules().isEmpty()) {
+				for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
+					// condition for disjunctive trace
+					if (moduleCounter.getCount() == moduleCounter.getObject().getCount()) {
+						moduleCondition.addModule(moduleCounter.getObject());
+						// now check to which revisions it traces
+						for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
+							if (moduleRevisionCounter.getCount() > 0) {
+								moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
+							}
+						}
+					}
+				}
+			}
+
+			return moduleCondition;
+		}
 
 
 		/**
 		 * Adds another association's observations to this association.
 		 *
-		 * @param association
+		 * @param other
 		 */
-		public void add(Association.Op association);
+		public default void add(Association.Op other) {
+			AssociationCounter thisCounter = this.getCounter();
+			AssociationCounter otherCounter = this.getCounter();
+			thisCounter.incCount(otherCounter.getCount());
+			// add every module in other association to this association
+			for (ModuleCounter otherModuleCounter : otherCounter.<ModuleRevision>getChildren()) {
+				ModuleCounter thisModuleCounter = thisCounter.getChild(otherModuleCounter.getObject());
+				// if the counter for this module does not exist yet add it
+				if (thisModuleCounter == null) {
+					thisModuleCounter = thisCounter.addChild(otherModuleCounter.getObject());
+				}
+				thisModuleCounter.incCount(otherModuleCounter.getCount());
+				// add every module revision in other module to this module
+				for (ModuleRevisionCounter otherModuleRevisionCounter : otherModuleCounter.getChildren()) {
+					ModuleRevisionCounter thisModuleRevisionCounter = thisModuleCounter.getChild(otherModuleRevisionCounter.getObject());
+					if (thisModuleRevisionCounter == null) {
+						thisModuleRevisionCounter = thisModuleCounter.addChild(otherModuleRevisionCounter.getObject());
+					}
+					thisModuleRevisionCounter.incCount(otherModuleRevisionCounter.getCount());
+				}
+			}
+		}
 
-		/**
-		 * Adds an observation of the given revision module either with the artifacts present or not present.
-		 *
-		 * @param revisionModule
-		 */
-		public void addObservation(ModuleRevision revisionModule);
+		public default void addObservation(ModuleRevision moduleRevision, int count) {
+			// get module
+			Module module = moduleRevision.getModule();
+			// get association counter
+			AssociationCounter associationCounter = this.getCounter();
+			// look for module
+			ModuleCounter moduleCounter = associationCounter.getChild(module);
+			// if module counter does not exist yet add it
+			if (moduleCounter == null) {
+				moduleCounter = associationCounter.addChild(module);
+			}
+			// increase module counter
+			moduleCounter.incCount();
+			// look for module revision
+			ModuleRevisionCounter moduleRevisionCounter = moduleCounter.getChild(moduleRevision);
+			// if module revision counter does not exist yet add it
+			if (moduleRevisionCounter == null) {
+				moduleRevisionCounter = moduleCounter.addChild(moduleRevision);
+			}
+			// increase module revision counter
+			moduleRevisionCounter.incCount();
+		}
 
-//		public Module[] getTracingFeatureModules();
-//
-//		public ModuleRevision[] getTracingRevisionModules();
+		public default void addObservation(ModuleRevision moduleRevision) {
+			this.addObservation(moduleRevision, 1);
+		}
 
-		public ModuleCondition getModuleCondition();
+
+		public AssociationCounter getCounter();
 
 
 		public EntityFactory getEntityFactory();

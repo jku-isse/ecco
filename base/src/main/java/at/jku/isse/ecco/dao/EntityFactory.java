@@ -9,6 +9,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleCondition;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.repository.Repository;
@@ -103,6 +104,14 @@ public interface EntityFactory {
 	public Module createModule(Feature[] pos, Feature[] neg);
 
 	public ModuleRevision createModuleRevision(FeatureRevision[] pos, Feature[] neg);
+
+
+	/**
+	 * TODO: move this into Association.Op interface?
+	 *
+	 * @return
+	 */
+	public ModuleCondition createModuleCondition();
 
 
 	/**

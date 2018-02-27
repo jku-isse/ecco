@@ -20,8 +20,10 @@ public interface Counter<T> {
 
 	public int getCount();
 
+	public void setCount(int count);
+
 	public void incCount();
 
-	public void incCount(int value);
+	public void incCount(int count);
 
 }

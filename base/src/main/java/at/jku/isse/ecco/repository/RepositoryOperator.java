@@ -5,7 +5,6 @@ import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
-import at.jku.isse.ecco.counter.CounterNode;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -13,8 +12,8 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleCondition;
 import at.jku.isse.ecco.module.ModuleRevision;
-import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Associations;
@@ -75,33 +74,30 @@ public class RepositoryOperator {
 
 				// add new modules to the repository that contain the new feature negatively. copies every existing module and adds the new feature negatively.
 				for (Module module : this.repository.getModules()) {
-					// create array of negative features. to be reused also by every revision module.
-					Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
-					negFeatures[negFeatures.length - 1] = repoFeature;
-					// create copy of module with new feature negative
-					Module newModule = this.repository.addModule(module.getPos(), negFeatures);
-					newModule.setCount(module.getCount());
-					// do the same for the revision modules
-					for (ModuleRevision moduleRevision : module.getRevisions()) {
-						// create copy of module revision with new feature negative
-						ModuleRevision newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
-						newModuleRevision.setCount(moduleRevision.getCount());
-						// update existing associations that have matching old module with the new module
-						for (Association.Op association : this.repository.getAssociations()) {
+					// only add modules that do not exceed the maximum order of modules in the repository
+					if (module.getOrder() < this.repository.getMaxOrder()) {
+						// create array of negative features. to be reused also by every revision module.
+						Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
+						negFeatures[negFeatures.length - 1] = repoFeature;
+						// create copy of module with new feature negative
+						Module newModule = this.repository.addModule(module.getPos(), negFeatures);
+						newModule.setCount(module.getCount());
 
-
-
-
-							ModuleCounter existingModuleCounter = association.getCounter().getChild(moduleRevision.getModule());
-							if (existingModuleCounter != null) {
-								ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
-								if (existingModuleRevisionCounter != null) {
-									association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
+						// do the same for the revision modules
+						for (ModuleRevision moduleRevision : module.getRevisions()) {
+							// create copy of module revision with new feature negative
+							ModuleRevision newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
+							newModuleRevision.setCount(moduleRevision.getCount());
+							// update existing associations that have matching old module with the new module
+							for (Association.Op association : this.repository.getAssociations()) {
+								ModuleCounter existingModuleCounter = association.getCounter().getChild(moduleRevision.getModule());
+								if (existingModuleCounter != null) {
+									ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
+									if (existingModuleRevisionCounter != null) {
+										association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
+									}
 								}
 							}
-
-
-
 						}
 					}
 				}
@@ -170,10 +166,13 @@ public class RepositoryOperator {
 					posFeatureRevisions[posFeatureRevisions.length - 1] = featureRevision;
 
 					// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
-					ModuleRevision newModule = this.repository.getModuleRevision(posFeatureRevisions, module.getNeg());
-					newModule.incCount();
+					ModuleRevision newModuleRevision = this.repository.getModuleRevision(posFeatureRevisions, module.getNeg());
+					if (newModuleRevision == null) {
+						newModuleRevision = this.repository.addModuleRevision(posFeatureRevisions, module.getNeg());
+					}
+					newModuleRevision.incCount();
 
-					toAdd.add(newModule);
+					toAdd.add(newModuleRevision);
 				}
 			}
 
@@ -192,10 +191,13 @@ public class RepositoryOperator {
 					negFeatures[negFeatures.length - 1] = feature;
 
 					// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
-					ModuleRevision newModule = this.repository.getModuleRevision(module.getPos(), negFeatures);
-					newModule.incCount();
+					ModuleRevision newModuleRevision = this.repository.getModuleRevision(module.getPos(), negFeatures);
+					if (newModuleRevision == null) {
+						newModuleRevision = this.repository.addModuleRevision(module.getPos(), negFeatures);
+					}
+					newModuleRevision.incCount();
 
-					toAdd.add(newModule);
+					toAdd.add(newModuleRevision);
 				}
 			}
 
@@ -229,7 +231,7 @@ public class RepositoryOperator {
 		// create and initialize new association
 		Association.Op association = this.entityFactory.createAssociation(nodes);
 		association.setId(UUID.randomUUID().toString());
-		association.setCount(1);
+		association.getCounter().setCount(1);
 		for (ModuleRevision moduleRevision : moduleRevisions) {
 			association.addObservation(moduleRevision);
 		}
@@ -338,24 +340,39 @@ public class RepositoryOperator {
 		checkout.setConfiguration(configuration);
 
 
-		Set<at.jku.isse.ecco.module.Module> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
-		Set<at.jku.isse.ecco.module.Module> missingModules = new HashSet<>();
-		Set<at.jku.isse.ecco.module.Module> surplusModules = new HashSet<>();
+		// TODO: compute warnings!
 
-		for (Association association : selectedAssociations) {
-			// compute missing
-			for (at.jku.isse.ecco.module.Module desiredModule : desiredModules) {
-				if (!association.getPresenceCondition().getMinModules().contains(desiredModule)) {
-					missingModules.add(desiredModule);
-				}
+		// for missing check against repository modules: foreach module in repository check configuration.contains(module); if not then add to missing;
+		// for surplus only check UNIQUE/AND ModuleConditions modules that are NOT in configuration: foreach module in
+
+		Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
+		Set<ModuleRevision> missingModules = new HashSet<>();
+		Set<ModuleRevision> surplusModules = new HashSet<>();
+
+		// compute missing
+		for (ModuleRevision desiredModule : desiredModules) {
+			if (!this.repository.containsModuleRevision(desiredModule.getPos(), desiredModule.getNeg())) {
+				missingModules.add(desiredModule);
 			}
-			// compute surplus
-			for (at.jku.isse.ecco.module.Module existingModule : association.getPresenceCondition().getMinModules()) {
-				if (!desiredModules.contains(existingModule)) {
-					surplusModules.add(existingModule);
+		}
+
+		// compute surplus
+		for (Association association : selectedAssociations) {
+			ModuleCondition moduleCondition = association.computeCondition();
+			if (moduleCondition.getType() == ModuleCondition.TYPE.AND) {
+				Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
+				for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
+					if (entry.getValue() != null) {
+						for (ModuleRevision existingModuleRevision : entry.getValue()) {
+							if (!desiredModules.contains(existingModuleRevision)) {
+								surplusModules.add(existingModuleRevision);
+							}
+						}
+					}
 				}
 			}
 		}
+
 
 		checkout.getSurplus().addAll(surplusModules);
 		checkout.getMissing().addAll(missingModules);

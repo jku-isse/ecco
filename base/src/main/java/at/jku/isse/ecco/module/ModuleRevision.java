@@ -31,9 +31,11 @@ public interface ModuleRevision {
 
 	public int getCount();
 
-	public void setCount(int value);
+	public void setCount(int count);
 
 	public void incCount();
+
+	public void incCount(int count);
 
 
 	@Override

@@ -129,12 +129,20 @@ public interface Repository {
 
 
 		/**
-		 * Retrieves the module instance with given positive and negative features from repository.
-		 * If such a module does not already exist it is created. // TODO: should it really?
+		 * Checks if a module with given positive and negative features is contained in the repository.
 		 *
 		 * @param pos
 		 * @param neg
 		 * @return
+		 */
+		public boolean containsModule(Feature[] pos, Feature[] neg);
+
+		/**
+		 * Retrieves the module instance with given positive and negative features from the repository.
+		 *
+		 * @param pos
+		 * @param neg
+		 * @return The module or null if it does not exist.
 		 */
 		public Module getModule(Feature[] pos, Feature[] neg);
 
@@ -148,20 +156,35 @@ public interface Repository {
 		 */
 		public Module addModule(Feature[] pos, Feature[] neg);
 
+
 		/**
-		 * Retrieves the module revision instance with given positive feature revisions and negative features from the repository.
-		 * If such a module revision does not already exist it is created.
-		 * If the corresponding module does not already exist it is created.
+		 * Checks if a module revision with given positive feature revisions and negative features is contained in the repository.
 		 *
 		 * @param pos
 		 * @param neg
 		 * @return
 		 */
+		public boolean containsModuleRevision(FeatureRevision[] pos, Feature[] neg);
+
+		/**
+		 * Retrieves the module revision instance with given positive feature revisions and negative features from the repository.
+		 *
+		 * @param pos
+		 * @param neg
+		 * @return The module revision or null if it does not exist.
+		 */
 		public ModuleRevision getModuleRevision(FeatureRevision[] pos, Feature[] neg);
 
-		public boolean hasModule(Feature[] pos, Feature[] neg);
-
-		public boolean hasModuleRevision(FeatureRevision[] pos, Feature[] neg);
+		/**
+		 * Checks if the given module revision already exists and throws an exception if it does.
+		 * If such a module revision does not already exist it is created.
+		 * If the corresponding module does not already exist it is created.
+		 *
+		 * @param pos
+		 * @param neg
+		 * @return The module instance that was added to the repository.
+		 */
+		public ModuleRevision addModuleRevision(FeatureRevision[] pos, Feature[] neg);
 
 	}
 
