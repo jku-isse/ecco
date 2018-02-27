@@ -8,10 +8,9 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleCondition;
 import at.jku.isse.ecco.module.ModuleRevision;
-import at.jku.isse.ecco.module.PresenceCondition;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -50,14 +49,6 @@ public interface EntityFactory {
 	public Configuration createConfiguration();
 
 	public Configuration createConfiguration(FeatureRevision[] featureRevisions);
-
-
-	/**
-	 * Creates an empty presence condition.
-	 *
-	 * @return
-	 */
-	public PresenceCondition createPresenceCondition();
 
 
 	/**
@@ -111,7 +102,7 @@ public interface EntityFactory {
 	 *
 	 * @return
 	 */
-	public ModuleCondition createModuleCondition();
+	public Condition createModuleCondition();
 
 
 	/**

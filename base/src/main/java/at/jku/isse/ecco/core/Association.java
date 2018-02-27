@@ -6,7 +6,7 @@ import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleCondition;
+import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -51,7 +51,7 @@ public interface Association extends Persistable {
 	public RootNode getRootNode();
 
 
-	public ModuleCondition computeCondition();
+	public Condition computeCondition();
 
 
 	/**
@@ -59,8 +59,8 @@ public interface Association extends Persistable {
 	 */
 	public interface Op extends Association {
 
-		public default ModuleCondition computeCondition() {
-			ModuleCondition moduleCondition = this.getEntityFactory().createModuleCondition();
+		public default Condition computeCondition() {
+			Condition moduleCondition = this.getEntityFactory().createModuleCondition();
 			AssociationCounter associationCounter = this.getCounter();
 
 			// for every module check if it traces uniquely

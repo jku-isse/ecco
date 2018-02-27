@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 /**
  *
  */
-public interface ModuleCondition {
+public interface Condition {
 
 	public enum TYPE {
 		AND, OR
@@ -70,7 +70,7 @@ public interface ModuleCondition {
 	 * @param other
 	 * @return
 	 */
-	public default boolean implies(ModuleCondition other) {
+	public default boolean implies(Condition other) {
 		// TODO: !!!
 		for (Module m2 : other.getMinModules()) {
 			boolean moduleImplied = false;

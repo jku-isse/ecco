@@ -11,8 +11,8 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleCondition;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -358,8 +358,8 @@ public class RepositoryOperator {
 
 		// compute surplus
 		for (Association association : selectedAssociations) {
-			ModuleCondition moduleCondition = association.computeCondition();
-			if (moduleCondition.getType() == ModuleCondition.TYPE.AND) {
+			Condition moduleCondition = association.computeCondition();
+			if (moduleCondition.getType() == Condition.TYPE.AND) {
 				Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
 				for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
 					if (entry.getValue() != null) {
