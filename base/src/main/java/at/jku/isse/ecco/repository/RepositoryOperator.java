@@ -331,7 +331,7 @@ public class RepositoryOperator {
 
 		Set<Association> selectedAssociations = new HashSet<>();
 		for (Association association : this.repository.getAssociations()) {
-			if (association.getPresenceCondition().holds(configuration)) {
+			if (association.computeCondition().holds(configuration)) {
 				selectedAssociations.add(association);
 			}
 		}

@@ -25,6 +25,8 @@ public interface ModuleRevision {
 
 	public boolean holds(Configuration configuration);
 
+	public boolean implies(ModuleRevision other);
+
 	public Module getModule();
 
 	public Feature[] getNeg();

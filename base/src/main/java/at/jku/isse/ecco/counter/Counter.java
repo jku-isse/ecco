@@ -7,7 +7,9 @@ public interface Counter<T> {
 	 *
 	 * @param other
 	 */
-	public void add(Counter<T> other);
+	public default void add(Counter<T> other) {
+		this.incCount(other.getCount());
+	}
 
 
 	/**

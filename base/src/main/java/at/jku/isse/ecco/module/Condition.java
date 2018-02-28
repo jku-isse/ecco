@@ -18,6 +18,8 @@ public interface Condition {
 
 	public TYPE getType();
 
+	public void setType(TYPE type);
+
 
 	public Map<Module, Collection<ModuleRevision>> getModules();
 
@@ -65,25 +67,32 @@ public interface Condition {
 
 	/**
 	 * Checks if this condition implies other condition.
-	 * This imeans every module in this must be implied by at least one module in other.
+	 * This means every module in this must be implied by at least one module in other.
 	 *
 	 * @param other
 	 * @return
 	 */
 	public default boolean implies(Condition other) {
-		// TODO: !!!
-		for (Module m2 : other.getMinModules()) {
-			boolean moduleImplied = false;
-			for (Module m1 : this.presenceCondition.getMinModules()) {
-				if (m1.containsAll(m2)) {
-					moduleImplied = true;
-					break;
+		for (Map.Entry<Module, Collection<ModuleRevision>> otherEntry : other.getModules().entrySet()) {
+			for (ModuleRevision otherModuleRevision : otherEntry.getValue()) {
+				boolean implied = false;
+				for (Map.Entry<Module, Collection<ModuleRevision>> thisEntry : this.getModules().entrySet()) {
+					if (thisEntry.getKey().implies(otherEntry.getKey())) {
+						for (ModuleRevision thisModuleRevision : thisEntry.getValue()) {
+							if (thisModuleRevision.implies(otherModuleRevision)) {
+								implied = true;
+								break;
+							}
+						}
+						if (implied) {
+							break;
+						}
+					}
+				}
+				if (!implied) {
+					return false;
 				}
 			}
-			if (!moduleImplied) {
-				return false;
-			}
-
 		}
 		return true;
 	}

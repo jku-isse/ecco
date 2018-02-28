@@ -5,8 +5,8 @@ import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.Persistable;
-import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -64,13 +64,15 @@ public interface Association extends Persistable {
 			AssociationCounter associationCounter = this.getCounter();
 
 			// for every module check if it traces uniquely
+			moduleCondition.setType(Condition.TYPE.AND);
 			for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
-				// condition for unique trace
-				if (moduleCounter.getCount() == moduleCounter.getObject().getCount() && moduleCounter.getCount() == associationCounter.getCount()) {
-					moduleCondition.addModule(moduleCounter.getObject());
-					// now check to which revisions it traces
-					for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
-						if (moduleRevisionCounter.getCount() > 0) {
+				// a module M traces uniquely to artifacts in association A iff
+				// 1) M was always present when A was present
+				if (moduleCounter.getCount() == associationCounter.getCount()) {
+					// 2) A was always present when M_r was present for all revisions r of M
+					if (moduleCounter.getChildren().stream().noneMatch(moduleRevisionCounter -> moduleRevisionCounter.getCount() != moduleRevisionCounter.getObject().getCount())) {
+						moduleCondition.addModule(moduleCounter.getObject());
+						for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
 							moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
 						}
 					}
@@ -79,13 +81,13 @@ public interface Association extends Persistable {
 
 			// if the module condition is empty check if it traces disjunctively
 			if (moduleCondition.getModules().isEmpty()) {
+				moduleCondition.setType(Condition.TYPE.OR);
 				for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
-					// condition for disjunctive trace
-					if (moduleCounter.getCount() == moduleCounter.getObject().getCount()) {
+					if (moduleCounter.getCount() > 0) { // it is in ALL
 						moduleCondition.addModule(moduleCounter.getObject());
 						// now check to which revisions it traces
 						for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
-							if (moduleRevisionCounter.getCount() > 0) {
+							if (moduleRevisionCounter.getCount() == associationCounter.getCount()) { // it is not in NOT
 								moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
 							}
 						}
@@ -107,7 +109,7 @@ public interface Association extends Persistable {
 			AssociationCounter otherCounter = this.getCounter();
 			thisCounter.incCount(otherCounter.getCount());
 			// add every module in other association to this association
-			for (ModuleCounter otherModuleCounter : otherCounter.<ModuleRevision>getChildren()) {
+			for (ModuleCounter otherModuleCounter : otherCounter.getChildren()) {
 				ModuleCounter thisModuleCounter = thisCounter.getChild(otherModuleCounter.getObject());
 				// if the counter for this module does not exist yet add it
 				if (thisModuleCounter == null) {
