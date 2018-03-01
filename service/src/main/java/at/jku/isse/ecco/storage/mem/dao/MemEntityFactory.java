@@ -6,7 +6,6 @@ import at.jku.isse.ecco.storage.mem.artifact.BaseArtifact;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.*;
-import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.storage.mem.core.BaseCommit;
 import at.jku.isse.ecco.storage.mem.core.BaseRemote;
@@ -15,7 +14,7 @@ import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.BasePresenceCondition;
 import at.jku.isse.ecco.storage.mem.repository.MemRepository;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.mem.core.BaseAssociation;
+import at.jku.isse.ecco.storage.mem.core.MemAssociation;
 import at.jku.isse.ecco.storage.mem.core.BaseVariant;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import at.jku.isse.ecco.storage.mem.module.BaseModuleFeature;
@@ -86,7 +85,7 @@ public class MemEntityFactory implements EntityFactory {
 
 	@Override
 	public Association.Op createAssociation() {
-		return new BaseAssociation();
+		return new MemAssociation();
 	}
 
 	@Override
@@ -94,7 +93,7 @@ public class MemEntityFactory implements EntityFactory {
 		checkNotNull(presenceCondition);
 		checkNotNull(nodes);
 
-		final Association.Op association = new BaseAssociation();
+		final Association.Op association = new MemAssociation();
 
 		RootNode.Op rootNode = this.createRootNode();
 		rootNode.setContainingAssociation(association);

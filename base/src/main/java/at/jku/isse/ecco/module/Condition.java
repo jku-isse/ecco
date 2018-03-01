@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import java.util.stream.Collectors;
 /**
  *
  */
-public interface Condition {
+public interface Condition extends Persistable {
 
 	public enum TYPE {
 		AND, OR

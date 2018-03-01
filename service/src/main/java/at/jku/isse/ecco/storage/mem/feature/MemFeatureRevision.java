@@ -14,10 +14,10 @@ public class MemFeatureRevision implements FeatureRevision {
 	private String id;
 	private String description;
 
+
 	public MemFeatureRevision(Feature feature, String id) {
 		checkNotNull(feature);
 		checkNotNull(id);
-
 		this.feature = feature;
 		this.id = id;
 	}
@@ -45,13 +45,6 @@ public class MemFeatureRevision implements FeatureRevision {
 
 
 	@Override
-	public int hashCode() {
-		int result = getFeature().hashCode();
-		result = 31 * result + getId().hashCode();
-		return result;
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (!(o instanceof MemFeatureRevision)) return false;
@@ -64,8 +57,15 @@ public class MemFeatureRevision implements FeatureRevision {
 	}
 
 	@Override
+	public int hashCode() {
+		int result = getFeature().hashCode();
+		result = 31 * result + getId().hashCode();
+		return result;
+	}
+
+	@Override
 	public String toString() {
-		return this.feature.getName() + "." + this.getId();
+		return this.getFeatureRevisionString();
 	}
 
 }

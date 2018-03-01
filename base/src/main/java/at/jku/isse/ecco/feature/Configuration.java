@@ -25,6 +25,13 @@ public interface Configuration extends Persistable {
 	public static final String CONFIGURATION_STRING_REGULAR_EXPRESSION = "(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?)*)?";
 
 
+	/**
+	 * Returns a direct reference to instance of the array of feature revisions that makes up the configuration.
+	 * DO NOT MODIFY THIS ARRAY!!!
+	 * TREAT THE RETURNED ARRAY AS CONST!!!
+	 *
+	 * @return The array of feature revisions that makes up the configuration.
+	 */
 	public FeatureRevision[] getFeatureRevisions();
 
 
@@ -83,7 +90,7 @@ public interface Configuration extends Persistable {
 
 
 	public default String getConfigurationString() {
-		return Arrays.stream(this.getFeatureRevisions()).map(featureRevision -> featureRevision.toString()).collect(Collectors.joining(", "));
+		return Arrays.stream(this.getFeatureRevisions()).map(FeatureRevision::toString).collect(Collectors.joining(", "));
 	}
 
 	/**

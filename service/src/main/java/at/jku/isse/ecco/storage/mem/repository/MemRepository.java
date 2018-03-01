@@ -4,22 +4,19 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
-import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.repository.RepositoryOperator;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
 
 /**
  * Memory implementation of {@link Repository}.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public class MemRepository implements Repository, Repository.Op {
 

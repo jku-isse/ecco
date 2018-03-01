@@ -10,7 +10,6 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -93,8 +92,6 @@ public interface EntityFactory {
 	 * @return Returns a new initialized module.
 	 */
 	public Module createModule(Feature[] pos, Feature[] neg);
-
-	public ModuleRevision createModuleRevision(FeatureRevision[] pos, Feature[] neg);
 
 
 	/**

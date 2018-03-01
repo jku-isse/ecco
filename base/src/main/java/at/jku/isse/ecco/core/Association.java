@@ -54,6 +54,14 @@ public interface Association extends Persistable {
 	public Condition computeCondition();
 
 
+	public default String getAssociationString() {
+		return String.format("Id: %d, Name: %s, Artifact Tree: %s", this.getId(), this.getName(), this.getRootNode().toString());
+	}
+
+	@Override
+	public String toString();
+
+
 	/**
 	 * Private association operand interface.
 	 */

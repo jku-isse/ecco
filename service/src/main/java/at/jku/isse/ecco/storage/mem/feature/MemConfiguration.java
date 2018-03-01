@@ -14,16 +14,18 @@ public class MemConfiguration implements Configuration {
 
 	private final FeatureRevision[] featureRevisions;
 
+
 	public MemConfiguration(FeatureRevision[] featureRevisions) {
 		checkNotNull(featureRevisions);
-
 		this.featureRevisions = featureRevisions;
 	}
+
 
 	@Override
 	public FeatureRevision[] getFeatureRevisions() {
 		return this.featureRevisions;
 	}
+
 
 	@Override
 	public boolean equals(Object o) {

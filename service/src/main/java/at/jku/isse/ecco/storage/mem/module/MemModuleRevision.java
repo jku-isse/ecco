@@ -5,35 +5,36 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 
-import java.util.*;
+import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Memory implementation of {@link Module}.
+ * Memory implementation of {@link ModuleRevision}.
  */
-public class MemModule implements Module {
+public class MemModuleRevision implements ModuleRevision {
 
-	private Feature[] pos;
+	private FeatureRevision[] pos;
 	private Feature[] neg;
 	private int count;
-	private Map<ModuleRevision, ModuleRevision> revisions;
+	private Module module;
 
 
-	public MemModule(Feature[] pos, Feature[] neg) {
+	public MemModuleRevision(MemModule module, FeatureRevision[] pos, Feature[] neg) {
+		checkNotNull(module);
 		checkNotNull(pos);
 		checkNotNull(neg);
 		checkArgument(pos.length > 0);
 		this.pos = pos;
 		this.neg = neg;
 		this.count = 0;
-		this.revisions = new HashMap<>();
+		this.module = module;
 	}
 
 
 	@Override
-	public Feature[] getPos() {
+	public FeatureRevision[] getPos() {
 		return this.pos;
 	}
 
@@ -63,22 +64,8 @@ public class MemModule implements Module {
 	}
 
 	@Override
-	public Collection<ModuleRevision> getRevisions() {
-		return Collections.unmodifiableCollection(this.revisions.values());
-	}
-
-	@Override
-	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
-		ModuleRevision moduleRevision = new MemModuleRevision(this, pos, neg);
-		if (this.revisions.containsKey(moduleRevision))
-			return null;
-		this.revisions.put(moduleRevision, moduleRevision);
-		return moduleRevision;
-	}
-
-	@Override
-	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
-		return this.revisions.get(new MemModuleRevision(this, pos, neg));
+	public Module getModule() {
+		return this.module;
 	}
 
 
@@ -86,7 +73,7 @@ public class MemModule implements Module {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		MemModule memModule = (MemModule) o;
+		MemModuleRevision memModule = (MemModuleRevision) o;
 		return Arrays.equals(pos, memModule.pos) && Arrays.equals(neg, memModule.neg);
 	}
 
@@ -99,7 +86,7 @@ public class MemModule implements Module {
 
 	@Override
 	public String toString() {
-		return this.getModuleString();
+		return this.getModuleRevisionString();
 	}
 
 }

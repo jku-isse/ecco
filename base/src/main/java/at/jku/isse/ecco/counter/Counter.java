@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.counter;
 
-public interface Counter<T> {
+import at.jku.isse.ecco.dao.Persistable;
+
+public interface Counter<T> extends Persistable {
 
 	/**
 	 * Adds other counter to this counter. Recursively adds up all child counters.
