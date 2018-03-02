@@ -6,47 +6,69 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemModuleCounter implements ModuleCounter {
 
+	private Module module;
+	private int count;
+	private Map<ModuleRevision, ModuleRevisionCounter> children;
+
+
+	public MemModuleCounter(Module module) {
+		checkNotNull(module);
+		this.module = module;
+		this.count = 0;
+		this.children = new HashMap<>();
+	}
+
+
 	@Override
 	public ModuleRevisionCounter addChild(ModuleRevision child) {
-		return null;
+		if (this.children.containsKey(child))
+			return null;
+		ModuleRevisionCounter moduleRevisionCounter = new MemModuleRevisionCounter(child);
+		this.children.put(child, moduleRevisionCounter);
+		return this.children.get(child);
 	}
 
 	@Override
 	public ModuleRevisionCounter getChild(ModuleRevision child) {
-		return null;
+		return this.children.get(child);
 	}
 
 	@Override
 	public Collection<ModuleRevisionCounter> getChildren() {
-		return null;
+		return Collections.unmodifiableCollection(this.children.values());
 	}
 
 	@Override
 	public Module getObject() {
-		return null;
+		return this.module;
 	}
 
 	@Override
 	public int getCount() {
-		return 0;
+		return this.count;
 	}
 
 	@Override
 	public void setCount(int count) {
-
+		this.count = count;
 	}
 
 	@Override
 	public void incCount() {
-
+		this.count++;
 	}
 
 	@Override
 	public void incCount(int count) {
-
+		this.count += count;
 	}
 
 }

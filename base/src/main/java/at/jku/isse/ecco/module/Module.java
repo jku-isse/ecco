@@ -33,6 +33,32 @@ public interface Module extends Persistable {
 
 	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg);
 
+	public default boolean matchesRevision(FeatureRevision[] pos, Feature[] neg) {
+		for (FeatureRevision otherFeatureRevision : pos) {
+			boolean found = false;
+			for (Feature feature : this.getPos()) {
+				if (otherFeatureRevision.getFeature().equals(feature)) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		for (Feature otherFeature : neg) {
+			boolean found = false;
+			for (Feature feature : this.getNeg()) {
+				if (otherFeature.equals(feature)) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		return true;
+	}
+
 
 	public default int getOrder() {
 		return this.getPos().length + this.getNeg().length - 1;

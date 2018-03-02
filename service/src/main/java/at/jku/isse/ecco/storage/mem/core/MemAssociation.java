@@ -2,9 +2,9 @@ package at.jku.isse.ecco.storage.mem.core;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
-import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.storage.mem.counter.MemAssociationCounter;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.mem.module.MemCondition;
 import at.jku.isse.ecco.tree.RootNode;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -24,7 +24,7 @@ public class MemAssociation implements Association, Association.Op {
 		this.id = "";
 		this.name = "";
 		this.artifactTreeRoot = null;
-		this.associationCounter = new MemAssociationCounter();
+		this.associationCounter = new MemAssociationCounter(this);
 	}
 
 
@@ -67,8 +67,8 @@ public class MemAssociation implements Association, Association.Op {
 	}
 
 	@Override
-	public EntityFactory getEntityFactory() {
-		return new MemEntityFactory();
+	public Condition createCondition() {
+		return new MemCondition();
 	}
 
 

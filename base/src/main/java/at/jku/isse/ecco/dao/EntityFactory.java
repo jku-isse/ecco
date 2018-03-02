@@ -8,7 +8,6 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
@@ -22,6 +21,7 @@ import java.util.Set;
 public interface EntityFactory {
 
 	public Repository.Op createRepository();
+
 
 	/**
 	 * Creates a remote with given name, address and type.
@@ -95,12 +95,11 @@ public interface EntityFactory {
 
 
 	/**
-	 * TODO: move this into Association.Op interface?
+	 * Creates a new empty root node.
 	 *
-	 * @return
+	 * @return A new empty root node.
 	 */
-	public Condition createModuleCondition();
-
+	public RootNode.Op createRootNode();
 
 	/**
 	 * Creates a new empty node.
@@ -124,13 +123,6 @@ public interface EntityFactory {
 	 * @return The new node.
 	 */
 	public Node.Op createNode(final ArtifactData artifactData);
-
-	/**
-	 * Creates a new empty root node.
-	 *
-	 * @return A new empty root node.
-	 */
-	public RootNode.Op createRootNode();
 
 	public Node.Op createOrderedNode(final Artifact.Op<?> artifact);
 

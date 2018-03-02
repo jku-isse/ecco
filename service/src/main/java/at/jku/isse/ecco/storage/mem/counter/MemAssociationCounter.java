@@ -4,9 +4,9 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,14 +14,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemAssociationCounter implements AssociationCounter {
 
-	private Module module;
+	private Association association;
 	private int count;
-	private Map<Module, Collection<ModuleRevision>> children;
+	private Map<Module, ModuleCounter> children;
 
 
-	public MemAssociationCounter(Module module) {
-		checkNotNull(module);
-		this.module = module;
+	public MemAssociationCounter(Association association) {
+		checkNotNull(association);
+		this.association = association;
 		this.count = 0;
 		this.children = new HashMap<>();
 	}
@@ -29,42 +29,46 @@ public class MemAssociationCounter implements AssociationCounter {
 
 	@Override
 	public ModuleCounter addChild(Module child) {
-		return null;
+		if (this.children.containsKey(child))
+			return null;
+		ModuleCounter moduleCounter = new MemModuleCounter(child);
+		this.children.put(child, moduleCounter);
+		return this.children.get(child);
 	}
 
 	@Override
 	public ModuleCounter getChild(Module child) {
-		return null;
+		return this.children.get(child);
 	}
 
 	@Override
 	public Collection<ModuleCounter> getChildren() {
-		return null;
+		return Collections.unmodifiableCollection(this.children.values());
 	}
 
 	@Override
 	public Association getObject() {
-		return null;
+		return this.association;
 	}
 
 	@Override
 	public int getCount() {
-		return 0;
+		return this.count;
 	}
 
 	@Override
 	public void setCount(int count) {
-
+		this.count = count;
 	}
 
 	@Override
 	public void incCount() {
-
+		this.count++;
 	}
 
 	@Override
 	public void incCount(int count) {
-
+		this.count += count;
 	}
 
 }

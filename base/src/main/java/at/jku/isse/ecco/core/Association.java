@@ -3,7 +3,6 @@ package at.jku.isse.ecco.core;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
-import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
@@ -67,8 +66,29 @@ public interface Association extends Persistable {
 	 */
 	public interface Op extends Association {
 
+		/**
+		 * Returns the root node operand.
+		 *
+		 * @return The root node operand.
+		 */
+		public RootNode.Op getRootNode();
+
+		/**
+		 * Sets the root node of the artifact tree.
+		 *
+		 * @param root The root of the artifact tree (may be null).
+		 */
+		public void setRootNode(RootNode.Op root);
+
+
+		public AssociationCounter getCounter();
+
+
+		public Condition createCondition();
+
+
 		public default Condition computeCondition() {
-			Condition moduleCondition = this.getEntityFactory().createModuleCondition();
+			Condition moduleCondition = this.createCondition();
 			AssociationCounter associationCounter = this.getCounter();
 
 			// for every module check if it traces uniquely
@@ -162,26 +182,6 @@ public interface Association extends Persistable {
 			this.addObservation(moduleRevision, 1);
 		}
 
-
-		public AssociationCounter getCounter();
-
-
-		public EntityFactory getEntityFactory();
-
-
-		/**
-		 * Returns the root node operand.
-		 *
-		 * @return The root node operand.
-		 */
-		public RootNode.Op getRootNode();
-
-		/**
-		 * Sets the root node of the artifact tree.
-		 *
-		 * @param root The root of the artifact tree (may be null).
-		 */
-		public void setRootNode(RootNode.Op root);
 	}
 
 }

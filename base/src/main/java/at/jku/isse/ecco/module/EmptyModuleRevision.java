@@ -1,19 +1,13 @@
-package at.jku.isse.ecco.storage.mem.module;
+package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 
 import java.util.Arrays;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-/**
- * Memory implementation of {@link ModuleRevision}.
- */
-public class MemModuleRevision implements ModuleRevision {
+public class EmptyModuleRevision implements ModuleRevision {
 
 	private FeatureRevision[] pos;
 	private Feature[] neg;
@@ -21,13 +15,10 @@ public class MemModuleRevision implements ModuleRevision {
 	private Module module;
 
 
-	public MemModuleRevision(MemModule module, FeatureRevision[] pos, Feature[] neg) {
+	public EmptyModuleRevision(EmptyModule module) {
 		checkNotNull(module);
-		checkNotNull(pos);
-		checkNotNull(neg);
-		checkArgument(pos.length > 0);
-		this.pos = pos;
-		this.neg = neg;
+		this.pos = new FeatureRevision[0];
+		this.neg = new Feature[0];
 		this.count = 0;
 		this.module = module;
 	}
@@ -73,8 +64,8 @@ public class MemModuleRevision implements ModuleRevision {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		MemModuleRevision memModuleRevision = (MemModuleRevision) o;
-		return Arrays.equals(pos, memModuleRevision.pos) && Arrays.equals(neg, memModuleRevision.neg);
+		EmptyModuleRevision emptyModuleRevision = (EmptyModuleRevision) o;
+		return Arrays.equals(pos, emptyModuleRevision.pos) && Arrays.equals(neg, emptyModuleRevision.neg);
 	}
 
 	@Override

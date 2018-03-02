@@ -12,6 +12,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.module.EmptyModule;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
@@ -151,10 +152,13 @@ public class RepositoryOperator {
 			}
 		}
 
-		// add empty module initially
+		// collection of modules
 		Collection<ModuleRevision> modules = new ArrayList<>();
-		ModuleRevision emptyModule = this.entityFactory.createModuleRevision(new FeatureRevision[]{}, new Feature[]{});
-		modules.add(emptyModule); // add empty module to power set
+
+		// add empty module initially
+		Module emptyModule = new EmptyModule();
+		ModuleRevision emptyModuleRevision = emptyModule.getRevision(new FeatureRevision[0], new Feature[0]);
+		modules.add(emptyModuleRevision); // add empty module revision to power set
 
 		// compute powerset
 		for (final FeatureRevision featureRevision : pos) {
@@ -180,7 +184,7 @@ public class RepositoryOperator {
 		}
 
 		// remove the empty module again
-		modules.remove(emptyModule);
+		modules.remove(emptyModuleRevision);
 
 		for (final Feature feature : neg) {
 			final Collection<ModuleRevision> toAdd = new ArrayList<>();

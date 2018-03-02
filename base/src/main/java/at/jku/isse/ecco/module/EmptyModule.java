@@ -1,19 +1,11 @@
-package at.jku.isse.ecco.storage.mem.module;
+package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
-/**
- * Memory implementation of {@link Module}.
- */
-public class MemModule implements Module {
+public class EmptyModule implements Module {
 
 	private Feature[] pos;
 	private Feature[] neg;
@@ -21,14 +13,13 @@ public class MemModule implements Module {
 	private Map<ModuleRevision, ModuleRevision> revisions;
 
 
-	public MemModule(Feature[] pos, Feature[] neg) {
-		checkNotNull(pos);
-		checkNotNull(neg);
-		checkArgument(pos.length > 0);
-		this.pos = pos;
-		this.neg = neg;
+	public EmptyModule() {
+		this.pos = new Feature[0];
+		this.neg = new Feature[0];
 		this.count = 0;
 		this.revisions = new HashMap<>();
+		EmptyModuleRevision emptyModuleRevision = new EmptyModuleRevision(this);
+		this.revisions.put(emptyModuleRevision, emptyModuleRevision);
 	}
 
 
@@ -69,18 +60,12 @@ public class MemModule implements Module {
 
 	@Override
 	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
-		if (!this.matchesRevision(pos, neg))
-			return null;
-		ModuleRevision moduleRevision = new MemModuleRevision(this, pos, neg);
-		if (this.revisions.containsKey(moduleRevision))
-			return null;
-		this.revisions.put(moduleRevision, moduleRevision);
-		return moduleRevision;
+		return null;
 	}
 
 	@Override
 	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
-		return this.revisions.get(new MemModuleRevision(this, pos, neg));
+		return this.revisions.get(new EmptyModuleRevision(this));
 	}
 
 
@@ -88,8 +73,8 @@ public class MemModule implements Module {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		MemModule memModule = (MemModule) o;
-		return Arrays.equals(pos, memModule.pos) && Arrays.equals(neg, memModule.neg);
+		EmptyModule emptyModule = (EmptyModule) o;
+		return Arrays.equals(pos, emptyModule.pos) && Arrays.equals(neg, emptyModule.neg);
 	}
 
 	@Override
