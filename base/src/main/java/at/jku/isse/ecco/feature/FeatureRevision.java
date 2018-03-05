@@ -30,7 +30,7 @@ public interface FeatureRevision extends Persistable {
 
 
 	public default String getFeatureRevisionString() {
-		return this.getFeature().getName() + "." + this.getId();
+		return this.getFeature().toString() + "." + this.getId().substring(0, 7);
 	}
 
 	/**

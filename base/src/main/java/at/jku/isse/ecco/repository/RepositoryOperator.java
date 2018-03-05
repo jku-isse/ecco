@@ -16,16 +16,6 @@ public class RepositoryOperator {
 	}
 
 
-//	/**
-//	 * Creates a subset repository of this repository using the given entity factory. This repository is not changed.
-//	 * Creates a subset repository of this repository by (optionally) deselecting (i.e. explicity setting to <i>false</i>) some feature versions and (optionally) reducing the maximum order of modules.
-//	 * The subset repository is created with the given entity factory.
-//	 *
-//	 * @param deselected    The deselected feature revisions (i.e. feature versions that are set to false).
-//	 * @param maxOrder      The maximum order of modules to be copied over into the subset repository.
-//	 * @param entityFactory The entity factory used for creating the subset repository.
-//	 * @return The subset repository.
-//	 */
 //	public Repository.Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory) {
 //		checkNotNull(deselected);
 //		checkArgument(maxOrder <= this.repository.getMaxOrder());
@@ -197,23 +187,7 @@ public class RepositoryOperator {
 //		return newRepository;
 //	}
 //
-//	/**
-//	 * Creates a copy of this repository using the same entity factory and maximum order of modules. This repository is not changed.
-//	 *
-//	 * @param entityFactory The entity factory used for creating the copy of this repository.
-//	 * @return The copied repository.
-//	 */
-//	public Repository.Op copy(EntityFactory entityFactory) {
-//		return this.subset(new ArrayList<>(), this.repository.getMaxOrder(), entityFactory);
-//	}
 //
-//
-//	/**
-//	 * Merges other repository into this repository. The other repository is destroyed in the process.
-//	 * Merges another repository into this repository. The two repositories must have been created from the same entity factory (i.e. must use the same data backend).
-//	 *
-//	 * @param other The other repository to be merged into this repository.
-//	 */
 //	public void merge(Repository.Op other) {
 //		checkNotNull(other);
 //		checkArgument(other.getClass().equals(this.repository.getClass()));
@@ -277,16 +251,6 @@ public class RepositoryOperator {
 //
 //		// step 3: commit associations in other repository to this repository.
 //		this.extract(other.getAssociations());
-//	}
-//
-//
-//	/**
-//	 * Diffs the current working copy against the repository and returns a diff object containing all affected associations (and thus all affected features and artifacts).
-//	 *
-//	 * @return The diff object.
-//	 */
-//	public Diff diff() {
-//		throw new UnsupportedOperationException("Not yet implemented.");
 //	}
 //
 //
@@ -396,6 +360,39 @@ public class RepositoryOperator {
 //		for (Association.Op a : toRemove) {
 //			this.repository.removeAssociation(a);
 //		}
+//	}
+//
+//
+//	public static void consolidate(Collection<? extends Association> associations) {
+//		Map<PresenceCondition, Association> pcToAssocMap = new HashMap<>();
+//		Association emptyAssoc = null;
+//
+//		Iterator<? extends Association> it = associations.iterator();
+//		while (it.hasNext()) {
+//			Association association = it.next();
+//
+//			// if association contains no artifacts it requires special treatment here
+//			if (association.getRootNode().getChildren().size() == 0) {
+//				emptyAssoc = association;
+//			} else {
+//				Association equalAssoc = pcToAssocMap.get(association.getPresenceCondition());
+//				if (equalAssoc == null) {
+//					pcToAssocMap.put(association.getPresenceCondition(), association);
+//				} else {
+//					Trees.merge(equalAssoc.getRootNode(), association.getRootNode());
+//					it.remove();
+//				}
+//			}
+//		}
+//
+//		if (emptyAssoc != null) {
+//			for (Association assoc : associations) {
+//				if (assoc != emptyAssoc) {
+//					emptyAssoc.getPresenceCondition().getMinModules().removeAll(assoc.getPresenceCondition().getMinModules());
+//				}
+//			}
+//		}
+//
 //	}
 
 }

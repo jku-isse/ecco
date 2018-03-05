@@ -3,6 +3,7 @@ package at.jku.isse.ecco;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
 import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -18,9 +19,9 @@ import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.listener.ServerListener;
 import at.jku.isse.ecco.listener.WriteListener;
-import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
-import at.jku.isse.ecco.storage.StoragePlugin;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.StoragePlugin;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -53,7 +54,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
 
-	protected static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
 
 	public enum Operation {
 		OPEN, INIT, FORK, CLOSE, COMMIT, CHECKOUT, FETCH, PULL, PUSH, SERVER, OTHER
@@ -294,25 +295,25 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	// service events
 
-	protected void fireStatusChangedEvent() {
+	private void fireStatusChangedEvent() {
 		for (EccoListener listener : this.listeners) {
 			listener.statusChangedEvent(this);
 		}
 	}
 
-	protected void fireOperationProgressEvent(String operationString, double progress) {
+	private void fireOperationProgressEvent(String operationString, double progress) {
 		for (EccoListener listener : this.listeners) {
 			listener.operationProgressEvent(this, operationString, progress);
 		}
 	}
 
-	protected void fireReadEvent(Path path, ArtifactReader reader) {
+	private void fireReadEvent(Path path, ArtifactReader reader) {
 		for (ReadListener listener : this.listeners) {
 			listener.fileReadEvent(path, reader);
 		}
 	}
 
-	protected void fireWriteEvent(Path path, ArtifactWriter writer) {
+	private void fireWriteEvent(Path path, ArtifactWriter writer) {
 		for (WriteListener listener : this.listeners) {
 			listener.fileWriteEvent(path, writer);
 		}
@@ -321,13 +322,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	// repository events
 
-	protected void fireCommitsChangedEvent(Commit commit) {
+	private void fireCommitsChangedEvent(Commit commit) {
 		for (EccoListener listener : this.listeners) {
 			listener.commitsChangedEvent(this, commit);
 		}
 	}
 
-	protected void fireAssociationSelectedEvent(Association association) {
+	private void fireAssociationSelectedEvent(Association association) {
 		for (EccoListener listener : this.listeners) {
 			listener.associationSelectedEvent(this, association);
 		}
@@ -336,19 +337,19 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	// server events
 
-	protected void fireServerEvent(String message) {
+	private void fireServerEvent(String message) {
 		for (ServerListener listener : this.listeners) {
 			listener.serverEvent(this, message);
 		}
 	}
 
-	protected void fireServerStartedEvent(int port) {
+	private void fireServerStartedEvent(int port) {
 		for (ServerListener listener : this.listeners) {
 			listener.serverStartEvent(this, port);
 		}
 	}
 
-	protected void fireServerStoppedEvent() {
+	private void fireServerStoppedEvent() {
 		for (ServerListener listener : this.listeners) {
 			listener.serverStopEvent(this);
 		}
@@ -676,8 +677,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.transactionStrategy.rollback();
 
 			throw new EccoException("Error retrieving remote.", e);
-		} finally {
-
 		}
 	}
 
@@ -696,8 +695,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.transactionStrategy.rollback();
 
 			throw new EccoException("Error retrieving remotes.", e);
-		} finally {
-
 		}
 	}
 
@@ -738,206 +735,53 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-//	/**
-//	 * Creates a presence condition from a given string. Uses existing features and feature versions from the repository. Adds new features and feature versions to the repository.
-//	 *
-//	 * @param pcString The presence condition string.
-//	 * @return The parsed presence condition.
-//	 */
-//	public PresenceCondition parsePresenceConditionString(String pcString) {
-//		if (pcString == null)
-//			throw new EccoException("No presence condition string provided.");
-//
-//		if (!pcString.matches("\\([+-]?[a-zA-Z0-9_-]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?(\\s*,\\s*[+-]?[a-zA-Z0-9_-]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?)*\\)(\\s*,\\s*\\([+-]?[a-zA-Z0-9_-]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?(\\s*,\\s*[+-]?[a-zA-Z0-9_-]+(\\.((\\{([+-]?[0-9]+)(\\s*,\\s*([+-]?[0-9]+))*\\})|([+-]?[0-9]+))+)?)*\\))*"))
-//			throw new EccoException("Invalid presence condition string provided.");
-//
-//		try {
-//			this.transactionStrategy.begin();
-//
-//			PresenceCondition pc = this.entityFactory.createPresenceCondition();
-//
-//
-//			// modules
-//			Pattern modulePattern = Pattern.compile("\\(([^()]*)\\)");
-//			Matcher moduleMatcher = modulePattern.matcher(pcString);
-//			while (moduleMatcher.find()) {
-//				for (int i = 0; i < moduleMatcher.groupCount(); i++) {
-//					String moduleString = moduleMatcher.group(i);
-//
-//					at.jku.isse.ecco.module.Module module = this.entityFactory.createModule();
-//
-//					// module features
-//					Pattern moduleFeaturePattern = Pattern.compile("(\\+|\\-)?([a-zA-Z0-9_-]+)(.(\\{[+-]?[a-zA-Z0-9_-]+(\\s*,\\s*[+-]?[a-zA-Z0-9_-]+)*\\}|[+-]?[0-9]+))?");
-//					Matcher moduleFeatureMatcher = moduleFeaturePattern.matcher(moduleString);
-//					while (moduleFeatureMatcher.find()) {
-//						String featureSignString = moduleFeatureMatcher.group(1);
-//						boolean featureSign = (featureSignString != null && featureSignString.equals("-")) ? false : true;
-//						String featureName = moduleFeatureMatcher.group(2);
-//
-//						Feature feature;
-//						try {
-//							feature = this.featureDao.load(featureName);
-//						} catch (IllegalArgumentException e) {
-//							feature = null;
-//						}
-//						if (feature == null) {
-//							feature = this.entityFactory.createFeature(featureName);
-////							feature = this.featureDao.save(feature);
-//						}
-//
-//						Collection<FeatureVersion> featureVersions = new ArrayList<>();
-//
-//						// versions
-//						//Pattern pattern3 = Pattern.compile("\\{([0-9]+)(\\s*,\\s*([0-9]+))*\\}");
-//						Pattern versionPattern = Pattern.compile("[^+-0-9{}, ]*([+-]?[0-9]+)[^+-0-9{}, ]*");
-//						if (moduleFeatureMatcher.group(3) != null) {
-//							Matcher versionMatcher = versionPattern.matcher(moduleFeatureMatcher.group(4));
-//
-//							while (versionMatcher.find()) {
-//								String id = versionMatcher.group(0);
-//
-////								FeatureVersion tempFeatureVersion = this.entityFactory.createFeatureVersion(feature, version);
-////								FeatureVersion featureVersion = feature.getId(tempFeatureVersion);
-//								FeatureVersion featureVersion = feature.getVersion(id);
-//								if (featureVersion == null) {
-////									feature.addVersion(tempFeatureVersion);
-////									featureVersion = tempFeatureVersion;
-//									featureVersion = feature.addVersion(id);
-////									feature = this.featureDao.save(feature);
-//								}
-//
-//								featureVersions.add(featureVersion);
-//							}
-//						} else {
-//							//FeatureVersion tempFeatureVersion = this.entityFactory.createFeatureVersion(feature, FeatureVersion.NEWEST);
-//							//FeatureVersion featureVersion = feature.getId(tempFeatureVersion);
-//							FeatureVersion featureVersion = feature.getLatestVersion();
-//							if (featureVersion == null) {
-////								feature.addVersion(tempFeatureVersion);
-////								featureVersion = tempFeatureVersion;
-//								featureVersion = feature.createNewVersion();
-//							}
-//							featureVersions.add(featureVersion);
-//						}
-//
-//						ModuleFeature mf = this.entityFactory.createModuleFeature(feature, featureVersions, featureSign);
-//						module.add(mf);
-//
-//						feature = this.featureDao.save(feature);
-//					}
-//
-//					pc.getMinModules().add(module);
-//				}
-//			}
-//
-//			this.transactionStrategy.end();
-//
-//			return pc;
-//		} catch (Exception e) {
-//			this.transactionStrategy.rollback();
-//
-//			throw new EccoException("Error parsing presence condition string: " + pcString, e);
-//		}
-//	}
-
-
-	protected Configuration parseConfigurationString(String configurationString) {
-		if (configurationString == null)
-			throw new EccoException("No configuration string provided.");
+	/**
+	 * Parses the given configuration string (see {@link Configuration#CONFIGURATION_STRING_REGULAR_EXPRESSION} to create a configuration object.
+	 * The configuration object contains feature revision object instances of this repository in case they already exist, otherwise temporary feature and feature revision objects are created.
+	 *
+	 * @param configurationString The configuration string to parse.
+	 * @return The configuration object.
+	 */
+	private Configuration parseConfigurationString(String configurationString) {
+		checkNotNull(configurationString);
 
 		if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
 			throw new EccoException("Invalid configuration string provided.");
 
+		if (configurationString.isEmpty()) {
+			return this.entityFactory.createConfiguration();
+		}
+
 		try {
 			this.transactionStrategy.begin();
 
-			Configuration configuration = this.entityFactory.createConfiguration();
-
-			if (configurationString.isEmpty()) {
-				this.transactionStrategy.end();
-				return configuration;
-			}
-
 			Repository.Op repository = this.repositoryDao.load();
 
-			Set<FeatureRevision> newFeatureVersions = new HashSet<>();
+			Set<FeatureRevision> featureRevisions = new HashSet<>();
 
-			String[] featureInstanceStrings = configurationString.split(",");
-			for (String featureInstanceString : featureInstanceStrings) {
-				featureInstanceString = featureInstanceString.trim();
+			String[] featureRevisionStrings = configurationString.split(",");
+			for (String featureRevisionString : featureRevisionStrings) {
+				featureRevisionString = featureRevisionString.trim();
 
-				if (featureInstanceString.contains(".")) { // use specified feature version
-					String[] pair = featureInstanceString.split("\\.");
+				if (featureRevisionString.contains(".")) { // use specified feature revision
+					String[] pair = featureRevisionString.split("\\.");
 					String featureName = pair[0];
-					if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
-						featureName = featureName.substring(1);
-					String id = pair[1];
-					boolean featureSign = !(pair[0].startsWith("!") || pair[0].startsWith("-"));
+					String featureRevisionId = pair[1];
 
 					Feature feature;
-					if (featureName.startsWith("[") && featureName.endsWith("]")) { // id
-						feature = repository.getFeature(featureName);
-					} else { // name
-						Collection<Feature> features = repository.getFeaturesByName(featureName);
-						if (features.isEmpty()) {
-							feature = repository.addFeature(UUID.randomUUID().toString(), featureName, "");
-						} else if (features.size() == 1) {
-							feature = features.iterator().next();
-						} else {
-							throw new EccoException("Feature name is not unique. Use feature id instead.");
-						}
-					}
-
-					FeatureRevision featureVersion = feature.getRevision(id);
-					if (featureVersion == null) {
-						featureVersion = feature.addRevision(id);
-						newFeatureVersions.add(featureVersion);
-					}
-
-					//configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
-					configuration.addFeatureInstance(featureVersion.getInstance(featureSign));
-				} else if (featureInstanceString.endsWith("'")) { // create new feature version for feature
-					String featureName = featureInstanceString.substring(0, featureInstanceString.length() - 1);
-					if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
-						featureName = featureName.substring(1);
-
-					Feature feature;
-					if (featureName.startsWith("[") && featureName.endsWith("]")) { // id
-						feature = repository.getFeature(featureName);
-					} else { // name
-						Collection<Feature> features = repository.getFeaturesByName(featureName);
-						if (features.isEmpty()) {
-							feature = repository.addFeature(UUID.randomUUID().toString(), featureName, "");
-						} else if (features.size() == 1) {
-							feature = features.iterator().next();
-						} else {
-							throw new EccoException("Feature name is not unique. Use feature id instead.");
-						}
-					}
-
-					//FeatureVersion featureVersion = feature.createNewVersion();
-					FeatureRevision featureVersion = feature.addRevision(UUID.randomUUID().toString());
-					newFeatureVersions.add(featureVersion);
-
-					boolean featureSign = !(featureInstanceString.startsWith("!") || featureInstanceString.startsWith("-"));
-
-					//configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
-					configuration.addFeatureInstance(featureVersion.getInstance(featureSign));
-				} else { // use most recent feature version of feature (or create a new one if none existed so far)
-					String featureName = featureInstanceString;
-					if (featureName.startsWith("!") || featureName.startsWith("-") || featureName.startsWith("+"))
-						featureName = featureName.substring(1);
-
-					Feature feature;
-					if (featureName.startsWith("[") && featureName.endsWith("]")) { // id
+					if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
 						feature = repository.getFeature(featureName);
 						if (feature == null) {
-							feature = repository.addFeature(featureName, "", "");
+							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
+							// create temporary feature object
+							feature = this.entityFactory.createFeature(featureName, featureName);
 						}
-					} else { // name
+					} else { // feature name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
 						if (features.isEmpty()) {
-							feature = repository.addFeature(UUID.randomUUID().toString(), featureName, "");
+							//feature = this.addFeature(UUID.randomUUID().toString(), featureName);
+							// create temporary feature object
+							feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
 						} else {
@@ -945,36 +789,80 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						}
 					}
 
-					FeatureRevision featureVersion = feature.getLatestRevision();
-					if (featureVersion == null) {
-						//featureVersion = feature.createNewVersion();
-						featureVersion = feature.addRevision(UUID.randomUUID().toString());
-						newFeatureVersions.add(featureVersion);
+					FeatureRevision featureRevision = feature.getRevision(featureRevisionId);
+					if (featureRevision == null) {
+						featureRevision = feature.addRevision(featureRevisionId);
 					}
 
-					boolean featureSign = !(featureInstanceString.startsWith("!") || featureInstanceString.startsWith("-"));
+					featureRevisions.add(featureRevision);
+				} else if (featureRevisionString.endsWith("'")) { // create new feature revision for feature
+					String featureName = featureRevisionString.substring(0, featureRevisionString.length() - 1);
 
-					//configuration.addFeatureInstance(this.entityFactory.createFeatureInstance(feature, featureVersion, featureSign));
-					configuration.addFeatureInstance(featureVersion.getInstance(featureSign));
+					Feature feature;
+					if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
+						feature = repository.getFeature(featureName);
+						if (feature == null) {
+							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
+							// create temporary feature object
+							feature = this.entityFactory.createFeature(featureName, featureName);
+						}
+					} else { // feature name
+						Collection<Feature> features = repository.getFeaturesByName(featureName);
+						if (features.isEmpty()) {
+							//feature = this.addFeature(UUID.randomUUID().toString(), featureName);
+							// create temporary feature object
+							feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
+						} else if (features.size() == 1) {
+							feature = features.iterator().next();
+						} else {
+							throw new EccoException("Feature name is not unique. Use feature id instead.");
+						}
+					}
+
+					FeatureRevision featureRevision = feature.addRevision(UUID.randomUUID().toString());
+					featureRevisions.add(featureRevision);
+				} else { // use most recent feature revision of feature (or create a new one if none existed so far)
+					String featureName = featureRevisionString;
+
+					Feature feature;
+					if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
+						feature = repository.getFeature(featureName);
+						if (feature == null) {
+							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
+							// create temporary feature object
+							feature = this.entityFactory.createFeature(featureName, featureName);
+						}
+					} else { // feature name
+						Collection<Feature> features = repository.getFeaturesByName(featureName);
+						if (features.isEmpty()) {
+							//feature = this.addFeature(UUID.randomUUID().toString(), featureName);
+							// create temporary feature object
+							feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
+						} else if (features.size() == 1) {
+							feature = features.iterator().next();
+						} else {
+							throw new EccoException("Feature name is not unique. Use feature id instead.");
+						}
+					}
+
+					FeatureRevision featureRevision = feature.getLatestRevision();
+					if (featureRevision == null) {
+						featureRevision = feature.addRevision(UUID.randomUUID().toString());
+					}
+
+					featureRevisions.add(featureRevision);
 				}
 			}
 
-			// update existing associations with new (features and) feature versions. NOTE: update with negative features is not necessary if the configurations contain also all the negative features!
-			Collection<? extends Association> associations = repository.getAssociations();
-			for (Association association : associations) {
-				for (FeatureRevision newFeatureVersion : newFeatureVersions) {
-					association.getPresenceCondition().addFeatureVersion(newFeatureVersion);
-					//association.getPresenceCondition().addFeatureInstance(this.entityFactory.createFeatureInstance(newFeatureVersion.getFeature(), newFeatureVersion, false), repository.getMaxOrder());
-					association.getPresenceCondition().addFeatureInstance(newFeatureVersion.getInstance(false), repository.getMaxOrder());
-				}
-			}
+			Configuration configuration = this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[featureRevisions.size()]));
+
+			this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[featureRevisions.size()]));
 
 			this.repositoryDao.store(repository);
 
 			this.transactionStrategy.end();
 
 			return configuration;
-
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
 
@@ -983,9 +871,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	protected Collection<FeatureRevision> parseFeatureVersionsString(String featureVersionsString) {
+	private Collection<FeatureRevision> parseFeatureRevisionsString(String featureVersionsString) {
 		if (featureVersionsString == null)
-			throw new EccoException("No feature versions string provided.");
+			throw new EccoException("No feature revisions string provided.");
 
 		if (!featureVersionsString.matches("(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+)(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+))*)?"))
 			throw new EccoException("Invalid feature versions string provided.");
@@ -993,11 +881,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			this.transactionStrategy.begin();
 
-			Collection<FeatureRevision> featureVersions = new ArrayList<>();
+			Collection<FeatureRevision> featureRevisions = new ArrayList<>();
 
 			if (featureVersionsString.isEmpty()) {
 				this.transactionStrategy.end();
-				return featureVersions;
+				return featureRevisions;
 			}
 
 			Repository.Op repository = this.repositoryDao.load();
@@ -1008,7 +896,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 				String[] pair = featureVersionString.split("\\.");
 				String featureName = pair[0];
-				String versionId = pair[1];
+				String featureRevisionId = pair[1];
 
 				Feature feature;
 				if (featureName.startsWith("[") && featureName.endsWith("]")) { // id
@@ -1027,15 +915,17 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					}
 				}
 
-				FeatureRevision featureVersion = feature.getRevision(versionId);
-				if (featureVersion != null) {
-					featureVersions.add(featureVersion);
+				FeatureRevision featureRevision = feature.getRevision(featureRevisionId);
+				if (featureRevision != null) {
+					featureRevisions.add(featureRevision);
+				} else {
+					throw new EccoException("Feature revision with id does not exist: " + featureRevisionId);
 				}
 			}
 
 			this.transactionStrategy.end();
 
-			return featureVersions;
+			return featureRevisions;
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
 
@@ -1120,7 +1010,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							// retrieve deselection
 							//Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
 							String deselectedFeatureVersionsString = (String) ois.readObject();
-							Collection<FeatureRevision> deselected = this.parseFeatureVersionsString(deselectedFeatureVersionsString);
+							Collection<FeatureRevision> deselected = this.parseFeatureRevisionsString(deselectedFeatureVersionsString);
 
 							// compute subset repository using mem entity factory
 							this.transactionStrategy.begin();
@@ -1384,7 +1274,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			originService.transactionStrategy.begin();
 
 			Repository.Op originRepository = originService.repositoryDao.load();
-			subsetOriginRepository = originRepository.subset(originService.parseFeatureVersionsString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
+			subsetOriginRepository = originRepository.subset(originService.parseFeatureRevisionsString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
 
 			originService.transactionStrategy.end();
 		} catch (Exception e) {
@@ -1486,7 +1376,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					parentService.transactionStrategy.begin();
 
 					Repository.Op parentRepository = parentService.repositoryDao.load();
-					subsetParentRepository = parentRepository.subset(parentService.parseFeatureVersionsString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
+					subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
 
 					parentService.transactionStrategy.end();
 				} catch (Exception e) {
@@ -1544,7 +1434,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						// compute subset repository using mem entity factory
 						this.transactionStrategy.begin();
 						Repository.Op repository = this.repositoryDao.load();
-						Repository.Op subsetRepository = repository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.memEntityFactory);
+						Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.memEntityFactory);
 						this.transactionStrategy.end();
 
 
@@ -1581,7 +1471,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 				// create subset repository
 				Repository.Op repository = this.repositoryDao.load();
-				Repository.Op subsetRepository = repository.subset(this.parseFeatureVersionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), parentService.entityFactory);
+				Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), parentService.entityFactory);
 
 				// merge into parent repository
 				try {
@@ -1714,8 +1604,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
-	public synchronized Set<Node.Op> readFiles(){
-		return  reader.read(this.baseDir, new Path[]{Paths.get("")});
+	public synchronized Set<Node.Op> readFiles() {
+		return this.reader.read(this.baseDir, new Path[]{Paths.get("")});
 	}
 
 
@@ -1773,12 +1663,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		} else {
 			try {
 				StringBuilder sb = new StringBuilder();
-
-				for (at.jku.isse.ecco.module.Module m : checkout.getMissing()) {
-					sb.append("MISSING: " + m + System.lineSeparator());
+				for (ModuleRevision mr : checkout.getMissing()) {
+					sb.append("MISSING: ").append(mr).append(System.lineSeparator());
 				}
-				for (at.jku.isse.ecco.module.Module m : checkout.getSurplus()) {
-					sb.append("SURPLUS: " + m + System.lineSeparator());
+				for (ModuleRevision mr : checkout.getSurplus()) {
+					sb.append("SURPLUS: ").append(mr).append(System.lineSeparator());
 				}
 				for (Artifact a : checkout.getOrderWarnings()) {
 					List<String> pathList = new LinkedList<>();
@@ -1789,12 +1678,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						current = current.getParent();
 					}
 					pathList.add(a.toString());
-					sb.append("ORDER: " + pathList.stream().collect(Collectors.joining()) + System.lineSeparator());
+					sb.append("ORDER: ").append(pathList.stream().collect(Collectors.joining())).append(System.lineSeparator());
 				}
 				for (Association association : checkout.getUnresolvedAssociations()) {
-					sb.append("UNRESOLVED: " + association + System.lineSeparator());
+					sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());
 				}
-
 				Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 			} catch (IOException e) {
 				throw new EccoException("Could not create warnings file.", e);
@@ -1822,7 +1710,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * See {@link #map(Collection)}.
 	 *
 	 * @param root The root of the artifact tree to map.
-	 * @return
+	 * @return The root node of the mapped artifact tree. This will be the same root node instance as the input parameter {@code root}.
 	 */
 	public synchronized RootNode map(RootNode root) {
 		// TODO: map
@@ -1835,8 +1723,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * This can be used to map current files to the contents in the repository.
 	 * In case the respective readers attach additional information to the artifacts below file level in the form of properties (e.g. line and column numbers in the case of source code) this can be used to highlight lower level artifacts (e.g. statements in the source code) based on the features they belongs to.
 	 *
-	 * @param paths The collection of paths (files or directories) to map.
-	 * @return
+	 * @param paths The collection of paths (files or directories) to map to the repository.
+	 * @return The root node of the mapped artifact tree.
 	 */
 	public synchronized RootNode map(Collection<Path> paths) {
 		// TODO: map
@@ -1846,7 +1734,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	// OTHERS //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
-	 * Gets the list of loaded artifact plugins.
+	 * Returns the list of loaded artifact plugins.
 	 *
 	 * @return The list of artifact plugins.
 	 */
@@ -1855,8 +1743,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 	/**
-	 * Get the injector that can be used to retreive arbitrary artifact readers, writers, viewers, etc.
-	 * This is a lower level functionality that should not be used if not really necessary.
+	 * Get the injector that can be used to retrieve arbitrary artifact readers, writers, viewers, etc.
+	 * This is lower level functionality that should not be used unless absolutely necessary.
 	 *
 	 * @return The injector object.
 	 */

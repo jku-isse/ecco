@@ -3,10 +3,7 @@ package at.jku.isse.ecco.repository;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.core.DependencyGraph;
+import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -64,7 +61,7 @@ public interface Repository {
 		 */
 		public Feature getFeature(String id);
 
-		public Feature addFeature(String id, String name, String description);
+		public Feature addFeature(String id, String name);
 
 
 		public void addAssociation(Association.Op association);
@@ -79,15 +76,6 @@ public interface Repository {
 
 		public EntityFactory getEntityFactory();
 
-
-		/**
-		 * Checks if a module with given positive and negative features is contained in the repository.
-		 *
-		 * @param pos
-		 * @param neg
-		 * @return
-		 */
-		public boolean containsModule(Feature[] pos, Feature[] neg);
 
 		/**
 		 * Retrieves the module instance with given positive and negative features from the repository.
@@ -157,6 +145,45 @@ public interface Repository {
 
 
 		/**
+		 * Adds new modules to the repository that contain the new feature negatively.
+		 *
+		 * @param feature The new feature.
+		 */
+		public default void addNegativeFeatureModules(Feature feature) {
+			checkNotNull(feature);
+
+			// add new modules to the repository that contain the new feature negatively. copies every existing module and adds the new feature negatively.
+			for (Module module : this.getModules()) {
+				// only add modules that do not exceed the maximum order of modules in the repository
+				if (module.getOrder() < this.getMaxOrder()) {
+					// create array of negative features. to be reused also by every revision module.
+					Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
+					negFeatures[negFeatures.length - 1] = feature;
+					// create copy of module with new feature negative
+					Module newModule = this.addModule(module.getPos(), negFeatures);
+					newModule.setCount(module.getCount());
+
+					// do the same for the revision modules
+					for (ModuleRevision moduleRevision : module.getRevisions()) {
+						// create copy of module revision with new feature negative
+						ModuleRevision newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
+						newModuleRevision.setCount(moduleRevision.getCount());
+						// update existing associations that have matching old module with the new module
+						for (Association.Op association : this.getAssociations()) {
+							ModuleCounter existingModuleCounter = association.getCounter().getChild(moduleRevision.getModule());
+							if (existingModuleCounter != null) {
+								ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
+								if (existingModuleRevisionCounter != null) {
+									association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		/**
 		 * Adds all features and feature revisions in the given configuration that are not already contained in the repository to the repository.
 		 * In the process, all associations in the repository are updated with new modules containing the new features negatively.
 		 * Returns a collection of all feature revisions instances in the repository that are contained in the repository, those that already existed and those that were added.
@@ -174,37 +201,10 @@ public interface Repository {
 				// get/add feature from/to repository
 				Feature repoFeature = this.getFeature(feature.getId());
 				if (repoFeature == null) {
-					repoFeature = this.addFeature(feature.getId(), feature.getName(), feature.getDescription());
+					repoFeature = this.addFeature(feature.getId(), feature.getName());
+					repoFeature.setDescription(feature.getDescription());
 
-					// add new modules to the repository that contain the new feature negatively. copies every existing module and adds the new feature negatively.
-					for (Module module : this.getModules()) {
-						// only add modules that do not exceed the maximum order of modules in the repository
-						if (module.getOrder() < this.getMaxOrder()) {
-							// create array of negative features. to be reused also by every revision module.
-							Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
-							negFeatures[negFeatures.length - 1] = repoFeature;
-							// create copy of module with new feature negative
-							Module newModule = this.addModule(module.getPos(), negFeatures);
-							newModule.setCount(module.getCount());
-
-							// do the same for the revision modules
-							for (ModuleRevision moduleRevision : module.getRevisions()) {
-								// create copy of module revision with new feature negative
-								ModuleRevision newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
-								newModuleRevision.setCount(moduleRevision.getCount());
-								// update existing associations that have matching old module with the new module
-								for (Association.Op association : this.getAssociations()) {
-									ModuleCounter existingModuleCounter = association.getCounter().getChild(moduleRevision.getModule());
-									if (existingModuleCounter != null) {
-										ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
-										if (existingModuleRevisionCounter != null) {
-											association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
-										}
-									}
-								}
-							}
-						}
-					}
+					this.addNegativeFeatureModules(repoFeature);
 				}
 				// get/add feature revision from/to repository
 				FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureRevision.getId());
@@ -551,6 +551,53 @@ public interface Repository {
 					Trees.map(association.getRootNode(), node);
 				}
 			}
+		}
+
+
+		/**
+		 * Creates a subset repository of this repository using the given entity factory. This repository is not changed.
+		 * Creates a subset repository of this repository by (optionally) deselecting (i.e. explicity setting to <i>false</i>) some feature versions and (optionally) reducing the maximum order of modules.
+		 * The subset repository is created with the given entity factory.
+		 *
+		 * @param deselected    The deselected feature revisions (i.e. feature versions that are set to false).
+		 * @param maxOrder      The maximum order of modules to be copied over into the subset repository.
+		 * @param entityFactory The entity factory used for creating the subset repository.
+		 * @return The subset repository.
+		 */
+		public default Repository.Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory) {
+			// TODO: map
+			throw new UnsupportedOperationException("Not yet implemented.");
+		}
+
+		/**
+		 * Creates a copy of this repository using the same entity factory and maximum order of modules. This repository is not changed.
+		 *
+		 * @param entityFactory The entity factory used for creating the copy of this repository.
+		 * @return The copied repository.
+		 */
+		public default Repository.Op copy(EntityFactory entityFactory) {
+			return this.subset(new ArrayList<>(), this.getMaxOrder(), entityFactory);
+		}
+
+		/**
+		 * Merges other repository into this repository. The other repository is destroyed in the process.
+		 * Merges another repository into this repository. The two repositories must have been created from the same entity factory (i.e. must use the same data backend).
+		 *
+		 * @param other The other repository to be merged into this repository.
+		 */
+		public default void merge(Repository.Op other) {
+			// TODO: map
+			throw new UnsupportedOperationException("Not yet implemented.");
+		}
+
+		/**
+		 * Diffs the current working copy against the repository and returns a diff object containing all affected associations (and thus all affected features and artifacts).
+		 *
+		 * @return The diff object.
+		 */
+		public default Diff diff() {
+			// TODO: map
+			throw new UnsupportedOperationException("Not yet implemented.");
 		}
 
 	}

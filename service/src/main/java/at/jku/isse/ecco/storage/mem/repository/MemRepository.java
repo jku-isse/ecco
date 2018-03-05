@@ -56,10 +56,10 @@ public class MemRepository implements Repository, Repository.Op {
 	}
 
 	@Override
-	public Feature addFeature(String id, String name, String description) {
+	public Feature addFeature(String id, String name) {
 		if (this.features.containsKey(id))
 			return null;
-		Feature feature = new MemFeature(id, name, description);
+		Feature feature = new MemFeature(id, name);
 		this.features.put(feature.getId(), feature);
 		return feature;
 	}
@@ -92,11 +92,6 @@ public class MemRepository implements Repository, Repository.Op {
 		return this.entityFactory;
 	}
 
-
-	@Override
-	public boolean containsModule(Feature[] pos, Feature[] neg) {
-		return this.modules.containsKey(new MemModule(pos, neg));
-	}
 
 	@Override
 	public Module getModule(Feature[] pos, Feature[] neg) {

@@ -19,13 +19,12 @@ public class MemFeature implements Feature {
 	private List<FeatureRevision> revisions;
 
 
-	public MemFeature(String id, String name, String description) {
+	public MemFeature(String id, String name) {
 		checkNotNull(id);
 		checkNotNull(name);
-		checkNotNull(description);
 		this.id = id;
 		this.name = name;
-		this.description = description;
+		this.description = "";
 		this.revisions = new ArrayList<>();
 	}
 

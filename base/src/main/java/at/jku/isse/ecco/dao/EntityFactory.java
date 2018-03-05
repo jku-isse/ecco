@@ -78,12 +78,11 @@ public interface EntityFactory {
 	/**
 	 * Creates a new instance of a {@link Feature} with the given name and description.
 	 *
-	 * @param id          of the feature
-	 * @param name        of the feature
-	 * @param description of the feature
+	 * @param id   of the feature
+	 * @param name of the feature
 	 * @return A new initialized instance of feature.
 	 */
-	public Feature createFeature(final String id, final String name, final String description);
+	public Feature createFeature(final String id, final String name);
 
 
 	/**
