@@ -50,7 +50,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		this.readers = readers;
 	}
 
-	private Collection<ReadListener> listeners = new ArrayList<ReadListener>();
+	private Collection<ReadListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(ReadListener listener) {
@@ -89,6 +89,75 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 		return currentReader;
 	}
+
+
+	public Set<Node.Op> readSpecificFiles(Path[] input) {
+		return this.readSpecificFiles(Paths.get("."), input);
+	}
+
+	public Set<Node.Op> readSpecificFiles(Path base, Path[] input) {
+		// for every file in paths add all parent directories and parse the file using the appropriate plugin
+
+		// map of directories
+		Map<Path, Node.Op> directoryNodes = new HashMap<>();
+
+		// for every file
+		for (Path path : input) {
+			// recursively check if its parents are already contained in the directory map, if not add them and link them
+			Node.Op parentNode = this.createParents(base, path.getParent(), directoryNodes);
+
+			// create node for file itself
+			if (Files.isDirectory(base.resolve(path))) {
+				Path relative = base.relativize(path);
+				Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative));
+				Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
+				directoryNodes.put(relative, directoryNode);
+				parentNode.addChild(directoryNode);
+			} else {
+				ArtifactReader<Path, Set<Node.Op>> reader = this.getReaderForFile(base, path);
+				Set<Node.Op> nodes = reader.read(base, new Path[]{path});
+				if (!nodes.isEmpty()) {
+					for (Node.Op node : nodes) {
+						parentNode.addChild(node);
+					}
+				}
+			}
+		}
+
+		// return set of nodes containing only the node representing the base directory
+		Set<Node.Op> nodes = new HashSet<>();
+		nodes.add(directoryNodes.get(Paths.get("")));
+		return nodes;
+	}
+
+	private Node.Op createParents(Path base, Path path, Map<Path, Node.Op> directoryNodes) {
+		// make sure that path is a directory
+		if (!Files.isDirectory(path))
+			throw new EccoException("Expected a directory: " + path);
+
+		// check if path is already contained in directory nodes
+		Path relative = base.relativize(path);
+		Node.Op node = directoryNodes.get(relative);
+		if (node != null) { // if it is we are done
+			return node;
+		}
+
+		// if it is not we create and add it
+		Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative));
+		Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
+		directoryNodes.put(relative, directoryNode);
+
+		// if the current path is still below the base directory
+		if (!relative.equals(Paths.get(""))) {
+			// proceed recursively with its parent and add it as a child to that parent
+			Node.Op parent = this.createParents(base, path.getParent(), directoryNodes);
+			parent.addChild(directoryNode);
+		}
+
+		// finally we return the current directory node
+		return directoryNode;
+	}
+
 
 	@Override
 	public Set<Node.Op> read(Path[] input) {
@@ -217,8 +286,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		try {
 			if (Files.isDirectory(current) && this.getReaderForFile(base, relativeCurrent) == null) { // deal with directories that cannot be dispatched
 				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
-					Artifact.Op<?> directoryArtifact = entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
-					Node.Op directoryNode = entityFactory.createNode(directoryArtifact);
+					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
+					Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 					directoryNodes.put(relativeCurrent, directoryNode);
 
 					this.fireReadEvent(base.relativize(current), this);

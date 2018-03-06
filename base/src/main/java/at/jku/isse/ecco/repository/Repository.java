@@ -453,8 +453,8 @@ public interface Repository {
 		public default Checkout compose(Configuration configuration, boolean lazy) {
 			checkNotNull(configuration);
 
-			Set<Association> selectedAssociations = new HashSet<>();
-			for (Association association : this.getAssociations()) {
+			Set<Association.Op> selectedAssociations = new HashSet<>();
+			for (Association.Op association : this.getAssociations()) {
 				if (association.computeCondition().holds(configuration)) {
 					selectedAssociations.add(association);
 				}
@@ -501,13 +501,13 @@ public interface Repository {
 			return checkout;
 		}
 
-		public default Checkout compose(Collection<Association> selectedAssociations, boolean lazy) {
+		public default Checkout compose(Collection<Association.Op> selectedAssociations, boolean lazy) {
 			Node compRootNode;
 			Collection<Artifact<?>> orderWarnings;
 			if (lazy) {
 				LazyCompositionRootNode lazyCompRootNode = new LazyCompositionRootNode();
 
-				for (Association association : selectedAssociations) {
+				for (Association.Op association : selectedAssociations) {
 					lazyCompRootNode.addOrigNode(association.getRootNode());
 				}
 
@@ -541,15 +541,12 @@ public interface Repository {
 		 * The nodes contain the updated line/col information from the reader, and the marking can still be done on the artifacts in the repository.
 		 * This also enables highlighting of selected associations in changed files.
 		 *
-		 * @param nodes The tree to be mapped.
+		 * @param rootNode The root node of the artifact tree to be mapped.
 		 */
-		public default void map(Collection<RootNode> nodes) {
-			Collection<? extends Association> associations = this.getAssociations();
-
-			for (Node.Op node : nodes) {
-				for (Association association : associations) {
-					Trees.map(association.getRootNode(), node);
-				}
+		public default void map(RootNode.Op rootNode) {
+			Collection<? extends Association.Op> associations = this.getAssociations();
+			for (Association.Op association : associations) {
+				Trees.map(association.getRootNode(), rootNode);
 			}
 		}
 
@@ -565,7 +562,7 @@ public interface Repository {
 		 * @return The subset repository.
 		 */
 		public default Repository.Op subset(Collection<FeatureRevision> deselected, int maxOrder, EntityFactory entityFactory) {
-			// TODO: map
+			// TODO
 			throw new UnsupportedOperationException("Not yet implemented.");
 		}
 
@@ -586,7 +583,7 @@ public interface Repository {
 		 * @param other The other repository to be merged into this repository.
 		 */
 		public default void merge(Repository.Op other) {
-			// TODO: map
+			// TODO
 			throw new UnsupportedOperationException("Not yet implemented.");
 		}
 
@@ -596,7 +593,7 @@ public interface Repository {
 		 * @return The diff object.
 		 */
 		public default Diff diff() {
-			// TODO: map
+			// TODO
 			throw new UnsupportedOperationException("Not yet implemented.");
 		}
 

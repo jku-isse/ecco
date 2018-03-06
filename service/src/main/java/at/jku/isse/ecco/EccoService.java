@@ -47,6 +47,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -1546,6 +1547,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		return true;
 	}
 
+
 	// COMMIT //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
@@ -1630,10 +1632,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		checkNotNull(configuration);
 
-
 		Repository.Op repository = this.repositoryDao.load();
 		Checkout checkout = repository.compose(configuration);
-
 
 		for (Association selectedAssociation : checkout.getSelectedAssociations()) {
 			this.fireAssociationSelectedEvent(selectedAssociation);
@@ -1705,17 +1705,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		return checkout;
 	}
 
-	/**
-	 * Maps a given artifact tree to the artifacts in the repository.
-	 * See {@link #map(Collection)}.
-	 *
-	 * @param root The root of the artifact tree to map.
-	 * @return The root node of the mapped artifact tree. This will be the same root node instance as the input parameter {@code root}.
-	 */
-	public synchronized RootNode map(RootNode root) {
-		// TODO: map
-		throw new UnsupportedOperationException("Not yet implemented.");
-	}
 
 	/**
 	 * Parses a given set of files or directories with the respective plugins and returns the resulting artifact tree.
@@ -1727,9 +1716,33 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return The root node of the mapped artifact tree.
 	 */
 	public synchronized RootNode map(Collection<Path> paths) {
-		// TODO: map
-		throw new UnsupportedOperationException("Not yet implemented.");
+		checkNotNull(paths);
+		checkArgument(!paths.isEmpty());
+
+		Set<Node.Op> nodes = this.reader.readSpecificFiles(paths.toArray(new Path[paths.size()]));
+
+		RootNode.Op rootNode = this.entityFactory.createRootNode();
+		for (Node.Op node : nodes) {
+			rootNode.addChild(node);
+		}
+
+		try {
+			this.transactionStrategy.begin();
+
+			Repository.Op repository = this.repositoryDao.load();
+
+			repository.map(rootNode);
+
+			this.transactionStrategy.end();
+
+			return rootNode;
+		} catch (Exception e) {
+			this.transactionStrategy.rollback();
+
+			throw new EccoException("Error during map.", e);
+		}
 	}
+
 
 	// OTHERS //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
