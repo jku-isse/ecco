@@ -11,7 +11,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class BaseArtifactReference implements ArtifactReference, ArtifactReference.Op {
+public class MemArtifactReference implements ArtifactReference, ArtifactReference.Op {
 
 	private final String type;
 
@@ -21,14 +21,14 @@ public class BaseArtifactReference implements ArtifactReference, ArtifactReferen
 	/**
 	 * Constructs a new artifact reference with the type initiliazed to an empty string.
 	 */
-	public BaseArtifactReference() {
+	public MemArtifactReference() {
 		this(null);
 	}
 
 	/**
 	 * Constructs a new artifact reference with the given type.
 	 */
-	public BaseArtifactReference(final String type) {
+	public MemArtifactReference(final String type) {
 		this.type = type;
 	}
 
@@ -74,7 +74,7 @@ public class BaseArtifactReference implements ArtifactReference, ArtifactReferen
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		BaseArtifactReference that = (BaseArtifactReference) o;
+		MemArtifactReference that = (MemArtifactReference) o;
 
 		if (this.type != null ? !this.type.equals(that.type) : that.type != null) return false;
 		if (this.source != null ? !this.source.equals(that.source) : that.source != null) return false;

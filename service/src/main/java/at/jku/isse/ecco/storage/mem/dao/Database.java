@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.storage.mem.dao;
 
-import at.jku.isse.ecco.storage.mem.core.BaseCommit;
-import at.jku.isse.ecco.storage.mem.core.BaseRemote;
-import at.jku.isse.ecco.storage.mem.core.BaseVariant;
+import at.jku.isse.ecco.storage.mem.core.MemCommit;
+import at.jku.isse.ecco.storage.mem.core.MemRemote;
+import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.repository.MemRepository;
 import at.jku.isse.ecco.repository.Repository;
 
@@ -15,9 +15,9 @@ public class Database {
 
 	private final Repository.Op repository;
 
-	private final Map<Integer, BaseCommit> commitIndex;
-	private final Map<String, BaseVariant> variantIndex;
-	private final Map<String, BaseRemote> remoteIndex;
+	private final Map<Integer, MemCommit> commitIndex;
+	private final Map<String, MemVariant> variantIndex;
+	private final Map<String, MemRemote> remoteIndex;
 
 	private final Set<String> ignorePatterns = new HashSet<>();
 	private final Map<String, String> pluginMap = new HashMap<>();
@@ -40,15 +40,15 @@ public class Database {
 	}
 
 
-	public Map<String, BaseRemote> getRemoteIndex() {
+	public Map<String, MemRemote> getRemoteIndex() {
 		return this.remoteIndex;
 	}
 
-	public Map<Integer, BaseCommit> getCommitIndex() {
+	public Map<Integer, MemCommit> getCommitIndex() {
 		return this.commitIndex;
 	}
 
-	public Map<String, BaseVariant> getVariantIndex() {
+	public Map<String, MemVariant> getVariantIndex() {
 		return this.variantIndex;
 	}
 

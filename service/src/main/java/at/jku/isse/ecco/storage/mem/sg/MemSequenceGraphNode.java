@@ -6,13 +6,13 @@ import at.jku.isse.ecco.sg.SequenceGraph;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BaseSequenceGraphNode implements SequenceGraph.Node, SequenceGraph.Node.Op {
+public class MemSequenceGraphNode implements SequenceGraph.Node, SequenceGraph.Node.Op {
 
 	private HashMap<Artifact.Op<?>, SequenceGraph.Node.Op> children = new HashMap<>(); // maybe use linked hash map?
 
 	private boolean pol;
 
-	public BaseSequenceGraphNode(boolean pol) {
+	public MemSequenceGraphNode(boolean pol) {
 		this.pol = pol;
 	}
 

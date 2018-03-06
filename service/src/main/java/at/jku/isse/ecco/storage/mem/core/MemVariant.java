@@ -9,7 +9,7 @@ import at.jku.isse.ecco.feature.Configuration;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class BaseVariant implements Variant {
+public class MemVariant implements Variant {
 
 	private String name;
 	private String description;

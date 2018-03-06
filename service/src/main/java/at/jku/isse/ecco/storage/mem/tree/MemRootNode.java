@@ -3,12 +3,12 @@ package at.jku.isse.ecco.storage.mem.tree;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.RootNode;
 
-public class BaseRootNode extends BaseNode implements RootNode, RootNode.Op {
+public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 
 	private Association containingAssociation;
 
 
-	public BaseRootNode() {
+	public MemRootNode() {
 		super();
 	}
 
@@ -26,7 +26,7 @@ public class BaseRootNode extends BaseNode implements RootNode, RootNode.Op {
 
 	@Override
 	public RootNode.Op createNode() {
-		return new BaseRootNode();
+		return new MemRootNode();
 	}
 
 

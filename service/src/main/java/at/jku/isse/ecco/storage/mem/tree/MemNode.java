@@ -10,7 +10,7 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class BaseNode implements Node, Node.Op {
+public class MemNode implements Node, Node.Op {
 
 	private transient NodeOperator operator = new NodeOperator(this);
 
@@ -24,17 +24,17 @@ public class BaseNode implements Node, Node.Op {
 	private Op parent = null;
 
 
-	public BaseNode() {
+	public MemNode() {
 	}
 
-	public BaseNode(Artifact.Op<?> artifact) {
+	public MemNode(Artifact.Op<?> artifact) {
 		this.artifact = artifact;
 	}
 
 
 	@Override
 	public Op createNode() {
-		return new BaseNode();
+		return new MemNode();
 	}
 
 

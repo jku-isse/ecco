@@ -13,13 +13,13 @@ import java.util.List;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class BaseCommit implements Commit {
+public class MemCommit implements Commit {
 
 	private int id;
 	private String committer;
 	private Configuration configuration;
 
-	public BaseCommit() {
+	public MemCommit() {
 	}
 
 	@Override

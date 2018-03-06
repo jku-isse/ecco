@@ -4,7 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactOperator;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.storage.mem.sg.BaseSequenceGraph;
+import at.jku.isse.ecco.storage.mem.sg.MemSequenceGraph;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
@@ -18,7 +18,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author JKU, ISSE
  * @version 1.0
  */
-public class BaseArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
+public class MemArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
 
 	private transient ArtifactOperator operator = new ArtifactOperator(this);
 
@@ -40,15 +40,15 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 	// constructors
 
-	public BaseArtifact() {
+	public MemArtifact() {
 		this(null);
 	}
 
-	public BaseArtifact(DataType data) {
+	public MemArtifact(DataType data) {
 		this(data, false);
 	}
 
-	public BaseArtifact(DataType data, boolean ordered) {
+	public MemArtifact(DataType data, boolean ordered) {
 		this.data = data;
 		this.ordered = ordered;
 		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
@@ -68,7 +68,7 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		BaseArtifact<?> that = (BaseArtifact<?>) o;
+		MemArtifact<?> that = (MemArtifact<?>) o;
 
 		if (this.isOrdered() != that.isOrdered()) return false;
 		if (this.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
@@ -169,7 +169,7 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 
 	@Override
 	public SequenceGraph.Op createSequenceGraph() {
-		return new BaseSequenceGraph();
+		return new MemSequenceGraph();
 	}
 
 
@@ -261,7 +261,7 @@ public class BaseArtifact<DataType extends ArtifactData> implements Artifact<Dat
 		if (this.uses(target))
 			return;
 
-		ArtifactReference.Op artifactReference = new BaseArtifactReference();
+		ArtifactReference.Op artifactReference = new MemArtifactReference();
 		artifactReference.setSource(this);
 		artifactReference.setTarget(target);
 		this.addUses(artifactReference);

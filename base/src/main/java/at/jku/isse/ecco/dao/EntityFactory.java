@@ -9,7 +9,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -19,9 +18,6 @@ import java.util.Set;
  * Creates entities depending on the used data implementation.
  */
 public interface EntityFactory {
-
-	public Repository.Op createRepository();
-
 
 	/**
 	 * Creates a remote with given name, address and type.
@@ -41,12 +37,10 @@ public interface EntityFactory {
 	public Commit createCommit();
 
 	/**
-	 * Creates an empty configuration.
+	 * Creates a configuration containing the given feature revisions.
 	 *
-	 * @return
+	 * @return The configuration object.
 	 */
-	public Configuration createConfiguration();
-
 	public Configuration createConfiguration(FeatureRevision[] featureRevisions);
 
 

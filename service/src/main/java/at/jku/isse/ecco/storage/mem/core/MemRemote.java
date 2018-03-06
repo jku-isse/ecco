@@ -6,7 +6,7 @@ import at.jku.isse.ecco.feature.Feature;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class BaseRemote implements Remote {
+public class MemRemote implements Remote {
 
 	private String name;
 	private String address;
@@ -15,11 +15,11 @@ public class BaseRemote implements Remote {
 	private Collection<Feature> features;
 
 
-	public BaseRemote() {
+	public MemRemote() {
 		this("", "", Type.LOCAL);
 	}
 
-	public BaseRemote(String name, String address, Type type) {
+	public MemRemote(String name, String address, Type type) {
 		this.name = name;
 		this.address = address;
 		this.type = type;

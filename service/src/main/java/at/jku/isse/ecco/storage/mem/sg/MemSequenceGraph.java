@@ -7,7 +7,7 @@ import at.jku.isse.ecco.sg.SequenceGraphOperator;
 
 import java.util.*;
 
-public class BaseSequenceGraph implements SequenceGraph, SequenceGraph.Op {
+public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
 	private transient SequenceGraphOperator operator = new SequenceGraphOperator(this);
 
@@ -21,9 +21,9 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 	private boolean pol = true;
 
 
-	public BaseSequenceGraph() {
+	public MemSequenceGraph() {
 		this.pol = true;
-		this.root = (BaseSequenceGraphNode) this.createSequenceGraphNode(this.pol);
+		this.root = (MemSequenceGraphNode) this.createSequenceGraphNode(this.pol);
 		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
 	}
 
@@ -112,7 +112,7 @@ public class BaseSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
 
 	public Node.Op createSequenceGraphNode(boolean pol) {
-		return new BaseSequenceGraphNode(pol);
+		return new MemSequenceGraphNode(pol);
 	}
 
 

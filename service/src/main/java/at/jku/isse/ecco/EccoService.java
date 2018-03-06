@@ -742,14 +742,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configurationString The configuration string to parse.
 	 * @return The configuration object.
 	 */
-	private Configuration parseConfigurationString(String configurationString) {
+	public Configuration parseConfigurationString(String configurationString) {
 		checkNotNull(configurationString);
 
 		if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
 			throw new EccoException("Invalid configuration string provided.");
 
 		if (configurationString.isEmpty()) {
-			return this.entityFactory.createConfiguration();
+			return this.entityFactory.createConfiguration(new FeatureRevision[0]);
 		}
 
 		try {
