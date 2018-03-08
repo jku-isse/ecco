@@ -1,44 +1,33 @@
 package at.jku.isse.ecco.storage.perst.core;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleFeature;
-import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.counter.AssociationCounter;
+import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.storage.perst.counter.PerstAssociationCounter;
+import at.jku.isse.ecco.storage.perst.module.PerstCondition;
 import at.jku.isse.ecco.tree.RootNode;
 import org.garret.perst.Persistent;
-
-import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Perst implementation of {@link Association}.
- *
- * @author JKU, ISSE
- * @author Hannes Thaller
- * @version 1.0
  */
 public class PerstAssociation extends Persistent implements Association, Association.Op {
 
 	private String id;
-	private String name = "";
-	private RootNode.Op rootNode;
-	private PresenceCondition presenceCondition;
+	private String name;
+	private RootNode.Op artifactTreeRoot;
+	private AssociationCounter associationCounter;
+
 
 	public PerstAssociation() {
-		//this.id = id;
-		//this.id = UUID.randomUUID().toString();
+		this.id = "";
+		this.name = "";
+		this.artifactTreeRoot = null;
+		this.associationCounter = new PerstAssociationCounter(this);
 	}
 
-	@Override
-	public PresenceCondition getPresenceCondition() {
-		return this.presenceCondition;
-	}
-
-	@Override
-	public void setPresenceCondition(PresenceCondition presenceCondition) {
-		this.presenceCondition = presenceCondition;
-	}
 
 	@Override
 	public String getId() {
@@ -64,18 +53,29 @@ public class PerstAssociation extends Persistent implements Association, Associa
 
 	@Override
 	public RootNode.Op getRootNode() {
-		return rootNode;
+		return artifactTreeRoot;
 	}
 
 	@Override
 	public void setRootNode(final RootNode.Op root) {
-		this.rootNode = root;
+		this.artifactTreeRoot = root;
 		root.setContainingAssociation(this);
 	}
 
 	@Override
+	public AssociationCounter getCounter() {
+		return this.associationCounter;
+	}
+
+	@Override
+	public Condition createCondition() {
+		return new PerstCondition();
+	}
+
+
+	@Override
 	public String toString() {
-		return String.format("Id: %s, Name: %s, Artifact Tree: %s", this.id, this.name, rootNode.toString());
+		return this.getAssociationString();
 	}
 
 }

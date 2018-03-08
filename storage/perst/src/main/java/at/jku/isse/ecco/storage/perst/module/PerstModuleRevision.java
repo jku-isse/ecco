@@ -6,35 +6,33 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import org.garret.perst.Persistent;
 
-import java.util.*;
+import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-/**
- * Perst implementation of {@link Feature}.
- */
-public class PerstModule extends Persistent implements Module {
+public class PerstModuleRevision extends Persistent implements ModuleRevision {
 
-	private Feature[] pos;
+	private FeatureRevision[] pos;
 	private Feature[] neg;
 	private int count;
-	private Map<ModuleRevision, ModuleRevision> revisions;
+	private Module module;
 
 
-	public PerstModule(Feature[] pos, Feature[] neg) {
+	public PerstModuleRevision(PerstModule module, FeatureRevision[] pos, Feature[] neg) {
+		checkNotNull(module);
 		checkNotNull(pos);
 		checkNotNull(neg);
 		checkArgument(pos.length > 0);
 		this.pos = pos;
 		this.neg = neg;
 		this.count = 0;
-		this.revisions = new HashMap<>();
+		this.module = module;
 	}
 
 
 	@Override
-	public Feature[] getPos() {
+	public FeatureRevision[] getPos() {
 		return this.pos;
 	}
 
@@ -64,24 +62,8 @@ public class PerstModule extends Persistent implements Module {
 	}
 
 	@Override
-	public Collection<ModuleRevision> getRevisions() {
-		return Collections.unmodifiableCollection(this.revisions.values());
-	}
-
-	@Override
-	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
-		if (!this.matchesRevision(pos, neg))
-			return null;
-		ModuleRevision moduleRevision = new PerstModuleRevision(this, pos, neg);
-		if (this.revisions.containsKey(moduleRevision))
-			return null;
-		this.revisions.put(moduleRevision, moduleRevision);
-		return moduleRevision;
-	}
-
-	@Override
-	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
-		return this.revisions.get(new PerstModuleRevision(this, pos, neg));
+	public Module getModule() {
+		return this.module;
 	}
 
 
@@ -89,8 +71,8 @@ public class PerstModule extends Persistent implements Module {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		PerstModule memModule = (PerstModule) o;
-		return Arrays.equals(pos, memModule.pos) && Arrays.equals(neg, memModule.neg);
+		PerstModuleRevision memModuleRevision = (PerstModuleRevision) o;
+		return Arrays.equals(pos, memModuleRevision.pos) && Arrays.equals(neg, memModuleRevision.neg);
 	}
 
 	@Override
@@ -102,7 +84,7 @@ public class PerstModule extends Persistent implements Module {
 
 	@Override
 	public String toString() {
-		return this.getModuleString();
+		return this.getModuleRevisionString();
 	}
 
 }

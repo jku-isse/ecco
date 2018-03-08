@@ -4,23 +4,19 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.NodeOperator;
 import org.garret.perst.Persistent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A perst implementation of the node. When recursive loading for this node is disabled it will be loaded on demand as soon as any of its object members is accessed.
- *
- * @author Hannes Thaller
- * @version 1.0
  */
 public class PerstNode extends Persistent implements Node, Node.Op {
-
-	private transient NodeOperator operator = new NodeOperator(this);
-
 
 	private boolean unique = true;
 
@@ -139,96 +135,35 @@ public class PerstNode extends Persistent implements Node, Node.Op {
 	}
 
 
-	// properties
-
-	private transient Map<String, Object> properties = new HashMap<>();
-
-	@Override
-	public <T> Optional<T> getProperty(final String name) {
-		return this.operator.getProperty(name);
-	}
-
-	@Override
-	public <T> void putProperty(final String name, final T property) {
-		this.operator.putProperty(name, property);
-	}
-
-	@Override
-	public void removeProperty(String name) {
-		this.operator.removeProperty(name);
-	}
-
-
-	// operations
-
 	@Override
 	public int hashCode() {
-		return this.operator.hashCode();
+		return this.getArtifact() != null ? this.getArtifact().hashCode() : 0;
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		return this.operator.equals(o);
+	public boolean equals(Object other) {
+		if (this == other) return true;
+		if (other == null) return false;
+		if (!(other instanceof Node)) return false;
+
+		Node otherNode = (Node) other;
+
+		if (this.getArtifact() == null)
+			return otherNode.getArtifact() == null;
+
+		return this.getArtifact().equals(otherNode.getArtifact());
 	}
+
 
 	@Override
 	public String toString() {
-		return this.operator.toString();
+		return this.getNodeString();
 	}
 
 
-	@Override
-	public void slice(Op node) {
-		this.operator.slice(node);
-	}
+	// properties
 
-	@Override
-	public void merge(Op node) {
-		this.operator.merge(node);
-	}
-
-	@Override
-	public void sequence() {
-		this.operator.sequence();
-	}
-
-	@Override
-	public void updateArtifactReferences() {
-		this.operator.updateArtifactReferences();
-	}
-
-	@Override
-	public Node extractMarked() {
-		return this.operator.extractMarked();
-	}
-
-	@Override
-	public int countArtifacts() {
-		return this.operator.countArtifacts();
-	}
-
-	@Override
-	public int computeDepth() {
-		return this.operator.computeDepth();
-	}
-
-	@Override
-	public Map<Integer, Integer> countArtifactsPerDepth() {
-		return this.operator.countArtifactsPerDepth();
-	}
-
-	@Override
-	public void print() {
-		this.operator.print();
-	}
-
-	@Override
-	public void checkConsistency() {
-		this.operator.checkConsistency();
-	}
-
-
-	// operand
+	private transient Map<String, Object> properties = new HashMap<>();
 
 	@Override
 	public Map<String, Object> getProperties() {
