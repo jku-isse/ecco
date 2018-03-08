@@ -5,6 +5,8 @@ import at.jku.isse.ecco.sg.SequenceGraph;
 
 import java.util.*;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 /**
  * An order selector that selects the first order of artifacts it encounters.
  */
@@ -29,19 +31,22 @@ public class DefaultOrderSelector implements OrderSelector {
 	 * @param node The node for which to select an order.
 	 */
 	@Override
-	public void select(at.jku.isse.ecco.tree.Node.Op node) {
-		if (node.getArtifact() == null || !node.getArtifact().isOrdered() || !node.getArtifact().isSequenced() || node.getArtifact().getSequenceGraph() == null)
-			return;
+	public List<at.jku.isse.ecco.tree.Node> select(at.jku.isse.ecco.tree.Node node) {
+		checkArgument(node.getArtifact() != null, "Cannot select order for node without artifact.");
+		checkArgument(node.getArtifact().isOrdered(), "Cannot select order for node with unordered artifact.");
+		checkArgument(node.getArtifact().isSequenced(), "Cannot select order for node with ordered artifact that has not been sequenced yet.");
+		checkArgument(node.getArtifact().getSequenceGraph() != null, "Cannot select order for node with ordered artifact that has no sequence graph.");
+//		if (node.getArtifact() == null || !node.getArtifact().isOrdered() || !node.getArtifact().isSequenced() || node.getArtifact().getSequenceGraph() == null)
+//			return null;
 
-		List<at.jku.isse.ecco.tree.Node.Op> orderedChildren = new ArrayList<>();
+		List<at.jku.isse.ecco.tree.Node> orderedChildren = new ArrayList<>();
 
 		boolean uncertainOrder = this.traverseSequenceGraph(node.getArtifact().getSequenceGraph().getRoot(), node.getChildren(), orderedChildren);
 
-		node.getChildren().clear();
-		node.getChildren().addAll(orderedChildren);
-
 		if (uncertainOrder)
 			this.uncertainOrder.add(node.getArtifact());
+
+		return orderedChildren;
 	}
 
 
@@ -53,18 +58,18 @@ public class DefaultOrderSelector implements OrderSelector {
 	 * @param orderedChildren   The same children, but now put in valid order.
 	 * @return True if the order was ambiguous, false otherwise.
 	 */
-	private boolean traverseSequenceGraph(SequenceGraph.Node.Op sgn, List<at.jku.isse.ecco.tree.Node.Op> unorderedChildren, List<at.jku.isse.ecco.tree.Node.Op> orderedChildren) {
+	private boolean traverseSequenceGraph(SequenceGraph.Node sgn, List<? extends at.jku.isse.ecco.tree.Node> unorderedChildren, List<at.jku.isse.ecco.tree.Node> orderedChildren) {
 		boolean uncertainOrder = false;
 
 		if (sgn.getChildren().isEmpty())
-			return uncertainOrder;
+			return false;
 
-		Map.Entry<Artifact.Op<?>, SequenceGraph.Node.Op> entry = sgn.getChildren().entrySet().iterator().next();
+		Map.Entry<? extends Artifact.Op<?>, ? extends SequenceGraph.Node> entry = sgn.getChildren().entrySet().iterator().next();
 
-		at.jku.isse.ecco.tree.Node.Op match = null;
-		Iterator<at.jku.isse.ecco.tree.Node.Op> iterator = unorderedChildren.iterator();
+		at.jku.isse.ecco.tree.Node match = null;
+		Iterator<? extends at.jku.isse.ecco.tree.Node> iterator = unorderedChildren.iterator();
 		while (iterator.hasNext()) {
-			at.jku.isse.ecco.tree.Node.Op next = iterator.next();
+			at.jku.isse.ecco.tree.Node next = iterator.next();
 			if (next.getArtifact().equals(entry.getKey())) {
 				match = next;
 				iterator.remove();
@@ -93,6 +98,5 @@ public class DefaultOrderSelector implements OrderSelector {
 
 		return uncertainOrder;
 	}
-
 
 }

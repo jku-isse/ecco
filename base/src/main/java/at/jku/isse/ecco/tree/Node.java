@@ -2,10 +2,14 @@ package at.jku.isse.ecco.tree;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.util.Trees;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Public interface for a node in the artifact tree.
@@ -17,6 +21,16 @@ public interface Node {
 
 	@Override
 	public boolean equals(Object obj);
+
+
+	public default String getNodeString() {
+		if (this instanceof RootNode)
+			return "root";
+		else if (this.getArtifact() != null)
+			return this.getArtifact().toString();
+		else
+			return "null";
+	}
 
 	@Override
 	public String toString();
@@ -39,7 +53,7 @@ public interface Node {
 	/**
 	 * Returns the artifact stored in the node.
 	 *
-	 * @return The stored artifact.s
+	 * @return The stored artifact.
 	 */
 	public Artifact<?> getArtifact();
 
@@ -68,25 +82,41 @@ public interface Node {
 	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#countArtifacts(Node)}
 	 */
-	public int countArtifacts();
+	public default int countArtifacts() {
+		return Trees.countArtifacts(this);
+	}
 
 	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#countArtifacts(Node)}
 	 */
-	public int computeDepth();
+	public default int computeDepth() {
+		return Trees.computeDepth(this);
+	}
 
 	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#countArtifactsPerDepth(Node)}
 	 */
-	public Map<Integer, Integer> countArtifactsPerDepth();
+	public default Map<Integer, Integer> countArtifactsPerDepth() {
+		return Trees.countArtifactsPerDepth(this);
+	}
 
 	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#print(Node)}
 	 */
-	public void print();
+	public default void print() {
+		Trees.print(this);
+	}
 
 
 	// PROPERTIES
+
+	/**
+	 * Returns the transient properties of this artifact.
+	 *
+	 * @return The properties map of this artifact.
+	 */
+	public Map<String, Object> getProperties();
+
 
 	/**
 	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
@@ -96,7 +126,23 @@ public interface Node {
 	 * @param name of the property that should be retrieved
 	 * @return An optional which contains the actual property or nothing.
 	 */
-	public <T> Optional<T> getProperty(String name);
+	public default <T> Optional<T> getProperty(final String name) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+
+		Optional<T> result = Optional.empty();
+		if (this.getProperties().containsKey(name)) {
+			final Object obj = this.getProperties().get(name);
+			try {
+				@SuppressWarnings("unchecked") final T item = (T) obj;
+				result = Optional.of(item);
+			} catch (final ClassCastException e) {
+				System.err.println("Expected a different type of the property.");
+			}
+		}
+
+		return result;
+	}
 
 	/**
 	 * Adds a new property. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
@@ -105,28 +151,30 @@ public interface Node {
 	 *
 	 * @param property that should be added
 	 */
-	public <T> void putProperty(String name, T property);
+	public default <T> void putProperty(final String name, final T property) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+		checkNotNull(property);
+
+		this.getProperties().put(name, property);
+	}
 
 	/**
 	 * Removes the property with the given name. If the name could not be found in the map it does nothing.
 	 *
 	 * @param name of the property that should be removed
 	 */
-	public void removeProperty(String name);
+	public default void removeProperty(String name) {
+		checkNotNull(name);
 
+		this.getProperties().remove(name);
+	}
 
-	// OPERAND INTERFACE
 
 	/**
 	 * Private interface for node operands that are used internally and not passed outside.
 	 */
 	public interface Op extends Node {
-		/**
-		 * Returns the transient properties of this artifact.
-		 *
-		 * @return The properties map of this artifact.
-		 */
-		public Map<String, Object> getProperties();
 
 		/**
 		 * Sets the node to be unique or not.
@@ -183,36 +231,6 @@ public interface Node {
 		 */
 		public void removeChild(Op child);
 
-		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#slice(Op, Op)}
-		 */
-		public void slice(Op node);
-
-		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#merge(Op, Op)}
-		 */
-		public void merge(Op node);
-
-		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#sequence(Node.Op)}
-		 */
-		public void sequence();
-
-		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Op)}
-		 */
-		public void updateArtifactReferences();
-
-		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#extractMarked(Op)}
-		 */
-		public Node extractMarked();
-
-		/**
-		 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Op)}
-		 */
-		public void checkConsistency();
-
 
 		/**
 		 * Creates a new instance of this type of node.
@@ -220,6 +238,49 @@ public interface Node {
 		 * @return The new node instance.
 		 */
 		public Op createNode();
+
+
+		/**
+		 * See {@link at.jku.isse.ecco.util.Trees#slice(Op, Op)}
+		 */
+		public default void slice(Op node) {
+			Trees.slice(this, node);
+		}
+
+		/**
+		 * See {@link at.jku.isse.ecco.util.Trees#merge(Op, Op)}
+		 */
+		public default void merge(Op node) {
+			Trees.merge(this, node);
+		}
+
+		/**
+		 * See {@link at.jku.isse.ecco.util.Trees#sequence(Node.Op)}
+		 */
+		public default void sequence() {
+			Trees.sequence(this);
+		}
+
+		/**
+		 * See {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Op)}
+		 */
+		public default void updateArtifactReferences() {
+			Trees.updateArtifactReferences(this);
+		}
+
+		/**
+		 * See {@link at.jku.isse.ecco.util.Trees#extractMarked(Op)}
+		 */
+		public default Node extractMarked() {
+			return Trees.extractMarked(this);
+		}
+
+		/**
+		 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Op)}
+		 */
+		public default void checkConsistency() {
+			Trees.checkConsistency(this);
+		}
 
 	}
 
