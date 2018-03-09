@@ -129,7 +129,7 @@ public interface Module extends Persistable {
 	public default String getModuleString() {
 		String moduleString = Arrays.stream(this.getPos()).map(Feature::toString).collect(Collectors.joining(", "));
 		if (this.getNeg().length > 0)
-			moduleString += Arrays.stream(this.getNeg()).map(Feature::toString).collect(Collectors.joining(", "));
+			moduleString += ", " + Arrays.stream(this.getNeg()).map(feature -> "!" + feature.toString()).collect(Collectors.joining(", "));
 
 		return "d^" + this.getOrder() + "(" + moduleString + ")";
 	}

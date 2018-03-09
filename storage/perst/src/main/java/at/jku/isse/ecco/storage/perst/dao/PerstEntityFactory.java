@@ -14,6 +14,7 @@ import at.jku.isse.ecco.storage.perst.artifact.PerstArtifact;
 import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.storage.perst.core.PerstCommit;
 import at.jku.isse.ecco.storage.perst.core.PerstRemote;
+import at.jku.isse.ecco.storage.perst.feature.PerstConfiguration;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
 import at.jku.isse.ecco.storage.perst.module.PerstModule;
 import at.jku.isse.ecco.storage.perst.tree.PerstNode;
@@ -43,7 +44,7 @@ public class PerstEntityFactory implements EntityFactory {
 
 	@Override
 	public Configuration createConfiguration(FeatureRevision[] featureRevisions) {
-		return null;
+		return new PerstConfiguration(featureRevisions);
 	}
 
 

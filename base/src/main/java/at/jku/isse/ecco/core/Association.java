@@ -134,7 +134,7 @@ public interface Association extends Persistable {
 		 */
 		public default void add(Association.Op other) {
 			AssociationCounter thisCounter = this.getCounter();
-			AssociationCounter otherCounter = this.getCounter();
+			AssociationCounter otherCounter = other.getCounter();
 			thisCounter.incCount(otherCounter.getCount());
 			// add every module in other association to this association
 			for (ModuleCounter otherModuleCounter : otherCounter.getChildren()) {

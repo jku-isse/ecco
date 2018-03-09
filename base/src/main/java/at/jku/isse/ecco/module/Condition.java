@@ -5,6 +5,7 @@ import at.jku.isse.ecco.feature.Configuration;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -100,23 +101,23 @@ public interface Condition extends Persistable {
 
 
 	public default String getModuleConditionString() {
-		return this.getModules().keySet().stream().map(Module::toString).collect(Collectors.joining(this.getType().toString()));
+		return this.getModules().keySet().stream().sorted(Comparator.comparingInt(Module::getOrder)).map(Module::toString).collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
 	public default String getModuleRevisionConditionString() {
-		return this.getModules().values().stream().map(moduleRevisions -> moduleRevisions.stream().map(ModuleRevision::toString).collect(Collectors.joining(","))).collect(Collectors.joining(this.getType().toString()));
+		return this.getModules().entrySet().stream().sorted(Comparator.comparingInt(e -> e.getKey().getOrder())).map(entry -> entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining(","))).collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
 	public default String getSimpleModuleConditionString() {
 		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
 		int minOrder = modules.isEmpty() ? 0 : modules.keySet().stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
-		return modules.keySet().stream().filter(module -> module.getOrder() <= minOrder).map(Module::toString).collect(Collectors.joining(this.getType().toString()));
+		return modules.keySet().stream().filter(module -> module.getOrder() <= minOrder).map(Module::toString).collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
 	public default String getSimpleModuleRevisionConditionString() {
 		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
 		int minOrder = modules.isEmpty() ? 0 : modules.keySet().stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
-		return modules.entrySet().stream().filter(entry -> entry.getKey().getOrder() <= minOrder).map(entry -> entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining(","))).collect(Collectors.joining(this.getType().toString()));
+		return modules.entrySet().stream().filter(entry -> entry.getKey().getOrder() <= minOrder).map(entry -> entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining(","))).collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
 	@Override

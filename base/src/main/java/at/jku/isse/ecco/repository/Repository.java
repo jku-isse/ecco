@@ -153,7 +153,8 @@ public interface Repository {
 			checkNotNull(feature);
 
 			// add new modules to the repository that contain the new feature negatively. copies every existing module and adds the new feature negatively.
-			for (Module module : this.getModules()) {
+			Collection<Module> modules = new ArrayList<>(this.getModules());
+			for (Module module : modules) {
 				// only add modules that do not exceed the maximum order of modules in the repository
 				if (module.getOrder() < this.getMaxOrder()) {
 					// create array of negative features. to be reused also by every revision module.
@@ -278,6 +279,7 @@ public interface Repository {
 						if (newModule == null) {
 							newModule = this.addModule(posFeatures, moduleRevision.getNeg());
 						}
+						newModule.incCount();
 						ModuleRevision newModuleRevision = newModule.getRevision(posFeatureRevisions, moduleRevision.getNeg());
 						if (newModuleRevision == null) {
 							newModuleRevision = newModule.addRevision(posFeatureRevisions, moduleRevision.getNeg());
@@ -308,6 +310,7 @@ public interface Repository {
 						if (newModule == null) {
 							newModule = this.addModule(posFeatures, negFeatures);
 						}
+						newModule.incCount();
 						ModuleRevision newModuleRevision = newModule.getRevision(moduleRevision.getPos(), negFeatures);
 						if (newModuleRevision == null) {
 							newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);

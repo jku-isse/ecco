@@ -98,7 +98,7 @@ public interface ModuleRevision extends Persistable {
 	public default String getModuleRevisionString() {
 		String moduleRevisionString = Arrays.stream(this.getPos()).map(FeatureRevision::toString).collect(Collectors.joining(", "));
 		if (this.getNeg().length > 0)
-			moduleRevisionString += Arrays.stream(this.getNeg()).map(Feature::toString).collect(Collectors.joining(", "));
+			moduleRevisionString += ", " + Arrays.stream(this.getNeg()).map(feature -> "!" + feature.toString()).collect(Collectors.joining(", "));
 
 		return "d^" + this.getOrder() + "(" + moduleRevisionString + ")";
 	}
