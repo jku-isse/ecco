@@ -8,8 +8,12 @@ import at.jku.isse.ecco.storage.perst.artifact.PerstArtifact;
 import at.jku.isse.ecco.storage.perst.artifact.PerstArtifactReference;
 import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.storage.perst.counter.PerstAssociationCounter;
+import at.jku.isse.ecco.storage.perst.counter.PerstModuleCounter;
+import at.jku.isse.ecco.storage.perst.counter.PerstModuleRevisionCounter;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeatureRevision;
+import at.jku.isse.ecco.storage.perst.module.PerstModule;
+import at.jku.isse.ecco.storage.perst.module.PerstModuleRevision;
 import at.jku.isse.ecco.storage.perst.repository.PerstRepository;
 import at.jku.isse.ecco.storage.perst.sg.PerstSequenceGraph;
 import at.jku.isse.ecco.storage.perst.tree.PerstNode;
@@ -48,13 +52,18 @@ public class PerstRepositoryDao extends PerstAbstractGenericDao implements Repos
 		// features
 		for (PerstFeature feature : perstRepository.getFeatures()) {
 			feature.store();
-			for (PerstFeatureRevision featureVersion : feature.getRevisions()) {
-				featureVersion.store();
+			for (PerstFeatureRevision featureRevision : feature.getRevisions()) {
+				featureRevision.store();
 			}
 		}
 
 		// modules
-		// TODO: save modules here
+		for (PerstModule module : perstRepository.getModules()) {
+			module.store();
+			for (PerstModuleRevision moduleRevision : module.getRevisions()) {
+				moduleRevision.store();
+			}
+		}
 
 		// associations
 		for (PerstAssociation association : perstRepository.getAssociations()) {
@@ -62,7 +71,6 @@ public class PerstRepositoryDao extends PerstAbstractGenericDao implements Repos
 			this.saveCounter(association.getCounter());
 			this.saveNode(association.getRootNode());
 		}
-
 	}
 
 
@@ -71,8 +79,13 @@ public class PerstRepositoryDao extends PerstAbstractGenericDao implements Repos
 
 		final PerstAssociationCounter associationCounter = (PerstAssociationCounter) entity;
 
-		// TODO: save counter here
-		associationCounter.storeRecursively();
+		associationCounter.store();
+		for (PerstModuleCounter moduleCounter : associationCounter.getChildren()) {
+			moduleCounter.store();
+			for (PerstModuleRevisionCounter perstModuleRevisionCounter : moduleCounter.getChildren()) {
+				perstModuleRevisionCounter.store();
+			}
+		}
 
 		return associationCounter;
 	}

@@ -1,9 +1,13 @@
 package at.jku.isse.ecco.storage.perst.counter;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.storage.perst.module.PerstModule;
+import at.jku.isse.ecco.storage.perst.module.PerstModuleRevision;
+import org.garret.perst.Persistent;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -12,14 +16,14 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class PerstModuleCounter implements ModuleCounter {
+public class PerstModuleCounter extends Persistent implements ModuleCounter {
 
-	private Module module;
+	private PerstModule module;
 	private int count;
-	private Map<ModuleRevision, ModuleRevisionCounter> children;
+	private Map<PerstModuleRevision, PerstModuleRevisionCounter> children;
 
 
-	public PerstModuleCounter(Module module) {
+	public PerstModuleCounter(PerstModule module) {
 		checkNotNull(module);
 		this.module = module;
 		this.count = 0;
@@ -28,12 +32,15 @@ public class PerstModuleCounter implements ModuleCounter {
 
 
 	@Override
-	public ModuleRevisionCounter addChild(ModuleRevision child) {
-		if (this.children.containsKey(child))
+	public PerstModuleRevisionCounter addChild(ModuleRevision child) {
+		if (!(child instanceof PerstModuleRevision))
+			throw new EccoException("Only PerstModuleRevision can be added as a child to PerstModuleCounter!");
+		PerstModuleRevision perstChild = (PerstModuleRevision) child;
+		if (this.children.containsKey(perstChild))
 			return null;
-		ModuleRevisionCounter moduleRevisionCounter = new PerstModuleRevisionCounter(child);
-		this.children.put(child, moduleRevisionCounter);
-		return this.children.get(child);
+		PerstModuleRevisionCounter moduleRevisionCounter = new PerstModuleRevisionCounter(perstChild);
+		this.children.put(perstChild, moduleRevisionCounter);
+		return this.children.get(perstChild);
 	}
 
 	@Override
@@ -42,7 +49,7 @@ public class PerstModuleCounter implements ModuleCounter {
 	}
 
 	@Override
-	public Collection<ModuleRevisionCounter> getChildren() {
+	public Collection<PerstModuleRevisionCounter> getChildren() {
 		return Collections.unmodifiableCollection(this.children.values());
 	}
 

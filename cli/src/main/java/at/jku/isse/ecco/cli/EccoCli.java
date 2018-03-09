@@ -2,14 +2,14 @@ package at.jku.isse.ecco.cli;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.listener.EccoListener;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.util.Trees;
 
 import java.nio.file.InvalidPathException;
@@ -38,7 +38,7 @@ public class EccoCli implements EccoListener {
 
 	@Override
 	public void associationSelectedEvent(EccoService service, Association association) {
-		System.out.println("SELECTED: [" + association.getId() + "] " + association.getPresenceCondition().getLabel());
+		System.out.println("SELECTED: [" + association.getId() + "] " + association.computeCondition().getModuleRevisionConditionString());
 	}
 
 	@Override
@@ -407,7 +407,7 @@ public class EccoCli implements EccoListener {
 		this.initRepo();
 
 		for (Association association : this.eccoService.getRepository().getAssociations()) {
-			System.out.println("[" + association.getId() + "] " + association.getPresenceCondition().getLabel());
+			System.out.println("[" + association.getId() + "] " + association.computeCondition().getModuleRevisionConditionString());
 		}
 
 		this.eccoService.close();
@@ -418,7 +418,7 @@ public class EccoCli implements EccoListener {
 
 		for (Association association : this.eccoService.getRepository().getAssociations()) {
 			if (association.getId().equals(traceId)) {
-				System.out.println("[" + association.getId() + "] " + association.getPresenceCondition().getLabel());
+				System.out.println("[" + association.getId() + "] " + association.computeCondition().getModuleRevisionConditionString());
 				Trees.print(association.getRootNode());
 			}
 		}

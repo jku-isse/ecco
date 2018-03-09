@@ -162,7 +162,7 @@ public class AssociationDetailView extends BorderPane {
 			// show details
 			this.associationId.setText(String.valueOf(association.getId()));
 			this.associationName.setText(association.getName());
-			this.associationPC.setText(association.getPresenceCondition().toString());
+			this.associationPC.setText(association.computeCondition().toString());
 
 			// show containment table
 			// TODO

@@ -29,6 +29,8 @@ public class PerstArtifactReference extends Persistent implements ArtifactRefere
 
 	/**
 	 * Constructs a new artifact reference with the given type.
+	 *
+	 * @param type Arbitrary type string.
 	 */
 	public PerstArtifactReference(final String type) {
 		this.type = type;

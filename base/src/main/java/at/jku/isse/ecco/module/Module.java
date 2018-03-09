@@ -27,7 +27,7 @@ public interface Module extends Persistable {
 	public void incCount(int count);
 
 
-	public Collection<ModuleRevision> getRevisions();
+	public Collection<? extends ModuleRevision> getRevisions();
 
 	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg);
 

@@ -24,6 +24,6 @@ public interface AssociationCounter extends Counter<Association> {
 
 	public ModuleCounter getChild(Module child);
 
-	public Collection<ModuleCounter> getChildren();
+	public Collection<? extends ModuleCounter> getChildren();
 
 }

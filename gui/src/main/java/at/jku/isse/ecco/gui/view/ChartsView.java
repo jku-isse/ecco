@@ -2,14 +2,14 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.repository.Repository;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -64,7 +64,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 					Repository repository = ChartsView.this.service.getRepository();
 					final Map<Integer, Integer> modulesPerOrderMap = new TreeMap<>();
 					for (Association association : repository.getAssociations()) {
-						for (Module module : association.getPresenceCondition().getMinModules()) {
+						for (Module module : association.computeCondition().getModules().keySet()) {
 							//For the specified order -> If no order of this type is seen yet, it must be the first. Otherwise 1 is added to the old value
 							modulesPerOrderMap.compute(module.getOrder(), (key, oldValue) -> oldValue == null ? 1 : oldValue + 1);
 						}

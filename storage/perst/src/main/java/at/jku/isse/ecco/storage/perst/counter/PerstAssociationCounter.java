@@ -1,9 +1,11 @@
 package at.jku.isse.ecco.storage.perst.counter;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
-import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.storage.perst.module.PerstModule;
+import org.garret.perst.Persistent;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -12,11 +14,11 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class PerstAssociationCounter implements AssociationCounter {
+public class PerstAssociationCounter extends Persistent implements AssociationCounter {
 
 	private Association association;
 	private int count;
-	private Map<Module, ModuleCounter> children;
+	private Map<PerstModule, PerstModuleCounter> children;
 
 
 	public PerstAssociationCounter(Association association) {
@@ -28,21 +30,24 @@ public class PerstAssociationCounter implements AssociationCounter {
 
 
 	@Override
-	public ModuleCounter addChild(Module child) {
-		if (this.children.containsKey(child))
+	public PerstModuleCounter addChild(Module child) {
+		if (!(child instanceof PerstModule))
+			throw new EccoException("Only PerstModule can be added as a child to PerstAssociationCounter!");
+		PerstModule perstChild = (PerstModule) child;
+		if (this.children.containsKey(perstChild))
 			return null;
-		ModuleCounter moduleCounter = new PerstModuleCounter(child);
-		this.children.put(child, moduleCounter);
+		PerstModuleCounter moduleCounter = new PerstModuleCounter(perstChild);
+		this.children.put(perstChild, moduleCounter);
+		return this.children.get(perstChild);
+	}
+
+	@Override
+	public PerstModuleCounter getChild(Module child) {
 		return this.children.get(child);
 	}
 
 	@Override
-	public ModuleCounter getChild(Module child) {
-		return this.children.get(child);
-	}
-
-	@Override
-	public Collection<ModuleCounter> getChildren() {
+	public Collection<PerstModuleCounter> getChildren() {
 		return Collections.unmodifiableCollection(this.children.values());
 	}
 

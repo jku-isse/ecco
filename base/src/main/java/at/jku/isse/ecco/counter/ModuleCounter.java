@@ -23,6 +23,6 @@ public interface ModuleCounter extends Counter<Module> {
 
 	public ModuleRevisionCounter getChild(ModuleRevision child);
 
-	public Collection<ModuleRevisionCounter> getChildren();
+	public Collection<? extends ModuleRevisionCounter> getChildren();
 
 }

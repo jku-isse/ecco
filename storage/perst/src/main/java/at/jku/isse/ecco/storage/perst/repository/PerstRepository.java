@@ -1,10 +1,12 @@
 package at.jku.isse.ecco.storage.perst.repository;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.storage.perst.dao.PerstEntityFactory;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
 import at.jku.isse.ecco.storage.perst.module.PerstModule;
@@ -17,9 +19,9 @@ import java.util.*;
  */
 public class PerstRepository extends Persistent implements Repository, Repository.Op {
 
-	private Map<String, Feature> features;
-	private Collection<Association.Op> associations;
-	private Map<Module, Module> modules;
+	private Map<String, PerstFeature> features;
+	private Collection<PerstAssociation> associations;
+	private Map<PerstModule, PerstModule> modules;
 
 	private EntityFactory entityFactory;
 
@@ -36,17 +38,17 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 
 	@Override
-	public Collection<Feature> getFeatures() {
+	public Collection<PerstFeature> getFeatures() {
 		return Collections.unmodifiableCollection(this.features.values());
 	}
 
 	@Override
-	public Collection<Association.Op> getAssociations() {
+	public Collection<PerstAssociation> getAssociations() {
 		return Collections.unmodifiableCollection(this.associations);
 	}
 
 	@Override
-	public Collection<? extends Module> getModules() {
+	public Collection<PerstModule> getModules() {
 		return Collections.unmodifiableCollection(this.modules.values());
 	}
 
@@ -60,7 +62,7 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 	public Feature addFeature(String id, String name) {
 		if (this.features.containsKey(id))
 			return null;
-		Feature feature = new PerstFeature(id, name);
+		PerstFeature feature = new PerstFeature(id, name);
 		this.features.put(feature.getId(), feature);
 		return feature;
 	}
@@ -68,7 +70,9 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 	@Override
 	public void addAssociation(Association.Op association) {
-		this.associations.add(association);
+		if (!(association instanceof PerstAssociation))
+			throw new EccoException("Only PerstAssociation can be added to PerstRepository!");
+		this.associations.add((PerstAssociation) association);
 	}
 
 	@Override
@@ -101,7 +105,7 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 	@Override
 	public Module addModule(Feature[] pos, Feature[] neg) {
-		Module module = new PerstModule(pos, neg);
+		PerstModule module = new PerstModule(pos, neg);
 		if (this.modules.containsKey(module))
 			return null;
 		this.modules.put(module, module);

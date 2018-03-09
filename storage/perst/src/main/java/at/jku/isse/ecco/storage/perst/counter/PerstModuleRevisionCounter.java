@@ -2,10 +2,11 @@ package at.jku.isse.ecco.storage.perst.counter;
 
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.module.ModuleRevision;
+import org.garret.perst.Persistent;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class PerstModuleRevisionCounter implements ModuleRevisionCounter {
+public class PerstModuleRevisionCounter extends Persistent implements ModuleRevisionCounter {
 
 	private ModuleRevision moduleRevision;
 	private int count;

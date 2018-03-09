@@ -19,7 +19,7 @@ public class PerstModule extends Persistent implements Module {
 	private Feature[] pos;
 	private Feature[] neg;
 	private int count;
-	private Map<ModuleRevision, ModuleRevision> revisions;
+	private Map<PerstModuleRevision, PerstModuleRevision> revisions;
 
 
 	public PerstModule(Feature[] pos, Feature[] neg) {
@@ -64,7 +64,7 @@ public class PerstModule extends Persistent implements Module {
 	}
 
 	@Override
-	public Collection<ModuleRevision> getRevisions() {
+	public Collection<PerstModuleRevision> getRevisions() {
 		return Collections.unmodifiableCollection(this.revisions.values());
 	}
 
@@ -72,7 +72,7 @@ public class PerstModule extends Persistent implements Module {
 	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
 		if (!this.matchesRevision(pos, neg))
 			return null;
-		ModuleRevision moduleRevision = new PerstModuleRevision(this, pos, neg);
+		PerstModuleRevision moduleRevision = new PerstModuleRevision(this, pos, neg);
 		if (this.revisions.containsKey(moduleRevision))
 			return null;
 		this.revisions.put(moduleRevision, moduleRevision);

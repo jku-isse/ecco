@@ -17,7 +17,7 @@ public class PerstFeature extends Persistent implements Feature {
 	private String id;
 	private String name;
 	private String description;
-	private List<FeatureRevision> revisions;
+	private List<PerstFeatureRevision> revisions;
 
 
 	public PerstFeature(String id, String name) {
@@ -31,7 +31,7 @@ public class PerstFeature extends Persistent implements Feature {
 
 
 	@Override
-	public Collection<FeatureRevision> getRevisions() {
+	public Collection<PerstFeatureRevision> getRevisions() {
 		return Collections.unmodifiableCollection(this.revisions);
 	}
 
@@ -48,8 +48,8 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public FeatureRevision getRevision(String id) {
-		for (FeatureRevision featureVersion : this.revisions) {
+	public PerstFeatureRevision getRevision(String id) {
+		for (PerstFeatureRevision featureVersion : this.revisions) {
 			if (featureVersion.getId().equals(id))
 				return featureVersion;
 		}
