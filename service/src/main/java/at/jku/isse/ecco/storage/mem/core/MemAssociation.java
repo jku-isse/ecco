@@ -7,22 +7,18 @@ import at.jku.isse.ecco.storage.mem.counter.MemAssociationCounter;
 import at.jku.isse.ecco.storage.mem.module.MemCondition;
 import at.jku.isse.ecco.tree.RootNode;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * Memory implementation of {@link Association}.
  */
 public class MemAssociation implements Association, Association.Op {
 
 	private String id;
-	private String name;
 	private RootNode.Op artifactTreeRoot;
 	private AssociationCounter associationCounter;
 
 
 	public MemAssociation() {
 		this.id = "";
-		this.name = "";
 		this.artifactTreeRoot = null;
 		this.associationCounter = new MemAssociationCounter(this);
 	}
@@ -36,18 +32,6 @@ public class MemAssociation implements Association, Association.Op {
 	@Override
 	public void setId(final String id) {
 		this.id = id;
-	}
-
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public void setName(final String name) {
-		checkNotNull(name);
-
-		this.name = name;
 	}
 
 	@Override

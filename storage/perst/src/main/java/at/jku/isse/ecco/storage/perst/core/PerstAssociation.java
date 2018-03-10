@@ -8,22 +8,18 @@ import at.jku.isse.ecco.storage.perst.module.PerstCondition;
 import at.jku.isse.ecco.tree.RootNode;
 import org.garret.perst.Persistent;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * Perst implementation of {@link Association}.
  */
 public class PerstAssociation extends Persistent implements Association, Association.Op {
 
 	private String id;
-	private String name;
 	private RootNode.Op artifactTreeRoot;
 	private AssociationCounter associationCounter;
 
 
 	public PerstAssociation() {
 		this.id = "";
-		this.name = "";
 		this.artifactTreeRoot = null;
 		this.associationCounter = new PerstAssociationCounter(this);
 	}
@@ -37,18 +33,6 @@ public class PerstAssociation extends Persistent implements Association, Associa
 	@Override
 	public void setId(final String id) {
 		this.id = id;
-	}
-
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public void setName(final String name) {
-		checkNotNull(name);
-
-		this.name = name;
 	}
 
 	@Override

@@ -85,15 +85,13 @@ public class CommitDetailView extends BorderPane {
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
-		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol);
+		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
 		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().toString()));
 
 		associationsTable.setItems(this.associationsData);

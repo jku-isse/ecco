@@ -186,7 +186,6 @@ public class DependencyGraph {
 		for (Association association : this.associations) {
 			sb.append("\tnode [\n");
 			sb.append("\t\tid " + association.getId() + "\n");
-			sb.append("\t\tlabel " + association.getName() + "\n");
 			sb.append("\t\tsize " + association.getRootNode().countArtifacts() + "\n");
 			sb.append("\t]\n");
 		}

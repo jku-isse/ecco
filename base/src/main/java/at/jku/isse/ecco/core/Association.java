@@ -29,20 +29,6 @@ public interface Association extends Persistable {
 	public void setId(String id);
 
 	/**
-	 * Returns the name of the association or the empty string if it does not have a name yet.
-	 *
-	 * @return The name of the association.
-	 */
-	public String getName();
-
-	/**
-	 * Sets the name of the association.
-	 *
-	 * @param name The name of the association.
-	 */
-	public void setName(String name);
-
-	/**
 	 * Returns the root node of the artifact tree or null if no artifacts are stored.
 	 *
 	 * @return The root of the artifact tree.
@@ -54,7 +40,7 @@ public interface Association extends Persistable {
 
 
 	public default String getAssociationString() {
-		return String.format("Id: %d, Name: %s, Artifact Tree: %s", this.getId(), this.getName(), this.getRootNode().toString());
+		return this.getId().substring(0, Math.min(this.getId().length(), 7));
 	}
 
 	@Override
@@ -167,7 +153,7 @@ public interface Association extends Persistable {
 				moduleCounter = associationCounter.addChild(module);
 			}
 			// increase module counter
-			moduleCounter.incCount();
+			moduleCounter.incCount(count);
 			// look for module revision
 			ModuleRevisionCounter moduleRevisionCounter = moduleCounter.getChild(moduleRevision);
 			// if module revision counter does not exist yet add it
@@ -175,7 +161,7 @@ public interface Association extends Persistable {
 				moduleRevisionCounter = moduleCounter.addChild(moduleRevision);
 			}
 			// increase module revision counter
-			moduleRevisionCounter.incCount();
+			moduleRevisionCounter.incCount(count);
 		}
 
 		public default void addObservation(ModuleRevision moduleRevision) {
