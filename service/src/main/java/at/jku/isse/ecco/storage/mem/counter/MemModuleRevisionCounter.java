@@ -43,4 +43,10 @@ public class MemModuleRevisionCounter implements ModuleRevisionCounter {
 		this.count += count;
 	}
 
+
+	@Override
+	public String toString() {
+		return this.getModuleRevisionCounterString();
+	}
+
 }

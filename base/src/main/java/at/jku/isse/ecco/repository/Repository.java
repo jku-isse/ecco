@@ -340,6 +340,15 @@ public interface Repository {
 			checkNotNull(configuration);
 			checkNotNull(nodes);
 
+			// only one revision per feature is allowed in a configuration for checkout
+			FeatureRevision[] configurationFeatureRevisions = configuration.getFeatureRevisions();
+			for (int i = 0; i < configurationFeatureRevisions.length; i++) {
+				for (int j = i + 1; j < configurationFeatureRevisions.length; j++) {
+					if (configurationFeatureRevisions[i].getFeature().equals(configurationFeatureRevisions[j].getFeature()))
+						throw new EccoException("ERROR: For the commit operation only one revision per feature is allowed.");
+				}
+			}
+
 			// add configuration features and revisions
 			Collection<FeatureRevision> repoFeatureRevisions = this.addConfigurationFeatures(configuration);
 
@@ -401,7 +410,7 @@ public interface Repository {
 				intA.setId(UUID.randomUUID().toString());
 
 				// ARTIFACT TREE
-				//intA.setRootNode((origA.getRootNode().slice(inputA.getRootNode())));
+				//intA.setRootNode(origA.getRootNode().slice(association.getRootNode()));
 				intA.setRootNode((RootNode.Op) Trees.slice(origA.getRootNode(), association.getRootNode()));
 
 				// INTERSECTION
@@ -410,8 +419,10 @@ public interface Repository {
 
 					Trees.checkConsistency(intA.getRootNode());
 
-					intA.add(origA);
-					intA.add(association);
+					//intA.add(origA);
+					//intA.add(association);
+					intA.getCounter().add(origA.getCounter());
+					intA.getCounter().add(association.getCounter());
 				}
 
 				// ORIGINAL

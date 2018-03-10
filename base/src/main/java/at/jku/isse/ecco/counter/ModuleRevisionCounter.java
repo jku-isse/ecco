@@ -8,4 +8,12 @@ public interface ModuleRevisionCounter extends Counter<ModuleRevision> {
 		this.incCount(other.getCount());
 	}
 
+
+	public default String getModuleRevisionCounterString() {
+		return this.getObject().getModuleRevisionString() + " (" + this.getCount() + "/" + this.getObject().getCount() + ")";
+	}
+
+	@Override
+	public String toString();
+
 }

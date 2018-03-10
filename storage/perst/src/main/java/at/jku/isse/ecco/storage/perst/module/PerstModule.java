@@ -26,6 +26,7 @@ public class PerstModule extends Persistent implements Module {
 		checkNotNull(pos);
 		checkNotNull(neg);
 		checkArgument(pos.length > 0);
+		this.verify(pos, neg);
 		this.pos = pos;
 		this.neg = neg;
 		this.count = 0;

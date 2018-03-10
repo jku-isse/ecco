@@ -78,4 +78,10 @@ public class PerstModuleCounter extends Persistent implements ModuleCounter {
 		this.count += count;
 	}
 
+
+	@Override
+	public String toString() {
+		return this.getModuleCounterString();
+	}
+
 }

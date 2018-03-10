@@ -44,4 +44,10 @@ public class PerstModuleRevisionCounter extends Persistent implements ModuleRevi
 		this.count += count;
 	}
 
+
+	@Override
+	public String toString() {
+		return this.getModuleRevisionCounterString();
+	}
+
 }

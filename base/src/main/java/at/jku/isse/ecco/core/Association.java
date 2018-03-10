@@ -119,26 +119,27 @@ public interface Association extends Persistable {
 		 * @param other
 		 */
 		public default void add(Association.Op other) {
-			AssociationCounter thisCounter = this.getCounter();
-			AssociationCounter otherCounter = other.getCounter();
-			thisCounter.incCount(otherCounter.getCount());
-			// add every module in other association to this association
-			for (ModuleCounter otherModuleCounter : otherCounter.getChildren()) {
-				ModuleCounter thisModuleCounter = thisCounter.getChild(otherModuleCounter.getObject());
-				// if the counter for this module does not exist yet add it
-				if (thisModuleCounter == null) {
-					thisModuleCounter = thisCounter.addChild(otherModuleCounter.getObject());
-				}
-				thisModuleCounter.incCount(otherModuleCounter.getCount());
-				// add every module revision in other module to this module
-				for (ModuleRevisionCounter otherModuleRevisionCounter : otherModuleCounter.getChildren()) {
-					ModuleRevisionCounter thisModuleRevisionCounter = thisModuleCounter.getChild(otherModuleRevisionCounter.getObject());
-					if (thisModuleRevisionCounter == null) {
-						thisModuleRevisionCounter = thisModuleCounter.addChild(otherModuleRevisionCounter.getObject());
-					}
-					thisModuleRevisionCounter.incCount(otherModuleRevisionCounter.getCount());
-				}
-			}
+			this.getCounter().add(other.getCounter());
+//			AssociationCounter thisCounter = this.getCounter();
+//			AssociationCounter otherCounter = other.getCounter();
+//			thisCounter.incCount(otherCounter.getCount());
+//			// add every module in other association to this association
+//			for (ModuleCounter otherModuleCounter : otherCounter.getChildren()) {
+//				ModuleCounter thisModuleCounter = thisCounter.getChild(otherModuleCounter.getObject());
+//				// if the counter for this module does not exist yet add it
+//				if (thisModuleCounter == null) {
+//					thisModuleCounter = thisCounter.addChild(otherModuleCounter.getObject());
+//				}
+//				thisModuleCounter.incCount(otherModuleCounter.getCount());
+//				// add every module revision in other module to this module
+//				for (ModuleRevisionCounter otherModuleRevisionCounter : otherModuleCounter.getChildren()) {
+//					ModuleRevisionCounter thisModuleRevisionCounter = thisModuleCounter.getChild(otherModuleRevisionCounter.getObject());
+//					if (thisModuleRevisionCounter == null) {
+//						thisModuleRevisionCounter = thisModuleCounter.addChild(otherModuleRevisionCounter.getObject());
+//					}
+//					thisModuleRevisionCounter.incCount(otherModuleRevisionCounter.getCount());
+//				}
+//			}
 		}
 
 		public default void addObservation(ModuleRevision moduleRevision, int count) {

@@ -20,10 +20,30 @@ public interface AssociationCounter extends Counter<Association> {
 		}
 	}
 
+
 	public ModuleCounter addChild(Module child);
 
 	public ModuleCounter getChild(Module child);
 
 	public Collection<? extends ModuleCounter> getChildren();
+
+
+	public default String getAssociationCounterString() {
+		return this.getObject().getAssociationString() + " (" + this.getCount() + ")";
+	}
+
+	@Override
+	public String toString();
+
+
+	public default void print() {
+		System.out.println(this.getAssociationCounterString());
+		for (ModuleCounter moduleCounter : this.getChildren()) {
+			System.out.println(moduleCounter.getModuleCounterString());
+			for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
+				System.out.println(moduleRevisionCounter.getModuleRevisionCounterString());
+			}
+		}
+	}
 
 }

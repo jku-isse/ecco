@@ -19,10 +19,19 @@ public interface ModuleCounter extends Counter<Module> {
 		}
 	}
 
+
 	public ModuleRevisionCounter addChild(ModuleRevision child);
 
 	public ModuleRevisionCounter getChild(ModuleRevision child);
 
 	public Collection<? extends ModuleRevisionCounter> getChildren();
+
+
+	public default String getModuleCounterString() {
+		return this.getObject().getModuleString() + " (" + this.getCount() + "/" + this.getObject().getCount() + ")";
+	}
+
+	@Override
+	public String toString();
 
 }

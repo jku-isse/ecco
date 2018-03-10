@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -14,9 +15,44 @@ import java.util.stream.Collectors;
  */
 public interface Module extends Persistable {
 
+	/**
+	 * Returns a direct reference to the instance of the array of positive features in this module.
+	 * DO NOT MODIFY THIS ARRAY!!!
+	 * TREAT THE RETURNED ARRAY AS CONST!!!
+	 *
+	 * @return The array of positive features in this module.
+	 */
 	public Feature[] getPos();
 
+	/**
+	 * Returns a direct reference to the instance of the array of negative features in this module.
+	 * DO NOT MODIFY THIS ARRAY!!!
+	 * TREAT THE RETURNED ARRAY AS CONST!!!
+	 *
+	 * @return The array of negative features in this module.
+	 */
 	public Feature[] getNeg();
+
+
+	public default void verify(Feature[] pos, Feature[] neg) {
+		for (int i = 0; i < pos.length; i++) {
+			for (int j = i + 1; j < pos.length; j++) {
+				if (pos[i].equals(pos[j]))
+					throw new EccoException("ERROR: The same feature is contained twice in pos.");
+			}
+			for (int j = i + 1; j < neg.length; j++) {
+				if (pos[i].equals(neg[j]))
+					throw new EccoException("ERROR: A feature that is in pos is also in neg.");
+			}
+		}
+		for (int i = 0; i < neg.length; i++) {
+			for (int j = i + 1; j < neg.length; j++) {
+				if (neg[i].equals(neg[j]))
+					throw new EccoException("ERROR: The same feature is contained twice in neg.");
+			}
+		}
+	}
+
 
 	public int getCount();
 

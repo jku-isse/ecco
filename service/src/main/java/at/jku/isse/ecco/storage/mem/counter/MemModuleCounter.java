@@ -71,4 +71,10 @@ public class MemModuleCounter implements ModuleCounter {
 		this.count += count;
 	}
 
+
+	@Override
+	public String toString() {
+		return this.getModuleCounterString();
+	}
+
 }

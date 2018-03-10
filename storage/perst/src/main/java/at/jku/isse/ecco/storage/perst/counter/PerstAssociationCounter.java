@@ -76,4 +76,10 @@ public class PerstAssociationCounter extends Persistent implements AssociationCo
 		this.count += count;
 	}
 
+
+	@Override
+	public String toString() {
+		return this.getAssociationCounterString();
+	}
+
 }

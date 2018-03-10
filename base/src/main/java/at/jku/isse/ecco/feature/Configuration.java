@@ -26,7 +26,7 @@ public interface Configuration extends Persistable {
 
 
 	/**
-	 * Returns a direct reference to instance of the array of feature revisions that makes up the configuration.
+	 * Returns a direct reference to the instance of the array of feature revisions that makes up the configuration.
 	 * DO NOT MODIFY THIS ARRAY!!!
 	 * TREAT THE RETURNED ARRAY AS CONST!!!
 	 *
