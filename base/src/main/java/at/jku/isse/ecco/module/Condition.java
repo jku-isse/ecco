@@ -105,7 +105,7 @@ public interface Condition extends Persistable {
 	}
 
 	public default String getModuleRevisionConditionString() {
-		return this.getModules().entrySet().stream().sorted(Comparator.comparingInt(e -> e.getKey().getOrder())).map(entry -> entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining(","))).collect(Collectors.joining(" " + this.getType().toString() + " "));
+		return this.getModules().entrySet().stream().sorted(Comparator.comparingInt(e -> e.getKey().getOrder())).map(entry -> "[" + entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining("/")) + "]").collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
 	public default String getSimpleModuleConditionString() {
@@ -117,7 +117,7 @@ public interface Condition extends Persistable {
 	public default String getSimpleModuleRevisionConditionString() {
 		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
 		int minOrder = modules.isEmpty() ? 0 : modules.keySet().stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
-		return modules.entrySet().stream().filter(entry -> entry.getKey().getOrder() <= minOrder).map(entry -> entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining(","))).collect(Collectors.joining(" " + this.getType().toString() + " "));
+		return modules.entrySet().stream().filter(entry -> entry.getKey().getOrder() <= minOrder).map(entry -> "[" + entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining(",")) + "]").collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
 	@Override
