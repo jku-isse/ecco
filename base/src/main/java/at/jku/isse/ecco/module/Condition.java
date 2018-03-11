@@ -26,7 +26,7 @@ public interface Condition extends Persistable {
 	public Map<Module, Collection<ModuleRevision>> getModules();
 
 	public default void addModule(Module module) {
-		Collection<ModuleRevision> moduleRevisions = this.getModules().computeIfAbsent(module, k -> new ArrayList<>());
+		this.getModules().computeIfAbsent(module, k -> new ArrayList<>());
 	}
 
 	public default void addModuleRevision(ModuleRevision moduleRevision) {

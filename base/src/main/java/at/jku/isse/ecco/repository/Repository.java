@@ -340,12 +340,13 @@ public interface Repository {
 			checkNotNull(configuration);
 			checkNotNull(nodes);
 
-			// only one revision per feature is allowed in a configuration for checkout
-			FeatureRevision[] configurationFeatureRevisions = configuration.getFeatureRevisions();
-			for (int i = 0; i < configurationFeatureRevisions.length; i++) {
-				for (int j = i + 1; j < configurationFeatureRevisions.length; j++) {
-					if (configurationFeatureRevisions[i].getFeature().equals(configurationFeatureRevisions[j].getFeature()))
-						throw new EccoException("ERROR: For the commit operation only one revision per feature is allowed.");
+			{ // only one revision per feature is allowed in a configuration for commit
+				FeatureRevision[] configurationFeatureRevisions = configuration.getFeatureRevisions();
+				for (int i = 0; i < configurationFeatureRevisions.length; i++) {
+					for (int j = i + 1; j < configurationFeatureRevisions.length; j++) {
+						if (configurationFeatureRevisions[i].getFeature().equals(configurationFeatureRevisions[j].getFeature()))
+							throw new EccoException("ERROR: For the commit operation only one revision per feature is allowed.");
+					}
 				}
 			}
 

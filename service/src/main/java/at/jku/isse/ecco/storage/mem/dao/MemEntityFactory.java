@@ -14,6 +14,7 @@ import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.core.MemAssociation;
 import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
+import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
 import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
@@ -40,7 +41,7 @@ public class MemEntityFactory implements EntityFactory {
 
 	@Override
 	public Configuration createConfiguration(FeatureRevision[] featureRevisions) {
-		return null;
+		return new MemConfiguration(featureRevisions);
 	}
 
 

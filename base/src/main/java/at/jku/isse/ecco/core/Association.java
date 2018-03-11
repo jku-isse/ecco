@@ -85,7 +85,7 @@ public interface Association extends Persistable {
 				if (moduleCounter.getCount() == associationCounter.getCount()) {
 					// 2) A was always present when M_r was present for all revisions r of M
 					if (moduleCounter.getChildren().stream().noneMatch(moduleRevisionCounter -> moduleRevisionCounter.getCount() != moduleRevisionCounter.getObject().getCount())) {
-						moduleCondition.addModule(moduleCounter.getObject());
+						//moduleCondition.addModule(moduleCounter.getObject());
 						for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
 							moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
 						}
@@ -98,7 +98,7 @@ public interface Association extends Persistable {
 				moduleCondition.setType(Condition.TYPE.OR);
 				for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
 					if (moduleCounter.getCount() > 0) { // it is in ALL
-						moduleCondition.addModule(moduleCounter.getObject());
+						//moduleCondition.addModule(moduleCounter.getObject());
 						// now check to which revisions it traces
 						for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
 							if (moduleRevisionCounter.getCount() == associationCounter.getCount()) { // it is not in NOT
