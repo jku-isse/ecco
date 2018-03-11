@@ -104,7 +104,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		// for every file
 		for (Path path : input) {
 			// recursively check if its parents are already contained in the directory map, if not add them and link them
-			Node.Op parentNode = this.createParents(base, path.getParent(), directoryNodes);
+			Node.Op parentNode = this.createParents(base, base.resolve(path).getParent(), directoryNodes);
 
 			// create node for file itself
 			if (Files.isDirectory(base.resolve(path))) {

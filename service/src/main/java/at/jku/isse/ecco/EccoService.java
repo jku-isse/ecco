@@ -1719,7 +1719,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		checkNotNull(paths);
 		checkArgument(!paths.isEmpty());
 
-		Set<Node.Op> nodes = this.reader.readSpecificFiles(paths.toArray(new Path[paths.size()]));
+		Set<Node.Op> nodes = this.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[paths.size()]));
 
 		RootNode.Op rootNode = this.entityFactory.createRootNode();
 		for (Node.Op node : nodes) {
