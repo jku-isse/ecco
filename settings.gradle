@@ -1,17 +1,51 @@
-include 'at.jku.isse.ecco.base',
-		'at.jku.isse.ecco.service',
-		'at.jku.isse.ecco.cli',
-		'at.jku.isse.ecco.gui',
-		'at.jku.isse.ecco.perst',
-		'at.jku.isse.ecco.file',
-		'at.jku.isse.ecco.text',
-		'at.jku.isse.ecco.image',
-		'at.jku.isse.ecco.java',
-		'at.jku.isse.ecco.web',
-		'at.jku.isse.ecco.cpp'
+//include 'base',
+//		'service',
+//		'cli',
+//		'gui',
+//		'web',
+//		'storage:perst',
+//		'adapter:file',
+//		'adapter:text',
+//		'adapter:image',
+//		'adapter:java'
+//
+//rootProject.name = 'ecco'
+//
+//prefixProjectName(rootProject)
+//
+//def prefixProjectName(project) {
+//	project.children.each { it.name = project.name + '-' + it.name; prefixProjectName(it); }
+//}
 
-//		'extras/at.jku.isse.ecco.jpa',
-//		'extras/at.jku.isse.ecco.php',
-//		'extras/at.jku.isse.ecco.uml',
-//		'extras/at.jku.isse.ecco.genericAdapter',
-//		'extras/at.jku.isse.ecco.runtime'
+rootProject.name = 'ecco'
+
+include 'base'
+include 'service'
+include 'cli'
+include 'gui'
+include 'web'
+
+include 'storage-perst'
+
+include 'adapter-file'
+include 'adapter-text'
+include 'adapter-image'
+include 'adapter-java'
+//include 'adapter-java-8'
+
+project(':base').projectDir = file('base')
+project(':service').projectDir = file('service')
+project(':cli').projectDir = file('cli')
+project(':gui').projectDir = file('gui')
+project(':web').projectDir = file('web')
+
+project(':storage-perst').projectDir = file('storage/perst')
+
+project(':adapter-file').projectDir = file('adapter/file')
+project(':adapter-text').projectDir = file('adapter/text')
+project(':adapter-image').projectDir = file('adapter/image')
+//project(':adapter-java').projectDir = file('adapter/java')
+//project(':adapter-java-8').projectDir = file('adapter/java8')
+project(':adapter-java').projectDir = file('adapter/java8')
+
+rootProject.children.each { it.name = rootProject.name + '-' + it.name }

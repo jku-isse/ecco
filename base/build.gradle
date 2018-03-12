@@ -1,0 +1,11 @@
+
+dependencies {
+	testCompile project(':ecco-service')
+
+	testCompile project(':ecco-adapter-file')
+	testCompile project(':ecco-adapter-text')
+	testCompile project(':ecco-adapter-image')
+	testCompile project(':ecco-adapter-java')
+
+	testCompile project(':ecco-gui')
+}

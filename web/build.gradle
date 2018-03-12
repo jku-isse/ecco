@@ -1,0 +1,97 @@
+
+apply plugin: 'application'
+mainClassName = "at.jku.isse.ecco.web.server.EccoWebServer"
+applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
+
+run {
+	classpath = sourceSets.test.runtimeClasspath
+}
+
+//apply plugin: 'base'
+//apply plugin: 'java'
+//apply plugin: 'war'
+//apply plugin: 'jetty'
+
+dependencies {
+	compile 'org.slf4j:slf4j-api:1.7.25'
+
+	compile 'org.glassfish.grizzly:grizzly-framework:2.3.24'
+	compile 'org.glassfish.grizzly:grizzly-http:2.3.24'
+	compile 'org.glassfish.grizzly:grizzly-http-servlet:2.3.24'
+	compile 'org.glassfish.grizzly:grizzly-http-server:2.3.24'
+
+	compile 'org.glassfish.jersey.core:jersey-server:2.22.2'
+	compile 'org.glassfish.jersey.containers:jersey-container-servlet:2.22.2'
+	compile 'org.glassfish.jersey.containers:jersey-container-grizzly2-http:2.22.2'
+	compile 'org.glassfish.jersey.media:jersey-media-json-jackson:2.22.2'
+
+	compile 'javax.servlet:javax.servlet-api:3.1.0'
+
+	compile project(':ecco-base')
+	compile project(':ecco-service')
+
+	testCompile project(':ecco-storage-perst')
+
+	testRuntime project(':ecco-adapter-file')
+	testRuntime project(':ecco-adapter-text')
+	testRuntime project(':ecco-adapter-image')
+	testRuntime project(':ecco-adapter-java')
+}
+
+//sourceSets {
+//	main {
+//		resources {
+//			srcDir 'src/main/webapp'
+//			exclude 'WEB-INF'
+//		}
+//	}
+//}
+
+//public class TsCompileTask extends DefaultTask {
+//
+//	@InputFiles
+//	Set<File> source = [] as Set;
+//
+//	@OutputDirectory
+//	File outputDir;
+//
+//	@TaskAction
+//	void compile() {
+//		println "Compiling TypeScript files..."
+//		project.exec {
+//			executable = "tsc"
+//			List<File> files = source.collect { File source ->
+//				if (!source.isDirectory())
+//					return source
+//				return project.fileTree(source) {
+//					include "**/*.ts"
+//				}.files
+//			}.flatten()
+//
+//			args "--outDir"
+//			args outputDir.toString()
+//			args files
+//		}
+//	}
+//}
+//
+//task tsCompile(type: TsCompileTask) {
+//	source += file("src/main/ts")
+//	outputDir = file("$buildDir/ts")
+//}
+//
+//war {
+////	into("ts") {
+////		from tsCompile.outputs
+////	}
+//}
+//
+//jar {
+////	into("web") {
+////		from "src/main/webapp"
+////		exclude 'WEB-INF'
+////	}
+////	into("web/ts") {
+////		from tsCompile.outputs
+////	}
+//}

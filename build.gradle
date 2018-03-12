@@ -1,26 +1,20 @@
 plugins {
-	id "nebula.os-package" version "2.2.6"
+	id "nebula.ospackage" version "4.5.1"
 }
 
 allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
-	group = 'at.jku.isse'
-	version = '0.1.5'
-	ext {
-		eccoModule = false
-	}
-}
-
-task listModules << {
-	String header = "\n---------- ECCO " + version + " ----------\n"
-	String subprojects = "Searching for ECCO modules...\n"
-	println header + subprojects
+	group = 'at.jku.isse.ecco'
+	//version = '0.1.6'
+	version = '0.1.6-' + new java.text.SimpleDateFormat("YYYY-MM-dd", Locale.ENGLISH).format(new Date())
+	//version = new java.text.SimpleDateFormat("YYYY.M.d", Locale.ENGLISH).format(new Date())
 }
 
 subprojects {
-	apply plugin: 'nebula.os-package'
+	apply plugin: 'nebula.ospackage'
 	apply plugin: 'java'
+	apply plugin: 'maven-publish'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
@@ -31,12 +25,6 @@ subprojects {
 
 	dependencies {
 		compile 'com.google.guava:guava:18.0'
-//		compile 'com.google.inject:guice:4.0'
-//		compile 'com.google.inject.extensions:guice-multibindings:4.0'
-//		compile 'org.slf4j:slf4j-api:1.7.12'
-//		compile 'ch.qos.logback:logback-classic:1.1.3'
-		testCompile 'org.assertj:assertj-core:3.1.0'
-		testCompile 'org.mockito:mockito-core:2.0.28-beta'
 		testCompile 'org.testng:testng:6.9.6'
 	}
 
@@ -47,11 +35,6 @@ subprojects {
 	}
 
 	sourceSets {
-		main {
-			resources {
-				exclude '**/*.java'
-			}
-		}
 		integrationTest {
 			java {
 				compileClasspath += main.output + test.output
@@ -85,9 +68,7 @@ subprojects {
 		useTestNG() {
 			suites 'src/integrationTest/resources/testng.xml'
 		}
-		//workingDir = 'src/integrationTest/data/'
 		workingDir = 'build/'
-		testClassesDir = sourceSets.integrationTest.output.classesDir
 		classpath = sourceSets.integrationTest.runtimeClasspath
 		outputs.upToDateWhen { false }
 	}
@@ -111,8 +92,37 @@ subprojects {
 
 	eclipse {
 		classpath {
-			downloadSources = true
 			downloadJavadoc = true
+			downloadSources = true
+		}
+	}
+
+	publishing {
+		publications {
+			eccoMaven(MavenPublication) {
+				groupId project.group
+				artifactId project.name
+				version project.version
+
+				from project.components.java
+
+				artifact javadocJar {
+				}
+				artifact sourcesJar {
+				}
+			}
+		}
+		repositories {
+			maven {
+				name 'ECCO'
+				description 'ECCO Maven repository.'
+				url "$buildDir/maven2"
+			}
+			maven {
+				name 'RootECCO'
+				description 'Root ECCO Maven repository.'
+				url "$rootProject.buildDir/maven2"
+			}
 		}
 	}
 
@@ -123,8 +133,6 @@ subprojects {
 		release = 1
 		arch = NOARCH
 		os = LINUX
-
-		requires('logback')
 
 		prefix '/usr/'
 
@@ -163,15 +171,28 @@ subprojects {
 	buildDeb {
 	}
 
-	task createRPM(type: Rpm) {
+	task rpm(type: Rpm, group: 'packaging') {
 	}
 
-	task createDeb(type: Deb) {
+	task deb(type: Deb, group: 'packaging') {
 	}
 
-	task createLinuxInstallers(dependsOn: [createRPM, createDeb])
+	task sourcesJar(type: Jar, group: 'packaging') {
+		classifier = 'sources'
+		from sourceSets.main.allSource
+	}
 
-	task packageLinux(type: Zip) {
+	task javadocJar(type: Jar, group: 'packaging', dependsOn: javadoc) {
+		classifier = 'javadoc'
+		from javadoc.destinationDir
+	}
+
+	artifacts {
+		archives sourcesJar
+		archives javadocJar
+	}
+
+	task linuxZip(type: Zip, group: 'packaging') {
 		classifier = 'linux'
 		into(archiveName - ('.' + extension)) {
 			from project.jar
@@ -179,7 +200,7 @@ subprojects {
 		}
 	}
 
-	task packageSource(type: Zip) {
+	task sourcesZip(type: Zip, group: 'packaging') {
 		//compression = Compression.GZIP
 		classifier = 'src'
 		from projectDir
@@ -187,7 +208,7 @@ subprojects {
 		include 'build.gradle'
 	}
 
-	task packageWindows(type: Zip) {
+	task windowsZip(type: Zip, group: 'packaging') {
 		classifier = 'windows'
 		into(archiveName - ('.' + extension)) {
 			from project.jar
@@ -206,20 +227,60 @@ subprojects {
 	}
 	task bundle(dependsOn: [copyJars, copyDependencies])
 
-	// # INFORMATION TASKS
-	task listModules << {
-		task -> println "Found module -> $task.project.name"
-	}
-	listModules.onlyIf {
-		eccoModule
-	}
-
-	task depTest << {
+	task depTest {
 		def temp = project.configurations.runtime
 		project.configurations.findAll { it.name.equals("runtime"); }.collectMany { it.allDependencies }.findAll {
 			it instanceof ProjectDependency
 		}.collect { it.dependencyProject.jar.outputs.files }.each { println it };
 	}
+}
+
+task combinedjavadoc(type: Javadoc, group: "documentation") {
+	description = 'Generates a global javadoc from all the modules.'
+	source project.subprojects.collect { it.sourceSets.main.allJava }
+	classpath = files(project.subprojects.collect { it.sourceSets.main.compileClasspath })
+	options.memberLevel = JavadocMemberLevel.PRIVATE
+	options.links = ['https://docs.oracle.com/javase/8/docs/api/']
+	destinationDir = file("${buildDir}/docs/javadoc")
+}
+
+task combinedrpm(type: Copy, group: 'packaging') {
+	dependsOn subprojects.rpm
+	into "$buildDir/distributions/rpm"
+	//from project.subprojects.collect { it.rpm.archivePath }
+	from subprojects.rpm.archivePath
+}
+
+task combineddeb(type: Copy, group: 'packaging') {
+	dependsOn subprojects.deb
+	into "$buildDir/distributions/deb"
+	//from project.subprojects.collect { it.deb.archivePath }
+	from subprojects.deb.archivePath
+}
+
+task combinedLinuxZip(type: Zip, group: 'packaging') {
+	into project.name
+	classifier = 'linux'
+	from { subprojects.linuxZip.source }
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task combinedWindowsZip(type: Zip, group: 'packaging') {
+	into project.name
+	classifier = 'windows'
+	//from { subprojects.jar }
+	//from { subprojects.configurations.runtime }
+	from { subprojects.windowsZip.source }
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task html(type: Copy, dependsOn: [combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
+	from "."
+	into "$buildDir"
+	include "index.html.template"
+	rename { file -> 'index.html' }
+	//expand(project: project, rpms: fileTree(dir: combinedrpm.outputs.files[0], include: '*.rpm').files.name, debs: fileTree(dir: combinedrpm.outputs.files[0], include: '*.deb').files.name)
+	expand(project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
 }
 
 idea {
@@ -229,5 +290,5 @@ idea {
 }
 
 task wrapper(type: Wrapper) {
-	gradleVersion = '2.4'
+	gradleVersion = '4.4'
 }
