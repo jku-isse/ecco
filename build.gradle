@@ -3,7 +3,7 @@ plugins {
 }
 
 private static String getDate() {
-	def dateFormat = new java.text.SimpleDateFormat("YYYY-MM-DD", Locale.ENGLISH)
+	def dateFormat = new java.text.SimpleDateFormat("YYYY-MM-dd", Locale.ENGLISH)
 	return dateFormat.format(new Date())
 }
 
