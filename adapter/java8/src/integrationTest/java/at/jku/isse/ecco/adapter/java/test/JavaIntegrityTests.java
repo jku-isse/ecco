@@ -13,7 +13,7 @@ public class JavaIntegrityTests {
         integrityTest("VariablePool.java");
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = Error.class)
     public void ensureFailure() {
         try {
             integrityTest("VariablePoolErr.java");
