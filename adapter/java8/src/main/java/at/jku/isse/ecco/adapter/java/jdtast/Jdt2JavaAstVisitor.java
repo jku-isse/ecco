@@ -352,11 +352,11 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(final CompilationUnit node) {
         final List<AbstractTypeDeclaration> types = (List<AbstractTypeDeclaration>) node.types();
-        //Chefk if errors are detected
+        //Check if errors are detected
         IProblem[] problems = node.getProblems();
         boolean notCompiling = Arrays.stream(problems).anyMatch(p -> p.getMessage().startsWith("Syntax error"));
         if (notCompiling)
-            throw new IllegalStateException("Compilation problem detected at" + types.toString(), new Error(Arrays.toString(problems)));
+            throw new Error("Compilation problem detected at" + types.toString(), new Error(Arrays.toString(problems)));
         //No new node needs to be generated
         final PackageDeclaration packageDeclaration = node.getPackage();
         if (packageDeclaration != null)
@@ -364,8 +364,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         List<ImportDeclaration> imports = (List<ImportDeclaration>) node.imports();
         if (imports != null)
             imports.forEach(this::visit);
-        // No new Ecco node should be created here TODO
-
 
         types.forEach(abstractTypeDeclaration -> recursiveReadAst.accept(abstractTypeDeclaration, parentEccoNode));
         referenceCheckingConsumer.accept(parentEccoNode.getArtifact(), node);
