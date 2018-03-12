@@ -77,7 +77,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
-		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
 		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
 
@@ -85,12 +84,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
+		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().getPresenceCondition().getSimpleLabel()).otherwise(param.getValue().getAssociation().getPresenceCondition().getLabel()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
 		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 
 

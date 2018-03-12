@@ -2,30 +2,26 @@ package at.jku.isse.ecco.storage.perst.dao;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.storage.perst.artifact.PerstArtifact;
-import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.feature.*;
-import at.jku.isse.ecco.module.*;
+import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.storage.perst.artifact.PerstArtifact;
 import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.storage.perst.core.PerstCommit;
 import at.jku.isse.ecco.storage.perst.core.PerstRemote;
 import at.jku.isse.ecco.storage.perst.feature.PerstConfiguration;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
 import at.jku.isse.ecco.storage.perst.module.PerstModule;
-import at.jku.isse.ecco.storage.perst.module.PerstModuleFeature;
-import at.jku.isse.ecco.storage.perst.module.PerstPresenceCondition;
-import at.jku.isse.ecco.storage.perst.repository.PerstRepository;
-import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.perst.core.PerstVariant;
-import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.storage.perst.tree.PerstNode;
 import at.jku.isse.ecco.storage.perst.tree.PerstRootNode;
+import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -33,28 +29,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Creates database entities defined using Perst implementations.
- *
- * @author Hannes Thaller
- * @version 1.0
  */
 public class PerstEntityFactory implements EntityFactory {
-
-	public PerstEntityFactory() {
-	}
 
 	@Override
 	public Remote createRemote(String name, String address, Remote.Type type) {
 		return new PerstRemote(name, address, type);
-	}
-
-	@Override
-	public Configuration createConfiguration() {
-		return new PerstConfiguration();
-	}
-
-	@Override
-	public Variant createVariant() {
-		return new PerstVariant();
 	}
 
 	@Override
@@ -63,27 +43,10 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public PresenceCondition createPresenceCondition() {
-		return new PerstPresenceCondition();
+	public Configuration createConfiguration(FeatureRevision[] featureRevisions) {
+		return new PerstConfiguration(featureRevisions);
 	}
 
-	@Override
-	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder) {
-		return new PerstPresenceCondition(configuration, maxOrder);
-	}
-
-	@Override
-	public PresenceCondition createPresenceCondition(PresenceCondition pc) {
-		PerstPresenceCondition clone = new PerstPresenceCondition(); // TODO: reuse module instances!? when modules are modified, all associations that contain the are affected!
-		clone.getMinModules().addAll(pc.getMinModules());
-		clone.getMaxModules().addAll(pc.getMaxModules());
-		clone.getAllModules().addAll(pc.getAllModules());
-		clone.getNotModules().addAll(pc.getNotModules());
-		return clone;
-	}
-
-
-	// # ARTIFACTS ################################################################
 
 	@Override
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
@@ -91,17 +54,15 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 
-	// # ASSOCIATIONS ################################################################
-
 	@Override
 	public Association.Op createAssociation() {
 		return new PerstAssociation();
 	}
 
 	@Override
-	public Association.Op createAssociation(PresenceCondition presenceCondition, Set<Node.Op> nodes) {
-		checkNotNull(presenceCondition);
+	public Association.Op createAssociation(Set<Node.Op> nodes) {
 		checkNotNull(nodes);
+		checkArgument(!nodes.isEmpty(), "Expected a non-empty set of nodes but was empty.");
 
 		final Association.Op association = new PerstAssociation();
 
@@ -112,57 +73,30 @@ public class PerstEntityFactory implements EntityFactory {
 			rootNode.addChild(node);
 		}
 
-		association.setPresenceCondition(presenceCondition);
 		association.setRootNode(rootNode);
 
 		return association;
 	}
 
 
-	// # FEATURES ################################################################
-
 	@Override
-	public Feature createFeature(final String id, final String name, final String description) {
+	public Feature createFeature(final String id, final String name) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
-		checkNotNull(description);
 
-		final Feature feature = new PerstFeature(id, name, description);
-
-		return feature;
-	}
-
-//	@Override
-//	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign) {
-//		checkNotNull(feature);
-//		checkNotNull(featureVersion);
-//
-//		PerstFeatureInstance featureInstance = new PerstFeatureInstance(feature, featureVersion, sign);
-//		return featureInstance;
-//	}
-
-	@Override
-	public Module createModule() {
-		return new PerstModule();
-	}
-
-//	@Override
-//	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature) {
-//		return this.createModuleFeature(moduleFeature.getFeature(), moduleFeature, moduleFeature.getSign());
-//	}
-
-	@Override
-	public ModuleFeature createModuleFeature(Feature feature, boolean sign) {
-		return this.createModuleFeature(feature, new ArrayList<>(), sign);
+		return new PerstFeature(id, name);
 	}
 
 	@Override
-	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign) {
-		return new PerstModuleFeature(feature, featureVersions, sign);
+	public Module createModule(Feature[] pos, Feature[] neg) {
+		return new PerstModule(pos, neg);
 	}
 
 
-	// # NODES ################################################################
+	@Override
+	public RootNode.Op createRootNode() {
+		return new PerstRootNode();
+	}
 
 	@Override
 	public Node.Op createNode() {
@@ -170,7 +104,7 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Node.Op createNode(final Artifact.Op<?> artifact) {
+	public Node.Op createNode(final Artifact.Op artifact) {
 		checkNotNull(artifact);
 
 		final Node.Op node = new PerstNode();
@@ -186,7 +120,7 @@ public class PerstEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Node.Op createOrderedNode(final Artifact.Op<?> artifact) {
+	public Node.Op createOrderedNode(final Artifact.Op artifact) {
 		checkNotNull(artifact);
 
 		final Node.Op node = this.createNode(artifact);
@@ -198,17 +132,6 @@ public class PerstEntityFactory implements EntityFactory {
 	@Override
 	public Node.Op createOrderedNode(ArtifactData artifactData) {
 		return this.createOrderedNode(this.createArtifact(artifactData));
-	}
-
-	@Override
-	public RootNode.Op createRootNode() {
-		return new PerstRootNode();
-	}
-
-
-	@Override
-	public Repository.Op createRepository() {
-		return new PerstRepository();
 	}
 
 }

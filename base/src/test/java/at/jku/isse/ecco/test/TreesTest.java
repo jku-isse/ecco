@@ -80,7 +80,7 @@ public class TreesTest {
 	public Node.Op createTestTree1() {
 		EntityFactory ef = new MemEntityFactory();
 
-		RootNode root = ef.createRootNode();
+		RootNode.Op root = ef.createRootNode();
 
 		// first level
 		Node.Op n00 = ef.createNode(new TestArtifactData("00"));
@@ -136,7 +136,7 @@ public class TreesTest {
 	public Node.Op createTestTree2() {
 		EntityFactory ef = new MemEntityFactory();
 
-		RootNode root = ef.createRootNode();
+		RootNode.Op root = ef.createRootNode();
 
 		// first level
 		Node.Op n00 = ef.createNode(new TestArtifactData("00"));

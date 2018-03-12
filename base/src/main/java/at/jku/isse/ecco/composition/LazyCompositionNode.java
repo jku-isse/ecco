@@ -3,34 +3,36 @@ package at.jku.isse.ecco.composition;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.NodeOperator;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A lazy composition node.
  */
-public class LazyCompositionNode implements Node, Node.Op {
-
-	private transient NodeOperator operator = new NodeOperator(this);
-
-
-	private OrderSelector orderSelector;
-
-	public OrderSelector getOrderSelector() {
-		return orderSelector;
-	}
-
-	public void setOrderSelector(OrderSelector orderSelector) {
-		this.orderSelector = orderSelector;
-	}
-
+public class LazyCompositionNode implements Node {
 
 	private boolean activated = false;
 
-	private List<Op> origNodes;
+	private List<Node> origNodes;
+
+	private OrderSelector orderSelector;
+
+
+	private boolean unique = true;
+
+	private Artifact<?> artifact = null;
+
+	private Node parent = null;
+
+	private final List<Node> children = new ArrayList<>();
+
+
+	private transient Map<String, Object> properties = new HashMap<>();
 
 
 	public LazyCompositionNode() {
@@ -38,14 +40,10 @@ public class LazyCompositionNode implements Node, Node.Op {
 	}
 
 	public LazyCompositionNode(OrderSelector orderSelector) {
-		this.origNodes = new ArrayList<>();
+		checkNotNull(orderSelector);
 		this.activated = false;
+		this.origNodes = new ArrayList<>();
 		this.orderSelector = orderSelector;
-	}
-
-
-	public void addOrigNode(Op origNode) {
-		this.origNodes.add(origNode);
 	}
 
 
@@ -57,15 +55,18 @@ public class LazyCompositionNode implements Node, Node.Op {
 
 		List<LazyCompositionNode> allChildren = new ArrayList<>();
 
-		for (Op origNode : this.origNodes) {
-			for (Op origChildNode : origNode.getChildren()) {
+		for (Node origNode : this.origNodes) {
+			for (Node origChildNode : origNode.getChildren()) {
 				LazyCompositionNode newChildNode = null;
 				if (!allChildren.contains(origChildNode)) {
 					newChildNode = new LazyCompositionNode(this.orderSelector);
 
-					newChildNode.setParent(this);
-					newChildNode.setArtifact(origChildNode.getArtifact());
-					newChildNode.setUnique(origChildNode.isUnique());
+					//newChildNode.setParent(this);
+					newChildNode.parent = this;
+					//newChildNode.setArtifact(origChildNode.getArtifact());
+					newChildNode.artifact = origChildNode.getArtifact();
+					//newChildNode.setUnique(origChildNode.isUnique());
+					newChildNode.unique = origChildNode.isUnique();
 
 					newChildNode.addOrigNode(origChildNode);
 
@@ -75,7 +76,8 @@ public class LazyCompositionNode implements Node, Node.Op {
 					newChildNode.addOrigNode(origChildNode);
 				}
 				if (origChildNode.isUnique()) {
-					newChildNode.setUnique(true);
+					//newChildNode.setUnique(true);
+					newChildNode.unique = true;
 				}
 			}
 		}
@@ -84,37 +86,27 @@ public class LazyCompositionNode implements Node, Node.Op {
 
 		this.activated = true;
 
+		// finally set the order of the children
 		if (this.orderSelector != null && this.getArtifact() != null && this.getArtifact().isOrdered() && this.getArtifact().isSequenced() && this.getArtifact().getSequenceGraph() != null) {
-			this.orderSelector.select(this);
+			List<Node> orderedChildren = this.orderSelector.select(this);
+			this.children.clear();
+			this.children.addAll(orderedChildren);
 		}
 	}
 
 
-	@Override
-	public List<Op> getChildren() {
-		this.activate();
-
-		//return Collections.unmodifiableList(this.children);
-		return this.children;
+	public void addOrigNode(Node origNode) {
+		this.origNodes.add(origNode);
 	}
 
 
-	@Override
-	public Op createNode() {
-		return new LazyCompositionNode();
+	public OrderSelector getOrderSelector() {
+		return orderSelector;
 	}
 
-
-	// base
-
-
-	private boolean unique = true;
-
-	private final List<Op> children = new ArrayList<>();
-
-	private Artifact.Op<?> artifact = null;
-
-	private Op parent = null;
+	public void setOrderSelector(OrderSelector orderSelector) {
+		this.orderSelector = orderSelector;
+	}
 
 
 	@Override
@@ -125,6 +117,28 @@ public class LazyCompositionNode implements Node, Node.Op {
 			return false;
 	}
 
+	@Override
+	public boolean isUnique() {
+		return this.unique;
+	}
+
+	@Override
+	public Artifact<?> getArtifact() {
+		return artifact;
+	}
+
+	@Override
+	public Node getParent() {
+		return parent;
+	}
+
+	@Override
+	public List<? extends Node> getChildren() {
+		this.activate();
+
+		//return Collections.unmodifiableList(this.children);
+		return this.children;
+	}
 
 	@Override
 	public Association getContainingAssociation() {
@@ -136,152 +150,34 @@ public class LazyCompositionNode implements Node, Node.Op {
 
 
 	@Override
-	public Artifact.Op<?> getArtifact() {
-		return artifact;
-	}
-
-	@Override
-	public void setArtifact(Artifact.Op<?> artifact) {
-		this.artifact = artifact;
-	}
-
-	@Override
-	public Op getParent() {
-		return parent;
-	}
-
-	@Override
-	public void setParent(Op parent) {
-		this.parent = parent;
-	}
-
-	@Override
-	public boolean isUnique() {
-		return this.unique;
-	}
-
-	@Override
-	public void setUnique(boolean unique) {
-		this.unique = unique;
-	}
-
-
-	@Override
-	public void addChild(Op child) {
-//		throw new UnsupportedOperationException("Cannot add children to a lazy composition node.");
-
-		checkNotNull(child);
-
-		this.children.add(child);
-		child.setParent(this);
-	}
-
-	@Override
-	public void addChildren(Op... children) {
-		for (Op child : children)
-			this.addChild(child);
-	}
-
-	@Override
-	public void removeChild(Op child) {
-		checkNotNull(child);
-
-		this.children.remove(child);
+	public Map<String, Object> getProperties() {
+		return this.properties;
 	}
 
 
 	@Override
 	public int hashCode() {
-		return this.operator.hashCode();
+		return this.getArtifact() != null ? this.getArtifact().hashCode() : 0;
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		return this.operator.equals(o);
+	public boolean equals(Object other) {
+		if (this == other) return true;
+		if (other == null) return false;
+		if (!(other instanceof Node)) return false;
+
+		Node otherNode = (Node) other;
+
+		if (this.getArtifact() == null)
+			return otherNode.getArtifact() == null;
+
+		return this.getArtifact().equals(otherNode.getArtifact());
 	}
+
 
 	@Override
 	public String toString() {
-		return this.operator.toString();
-	}
-
-
-	@Override
-	public void slice(Op node) {
-		this.operator.slice(node);
-	}
-
-	@Override
-	public void merge(Op node) {
-		this.operator.merge(node);
-	}
-
-	@Override
-	public void sequence() {
-		this.operator.sequence();
-	}
-
-	@Override
-	public void updateArtifactReferences() {
-		this.operator.updateArtifactReferences();
-	}
-
-	@Override
-	public Node extractMarked() {
-		return this.operator.extractMarked();
-	}
-
-	@Override
-	public int countArtifacts() {
-		return this.operator.countArtifacts();
-	}
-
-	@Override
-	public int computeDepth() {
-		return this.operator.computeDepth();
-	}
-
-	@Override
-	public Map<Integer, Integer> countArtifactsPerDepth() {
-		return this.operator.countArtifactsPerDepth();
-	}
-
-	@Override
-	public void print() {
-		this.operator.print();
-	}
-
-	@Override
-	public void checkConsistency() {
-		this.operator.checkConsistency();
-	}
-
-
-	// properties
-
-	private transient Map<String, Object> properties = new HashMap<>();
-
-	@Override
-	public <T> Optional<T> getProperty(final String name) {
-		return this.operator.getProperty(name);
-	}
-
-	@Override
-	public <T> void putProperty(final String name, final T property) {
-		this.operator.putProperty(name, property);
-	}
-
-	@Override
-	public void removeProperty(String name) {
-		this.operator.removeProperty(name);
-	}
-
-
-	// operand
-
-	@Override
-	public Map<String, Object> getProperties() {
-		return this.properties;
+		return this.getNodeString();
 	}
 
 }

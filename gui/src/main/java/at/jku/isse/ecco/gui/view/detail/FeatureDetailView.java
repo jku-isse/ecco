@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui.view.detail;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -19,7 +19,7 @@ public class FeatureDetailView extends BorderPane {
 
 	private Feature currentFeature;
 
-	final ObservableList<FeatureVersion> featureVersionsData = FXCollections.observableArrayList();
+	final ObservableList<FeatureRevision> featureRevisionsData = FXCollections.observableArrayList();
 
 	private TextField featureName;
 	private TextArea featureDescription;
@@ -89,22 +89,22 @@ public class FeatureDetailView extends BorderPane {
 		});
 
 
-		// list of feature versions
-		TableView<FeatureVersion> versionsTable = new TableView<>();
-		versionsTable.setEditable(false);
-		versionsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+		// list of feature revisions
+		TableView<FeatureRevision> revisionsTable = new TableView<>();
+		revisionsTable.setEditable(false);
+		revisionsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<FeatureVersion, String> versionCol = new TableColumn<>("Version");
-		TableColumn<FeatureVersion, String> featureVersionsCol = new TableColumn<>("Feature Versions");
+		TableColumn<FeatureRevision, String> revisionCol = new TableColumn<>("Revision");
+		TableColumn<FeatureRevision, String> featureRevisionsCol = new TableColumn<>("Feature Revisions");
 
-		featureVersionsCol.getColumns().setAll(versionCol);
-		versionsTable.getColumns().setAll(featureVersionsCol);
+		featureRevisionsCol.getColumns().setAll(revisionCol);
+		revisionsTable.getColumns().setAll(featureRevisionsCol);
 
-		versionCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+		revisionCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
-		versionsTable.setItems(this.featureVersionsData);
+		revisionsTable.setItems(this.featureRevisionsData);
 
-		featureDetails.add(versionsTable, 1, row, 1, 1);
+		featureDetails.add(revisionsTable, 1, row, 1, 1);
 		row++;
 
 
@@ -116,7 +116,7 @@ public class FeatureDetailView extends BorderPane {
 	public void showFeature(Feature feature) {
 		this.currentFeature = feature;
 
-		this.featureVersionsData.clear();
+		this.featureRevisionsData.clear();
 
 		if (feature != null) {
 			this.setCenter(this.centerPane);
@@ -126,9 +126,9 @@ public class FeatureDetailView extends BorderPane {
 			this.featureName.setText(feature.getName());
 			this.featureDescription.setText(feature.getDescription());
 
-			// show feature versions
-			for (FeatureVersion featureVersion : feature.getVersions()) {
-				FeatureDetailView.this.featureVersionsData.add(featureVersion);
+			// show feature revisions
+			for (FeatureRevision featureRevision : feature.getRevisions()) {
+				FeatureDetailView.this.featureRevisionsData.add(featureRevision);
 			}
 		} else {
 			this.setCenter(null);

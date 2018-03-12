@@ -1,173 +1,109 @@
 package at.jku.isse.ecco.storage.perst.module;
 
-import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureInstance;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleFeature;
+import at.jku.isse.ecco.module.ModuleRevision;
 import org.garret.perst.Persistent;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Perst implementation of {@link Feature}.
- *
- * @author JKU, ISSE
- * @author Hannes Thaller
- * @version 1.0
  */
 public class PerstModule extends Persistent implements Module {
 
+	private Feature[] pos;
+	private Feature[] neg;
+	private int count;
+	private Map<PerstModuleRevision, PerstModuleRevision> revisions;
 
-	// constructors
 
-	public PerstModule() {
-		this.moduleFeatures = new HashSet<ModuleFeature>();
+	public PerstModule(Feature[] pos, Feature[] neg) {
+		checkNotNull(pos);
+		checkNotNull(neg);
+		checkArgument(pos.length > 0);
+		this.verify(pos, neg);
+		this.pos = pos;
+		this.neg = neg;
+		this.count = 0;
+		this.revisions = new HashMap<>();
 	}
 
-	public PerstModule(PerstModule module) {
-		this.moduleFeatures = new HashSet<ModuleFeature>(module.moduleFeatures);
-	}
-
-
-	// perst
-
-	public void storeRecursively() {
-		this.store();
-
-		// store all children
-		for (ModuleFeature mf : this.moduleFeatures) {
-			if (mf instanceof PerstModuleFeature)
-				((PerstModuleFeature) mf).store();
-		}
-	}
-
-
-	protected Set<ModuleFeature> moduleFeatures;
 
 	@Override
-	public boolean holds(Configuration configuration) {
-		/**
-		 * A module holds in a configuration when all the module's features are contained in the configuration.
-		 */
-
-		Set<FeatureInstance> featureInstances = configuration.getFeatureInstances();
-		for (ModuleFeature mf : this) {
-
-			boolean atLeastOneVersionMatched = false;
-			for (FeatureVersion fv : mf) {
-				for (FeatureInstance fi : featureInstances) {
-					if (fi.getFeatureVersion().equals(fv) && fi.getSign() == mf.getSign()) {
-						atLeastOneVersionMatched = true;
-						break;
-					}
-				}
-				if (atLeastOneVersionMatched)
-					break;
-			}
-
-			if (!atLeastOneVersionMatched)
-				return false;
-		}
-
-		return true;
+	public Feature[] getPos() {
+		return this.pos;
 	}
 
 	@Override
-	public int hashCode() {
-		return this.moduleFeatures.hashCode();
+	public Feature[] getNeg() {
+		return this.neg;
 	}
+
+	@Override
+	public int getCount() {
+		return this.count;
+	}
+
+	@Override
+	public void setCount(int count) {
+		this.count = count;
+	}
+
+	@Override
+	public void incCount() {
+		this.count++;
+	}
+
+	@Override
+	public void incCount(int count) {
+		this.count += count;
+	}
+
+	@Override
+	public Collection<PerstModuleRevision> getRevisions() {
+		return Collections.unmodifiableCollection(this.revisions.values());
+	}
+
+	@Override
+	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
+		if (!this.matchesRevision(pos, neg))
+			return null;
+		PerstModuleRevision moduleRevision = new PerstModuleRevision(this, pos, neg);
+		if (this.revisions.containsKey(moduleRevision))
+			return null;
+		this.revisions.put(moduleRevision, moduleRevision);
+		return moduleRevision;
+	}
+
+	@Override
+	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
+		return this.revisions.get(new PerstModuleRevision(this, pos, neg));
+	}
+
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
+		PerstModule memModule = (PerstModule) o;
+		return Arrays.equals(pos, memModule.pos) && Arrays.equals(neg, memModule.neg);
+	}
 
-		PerstModule that = (PerstModule) o;
-
-		return this.moduleFeatures.equals(that.moduleFeatures);
+	@Override
+	public int hashCode() {
+		int result = Arrays.hashCode(pos);
+		result = 31 * result + Arrays.hashCode(neg);
+		return result;
 	}
 
 	@Override
 	public String toString() {
-		String result = this.stream().map((ModuleFeature mf) -> {
-			return mf.toString();
-		}).collect(Collectors.joining(", "));
-
-		return "d^" + this.getOrder() + "(" + result + ")";
-	}
-
-
-	// # SET ####################################################
-
-	@Override
-	public int size() {
-		return this.moduleFeatures.size();
-	}
-
-	@Override
-	public boolean isEmpty() {
-		return this.moduleFeatures.isEmpty();
-	}
-
-	@Override
-	public boolean contains(Object o) {
-		return this.moduleFeatures.contains(o);
-	}
-
-	@Override
-	public Iterator<ModuleFeature> iterator() {
-		return this.moduleFeatures.iterator();
-	}
-
-	@Override
-	public Object[] toArray() {
-		return this.moduleFeatures.toArray();
-	}
-
-	@Override
-	public <T> T[] toArray(T[] ts) {
-		return this.moduleFeatures.<T>toArray(ts);
-	}
-
-	@Override
-	public boolean add(ModuleFeature moduleFeature) {
-		return this.moduleFeatures.add(moduleFeature);
-	}
-
-	@Override
-	public boolean remove(Object o) {
-		return this.moduleFeatures.remove(o);
-	}
-
-	@Override
-	public boolean containsAll(Collection<?> collection) {
-		return this.moduleFeatures.containsAll(collection);
-	}
-
-	@Override
-	public boolean addAll(Collection<? extends ModuleFeature> collection) {
-		return this.moduleFeatures.addAll(collection);
-	}
-
-	@Override
-	public boolean retainAll(Collection<?> collection) {
-		return this.moduleFeatures.retainAll(collection);
-	}
-
-	@Override
-	public boolean removeAll(Collection<?> collection) {
-		return this.moduleFeatures.removeAll(collection);
-	}
-
-	@Override
-	public void clear() {
-		this.moduleFeatures.clear();
+		return this.getModuleString();
 	}
 
 }

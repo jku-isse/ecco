@@ -2,14 +2,14 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.listener.EccoListener;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.repository.Repository;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -32,7 +32,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 	private EccoService service;
 
 	private ObservableList<PieChart.Data> artifactsPerAssociationData;
-	private ObservableList<PieChart.Data> versionsPerFeature;
+	private ObservableList<PieChart.Data> revisionsPerFeature;
 	private XYChart.Series<Number, Number> artifactsPerDepthSeries;
 	private XYChart.Series<String, Number> modulesPerOrderSeries;
 	private XYChart.Series artifactsPerDepthAndOrderSeries;
@@ -64,7 +64,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 					Repository repository = ChartsView.this.service.getRepository();
 					final Map<Integer, Integer> modulesPerOrderMap = new TreeMap<>();
 					for (Association association : repository.getAssociations()) {
-						for (Module module : association.getPresenceCondition().getMinModules()) {
+						for (Module module : association.computeCondition().getModules().keySet()) {
 							//For the specified order -> If no order of this type is seen yet, it must be the first. Otherwise 1 is added to the old value
 							modulesPerOrderMap.compute(module.getOrder(), (key, oldValue) -> oldValue == null ? 1 : oldValue + 1);
 						}
@@ -79,12 +79,12 @@ public class ChartsView extends BorderPane implements EccoListener {
 								ChartsView.this.artifactsPerAssociationData.add(new PieChart.Data("A" + association.getId(), numArtifacts));
 						}
 
-						// versions per feature
-						ChartsView.this.versionsPerFeature.clear();
+						// revisions per feature
+						ChartsView.this.revisionsPerFeature.clear();
 						for (Feature feature : ChartsView.this.service.getRepository().getFeatures()) {
-							int numVersions = feature.getVersions().size();
-							if (numVersions > 0)
-								ChartsView.this.versionsPerFeature.add(new PieChart.Data(feature.getName(), numVersions));
+							int numRevisions = feature.getRevisions().size();
+							if (numRevisions > 0)
+								ChartsView.this.revisionsPerFeature.add(new PieChart.Data(feature.getName(), numRevisions));
 						}
 
 						// artifacts per depth
@@ -222,15 +222,15 @@ public class ChartsView extends BorderPane implements EccoListener {
 //		}
 
 
-		{ // versions per feature
+		{ // revisions per feature
 			TitledPane titledPane = new TitledPane();
 			titledPane.setAnimated(false);
-			titledPane.setText("Versions per Feature");
+			titledPane.setText("Revisions per Feature");
 
-			this.versionsPerFeature = FXCollections.observableArrayList();
+			this.revisionsPerFeature = FXCollections.observableArrayList();
 
-			final PieChart pieChart = new PieChart(versionsPerFeature);
-			pieChart.setTitle("Versions per Feature");
+			final PieChart pieChart = new PieChart(revisionsPerFeature);
+			pieChart.setTitle("Revisions per Feature");
 
 			titledPane.setContent(pieChart);
 

@@ -1,62 +1,45 @@
 package at.jku.isse.ecco.storage.perst.feature;
 
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import org.garret.perst.Persistent;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Perst implementation of {@link Feature}.
- *
- * @author JKU, ISSE
- * @author Hannes Thaller
- * @version 1.0
  */
 public class PerstFeature extends Persistent implements Feature {
 
-	private String id = "";
-	private String name = "";
-	private String description = "";
+	private String id;
+	private String name;
+	private String description;
+	private List<PerstFeatureRevision> revisions;
 
-	private List<PerstFeatureVersion> versions = new ArrayList<>();
 
-//	private int nextVersion = 0;
-
-//	public PerstFeature() {
-//
-//	}
-//
-//	public PerstFeature(String name) {
-//		this(UUID.randomUUID().toString(), name, "");
-//	}
-
-	public PerstFeature(String id, String name, String description) {
+	public PerstFeature(String id, String name) {
 		checkNotNull(id);
 		checkNotNull(name);
-		checkNotNull(description);
-
 		this.id = id;
 		this.name = name;
-		this.description = description;
+		this.description = "";
+		this.revisions = new ArrayList<>();
+	}
+
+
+	@Override
+	public Collection<PerstFeatureRevision> getRevisions() {
+		return Collections.unmodifiableCollection(this.revisions);
 	}
 
 	@Override
-	public List<PerstFeatureVersion> getVersions() {
-		return this.versions;
-	}
-
-	@Override
-	public FeatureVersion addVersion(String id) {
-		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, id);
-		if (!this.versions.contains(featureVersion)) {
-			this.versions.add(featureVersion);
+	public FeatureRevision addRevision(String id) {
+		PerstFeatureRevision featureVersion = new PerstFeatureRevision(this, id);
+		if (!this.revisions.contains(featureVersion)) {
+			this.revisions.add(featureVersion);
 //			if (this.nextVersion <= version)
 //				this.nextVersion = version + 1;
 			return featureVersion;
@@ -65,8 +48,8 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public FeatureVersion getVersion(String id) {
-		for (FeatureVersion featureVersion : this.versions) {
+	public PerstFeatureRevision getRevision(String id) {
+		for (PerstFeatureRevision featureVersion : this.revisions) {
 			if (featureVersion.getId().equals(id))
 				return featureVersion;
 		}
@@ -74,18 +57,15 @@ public class PerstFeature extends Persistent implements Feature {
 	}
 
 	@Override
-	public FeatureVersion getLatestVersion() {
-		if (this.versions.isEmpty())
+	public FeatureRevision getLatestRevision() {
+		if (this.revisions.isEmpty())
 			return null;
-		return this.versions.get(this.versions.size() - 1);
+		return this.revisions.get(this.revisions.size() - 1);
 	}
 
 	@Override
-	public FeatureVersion createNewVersion() {
-		PerstFeatureVersion featureVersion = new PerstFeatureVersion(this, UUID.randomUUID().toString());
-//		this.nextVersion++;
-		this.versions.add(featureVersion);
-		return featureVersion;
+	public String getId() {
+		return this.id;
 	}
 
 	@Override
@@ -113,30 +93,24 @@ public class PerstFeature extends Persistent implements Feature {
 		this.description = description;
 	}
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(this.id);
-	}
 
 	@Override
-	public boolean equals(final Object o) {
-		if (this == o) return true;
-		if (!(o instanceof Feature)) return false;
+	public boolean equals(final Object obj) {
+		if (this == obj) return true;
+		if (!(obj instanceof PerstFeature)) return false;
 
-		final Feature other = (Feature) o;
-
+		final Feature other = (Feature) obj;
 		return this.id.equals(other.getId());
 	}
 
 	@Override
-	public String getId() {
-		return this.id;
+	public int hashCode() {
+		return Objects.hash(this.name);
 	}
 
 	@Override
 	public String toString() {
-		//return this.name + "(" + this.id + ")";
-		return this.name;
+		return this.getFeatureString();
 	}
 
 }

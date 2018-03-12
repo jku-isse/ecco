@@ -1,89 +1,55 @@
 package at.jku.isse.ecco.storage.perst.repository;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.perst.dao.PerstEntityFactory;
-import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
+import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.repository.RepositoryOperator;
-import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
+import at.jku.isse.ecco.storage.perst.dao.PerstEntityFactory;
+import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
+import at.jku.isse.ecco.storage.perst.module.PerstModule;
 import org.garret.perst.Persistent;
 
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 /**
- * Memory implementation of {@link Repository}.
- *
- * @author JKU, ISSE
- * @version 1.0
+ * Perstory implementation of {@link Repository}.
  */
 public class PerstRepository extends Persistent implements Repository, Repository.Op {
 
-	private transient RepositoryOperator operator;
-
-
 	private Map<String, PerstFeature> features;
 	private Collection<PerstAssociation> associations;
+	private Map<PerstModule, PerstModule> modules;
 
 	private EntityFactory entityFactory;
 
-	private int maxOrder = 5;
+	private int maxOrder;
 
 
 	public PerstRepository() {
 		this.features = new HashMap<>();
 		this.associations = new ArrayList<>();
+		this.modules = new HashMap<>();
 		this.entityFactory = new PerstEntityFactory();
-		this.maxOrder = 5;
-
-		this.operator = new RepositoryOperator(this);
-	}
-
-
-	@Override
-	public Commit extract(Configuration configuration, Set<Node.Op> nodes) {
-		return this.operator.extract(configuration, nodes);
-	}
-
-	@Override
-	public Checkout compose(Configuration configuration) {
-		return this.operator.compose(configuration);
-	}
-
-	@Override
-	public Op subset(Collection<FeatureVersion> deselected, int maxOrder, EntityFactory entityFactory) {
-		return this.operator.subset(deselected, maxOrder, entityFactory);
-	}
-
-	@Override
-	public Op copy(EntityFactory entityFactory) {
-		return this.operator.copy(entityFactory);
-	}
-
-	@Override
-	public void merge(Op repository) {
-		this.operator.merge(repository);
+		this.maxOrder = 2;
 	}
 
 
 	@Override
 	public Collection<PerstFeature> getFeatures() {
-		return new ArrayList<>(this.features.values());
+		return Collections.unmodifiableCollection(this.features.values());
 	}
-
 
 	@Override
 	public Collection<PerstAssociation> getAssociations() {
-		//return new ArrayList<>(this.associations);
 		return Collections.unmodifiableCollection(this.associations);
+	}
+
+	@Override
+	public Collection<PerstModule> getModules() {
+		return Collections.unmodifiableCollection(this.modules.values());
 	}
 
 
@@ -93,13 +59,10 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 	}
 
 	@Override
-	public Collection<Feature> getFeaturesByName(String name) {
-		return this.operator.getFeaturesByName(name);
-	}
-
-	@Override
-	public Feature addFeature(String id, String name, String description) {
-		PerstFeature feature = new PerstFeature(id, name, description);
+	public Feature addFeature(String id, String name) {
+		if (this.features.containsKey(id))
+			return null;
+		PerstFeature feature = new PerstFeature(id, name);
 		this.features.put(feature.getId(), feature);
 		return feature;
 	}
@@ -107,7 +70,8 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 	@Override
 	public void addAssociation(Association.Op association) {
-		checkArgument(association instanceof PerstAssociation);
+		if (!(association instanceof PerstAssociation))
+			throw new EccoException("Only PerstAssociation can be added to PerstRepository!");
 		this.associations.add((PerstAssociation) association);
 	}
 
@@ -127,9 +91,25 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 		this.maxOrder = maxOrder;
 	}
 
+
 	@Override
 	public EntityFactory getEntityFactory() {
 		return this.entityFactory;
+	}
+
+
+	@Override
+	public Module getModule(Feature[] pos, Feature[] neg) {
+		return this.modules.get(new PerstModule(pos, neg));
+	}
+
+	@Override
+	public Module addModule(Feature[] pos, Feature[] neg) {
+		PerstModule module = new PerstModule(pos, neg);
+		if (this.modules.containsKey(module))
+			return null;
+		this.modules.put(module, module);
+		return module;
 	}
 
 }

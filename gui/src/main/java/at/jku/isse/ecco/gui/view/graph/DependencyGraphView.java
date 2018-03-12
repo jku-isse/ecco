@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.module.Condition;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;
 import javafx.scene.control.*;
@@ -199,15 +200,17 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 			dg = new DependencyGraph(this.service.getRepository().getAssociations());
 
 		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
-			if (!hideImpliedDependencies || !dep.getFrom().getPresenceCondition().implies(dep.getTo().getPresenceCondition())) {
+			Condition depFromCondition = dep.getFrom().computeCondition();
+			Condition depToCondition = dep.getTo().computeCondition();
+			if (!hideImpliedDependencies || !depFromCondition.implies(depToCondition)) {
 //			boolean implied = Condition.implies(dep.getFrom().getPresenceCondition(), dep.getTo().getPresenceCondition());
 				Node from = this.graph.getNode(String.valueOf(dep.getFrom().getId()));
 				if (from == null) {
 					from = this.graph.addNode(String.valueOf(dep.getFrom().getId()));
 					if (simplifyLabels)
-						from.setAttribute("label", "[" + dep.getFrom().getPresenceCondition().getSimpleLabel() + "]");
+						from.setAttribute("label", "[" + depFromCondition.getSimpleModuleRevisionConditionString() + "]");
 					else
-						from.setAttribute("label", "[" + dep.getFrom().getPresenceCondition().getLabel() + "]");
+						from.setAttribute("label", "[" + depFromCondition.getModuleRevisionConditionString() + "]");
 //				from.setAttribute("implied", implied);
 //				if (implied)
 //					from.setAttribute("hide");
@@ -220,9 +223,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 				if (to == null) {
 					to = this.graph.addNode(String.valueOf(dep.getTo().getId()));
 					if (simplifyLabels)
-						to.setAttribute("label", "[" + dep.getTo().getPresenceCondition().getSimpleLabel() + "]");
+						to.setAttribute("label", "[" + depToCondition.getSimpleModuleRevisionConditionString() + "]");
 					else
-						to.setAttribute("label", "[" + dep.getTo().getPresenceCondition().getLabel() + "]");
+						to.setAttribute("label", "[" + depToCondition.getModuleRevisionConditionString() + "]");
 //				to.setAttribute("implied", implied);
 //				if (implied)
 //					to.setAttribute("hide");

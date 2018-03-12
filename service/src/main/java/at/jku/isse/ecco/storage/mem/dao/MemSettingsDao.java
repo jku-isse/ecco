@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.storage.mem.dao;
 
-import at.jku.isse.ecco.storage.mem.core.BaseRemote;
+import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.SettingsDao;
 import com.google.inject.Inject;
@@ -51,9 +51,9 @@ public class MemSettingsDao extends MemAbstractGenericDao implements SettingsDao
 		checkNotNull(remote);
 
 		final Database root = this.transactionStrategy.getDatabase();
-		final Map<String, BaseRemote> remoteIndex = root.getRemoteIndex();
+		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();
 
-		final BaseRemote memEntity = (BaseRemote) remote;
+		final MemRemote memEntity = (MemRemote) remote;
 
 		remoteIndex.put(memEntity.getName(), memEntity);
 
@@ -65,7 +65,7 @@ public class MemSettingsDao extends MemAbstractGenericDao implements SettingsDao
 		checkNotNull(name);
 
 		final Database root = this.transactionStrategy.getDatabase();
-		final Map<String, BaseRemote> remoteIndex = root.getRemoteIndex();
+		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();
 
 		remoteIndex.remove(name);
 	}

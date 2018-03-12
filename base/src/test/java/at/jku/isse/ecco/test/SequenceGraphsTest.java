@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.storage.mem.artifact.BaseArtifact;
+import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.gui.view.graph.SequenceGraphView;
-import at.jku.isse.ecco.storage.mem.sg.BaseSequenceGraph;
+import at.jku.isse.ecco.storage.mem.sg.MemSequenceGraph;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import javafx.scene.Scene;
 import org.testng.annotations.AfterTest;
@@ -23,8 +23,8 @@ public class SequenceGraphsTest {
 		List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("1"), A("9"), A("2"), A("4"), A("5"));
 		List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("1"), A("6"), A("4"), A("3"));
 
-		SequenceGraph.Op sg1 = new BaseSequenceGraph();
-		SequenceGraph.Op sg2 = new BaseSequenceGraph();
+		SequenceGraph.Op sg1 = new MemSequenceGraph();
+		SequenceGraph.Op sg2 = new MemSequenceGraph();
 
 
 		// align sequence to sg
@@ -71,7 +71,7 @@ public class SequenceGraphsTest {
 	 * @return
 	 */
 	private Artifact.Op<?> A(String id) {
-		return new BaseArtifact<>(new TestArtifactData(id));
+		return new MemArtifact<>(new TestArtifactData(id));
 	}
 
 

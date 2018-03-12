@@ -2,7 +2,17 @@
 # ECCO CHANGELOG
 
 
+## 0.1.7
+  * major refactoring and cleanup
+  * reimplementation of presence condition computation
+
+
 ## 0.1.6
+  * removed obsolete and unused code
+  * added ci/cd
+  * improved build scripts
+  * refactoring of project structure
+  * ...
 
 
 ## 0.1.5

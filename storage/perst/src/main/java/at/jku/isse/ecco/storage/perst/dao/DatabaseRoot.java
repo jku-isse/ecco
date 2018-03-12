@@ -1,12 +1,12 @@
 package at.jku.isse.ecco.storage.perst.dao;
 
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.storage.perst.core.PerstCommit;
 import at.jku.isse.ecco.storage.perst.core.PerstRemote;
 import at.jku.isse.ecco.storage.perst.core.PerstVariant;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
 import at.jku.isse.ecco.storage.perst.repository.PerstRepository;
-import at.jku.isse.ecco.repository.Repository;
 import org.garret.perst.FieldIndex;
 import org.garret.perst.Persistent;
 
@@ -44,6 +44,7 @@ public class DatabaseRoot extends Persistent {
 	 * @param featureIndex     used to index {@link PerstFeature}
 	 * @param commitIndex      used to index {@link PerstCommit}
 	 * @param variantIndex     used to index {@link PerstVariant}
+	 * @param remoteIndex      used to index {@link PerstRemote}
 	 */
 	public DatabaseRoot(final FieldIndex<PerstAssociation> associationIndex, final FieldIndex<PerstFeature> featureIndex, final FieldIndex<PerstCommit> commitIndex, final FieldIndex<PerstVariant> variantIndex, final FieldIndex<PerstRemote> remoteIndex) {
 		checkNotNull(commitIndex);
