@@ -3,23 +3,23 @@ package at.jku.isse.ecco.module;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 
 public class EmptyModule implements Module {
 
 	private Feature[] pos;
 	private Feature[] neg;
 	private int count;
-	private Map<ModuleRevision, ModuleRevision> revisions;
+	private EmptyModuleRevision emptyModuleRevision;
 
 
 	public EmptyModule() {
 		this.pos = new Feature[0];
 		this.neg = new Feature[0];
 		this.count = 0;
-		this.revisions = new HashMap<>();
-		EmptyModuleRevision emptyModuleRevision = new EmptyModuleRevision(this);
-		this.revisions.put(emptyModuleRevision, emptyModuleRevision);
+		this.emptyModuleRevision = new EmptyModuleRevision(this);
 	}
 
 
@@ -55,7 +55,7 @@ public class EmptyModule implements Module {
 
 	@Override
 	public Collection<ModuleRevision> getRevisions() {
-		return Collections.unmodifiableCollection(this.revisions.values());
+		return Collections.unmodifiableCollection(Arrays.asList(this.emptyModuleRevision));
 	}
 
 	@Override
@@ -65,7 +65,10 @@ public class EmptyModule implements Module {
 
 	@Override
 	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
-		return this.revisions.get(new EmptyModuleRevision(this));
+		if (pos.length == 0 && neg.length == 0)
+			return this.emptyModuleRevision;
+		else
+			return null;
 	}
 
 
