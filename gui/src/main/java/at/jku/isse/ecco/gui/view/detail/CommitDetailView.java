@@ -27,7 +27,6 @@ public class CommitDetailView extends BorderPane {
 
 	private TextField commitId;
 	private TextField commitConfiguration;
-	private TextField commitCommitter;
 
 
 	public CommitDetailView(EccoService service) {
@@ -59,8 +58,6 @@ public class CommitDetailView extends BorderPane {
 		this.commitId.setEditable(false);
 		this.commitConfiguration = new TextField();
 		this.commitConfiguration.setEditable(false);
-		this.commitCommitter = new TextField();
-		this.commitCommitter.setEditable(false);
 
 		int row = 0;
 		detailsPane.add(new Label("Id: "), 1, row, 1, 1);
@@ -71,11 +68,6 @@ public class CommitDetailView extends BorderPane {
 		detailsPane.add(new Label("Configuration: "), 1, row, 1, 1);
 		row++;
 		detailsPane.add(this.commitConfiguration, 1, row, 1, 1);
-		row++;
-
-		detailsPane.add(new Label("Committer: "), 1, row, 1, 1);
-		row++;
-		detailsPane.add(this.commitCommitter, 1, row, 1, 1);
 		row++;
 
 
@@ -116,7 +108,6 @@ public class CommitDetailView extends BorderPane {
 
 			this.commitId.setText(String.valueOf(commit.getId()));
 			this.commitConfiguration.setText(commit.getConfiguration() == null ? "" : commit.getConfiguration().toString());
-			this.commitCommitter.setText(commit.getCommiter());
 
 //			// show associations
 //			for (Association association : commit.getAssociations()) {
@@ -128,7 +119,6 @@ public class CommitDetailView extends BorderPane {
 
 			this.commitId.setText("");
 			this.commitConfiguration.setText("");
-			this.commitCommitter.setText("");
 		}
 	}
 

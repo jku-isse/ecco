@@ -1,17 +1,10 @@
 package at.jku.isse.ecco.storage.mem.core;
 
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Memory implementation of {@link Commit}.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public class MemCommit implements Commit {
 
@@ -40,16 +33,6 @@ public class MemCommit implements Commit {
 	@Override
 	public void setConfiguration(Configuration configuration) {
 		this.configuration = configuration;
-	}
-
-	@Override
-	public String getCommiter() {
-		return this.committer;
-	}
-
-	@Override
-	public void setCommitter(String committer) {
-		this.committer = committer;
 	}
 
 }
