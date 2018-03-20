@@ -6,6 +6,7 @@ import java.util.Objects;
 
 public class JavaTreeArtifactData implements ArtifactData {
 
+    //Append new elements at the END!
     public enum NodeType {
         ASSIGNMENT,
         ENUM_DECLARATION,
