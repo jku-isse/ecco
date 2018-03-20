@@ -21,7 +21,7 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 	private Map<String, PerstFeature> features;
 	private Collection<PerstAssociation> associations;
-	private Map<PerstModule, PerstModule> modules;
+	private List<Map<PerstModule, PerstModule>> modules;
 
 	private EntityFactory entityFactory;
 
@@ -29,11 +29,11 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 
 	public PerstRepository() {
+		this.entityFactory = new PerstEntityFactory();
 		this.features = new HashMap<>();
 		this.associations = new ArrayList<>();
-		this.modules = new HashMap<>();
-		this.entityFactory = new PerstEntityFactory();
-		this.maxOrder = 2;
+		this.modules = new ArrayList<>();
+		this.setMaxOrder(2);
 	}
 
 
@@ -48,8 +48,8 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 	}
 
 	@Override
-	public Collection<PerstModule> getModules() {
-		return Collections.unmodifiableCollection(this.modules.values());
+	public Collection<PerstModule> getModules(int order) {
+		return Collections.unmodifiableCollection(this.modules.get(order).values());
 	}
 
 
@@ -89,6 +89,9 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 	@Override
 	public void setMaxOrder(int maxOrder) {
 		this.maxOrder = maxOrder;
+		for (int order = this.modules.size(); order <= this.maxOrder; order++) {
+			this.modules.add(new HashMap<>());
+		}
 	}
 
 
@@ -100,15 +103,16 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 	@Override
 	public Module getModule(Feature[] pos, Feature[] neg) {
-		return this.modules.get(new PerstModule(pos, neg));
+		PerstModule queryModule = new PerstModule(pos, neg);
+		return this.modules.get(queryModule.getOrder()).get(queryModule);
 	}
 
 	@Override
 	public Module addModule(Feature[] pos, Feature[] neg) {
 		PerstModule module = new PerstModule(pos, neg);
-		if (this.modules.containsKey(module))
+		if (this.modules.get(module.getOrder()).containsKey(module))
 			return null;
-		this.modules.put(module, module);
+		this.modules.get(module.getOrder()).put(module, module);
 		return module;
 	}
 

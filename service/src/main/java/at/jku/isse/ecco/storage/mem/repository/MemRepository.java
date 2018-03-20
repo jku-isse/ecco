@@ -18,7 +18,7 @@ public class MemRepository implements Repository, Repository.Op {
 
 	private Map<String, Feature> features;
 	private Collection<Association.Op> associations;
-	private Map<Module, Module> modules;
+	private List<Map<Module, Module>> modules;
 
 	private EntityFactory entityFactory;
 
@@ -26,11 +26,11 @@ public class MemRepository implements Repository, Repository.Op {
 
 
 	public MemRepository() {
+		this.entityFactory = new MemEntityFactory();
 		this.features = new HashMap<>();
 		this.associations = new ArrayList<>();
-		this.modules = new HashMap<>();
-		this.entityFactory = new MemEntityFactory();
-		this.maxOrder = 2;
+		this.modules = new ArrayList<>();
+		this.setMaxOrder(2);
 	}
 
 
@@ -45,8 +45,8 @@ public class MemRepository implements Repository, Repository.Op {
 	}
 
 	@Override
-	public Collection<? extends Module> getModules() {
-		return Collections.unmodifiableCollection(this.modules.values());
+	public Collection<? extends Module> getModules(int order) {
+		return Collections.unmodifiableCollection(this.modules.get(order).values());
 	}
 
 
@@ -84,6 +84,9 @@ public class MemRepository implements Repository, Repository.Op {
 	@Override
 	public void setMaxOrder(int maxOrder) {
 		this.maxOrder = maxOrder;
+		for (int order = this.modules.size(); order <= this.maxOrder; order++) {
+			this.modules.add(new HashMap<>());
+		}
 	}
 
 
@@ -95,15 +98,16 @@ public class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public Module getModule(Feature[] pos, Feature[] neg) {
-		return this.modules.get(new MemModule(pos, neg));
+		Module queryModule = new MemModule(pos, neg);
+		return this.modules.get(queryModule.getOrder()).get(queryModule);
 	}
 
 	@Override
 	public Module addModule(Feature[] pos, Feature[] neg) {
 		Module module = new MemModule(pos, neg);
-		if (this.modules.containsKey(module))
+		if (this.modules.get(module.getOrder()).containsKey(module))
 			return null;
-		this.modules.put(module, module);
+		this.modules.get(module.getOrder()).put(module, module);
 		return module;
 	}
 

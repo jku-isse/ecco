@@ -21,6 +21,8 @@ import at.jku.isse.ecco.storage.perst.tree.PerstRootNode;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
+import java.util.Collection;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class PerstRepositoryDao extends PerstAbstractGenericDao implements RepositoryDao {
@@ -58,10 +60,13 @@ public class PerstRepositoryDao extends PerstAbstractGenericDao implements Repos
 		}
 
 		// modules
-		for (PerstModule module : perstRepository.getModules()) {
-			module.store();
-			for (PerstModuleRevision moduleRevision : module.getRevisions()) {
-				moduleRevision.store();
+		for (int currentOrder = 0; currentOrder <= perstRepository.getMaxOrder(); currentOrder++) {
+			Collection<PerstModule> modules = perstRepository.getModules(currentOrder);
+			for (PerstModule module : modules) {
+				module.store();
+				for (PerstModuleRevision moduleRevision : module.getRevisions()) {
+					moduleRevision.store();
+				}
 			}
 		}
 

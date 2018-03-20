@@ -3,14 +3,14 @@ package at.jku.isse.ecco.storage.perst.counter;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
+import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.storage.perst.module.PerstModule;
 import org.garret.perst.Persistent;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -18,14 +18,14 @@ public class PerstAssociationCounter extends Persistent implements AssociationCo
 
 	private Association association;
 	private int count;
-	private Map<PerstModule, PerstModuleCounter> children;
+	private Collection<PerstModuleCounter> children;
 
 
 	public PerstAssociationCounter(Association association) {
 		checkNotNull(association);
 		this.association = association;
 		this.count = 0;
-		this.children = new HashMap<>();
+		this.children = new ArrayList<>();
 	}
 
 
@@ -34,21 +34,27 @@ public class PerstAssociationCounter extends Persistent implements AssociationCo
 		if (!(child instanceof PerstModule))
 			throw new EccoException("Only PerstModule can be added as a child to PerstAssociationCounter!");
 		PerstModule perstChild = (PerstModule) child;
-		if (this.children.containsKey(perstChild))
-			return null;
+		for (ModuleCounter moduleCounter : this.children) {
+			if (moduleCounter.getObject() == perstChild)
+				return null;
+		}
 		PerstModuleCounter moduleCounter = new PerstModuleCounter(perstChild);
-		this.children.put(perstChild, moduleCounter);
-		return this.children.get(perstChild);
+		this.children.add(moduleCounter);
+		return moduleCounter;
 	}
 
 	@Override
 	public PerstModuleCounter getChild(Module child) {
-		return this.children.get(child);
+		for (PerstModuleCounter moduleCounter : this.children) {
+			if (moduleCounter.getObject() == child)
+				return moduleCounter;
+		}
+		return null;
 	}
 
 	@Override
 	public Collection<PerstModuleCounter> getChildren() {
-		return Collections.unmodifiableCollection(this.children.values());
+		return Collections.unmodifiableCollection(this.children);
 	}
 
 	@Override

@@ -1,14 +1,15 @@
 package at.jku.isse.ecco.storage.mem.counter;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.storage.mem.module.MemModule;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -16,34 +17,43 @@ public class MemAssociationCounter implements AssociationCounter {
 
 	private Association association;
 	private int count;
-	private Map<Module, ModuleCounter> children;
+	private Collection<MemModuleCounter> children;
 
 
 	public MemAssociationCounter(Association association) {
 		checkNotNull(association);
 		this.association = association;
 		this.count = 0;
-		this.children = new HashMap<>();
+		this.children = new ArrayList<>();
 	}
 
 
 	@Override
 	public ModuleCounter addChild(Module child) {
-		if (this.children.containsKey(child))
-			return null;
-		ModuleCounter moduleCounter = new MemModuleCounter(child);
-		this.children.put(child, moduleCounter);
-		return this.children.get(child);
+		if (!(child instanceof MemModule))
+			throw new EccoException("Only PerstModule can be added as a child to PerstAssociationCounter!");
+		MemModule memChild = (MemModule) child;
+		for (ModuleCounter moduleCounter : this.children) {
+			if (moduleCounter.getObject() == memChild)
+				return null;
+		}
+		MemModuleCounter moduleCounter = new MemModuleCounter(memChild);
+		this.children.add(moduleCounter);
+		return moduleCounter;
 	}
 
 	@Override
 	public ModuleCounter getChild(Module child) {
-		return this.children.get(child);
+		for (ModuleCounter moduleCounter : this.children) {
+			if (moduleCounter.getObject() == child)
+				return moduleCounter;
+		}
+		return null;
 	}
 
 	@Override
 	public Collection<ModuleCounter> getChildren() {
-		return Collections.unmodifiableCollection(this.children.values());
+		return Collections.unmodifiableCollection(this.children);
 	}
 
 	@Override

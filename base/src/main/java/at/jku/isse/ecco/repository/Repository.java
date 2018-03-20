@@ -48,7 +48,15 @@ public interface Repository {
 		 *
 		 * @return Unmodifiable collection of modules in the repository.
 		 */
-		public Collection<? extends Module> getModules();
+		//public Collection<? extends Module> getModules();
+
+		/**
+		 * Returns an unmodifiable collection of modules of given order in the repository.
+		 *
+		 * @param order The order of retrieved modules
+		 * @return The collection of modules.
+		 */
+		public Collection<? extends Module> getModules(int order);
 
 
 		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
@@ -153,29 +161,31 @@ public interface Repository {
 			checkNotNull(feature);
 
 			// add new modules to the repository that contain the new feature negatively. copies every existing module and adds the new feature negatively.
-			Collection<Module> modules = new ArrayList<>(this.getModules());
-			for (Module module : modules) {
-				// only add modules that do not exceed the maximum order of modules in the repository
-				if (module.getOrder() < this.getMaxOrder()) {
-					// create array of negative features. to be reused also by every revision module.
-					Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
-					negFeatures[negFeatures.length - 1] = feature;
-					// create copy of module with new feature negative
-					Module newModule = this.addModule(module.getPos(), negFeatures);
-					newModule.setCount(module.getCount());
+			for (int currentOrder = this.getMaxOrder() - 1; currentOrder >= 0; currentOrder--) {
+				Collection<? extends Module> modules = this.getModules(currentOrder);
+				for (Module module : modules) {
+					// only add modules that do not exceed the maximum order of modules in the repository
+					if (module.getOrder() < this.getMaxOrder()) {
+						// create array of negative features. to be reused also by every revision module.
+						Feature[] negFeatures = Arrays.copyOf(module.getNeg(), module.getNeg().length + 1);
+						negFeatures[negFeatures.length - 1] = feature;
+						// create copy of module with new feature negative
+						Module newModule = this.addModule(module.getPos(), negFeatures);
+						newModule.setCount(module.getCount());
 
-					// do the same for the revision modules
-					for (ModuleRevision moduleRevision : module.getRevisions()) {
-						// create copy of module revision with new feature negative
-						ModuleRevision newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
-						newModuleRevision.setCount(moduleRevision.getCount());
-						// update existing associations that have matching old module with the new module
-						for (Association.Op association : this.getAssociations()) {
-							ModuleCounter existingModuleCounter = association.getCounter().getChild(moduleRevision.getModule());
-							if (existingModuleCounter != null) {
-								ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
-								if (existingModuleRevisionCounter != null) {
-									association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
+						// do the same for the revision modules
+						for (ModuleRevision moduleRevision : module.getRevisions()) {
+							// create copy of module revision with new feature negative
+							ModuleRevision newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
+							newModuleRevision.setCount(moduleRevision.getCount());
+							// update existing associations that have matching old module with the new module
+							for (Association.Op association : this.getAssociations()) {
+								ModuleCounter existingModuleCounter = association.getCounter().getChild(moduleRevision.getModule());
+								if (existingModuleCounter != null) {
+									ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
+									if (existingModuleRevisionCounter != null) {
+										association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
+									}
 								}
 							}
 						}
@@ -258,6 +268,7 @@ public interface Repository {
 
 			// collection of modules
 			Collection<ModuleRevision> modulesRevisions = new ArrayList<>();
+			Collection<ModuleRevision> finalModuleRevisions = new ArrayList<>();
 
 			// add empty module initially
 			Module emptyModule = new EmptyModule();
@@ -286,7 +297,11 @@ public interface Repository {
 						}
 						newModuleRevision.incCount();
 
-						toAdd.add(newModuleRevision);
+						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
+							finalModuleRevisions.add(newModuleRevision);
+						} else {
+							toAdd.add(newModuleRevision);
+						}
 					}
 				}
 
@@ -317,14 +332,20 @@ public interface Repository {
 						}
 						newModuleRevision.incCount();
 
-						toAdd.add(newModuleRevision);
+						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
+							finalModuleRevisions.add(newModuleRevision);
+						} else {
+							toAdd.add(newModuleRevision);
+						}
 					}
 				}
 
 				modulesRevisions.addAll(toAdd);
 			}
 
-			return modulesRevisions;
+			finalModuleRevisions.addAll(modulesRevisions);
+
+			return finalModuleRevisions;
 		}
 
 

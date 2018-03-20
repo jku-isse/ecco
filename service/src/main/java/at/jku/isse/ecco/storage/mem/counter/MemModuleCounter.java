@@ -1,50 +1,87 @@
 package at.jku.isse.ecco.storage.mem.counter;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.storage.mem.module.MemModule;
+import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemModuleCounter implements ModuleCounter {
 
-	private Module module;
+	private MemModule module;
 	private int count;
-	private Map<ModuleRevision, ModuleRevisionCounter> children;
+	private Collection<MemModuleRevisionCounter> children;
+	//private Map<MemModuleRevision, MemModuleRevisionCounter> children;
 
 
-	public MemModuleCounter(Module module) {
+	public MemModuleCounter(MemModule module) {
 		checkNotNull(module);
 		this.module = module;
 		this.count = 0;
-		this.children = new HashMap<>();
+		this.children = new ArrayList<>();
+		//this.children = Maps.mutable.empty();
+		//this.children = HashObjObjMaps.newMutableMap();
 	}
 
 
+//	@Override
+//	public MemModuleRevisionCounter addChild(ModuleRevision child) {
+//		if (!(child instanceof MemModuleRevision))
+//			throw new EccoException("Only MemModuleRevision can be added as a child to MemModuleCounter!");
+//		MemModuleRevision memChild = (MemModuleRevision) child;
+//		if (this.children.containsKey(memChild))
+//			return null;
+//		MemModuleRevisionCounter moduleRevisionCounter = new MemModuleRevisionCounter(memChild);
+//		this.children.put(moduleRevisionCounter.getObject(), moduleRevisionCounter);
+//		return moduleRevisionCounter;
+//	}
+//
+//	@Override
+//	public ModuleRevisionCounter getChild(ModuleRevision child) {
+//		return this.children.get(child);
+//	}
+//
+//	@Override
+//	public Collection<ModuleRevisionCounter> getChildren() {
+//		return Collections.unmodifiableCollection(this.children.values());
+//	}
+
 	@Override
-	public ModuleRevisionCounter addChild(ModuleRevision child) {
-		if (this.children.containsKey(child))
-			return null;
-		ModuleRevisionCounter moduleRevisionCounter = new MemModuleRevisionCounter(child);
-		this.children.put(child, moduleRevisionCounter);
-		return this.children.get(child);
+	public MemModuleRevisionCounter addChild(ModuleRevision child) {
+		if (!(child instanceof MemModuleRevision))
+			throw new EccoException("Only MemModuleRevision can be added as a child to MemModuleCounter!");
+		MemModuleRevision memChild = (MemModuleRevision) child;
+		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
+			if (moduleRevisionCounter.getObject() == memChild)
+				return null;
+		}
+		MemModuleRevisionCounter moduleRevisionCounter = new MemModuleRevisionCounter(memChild);
+		this.children.add(moduleRevisionCounter);
+		return moduleRevisionCounter;
 	}
 
 	@Override
 	public ModuleRevisionCounter getChild(ModuleRevision child) {
-		return this.children.get(child);
+		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
+			if (moduleRevisionCounter.getObject() == child)
+				return moduleRevisionCounter;
+		}
+		return null;
 	}
 
 	@Override
 	public Collection<ModuleRevisionCounter> getChildren() {
-		return Collections.unmodifiableCollection(this.children.values());
+		return Collections.unmodifiableCollection(this.children);
 	}
+
 
 	@Override
 	public Module getObject() {

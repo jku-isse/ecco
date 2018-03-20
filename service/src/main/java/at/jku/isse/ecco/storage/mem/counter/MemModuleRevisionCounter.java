@@ -1,17 +1,17 @@
 package at.jku.isse.ecco.storage.mem.counter;
 
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
-import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemModuleRevisionCounter implements ModuleRevisionCounter {
 
-	private ModuleRevision moduleRevision;
+	private MemModuleRevision moduleRevision;
 	private int count;
 
 
-	public MemModuleRevisionCounter(ModuleRevision moduleRevision) {
+	public MemModuleRevisionCounter(MemModuleRevision moduleRevision) {
 		checkNotNull(moduleRevision);
 		this.moduleRevision = moduleRevision;
 		this.count = 0;
@@ -19,7 +19,7 @@ public class MemModuleRevisionCounter implements ModuleRevisionCounter {
 
 
 	@Override
-	public ModuleRevision getObject() {
+	public MemModuleRevision getObject() {
 		return this.moduleRevision;
 	}
 
