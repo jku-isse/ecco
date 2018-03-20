@@ -6,8 +6,6 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import org.garret.perst.Persistent;
 
-import java.util.Arrays;
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -72,14 +70,44 @@ public class PerstModuleRevision extends Persistent implements ModuleRevision {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		PerstModuleRevision memModuleRevision = (PerstModuleRevision) o;
-		return Arrays.equals(pos, memModuleRevision.pos) && Arrays.equals(neg, memModuleRevision.neg);
+		PerstModuleRevision perstModuleRevision = (PerstModuleRevision) o;
+
+		//return Arrays.equals(pos, perstModuleRevision.pos) && Arrays.equals(neg, perstModuleRevision.neg);
+		if (this.pos.length != perstModuleRevision.pos.length || this.neg.length != perstModuleRevision.neg.length)
+			return false;
+		for (int i = 0; i < this.pos.length; i++) {
+			boolean found = false;
+			for (int j = 0; j < perstModuleRevision.pos.length; j++) {
+				if (this.pos[i].equals(perstModuleRevision.pos[j])) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		for (int i = 0; i < this.neg.length; i++) {
+			boolean found = false;
+			for (int j = 0; j < perstModuleRevision.neg.length; j++) {
+				if (this.neg[i].equals(perstModuleRevision.neg[j])) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = Arrays.hashCode(pos);
-		result = 31 * result + Arrays.hashCode(neg);
+		int result = 0;
+		for (FeatureRevision featureRevision : this.pos)
+			result += featureRevision.hashCode();
+		result *= 31;
+		for (Feature feature : this.neg)
+			result += feature.hashCode();
 		return result;
 	}
 

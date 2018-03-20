@@ -6,7 +6,10 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import org.garret.perst.Persistent;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -90,14 +93,44 @@ public class PerstModule extends Persistent implements Module {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		PerstModule memModule = (PerstModule) o;
-		return Arrays.equals(pos, memModule.pos) && Arrays.equals(neg, memModule.neg);
+		PerstModule perstModule = (PerstModule) o;
+
+		//return Arrays.equals(pos, perstModule.pos) && Arrays.equals(neg, perstModule.neg);
+		if (this.pos.length != perstModule.pos.length || this.neg.length != perstModule.neg.length)
+			return false;
+		for (int i = 0; i < this.pos.length; i++) {
+			boolean found = false;
+			for (int j = 0; j < perstModule.pos.length; j++) {
+				if (this.pos[i].equals(perstModule.pos[j])) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		for (int i = 0; i < this.neg.length; i++) {
+			boolean found = false;
+			for (int j = 0; j < perstModule.neg.length; j++) {
+				if (this.neg[i].equals(perstModule.neg[j])) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = Arrays.hashCode(pos);
-		result = 31 * result + Arrays.hashCode(neg);
+		int result = 0;
+		for (Feature feature : this.pos)
+			result += feature.hashCode();
+		result *= 31;
+		for (Feature feature : this.neg)
+			result += feature.hashCode();
 		return result;
 	}
 

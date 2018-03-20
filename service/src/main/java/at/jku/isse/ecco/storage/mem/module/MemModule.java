@@ -5,7 +5,10 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -90,13 +93,46 @@ public class MemModule implements Module {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		MemModule memModule = (MemModule) o;
-		return Arrays.equals(pos, memModule.pos) && Arrays.equals(neg, memModule.neg);
+
+		//return Arrays.equals(pos, memModule.pos) && Arrays.equals(neg, memModule.neg);
+		if (this.pos.length != memModule.pos.length || this.neg.length != memModule.neg.length)
+			return false;
+		for (int i = 0; i < this.pos.length; i++) {
+			boolean found = false;
+			for (int j = 0; j < memModule.pos.length; j++) {
+				if (this.pos[i].equals(memModule.pos[j])) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		for (int i = 0; i < this.neg.length; i++) {
+			boolean found = false;
+			for (int j = 0; j < memModule.neg.length; j++) {
+				if (this.neg[i].equals(memModule.neg[j])) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = Arrays.hashCode(pos);
-		result = 31 * result + Arrays.hashCode(neg);
+//		int result = Arrays.hashCode(pos);
+//		result = 31 * result + Arrays.hashCode(neg);
+//		return result;
+		int result = 0;
+		for (Feature feature : this.pos)
+			result += feature.hashCode();
+		result *= 31;
+		for (Feature feature : this.neg)
+			result += feature.hashCode();
 		return result;
 	}
 
