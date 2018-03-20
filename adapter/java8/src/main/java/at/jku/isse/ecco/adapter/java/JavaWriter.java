@@ -139,6 +139,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
             // Handle rest
             switch (curNodeType) {
                 case EXPRESSION_PREFIX:
+                case EXPRESION_POSTFIX:
                 case SIMPLE_JUST_A_STRING:
                     stringBuilder.append(artifactData.getDataAsString());
                     break;
@@ -231,7 +232,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
                     handleReturnStatement(stringBuilder, curNode, artifactData);
                     break;
                 case LOOP_ENHANCED_FOR:
-                    handleAdvancedFor(stringBuilder, curNode, artifactData);
+                    handleAdvancedForLoop(stringBuilder, curNode, artifactData);
                     break;
                 case TRY_META:
                     handleTry(stringBuilder, curNode, artifactData);
@@ -263,9 +264,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     private void handleAssert(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        stringBuilder.append("assert ");
-
-        processJavaAstForChildsChildren(curNode, STATEMENT_ASSERT_CONDITION, stringBuilder);
+        stringBuilder.append("assert ").append(artifactData.getDataAsString());
 
         final boolean hasMessage = findChildren(curNode, STATEMENT_ASSERT_MESSAGE).map(e -> e.getNode().getChildren()).mapToInt(List::size).sum() > 0;
         if (hasMessage) {
@@ -324,10 +323,8 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         processJavaAstForChildsChildren(curNode, AFTER, stringBuilder);
     }
 
-    private void handleAdvancedFor(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        stringBuilder.append("for(").append(artifactData.getDataAsString()).append(':');
-
-        processJavaAstForChildsChildren(curNode, BEFORE, stringBuilder);
+    private void handleAdvancedForLoop(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
+        stringBuilder.append("for(").append(artifactData.getDataAsString());
 
         stringBuilder.append(')');
 
@@ -402,18 +399,14 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     private void handleWhileLoop(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        stringBuilder.append("while(");
-        processJavaAstForChildsChildren(curNode, CONDITION, stringBuilder);
-        stringBuilder.append(')');
+        stringBuilder.append("while(").append(artifactData.getDataAsString()).append(')');
         processJavaAstForChildsChildren(curNode, AFTER, stringBuilder);
     }
 
     private void handleDoWhileLoop(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
         stringBuilder.append("do ");
         processJavaAstForChildsChildren(curNode, AFTER, stringBuilder);
-        stringBuilder.append(" while(");
-        processJavaAstForChildsChildren(curNode, CONDITION, stringBuilder);
-        stringBuilder.append(");");
+        stringBuilder.append(" while(").append(artifactData.getDataAsString()).append(");");
     }
 
 
@@ -445,11 +438,11 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     private void handleMethodInvokation(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        boolean hasChild = processJavaAstForChildsChildren(curNode, BEFORE, stringBuilder);
-        if (hasChild)
+        boolean isPresent = processJavaAstForChildsChildren(curNode, BEFORE, stringBuilder);
+        if (isPresent)
             stringBuilder.append('.');
         stringBuilder.append(artifactData.getDataAsString());
-        getChildrenAsStream(curNode).filter(e -> !BEFORE.equals(e.getArtifact().getType())).forEach(it -> processJavaAst(stringBuilder, it));
+        getChildrenAsStream(curNode).filter(e -> PARAMETERS.equals(e.getArtifact().getType())).forEach(it -> processJavaAst(stringBuilder, it));
     }
 
     private void handleParameters(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
@@ -480,14 +473,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     private void handleVariableForLoop(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        stringBuilder.append("for(");
-        processJavaAstForChildsChildren(curNode, FOR_INITALIZER, stringBuilder);
-        stringBuilder.append(';');
-        processJavaAstForChildsChildren(curNode, CONDITION, stringBuilder);
-        stringBuilder.append(';');
-        final List<? extends Node> updaterNodes = findChildren(curNode, FOR_UPDATERS).map(e -> e.getNode().getChildren()).flatMap(Collection::stream).collect(Collectors.toList());
-        handleCommaSeperatedExpressions(updaterNodes, stringBuilder);
-        stringBuilder.append(')');
+        stringBuilder.append("for(").append(artifactData.getDataAsString()).append(')');
         processJavaAstForChildsChildren(curNode, AFTER, stringBuilder);
     }
 
@@ -535,7 +521,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 
     private boolean processJavaAstForChildsChildren(Node node, NodeType nodeType, StringBuilder stringBuilder) {
         return findChildren(node, nodeType).map(NodeArtifactEntry::getNode).map(Node::getChildren).flatMap(Collection::stream)
-                .map(NodeArtifactEntry::fromNode).peek(it -> processJavaAst(stringBuilder, it)).findAny().isPresent();
+                .map(NodeArtifactEntry::fromNode).peek(it -> processJavaAst(stringBuilder, it)).count() > 0;
     }
 
     private void handleVariableDeclarationFragment(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {

@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 public class GuiTest {
 
-	@Test(groups = {"integration", "gui"})
+	@Test
 	public void Gui_Test() {
 		EccoGui.main(new String[]{});
 	}
