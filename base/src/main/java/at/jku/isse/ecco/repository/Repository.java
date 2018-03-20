@@ -267,19 +267,19 @@ public interface Repository {
 			}
 
 			// collection of modules
-			Collection<ModuleRevision> modulesRevisions = new ArrayList<>();
+			Collection<ModuleRevision> moduleRevisions = new ArrayList<>();
 			Collection<ModuleRevision> finalModuleRevisions = new ArrayList<>();
 
 			// add empty module initially
 			Module emptyModule = new EmptyModule();
 			ModuleRevision emptyModuleRevision = emptyModule.getRevision(new FeatureRevision[0], new Feature[0]);
-			modulesRevisions.add(emptyModuleRevision); // add empty module revision to power set
+			moduleRevisions.add(emptyModuleRevision); // add empty module revision to power set
 
 			// compute powerset
 			for (final FeatureRevision featureRevision : pos) {
 				final Collection<ModuleRevision> toAdd = new ArrayList<>();
 
-				for (final ModuleRevision moduleRevision : modulesRevisions) {
+				for (final ModuleRevision moduleRevision : moduleRevisions) {
 					if (moduleRevision.getOrder() < this.getMaxOrder()) {
 						FeatureRevision[] posFeatureRevisions = Arrays.copyOf(moduleRevision.getPos(), moduleRevision.getPos().length + 1);
 						posFeatureRevisions[posFeatureRevisions.length - 1] = featureRevision;
@@ -305,16 +305,16 @@ public interface Repository {
 					}
 				}
 
-				modulesRevisions.addAll(toAdd);
+				moduleRevisions.addAll(toAdd);
 			}
 
 			// remove the empty module again
-			modulesRevisions.remove(emptyModuleRevision);
+			moduleRevisions.remove(emptyModuleRevision);
 
 			for (final Feature feature : neg) {
 				final Collection<ModuleRevision> toAdd = new ArrayList<>();
 
-				for (final ModuleRevision moduleRevision : modulesRevisions) {
+				for (final ModuleRevision moduleRevision : moduleRevisions) {
 					if (moduleRevision.getOrder() < this.getMaxOrder() && moduleRevision.getPos().length > 0) {
 						Feature[] negFeatures = Arrays.copyOf(moduleRevision.getNeg(), moduleRevision.getNeg().length + 1);
 						negFeatures[negFeatures.length - 1] = feature;
@@ -340,10 +340,10 @@ public interface Repository {
 					}
 				}
 
-				modulesRevisions.addAll(toAdd);
+				moduleRevisions.addAll(toAdd);
 			}
 
-			finalModuleRevisions.addAll(modulesRevisions);
+			finalModuleRevisions.addAll(moduleRevisions);
 
 			return finalModuleRevisions;
 		}
