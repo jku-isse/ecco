@@ -4,7 +4,6 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.storage.perst.dao.PerstEntityFactory;
@@ -102,13 +101,13 @@ public class PerstRepository extends Persistent implements Repository, Repositor
 
 
 	@Override
-	public Module getModule(Feature[] pos, Feature[] neg) {
+	public PerstModule getModule(Feature[] pos, Feature[] neg) {
 		PerstModule queryModule = new PerstModule(pos, neg);
 		return this.modules.get(queryModule.getOrder()).get(queryModule);
 	}
 
 	@Override
-	public Module addModule(Feature[] pos, Feature[] neg) {
+	public PerstModule addModule(Feature[] pos, Feature[] neg) {
 		PerstModule module = new PerstModule(pos, neg);
 		if (this.modules.get(module.getOrder()).containsKey(module))
 			return null;

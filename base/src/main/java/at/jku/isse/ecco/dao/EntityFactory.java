@@ -8,7 +8,6 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -77,14 +76,6 @@ public interface EntityFactory {
 	 * @return A new initialized instance of feature.
 	 */
 	public Feature createFeature(final String id, final String name);
-
-
-	/**
-	 * Creates a new module. TODO: move this from here to repository. nobody else should be allowed to create modules. same with features?
-	 *
-	 * @return Returns a new initialized module.
-	 */
-	public Module createModule(Feature[] pos, Feature[] neg);
 
 
 	/**

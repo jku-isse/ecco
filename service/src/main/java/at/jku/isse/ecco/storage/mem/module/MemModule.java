@@ -21,7 +21,7 @@ public class MemModule implements Module {
 	private Feature[] pos;
 	private Feature[] neg;
 	private int count;
-	private Map<ModuleRevision, ModuleRevision> revisions;
+	private Map<MemModuleRevision, MemModuleRevision> revisions;
 
 
 	public MemModule(Feature[] pos, Feature[] neg) {
@@ -67,15 +67,15 @@ public class MemModule implements Module {
 	}
 
 	@Override
-	public Collection<ModuleRevision> getRevisions() {
+	public Collection<MemModuleRevision> getRevisions() {
 		return Collections.unmodifiableCollection(this.revisions.values());
 	}
 
 	@Override
-	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
+	public MemModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
 		if (!this.matchesRevision(pos, neg))
 			return null;
-		ModuleRevision moduleRevision = new MemModuleRevision(this, pos, neg);
+		MemModuleRevision moduleRevision = new MemModuleRevision(this, pos, neg);
 		if (this.revisions.containsKey(moduleRevision))
 			return null;
 		this.revisions.put(moduleRevision, moduleRevision);
