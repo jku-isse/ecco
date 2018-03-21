@@ -277,7 +277,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(BlockComment node) {
         // No handling of comments
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
