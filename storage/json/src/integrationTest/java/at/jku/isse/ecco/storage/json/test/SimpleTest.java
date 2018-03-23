@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.storage.perst.test;
+package at.jku.isse.ecco.storage.json.test;
 
 import at.jku.isse.ecco.storage.json.JsonPlugin;
 import at.jku.isse.ecco.storage.json.impl.JsonRepository;
