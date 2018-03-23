@@ -10,13 +10,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.storage.mem.core.MemAssociation;
-import at.jku.isse.ecco.storage.mem.core.MemCommit;
-import at.jku.isse.ecco.storage.mem.core.MemRemote;
-import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
-import at.jku.isse.ecco.storage.mem.module.MemModule;
-import at.jku.isse.ecco.storage.mem.tree.MemNode;
-import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -28,17 +21,17 @@ import static java.util.Objects.requireNonNull;
 public class JsonPluginEntityFactory implements EntityFactory {
     @Override
     public Remote createRemote(String name, String address, Remote.Type type) {
-        return new MemRemote(name, address, type);
+        return new JsonRemote(name, address, type);
     }
 
     @Override
     public Commit createCommit() {
-        return new MemCommit();
+        return new JsonCommit();
     }
 
     @Override
     public Configuration createConfiguration(FeatureRevision[] featureRevisions) {
-        return new MemConfiguration(featureRevisions);
+        return new JsonConfiguration(featureRevisions);
     }
 
     @Override
@@ -47,15 +40,15 @@ public class JsonPluginEntityFactory implements EntityFactory {
     }
 
     @Override
-    public MemAssociation createAssociation() {
-        return new MemAssociation();
+    public JsonAssociation createAssociation() {
+        return new JsonAssociation();
     }
 
     @Override
     public Association.Op createAssociation(Set<Node.Op> nodes) {
         requireNonNull(nodes);
         assert !nodes.isEmpty();
-        final MemAssociation association = createAssociation();
+        final JsonAssociation association = createAssociation();
         RootNode.Op rootNode = createRootNode();
         rootNode.setContainingAssociation(association);
         for (Node.Op node : nodes) {
@@ -74,17 +67,17 @@ public class JsonPluginEntityFactory implements EntityFactory {
 
     @Override
     public Module createModule(Feature[] pos, Feature[] neg) {
-        return new MemModule(pos, neg);
+        return new JsonModule(pos, neg);
     }
 
     @Override
     public RootNode.Op createRootNode() {
-        return new MemRootNode();
+        return new JsonNode.JsonRootNode();
     }
 
     @Override
     public Node.Op createNode() {
-        return new MemNode();
+        return new JsonNode();
     }
 
     @Override

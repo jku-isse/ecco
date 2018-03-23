@@ -3,13 +3,18 @@ package at.jku.isse.ecco.storage.json.impl.entities;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class JsonConfiguration implements Configuration {
+public class JsonConfiguration implements Configuration, Serializable {
 
     private final FeatureRevision[] featureRevisions;
+
+    public JsonConfiguration() {
+        this(new FeatureRevision[0]);
+    }
 
     public JsonConfiguration(FeatureRevision[] featureRevisions) {
         checkNotNull(featureRevisions);

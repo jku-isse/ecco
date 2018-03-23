@@ -44,9 +44,9 @@ public class JsonFeatureRevision implements FeatureRevision {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof MemFeatureRevision)) return false;
+        if (!(o instanceof JsonFeatureRevision)) return false;
 
-        MemFeatureRevision that = (MemFeatureRevision) o;
+        JsonFeatureRevision that = (JsonFeatureRevision) o;
 
         if (!getFeature().equals(that.getFeature())) return false;
         return getId().equals(that.getId());

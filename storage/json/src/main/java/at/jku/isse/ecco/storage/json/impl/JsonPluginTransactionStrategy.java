@@ -82,12 +82,5 @@ public class JsonPluginTransactionStrategy implements TransactionStrategy {
 
     @Override
     public void rollback() throws EccoException {
-        // Delete temp file and reload repo
-
-        try {
-            Files.deleteIfExists(getTempRepoPath());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 }

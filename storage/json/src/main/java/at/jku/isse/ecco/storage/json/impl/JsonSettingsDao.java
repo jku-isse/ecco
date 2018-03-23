@@ -3,8 +3,7 @@ package at.jku.isse.ecco.storage.json.impl;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.SettingsDao;
 import at.jku.isse.ecco.storage.json.impl.entities.JsonPluginEntityFactory;
-import at.jku.isse.ecco.storage.mem.core.MemRemote;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.json.impl.entities.JsonRemote;
 import com.google.inject.Inject;
 
 import java.util.*;
@@ -36,10 +35,10 @@ public class JsonSettingsDao implements SettingsDao {
     @Override
     public Remote storeRemote(Remote remote) {
         requireNonNull(remote);
-        final MemRemote memEntity = (MemRemote) remote;
-        Object returnVal = transactionStrategy.getOrLoadRepository().getRemoteIndex().putIfAbsent(memEntity.getName(), memEntity);
+        final JsonRemote jsonRemote = (JsonRemote) remote;
+        Object returnVal = transactionStrategy.getOrLoadRepository().getRemoteIndex().putIfAbsent(jsonRemote.getName(), jsonRemote);
         assert returnVal == null;
-        return memEntity;
+        return jsonRemote;
     }
 
     @Override

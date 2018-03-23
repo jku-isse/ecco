@@ -2,7 +2,6 @@ package at.jku.isse.ecco.storage.json.impl.entities;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 
 import java.util.*;
 
@@ -95,9 +94,9 @@ public class JsonFeature implements Feature {
     @Override
     public boolean equals(final Object obj) {
         if (this == obj) return true;
-        if (!(obj instanceof MemFeature)) return false;
+        if (!(obj instanceof JsonFeature)) return false;
 
-        final Feature other = (Feature) obj;
+        final JsonFeature other = (JsonFeature) obj;
         return this.id.equals(other.getId());
     }
 

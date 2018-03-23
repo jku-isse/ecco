@@ -5,10 +5,9 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.json.impl.entities.JsonCommit;
 import at.jku.isse.ecco.storage.json.impl.entities.JsonPluginEntityFactory;
-import at.jku.isse.ecco.storage.mem.core.MemCommit;
-import at.jku.isse.ecco.storage.mem.core.MemRemote;
-import at.jku.isse.ecco.storage.mem.core.MemVariant;
+import at.jku.isse.ecco.storage.json.impl.entities.JsonRemote;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 
@@ -29,9 +28,8 @@ public class JsonRepository implements Repository.Op {
     private Collection<Association.Op> associations = new ArrayList<>();
     private List<Map<Module, Module>> modules = new ArrayList<>();
     private int maxOrder;
-    private Map<Integer, MemCommit> commitIndex;
-    private Map<String, MemVariant> variantIndex;
-    private Map<String, MemRemote> remoteIndex;
+    private Map<Integer, JsonCommit> commitIndex;
+    private Map<String, JsonRemote> remoteIndex;
     private Set<String> ignorePatterns;
     private Map<String, String> pluginMap;
 
@@ -49,7 +47,6 @@ public class JsonRepository implements Repository.Op {
     //Needs to be public
     public JsonRepository() {
         commitIndex = newMap();
-        variantIndex = newMap();
         remoteIndex = newMap();
         ignorePatterns = newSet();
         pluginMap = newMap();
@@ -63,21 +60,17 @@ public class JsonRepository implements Repository.Op {
         modules = other.modules;
         maxOrder = other.maxOrder;
         commitIndex = other.commitIndex;
-        variantIndex = other.variantIndex;
         remoteIndex = other.remoteIndex;
         ignorePatterns = other.ignorePatterns;
         pluginMap = other.pluginMap;
     }
 
-    public Map<Integer, MemCommit> getCommitIndex() {
+    public Map<Integer, JsonCommit> getCommitIndex() {
         return commitIndex;
     }
 
-    public Map<String, MemVariant> getVariantIndex() {
-        return variantIndex;
-    }
 
-    public Map<String, MemRemote> getRemoteIndex() {
+    public Map<String, JsonRemote> getRemoteIndex() {
         return remoteIndex;
     }
 
@@ -96,7 +89,6 @@ public class JsonRepository implements Repository.Op {
         try (BufferedReader repoStream = Files.newBufferedReader(storedRepo)) {
 
             final JsonRepository loaded = (JsonRepository) getSerializer().fromXML(repoStream);
-            ;
 
             System.out.println("Loaded repo '" + loaded + "' from: " + storedRepo);
             return loaded;

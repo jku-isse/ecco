@@ -3,9 +3,8 @@ package at.jku.isse.ecco.storage.json.impl;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.CommitDao;
+import at.jku.isse.ecco.storage.json.impl.entities.JsonCommit;
 import at.jku.isse.ecco.storage.json.impl.entities.JsonPluginEntityFactory;
-import at.jku.isse.ecco.storage.mem.core.MemCommit;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import com.google.inject.Inject;
 
 import java.util.ArrayList;
@@ -43,7 +42,7 @@ public class JsonCommitDao implements CommitDao {
     @Override
     public Commit save(Commit entity) throws EccoException {
         final JsonRepository root = transactionStrategy.getOrLoadRepository();
-        final MemCommit baseEntity = (MemCommit) entity;
+        final JsonCommit baseEntity = (JsonCommit) entity;
 
         if (!root.getCommitIndex().containsKey(baseEntity.getId())) {
             baseEntity.setId(root.getCommitIndex().size());
