@@ -96,8 +96,6 @@ public class JsonRepository implements Repository.Op {
                 throw new UnsupportedOperationException("Unable to find the database in the ZIP file");
 
             final JsonRepository loaded = (JsonRepository) getSerializer().fromXML(repoStream);
-
-            System.out.println("Loaded repo '" + loaded + "' from: " + storedRepo);
             return loaded;
         }
     }
@@ -110,13 +108,15 @@ public class JsonRepository implements Repository.Op {
             zipOut.putNextEntry(new ZipEntry(ZIP_NAME));
             getSerializer().marshal(this, new CompactWriter(repoStorage));
         }
-        System.out.println("Stored repo '" + this + "' to " + storageFile);
     }
 
 
     private static XStream getSerializer() {
         XStream xStream = new XStream(new PureJavaReflectionProvider());
-        //XStream.setupDefaultSecurity(xStream);
+        XStream.setupDefaultSecurity(xStream);
+        xStream.allowTypesByWildcard(new String[]{
+                "**"
+        });
         return xStream;
     }
 
