@@ -23,7 +23,7 @@ public class SimpleTest {
     @Test
     public void readWriteRepo() throws IOException {
         JsonPlugin plugin = new JsonPlugin();
-        Path repoFile = resourceRoot.resolve("ecco.db.json.zip");
+        Path repoFile = resourceRoot.resolve("ecco.db.xml");
         Files.deleteIfExists(repoFile);
         JsonRepository repository = new JsonRepository();
         repository.storeRepo(repoFile);

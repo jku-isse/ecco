@@ -4,10 +4,9 @@ dependencies {
     compile project(':ecco-base')
     compile project(':ecco-service')
 
-    compile group: 'com.jsoniter', name: 'jsoniter', version: '0.9.+'
-    //Dependency of the above, but is not stated directly :(
-    // https://mvnrepository.com/artifact/org.javassist/javassist
-    compile group: 'org.javassist', name: 'javassist', version: '3.22.0-GA'
+    // https://mvnrepository.com/artifact/com.thoughtworks.xstream/xstream
+    compile group: 'com.thoughtworks.xstream', name: 'xstream', version: '1.4.10'
+
 }
 
 ospackage {

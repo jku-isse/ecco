@@ -9,14 +9,13 @@ import at.jku.isse.ecco.storage.json.impl.entities.JsonPluginEntityFactory;
 import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.annotation.JsonIgnore;
-import com.jsoniter.output.JsonStream;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -36,8 +35,8 @@ public class JsonRepository implements Repository.Op {
     private Set<String> ignorePatterns;
     private Map<String, String> pluginMap;
 
-    @JsonIgnore
-    private transient final JsonPluginEntityFactory artifactFactory = new JsonPluginEntityFactory();
+
+    private static final JsonPluginEntityFactory artifactFactory = new JsonPluginEntityFactory();
 
     private <K, V> Map<K, V> newMap() {
         return new HashMap<>();
@@ -94,8 +93,10 @@ public class JsonRepository implements Repository.Op {
         if (!Files.exists(storedRepo))
             throw new FileNotFoundException("No repository can be found at '" + storedRepo + '\'');
 
-        try (InputStream zipStream = Files.newInputStream(storedRepo)) {
-            final JsonRepository loaded = JsonIterator.parse(zipStream, 8 * BUFFERED_INPUTSTREAM_BUFFER_SIZE).read(JsonRepository.class);
+        try (BufferedReader repoStream = Files.newBufferedReader(storedRepo)) {
+
+            final JsonRepository loaded = (JsonRepository) getSerializer().fromXML(repoStream);
+            ;
 
             System.out.println("Loaded repo '" + loaded + "' from: " + storedRepo);
             return loaded;
@@ -103,11 +104,15 @@ public class JsonRepository implements Repository.Op {
 
     }
 
-    private static String ZIP_ENTRY_NAME = "ecco.db.json";
+    private static XStream getSerializer() {
+        XStream xStream = new XStream(new PureJavaReflectionProvider());
+        //XStream.setupDefaultSecurity(xStream);
+        return xStream;
+    }
 
     public void storeRepo(Path storageFile) throws IOException {
-        try (OutputStream zos = Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW)) {
-            JsonStream.serialize(this, zos);
+        try (BufferedWriter repoStorage = Files.newBufferedWriter(storageFile, StandardOpenOption.CREATE_NEW)) {
+            getSerializer().toXML(this, repoStorage);
             System.out.println("Stored repo '" + this + "' to " + storageFile);
         }
     }
@@ -164,7 +169,6 @@ public class JsonRepository implements Repository.Op {
     }
 
     @Override
-    @JsonIgnore
     public EntityFactory getEntityFactory() {
         return artifactFactory;
     }
