@@ -36,7 +36,7 @@ public class PerstModuleCounter extends Persistent implements ModuleCounter {
 			throw new EccoException("Only PerstModuleRevision can be added as a child to PerstModuleCounter!");
 		PerstModuleRevision perstChild = (PerstModuleRevision) child;
 		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
-			if (moduleRevisionCounter.getObject() == perstChild)
+			if (moduleRevisionCounter.getObject().equals(perstChild))
 				return null;
 		}
 		PerstModuleRevisionCounter moduleRevisionCounter = new PerstModuleRevisionCounter(perstChild);
@@ -47,7 +47,7 @@ public class PerstModuleCounter extends Persistent implements ModuleCounter {
 	@Override
 	public PerstModuleRevisionCounter getChild(ModuleRevision child) {
 		for (PerstModuleRevisionCounter moduleRevisionCounter : this.children) {
-			if (moduleRevisionCounter.getObject() == child)
+			if (moduleRevisionCounter.getObject().equals(child))
 				return moduleRevisionCounter;
 		}
 		return null;

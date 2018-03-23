@@ -34,7 +34,7 @@ public class MemAssociationCounter implements AssociationCounter {
 			throw new EccoException("Only PerstModule can be added as a child to PerstAssociationCounter!");
 		MemModule memChild = (MemModule) child;
 		for (ModuleCounter moduleCounter : this.children) {
-			if (moduleCounter.getObject() == memChild)
+			if (moduleCounter.getObject().equals(memChild))
 				return null;
 		}
 		MemModuleCounter moduleCounter = new MemModuleCounter(memChild);
@@ -45,7 +45,7 @@ public class MemAssociationCounter implements AssociationCounter {
 	@Override
 	public ModuleCounter getChild(Module child) {
 		for (ModuleCounter moduleCounter : this.children) {
-			if (moduleCounter.getObject() == child)
+			if (moduleCounter.getObject().equals(child))
 				return moduleCounter;
 		}
 		return null;

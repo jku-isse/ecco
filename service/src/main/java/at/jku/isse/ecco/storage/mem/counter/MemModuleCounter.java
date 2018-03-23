@@ -60,7 +60,7 @@ public class MemModuleCounter implements ModuleCounter {
 			throw new EccoException("Only MemModuleRevision can be added as a child to MemModuleCounter!");
 		MemModuleRevision memChild = (MemModuleRevision) child;
 		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
-			if (moduleRevisionCounter.getObject() == memChild)
+			if (moduleRevisionCounter.getObject().equals(memChild))
 				return null;
 		}
 		MemModuleRevisionCounter moduleRevisionCounter = new MemModuleRevisionCounter(memChild);
@@ -71,7 +71,7 @@ public class MemModuleCounter implements ModuleCounter {
 	@Override
 	public ModuleRevisionCounter getChild(ModuleRevision child) {
 		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
-			if (moduleRevisionCounter.getObject() == child)
+			if (moduleRevisionCounter.getObject().equals(child))
 				return moduleRevisionCounter;
 		}
 		return null;

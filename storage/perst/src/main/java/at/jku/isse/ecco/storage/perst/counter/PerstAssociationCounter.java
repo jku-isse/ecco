@@ -35,7 +35,7 @@ public class PerstAssociationCounter extends Persistent implements AssociationCo
 			throw new EccoException("Only PerstModule can be added as a child to PerstAssociationCounter!");
 		PerstModule perstChild = (PerstModule) child;
 		for (ModuleCounter moduleCounter : this.children) {
-			if (moduleCounter.getObject() == perstChild)
+			if (moduleCounter.getObject().equals(perstChild))
 				return null;
 		}
 		PerstModuleCounter moduleCounter = new PerstModuleCounter(perstChild);
@@ -46,7 +46,7 @@ public class PerstAssociationCounter extends Persistent implements AssociationCo
 	@Override
 	public PerstModuleCounter getChild(Module child) {
 		for (PerstModuleCounter moduleCounter : this.children) {
-			if (moduleCounter.getObject() == child)
+			if (moduleCounter.getObject().equals(child))
 				return moduleCounter;
 		}
 		return null;

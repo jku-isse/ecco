@@ -1,15 +1,15 @@
-package at.jku.isse.ecco.storage.mem;
+package at.jku.isse.ecco.storage.ser;
 
 import at.jku.isse.ecco.storage.StoragePlugin;
 import com.google.inject.Module;
 
-public class MemPlugin extends StoragePlugin {
+public class SerPlugin extends StoragePlugin {
 
-	private MemModule module = new MemModule();
+	private SerModule module = new SerModule();
 
 	@Override
 	public String getPluginId() {
-		return "at.jku.isse.ecco.storage.mem";
+		return "at.jku.isse.ecco.storage.ser";
 	}
 
 	@Override
@@ -19,12 +19,12 @@ public class MemPlugin extends StoragePlugin {
 
 	@Override
 	public String getName() {
-		return "MemPlugin";
+		return "SerPlugin";
 	}
 
 	@Override
 	public String getDescription() {
-		return "Memory Plugin";
+		return "Serialization Plugin";
 	}
 
 }
