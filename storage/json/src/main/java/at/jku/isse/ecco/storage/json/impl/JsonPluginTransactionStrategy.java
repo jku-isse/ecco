@@ -17,7 +17,7 @@ import static java.util.Objects.requireNonNull;
 @Singleton
 public class JsonPluginTransactionStrategy implements TransactionStrategy {
 
-    private static final String JSON_DB_NAME = "ecco.db.xml";
+    private static final String JSON_DB_NAME = "ecco.db.xml.zip";
     public static final String RENAMED_JSON_DB_NAME = JSON_DB_NAME + ".backup";
     private static final String TEMP_JSON_DB_NAME = JSON_DB_NAME + ".lock";
 

@@ -10,19 +10,19 @@ import at.jku.isse.ecco.storage.json.impl.entities.JsonPluginEntityFactory;
 import at.jku.isse.ecco.storage.json.impl.entities.JsonRemote;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
+import com.thoughtworks.xstream.io.xml.CompactWriter;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 public class JsonRepository implements Repository.Op {
-
-    private static final int BUFFERED_INPUTSTREAM_BUFFER_SIZE = 8192;
 
     private Map<String, Feature> features;
     private Collection<Association.Op> associations = new ArrayList<>();
@@ -86,15 +86,33 @@ public class JsonRepository implements Repository.Op {
         if (!Files.exists(storedRepo))
             throw new FileNotFoundException("No repository can be found at '" + storedRepo + '\'');
 
-        try (BufferedReader repoStream = Files.newBufferedReader(storedRepo)) {
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(storedRepo));
+             BufferedReader repoStream = new BufferedReader(new InputStreamReader(zis))) {
+            boolean found = false;
+            ZipEntry cur = null;
+            while (!found && (cur = zis.getNextEntry()) != null)
+                found = ZIP_NAME.equals(cur.getName());
+            if (cur == null)
+                throw new UnsupportedOperationException("Unable to find the database in the ZIP file");
 
             final JsonRepository loaded = (JsonRepository) getSerializer().fromXML(repoStream);
 
             System.out.println("Loaded repo '" + loaded + "' from: " + storedRepo);
             return loaded;
         }
-
     }
+
+    private static final String ZIP_NAME = "ecco.xml";
+
+    public void storeRepo(Path storageFile) throws IOException {
+        try (ZipOutputStream zipOut = new ZipOutputStream(Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW));
+             BufferedWriter repoStorage = new BufferedWriter(new OutputStreamWriter(zipOut, StandardCharsets.UTF_8))) {
+            zipOut.putNextEntry(new ZipEntry(ZIP_NAME));
+            getSerializer().marshal(this, new CompactWriter(repoStorage));
+        }
+        System.out.println("Stored repo '" + this + "' to " + storageFile);
+    }
+
 
     private static XStream getSerializer() {
         XStream xStream = new XStream(new PureJavaReflectionProvider());
@@ -102,12 +120,6 @@ public class JsonRepository implements Repository.Op {
         return xStream;
     }
 
-    public void storeRepo(Path storageFile) throws IOException {
-        try (BufferedWriter repoStorage = Files.newBufferedWriter(storageFile, StandardOpenOption.CREATE_NEW)) {
-            getSerializer().toXML(this, repoStorage);
-            System.out.println("Stored repo '" + this + "' to " + storageFile);
-        }
-    }
 
     @Override
     public Collection<? extends Feature> getFeatures() {
