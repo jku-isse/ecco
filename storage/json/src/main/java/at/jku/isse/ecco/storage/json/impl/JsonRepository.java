@@ -15,13 +15,12 @@ import com.jsoniter.output.JsonStream;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 public class JsonRepository implements Repository.Op {
 
@@ -95,17 +94,8 @@ public class JsonRepository implements Repository.Op {
         if (!Files.exists(storedRepo))
             throw new FileNotFoundException("No repository can be found at '" + storedRepo + '\'');
 
-        try (ZipInputStream zipStream = new ZipInputStream(Files.newInputStream(storedRepo))) {
-            ZipEntry nextEntryName;
-            boolean found = false;
-            while (!found && (nextEntryName = zipStream.getNextEntry()) != null) {
-                found = nextEntryName.getName().equals(ZIP_ENTRY_NAME);
-            }
-
-            java.util.Scanner s = new java.util.Scanner(zipStream).useDelimiter("\\A");
-            String debug = s.hasNext() ? s.next() : "";
-
-            final JsonRepository loaded = JsonIterator.parse(debug).read(JsonRepository.class);
+        try (InputStream zipStream = Files.newInputStream(storedRepo)) {
+            final JsonRepository loaded = JsonIterator.parse(zipStream, 8 * BUFFERED_INPUTSTREAM_BUFFER_SIZE).read(JsonRepository.class);
 
             System.out.println("Loaded repo '" + loaded + "' from: " + storedRepo);
             return loaded;
@@ -116,8 +106,7 @@ public class JsonRepository implements Repository.Op {
     private static String ZIP_ENTRY_NAME = "ecco.db.json";
 
     public void storeRepo(Path storageFile) throws IOException {
-        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW))) {
-            zos.putNextEntry(new ZipEntry(ZIP_ENTRY_NAME));
+        try (OutputStream zos = Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW)) {
             JsonStream.serialize(this, zos);
             System.out.println("Stored repo '" + this + "' to " + storageFile);
         }
