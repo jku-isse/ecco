@@ -10,15 +10,22 @@ import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import com.jsoniter.JsonIterator;
+import com.jsoniter.annotation.JsonIgnore;
 import com.jsoniter.output.JsonStream;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 public class JsonRepository implements Repository.Op {
+
+    private static final int BUFFERED_INPUTSTREAM_BUFFER_SIZE = 8192;
 
     private Map<String, Feature> features;
     private Collection<Association.Op> associations = new ArrayList<>();
@@ -29,6 +36,8 @@ public class JsonRepository implements Repository.Op {
     private Map<String, MemRemote> remoteIndex;
     private Set<String> ignorePatterns;
     private Map<String, String> pluginMap;
+
+    @JsonIgnore
     private transient final JsonPluginEntityFactory artifactFactory = new JsonPluginEntityFactory();
 
     private <K, V> Map<K, V> newMap() {
@@ -39,6 +48,7 @@ public class JsonRepository implements Repository.Op {
         return new HashSet<>();
     }
 
+    //Needs to be public
     public JsonRepository() {
         commitIndex = newMap();
         variantIndex = newMap();
@@ -81,21 +91,36 @@ public class JsonRepository implements Repository.Op {
         return pluginMap;
     }
 
-    public static JsonRepository fromRepo(Path storedRepo) throws IOException {
+    public static JsonRepository loadFromDisk(Path storedRepo) throws IOException {
         if (!Files.exists(storedRepo))
-            return new JsonRepository();
+            throw new FileNotFoundException("No repository can be found at '" + storedRepo + '\'');
 
-        byte[] data = Files.readAllBytes(storedRepo);
+        try (ZipInputStream zipStream = new ZipInputStream(Files.newInputStream(storedRepo))) {
+            ZipEntry nextEntryName;
+            boolean found = false;
+            while (!found && (nextEntryName = zipStream.getNextEntry()) != null) {
+                found = nextEntryName.getName().equals(ZIP_ENTRY_NAME);
+            }
 
-        JsonRepository loaded = JsonIterator.deserialize(data, JsonRepository.class);
-        System.out.println("Loaded repo '" + loaded + "' from: " + storedRepo);
-        return loaded;
+            java.util.Scanner s = new java.util.Scanner(zipStream).useDelimiter("\\A");
+            String debug = s.hasNext() ? s.next() : "";
+
+            final JsonRepository loaded = JsonIterator.parse(debug).read(JsonRepository.class);
+
+            System.out.println("Loaded repo '" + loaded + "' from: " + storedRepo);
+            return loaded;
+        }
+
     }
 
-    public void storeRepo(Path storageFile) throws IOException {
-        JsonStream.serialize(this, Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW));
-        System.out.println("Stored repo '" + this + "' to " + storageFile);
+    private static String ZIP_ENTRY_NAME = "ecco.db.json";
 
+    public void storeRepo(Path storageFile) throws IOException {
+        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW))) {
+            zos.putNextEntry(new ZipEntry(ZIP_ENTRY_NAME));
+            JsonStream.serialize(this, zos);
+            System.out.println("Stored repo '" + this + "' to " + storageFile);
+        }
     }
 
     @Override
@@ -120,7 +145,11 @@ public class JsonRepository implements Repository.Op {
 
     @Override
     public Feature addFeature(String id, String name) {
-        return features.putIfAbsent(id, getEntityFactory().createFeature(id, name));
+        if (this.features.containsKey(id))
+            return null;
+        Feature feature = getEntityFactory().createFeature(id, name);
+        this.features.put(feature.getId(), feature);
+        return feature;
     }
 
     @Override
@@ -141,9 +170,12 @@ public class JsonRepository implements Repository.Op {
     @Override
     public void setMaxOrder(int maxOrder) {
         this.maxOrder = maxOrder;
+        for (int order = this.modules.size(); order <= this.maxOrder; order++)
+            this.modules.add(new HashMap<>());
     }
 
     @Override
+    @JsonIgnore
     public EntityFactory getEntityFactory() {
         return artifactFactory;
     }
@@ -156,7 +188,10 @@ public class JsonRepository implements Repository.Op {
 
     @Override
     public Module addModule(Feature[] pos, Feature[] neg) {
-        final Module module = artifactFactory.createModule(pos, neg);
-        return modules.get(module.getOrder()).putIfAbsent(module, module);
+        Module module = artifactFactory.createModule(pos, neg);
+        if (this.modules.get(module.getOrder()).containsKey(module))
+            return null;
+        this.modules.get(module.getOrder()).put(module, module);
+        return module;
     }
 }

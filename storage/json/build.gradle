@@ -1,0 +1,18 @@
+dependencies {
+    compile fileTree(dir: 'lib', include: '*.jar')
+
+    compile project(':ecco-base')
+    compile project(':ecco-service')
+
+    compile group: 'com.jsoniter', name: 'jsoniter', version: '0.9.+'
+    //Dependency of the above, but is not stated directly :(
+    // https://mvnrepository.com/artifact/org.javassist/javassist
+    compile group: 'org.javassist', name: 'javassist', version: '3.22.0-GA'
+}
+
+ospackage {
+    summary 'JSON database backend for ECCO.'
+    packageDescription 'This package provides a data backend module for ECCO which uses JSON.'
+
+    requires('ecco-base', version, EQUAL)
+}
