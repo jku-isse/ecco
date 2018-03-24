@@ -283,6 +283,22 @@ task html(type: Copy, dependsOn: [combinedrpm, combineddeb, combinedLinuxZip, co
 	expand(project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
 }
 
+task page_static(type: Copy) {
+	from ("page") {
+		include "**/*"
+		exclude "*.html"
+	}
+	into "$buildDir/page"
+}
+
+task page(type: Copy, dependsOn: [page_static]) {
+	from ("page") {
+		include "**/index.html"
+	}
+	into "$buildDir/page"
+	expand(baseDir: "page", baseUrl: "/ecco/", project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
+}
+
 idea {
 	project {
 		languageLevel = '1.8'

@@ -2,15 +2,17 @@ package at.jku.isse.ecco.storage.perst.artifact;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.artifact.ArtifactOperator;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.storage.perst.sg.PerstSequenceGraph;
 import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.storage.perst.sg.PerstSequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 import org.garret.perst.Persistent;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -22,9 +24,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @version 1.0
  */
 public class PerstArtifact<DataType extends ArtifactData> extends Persistent implements Artifact<DataType>, Artifact.Op<DataType> {
-
-	private transient ArtifactOperator operator = new ArtifactOperator(this);
-
 
 	// data
 
@@ -131,8 +130,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 				return that.getData() == null;
 			else
 				return getData().equals(that.getData());
-		}
-		else {
+		} else {
 			if (!this.getData().equals(that.getData()))
 				return false;
 			if (this.getUses().size() != that.getUses().size())
@@ -225,32 +223,6 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	}
 
 
-	@Override
-	public void checkConsistency() {
-		this.operator.checkConsistency();
-	}
-
-	@Override
-	public boolean hasReplacingArtifact() {
-		return this.operator.hasReplacingArtifact();
-	}
-
-	@Override
-	public Op getReplacingArtifact() {
-		return this.operator.getReplacingArtifact();
-	}
-
-	@Override
-	public void setReplacingArtifact(Op replacingArtifact) {
-		this.operator.setReplacingArtifact(replacingArtifact);
-	}
-
-	@Override
-	public void updateArtifactReferences() {
-		this.operator.updateArtifactReferences();
-	}
-
-
 	// containing node
 
 	private Node.Op containingNode;
@@ -279,11 +251,6 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	@Override
 	public List<ArtifactReference.Op> getUses() {
 		return uses;
-	}
-
-	@Override
-	public boolean uses(Op target) {
-		return this.operator.uses(target);
 	}
 
 	@Override
@@ -328,21 +295,6 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	@Override
 	public Map<String, Object> getProperties() {
 		return this.properties;
-	}
-
-	@Override
-	public <T> Optional<T> getProperty(final String name) {
-		return this.operator.getProperty(name);
-	}
-
-	@Override
-	public <T> void putProperty(final String name, final T property) {
-		this.operator.putProperty(name, property);
-	}
-
-	@Override
-	public void removeProperty(String name) {
-		this.operator.removeProperty(name);
 	}
 
 }
