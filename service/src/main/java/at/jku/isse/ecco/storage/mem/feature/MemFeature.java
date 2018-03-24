@@ -1,9 +1,11 @@
 package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -16,7 +18,8 @@ public class MemFeature implements Feature {
 	private String id;
 	private String name;
 	private String description;
-	private List<FeatureRevision> revisions;
+	private Collection<MemFeatureRevision> revisions;
+	private MemFeatureRevision latest;
 
 
 	public MemFeature(String id, String name) {
@@ -26,29 +29,29 @@ public class MemFeature implements Feature {
 		this.name = name;
 		this.description = "";
 		this.revisions = new ArrayList<>();
+		this.latest = null;
 	}
 
 
 	@Override
-	public Collection<FeatureRevision> getRevisions() {
+	public Collection<MemFeatureRevision> getRevisions() {
 		return Collections.unmodifiableCollection(this.revisions);
 	}
 
 	@Override
-	public FeatureRevision addRevision(String id) {
-		MemFeatureRevision featureVersion = new MemFeatureRevision(this, id);
-		if (!this.revisions.contains(featureVersion)) {
-			this.revisions.add(featureVersion);
-//			if (this.nextVersion <= version)
-//				this.nextVersion = version + 1;
-			return featureVersion;
+	public MemFeatureRevision addRevision(String id) {
+		MemFeatureRevision featureRevision = new MemFeatureRevision(this, id);
+		if (!this.revisions.contains(featureRevision)) {
+			this.revisions.add(featureRevision);
+			this.latest = featureRevision;
+			return featureRevision;
 		}
 		return null;
 	}
 
 	@Override
-	public FeatureRevision getRevision(String id) {
-		for (FeatureRevision featureVersion : this.revisions) {
+	public MemFeatureRevision getRevision(String id) {
+		for (MemFeatureRevision featureVersion : this.revisions) {
 			if (featureVersion.getId().equals(id))
 				return featureVersion;
 		}
@@ -56,10 +59,8 @@ public class MemFeature implements Feature {
 	}
 
 	@Override
-	public FeatureRevision getLatestRevision() {
-		if (this.revisions.isEmpty())
-			return null;
-		return this.revisions.get(this.revisions.size() - 1);
+	public MemFeatureRevision getLatestRevision() {
+		return this.latest;
 	}
 
 	@Override

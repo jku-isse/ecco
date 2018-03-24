@@ -2,24 +2,16 @@ package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.dao.EntityFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class SequenceGraphOperator {
 
-	private EntityFactory entityFactory;
-
 	private SequenceGraph.Op sequenceGraph;
 
 	public SequenceGraphOperator(SequenceGraph.Op sequenceGraph) {
 		this.sequenceGraph = sequenceGraph;
-	}
-
-	public SequenceGraphOperator(SequenceGraph.Op sequenceGraph, EntityFactory entityFactory) {
-		this.sequenceGraph = sequenceGraph;
-		this.entityFactory = entityFactory;
 	}
 
 	private int global_best_cost = Integer.MAX_VALUE;
@@ -624,7 +616,15 @@ public class SequenceGraphOperator {
 
 	public void sequenceArtifacts(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
 		int num_symbols = this.sequenceGraph.getCurrentSequenceNumber();
-		int[] alignment = align(artifacts);
+		int[] alignment_array = align(artifacts);
+
+		// assign new sequence numbers to artifacts that could not be matched during alignment
+		for (int i = 0; i < alignment_array.length; i++) {
+			if (alignment_array[i] == -1 || alignment_array[i] == 0) {
+				alignment_array[i] = this.sequenceGraph.nextSequenceNumber();
+				artifacts.get(i).setSequenceNumber(alignment_array[i]);
+			}
+		}
 
 		//if (num_symbols != this.sequenceGraph.getCurrentSequenceNumber()) {
 		Set<Artifact.Op<?>> shared_symbols = new HashSet<>();
@@ -649,24 +649,25 @@ public class SequenceGraphOperator {
 	}
 
 
+	/**
+	 * Does not modify sequence graph in any way.
+	 * Assigns sequence numbers to artifacts that could be matched during alignment.
+	 *
+	 * @param artifacts
+	 * @return
+	 * @throws EccoException
+	 */
 	public int[] align(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
 		int[] alignment_array = new int[artifacts.size()]; // +1? maybe remove node_right_index and use instead alignment[0]?
 
 		this.global_best_cost = Integer.MAX_VALUE;
 		align_rec_fast(this.sequenceGraph.getRoot(), artifacts, 0, alignment_array, 0);
 
-		// finalize alignment
+		// assign sequence numbers to artifacts that had a match during alignment
 		for (int i = 0; i < alignment_array.length; i++) {
-			if (alignment_array[i] == -1 || alignment_array[i] == 0) {
-				alignment_array[i] = this.sequenceGraph.nextSequenceNumber();
+			if (alignment_array[i] != -1 && alignment_array[i] != 0) {
+				artifacts.get(i).setSequenceNumber(alignment_array[i]);
 			}
-		}
-
-		// set sequence number in nodes according to alignment
-		for (int i = 0; i < alignment_array.length; i++) {
-			if (alignment_array[i] == 0)
-				throw new EccoException("Error: no sequence number assigned! (" + i + ")");
-			artifacts.get(i).setSequenceNumber(alignment_array[i]);
 		}
 
 		return alignment_array;
