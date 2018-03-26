@@ -1,5 +1,5 @@
 <% title = "Tool" %>
-${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
+${include("_header.html", binding.variables)}
 
 <div id ="tool" class="container">
 
@@ -24,4 +24,4 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 	
 </div>
 
-${eval(new File("$baseDir/_footer.html").getText(), binding.variables)}
+${include("_footer.html", binding.variables)}

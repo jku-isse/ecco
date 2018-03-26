@@ -30,6 +30,6 @@
 <header>
 </header>
 
-${eval(new File("$baseDir/_menu.html").getText(), binding.variables)}
+${include("_menu.html", binding.variables)}
 
 <main>
