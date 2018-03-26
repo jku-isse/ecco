@@ -30,6 +30,6 @@
 <header>
 </header>
 
-${new File("$baseDir/_menu.html").getText()}
+${eval(new File("$baseDir/_menu.html").getText(), binding.variables)}
 
 <main>

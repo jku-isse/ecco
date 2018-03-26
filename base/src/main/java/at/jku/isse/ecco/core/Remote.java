@@ -1,10 +1,11 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Feature;
 
 import java.util.Collection;
 
-public interface Remote {
+public interface Remote extends Persistable {
 
 	public enum Type {
 		LOCAL, REMOTE;

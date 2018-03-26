@@ -7,6 +7,7 @@ import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -25,7 +26,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Public repository interface. A repository contains {@link at.jku.isse.ecco.feature.Feature}s and {@link at.jku.isse.ecco.core.Association}s.
  */
-public interface Repository {
+public interface Repository extends Persistable {
 
 	public Collection<? extends Feature> getFeatures();
 
