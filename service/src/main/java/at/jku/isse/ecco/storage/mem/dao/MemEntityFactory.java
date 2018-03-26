@@ -7,7 +7,6 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.core.MemAssociation;
@@ -75,7 +74,7 @@ public class MemEntityFactory implements EntityFactory {
 
 
 	@Override
-	public Feature createFeature(final String id, final String name) {
+	public MemFeature createFeature(final String id, final String name) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
 
