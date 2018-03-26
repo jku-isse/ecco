@@ -1,13 +1,6 @@
 variables:
   GIT_DEPTH: "3"
 
-  NATIVE_INSTALL_DIR: "native_install"
-  NATIVE_INSTALL_UBUNTU_DIR: "native_install_ubuntu"
-  NATIVE_INSTALL_MINGW_DIR: "native_install_mingw"
-  NATIVE_TEST_DIR: "native_tests"
-  NATIVE_TEST_UBUNTU_DIR: "native_tests_ubuntu"
-  WEB_INSTALL_DIR: "web_install"
-
   BUILD_DIR: "build"
   MAVEN_DIR: "$BUILD_DIR/maven2"
   JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
@@ -120,6 +113,6 @@ pages:
     paths:
       - public/
   environment:
-    name: gitlab
+    name: ecco
     url: https://llinsbauer.gitlab.io/ecco/
 
