@@ -1,6 +1,5 @@
-${title = "Publications"}
-
-${new File("$baseDir/_header.html").getText()}
+<% title = "Publications" %>
+${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 
 <div id ="publications" class="container">
 
@@ -47,4 +46,4 @@ ${new File("$baseDir/_header.html").getText()}
 
 </div>
 
-${new File("$baseDir/_footer.html").getText()}
+${eval(new File("$baseDir/_footer.html").getText(), binding.variables)}

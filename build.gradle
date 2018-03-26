@@ -274,14 +274,15 @@ task combinedWindowsZip(type: Zip, group: 'packaging') {
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+
 task html(type: Copy, dependsOn: [combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
 	from "."
 	into "$buildDir"
 	include "index.html.template"
-	rename { file -> 'index.html' }
-	//expand(project: project, rpms: fileTree(dir: combinedrpm.outputs.files[0], include: '*.rpm').files.name, debs: fileTree(dir: combinedrpm.outputs.files[0], include: '*.deb').files.name)
+	rename { file -> 'downloads.html' }
 	expand(project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
 }
+
 
 task page_static(type: Copy) {
 	from ("page") {
@@ -291,19 +292,27 @@ task page_static(type: Copy) {
 	into "$buildDir/page"
 }
 
-task page(type: Copy, dependsOn: [page_static]) {
+def _eval = { String text, bindings ->
+	def engine = new groovy.text.SimpleTemplateEngine()
+	def template = engine.createTemplate(text)
+	return template.make(bindings).toString();
+}
+
+task page(type: Copy, dependsOn: [page_static, combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
 	from ("page") {
 		include "**/index.html"
 	}
 	into "$buildDir/page"
-	expand(baseDir: "page", baseUrl: "/ecco/", project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
+	expand(eval: _eval, baseDir: "page", baseUrl: "/ecco/", project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
 }
+
 
 idea {
 	project {
 		languageLevel = '1.8'
 	}
 }
+
 
 task wrapper(type: Wrapper) {
 	gradleVersion = '4.4'

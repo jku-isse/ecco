@@ -2,6 +2,7 @@ package at.jku.isse.ecco.tree;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.util.Trees;
 
 import java.util.List;
@@ -14,7 +15,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Public interface for a node in the artifact tree.
  */
-public interface Node {
+public interface Node extends Persistable {
 
 	@Override
 	public int hashCode();

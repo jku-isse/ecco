@@ -2,6 +2,7 @@ package at.jku.isse.ecco.sg;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.dao.Persistable;
 
 import java.util.Collection;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.Map;
 /**
  * Public sequence graph interface.
  */
-public interface SequenceGraph {
+public interface SequenceGraph extends Persistable {
 
 	public Node getRoot();
 

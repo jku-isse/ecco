@@ -12,6 +12,7 @@ variables:
   MAVEN_DIR: "$BUILD_DIR/maven2"
   JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
   DISTRIBUTION_DIR: "$BUILD_DIR/distributions"
+  PAGE_DIR: "$BUILD_DIR/page"
   #RPM_DIR: "$DISTRIBUTION_DIR/rpm"
   #DEB_DIR: "$DISTRIBUTION_DIR/deb"
   RPM_DIR: "$BUILD_DIR/distributions/rpm"
@@ -42,6 +43,7 @@ build:fedora:
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - ./gradlew publishPerstMavenPublicationToRootEccoRepository
     - ./gradlew html
+    - ./gradlew page
     - createrepo_c $CI_PROJECT_DIR/$RPM_DIR
     - ls -la $CI_PROJECT_DIR/$RPM_DIR/.
   only:
@@ -69,6 +71,7 @@ build:ubuntu:
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - ./gradlew publishPerstMavenPublicationToRootEccoRepository
     - ./gradlew html
+    - ./gradlew page
     - ls -la $CI_PROJECT_DIR/$DEB_DIR/.
   only:
     - master
@@ -80,8 +83,9 @@ build:ubuntu:
       - $MAVEN_DIR
       - $JAVADOC_DIR
       - $DISTRIBUTION_DIR
+      - $PAGE_DIR
       - $DEB_DIR
-      - $BUILD_DIR/index.html
+      - $BUILD_DIR/downloads.html
 
 
 pages:
@@ -99,7 +103,8 @@ pages:
     - cp -r $RPM_DIR/. public/rpm/
     - cp -r $DEB_DIR/. public/deb/
     - cp $DISTRIBUTION_DIR/*.zip public/
-    - cp $BUILD_DIR/index.html public/
+    - cp -r $PAGE_DIR/. public/
+    - cp $BUILD_DIR/downloads.html public/
     - cd public
     - pwd
     - ls -la

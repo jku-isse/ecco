@@ -96,7 +96,7 @@ public class MemEntityFactory implements EntityFactory {
 	public Node.Op createNode(final Artifact.Op artifact) {
 		checkNotNull(artifact);
 
-		final Node.Op node = new MemNode();
+		final Node.Op node = this.createNode();
 		node.setArtifact(artifact);
 		artifact.setContainingNode(node);
 

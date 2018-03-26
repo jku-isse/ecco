@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
@@ -16,7 +17,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @param <DataType> The type of the data object stored in the artifact.
  */
-public interface Artifact<DataType extends ArtifactData> {
+public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 	/**
 	 * Setting this property indicates that the artifact's file representation was not modified since it was written.
