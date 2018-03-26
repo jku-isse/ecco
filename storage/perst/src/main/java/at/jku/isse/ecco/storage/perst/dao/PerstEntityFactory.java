@@ -9,14 +9,12 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.storage.perst.artifact.PerstArtifact;
 import at.jku.isse.ecco.storage.perst.core.PerstAssociation;
 import at.jku.isse.ecco.storage.perst.core.PerstCommit;
 import at.jku.isse.ecco.storage.perst.core.PerstRemote;
 import at.jku.isse.ecco.storage.perst.feature.PerstConfiguration;
 import at.jku.isse.ecco.storage.perst.feature.PerstFeature;
-import at.jku.isse.ecco.storage.perst.module.PerstModule;
 import at.jku.isse.ecco.storage.perst.tree.PerstNode;
 import at.jku.isse.ecco.storage.perst.tree.PerstRootNode;
 import at.jku.isse.ecco.tree.Node;
@@ -85,11 +83,6 @@ public class PerstEntityFactory implements EntityFactory {
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
 
 		return new PerstFeature(id, name);
-	}
-
-	@Override
-	public Module createModule(Feature[] pos, Feature[] neg) {
-		return new PerstModule(pos, neg);
 	}
 
 

@@ -3,7 +3,6 @@ package at.jku.isse.ecco.storage.perst.module;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 import org.garret.perst.Persistent;
 
 import java.util.Collection;
@@ -73,7 +72,7 @@ public class PerstModule extends Persistent implements Module {
 	}
 
 	@Override
-	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
+	public PerstModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
 		if (!this.matchesRevision(pos, neg))
 			return null;
 		PerstModuleRevision moduleRevision = new PerstModuleRevision(this, pos, neg);
@@ -84,7 +83,7 @@ public class PerstModule extends Persistent implements Module {
 	}
 
 	@Override
-	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
+	public PerstModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
 		return this.revisions.get(new PerstModuleRevision(this, pos, neg));
 	}
 

@@ -11,6 +11,7 @@ public class MemModule extends AbstractModule {
 		bind(RepositoryDao.class).to(MemRepositoryDao.class);
 		bind(CommitDao.class).to(MemCommitDao.class);
 		bind(SettingsDao.class).to(MemSettingsDao.class);
+
 		bind(EntityFactory.class).to(MemEntityFactory.class);
 
 //		requireBinding(Key.get(String.class, Names.named("connectionString")));

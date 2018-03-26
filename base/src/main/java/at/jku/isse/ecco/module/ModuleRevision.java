@@ -9,6 +9,8 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 /**
  *
  */
@@ -34,6 +36,18 @@ public interface ModuleRevision extends Persistable {
 
 
 	public default void verify(FeatureRevision[] pos, Feature[] neg) {
+		checkNotNull(pos);
+		checkNotNull(neg);
+
+		for (FeatureRevision fr : pos) {
+			if (fr == null)
+				throw new EccoException("ERROR: A feature revision in pos is null.");
+		}
+		for (Feature f : neg) {
+			if (f == null)
+				throw new EccoException("ERROR: A feature in neg is null.");
+		}
+
 		for (int i = 0; i < pos.length; i++) {
 			for (int j = i + 1; j < pos.length; j++) {
 				if (pos[i].equals(pos[j]))

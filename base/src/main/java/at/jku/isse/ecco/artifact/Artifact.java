@@ -1,11 +1,15 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Public interface for artifacts that stores the actual data and references to other artifacts.
@@ -155,6 +159,8 @@ public interface Artifact<DataType extends ArtifactData> {
 
 	// PROPERTIES
 
+	public Map<String, Object> getProperties();
+
 	/**
 	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
 	 * <p>
@@ -163,7 +169,23 @@ public interface Artifact<DataType extends ArtifactData> {
 	 * @param name of the property that should be retrieved
 	 * @return An optional which contains the actual property or nothing.
 	 */
-	public <T> Optional<T> getProperty(String name);
+	public default <T> Optional<T> getProperty(final String name) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+
+		Optional<T> result = Optional.empty();
+		if (this.getProperties().containsKey(name)) {
+			final Object obj = this.getProperties().get(name);
+			try {
+				@SuppressWarnings("unchecked") final T item = (T) obj;
+				result = Optional.of(item);
+			} catch (final ClassCastException e) {
+				System.err.println("Expected a different type of the property.");
+			}
+		}
+
+		return result;
+	}
 
 	/**
 	 * Adds a new property to this artifact. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
@@ -172,14 +194,24 @@ public interface Artifact<DataType extends ArtifactData> {
 	 *
 	 * @param property that should be added
 	 */
-	public <T> void putProperty(String name, T property);
+	public default <T> void putProperty(final String name, final T property) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+		checkNotNull(property);
+
+		this.getProperties().put(name, property);
+	}
 
 	/**
 	 * Removes the property with the given name. If the name could not be found in the map it does nothing.
 	 *
 	 * @param name of the property that should be removed
 	 */
-	public void removeProperty(String name);
+	public default void removeProperty(String name) {
+		checkNotNull(name);
+
+		this.getProperties().remove(name);
+	}
 
 
 	// OPERATION INTERFACE
@@ -222,17 +254,82 @@ public interface Artifact<DataType extends ArtifactData> {
 
 		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
 
-		public void checkConsistency();
+		public default void checkConsistency() {
+			for (ArtifactReference.Op uses : this.getUses()) {
+				if (uses.getSource() != this)
+					throw new EccoException("Source of uses artifact reference must be identical to artifact.");
+				for (ArtifactReference.Op usedBy : uses.getTarget().getUsedBy()) {
+					if (usedBy.getSource() == this) {
+						if (uses != usedBy)
+							throw new EccoException("Artifact reference instance must be identical in source and target.");
+					}
+				}
+			}
+		}
 
-		public boolean hasReplacingArtifact();
+		public default boolean hasReplacingArtifact() {
+			return this.<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent();
+		}
 
-		public Op getReplacingArtifact();
+		public default Artifact.Op<?> getReplacingArtifact() {
+			if (this.hasReplacingArtifact())
+				return this.<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+			else
+				return null;
+		}
 
-		public void setReplacingArtifact(Op replacingArtifact);
+		public default void setReplacingArtifact(Artifact.Op<?> replacingArtifact) {
+			checkNotNull(replacingArtifact);
+			this.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, replacingArtifact);
+		}
 
-		public void updateArtifactReferences();
+		public default void updateArtifactReferences() {
+			// update "uses" artifact references
+			for (ArtifactReference.Op uses : this.getUses()) {
+				if (uses.getSource() != this)
+					throw new EccoException("Source of uses artifact reference must be identical to artifact.");
 
-		public boolean uses(Op target);
+				if (uses.getTarget().hasReplacingArtifact()) {
+					Artifact.Op<?> replacingArtifact = uses.getTarget().getReplacingArtifact();
+					if (replacingArtifact != null) {
+						uses.setTarget(replacingArtifact);
+						if (!replacingArtifact.getUsedBy().contains(uses)) {
+							replacingArtifact.addUsedBy(uses);
+						}
+					}
+				}
+			}
+
+			// update "used by" artifact references
+			for (ArtifactReference.Op usedBy : this.getUsedBy()) {
+				if (usedBy.getTarget() != this)
+					throw new EccoException("Target of usedBy artifact reference must be identical to artifact.");
+
+				if (usedBy.getSource().hasReplacingArtifact()) {
+					Artifact.Op<?> replacingArtifact = usedBy.getSource().getReplacingArtifact();
+					if (replacingArtifact != null) {
+						usedBy.setSource(replacingArtifact);
+						if (!replacingArtifact.getUses().contains(usedBy)) {
+							replacingArtifact.addUses(usedBy);
+						}
+					}
+				}
+			}
+
+			// update sequence graph symbols (which are artifacts)
+			if (this.getSequenceGraph() != null) {
+				this.getSequenceGraph().updateArtifactReferences();
+			}
+		}
+
+		public default boolean uses(Artifact.Op<?> target) {
+			for (ArtifactReference.Op uses : this.getUses()) {
+				if (uses.getTarget() == target) {
+					return true;
+				}
+			}
+			return false;
+		}
 
 		public void addUses(Op artifact);
 
@@ -263,8 +360,6 @@ public interface Artifact<DataType extends ArtifactData> {
 
 		@Override
 		public Collection<ArtifactReference.Op> getUsedBy();
-
-		public Map<String, Object> getProperties();
 
 		@Override
 		public Node.Op getContainingNode();

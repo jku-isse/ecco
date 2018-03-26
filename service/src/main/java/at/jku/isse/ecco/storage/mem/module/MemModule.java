@@ -3,12 +3,10 @@ package at.jku.isse.ecco.storage.mem.module;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleRevision;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -21,7 +19,7 @@ public class MemModule implements Module {
 	private Feature[] pos;
 	private Feature[] neg;
 	private int count;
-	private Map<ModuleRevision, ModuleRevision> revisions;
+	private Collection<MemModuleRevision> revisions;
 
 
 	public MemModule(Feature[] pos, Feature[] neg) {
@@ -32,7 +30,7 @@ public class MemModule implements Module {
 		this.pos = pos;
 		this.neg = neg;
 		this.count = 0;
-		this.revisions = new HashMap<>();
+		this.revisions = new ArrayList<>();
 	}
 
 
@@ -67,24 +65,28 @@ public class MemModule implements Module {
 	}
 
 	@Override
-	public Collection<ModuleRevision> getRevisions() {
-		return Collections.unmodifiableCollection(this.revisions.values());
+	public Collection<MemModuleRevision> getRevisions() {
+		return Collections.unmodifiableCollection(this.revisions);
 	}
 
 	@Override
-	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
+	public MemModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
 		if (!this.matchesRevision(pos, neg))
 			return null;
-		ModuleRevision moduleRevision = new MemModuleRevision(this, pos, neg);
-		if (this.revisions.containsKey(moduleRevision))
+		MemModuleRevision moduleRevision = new MemModuleRevision(this, pos, neg);
+		if (this.revisions.contains(moduleRevision))
 			return null;
-		this.revisions.put(moduleRevision, moduleRevision);
+		this.revisions.add(moduleRevision);
 		return moduleRevision;
 	}
 
 	@Override
-	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
-		return this.revisions.get(new MemModuleRevision(this, pos, neg));
+	public MemModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
+		MemModuleRevision queryModuleRevision = new MemModuleRevision(this, pos, neg);
+		for (MemModuleRevision moduleRevision : this.revisions)
+			if (moduleRevision.equals(queryModuleRevision))
+				return moduleRevision;
+		return null;
 	}
 
 

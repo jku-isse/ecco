@@ -441,8 +441,7 @@ public class Trees {
 
 				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					List<Artifact.Op<?>> rightArtifacts = right.getChildren().stream().map((Node.Op n) -> n.getArtifact()).collect(Collectors.toList());
-					int[] alignment = left.getArtifact().getSequenceGraph().align(rightArtifacts);
-					System.out.println(alignment);
+					left.getArtifact().getSequenceGraph().align(rightArtifacts);
 				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
 					throw new EccoException("Left node was not sequenced but right node was!");
 				}

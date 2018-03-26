@@ -1,0 +1,29 @@
+<% title = "About" %>
+
+${new File("$baseDir/_header.html").getText()}
+
+<div class="container">
+
+	<!--<h1>About</h1>-->
+	<h3>About</h3>
+
+	<p>
+	ECCO is a feature-oriented and distributed configuration management and version control system. It makes features, artifacts, traces and variants to first class citizens.
+	</p>
+
+	<p>Slides: <a href="${baseUrl}ecco_slides.pdf">ecco_slides.pdf</a></p>
+	
+	<p>
+	ECCO has many use cases:
+
+	<ul>
+	<li>Consolidating a set of individual variants into a common platform representation. For example, reverse engineering a set of individual variants into a Software Product Line (SPL) <a href="${baseUrl}publications#splc13">[SPLC'13]</a><a href="${baseUrl}publications#sosym16">[SoSyM'16]</a>.</li>
+	<li>Supporting ad hoc development of variants (clone and own) as well as their subsequent maintenance <a href="${baseUrl}publications#icsme14_2">[ICSME'14]</a>.</li>
+	<li>Supporting the evolution of a set of variants and their individual features <a href="${baseUrl}publications#sst15">[SST'15]</a>.</li>
+	<li>Replacing existing revision control systems (SVN, Git, etc.) <a href="${baseUrl}publications#icse16">[ICSE'16]</a>.</li>
+	</ul>
+	</p>
+
+</div>
+
+${new File("$baseDir/_footer.html").getText()}
