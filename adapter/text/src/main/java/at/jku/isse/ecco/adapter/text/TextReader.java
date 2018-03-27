@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.adapter.text;
 
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
@@ -65,10 +65,15 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			try (Stream<String> lines = Files.lines(resolvedPath)) {
 				Iterator<String> it = lines.iterator();
+				int i = 0;
 				while (it.hasNext()) {
 					String line = it.next();
+					i++;
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
-					pluginNode.addChild(this.entityFactory.createNode(lineArtifact));
+					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+					lineNode.putProperty("LINE_START", i);
+					lineNode.putProperty("LINE_END", i);
+					pluginNode.addChild(lineNode);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();

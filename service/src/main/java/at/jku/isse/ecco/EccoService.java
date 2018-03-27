@@ -25,10 +25,7 @@ import at.jku.isse.ecco.storage.StoragePlugin;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
+import com.google.inject.*;
 import com.google.inject.name.Names;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -463,7 +460,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
-	protected Collection<Module> inititializeService() {
+	protected Collection<Module> initializeService() {
 		if (this.isInitialized()) {
 			LOGGER.error("Repository is already open.");
 			throw new EccoException("Repository is already open.");
@@ -483,15 +480,17 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		List<Module> artifactModules = new ArrayList<>();
 		List<Module> allArtifactModules = new ArrayList<>();
 		this.artifactPlugins = new ArrayList<>();
-		for (ArtifactPlugin ap : ArtifactPlugin.getArtifactPlugins()) {
-			if (artifactPluginsList == null || artifactPluginsList.contains(ap.getPluginId())) {
-				artifactModules.add(ap.getModule());
-				this.artifactPlugins.add(ap);
+		for (ArtifactPlugin artifactPlugin : ArtifactPlugin.getArtifactPlugins()) {
+			if (artifactPluginsList == null || artifactPluginsList.contains(artifactPlugin.getPluginId())) {
+				artifactModules.add(artifactPlugin.getModule());
+				this.artifactPlugins.add(artifactPlugin);
 			}
-			allArtifactModules.add(ap.getModule());
+			allArtifactModules.add(artifactPlugin.getModule());
 		}
 		LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
 		LOGGER.debug("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
+		if (artifactModules.isEmpty())
+			throw new EccoException("At least one artifact plugin must be configured.");
 
 		// data modules
 		List<Module> dataModules = new ArrayList<>();
@@ -505,6 +504,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 		LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
 		LOGGER.debug("ALL DATA PLUGINS: " + allDataModules.toString());
+		if (dataModules.size() != 1)
+			throw new EccoException("Exactly one data plugin must be configured.");
 
 		// put modules together
 		List<Module> modules = new ArrayList<>();
@@ -527,7 +528,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		LOGGER.debug("BASE_DIR: " + this.baseDir);
 		LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
 
-		Collection<Module> modules = this.inititializeService();
+		Collection<Module> modules = this.initializeService();
 
 		// create settings module
 		final Module settingsModule = new AbstractModule() {
@@ -542,9 +543,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		// create injector
 		Injector injector = Guice.createInjector(modules);
 
-		this.injector = injector;
+		// inject
+		try {
+			injector.injectMembers(this);
+		} catch (CreationException creationException) {
+			throw new EccoException("Error during dependency injection. The storage plugin may be faulty.", creationException);
+		}
 
-		injector.injectMembers(this);
+		this.injector = injector;
 
 		this.transactionStrategy.open();
 
