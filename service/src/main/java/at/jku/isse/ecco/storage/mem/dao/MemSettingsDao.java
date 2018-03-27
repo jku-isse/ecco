@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.storage.mem.dao;
 
-import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.SettingsDao;
+import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import com.google.inject.Inject;
 
 import java.util.*;
@@ -12,16 +12,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemSettingsDao extends MemAbstractGenericDao implements SettingsDao {
 
-	private final MemEntityFactory entityFactory;
-
-
 	@Inject
-	public MemSettingsDao(MemTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
+	public MemSettingsDao(MemTransactionStrategy transactionStrategy) {
 		super(transactionStrategy);
-
-		checkNotNull(entityFactory);
-
-		this.entityFactory = entityFactory;
 	}
 
 

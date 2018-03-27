@@ -69,7 +69,7 @@ public interface SequenceGraph extends Persistable {
 	/**
 	 * Sequence graph node.
 	 */
-	public interface Node {
+	public interface Node extends Persistable {
 		public Map<? extends Artifact.Op<?>, ? extends Node> getChildren();
 
 		public interface Op extends Node {

@@ -236,10 +236,12 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	// PROPERTIES
 
-	private transient Map<String, Object> properties = new HashMap<>();
+	private transient Map<String, Object> properties = null;
 
 	@Override
 	public Map<String, Object> getProperties() {
+		if (this.properties == null)
+			this.properties = new HashMap<>();
 		return this.properties;
 	}
 

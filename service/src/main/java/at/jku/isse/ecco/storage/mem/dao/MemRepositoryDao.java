@@ -4,19 +4,11 @@ import at.jku.isse.ecco.dao.RepositoryDao;
 import at.jku.isse.ecco.repository.Repository;
 import com.google.inject.Inject;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 public class MemRepositoryDao extends MemAbstractGenericDao implements RepositoryDao {
 
-	private final MemEntityFactory entityFactory;
-
 	@Inject
-	public MemRepositoryDao(MemTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
+	public MemRepositoryDao(MemTransactionStrategy transactionStrategy) {
 		super(transactionStrategy);
-
-		checkNotNull(entityFactory);
-
-		this.entityFactory = entityFactory;
 	}
 
 	@Override

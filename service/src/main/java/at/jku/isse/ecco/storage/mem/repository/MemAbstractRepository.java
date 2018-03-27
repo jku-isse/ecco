@@ -20,13 +20,10 @@ public class MemAbstractRepository implements Repository, Repository.Op {
 	private Collection<Association.Op> associations;
 	private List<Map<Module, Module>> modules;
 
-	private MemEntityFactory entityFactory;
-
 	private int maxOrder;
 
 
-	protected MemAbstractRepository(MemEntityFactory entityFactory) {
-		this.entityFactory = entityFactory;
+	protected MemAbstractRepository() {
 		this.features = new HashMap<>();
 		this.associations = new ArrayList<>();
 		this.modules = new ArrayList<>();
@@ -92,7 +89,7 @@ public class MemAbstractRepository implements Repository, Repository.Op {
 
 	@Override
 	public EntityFactory getEntityFactory() {
-		return this.entityFactory;
+		return new MemEntityFactory();
 	}
 
 

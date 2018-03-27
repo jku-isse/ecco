@@ -1,17 +1,18 @@
 package at.jku.isse.ecco.storage.mem.dao;
 
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.repository.MemRepository;
-import at.jku.isse.ecco.repository.Repository;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class Database {
+public class Database implements Serializable {
 
 	private final Repository.Op repository;
 
