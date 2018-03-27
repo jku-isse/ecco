@@ -66,11 +66,6 @@ public class XmlPluginEntityFactory implements EntityFactory {
     }
 
     @Override
-    public Module createModule(Feature[] pos, Feature[] neg) {
-        return new XmlModule(pos, neg);
-    }
-
-    @Override
     public RootNode.Op createRootNode() {
         return new XmlNode.XmlRootNode();
     }

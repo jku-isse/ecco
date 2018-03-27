@@ -6,6 +6,7 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.xml.impl.entities.XmlCommit;
+import at.jku.isse.ecco.storage.xml.impl.entities.XmlModule;
 import at.jku.isse.ecco.storage.xml.impl.entities.XmlPluginEntityFactory;
 import at.jku.isse.ecco.storage.xml.impl.entities.XmlRemote;
 import com.thoughtworks.xstream.XStream;
@@ -179,13 +180,13 @@ public class XmlRepository implements Repository.Op {
 
     @Override
     public Module getModule(Feature[] pos, Feature[] neg) {
-        Module queryModule = artifactFactory.createModule(pos, neg);
+        Module queryModule = new XmlModule(pos, neg);
         return modules.get(queryModule.getOrder()).get(queryModule);
     }
 
     @Override
     public Module addModule(Feature[] pos, Feature[] neg) {
-        Module module = artifactFactory.createModule(pos, neg);
+        Module module = new XmlModule(pos, neg);
         if (this.modules.get(module.getOrder()).containsKey(module))
             return null;
         this.modules.get(module.getOrder()).put(module, module);

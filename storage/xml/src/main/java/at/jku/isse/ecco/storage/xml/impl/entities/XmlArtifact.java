@@ -2,7 +2,6 @@ package at.jku.isse.ecco.storage.xml.impl.entities;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.artifact.ArtifactOperator;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.tree.Node;
@@ -11,10 +10,13 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class XmlArtifact<DataType extends ArtifactData> implements Artifact.Op<DataType> {
-
-    private transient ArtifactOperator operator = new ArtifactOperator(this);
-
+/**
+ * Memory implementation of the {@link Artifact}.
+ *
+ * @author JKU, ISSE
+ * @version 1.0
+ */
+public class XmlArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
 
     // fields
 
@@ -166,32 +168,6 @@ public class XmlArtifact<DataType extends ArtifactData> implements Artifact.Op<D
     }
 
 
-    @Override
-    public void checkConsistency() {
-        this.operator.checkConsistency();
-    }
-
-    @Override
-    public boolean hasReplacingArtifact() {
-        return this.operator.hasReplacingArtifact();
-    }
-
-    @Override
-    public Op getReplacingArtifact() {
-        return this.operator.getReplacingArtifact();
-    }
-
-    @Override
-    public void setReplacingArtifact(Op replacingArtifact) {
-        this.operator.setReplacingArtifact(replacingArtifact);
-    }
-
-    @Override
-    public void updateArtifactReferences() {
-        this.operator.updateArtifactReferences();
-    }
-
-
     // CONTAINING NODE
 
     private Node.Op containingNode;
@@ -220,11 +196,6 @@ public class XmlArtifact<DataType extends ArtifactData> implements Artifact.Op<D
     @Override
     public Collection<ArtifactReference.Op> getUsedBy() {
         return Collections.unmodifiableCollection(this.usedBy);
-    }
-
-    @Override
-    public boolean uses(Op target) {
-        return this.operator.uses(target);
     }
 
     @Override
@@ -271,18 +242,4 @@ public class XmlArtifact<DataType extends ArtifactData> implements Artifact.Op<D
         return this.properties;
     }
 
-    @Override
-    public <T> Optional<T> getProperty(final String name) {
-        return this.operator.getProperty(name);
-    }
-
-    @Override
-    public <T> void putProperty(final String name, final T property) {
-        this.operator.putProperty(name, property);
-    }
-
-    @Override
-    public void removeProperty(String name) {
-        this.operator.removeProperty(name);
-    }
 }
