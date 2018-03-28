@@ -84,7 +84,7 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
-	private Collection<ReadListener> listeners = new ArrayList<ReadListener>();
+	private Collection<ReadListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(ReadListener listener) {
