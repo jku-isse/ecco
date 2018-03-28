@@ -3,62 +3,64 @@ apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.gui.EccoGui"
 applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
 
-run {
-    classpath = sourceSets.test.runtimeClasspath
+task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
+	main = "at.jku.isse.ecco.gui.EccoGui"
+	jvmArgs += ["-ea", "-Xss1024m", "-Xmx8g"]
+	classpath = sourceSets.test.runtimeClasspath
 }
 
 dependencies {
-    compile 'org.graphstream:gs-core:1.3'
-    compile 'org.graphstream:gs-algo:1.3'
-    compile 'org.graphstream:gs-ui:1.3'
+	compile 'org.graphstream:gs-core:1.3'
+	compile 'org.graphstream:gs-algo:1.3'
+	compile 'org.graphstream:gs-ui:1.3'
 
-    compile project(':ecco-base')
-    compile project(':ecco-service')
+	compile project(':ecco-base')
+	compile project(':ecco-service')
 
-    testCompile project(':ecco-storage-perst')
+	testCompile project(':ecco-storage-perst')
 
-    testRuntime project(':ecco-adapter-file')
-    testRuntime project(':ecco-adapter-text')
-    testRuntime project(':ecco-adapter-image')
-    testRuntime project(':ecco-adapter-java')
+	testRuntime project(':ecco-adapter-file')
+	testRuntime project(':ecco-adapter-text')
+	testRuntime project(':ecco-adapter-image')
+	testRuntime project(':ecco-adapter-java')
 }
 
 ospackage {
-    summary 'GUI (Graphical User Interface) for ECCO.'
-    packageDescription 'This package provides a GUI (Graphical User Interface) for ECCO.'
+	summary 'GUI (Graphical User Interface) for ECCO.'
+	packageDescription 'This package provides a GUI (Graphical User Interface) for ECCO.'
 
-    requires('ecco-base', version, EQUAL)
-    requires('ecco-service', version, EQUAL)
+	requires('ecco-base', version, EQUAL)
+	requires('ecco-service', version, EQUAL)
 
-    requires('javapackages-tools')
+	requires('javapackages-tools')
 
-    into('/usr/bin/') {
-        from(project.file('ecco-gui')) {
-            addParentDirs false
-            into ''
-        }
-    }
+	into('/usr/bin/') {
+		from(project.file('ecco-gui')) {
+			addParentDirs false
+			into ''
+		}
+	}
 }
 
 linuxZip {
-    into(archiveName - ('.' + extension)) {
-        from 'ecco-gui'
-    }
+	into(archiveName - ('.' + extension)) {
+		from 'ecco-gui'
+	}
 }
 
 sourcesZip {
-    include 'ecco-gui'
-    include 'ecco-gui.bat'
+	include 'ecco-gui'
+	include 'ecco-gui.bat'
 }
 
 windowsZip {
-    into(archiveName - ('.' + extension)) {
-        from 'ecco-gui.bat'
-    }
+	into(archiveName - ('.' + extension)) {
+		from 'ecco-gui.bat'
+	}
 }
 
 task copyScripts(type: Copy) {
-    from 'ecco-gui', 'ecco-gui.bat'
-    into project.file('build/bundle/')
+	from 'ecco-gui', 'ecco-gui.bat'
+	into project.file('build/bundle/')
 }
 bundle.dependsOn += copyScripts
