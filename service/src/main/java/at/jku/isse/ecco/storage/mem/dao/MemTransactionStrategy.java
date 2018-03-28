@@ -12,7 +12,7 @@ public class MemTransactionStrategy implements TransactionStrategy {
 
 	@Inject
 	public MemTransactionStrategy() {
-
+		this.database = null;
 	}
 
 	protected Database getDatabase() {

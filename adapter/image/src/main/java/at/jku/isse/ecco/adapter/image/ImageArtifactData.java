@@ -5,24 +5,19 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import java.util.Arrays;
 import java.util.Objects;
 
-// TODO: preserve image type (and settings like global background color, and metadata!)
-
 public class ImageArtifactData implements ArtifactData {
 
 	private final int[] values;
 
-	private String identifier;
 	private String type;
 
 	protected ImageArtifactData() {
 		this.values = null;
-		this.identifier = null;
 		this.type = null;
 	}
 
 	public ImageArtifactData(final int[] values, final String type) {
 		this.values = values;
-		this.identifier = Arrays.toString(values);
 		this.type = type;
 	}
 
@@ -53,7 +48,7 @@ public class ImageArtifactData implements ArtifactData {
 
 	@Override
 	public String toString() {
-		return this.identifier;
+		return Arrays.toString(this.values);
 	}
 
 }

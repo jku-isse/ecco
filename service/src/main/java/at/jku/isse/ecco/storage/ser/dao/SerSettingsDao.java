@@ -2,11 +2,14 @@ package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.SettingsDao;
+import at.jku.isse.ecco.storage.mem.core.MemRemote;
+import at.jku.isse.ecco.storage.mem.dao.Database;
 import com.google.inject.Inject;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class SerSettingsDao extends SerAbstractGenericDao implements SettingsDao {
 
@@ -15,69 +18,99 @@ public class SerSettingsDao extends SerAbstractGenericDao implements SettingsDao
 		super(transactionStrategy);
 	}
 
+
 	@Override
 	public Collection<Remote> loadAllRemotes() {
-		return null;
+		final Database root = this.transactionStrategy.getDatabase();
+
+		final Collection<Remote> remotes = new ArrayList<>(root.getRemoteIndex().values());
+
+		return remotes;
 	}
 
 	@Override
 	public Remote loadRemote(String name) {
-		return null;
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
+
+		final Database root = this.transactionStrategy.getDatabase();
+
+		final Remote remote = root.getRemoteIndex().get(name);
+
+		return remote;
 	}
 
 	@Override
 	public Remote storeRemote(Remote remote) {
-		return null;
+		checkNotNull(remote);
+
+		final Database root = this.transactionStrategy.getDatabase();
+		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();
+
+		final MemRemote memEntity = (MemRemote) remote;
+
+		remoteIndex.put(memEntity.getName(), memEntity);
+
+		return memEntity;
 	}
 
 	@Override
 	public void removeRemote(String name) {
+		checkNotNull(name);
 
+		final Database root = this.transactionStrategy.getDatabase();
+		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();
+
+		remoteIndex.remove(name);
 	}
+
 
 	@Override
 	public Map<String, String> loadPluginMap() {
-		return null;
+		final Database root = this.transactionStrategy.getDatabase();
+
+		final Map<String, String> pluginMap = new HashMap<>();
+		pluginMap.putAll(root.getPluginMap());
+
+		return pluginMap;
 	}
 
 	@Override
 	public void addPluginMapping(String pattern, String pluginId) {
+		final Database root = this.transactionStrategy.getDatabase();
 
+		root.getPluginMap().put(pattern, pluginId);
 	}
 
 	@Override
 	public void removePluginMapping(String pattern) {
+		final Database root = this.transactionStrategy.getDatabase();
 
+		root.getPluginMap().remove(pattern);
 	}
 
 	@Override
 	public Set<String> loadIgnorePatterns() {
-		return null;
+		final Database root = this.transactionStrategy.getDatabase();
+
+		final Set<String> ignorePatterns = new HashSet<>();
+		ignorePatterns.addAll(root.getIgnorePatterns());
+
+		return ignorePatterns;
 	}
 
 	@Override
 	public void addIgnorePattern(String ignorePattern) {
+		final Database root = this.transactionStrategy.getDatabase();
 
+		root.getIgnorePatterns().add(ignorePattern);
 	}
 
 	@Override
 	public void removeIgnorePattern(String ignorePattern) {
+		final Database root = this.transactionStrategy.getDatabase();
 
-	}
-
-	@Override
-	public void open() {
-
-	}
-
-	@Override
-	public void close() {
-
-	}
-
-	@Override
-	public void init() {
-
+		root.getIgnorePatterns().remove(ignorePattern);
 	}
 
 }

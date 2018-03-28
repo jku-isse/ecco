@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.adapter.file;
 
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
@@ -74,7 +74,7 @@ public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
-	private Collection<ReadListener> listeners = new ArrayList<ReadListener>();
+	private Collection<ReadListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(ReadListener listener) {

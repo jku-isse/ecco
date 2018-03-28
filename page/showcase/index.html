@@ -1,5 +1,5 @@
 <% title = "Showcase" %>
-${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
+${include("_header.html", binding.variables)}
 
 <div id="showcase" class="container">
 
@@ -13,7 +13,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 	<div class="row">
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/V1.png" target="_blank"><img src="image/V1.png" alt="Variant 1"></a>
+			<a href="image_variants/V1.png" target="_blank"><img src="image_variants/V1.png" alt="Variant 1"></a>
 			<div class="caption">
 			<h5>Variant 1</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span></p>
@@ -22,7 +22,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/V2.png" target="_blank"><img src="image/V2.png" alt="Variant 2"></a>
+			<a href="image_variants/V2.png" target="_blank"><img src="image_variants/V2.png" alt="Variant 2"></a>
 			<div class="caption">
 			<h5>Variant 2</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">striped shirt</span></p>
@@ -31,7 +31,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/V3.png" target="_blank"><img src="image/V3.png" alt="Variant 3"></a>
+			<a href="image_variants/V3.png" target="_blank"><img src="image_variants/V3.png" alt="Variant 3"></a>
 			<div class="caption">
 			<h5>Variant 3</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">jacket</span></p>
@@ -40,7 +40,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/V4.png" target="_blank"><img src="image/V4.png" alt="Variant 4"></a>
+			<a href="image_variants/V4.png" target="_blank"><img src="image_variants/V4.png" alt="Variant 4"></a>
 			<div class="caption">
 			<h5>Variant 4</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">jacket</span> <span class="label label-default">glasses</span></p>
@@ -49,7 +49,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/V5.png" target="_blank"><img src="image/V5.png" alt="Variant 5"></a>
+			<a href="image_variants/V5.png" target="_blank"><img src="image_variants/V5.png" alt="Variant 5"></a>
 			<div class="caption">
 			<h5>Variant 5</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">striped shirt</span> <span class="label label-default">jacket</span> <span class="label label-default">glasses</span></p>
@@ -58,7 +58,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/V6.png" target="_blank"><img src="image/V9.png" alt="Variant 6"></a>
+			<a href="image_variants/V6.png" target="_blank"><img src="image_variants/V9.png" alt="Variant 6"></a>
 			<div class="caption">
 			<h5>Variant 6</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">striped shirt</span> <span class="label label-default">jacket</span> <span class="label label-default">hat</span></p>
@@ -72,7 +72,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 	<div class="row">
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/person.png" target="_blank"><img src="image/person.png" alt="Trace 1"></a>
+			<a href="image_traces/person.png" target="_blank"><img src="image_traces/person.png" alt="Trace 1"></a>
 			<div class="caption">
 			<h5>Trace 1</h5>
 			<p class="features"><span class="label label-default">person</span></p>
@@ -81,7 +81,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/purpleshirt_nojacket.png" target="_blank"><img src="image/purpleshirt_nojacket.png" alt="Trace 2"></a>
+			<a href="image_traces/purpleshirt_nojacket.png" target="_blank"><img src="image_traces/purpleshirt_nojacket.png" alt="Trace 2"></a>
 			<div class="caption">
 			<h5>Trace 2</h5>
 			<p class="features"><span class="label label-default">purple shirt</span></p>
@@ -90,7 +90,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/stripedshirt_nojacket.png" target="_blank"><img src="image/stripedshirt_nojacket.png" alt="Trace 3"></a>
+			<a href="image_traces/stripedshirt_nojacket.png" target="_blank"><img src="image_traces/stripedshirt_nojacket.png" alt="Trace 3"></a>
 			<div class="caption">
 			<h5>Trace 3</h5>
 			<p class="features"><span class="label label-default">striped shirt</span></p>
@@ -99,7 +99,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/jacket.png" target="_blank"><img src="image/jacket.png" alt="Trace 4"></a>
+			<a href="image_traces/jacket.png" target="_blank"><img src="image_traces/jacket.png" alt="Trace 4"></a>
 			<div class="caption">
 			<h5>Trace 4</h5>
 			<p class="features"><span class="label label-default">jacket</span></p>
@@ -108,7 +108,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/glasses.png" target="_blank"><img src="image/glasses.png" alt="Trace 5"></a>
+			<a href="image_traces/glasses.png" target="_blank"><img src="image_traces/glasses.png" alt="Trace 5"></a>
 			<div class="caption">
 			<h5>Trace 5</h5>
 			<p class="features"><span class="label label-default">glasses</span></p>
@@ -117,7 +117,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/hat.png" target="_blank"><img src="image/hat.png" alt="Trace 6"></a>
+			<a href="image_traces/hat.png" target="_blank"><img src="image_traces/hat.png" alt="Trace 6"></a>
 			<div class="caption">
 			<h5>Trace 6</h5>
 			<p class="features"><span class="label label-default">hat</span></p>
@@ -131,7 +131,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 	<div class="row">
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/person_purpleshirt_glasses.png" target="_blank"><img src="image/person_purpleshirt_glasses.png" alt="Composed Variant 1"></a>
+			<a href="image_composed/person_purpleshirt_glasses.png" target="_blank"><img src="image_composed/person_purpleshirt_glasses.png" alt="Composed Variant 1"></a>
 			<div class="caption">
 			<h5>Composed Variant 1</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">glasses</span></p>
@@ -140,7 +140,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 		</div>
 		<div class="col-sm-2 col-md-2">
 		<div class="thumbnail">
-			<a href="image/person_purpleshirt_glasses_hat.png" target="_blank"><img src="image/person_purpleshirt_glasses_hat.png" alt="Composed Variant 2"></a>
+			<a href="image_composed/person_purpleshirt_glasses_hat.png" target="_blank"><img src="image_composed/person_purpleshirt_glasses_hat.png" alt="Composed Variant 2"></a>
 			<div class="caption">
 			<h5>Composed Variant 2</h5>
 			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">glasses</span> <span class="label label-default">hat</span></p>
@@ -182,7 +182,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 
             <div class="col-sm-3 col-md-3">
                 <div class="thumbnail">
-                    <a href="step/cubeConeDraht.jpg" target="_blank"><img src="step/cubeConeDraht.jpg" alt="Robot Variant 3: Smaller Arm, Normal Base"></a>
+                    <a href="step/cubeCylinderDraht.jpg" target="_blank"><img src="step/cubeCylinderDraht.jpg" alt="Robot Variant 3: Smaller Arm, Normal Base"></a>
                     <div class="caption">
                         <h4>3D Variant 3: Right Cube, Cylinder</h4>
                         <p>The third variant of the 3D model shows a cube and a cylinder.</p>
@@ -329,7 +329,7 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
         <div class="row">
             <div class="col-sm-4 col-md-4" style="float: none; margin: 0 auto;">
                 <div class="thumbnail">
-                    <a href="dpl/v4_code.png" target="_blank"><img src="dpl/v4_code.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <a href="dpl/v4_code_fixed.png" target="_blank"><img src="dpl/v4_code_fixed.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
                     <div class="caption">
                         <h4>Complete Draw Variant 4: Line, Rectangle, Wipe</h4>
                         <p>The newly composed, complete fourth variant of the draw application.</p>
@@ -350,4 +350,4 @@ ${eval(new File("$baseDir/_header.html").getText(), binding.variables)}
 
 </div>
 
-${eval(new File("$baseDir/_footer.html").getText(), binding.variables)}
+${include("_footer.html", binding.variables)}

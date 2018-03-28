@@ -5,6 +5,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.sg.SequenceGraphOperator;
 
+import java.io.IOException;
 import java.util.*;
 
 public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
@@ -25,6 +26,12 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 		this.pol = true;
 		this.root = (MemSequenceGraphNode) this.createSequenceGraphNode(this.pol);
 		this.nodes.put(new HashSet<Artifact<?>>(), this.root);
+	}
+
+
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+		this.operator = new SequenceGraphOperator(this);
 	}
 
 

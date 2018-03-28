@@ -1,11 +1,11 @@
 package at.jku.isse.ecco.adapter.image;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
@@ -70,14 +70,17 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			try {
 				Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-				Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+				Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
 				nodes.add(pluginNode);
 
 				final BufferedImage image = ImageIO.read(resolvedPath.toFile());
 				pluginNode.addChild(parseImage(image));
 
+				pluginNode.addChild(this.entityFactory.createNode(new ImageArtifactData(new int[]{image.getType()}, "TYPE")));
+				pluginNode.addChild(this.entityFactory.createNode(new ImageArtifactData(new int[]{image.getTransparency()}, "TRANSPARENCY")));
+
+				// TODO: also store other image properties like global background color and metadata!
 				System.out.println(image.getColorModel());
-				System.out.println(image.getType());
 			} catch (IOException e) {
 				throw new EccoException("Could not read the image: " + resolvedPath, e);
 			}

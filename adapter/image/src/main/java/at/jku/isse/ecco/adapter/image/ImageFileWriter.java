@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.adapter.image;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import javax.imageio.ImageIO;
@@ -45,23 +45,18 @@ public class ImageFileWriter implements ArtifactWriter<Set<Node>, Path> {
 				Path outputPath = base.resolve(pluginArtifactData.getPath());
 				output.add(outputPath);
 
-				if (pluginNode.getChildren().size() != 1 || !(((Node) pluginNode.getChildren().iterator().next()).getArtifact().getData() instanceof ImageArtifactData) || !((ImageArtifactData) ((Node) pluginNode.getChildren().iterator().next()).getArtifact().getData()).getType().equals("IMAGE")) {
-					throw new EccoException("There must be exactly one image node!");
-				} else {
-					BufferedImage outputImage = ImageUtil.createBufferedImage(pluginNode, this.backgroundColor, this.enableBlending);
+				BufferedImage outputImage = ImageUtil.createBufferedImage(pluginNode, this.backgroundColor, this.enableBlending);
 
-					try {
-						if (!Files.exists(outputPath)) {
-							Files.createFile(outputPath);
-						}
-						String fileName = outputPath.getFileName().toString();
-						String fileType = fileName.substring(fileName.lastIndexOf(".") + 1, fileName.length());
-						ImageIO.write(outputImage, fileType, outputPath.toFile());
-					} catch (IOException e) {
-						e.printStackTrace();
+				try {
+					if (!Files.exists(outputPath)) {
+						Files.createFile(outputPath);
 					}
+					String fileName = outputPath.getFileName().toString();
+					String fileType = fileName.substring(fileName.lastIndexOf(".") + 1, fileName.length());
+					ImageIO.write(outputImage, fileType, outputPath.toFile());
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
-
 			}
 		}
 
@@ -69,7 +64,7 @@ public class ImageFileWriter implements ArtifactWriter<Set<Node>, Path> {
 	}
 
 
-	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();
+	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(WriteListener listener) {

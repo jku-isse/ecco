@@ -2,6 +2,7 @@ package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.dao.RepositoryDao;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.mem.dao.Database;
 import com.google.inject.Inject;
 
 public class SerRepositoryDao extends SerAbstractGenericDao implements RepositoryDao {
@@ -13,27 +14,14 @@ public class SerRepositoryDao extends SerAbstractGenericDao implements Repositor
 
 	@Override
 	public Repository.Op load() {
-		return null;
+		final Database root = this.transactionStrategy.getDatabase();
+
+		return root.getRepository();
 	}
 
 	@Override
 	public void store(Repository.Op repository) {
-
-	}
-
-	@Override
-	public void open() {
-
-	}
-
-	@Override
-	public void close() {
-
-	}
-
-	@Override
-	public void init() {
-
+		// nothing to do
 	}
 
 }
