@@ -1,13 +1,11 @@
+
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.gui.EccoGui"
 applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
 
-
-task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
-	main = "at.jku.isse.ecco.gui.EccoGui"
-	jvmArgs += ["-ea", "-Xss1024m", "-Xmx8g"]
-	classpath = sourceSets.test.runtimeClasspath
-
+run {
+    classpath = sourceSets.test.runtimeClasspath
+}
 
 dependencies {
     compile 'org.graphstream:gs-core:1.3'
@@ -17,13 +15,12 @@ dependencies {
     compile project(':ecco-base')
     compile project(':ecco-service')
 
-   // compile project(':ecco-storage-perst')
-    compile project(':ecco-storage-xml')
+    testCompile project(':ecco-storage-perst')
 
-    runtime project(':ecco-adapter-file')
-    runtime project(':ecco-adapter-text')
-    runtime project(':ecco-adapter-image')
-    runtime project(':ecco-adapter-java')
+    testRuntime project(':ecco-adapter-file')
+    testRuntime project(':ecco-adapter-text')
+    testRuntime project(':ecco-adapter-image')
+    testRuntime project(':ecco-adapter-java')
 }
 
 ospackage {
