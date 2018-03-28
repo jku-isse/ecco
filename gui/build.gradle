@@ -2,9 +2,12 @@ apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.gui.EccoGui"
 applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
 
-run {
-    // classpath = sourceSets.test.runtimeClasspath
-}
+
+task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
+	main = "at.jku.isse.ecco.gui.EccoGui"
+	jvmArgs += ["-ea", "-Xss1024m", "-Xmx8g"]
+	classpath = sourceSets.test.runtimeClasspath
+
 
 dependencies {
     compile 'org.graphstream:gs-core:1.3'
