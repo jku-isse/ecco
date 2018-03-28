@@ -3,8 +3,8 @@ package at.jku.isse.ecco.storage.xml.impl;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.CommitDao;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlCommit;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlPluginEntityFactory;
+import at.jku.isse.ecco.storage.mem.core.MemCommit;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import com.google.inject.Inject;
 
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ public class XmlCommitDao implements CommitDao {
     private final XmlPluginTransactionStrategy transactionStrategy;
 
     @Inject
-    public XmlCommitDao(XmlPluginTransactionStrategy transactionStrategy, final XmlPluginEntityFactory entityFactory) {
+    public XmlCommitDao(XmlPluginTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
         this.transactionStrategy = transactionStrategy;
     }
 
@@ -42,7 +42,7 @@ public class XmlCommitDao implements CommitDao {
     @Override
     public Commit save(Commit entity) throws EccoException {
         final XmlRepository root = transactionStrategy.getOrLoadRepository();
-        final XmlCommit baseEntity = (XmlCommit) entity;
+        final MemCommit baseEntity = (MemCommit) entity;
 
         if (!root.getCommitIndex().containsKey(baseEntity.getId())) {
             baseEntity.setId(root.getCommitIndex().size());

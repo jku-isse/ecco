@@ -3,7 +3,7 @@ package at.jku.isse.ecco.storage.xml.impl;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.RepositoryDao;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlPluginEntityFactory;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import com.google.inject.Inject;
 
 import java.io.IOException;
@@ -20,7 +20,7 @@ public class XmlPluginRepositoryDao implements RepositoryDao {
     private final XmlPluginTransactionStrategy transactionStrategy;
 
     @Inject
-    public XmlPluginRepositoryDao(XmlPluginTransactionStrategy transactionStrategy, XmlPluginEntityFactory entityFactory) {
+    public XmlPluginRepositoryDao(XmlPluginTransactionStrategy transactionStrategy, MemEntityFactory entityFactory) {
         this.transactionStrategy = transactionStrategy;
     }
 

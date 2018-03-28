@@ -2,8 +2,8 @@ package at.jku.isse.ecco.storage.xml.impl;
 
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.SettingsDao;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlPluginEntityFactory;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlRemote;
+import at.jku.isse.ecco.storage.mem.core.MemRemote;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import com.google.inject.Inject;
 
 import java.util.*;
@@ -15,7 +15,7 @@ public class XmlSettingsDao implements SettingsDao {
     private final XmlPluginTransactionStrategy transactionStrategy;
 
     @Inject
-    public XmlSettingsDao(XmlPluginTransactionStrategy transactionStrategy, final XmlPluginEntityFactory entityFactory) {
+    public XmlSettingsDao(XmlPluginTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
         this.transactionStrategy = transactionStrategy;
     }
 
@@ -35,7 +35,7 @@ public class XmlSettingsDao implements SettingsDao {
     @Override
     public Remote storeRemote(Remote remote) {
         requireNonNull(remote);
-        final XmlRemote xmlRemote = (XmlRemote) remote;
+        final MemRemote xmlRemote = (MemRemote) remote;
         Object returnVal = transactionStrategy.getOrLoadRepository().getRemoteIndex().putIfAbsent(xmlRemote.getName(), xmlRemote);
         assert returnVal == null;
         return xmlRemote;

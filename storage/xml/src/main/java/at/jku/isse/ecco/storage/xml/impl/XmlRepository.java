@@ -5,12 +5,11 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlCommit;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlModule;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlPluginEntityFactory;
-import at.jku.isse.ecco.storage.xml.impl.entities.XmlRemote;
+import at.jku.isse.ecco.storage.mem.core.MemCommit;
+import at.jku.isse.ecco.storage.mem.core.MemRemote;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.mem.module.MemModule;
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
 import com.thoughtworks.xstream.io.xml.CompactWriter;
 
 import java.io.*;
@@ -29,13 +28,13 @@ public class XmlRepository implements Repository.Op {
     private Collection<Association.Op> associations = new ArrayList<>();
     private List<Map<Module, Module>> modules = new ArrayList<>();
     private int maxOrder;
-    private Map<Integer, XmlCommit> commitIndex;
-    private Map<String, XmlRemote> remoteIndex;
+    private Map<Integer, MemCommit> commitIndex;
+    private Map<String, MemRemote> remoteIndex;
     private Set<String> ignorePatterns;
     private Map<String, String> pluginMap;
 
 
-    private static final XmlPluginEntityFactory artifactFactory = new XmlPluginEntityFactory();
+    private static final EntityFactory artifactFactory = new MemEntityFactory();
 
     private <K, V> Map<K, V> newMap() {
         return new HashMap<>();
@@ -55,23 +54,13 @@ public class XmlRepository implements Repository.Op {
 
     }
 
-    public void rollbackTo(XmlRepository other) {
-        features = other.features;
-        associations = other.associations;
-        modules = other.modules;
-        maxOrder = other.maxOrder;
-        commitIndex = other.commitIndex;
-        remoteIndex = other.remoteIndex;
-        ignorePatterns = other.ignorePatterns;
-        pluginMap = other.pluginMap;
-    }
 
-    public Map<Integer, XmlCommit> getCommitIndex() {
+    public Map<Integer, MemCommit> getCommitIndex() {
         return commitIndex;
     }
 
 
-    public Map<String, XmlRemote> getRemoteIndex() {
+    public Map<String, MemRemote> getRemoteIndex() {
         return remoteIndex;
     }
 
@@ -113,7 +102,7 @@ public class XmlRepository implements Repository.Op {
 
 
     private static XStream getSerializer() {
-        XStream xStream = new XStream(new PureJavaReflectionProvider());
+        XStream xStream = new XStream();
         XStream.setupDefaultSecurity(xStream);
         xStream.allowTypesByWildcard(new String[]{
                 "**"
@@ -180,13 +169,13 @@ public class XmlRepository implements Repository.Op {
 
     @Override
     public Module getModule(Feature[] pos, Feature[] neg) {
-        Module queryModule = new XmlModule(pos, neg);
+        Module queryModule = new MemModule(pos, neg);
         return modules.get(queryModule.getOrder()).get(queryModule);
     }
 
     @Override
     public Module addModule(Feature[] pos, Feature[] neg) {
-        Module module = new XmlModule(pos, neg);
+        Module module = new MemModule(pos, neg);
         if (this.modules.get(module.getOrder()).containsKey(module))
             return null;
         this.modules.get(module.getOrder()).put(module, module);
