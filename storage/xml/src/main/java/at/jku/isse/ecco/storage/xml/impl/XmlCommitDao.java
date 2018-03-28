@@ -12,36 +12,36 @@ import java.util.List;
 
 public class XmlCommitDao implements CommitDao {
 
-    private final XmlPluginTransactionStrategy transactionStrategy;
+    private final XmlTransactionStrategy transactionStrategy;
 
     @Inject
-    public XmlCommitDao(XmlPluginTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
+    public XmlCommitDao(XmlTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
         this.transactionStrategy = transactionStrategy;
     }
 
     @Override
     public List<Commit> loadAllCommits() throws EccoException {
-        return new ArrayList<>(transactionStrategy.getOrLoadRepository().getCommitIndex().values());
+        return new ArrayList<>(transactionStrategy.load().getCommitIndex().values());
     }
 
     @Override
     public Commit load(String id) throws EccoException {
-        return transactionStrategy.getOrLoadRepository().getCommitIndex().get(Integer.parseInt(id));
+        return transactionStrategy.load().getCommitIndex().get(Integer.parseInt(id));
     }
 
     @Override
     public void remove(String id) throws EccoException {
-        transactionStrategy.getOrLoadRepository().getCommitIndex().remove(Integer.parseInt(id));
+        transactionStrategy.load().getCommitIndex().remove(Integer.parseInt(id));
     }
 
     @Override
     public void remove(Commit entity) throws EccoException {
-        transactionStrategy.getOrLoadRepository().getCommitIndex().remove(entity.getId());
+        transactionStrategy.load().getCommitIndex().remove(entity.getId());
     }
 
     @Override
     public Commit save(Commit entity) throws EccoException {
-        final XmlRepository root = transactionStrategy.getOrLoadRepository();
+        final XmlRepository root = transactionStrategy.load();
         final MemCommit baseEntity = (MemCommit) entity;
 
         if (!root.getCommitIndex().containsKey(baseEntity.getId())) {

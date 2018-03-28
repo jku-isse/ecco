@@ -9,18 +9,8 @@ import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.CompactWriter;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 public class XmlRepository implements Repository.Op {
 
@@ -33,8 +23,6 @@ public class XmlRepository implements Repository.Op {
     private Set<String> ignorePatterns;
     private Map<String, String> pluginMap;
 
-
-    private static final EntityFactory artifactFactory = new MemEntityFactory();
 
     private <K, V> Map<K, V> newMap() {
         return new HashMap<>();
@@ -71,45 +59,6 @@ public class XmlRepository implements Repository.Op {
     public Map<String, String> getPluginMap() {
         return pluginMap;
     }
-
-    public static XmlRepository loadFromDisk(Path storedRepo) throws IOException {
-        if (!Files.exists(storedRepo))
-            throw new FileNotFoundException("No repository can be found at '" + storedRepo + '\'');
-
-        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(storedRepo));
-             BufferedReader repoStream = new BufferedReader(new InputStreamReader(zis))) {
-            boolean found = false;
-            ZipEntry cur = null;
-            while (!found && (cur = zis.getNextEntry()) != null)
-                found = ZIP_NAME.equals(cur.getName());
-            if (cur == null)
-                throw new UnsupportedOperationException("Unable to find the database in the ZIP file");
-
-            final XmlRepository loaded = (XmlRepository) getSerializer().fromXML(repoStream);
-            return loaded;
-        }
-    }
-
-    private static final String ZIP_NAME = "ecco.xml";
-
-    public void storeRepo(Path storageFile) throws IOException {
-        try (ZipOutputStream zipOut = new ZipOutputStream(Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW));
-             BufferedWriter repoStorage = new BufferedWriter(new OutputStreamWriter(zipOut, StandardCharsets.UTF_8))) {
-            zipOut.putNextEntry(new ZipEntry(ZIP_NAME));
-            getSerializer().marshal(this, new CompactWriter(repoStorage));
-        }
-    }
-
-
-    private static XStream getSerializer() {
-        XStream xStream = new XStream();
-        XStream.setupDefaultSecurity(xStream);
-        xStream.allowTypesByWildcard(new String[]{
-                "**"
-        });
-        return xStream;
-    }
-
 
     @Override
     public Collection<? extends Feature> getFeatures() {
@@ -164,7 +113,7 @@ public class XmlRepository implements Repository.Op {
 
     @Override
     public EntityFactory getEntityFactory() {
-        return artifactFactory;
+        return new MemEntityFactory();
     }
 
     @Override

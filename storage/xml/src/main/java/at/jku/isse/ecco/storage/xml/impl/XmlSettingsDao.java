@@ -12,16 +12,16 @@ import static java.util.Objects.requireNonNull;
 
 public class XmlSettingsDao implements SettingsDao {
 
-    private final XmlPluginTransactionStrategy transactionStrategy;
+    private final XmlTransactionStrategy transactionStrategy;
 
     @Inject
-    public XmlSettingsDao(XmlPluginTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
+    public XmlSettingsDao(XmlTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
         this.transactionStrategy = transactionStrategy;
     }
 
     @Override
     public Collection<Remote> loadAllRemotes() {
-        return new ArrayList<>(transactionStrategy.getOrLoadRepository().getRemoteIndex().values());
+        return new ArrayList<>(transactionStrategy.load().getRemoteIndex().values());
     }
 
     @Override
@@ -29,14 +29,14 @@ public class XmlSettingsDao implements SettingsDao {
         requireNonNull(name);
         assert !name.isEmpty() : "Expected a non-empty name!";
 
-        return transactionStrategy.getOrLoadRepository().getRemoteIndex().get(name);
+        return transactionStrategy.load().getRemoteIndex().get(name);
     }
 
     @Override
     public Remote storeRemote(Remote remote) {
         requireNonNull(remote);
         final MemRemote xmlRemote = (MemRemote) remote;
-        Object returnVal = transactionStrategy.getOrLoadRepository().getRemoteIndex().putIfAbsent(xmlRemote.getName(), xmlRemote);
+        Object returnVal = transactionStrategy.load().getRemoteIndex().putIfAbsent(xmlRemote.getName(), xmlRemote);
         assert returnVal == null;
         return xmlRemote;
     }
@@ -44,40 +44,40 @@ public class XmlSettingsDao implements SettingsDao {
     @Override
     public void removeRemote(String name) {
         requireNonNull(name);
-        Object returnVal = transactionStrategy.getOrLoadRepository().getRemoteIndex().remove(name);
+        Object returnVal = transactionStrategy.load().getRemoteIndex().remove(name);
         assert returnVal != null;
     }
 
     @Override
     public Map<String, String> loadPluginMap() {
-        return Collections.unmodifiableMap(transactionStrategy.getOrLoadRepository().getPluginMap());
+        return Collections.unmodifiableMap(transactionStrategy.load().getPluginMap());
     }
 
     @Override
     public void addPluginMapping(String pattern, String pluginId) {
         requireNonNull(pattern);
         assert !pattern.isEmpty();
-        Object returnVal = transactionStrategy.getOrLoadRepository().getPluginMap().putIfAbsent(pattern, pluginId);
+        Object returnVal = transactionStrategy.load().getPluginMap().putIfAbsent(pattern, pluginId);
         assert returnVal == null;
     }
 
     @Override
     public void removePluginMapping(String pattern) {
         assert pattern != null && !pattern.isEmpty();
-        Object returnVal = transactionStrategy.getOrLoadRepository().getPluginMap().remove(pattern);
+        Object returnVal = transactionStrategy.load().getPluginMap().remove(pattern);
         assert returnVal != null;
     }
 
     @Override
     public Set<String> loadIgnorePatterns() {
-        return Collections.unmodifiableSet(transactionStrategy.getOrLoadRepository().getIgnorePatterns());
+        return Collections.unmodifiableSet(transactionStrategy.load().getIgnorePatterns());
     }
 
     @Override
     public void addIgnorePattern(String ignorePattern) {
         requireNonNull(ignorePattern);
         assert !ignorePattern.isEmpty();
-        final boolean elementAdded = transactionStrategy.getOrLoadRepository().getIgnorePatterns().add(ignorePattern);
+        final boolean elementAdded = transactionStrategy.load().getIgnorePatterns().add(ignorePattern);
         assert elementAdded;
     }
 
@@ -85,7 +85,7 @@ public class XmlSettingsDao implements SettingsDao {
     public void removeIgnorePattern(String ignorePattern) {
         requireNonNull(ignorePattern);
         assert !ignorePattern.isEmpty();
-        final boolean containedElement = transactionStrategy.getOrLoadRepository().getIgnorePatterns().remove(ignorePattern);
+        final boolean containedElement = transactionStrategy.load().getIgnorePatterns().remove(ignorePattern);
         assert containedElement;
     }
 
