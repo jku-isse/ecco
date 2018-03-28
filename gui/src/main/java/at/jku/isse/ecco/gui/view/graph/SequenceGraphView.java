@@ -14,7 +14,6 @@ import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -87,7 +86,7 @@ public class SequenceGraphView extends BorderPane {
 
 
 	private void traverseSequenceGraph(SequenceGraph.Node sgn, org.graphstream.graph.Node parent, String currentPath, Set<Artifact<?>> nodeSet) {
-		for (Map.Entry<? extends Artifact<?>, ? extends SequenceGraph.Node> entry : sgn.getChildren().entrySet()) {
+		for (SequenceGraph.Transition entry : sgn.getChildren()) {
 			Set<Artifact<?>> newNodeSet = new HashSet<>(nodeSet);
 			newNodeSet.add(entry.getKey());
 
@@ -104,7 +103,6 @@ public class SequenceGraphView extends BorderPane {
 				this.traverseSequenceGraph(entry.getValue(), child, newPath, newNodeSet);
 			}
 		}
-
 
 	}
 

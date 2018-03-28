@@ -1,11 +1,13 @@
 package at.jku.isse.ecco.storage.perst.sg;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.storage.perst.artifact.PerstArtifact;
 import org.garret.perst.Persistent;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collection;
 
 public class PerstSequenceGraphNode extends Persistent implements SequenceGraph.Node, SequenceGraph.Node.Op {
 
@@ -15,12 +17,14 @@ public class PerstSequenceGraphNode extends Persistent implements SequenceGraph.
 
 	public PerstSequenceGraphNode(boolean pol) {
 		this.pol = pol;
+		this.children = new ArrayList<>();
 	}
 
 
-	private HashMap<Artifact.Op<?>, SequenceGraph.Node.Op> children = new HashMap<>(); // maybe use linked hash map?
+	private Collection<SequenceGraph.Transition.Op> children;
 
 	private boolean pol;
+
 
 	@Override
 	public boolean getPol() {
@@ -33,7 +37,17 @@ public class PerstSequenceGraphNode extends Persistent implements SequenceGraph.
 	}
 
 	@Override
-	public Map<Artifact.Op<?>, SequenceGraph.Node.Op> getChildren() {
+	public SequenceGraph.Transition.Op addTransition(Artifact.Op<?> key, Op value) {
+		if (!(key instanceof PerstArtifact) || !(value instanceof PerstSequenceGraphNode))
+			throw new EccoException("Only perst types can be added to perst types.");
+
+		PerstSequenceGraphTransition perstSequenceGraphTransition = new PerstSequenceGraphTransition((PerstArtifact) key, (PerstSequenceGraphNode) value);
+		this.children.add(perstSequenceGraphTransition);
+		return perstSequenceGraphTransition;
+	}
+
+	@Override
+	public Collection<SequenceGraph.Transition.Op> getChildren() {
 		return this.children;
 	}
 

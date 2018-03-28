@@ -6,7 +6,6 @@ import at.jku.isse.ecco.dao.Persistable;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Public sequence graph interface.
@@ -70,14 +69,32 @@ public interface SequenceGraph extends Persistable {
 	 * Sequence graph node.
 	 */
 	public interface Node extends Persistable {
-		public Map<? extends Artifact.Op<?>, ? extends Node> getChildren();
+		//public Map<? extends Artifact.Op<?>, ? extends Node> getChildren();
+		public Collection<? extends SequenceGraph.Transition> getChildren();
 
 		public interface Op extends Node {
-			public Map<Artifact.Op<?>, Op> getChildren();
+			@Override
+			public Collection<SequenceGraph.Transition.Op> getChildren();
 
 			public boolean getPol();
 
 			public void setPol(boolean pol);
+
+			public Transition.Op addTransition(Artifact.Op<?> key, SequenceGraph.Node.Op value);
+		}
+	}
+
+	public interface Transition extends Persistable {
+		public Artifact<?> getKey();
+
+		public SequenceGraph.Node getValue();
+
+		public interface Op extends Transition {
+			@Override
+			public Artifact.Op<?> getKey();
+
+			@Override
+			public SequenceGraph.Node.Op getValue();
 		}
 	}
 

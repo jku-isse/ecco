@@ -3,7 +3,10 @@ package at.jku.isse.ecco.composition;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -64,13 +67,13 @@ public class DefaultOrderSelector implements OrderSelector {
 		if (sgn.getChildren().isEmpty())
 			return false;
 
-		Map.Entry<? extends Artifact.Op<?>, ? extends SequenceGraph.Node> entry = sgn.getChildren().entrySet().iterator().next();
+		SequenceGraph.Transition transition = sgn.getChildren().iterator().next();
 
 		at.jku.isse.ecco.tree.Node match = null;
 		Iterator<? extends at.jku.isse.ecco.tree.Node> iterator = unorderedChildren.iterator();
 		while (iterator.hasNext()) {
 			at.jku.isse.ecco.tree.Node next = iterator.next();
-			if (next.getArtifact().equals(entry.getKey())) {
+			if (next.getArtifact().equals(transition.getKey())) {
 				match = next;
 				iterator.remove();
 				break;
@@ -80,9 +83,9 @@ public class DefaultOrderSelector implements OrderSelector {
 			orderedChildren.add(match);
 
 			// check if we would have other order options
-			for (Artifact<?> key : sgn.getChildren().keySet()) {
+			for (SequenceGraph.Transition otherTransition : sgn.getChildren()) {
 				for (at.jku.isse.ecco.tree.Node node : unorderedChildren) {
-					if (node.getArtifact() != null && node.getArtifact().equals(key)) {
+					if (node.getArtifact() != null && node.getArtifact().equals(otherTransition.getKey())) {
 						if (match != node)
 							uncertainOrder = true;
 						break;
@@ -93,7 +96,7 @@ public class DefaultOrderSelector implements OrderSelector {
 			}
 		}
 
-		boolean childUncertainOrder = this.traverseSequenceGraph(entry.getValue(), unorderedChildren, orderedChildren);
+		boolean childUncertainOrder = this.traverseSequenceGraph(transition.getValue(), unorderedChildren, orderedChildren);
 		uncertainOrder = uncertainOrder || childUncertainOrder;
 
 		return uncertainOrder;

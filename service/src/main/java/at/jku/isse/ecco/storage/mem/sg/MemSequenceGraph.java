@@ -4,14 +4,10 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.sg.SequenceGraphOperator;
-import org.eclipse.collections.impl.factory.Maps;
-import org.eclipse.collections.impl.factory.Sets;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
@@ -24,16 +20,11 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
 	private int cur_seq_number;
 
-	private Map<Set<Artifact<?>>, Node> nodes;
-
 
 	public MemSequenceGraph() {
 		this.pol = true;
 		this.root = this.createSequenceGraphNode(this.pol);
 		this.cur_seq_number = 1;
-		//this.nodes.put(new HashSet<Artifact<?>>(), this.root);
-		this.nodes = Maps.mutable.empty();
-		this.nodes.put(Sets.mutable.empty(), this.root);
 	}
 
 
@@ -94,13 +85,7 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 	}
 
 
-	// operand
-
-	public Map<Set<Artifact<?>>, Node> getNodes() {
-		return this.nodes;
-	}
-
-
+	@Override
 	public int getCurrentSequenceNumber() {
 		return this.cur_seq_number;
 	}
@@ -110,6 +95,7 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 		this.cur_seq_number = sn;
 	}
 
+	@Override
 	public int nextSequenceNumber() throws EccoException {
 		if (this.cur_seq_number + 1 < -1)
 			throw new EccoException("WARNING: sequence number overflow!");
@@ -117,15 +103,18 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 	}
 
 
+	@Override
 	public boolean getPol() {
 		return this.pol;
 	}
 
+	@Override
 	public void setPol(boolean pol) {
 		this.pol = pol;
 	}
 
 
+	@Override
 	public Node.Op createSequenceGraphNode(boolean pol) {
 		return new MemSequenceGraphNode(pol);
 	}

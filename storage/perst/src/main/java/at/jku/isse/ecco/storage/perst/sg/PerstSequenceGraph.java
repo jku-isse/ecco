@@ -8,7 +8,6 @@ import org.garret.perst.Persistent;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 public class PerstSequenceGraph extends Persistent implements SequenceGraph, SequenceGraph.Op {
 
@@ -102,23 +101,6 @@ public class PerstSequenceGraph extends Persistent implements SequenceGraph, Seq
 			((PerstSequenceGraphNode) node).store();
 		}
 	}
-
-	// TODO: this is a bad implementation! every node is visited multiple times!
-	protected void collectNodes(Node node, Set<Node> nodeSet) {
-		//if (node instanceof PerstSequenceGraphNode) {
-		nodeSet.add(node);
-		for (Node child : ((PerstSequenceGraphNode) node).getChildren().values()) {
-			this.collectNodes(child, nodeSet);
-		}
-		//}
-	}
-
-
-	// operand
-
-//	public Map<Set<Artifact<?>>, SequenceGraphNode> getNodes() {
-//		return this.nodes;
-//	}
 
 
 	public int nextSequenceNumber() throws EccoException {
