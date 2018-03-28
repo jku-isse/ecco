@@ -13,13 +13,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Memory implementation of the {@link Artifact}.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public class MemArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
-
-	// fields
 
 	private DataType data;
 
@@ -34,17 +29,12 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	private boolean useReferencesInEquals;
 
 
-	// constructors
-
-	public MemArtifact() {
-		this(null);
-	}
-
 	public MemArtifact(DataType data) {
 		this(data, false);
 	}
 
 	public MemArtifact(DataType data, boolean ordered) {
+		checkNotNull(data);
 		this.data = data;
 		this.ordered = ordered;
 		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
