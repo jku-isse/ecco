@@ -40,7 +40,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private Collection<ArtifactReader<Path, Set<Node.Op>>> readers;
 
 	/**
-	 * @param readers The collection of readers to which should be dispatched.
+	 * @param entityFactory The entity factory used by this reader for creating nodes and artifacts.
+	 * @param readers       The collection of readers to which should be dispatched.
 	 */
 	@Inject
 	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node.Op>>> readers) {

@@ -119,7 +119,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	/**
 	 * Creates the service and tries to detect an existing repository automatically using {@link #detectRepository(Path path) detectRepository}. If no existing repository was found the base directory (directory from which files are committed and checked out) and repository directory (directory at which the repository data is stored) are set to their defaults:
-	 * <p>
+	 *
 	 * <br>Base Directory (baseDir) Default: current directory
 	 * <br>Repository Directory (repoDir) Default: .ecco
 	 */
@@ -861,9 +861,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				}
 			}
 
-			Configuration configuration = this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[featureRevisions.size()]));
+			Configuration configuration = this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
 
-			this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[featureRevisions.size()]));
+			this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
 
 			this.repositoryDao.store(repository);
 
@@ -878,30 +878,30 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	private Collection<FeatureRevision> parseFeatureRevisionsString(String featureVersionsString) {
-		if (featureVersionsString == null)
+	private Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
+		if (featureRevisionsString == null)
 			throw new EccoException("No feature revisions string provided.");
 
-		if (!featureVersionsString.matches("(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+)(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+))*)?"))
-			throw new EccoException("Invalid feature versions string provided.");
+		if (!featureRevisionsString.matches("(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+)(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))(\\.([a-zA-Z0-9_-])+))*)?"))
+			throw new EccoException("Invalid feature revisions string provided.");
 
 		try {
 			this.transactionStrategy.begin();
 
 			Collection<FeatureRevision> featureRevisions = new ArrayList<>();
 
-			if (featureVersionsString.isEmpty()) {
+			if (featureRevisionsString.isEmpty()) {
 				this.transactionStrategy.end();
 				return featureRevisions;
 			}
 
 			Repository.Op repository = this.repositoryDao.load();
 
-			String[] featureVersionStrings = featureVersionsString.split(",");
-			for (String featureVersionString : featureVersionStrings) {
-				featureVersionString = featureVersionString.trim();
+			String[] featureRevisionsStrings = featureRevisionsString.split(",");
+			for (String featureRevisionString : featureRevisionsStrings) {
+				featureRevisionString = featureRevisionString.trim();
 
-				String[] pair = featureVersionString.split("\\.");
+				String[] pair = featureRevisionString.split("\\.");
 				String featureName = pair[0];
 				String featureRevisionId = pair[1];
 
@@ -936,7 +936,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
 
-			throw new EccoException("Error parsing feature versions string: " + featureVersionsString, e);
+			throw new EccoException("Error parsing feature revisions string: " + featureRevisionsString, e);
 		}
 	}
 
@@ -1015,9 +1015,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						}
 						case "PULL": { // if pull, send data
 							// retrieve deselection
-							//Collection<FeatureVersion> deselected = (Collection<FeatureVersion>) ois.readObject();
-							String deselectedFeatureVersionsString = (String) ois.readObject();
-							Collection<FeatureRevision> deselected = this.parseFeatureRevisionsString(deselectedFeatureVersionsString);
+							//Collection<FeatureRevision> deselected = (Collection<FeatureRevision>) ois.readObject();
+							String deselectedFeatureRevisionsString = (String) ois.readObject();
+							Collection<FeatureRevision> deselected = this.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
 
 							// compute subset repository using mem entity factory
 							this.transactionStrategy.begin();
@@ -1108,6 +1108,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
+	@SuppressWarnings("unchecked")
 	public synchronized void fetch(String remoteName) {
 		this.checkInitialized();
 
@@ -1188,7 +1189,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.fork(hostname, port, "");
 	}
 
-	public synchronized void fork(String hostname, int port, String deselectedFeatureVersionsString) {
+	public synchronized void fork(String hostname, int port, String deselectedFeatureRevisionsString) {
 		if (this.isInitialized())
 			throw new EccoException("Service must not be initialized for fork operation.");
 		if (this.repositoryDirectoryExists())
@@ -1204,7 +1205,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				ObjectInputStream ois = new ObjectInputStream(progressInputStream);
 
 				oos.writeObject("PULL");
-				oos.writeObject(deselectedFeatureVersionsString);
+				oos.writeObject(deselectedFeatureRevisionsString);
 
 
 				int size = (Integer) ois.readObject();
@@ -1258,9 +1259,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * After the operation the repository is initialized and ready to use.
 	 * The fork operation is like the init operation in the sense that it creates a new repository at a given location.
 	 *
-	 * @param originRepositoryDir The directory of the repository from which to fork.
+	 * @param originRepositoryDir              The directory of the repository from which to fork.
+	 * @param deselectedFeatureRevisionsString A string enumerating the deselected feature revisions.
 	 */
-	public synchronized void fork(Path originRepositoryDir, String deselectedFeatureVersionsString) {
+	public synchronized void fork(Path originRepositoryDir, String deselectedFeatureRevisionsString) {
 		// check that this service has not yet been initialized and that no repository already exists,
 		if (this.isInitialized())
 			throw new EccoException("Service must not be initialized for fork operation.");
@@ -1281,7 +1283,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			originService.transactionStrategy.begin();
 
 			Repository.Op originRepository = originService.repositoryDao.load();
-			subsetOriginRepository = originRepository.subset(originService.parseFeatureRevisionsString(deselectedFeatureVersionsString), originRepository.getMaxOrder(), this.entityFactory);
+			subsetOriginRepository = originRepository.subset(originService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
 
 			originService.transactionStrategy.end();
 		} catch (Exception e) {
@@ -1320,8 +1322,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	/**
 	 * Pulls the changes from the parent repository to this repository.
+	 *
+	 * @param remoteName                       The name of the remote.
+	 * @param deselectedFeatureRevisionsString A string enumerating the deselected feature revisions.
 	 */
-	public synchronized void pull(String remoteName, String deselectedFeatureVersionsString) {
+	public synchronized void pull(String remoteName, String deselectedFeatureRevisionsString) {
 		this.checkInitialized();
 
 		try {
@@ -1343,7 +1348,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						ObjectInputStream ois = new ObjectInputStream(progressInputStream);
 
 						oos.writeObject("PULL");
-						oos.writeObject(deselectedFeatureVersionsString);
+						oos.writeObject(deselectedFeatureRevisionsString);
 
 
 						int size = (Integer) ois.readObject();
@@ -1383,7 +1388,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					parentService.transactionStrategy.begin();
 
 					Repository.Op parentRepository = parentService.repositoryDao.load();
-					subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureVersionsString), parentRepository.getMaxOrder(), this.entityFactory);
+					subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), parentRepository.getMaxOrder(), this.entityFactory);
 
 					parentService.transactionStrategy.end();
 				} catch (Exception e) {
@@ -1416,8 +1421,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	/**
 	 * Pushes the changes from this repository to its parent repository.
+	 *
+	 * @param remoteName                       The name of the remote.
+	 * @param deselectedFeatureRevisionsString A string enumerating the deselected feature revisions.
 	 */
-	public synchronized void push(String remoteName, String deselectedFeatureVersionsString) {
+	public synchronized void push(String remoteName, String deselectedFeatureRevisionsString) {
 		this.checkInitialized();
 
 		try {
@@ -1441,7 +1449,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						// compute subset repository using mem entity factory
 						this.transactionStrategy.begin();
 						Repository.Op repository = this.repositoryDao.load();
-						Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), this.memEntityFactory);
+						Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), this.memEntityFactory);
 						this.transactionStrategy.end();
 
 
@@ -1478,7 +1486,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 				// create subset repository
 				Repository.Op repository = this.repositoryDao.load();
-				Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureVersionsString), repository.getMaxOrder(), parentService.entityFactory);
+				Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), parentService.entityFactory);
 
 				// merge into parent repository
 				try {
@@ -1623,6 +1631,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * Checks out the implementation of the configuration (given as configuration string) into the base directory.
 	 *
 	 * @param configurationString The configuration string representing the configuration that shall be checked out.
+	 * @return The checkout object.
 	 */
 	public synchronized Checkout checkout(String configurationString) {
 		return this.checkout(this.parseConfigurationString(configurationString));
@@ -1632,6 +1641,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * Checks out the implementation of the given configuration into the base directory.
 	 *
 	 * @param configuration The configuration to be checked out.
+	 * @return The checkout object.
 	 */
 	public synchronized Checkout checkout(Configuration configuration) {
 		this.checkInitialized();
@@ -1725,7 +1735,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		checkNotNull(paths);
 		checkArgument(!paths.isEmpty());
 
-		Set<Node.Op> nodes = this.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[paths.size()]));
+		Set<Node.Op> nodes = this.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[0]));
 
 		RootNode.Op rootNode = this.entityFactory.createRootNode();
 		for (Node.Op node : nodes) {

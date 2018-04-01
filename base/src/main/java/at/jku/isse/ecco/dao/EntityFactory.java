@@ -31,14 +31,15 @@ public interface EntityFactory {
 	/**
 	 * Creates an empty commit.
 	 *
-	 * @return
+	 * @return The commit object.
 	 */
 	public Commit createCommit();
 
 	/**
 	 * Creates a configuration containing the given feature revisions.
 	 *
-	 * @return The configuration object.
+	 * @param featureRevisions An array of feature revisions.
+	 * @return A configuration containing the given feature revisions.
 	 */
 	public Configuration createConfiguration(FeatureRevision[] featureRevisions);
 
@@ -47,7 +48,8 @@ public interface EntityFactory {
 	 * Creates an artifact containing the given data.
 	 *
 	 * @param data The artifact data.
-	 * @return
+	 * @param <T>  The type of the artifact data object to be stored in the artifact.
+	 * @return An artifact containing the given data object.
 	 */
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data);
 
@@ -60,10 +62,10 @@ public interface EntityFactory {
 	public Association.Op createAssociation();
 
 	/**
-	 * Creates an association initialized with the given condition and artifact nodes.
+	 * Creates an association initialized with the given artifact nodes.
 	 *
-	 * @param nodes
-	 * @return
+	 * @param nodes A set of artifact nodes.
+	 * @return An association containing the given nodes.
 	 */
 	public Association.Op createAssociation(Set<Node.Op> nodes);
 

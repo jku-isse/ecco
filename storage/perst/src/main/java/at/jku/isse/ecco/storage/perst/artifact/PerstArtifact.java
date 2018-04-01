@@ -32,6 +32,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	private byte[] buffer = null;
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public DataType getData() {
 		if (this.data == null) {
 			if (this.buffer == null)

@@ -164,7 +164,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 			final LineChart<Number, Number> artifactsPerDepthChart = new LineChart<>(xAxis, yAxis);
 			artifactsPerDepthChart.setTitle("Artifacts per Depth");
 
-			this.artifactsPerDepthSeries = new XYChart.Series();
+			this.artifactsPerDepthSeries = new XYChart.Series<>();
 			this.artifactsPerDepthSeries.setName("Number of Artifacts at Depth");
 
 			artifactsPerDepthChart.getData().setAll(this.artifactsPerDepthSeries);
@@ -189,7 +189,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 			yAxis.setTickUnit(1.0);
 			yAxis.setMinorTickVisible(false);
 
-			this.modulesPerOrderSeries = new XYChart.Series();
+			this.modulesPerOrderSeries = new XYChart.Series<>();
 			this.modulesPerOrderSeries.setName("Number of Modules");
 
 			bc.getData().setAll(this.modulesPerOrderSeries);

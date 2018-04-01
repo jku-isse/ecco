@@ -93,17 +93,17 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 	/**
 	 * There are two types of artifacts: ordered and unordered.
-	 * <p>
+	 *
 	 * <i>Unordered</i> artifacts do not contain a sequence graph (see {@link at.jku.isse.ecco.sg.SequenceGraph}) and therefore its children (or more accurately the children of nodes containing the unordered artifact) will not be assigned a sequence number.
 	 * As a consequence of this, and because the children of an artifact must be unique, the child artifacts of an unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number (see {@link at.jku.isse.ecco.artifact.Artifact#equals(Object)}.
 	 * In other words, no two child artifacts can contain equal data objects.
-	 * <p>
+	 *
 	 * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.sg.SequenceGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
 	 * This process is called <i>sequencing</i> of an ordered artifact. During this process the children of the ordered artifact are assigned sequence numbers based on their order of occurrence.
 	 * This assigned sequence number is used as an additional means of identifying the child artifacts. This makes it possible to have child artifacts containing equal data objects but different sequence numbers.
 	 * This is for example necessary when the child artifacts represent statements in a programming language: statements are not unique, the same statement can appear multiple times in a sequence of statements, and the position of a statement in the sequence matters. This is what the sequence number is used for.
 	 *
-	 * @return
+	 * @return True if the node is ordered, false otherwise.
 	 */
 	public boolean isOrdered();
 
@@ -168,6 +168,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	 * These properties are volatile, i.e. they are not persisted!
 	 *
 	 * @param name of the property that should be retrieved
+	 * @param <T>  The type of the property.
 	 * @return An optional which contains the actual property or nothing.
 	 */
 	public default <T> Optional<T> getProperty(final String name) {
@@ -193,7 +194,9 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	 * <p>
 	 * These properties are volatile, i.e. they are not persisted!
 	 *
-	 * @param property that should be added
+	 * @param name     The name of the property.
+	 * @param property The object to be stored as a property.
+	 * @param <T>      The type of the property.
 	 */
 	public default <T> void putProperty(final String name, final T property) {
 		checkNotNull(name);
@@ -248,7 +251,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 		/**
 		 * Sets the sequence number of the artifact. This is used by the sequence graph.
 		 *
-		 * @param sequenceNumber
+		 * @param sequenceNumber The sequence number to assign to this artifact.
 		 */
 		public void setSequenceNumber(int sequenceNumber);
 

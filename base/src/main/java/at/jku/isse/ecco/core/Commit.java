@@ -10,6 +10,8 @@ public interface Commit extends Persistable {
 
 	/**
 	 * The identifier of the commit. This can be anything from an incrementing number to an SHA-1 hash, as long as it uniquely identifies the commit.
+	 *
+	 * @return The identifier of the commit.
 	 */
 	public int getId();
 

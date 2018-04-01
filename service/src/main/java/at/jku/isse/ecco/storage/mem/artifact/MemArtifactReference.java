@@ -27,6 +27,8 @@ public class MemArtifactReference implements ArtifactReference, ArtifactReferenc
 
 	/**
 	 * Constructs a new artifact reference with the given type.
+	 *
+	 * @param type The type (arbitrary string) of the artifact reference.
 	 */
 	public MemArtifactReference(final String type) {
 		this.type = type;

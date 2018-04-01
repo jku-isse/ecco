@@ -89,8 +89,8 @@ public interface Repository extends Persistable {
 		/**
 		 * Retrieves the module instance with given positive and negative features from the repository.
 		 *
-		 * @param pos
-		 * @param neg
+		 * @param pos Positive features of the module.
+		 * @param neg Negative features of the module.
 		 * @return The module or null if it does not exist.
 		 */
 		public Module getModule(Feature[] pos, Feature[] neg);
@@ -99,8 +99,8 @@ public interface Repository extends Persistable {
 		 * Checks if the given module already exists and throws an exception if it does.
 		 * Otherwise the new module is added to the repository.
 		 *
-		 * @param pos
-		 * @param neg
+		 * @param pos Positive features of the module.
+		 * @param neg Negative features of the module.
 		 * @return The module instance that was added to the repository.
 		 */
 		public Module addModule(Feature[] pos, Feature[] neg);

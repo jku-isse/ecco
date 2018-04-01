@@ -116,7 +116,7 @@ public interface Association extends Persistable {
 		/**
 		 * Adds another association's observations to this association.
 		 *
-		 * @param other
+		 * @param other The other association whose observations are to be added to this association's observations.
 		 */
 		public default void add(Association.Op other) {
 			this.getCounter().add(other.getCounter());

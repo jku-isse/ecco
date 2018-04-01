@@ -38,10 +38,9 @@ public class Trees {
 	 * @param left  The left (original) node.
 	 * @param right The right (new) node.
 	 * @return The created intersection node.
-	 * @throws EccoException
 	 */
 	//public static <T extends Node.Op> T slice(T left, T right) throws EccoException {
-	public static Node.Op slice(Node.Op left, Node.Op right) throws EccoException {
+	public static Node.Op slice(Node.Op left, Node.Op right) {
 		if (!left.equals(right))
 			throw new EccoException("Intersection of non-equal nodes is not allowed!");
 
@@ -398,7 +397,7 @@ public class Trees {
 	 *
 	 * @param left  Root of the first tree.
 	 * @param right Root of the second tree.
-	 * @return
+	 * @return True if the two given trees are equal, false otherwise.
 	 */
 	public static boolean equals(Node left, Node right) {
 		Iterator<? extends Node> leftChildrenIterator = left.getChildren().iterator();

@@ -140,6 +140,8 @@ public class SequenceGraphOperator {
 
 	/**
 	 * Creates a copy of the sequence graph. Uses the same artifacts.
+	 *
+	 * @param sg The other sequence graph to copy into this sequence graph.
 	 */
 	public void copy(SequenceGraph sg) {
 		if (!this.sequenceGraph.getRoot().getChildren().isEmpty())
@@ -662,11 +664,10 @@ public class SequenceGraphOperator {
 	 * Does not modify sequence graph in any way.
 	 * Assigns sequence numbers to artifacts that could be matched during alignment.
 	 *
-	 * @param artifacts
-	 * @return
-	 * @throws EccoException
+	 * @param artifacts The list of artifacts to be aligned to this sequence graph.
+	 * @return The result of the alignment in the form of an array of assigned sequence numbers.
 	 */
-	public int[] align(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
+	public int[] align(List<? extends Artifact.Op<?>> artifacts) {
 		int[] alignment_array = new int[artifacts.size()]; // +1? maybe remove node_right_index and use instead alignment[0]?
 
 		this.global_best_cost = Integer.MAX_VALUE;

@@ -71,8 +71,8 @@ public interface Condition extends Persistable {
 	 * Checks if this condition implies other condition.
 	 * This means every module in this must be implied by at least one module in other.
 	 *
-	 * @param other
-	 * @return
+	 * @param other The other condition.
+	 * @return True if this condition implies the other condition, false otherwise.
 	 */
 	public default boolean implies(Condition other) {
 		for (Map.Entry<Module, Collection<ModuleRevision>> otherEntry : other.getModules().entrySet()) {

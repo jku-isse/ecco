@@ -87,8 +87,8 @@ public interface ModuleRevision extends Persistable {
 	/**
 	 * Checks if this module revision holds on the given configuration.
 	 *
-	 * @param configuration
-	 * @return
+	 * @param configuration The configuration to check against.
+	 * @return True if this module is contained (i.e. holds) in the given configuration.
 	 */
 	public default boolean holds(Configuration configuration) {
 		// check if all positive features revisiosn of the module are contained in the configuration

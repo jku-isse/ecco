@@ -87,9 +87,9 @@ public class EccoUtil {
 	/**
 	 * Creates a deep copy of a tree using the given entity factory.
 	 *
-	 * @param node
-	 * @param entityFactory
-	 * @return
+	 * @param node          The tree to copy.
+	 * @param entityFactory The entity factory to use for creating tree nodes and other necessary objects for the copied tree.
+	 * @return The copied tree.
 	 */
 	public static Node.Op deepCopyTree(Node.Op node, EntityFactory entityFactory) {
 		Node.Op node2 = EccoUtil.deepCopyTreeRec(node, entityFactory);

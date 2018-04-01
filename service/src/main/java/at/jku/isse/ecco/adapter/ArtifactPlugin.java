@@ -11,7 +11,8 @@ public abstract class ArtifactPlugin {
 	/**
 	 * Must always return the plugin class name:
 	 * ArtifactPlugin.class.getName().
-	 * @return
+	 *
+	 * @return The plugin id string.
 	 */
 	public abstract String getPluginId();
 
@@ -24,13 +25,13 @@ public abstract class ArtifactPlugin {
 	public static ArtifactPlugin[] getArtifactPlugins() {
 		final ServiceLoader<ArtifactPlugin> loader = ServiceLoader.load(ArtifactPlugin.class);
 
-		List<ArtifactPlugin> plugins = new ArrayList<ArtifactPlugin>();
+		List<ArtifactPlugin> plugins = new ArrayList<>();
 
 		for (final ArtifactPlugin plugin : loader) {
 			plugins.add(plugin);
 		}
 
-		return plugins.toArray(new ArtifactPlugin[plugins.size()]);
+		return plugins.toArray(new ArtifactPlugin[0]);
 	}
 
 }
