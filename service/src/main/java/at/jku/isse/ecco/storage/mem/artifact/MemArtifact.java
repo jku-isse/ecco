@@ -6,8 +6,12 @@ import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.sg.SequenceGraph;
 import at.jku.isse.ecco.storage.mem.sg.MemSequenceGraph;
 import at.jku.isse.ecco.tree.Node;
+import org.eclipse.collections.impl.factory.Maps;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -231,7 +235,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	@Override
 	public Map<String, Object> getProperties() {
 		if (this.properties == null)
-			this.properties = new HashMap<>();
+			this.properties = Maps.mutable.empty();
 		return this.properties;
 	}
 

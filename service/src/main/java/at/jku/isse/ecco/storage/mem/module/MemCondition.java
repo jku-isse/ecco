@@ -3,9 +3,9 @@ package at.jku.isse.ecco.storage.mem.module;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
+import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -17,7 +17,7 @@ public class MemCondition implements Condition {
 
 	public MemCondition() {
 		this.type = TYPE.AND;
-		this.moduleToRevisionsMap = new HashMap<>();
+		this.moduleToRevisionsMap = Maps.mutable.empty();
 	}
 
 

@@ -3,9 +3,9 @@ package at.jku.isse.ecco.composition;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
+import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +32,7 @@ public class LazyCompositionNode implements Node {
 	private final List<Node> children = new ArrayList<>();
 
 
-	private transient Map<String, Object> properties = new HashMap<>();
+	private transient Map<String, Object> properties;
 
 
 	public LazyCompositionNode() {
@@ -151,6 +151,8 @@ public class LazyCompositionNode implements Node {
 
 	@Override
 	public Map<String, Object> getProperties() {
+		if (this.properties == null)
+			this.properties = Maps.mutable.empty();
 		return this.properties;
 	}
 

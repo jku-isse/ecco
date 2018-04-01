@@ -4,9 +4,9 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
+import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -151,7 +151,7 @@ public class MemNode implements Node, Node.Op {
 	@Override
 	public Map<String, Object> getProperties() {
 		if (this.properties == null)
-			this.properties = new HashMap<>();
+			this.properties = Maps.mutable.empty();
 		return this.properties;
 	}
 

@@ -429,7 +429,7 @@ public class EccoCli implements EccoListener {
 	public void showDependencyGraph() {
 		this.initRepo();
 
-		new DependencyGraph(this.eccoService.getRepository().getAssociations()).getGMLString(); // TODO: do this via the repository api
+		System.out.println(new DependencyGraph(this.eccoService.getRepository().getAssociations()).getGMLString()); // TODO: do this via the repository api
 
 		this.eccoService.close();
 	}

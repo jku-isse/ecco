@@ -3,6 +3,7 @@ package at.jku.isse.ecco.core;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.tree.Node;
+import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.*;
 
@@ -29,23 +30,28 @@ public class DependencyGraph {
 	}
 
 
-	private Collection<DependencyImpl> dependencies = new ArrayList<>();
-	private Collection<DependencyImpl> unresolvedDependencies = new ArrayList<>();
+	private Collection<DependencyImpl> dependencies;
+	private Collection<DependencyImpl> unresolvedDependencies;
 
-	private Map<Association, Map<Association, DependencyImpl>> dependencyMap = new HashMap<>();
+	private Map<Association, Map<Association, DependencyImpl>> dependencyMap;
 
-	private Collection<Association> associations = new ArrayList<>();
+	private Collection<Association> associations;
 
 
 	public DependencyGraph() {
-
+		this.dependencies = new ArrayList<>();
+		this.unresolvedDependencies = new ArrayList<>();
+		this.dependencyMap = Maps.mutable.empty();
+		this.associations = new ArrayList<>();
 	}
 
 	public DependencyGraph(Collection<? extends Association> associations) {
+		this();
 		this.compute(associations);
 	}
 
 	public DependencyGraph(Collection<? extends Association> associations, ReferencesResolveMode referencesResolveMode) {
+		this();
 		this.compute(associations, referencesResolveMode);
 	}
 
@@ -86,11 +92,7 @@ public class DependencyGraph {
 							this.associations.add(toA);
 						}
 						if (fromA != toA) {
-							Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.get(fromA);
-							if (fromDependencyMap == null) {
-								fromDependencyMap = new HashMap<>();
-								this.dependencyMap.put(fromA, fromDependencyMap);
-							}
+							Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.computeIfAbsent(fromA, k -> new HashMap<>());
 							DependencyImpl dependency = fromDependencyMap.get(toA);
 							if (dependency == null) {
 								dependency = new DependencyImpl();
@@ -120,11 +122,7 @@ public class DependencyGraph {
 
 				if (parentA != null) {
 					if (fromA != parentA) {
-						Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.get(fromA);
-						if (fromDependencyMap == null) {
-							fromDependencyMap = new HashMap<>();
-							this.dependencyMap.put(fromA, fromDependencyMap);
-						}
+						Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.computeIfAbsent(fromA, k -> new HashMap<>());
 						DependencyImpl dependency = fromDependencyMap.get(parentA);
 						if (dependency == null) {
 							dependency = new DependencyImpl();
@@ -178,24 +176,24 @@ public class DependencyGraph {
 
 
 	public String getGMLString() {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 
 		sb.append("graph [\n");
 		sb.append("\tdirected 1\n");
 
 		for (Association association : this.associations) {
 			sb.append("\tnode [\n");
-			sb.append("\t\tid " + association.getId() + "\n");
-			sb.append("\t\tsize " + association.getRootNode().countArtifacts() + "\n");
+			sb.append("\t\tid ").append(association.getId()).append("\n");
+			sb.append("\t\tsize ").append(association.getRootNode().countArtifacts()).append("\n");
 			sb.append("\t]\n");
 		}
 
 		for (Dependency dependency : this.dependencies) {
 			sb.append("\tedge [\n");
-			sb.append("\t\tsource " + dependency.getFrom().getId() + "\n");
-			sb.append("\t\ttarget " + dependency.getTo().getId() + "\n");
-			sb.append("\t\tlabel " + dependency.getWeight() + "\n");
-			sb.append("\t\tweight " + dependency.getWeight() + "\n");
+			sb.append("\t\tsource ").append(dependency.getFrom().getId()).append("\n");
+			sb.append("\t\ttarget ").append(dependency.getTo().getId()).append("\n");
+			sb.append("\t\tlabel ").append(dependency.getWeight()).append("\n");
+			sb.append("\t\tweight ").append(dependency.getWeight()).append("\n");
 			sb.append("\t]\n");
 		}
 
