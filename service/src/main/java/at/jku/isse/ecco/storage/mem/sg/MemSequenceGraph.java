@@ -1,18 +1,9 @@
 package at.jku.isse.ecco.storage.mem.sg;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
-import at.jku.isse.ecco.sg.SequenceGraphOperator;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
 
 public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
-
-	private transient SequenceGraphOperator operator = new SequenceGraphOperator(this);
-
 
 	private boolean pol;
 
@@ -20,68 +11,20 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
 	private int cur_seq_number;
 
+	private int global_best_cost;
+
 
 	public MemSequenceGraph() {
 		this.pol = true;
 		this.root = this.createSequenceGraphNode(this.pol);
 		this.cur_seq_number = 1;
-	}
-
-
-	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
-		in.defaultReadObject();
-		this.operator = new SequenceGraphOperator(this);
+		this.global_best_cost = Integer.MAX_VALUE;
 	}
 
 
 	@Override
 	public Node.Op getRoot() {
 		return this.root;
-	}
-
-	@Override
-	public void sequence(at.jku.isse.ecco.tree.Node.Op node) throws EccoException {
-		this.operator.sequence(node);
-	}
-
-	@Override
-	public void sequenceNodes(List<? extends at.jku.isse.ecco.tree.Node.Op> nodes) throws EccoException {
-		this.operator.sequenceNodes(nodes);
-	}
-
-	@Override
-	public void sequenceArtifacts(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
-		this.operator.sequenceArtifacts(artifacts);
-	}
-
-	@Override
-	public int[] align(List<? extends Artifact.Op<?>> artifacts) throws EccoException {
-		return this.operator.align(artifacts);
-	}
-
-	@Override
-	public void sequence(SequenceGraph.Op other) {
-		this.operator.sequence(other);
-	}
-
-	@Override
-	public void updateArtifactReferences() {
-		this.operator.updateArtifactReferences();
-	}
-
-	@Override
-	public void copy(SequenceGraph.Op other) {
-		this.operator.copy(other);
-	}
-
-	@Override
-	public Collection<? extends Artifact.Op<?>> getSymbols() {
-		return this.operator.collectSymbols();
-	}
-
-	@Override
-	public void trim(Collection<? extends Artifact.Op<?>> symbols) {
-		this.operator.trim(symbols);
 	}
 
 
@@ -96,7 +39,7 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 	}
 
 	@Override
-	public int nextSequenceNumber() throws EccoException {
+	public int nextSequenceNumber() {
 		if (this.cur_seq_number + 1 < -1)
 			throw new EccoException("WARNING: sequence number overflow!");
 		return this.cur_seq_number++;
@@ -111,6 +54,17 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 	@Override
 	public void setPol(boolean pol) {
 		this.pol = pol;
+	}
+
+
+	@Override
+	public int getGlobalBestCost() {
+		return this.global_best_cost;
+	}
+
+	@Override
+	public void setGlobalBestCost(int cost) {
+		this.global_best_cost = cost;
 	}
 
 

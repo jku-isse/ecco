@@ -63,7 +63,7 @@ public class EccoUtil {
 
 		if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
 			// get all symbols from sequence graph
-			Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().getSymbols();
+			Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().collectSymbols();
 
 			// remove symbols that are not contained in the given associations
 			Iterator<? extends Artifact.Op<?>> symbolsIterator = symbols.iterator();

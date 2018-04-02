@@ -1108,7 +1108,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	@SuppressWarnings("unchecked")
 	public synchronized void fetch(String remoteName) {
 		this.checkInitialized();
 
@@ -1139,6 +1138,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						progressInputStream.addListener(this);
 
 						// retrieve features
+						@SuppressWarnings("unchecked")
 						Collection<Feature> features = (Collection<Feature>) ois.readObject();
 
 						progressInputStream.removeListener(this);
