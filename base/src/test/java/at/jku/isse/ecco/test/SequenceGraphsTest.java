@@ -28,11 +28,11 @@ public class SequenceGraphsTest {
 
 
 		// align sequence to sg
-		sg1.sequenceArtifacts(artifacts1);
-		sg1.sequenceArtifacts(artifacts3);
+		sg1.sequence(artifacts1);
+		sg1.sequence(artifacts3);
 
-		sg2.sequenceArtifacts(artifacts2);
-		sg2.sequenceArtifacts(artifacts4);
+		sg2.sequence(artifacts2);
+		sg2.sequence(artifacts4);
 
 
 		// align sg to sg

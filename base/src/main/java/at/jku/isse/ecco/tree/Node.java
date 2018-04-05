@@ -8,6 +8,8 @@ import at.jku.isse.ecco.util.Trees;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -246,6 +248,16 @@ public interface Node extends Persistable {
 		 * @return The new node instance.
 		 */
 		public Op createNode();
+
+
+		/**
+		 * Returns the list of artifacts of the child nodes of this node.
+		 *
+		 * @return The list of artifacts.
+		 */
+		public default List<? extends Artifact.Op<?>> getChildrenArtifacts() {
+			return this.getChildren().stream().map((Function<at.jku.isse.ecco.tree.Node.Op, ? extends Artifact.Op<?>>) at.jku.isse.ecco.tree.Node.Op::getArtifact).collect(Collectors.toList());
+		}
 
 
 		/**
