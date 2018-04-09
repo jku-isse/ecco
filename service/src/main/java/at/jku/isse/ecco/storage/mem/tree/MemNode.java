@@ -14,6 +14,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemNode implements Node, Node.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private boolean unique = true;
 
 	private final List<Op> children = new ArrayList<>();

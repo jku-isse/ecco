@@ -10,6 +10,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class MemFeatureRevision implements FeatureRevision {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private Feature feature;
 	private String id;
 	private String description;

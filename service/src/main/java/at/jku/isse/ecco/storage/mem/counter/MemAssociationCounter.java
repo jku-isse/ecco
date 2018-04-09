@@ -15,6 +15,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemAssociationCounter implements AssociationCounter {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private Association association;
 	private int count;
 	private Collection<MemModuleCounter> children;

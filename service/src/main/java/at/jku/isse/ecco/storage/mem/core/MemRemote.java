@@ -8,6 +8,9 @@ import java.util.Collection;
 
 public class MemRemote implements Remote {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private String name;
 	private String address;
 	private Type type;

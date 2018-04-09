@@ -11,6 +11,9 @@ import java.util.Objects;
 
 public class MemCondition implements Condition {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private TYPE type;
 	private Map<Module, Collection<ModuleRevision>> moduleToRevisionsMap;
 

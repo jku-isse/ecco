@@ -8,6 +8,9 @@ import at.jku.isse.ecco.feature.Configuration;
  */
 public class MemCommit implements Commit {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private int id;
 	private String committer;
 	private Configuration configuration;

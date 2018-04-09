@@ -12,6 +12,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class MemConfiguration implements Configuration {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private final FeatureRevision[] featureRevisions;
 
 

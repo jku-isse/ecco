@@ -5,11 +5,11 @@ import at.jku.isse.ecco.feature.Configuration;
 
 /**
  * Memory implementation of {@link Variant}.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public class MemVariant implements Variant {
+
+	public static final long serialVersionUID = 1L;
+
 
 	private String name;
 	private String description;

@@ -5,6 +5,9 @@ import at.jku.isse.ecco.tree.RootNode;
 
 public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private Association containingAssociation;
 
 

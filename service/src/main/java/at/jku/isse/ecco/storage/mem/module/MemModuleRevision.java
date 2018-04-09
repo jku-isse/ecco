@@ -13,6 +13,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class MemModuleRevision implements ModuleRevision {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private FeatureRevision[] pos;
 	private Feature[] neg;
 	private int count;

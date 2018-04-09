@@ -12,6 +12,9 @@ import at.jku.isse.ecco.tree.RootNode;
  */
 public class MemAssociation implements Association, Association.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private String id;
 	private RootNode.Op artifactTreeRoot;
 	private AssociationCounter associationCounter;

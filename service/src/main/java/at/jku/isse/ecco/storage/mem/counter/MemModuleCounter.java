@@ -16,6 +16,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemModuleCounter implements ModuleCounter {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private MemModule module;
 	private int count;
 	private Collection<MemModuleRevisionCounter> children;

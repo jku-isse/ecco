@@ -5,6 +5,9 @@ import at.jku.isse.ecco.sg.SequenceGraph;
 
 public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private boolean pol;
 
 	private Node.Op root;

@@ -13,6 +13,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class MemArtifactReference implements ArtifactReference, ArtifactReference.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private final String type;
 
 	private Artifact.Op<?> source;

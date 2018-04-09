@@ -17,6 +17,9 @@ import java.util.*;
  */
 public final class MemRepository implements Repository, Repository.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private Map<String, Feature> features;
 	private Collection<Association.Op> associations;
 	private List<Map<Module, Module>> modules;

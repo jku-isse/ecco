@@ -16,6 +16,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class MemModule implements Module {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private Feature[] pos;
 	private Feature[] neg;
 	private int count;

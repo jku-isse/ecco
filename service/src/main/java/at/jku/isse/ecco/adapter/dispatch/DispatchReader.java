@@ -109,13 +109,16 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			// create node for file itself
 			if (Files.isDirectory(base.resolve(path))) {
-				Path relative = base.relativize(path);
+				//Path relative = base.relativize(path);
+				Path relative = path;
 				Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative));
 				Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 				directoryNodes.put(relative, directoryNode);
 				parentNode.addChild(directoryNode);
 			} else {
 				ArtifactReader<Path, Set<Node.Op>> reader = this.getReaderForFile(base, path);
+				if (reader == null)
+					throw new EccoException("No reader found for file " + path);
 				Set<Node.Op> nodes = reader.read(base, new Path[]{path});
 				if (!nodes.isEmpty()) {
 					for (Node.Op node : nodes) {

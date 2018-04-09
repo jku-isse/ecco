@@ -20,6 +20,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class MemArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private DataType data;
 
 	private boolean atomic;

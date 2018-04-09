@@ -5,6 +5,9 @@ import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 
 public class MemSequenceGraphTransition implements SequenceGraph.Transition, SequenceGraph.Transition.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private MemArtifact<?> key;
 	private MemSequenceGraphNode value;
 

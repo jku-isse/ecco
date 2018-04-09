@@ -10,6 +10,9 @@ import java.util.Collection;
 
 public class MemSequenceGraphNode implements SequenceGraph.Node, SequenceGraph.Node.Op {
 
+	public static final long serialVersionUID = 1L;
+
+
 	//private Map<Artifact.Op<?>, SequenceGraph.Node.Op> children;
 	private Collection<SequenceGraph.Transition.Op> children;
 

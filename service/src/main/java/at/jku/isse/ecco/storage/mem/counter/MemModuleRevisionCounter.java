@@ -7,6 +7,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemModuleRevisionCounter implements ModuleRevisionCounter {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private MemModuleRevision moduleRevision;
 	private int count;
 

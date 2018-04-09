@@ -14,6 +14,9 @@ import java.util.Set;
 
 public class Database implements Serializable {
 
+	public static final long serialVersionUID = 1L;
+
+
 	private final Repository.Op repository;
 
 	private final Map<Integer, MemCommit> commitIndex;
