@@ -1728,7 +1728,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * This can be used to map current files to the contents in the repository.
 	 * In case the respective readers attach additional information to the artifacts below file level in the form of properties (e.g. line and column numbers in the case of source code) this can be used to highlight lower level artifacts (e.g. statements in the source code) based on the features they belongs to.
 	 *
-	 * @param paths The collection of paths (files or directories) to map to the repository.
+	 * @param paths The collection of paths (files or directories, relative to the base directory) to map to the repository.
 	 * @return The root node of the mapped artifact tree.
 	 */
 	public synchronized RootNode map(Collection<Path> paths) {
