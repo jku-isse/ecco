@@ -69,7 +69,7 @@ public interface SequenceGraph extends Persistable {
 
 			// align other sequence graph to this sequence graph
 			this.setGlobalBestCost(Integer.MAX_VALUE);
-			this.alignSequenceGraphRec(this.getRoot(), other.getRoot(), 0);
+			this.alignSequenceGraphRec(this.getRoot(), other.getRoot(), 0, Integer.MAX_VALUE);
 
 			// assign new sequence numbers to symbols (artifacts) in other sequence graph that do not yet have one (i.e. a sequence number of NOT_MATCHED)
 			int num_symbols = this.getCurrentSequenceNumber();
@@ -83,7 +83,10 @@ public interface SequenceGraph extends Persistable {
 					shared_symbols.add(symbol);
 				}
 			}
-			this.invertPol();
+
+			//this.invertPol();
+			this.setPol(true);
+			this.getRoot().setPol(false);
 			Map<Set<Artifact.Op<?>>, Node.Op> nodes = new HashMap<>();
 			nodes.put(new HashSet<>(), this.getRoot());
 			this.updateSequenceGraphRec(this.getRoot(), other.getRoot(), new HashSet<>(), nodes, shared_symbols);
@@ -120,36 +123,32 @@ public interface SequenceGraph extends Persistable {
 		 * @return The final cost.
 		 */
 		//private
-		default int alignSequenceGraphRec(SequenceGraph.Node.Op left, SequenceGraph.Node.Op right, int cost) {
+		default int alignSequenceGraphRec(SequenceGraph.Node.Op left, SequenceGraph.Node.Op right, int cost, int global_best_cost) {
 			// BASE CASES
 
 			// base case 1: abort and don't update alignment if we already had a better or equal solution
-			if (cost >= this.getGlobalBestCost()) {
+			if (cost >= global_best_cost) {
 				return cost;
 			}
 
 			// base case 2: both sequence graphs have no more nodes
 			if (left.getChildren().isEmpty() && right.getChildren().isEmpty()) {
-				// update current best cost (we would not have gotten here if cost > global_best_cost)
-				this.setGlobalBestCost(cost);
 				return cost;
 			}
 
 			// base case 3: right has no more nodes, left does
 			if (!left.getChildren().isEmpty() && right.getChildren().isEmpty()) {
-				// update current best cost (we would not have gotten here if cost > global_best_cost)
-				this.setGlobalBestCost(cost);
 				return cost;
 			}
 
 			// RECURSION CASES
 
-			int local_best_cost = this.getGlobalBestCost();
+			int local_best_cost = global_best_cost;
 
 			// recursion case 1: left has no more nodes, right does
 			if (left.getChildren().isEmpty() && !right.getChildren().isEmpty()) {
 				for (SequenceGraph.Transition.Op rightChildEntry : right.getChildren()) {
-					int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost + 1);
+					int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost + 1, local_best_cost);
 
 					if (temp_cost < local_best_cost) { // part of currently best alignment
 						local_best_cost = temp_cost;
@@ -159,16 +158,6 @@ public interface SequenceGraph extends Persistable {
 					}
 				}
 			}
-
-//			// recursion case 2: right has no more nodes, left does
-//			else if (right.getChildren().isEmpty() && !left.getChildren().isEmpty()) {
-//				for (SequenceGraph.Transition.Op leftChildEntry : left.getChildren()) {
-//					int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost);
-//
-//					if (temp_cost < local_best_cost)
-//						local_best_cost = temp_cost;
-//				}
-//			}
 
 			// recursion case 3
 			else {
@@ -180,7 +169,7 @@ public interface SequenceGraph extends Persistable {
 					for (SequenceGraph.Transition.Op rightChildEntry : right.getChildren()) {
 
 						if (leftChildEntry.getKey().equals(rightChildEntry.getKey())) { // we found a match -> pursue it
-							int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), rightChildEntry.getValue(), cost); // do not increment cost as it was a match
+							int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), rightChildEntry.getValue(), cost, local_best_cost); // do not increment cost as it was a match
 
 							found_match = true;
 
@@ -209,7 +198,7 @@ public interface SequenceGraph extends Persistable {
 				if (!found_match) { // only skip if there was no match (match is always better than skip)
 					// case 2: skip left
 					for (SequenceGraph.Transition.Op leftChildEntry : left.getChildren()) {
-						int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost); // do not increase cost when skipping left as we do not need to assign a new sequence number
+						int temp_cost = this.alignSequenceGraphRec(leftChildEntry.getValue(), right, cost, local_best_cost); // do not increase cost when skipping left as we do not need to assign a new sequence number
 
 						if (temp_cost < local_best_cost)
 							local_best_cost = temp_cost;
@@ -217,7 +206,7 @@ public interface SequenceGraph extends Persistable {
 
 					// case 3: skip right
 					for (SequenceGraph.Transition.Op rightChildEntry : right.getChildren()) {
-						int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost + 1); // increase cost when skipping right because we need to assign a new sequence number
+						int temp_cost = this.alignSequenceGraphRec(left, rightChildEntry.getValue(), cost + 1, local_best_cost); // increase cost when skipping right because we need to assign a new sequence number
 
 						if (temp_cost < local_best_cost) { // part of currently best alignment
 							local_best_cost = temp_cost;
@@ -235,6 +224,7 @@ public interface SequenceGraph extends Persistable {
 
 		/**
 		 * This updates the left sequence graph by merging the aligned right sequence graph into it.
+		 * Actually it rebuilds the left sequence graph, except for the root node.
 		 *
 		 * @param left           The left node.
 		 * @param right          The right node.
@@ -248,16 +238,16 @@ public interface SequenceGraph extends Persistable {
 			// get current graph node
 			SequenceGraph.Node.Op sgn = nodes.get(path);
 			if (sgn == null) {
-				sgn = this.createSequenceGraphNode(!this.getPol());
+				sgn = this.createSequenceGraphNode(false);
 				nodes.put(path, sgn);
 			}
 
 			// base case: node has already been visited
-			if (sgn.getPol() == this.getPol())
+			if (sgn.getPol())
 				return sgn;
 
 			// set node to visited
-			sgn.setPol(this.getPol());
+			sgn.setPol(true);
 
 			Map<Artifact.Op<?>, SequenceGraph.Node.Op> new_children = new HashMap<>();
 
@@ -283,7 +273,7 @@ public interface SequenceGraph extends Persistable {
 				}
 			}
 
-			// if shared symbol -> cut it if onesided or take it when on both sides
+			// if shared symbol -> cut it if one-sided or take it when on both sides
 			Iterator<SequenceGraph.Transition.Op> it = left.getChildren().iterator();
 			while (it.hasNext()) {
 				SequenceGraph.Transition.Op leftEntry = it.next();
@@ -354,7 +344,7 @@ public interface SequenceGraph extends Persistable {
 			int[] alignment_array = new int[artifacts.size()]; // +1? maybe remove node_right_index and use instead alignment[0]?
 
 			this.setGlobalBestCost(Integer.MAX_VALUE);
-			this.alignRec(this.getRoot(), artifacts, 0, alignment_array, 0);
+			this.alignRec(this.getRoot(), artifacts, 0, alignment_array, 0, Integer.MAX_VALUE);
 
 			// assign sequence numbers to artifacts that had a match during alignment
 			for (int i = 0; i < alignment_array.length; i++) {
@@ -363,31 +353,27 @@ public interface SequenceGraph extends Persistable {
 				} else if (alignment_array[i] != NOT_MATCHED) {
 					artifacts.get(i).setSequenceNumber(alignment_array[i]);
 				} else {
-					artifacts.get(i).setSequenceNumber(-1);
+					artifacts.get(i).setSequenceNumber(NOT_MATCHED);
 				}
 			}
 		}
 
 		//private
-		default int alignRec(SequenceGraph.Node.Op left, List<? extends Artifact.Op<?>> artifacts, int node_right_index, int[] alignment, int cost) {
+		default int alignRec(SequenceGraph.Node.Op left, List<? extends Artifact.Op<?>> artifacts, int node_right_index, int[] alignment, int cost, int global_best_cost) {
 			// BASE CASES
 
 			// base case 1: abort and don't update alignment if we already had a better or equal solution
-			if (cost >= this.getGlobalBestCost()) {
+			if (cost >= global_best_cost) {
 				return cost;
 			}
 
 			// base case 2: left and right have no remaining elements
 			if (left.getChildren().isEmpty() && node_right_index >= artifacts.size()) {
-				// update current best cost (we would not have gotten here if cost > global_best_cost)
-				this.setGlobalBestCost(cost);
 				return cost;
 			}
 
 			// base case 3: right has no more elements, left does
 			if (!left.getChildren().isEmpty() && node_right_index >= artifacts.size()) {
-				// update current best cost (we would not have gotten here if cost > global_best_cost)
-				this.setGlobalBestCost(cost);
 				return cost;
 			}
 
@@ -395,13 +381,9 @@ public interface SequenceGraph extends Persistable {
 			if (left.getChildren().isEmpty() && node_right_index < artifacts.size()) {
 				int temp_cost = cost + artifacts.size() - node_right_index;
 
-				// update current best cost if necessary
-				if (temp_cost < this.getGlobalBestCost())
-					this.setGlobalBestCost(temp_cost);
-
 				// indicate that the remaining artifacts need a new sequence number assigned
 				for (int i = node_right_index; i < artifacts.size(); i++) {
-					//artifacts.get(i).setSequenceNumber(NOT_MATCHED);
+					artifacts.get(i).setSequenceNumber(NOT_MATCHED);
 					alignment[i] = NOT_MATCHED;
 				}
 
@@ -411,7 +393,7 @@ public interface SequenceGraph extends Persistable {
 			// RECURSION CASES
 
 			boolean found_match = false;
-			int local_best_cost = this.getGlobalBestCost();
+			int local_best_cost = global_best_cost;
 
 			if (!left.getChildren().isEmpty()) {
 
@@ -421,9 +403,10 @@ public interface SequenceGraph extends Persistable {
 						// compare artifacts of nodes. this is necessary because left node is already using a sequence number and right is not.
 						if (leftChildEntry.getKey().equals(artifacts.get(node_right_index))) {
 							found_match = true;
-							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index + 1, alignment, cost);
+							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index + 1, alignment, cost, local_best_cost);
 							if (temp_cost < local_best_cost) {
 								local_best_cost = temp_cost;
+								artifacts.get(node_right_index).setSequenceNumber(leftChildEntry.getKey().getSequenceNumber());
 								alignment[node_right_index] = leftChildEntry.getKey().getSequenceNumber();
 							}
 						}
@@ -439,13 +422,15 @@ public interface SequenceGraph extends Persistable {
 						if (leftChildEntry.getKey().equals(artifacts.get(i))) {
 							found_match = true;
 							skipped_right = true;
-							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, i + 1, alignment, cost + i - node_right_index);
+							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, i + 1, alignment, cost + i - node_right_index, local_best_cost);
 							if (temp_cost < local_best_cost) {
 								local_best_cost = temp_cost;
+								artifacts.get(i).setSequenceNumber(leftChildEntry.getKey().getSequenceNumber());
 								alignment[i] = leftChildEntry.getKey().getSequenceNumber();
 
-								// set sequence numbers of skipped elements in right to -1 because the costs were cheaper here
+								// set sequence numbers of skipped elements in right to NOT_MATCHED because the costs were cheaper here
 								for (int j = node_right_index; j < i; j++) {
+									artifacts.get(j).setSequenceNumber(NOT_MATCHED);
 									alignment[j] = NOT_MATCHED;
 								}
 							}
@@ -456,7 +441,7 @@ public interface SequenceGraph extends Persistable {
 				// skip left if we did not find a match or if we found a match by skipping right because we might still find a better solution by skipping left first
 				if (skipped_right || !found_match) {
 					for (SequenceGraph.Transition.Op leftChildEntry : left.getChildren()) {
-						int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index, alignment, cost);
+						int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index, alignment, cost, local_best_cost);
 						if (temp_cost < local_best_cost) {
 							local_best_cost = temp_cost;
 							// no changes to the alignment
