@@ -2,7 +2,7 @@ package at.jku.isse.ecco.storage.perst.dao;
 
 import at.jku.isse.ecco.storage.perst.core.PerstRemote;
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.dao.SettingsDao;
+import at.jku.isse.ecco.dao.RemoteDao;
 import at.jku.isse.ecco.feature.Feature;
 import com.google.inject.Inject;
 import org.garret.perst.FieldIndex;
@@ -12,13 +12,13 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class PerstSettingsDao extends PerstAbstractGenericDao<Feature> implements SettingsDao {
+public class PerstRemoteDao extends PerstAbstractGenericDao<Feature> implements RemoteDao {
 
 	private final PerstEntityFactory entityFactory;
 
 
 	@Inject
-	public PerstSettingsDao(PerstTransactionStrategy transactionStrategy, final PerstEntityFactory entityFactory) {
+	public PerstRemoteDao(PerstTransactionStrategy transactionStrategy, final PerstEntityFactory entityFactory) {
 		super(transactionStrategy);
 
 		checkNotNull(entityFactory);

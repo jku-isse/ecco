@@ -34,6 +34,25 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return typeHierarchy;
 	}
 
+
+//	// map from glob patterns to plugins (string ids) to use for those files
+//
+//	public Map<String, String> loadPluginMap();
+//
+//	public void addPluginMapping(String pattern, String pluginId);
+//
+//	public void removePluginMapping(String pattern);
+//
+//
+//	// set of glob patterns (strings) for files to ignore
+//
+//	public Set<String> loadIgnorePatterns();
+//
+//	public void addIgnorePattern(String ignorePattern);
+//
+//	public void removeIgnorePattern(String ignorePattern);
+
+
 	/**
 	 * The collection of readers to which should be dispatched.
 	 */

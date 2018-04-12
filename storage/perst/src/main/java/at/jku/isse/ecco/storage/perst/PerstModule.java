@@ -18,7 +18,7 @@ public class PerstModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		bind(SettingsDao.class).to(PerstSettingsDao.class);
+		bind(RemoteDao.class).to(PerstRemoteDao.class);
 		bind(CommitDao.class).to(PerstCommitDao.class);
 		bind(RepositoryDao.class).to(PerstRepositoryDao.class);
 		bind(EntityFactory.class).to(PerstEntityFactory.class);

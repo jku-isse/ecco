@@ -19,7 +19,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 
 public class EccoUtil {
 
@@ -48,7 +47,7 @@ public class EccoUtil {
 	/**
 	 * Trims all sequence graphs in the given set of associations by removing all artifacts that are not part of the given associations.
 	 * Note:
-	 * Should being part of an association in this case means solid as well as not solid?
+	 * Should being part of an association in this case mean solid as well as not solid?
 	 * While it should not happen that an artifact is not contained in any of the associations solid (because that would violate dependencies) it could theoretically happen.
 	 *
 	 * @param associations Associations that contain artifacts to retain in the sequence graphs.
@@ -59,20 +58,13 @@ public class EccoUtil {
 		}
 	}
 
-	private static void trimSequenceGraphRec(Collection<? extends Association.Op> associations, Node.Op node) {
-
+	private static void trimSequenceGraphRec(Collection<? extends Association> associations, Node.Op node) {
 		if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
 			// get all symbols from sequence graph
 			Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().collectSymbols();
 
 			// remove symbols that are not contained in the given associations
-			Iterator<? extends Artifact.Op<?>> symbolsIterator = symbols.iterator();
-			while (symbolsIterator.hasNext()) {
-				Artifact<?> symbol = symbolsIterator.next();
-				if (!associations.contains(symbol.getContainingNode().getContainingAssociation())) {
-					symbolsIterator.remove();
-				}
-			}
+			symbols.removeIf(symbol -> !associations.contains(symbol.getContainingNode().getContainingAssociation()));
 
 			// trim sequence graph
 			node.getArtifact().getSequenceGraph().trim(symbols);

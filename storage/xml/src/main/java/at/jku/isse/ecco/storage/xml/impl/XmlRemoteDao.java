@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.storage.xml.impl;
 
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.dao.SettingsDao;
+import at.jku.isse.ecco.dao.RemoteDao;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import com.google.inject.Inject;
@@ -10,12 +10,12 @@ import java.util.*;
 
 import static java.util.Objects.requireNonNull;
 
-public class XmlSettingsDao implements SettingsDao {
+public class XmlRemoteDao implements RemoteDao {
 
     private final XmlTransactionStrategy transactionStrategy;
 
     @Inject
-    public XmlSettingsDao(XmlTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
+    public XmlRemoteDao(XmlTransactionStrategy transactionStrategy, final MemEntityFactory entityFactory) {
         this.transactionStrategy = transactionStrategy;
     }
 

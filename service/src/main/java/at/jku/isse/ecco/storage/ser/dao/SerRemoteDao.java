@@ -1,8 +1,9 @@
-package at.jku.isse.ecco.storage.mem.dao;
+package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.dao.SettingsDao;
+import at.jku.isse.ecco.dao.RemoteDao;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
+import at.jku.isse.ecco.storage.mem.dao.Database;
 import com.google.inject.Inject;
 
 import java.util.*;
@@ -10,10 +11,10 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class MemSettingsDao extends MemAbstractGenericDao implements SettingsDao {
+public class SerRemoteDao extends SerAbstractGenericDao implements RemoteDao {
 
 	@Inject
-	public MemSettingsDao(MemTransactionStrategy transactionStrategy) {
+	public SerRemoteDao(SerTransactionStrategy transactionStrategy) {
 		super(transactionStrategy);
 	}
 

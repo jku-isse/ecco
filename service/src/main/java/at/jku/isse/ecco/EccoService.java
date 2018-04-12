@@ -209,7 +209,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	@Inject
 	private RepositoryDao repositoryDao;
 	@Inject
-	private SettingsDao settingsDao;
+	private RemoteDao remoteDao;
 	@Inject
 	private CommitDao commitDao;
 
@@ -555,7 +555,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.transactionStrategy.open();
 
 		this.repositoryDao.init();
-		this.settingsDao.init();
+		this.remoteDao.init();
 		this.commitDao.init();
 
 
@@ -596,7 +596,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.writer.removeListener(this);
 
 		this.repositoryDao.close();
-		this.settingsDao.close();
+		this.remoteDao.close();
 		this.commitDao.close();
 
 		this.transactionStrategy.close();
@@ -641,7 +641,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			//Remote.Type type = Remote.Type.valueOf(typeString);
 			Remote remote = this.entityFactory.createRemote(name, address, type);
-			remote = this.settingsDao.storeRemote(remote);
+			remote = this.remoteDao.storeRemote(remote);
 
 			this.transactionStrategy.end();
 
@@ -659,7 +659,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			this.transactionStrategy.begin();
 
-			this.settingsDao.removeRemote(name);
+			this.remoteDao.removeRemote(name);
 
 			this.transactionStrategy.end();
 		} catch (Exception e) {
@@ -675,7 +675,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			this.transactionStrategy.begin();
 
-			Remote remote = this.settingsDao.loadRemote(name);
+			Remote remote = this.remoteDao.loadRemote(name);
 
 			this.transactionStrategy.end();
 
@@ -693,7 +693,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			this.transactionStrategy.begin();
 
-			Collection<Remote> remotes = this.settingsDao.loadAllRemotes();
+			Collection<Remote> remotes = this.remoteDao.loadAllRemotes();
 
 			this.transactionStrategy.end();
 
@@ -1115,7 +1115,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.transactionStrategy.begin();
 
 			// load remote
-			Remote remote = this.settingsDao.loadRemote(remoteName);
+			Remote remote = this.remoteDao.loadRemote(remoteName);
 			if (remote == null) {
 				throw new EccoException("Remote '" + remoteName + "' does not exist.");
 			} else if (remote.getType() == Remote.Type.REMOTE) {
@@ -1150,7 +1150,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						// store with remote
 						remote.getFeatures().clear();
 						remote.getFeatures().addAll(copiedFeatures);
-						this.settingsDao.storeRemote(remote);
+						this.remoteDao.storeRemote(remote);
 					} else {
 						throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + pair[0] + ":" + pair[1]);
 					}
@@ -1173,7 +1173,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				// merge into this repository
 				remote.getFeatures().clear();
 				remote.getFeatures().addAll(copiedFeatures);
-				this.settingsDao.storeRemote(remote);
+				this.remoteDao.storeRemote(remote);
 			}
 
 			this.transactionStrategy.end();
@@ -1241,7 +1241,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			// after fork add used remote as default origin remote
 			Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + Integer.toString(port), Remote.Type.REMOTE);
-			this.settingsDao.storeRemote(remote);
+			this.remoteDao.storeRemote(remote);
 
 			this.transactionStrategy.end();
 		} catch (Exception e) {
@@ -1305,7 +1305,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			// after fork add used remote as default origin remote
 			Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, originRepositoryDir.toString(), Remote.Type.LOCAL);
-			this.settingsDao.storeRemote(remote);
+			this.remoteDao.storeRemote(remote);
 
 			this.transactionStrategy.end();
 		} catch (Exception e) {
@@ -1333,7 +1333,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.transactionStrategy.begin();
 
 			// load remote
-			Remote remote = this.settingsDao.loadRemote(remoteName);
+			Remote remote = this.remoteDao.loadRemote(remoteName);
 			if (remote == null) {
 				throw new EccoException("Remote '" + remoteName + "' does not exist.");
 			} else if (remote.getType() == Remote.Type.REMOTE) {
@@ -1432,7 +1432,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.transactionStrategy.begin();
 
 			// load remote
-			Remote remote = this.settingsDao.loadRemote(remoteName);
+			Remote remote = this.remoteDao.loadRemote(remoteName);
 			if (remote == null) {
 				throw new EccoException("Remote " + remoteName + " does not exist");
 			} else if (remote.getType() == Remote.Type.REMOTE) {

@@ -10,7 +10,7 @@ public class MemModule extends AbstractModule {
 	protected void configure() {
 		bind(RepositoryDao.class).to(MemRepositoryDao.class);
 		bind(CommitDao.class).to(MemCommitDao.class);
-		bind(SettingsDao.class).to(MemSettingsDao.class);
+		bind(RemoteDao.class).to(MemRemoteDao.class);
 
 		bind(EntityFactory.class).to(MemEntityFactory.class);
 
