@@ -93,6 +93,29 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	}
 
 	@Override
+	public boolean useReferencesInEquals() {
+		return this.useReferencesInEquals;
+	}
+
+	@Override
+	public void setUseReferencesInEquals(boolean useReferenesInEquals) {
+		this.useReferencesInEquals = useReferenesInEquals;
+	}
+
+	@Override
+	public boolean equalsIgnoreSequenceNumber(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		MemArtifact<?> that = (MemArtifact<?>) o;
+
+		if (this.isOrdered() != that.isOrdered()) return false;
+
+		return getData().equals(that.getData());
+	}
+
+
+	@Override
 	public String toString() {
 		return this.data.toString();
 	}
@@ -103,16 +126,6 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		return this.data;
 	}
 
-
-	@Override
-	public boolean useReferencesInEquals() {
-		return this.useReferencesInEquals;
-	}
-
-	@Override
-	public void setUseReferencesInEquals(boolean useReferenesInEquals) {
-		this.useReferencesInEquals = useReferenesInEquals;
-	}
 
 	@Override
 	public boolean isAtomic() {

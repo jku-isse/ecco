@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @param <DataType> The type of the data object stored in the artifact.
  */
-public interface Artifact<DataType extends ArtifactData> extends Persistable {
+public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.Symbol, Persistable {
 
 	/**
 	 * Setting this property indicates that the artifact's file representation was not modified since it was written.
@@ -112,13 +112,6 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	public boolean isSequenced();
 
 	public SequenceGraph getSequenceGraph();
-
-	/**
-	 * Returns the assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.sg.SequenceGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
-	 *
-	 * @return The assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.sg.SequenceGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
-	 */
-	public int getSequenceNumber();
 
 	/**
 	 * Returns the one unique node from the artifact tree that contains this artifact.
@@ -220,7 +213,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	 *
 	 * @param <DataType> The type of the data object stored in the artifact.
 	 */
-	public interface Op<DataType extends ArtifactData> extends Artifact<DataType> {
+	public interface Op<DataType extends ArtifactData> extends Artifact<DataType>, SequenceGraph.Symbol.Op {
 
 		/**
 		 * Sets whether this artifact is atomic or not (see {@link Artifact#isAtomic()}).
@@ -242,13 +235,6 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 		 * @param sequenceGraph The sequence graph.
 		 */
 		public void setSequenceGraph(SequenceGraph.Op sequenceGraph);
-
-		/**
-		 * Sets the sequence number of the artifact. This is used by the sequence graph.
-		 *
-		 * @param sequenceNumber The sequence number to assign to this artifact.
-		 */
-		public void setSequenceNumber(int sequenceNumber);
 
 
 		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
@@ -330,9 +316,9 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 			return false;
 		}
 
-		public void addUses(Op artifact);
+		public void addUses(Artifact.Op artifact);
 
-		public void addUses(Op artifact, String type);
+		public void addUses(Artifact.Op artifact, String type);
 
 
 		public SequenceGraph.Op getSequenceGraph();

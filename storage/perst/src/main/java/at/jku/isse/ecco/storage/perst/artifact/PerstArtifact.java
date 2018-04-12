@@ -163,6 +163,19 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 
 
 	@Override
+	public boolean equalsIgnoreSequenceNumber(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		PerstArtifact<?> that = (PerstArtifact<?>) o;
+
+		if (this.isOrdered() != that.isOrdered()) return false;
+
+		return getData().equals(that.getData());
+	}
+
+
+	@Override
 	public boolean useReferencesInEquals() {
 		return this.useReferencesInEquals;
 	}

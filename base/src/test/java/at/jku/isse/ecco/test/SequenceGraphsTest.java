@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.gui.view.graph.SequenceGraphView;
-import at.jku.isse.ecco.storage.mem.sg.MemSequenceGraph;
 import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
+import at.jku.isse.ecco.storage.mem.sg.MemSequenceGraph;
 import javafx.scene.Scene;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -30,6 +30,9 @@ public class SequenceGraphsTest {
 		// align sequence to sg
 		sg1.sequence(artifacts1);
 		sg1.sequence(artifacts3);
+//		sg1.sequence(artifacts2);
+//		sg1.sequence(artifacts4);
+
 
 		sg2.sequence(artifacts2);
 		sg2.sequence(artifacts4);
