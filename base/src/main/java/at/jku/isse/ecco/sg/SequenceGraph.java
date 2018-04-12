@@ -123,9 +123,10 @@ public interface SequenceGraph extends Persistable {
 		/**
 		 * This aligns the right sequence graph to the left sequence graph, assigning sequence numbers to the artifacts of the right sequence graph.
 		 *
-		 * @param left  The left node.
-		 * @param right The right node.
-		 * @param cost  The current cost.
+		 * @param left             The left node.
+		 * @param right            The right node.
+		 * @param cost             The current cost.
+		 * @param global_best_cost The overall best cost found so far.
 		 * @return The final cost.
 		 */
 		//private

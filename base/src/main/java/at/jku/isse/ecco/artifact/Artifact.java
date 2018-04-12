@@ -114,9 +114,9 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	public SequenceGraph getSequenceGraph();
 
 	/**
-	 * Returns the assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.artifact.Artifact#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
+	 * Returns the assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.sg.SequenceGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
 	 *
-	 * @return The assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.artifact.Artifact#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
+	 * @return The assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.sg.SequenceGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
 	 */
 	public int getSequenceNumber();
 
