@@ -104,7 +104,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 	public PerstArtifact(DataType data, boolean ordered) {
 		this.setData(data);
 		this.ordered = ordered;
-		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
+		this.sequenceNumber = SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER;
 	}
 
 
@@ -123,7 +123,7 @@ public class PerstArtifact<DataType extends ArtifactData> extends Persistent imp
 		PerstArtifact<?> that = (PerstArtifact<?>) o;
 
 		if (this.isOrdered() != that.isOrdered()) return false;
-		if (this.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
+		if (this.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
 			return false;
 
 		if (!this.useReferencesInEquals()) {

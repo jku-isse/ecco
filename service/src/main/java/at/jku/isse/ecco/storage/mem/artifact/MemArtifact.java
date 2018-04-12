@@ -44,7 +44,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		checkNotNull(data);
 		this.data = data;
 		this.ordered = ordered;
-		this.sequenceNumber = Artifact.UNASSIGNED_SEQUENCE_NUMBER;
+		this.sequenceNumber = SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER;
 		this.useReferencesInEquals = false;
 	}
 
@@ -64,7 +64,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		MemArtifact<?> that = (MemArtifact<?>) o;
 
 		if (this.isOrdered() != that.isOrdered()) return false;
-		if (this.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != Artifact.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
+		if (this.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
 			return false;
 
 		if (!this.useReferencesInEquals())

@@ -39,11 +39,6 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	 */
 	public static final String PROPERTY_MAPPED_ARTIFACT = "mapped";
 
-	/**
-	 * A constant indicating that an artifact does not yet have a sequence number assigned.
-	 */
-	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
-
 
 	/**
 	 * An artifact's hash code is based on the hash code if the contained data object and on its type (i.e. ordered or unordered).

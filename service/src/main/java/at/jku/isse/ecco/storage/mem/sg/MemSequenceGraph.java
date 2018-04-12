@@ -14,20 +14,22 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 
 	private int cur_seq_number;
 
-	private int global_best_cost;
-
 
 	public MemSequenceGraph() {
 		this.pol = true;
 		this.root = this.createSequenceGraphNode(this.pol);
-		this.cur_seq_number = 1;
-		this.global_best_cost = Integer.MAX_VALUE;
+		this.cur_seq_number = SequenceGraph.INITIAL_SEQUENCE_NUMBER;
 	}
 
 
 	@Override
 	public Node.Op getRoot() {
 		return this.root;
+	}
+
+	@Override
+	public void setRoot(Node.Op root) {
+		this.root = root;
 	}
 
 
@@ -44,7 +46,7 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 	@Override
 	public int nextSequenceNumber() {
 		if (this.cur_seq_number + 1 < -1)
-			throw new EccoException("WARNING: sequence number overflow!");
+			throw new EccoException("Sequence number overflow!");
 		return this.cur_seq_number++;
 	}
 
@@ -57,17 +59,6 @@ public class MemSequenceGraph implements SequenceGraph, SequenceGraph.Op {
 	@Override
 	public void setPol(boolean pol) {
 		this.pol = pol;
-	}
-
-
-	@Override
-	public int getGlobalBestCost() {
-		return this.global_best_cost;
-	}
-
-	@Override
-	public void setGlobalBestCost(int cost) {
-		this.global_best_cost = cost;
 	}
 
 

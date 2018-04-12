@@ -11,7 +11,16 @@ import java.util.*;
  */
 public interface SequenceGraph extends Persistable {
 
-	public static final int NOT_MATCHED = -1;
+	public static final boolean SEQUENCE_LISTS_AS_GRAPHS = false;
+
+	/**
+	 * A constant indicating that an artifact does not yet have a sequence number assigned.
+	 */
+	public static final int UNASSIGNED_SEQUENCE_NUMBER = 0;
+
+	public static final int INITIAL_SEQUENCE_NUMBER = 1;
+
+	public static final int NOT_MATCHED_SEQUENCE_NUMBER = -1;
 
 
 	public Node getRoot();
@@ -23,6 +32,8 @@ public interface SequenceGraph extends Persistable {
 	public interface Op extends SequenceGraph {
 
 		public Node.Op getRoot();
+
+		public void setRoot(Node.Op root);
 
 
 		public int getCurrentSequenceNumber();
@@ -43,11 +54,6 @@ public interface SequenceGraph extends Persistable {
 		}
 
 
-		public int getGlobalBestCost();
-
-		public void setGlobalBestCost(int cost);
-
-
 		public Node.Op createSequenceGraphNode(boolean pol);
 
 
@@ -62,16 +68,15 @@ public interface SequenceGraph extends Persistable {
 			// collect all symbols (artifacts) in other sequence graph
 			Collection<Artifact.Op<?>> rightArtifacts = other.collectSymbols();
 
-			// set sequence number of all symbols (artifacts) in other sequence graph to NOT_MATCHED prior to alignment to left sequence graph
+			// set sequence number of all symbols (artifacts) in other sequence graph to NOT_MATCHED_SEQUENCE_NUMBER prior to alignment to left sequence graph
 			for (Artifact.Op symbol : rightArtifacts) {
-				symbol.setSequenceNumber(NOT_MATCHED);
+				symbol.setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER);
 			}
 
 			// align other sequence graph to this sequence graph
-			this.setGlobalBestCost(Integer.MAX_VALUE);
 			this.alignSequenceGraphRec(this.getRoot(), other.getRoot(), 0, Integer.MAX_VALUE);
 
-			// assign new sequence numbers to symbols (artifacts) in other sequence graph that do not yet have one (i.e. a sequence number of NOT_MATCHED)
+			// assign new sequence numbers to symbols (artifacts) in other sequence graph that do not yet have one (i.e. a sequence number of NOT_MATCHED_SEQUENCE_NUMBER)
 			int num_symbols = this.getCurrentSequenceNumber();
 			other.invertPol();
 			this.assignNewSequenceNumbersRec(other.getRoot(), other.getPol());
@@ -86,14 +91,15 @@ public interface SequenceGraph extends Persistable {
 
 			//this.invertPol();
 			this.setPol(true);
-			this.getRoot().setPol(false);
-			Map<Set<Artifact.Op<?>>, Node.Op> nodes = new HashMap<>();
-			nodes.put(new HashSet<>(), this.getRoot());
-			this.updateSequenceGraphRec(this.getRoot(), other.getRoot(), new HashSet<>(), nodes, shared_symbols);
+//			this.getRoot().setPol(false);
+//			Map<Set<Artifact.Op<?>>, Node.Op> nodes = new HashMap<>();
+//			nodes.put(new HashSet<>(), this.getRoot());
+			Node.Op root = this.updateSequenceGraphRec(this.getRoot(), other.getRoot(), new HashSet<>(), new HashMap<>(), shared_symbols);
+			this.setRoot(root);
 		}
 
 		/**
-		 * Assigns new sequence numbers to symbols (artifacts) in given sequence graph that do not yet have one (i.e. a sequence number of NOT_MATCHED) using numbers from the pool of this sequence graph.
+		 * Assigns new sequence numbers to symbols (artifacts) in given sequence graph that do not yet have one (i.e. a sequence number of NOT_MATCHED_SEQUENCE_NUMBER) using numbers from the pool of this sequence graph.
 		 *
 		 * @param sgn    The sequence graph node to start traversing from.
 		 * @param newPol The new polarity to assign.
@@ -106,7 +112,7 @@ public interface SequenceGraph extends Persistable {
 			sgn.setPol(this.getPol()); // mark as visited
 
 			for (SequenceGraph.Transition.Op child : sgn.getChildren()) {
-				if (child.getKey().getSequenceNumber() == NOT_MATCHED) {
+				if (child.getKey().getSequenceNumber() == NOT_MATCHED_SEQUENCE_NUMBER) {
 					child.getKey().setSequenceNumber(this.nextSequenceNumber());
 				}
 
@@ -154,7 +160,7 @@ public interface SequenceGraph extends Persistable {
 						local_best_cost = temp_cost;
 
 						// indicate that this artifact needs a new sequence number assigned
-						rightChildEntry.getKey().setSequenceNumber(NOT_MATCHED);
+						rightChildEntry.getKey().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER);
 					}
 				}
 			}
@@ -212,7 +218,7 @@ public interface SequenceGraph extends Persistable {
 							local_best_cost = temp_cost;
 
 							// indicate that this artifact needs a new sequence number assigned
-							rightChildEntry.getKey().setSequenceNumber(NOT_MATCHED);
+							rightChildEntry.getKey().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER);
 						}
 					}
 				}
@@ -286,13 +292,13 @@ public interface SequenceGraph extends Persistable {
 						}
 					}
 					if (rightEntry != null) { // matching shared symbols -> take them
-						System.out.println("MATCH SHARED");
+						System.out.println("SHARED MATCH");
 						HashSet<Artifact.Op<?>> new_path = new HashSet<>(path);
 						new_path.add(leftEntry.getKey());
 						SequenceGraph.Node.Op child = this.updateSequenceGraphRec(leftEntry.getValue(), rightEntry.getValue(), new_path, nodes, shared_symbols);
 						new_children.put(leftEntry.getKey(), child);
 					} else { // no match for shared symbol -> cut graph
-						System.out.println("MATCH CUT");
+						System.out.println("SHARED CUT");
 						it.remove();
 					}
 				}
@@ -311,27 +317,41 @@ public interface SequenceGraph extends Persistable {
 
 
 		public default void sequence(List<? extends Artifact.Op<?>> artifacts) {
-			align(artifacts);
-
-			// assign new sequence numbers to artifacts that could not be matched during alignment
-			int num_symbols = this.getCurrentSequenceNumber();
-			for (Artifact.Op<?> artifact : artifacts) {
-				if (artifact.getSequenceNumber() == NOT_MATCHED) {
-					artifact.setSequenceNumber(this.nextSequenceNumber());
+			if (SEQUENCE_LISTS_AS_GRAPHS) {
+				// create temporary sequence graph for list of artifacts and align it to this sequence graph
+				if (!artifacts.isEmpty()) {
+					SequenceGraph.Op other = artifacts.get(0).createSequenceGraph();
+					Node.Op currentNode = other.getRoot();
+					for (Artifact.Op<?> artifact : artifacts) {
+						Node.Op nextNode = other.createSequenceGraphNode(other.getPol());
+						currentNode.addTransition(artifact, nextNode);
+						currentNode = nextNode;
+					}
+					this.sequence(other);
 				}
-			}
+			} else {
+				this.align(artifacts);
 
-			// compute shared symbols
-			Set<Artifact.Op<?>> shared_symbols = new HashSet<>();
-			for (Artifact.Op<?> symbol : artifacts) {
-				if (symbol.getSequenceNumber() < num_symbols)
-					shared_symbols.add(symbol);
-			}
+				// assign new sequence numbers to artifacts that could not be matched during alignment
+				int num_symbols = this.getCurrentSequenceNumber();
+				for (Artifact.Op<?> artifact : artifacts) {
+					if (artifact.getSequenceNumber() == NOT_MATCHED_SEQUENCE_NUMBER) {
+						artifact.setSequenceNumber(this.nextSequenceNumber());
+					}
+				}
 
-			// update this sequence graph
-			Map<Set<Artifact.Op<?>>, SequenceGraph.Node.Op> nodes = this.collectPathMap();
-			this.invertPol();
-			this.updateRec(new HashSet<>(), nodes, shared_symbols, this.getRoot(), 0, artifacts, this.getPol());
+				// compute shared symbols
+				Set<Artifact.Op<?>> shared_symbols = new HashSet<>();
+				for (Artifact.Op<?> symbol : artifacts) {
+					if (symbol.getSequenceNumber() < num_symbols)
+						shared_symbols.add(symbol);
+				}
+
+				// update this sequence graph
+				Map<Set<Artifact.Op<?>>, SequenceGraph.Node.Op> nodes = this.collectPathMap();
+				this.invertPol();
+				this.updateRec(new HashSet<>(), nodes, shared_symbols, this.getRoot(), 0, artifacts, this.getPol());
+			}
 		}
 
 		/**
@@ -341,25 +361,18 @@ public interface SequenceGraph extends Persistable {
 		 * @param artifacts The list of artifacts to be aligned to this sequence graph.
 		 */
 		public default void align(List<? extends Artifact.Op<?>> artifacts) {
-			int[] alignment_array = new int[artifacts.size()]; // +1? maybe remove node_right_index and use instead alignment[0]?
+			this.alignRec(this.getRoot(), artifacts, 0, 0, Integer.MAX_VALUE);
 
-			this.setGlobalBestCost(Integer.MAX_VALUE);
-			this.alignRec(this.getRoot(), artifacts, 0, alignment_array, 0, Integer.MAX_VALUE);
-
-			// assign sequence numbers to artifacts that had a match during alignment
-			for (int i = 0; i < alignment_array.length; i++) {
-				if (alignment_array[i] == 0) {
-					throw new EccoException("An element has not been processed during alignment (i.e. neither a sequence number nor NOT_MATCHED was assigned).");
-				} else if (alignment_array[i] != NOT_MATCHED) {
-					artifacts.get(i).setSequenceNumber(alignment_array[i]);
-				} else {
-					artifacts.get(i).setSequenceNumber(NOT_MATCHED);
+			// check if either a sequence number or NOT_MATCHED_SEQUENCE_NUMBER was assigned to every artifact
+			for (Artifact artifact : artifacts) {
+				if (artifact.getSequenceNumber() == 0) {
+					throw new EccoException("An element has not been processed during alignment (i.e. neither a sequence number nor NOT_MATCHED_SEQUENCE_NUMBER was assigned).");
 				}
 			}
 		}
 
 		//private
-		default int alignRec(SequenceGraph.Node.Op left, List<? extends Artifact.Op<?>> artifacts, int node_right_index, int[] alignment, int cost, int global_best_cost) {
+		default int alignRec(SequenceGraph.Node.Op left, List<? extends Artifact.Op<?>> artifacts, int node_right_index, int cost, int global_best_cost) {
 			// BASE CASES
 
 			// base case 1: abort and don't update alignment if we already had a better or equal solution
@@ -383,8 +396,7 @@ public interface SequenceGraph extends Persistable {
 
 				// indicate that the remaining artifacts need a new sequence number assigned
 				for (int i = node_right_index; i < artifacts.size(); i++) {
-					artifacts.get(i).setSequenceNumber(NOT_MATCHED);
-					alignment[i] = NOT_MATCHED;
+					artifacts.get(i).setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER);
 				}
 
 				return temp_cost;
@@ -403,11 +415,10 @@ public interface SequenceGraph extends Persistable {
 						// compare artifacts of nodes. this is necessary because left node is already using a sequence number and right is not.
 						if (leftChildEntry.getKey().equals(artifacts.get(node_right_index))) {
 							found_match = true;
-							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index + 1, alignment, cost, local_best_cost);
+							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index + 1, cost, local_best_cost);
 							if (temp_cost < local_best_cost) {
 								local_best_cost = temp_cost;
 								artifacts.get(node_right_index).setSequenceNumber(leftChildEntry.getKey().getSequenceNumber());
-								alignment[node_right_index] = leftChildEntry.getKey().getSequenceNumber();
 							}
 						}
 					}
@@ -422,16 +433,14 @@ public interface SequenceGraph extends Persistable {
 						if (leftChildEntry.getKey().equals(artifacts.get(i))) {
 							found_match = true;
 							skipped_right = true;
-							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, i + 1, alignment, cost + i - node_right_index, local_best_cost);
+							int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, i + 1, cost + i - node_right_index, local_best_cost);
 							if (temp_cost < local_best_cost) {
 								local_best_cost = temp_cost;
 								artifacts.get(i).setSequenceNumber(leftChildEntry.getKey().getSequenceNumber());
-								alignment[i] = leftChildEntry.getKey().getSequenceNumber();
 
-								// set sequence numbers of skipped elements in right to NOT_MATCHED because the costs were cheaper here
+								// set sequence numbers of skipped elements in right to NOT_MATCHED_SEQUENCE_NUMBER because the costs were cheaper here
 								for (int j = node_right_index; j < i; j++) {
-									artifacts.get(j).setSequenceNumber(NOT_MATCHED);
-									alignment[j] = NOT_MATCHED;
+									artifacts.get(j).setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER);
 								}
 							}
 						}
@@ -441,7 +450,7 @@ public interface SequenceGraph extends Persistable {
 				// skip left if we did not find a match or if we found a match by skipping right because we might still find a better solution by skipping left first
 				if (skipped_right || !found_match) {
 					for (SequenceGraph.Transition.Op leftChildEntry : left.getChildren()) {
-						int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index, alignment, cost, local_best_cost);
+						int temp_cost = alignRec(leftChildEntry.getValue(), artifacts, node_right_index, cost, local_best_cost);
 						if (temp_cost < local_best_cost) {
 							local_best_cost = temp_cost;
 							// no changes to the alignment
@@ -479,15 +488,12 @@ public interface SequenceGraph extends Persistable {
 			// if right unshared we can take the path (this is the adding part)
 			if (right != null && !shared_symbols.contains(right)) {
 				// compute new path
-				@SuppressWarnings("unchecked")
-				HashSet<Artifact.Op<?>> new_path = (HashSet<Artifact.Op<?>>) path.clone();
+				HashSet<Artifact.Op<?>> new_path = new HashSet<>(path);
 				new_path.add(right);
 				// take it
 				SequenceGraph.Node.Op new_gn = updateRec(new_path, nodes, shared_symbols, node, alignment_index + 1, aligned_nodes, new_pol);
 				new_children.put(right, new_gn);
 			}
-
-			// gn.children.putAll(new_children); // NOTE: can this cause a concurrent modification exception?
 
 			// for every left child (this is the cutting part)
 			Iterator<SequenceGraph.Transition.Op> it = node.getChildren().iterator();
@@ -496,28 +502,22 @@ public interface SequenceGraph extends Persistable {
 				// if left child unshared we can take it
 				if (!shared_symbols.contains(entry.getKey())) {
 					// compute new path
-					@SuppressWarnings("unchecked")
-					HashSet<Artifact.Op<?>> new_path = (HashSet<Artifact.Op<?>>) path.clone();
+					HashSet<Artifact.Op<?>> new_path = new HashSet<>(path);
 					new_path.add(entry.getKey());
 					// take it
 					SequenceGraph.Node.Op new_gn = updateRec(new_path, nodes, shared_symbols, entry.getValue(), alignment_index, aligned_nodes, new_pol);
-					// X not a new child. do nothing with new_children.
-					//if (new_node)
 					new_children.put(entry.getKey(), new_gn);
 				} else { // left child shared
 					// if left child and right are equal we can take it
 					if (right != null && right.equals(entry.getKey())) {
 						// compute new path
-						@SuppressWarnings("unchecked")
-						HashSet<Artifact.Op<?>> new_path = (HashSet<Artifact.Op<?>>) path.clone();
+						HashSet<Artifact.Op<?>> new_path = new HashSet<>(path);
 						new_path.add(entry.getKey());
 						// take it
 						SequenceGraph.Node.Op new_gn = updateRec(new_path, nodes, shared_symbols, entry.getValue(), alignment_index + 1, aligned_nodes, new_pol);
-						// X not a new child. do nothing with new_children.
-						//if (new_node)
 						new_children.put(entry.getKey(), new_gn);
 					} else { // TODO: do this only when right child is also shared? consider doing first adding then removing separately.
-						// cut the branch
+						// cut the transition
 						it.remove();
 					}
 				}
