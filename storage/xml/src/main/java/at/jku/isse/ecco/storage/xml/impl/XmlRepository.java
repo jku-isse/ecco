@@ -20,8 +20,6 @@ public class XmlRepository implements Repository.Op {
     private int maxOrder;
     private Map<Integer, MemCommit> commitIndex;
     private Map<String, MemRemote> remoteIndex;
-    private Set<String> ignorePatterns;
-    private Map<String, String> pluginMap;
 
 
     private <K, V> Map<K, V> newMap() {
@@ -36,10 +34,7 @@ public class XmlRepository implements Repository.Op {
     public XmlRepository() {
         commitIndex = newMap();
         remoteIndex = newMap();
-        ignorePatterns = newSet();
-        pluginMap = newMap();
         features = newMap();
-
     }
 
 
@@ -50,14 +45,6 @@ public class XmlRepository implements Repository.Op {
 
     public Map<String, MemRemote> getRemoteIndex() {
         return remoteIndex;
-    }
-
-    public Set<String> getIgnorePatterns() {
-        return ignorePatterns;
-    }
-
-    public Map<String, String> getPluginMap() {
-        return pluginMap;
     }
 
     @Override

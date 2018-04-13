@@ -52,6 +52,17 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 //
 //	public void removeIgnorePattern(String ignorePattern);
 
+//	private final Set<String> ignorePatterns = new HashSet<>();
+//	private final Map<String, String> pluginMap = new HashMap<>();
+
+//	public Set<String> getIgnorePatterns() {
+//		return this.ignorePatterns;
+//	}
+//
+//	public Map<String, String> getPluginMap() {
+//		return this.pluginMap;
+//	}
+
 
 	/**
 	 * The collection of readers to which should be dispatched.

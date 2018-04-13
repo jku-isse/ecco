@@ -10,11 +10,6 @@ import at.jku.isse.ecco.storage.perst.repository.PerstRepository;
 import org.garret.perst.FieldIndex;
 import org.garret.perst.Persistent;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -30,9 +25,6 @@ public class DatabaseRoot extends Persistent {
 	private final FieldIndex<PerstCommit> commitIndex;
 	private final FieldIndex<PerstVariant> variantIndex;
 	private final FieldIndex<PerstRemote> remoteIndex;
-
-	private final Set<String> ignorePatterns = new HashSet<>();
-	private final Map<String, String> pluginMap = new HashMap<>();
 
 	private int currentCommitId = 0;
 
@@ -81,15 +73,6 @@ public class DatabaseRoot extends Persistent {
 
 	public Repository.Op getRepository() {
 		return this.repository;
-	}
-
-
-	public Set<String> getIgnorePatterns() {
-		return this.ignorePatterns;
-	}
-
-	public Map<String, String> getPluginMap() {
-		return this.pluginMap;
 	}
 
 }

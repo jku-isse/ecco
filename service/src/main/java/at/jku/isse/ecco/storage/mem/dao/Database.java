@@ -8,9 +8,7 @@ import at.jku.isse.ecco.storage.mem.repository.MemRepository;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public class Database implements Serializable {
 
@@ -22,9 +20,6 @@ public class Database implements Serializable {
 	private final Map<Integer, MemCommit> commitIndex;
 	private final Map<String, MemVariant> variantIndex;
 	private final Map<String, MemRemote> remoteIndex;
-
-	private final Set<String> ignorePatterns = new HashSet<>();
-	private final Map<String, String> pluginMap = new HashMap<>();
 
 	private int currentCommitId = 0;
 
@@ -44,30 +39,22 @@ public class Database implements Serializable {
 	}
 
 
-	public Map<String, MemRemote> getRemoteIndex() {
-		return this.remoteIndex;
+	public Repository.Op getRepository() {
+		return this.repository;
 	}
+
 
 	public Map<Integer, MemCommit> getCommitIndex() {
 		return this.commitIndex;
+	}
+
+	public Map<String, MemRemote> getRemoteIndex() {
+		return this.remoteIndex;
 	}
 
 	public Map<String, MemVariant> getVariantIndex() {
 		return this.variantIndex;
 	}
 
-
-	public Repository.Op getRepository() {
-		return this.repository;
-	}
-
-
-	public Set<String> getIgnorePatterns() {
-		return this.ignorePatterns;
-	}
-
-	public Map<String, String> getPluginMap() {
-		return this.pluginMap;
-	}
 
 }

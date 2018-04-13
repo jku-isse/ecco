@@ -1,5 +1,5 @@
 package at.jku.isse.ecco.core;
 
-public interface Warning {
+public class Warning {
 
 }

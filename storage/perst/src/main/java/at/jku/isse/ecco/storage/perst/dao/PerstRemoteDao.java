@@ -1,13 +1,15 @@
 package at.jku.isse.ecco.storage.perst.dao;
 
-import at.jku.isse.ecco.storage.perst.core.PerstRemote;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.RemoteDao;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.storage.perst.core.PerstRemote;
 import com.google.inject.Inject;
 import org.garret.perst.FieldIndex;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -80,71 +82,6 @@ public class PerstRemoteDao extends PerstAbstractGenericDao<Feature> implements 
 		final FieldIndex<PerstRemote> remoteIndex = root.getRemoteIndex();
 
 		remoteIndex.removeKey(name);
-
-		this.transactionStrategy.done();
-	}
-
-
-	@Override
-	public Map<String, String> loadPluginMap() {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		final Map<String, String> pluginMap = new HashMap<>();
-		pluginMap.putAll(root.getPluginMap());
-
-		this.transactionStrategy.done();
-
-		return pluginMap;
-	}
-
-	@Override
-	public void addPluginMapping(String pattern, String pluginId) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.getPluginMap().put(pattern, pluginId);
-		root.store();
-
-		this.transactionStrategy.done();
-	}
-
-	@Override
-	public void removePluginMapping(String pattern) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.getPluginMap().remove(pattern);
-		root.store();
-
-		this.transactionStrategy.done();
-	}
-
-	@Override
-	public Set<String> loadIgnorePatterns() {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		final Set<String> ignorePatterns = new HashSet<>();
-		ignorePatterns.addAll(root.getIgnorePatterns());
-
-		this.transactionStrategy.done();
-
-		return ignorePatterns;
-	}
-
-	@Override
-	public void addIgnorePattern(String ignorePattern) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.getIgnorePatterns().add(ignorePattern);
-		root.store();
-
-		this.transactionStrategy.done();
-	}
-
-	@Override
-	public void removeIgnorePattern(String ignorePattern) {
-		final DatabaseRoot root = this.transactionStrategy.getDatabaseRoot();
-
-		root.getIgnorePatterns().remove(ignorePattern);
-		root.store();
 
 		this.transactionStrategy.done();
 	}
