@@ -113,6 +113,6 @@ pages:
     paths:
       - public/
   environment:
-    name: ecco
+    name: gitlab
     url: https://llinsbauer.gitlab.io/ecco/
 
