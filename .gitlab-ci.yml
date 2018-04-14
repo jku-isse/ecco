@@ -2,10 +2,11 @@ variables:
   GIT_DEPTH: "3"
 
   BUILD_DIR: "build"
-  MAVEN_DIR: "$BUILD_DIR/maven2"
   JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
-  DISTRIBUTION_DIR: "$BUILD_DIR/distributions"
+  MAVEN_DIR: "$BUILD_DIR/maven2"
   PAGE_DIR: "$BUILD_DIR/page"
+  DISTRIBUTION_DIR: "$BUILD_DIR/distributions"
+  ZIP_DIR: "$BUILD_DIR/distributions/zip"
   #RPM_DIR: "$DISTRIBUTION_DIR/rpm"
   #DEB_DIR: "$DISTRIBUTION_DIR/deb"
   RPM_DIR: "$BUILD_DIR/distributions/rpm"
@@ -29,24 +30,24 @@ build:fedora:
     - chmod +x ./gradlew
     - ./gradlew build
     - ./gradlew combinedjavadoc
-    - ./gradlew combinedrpm
-    - ./gradlew combineddeb
-    - ./gradlew combinedWindowsZip
-    - ./gradlew combinedLinuxZip
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - ./gradlew publishPerstMavenPublicationToRootEccoRepository
+    - ./gradlew combinedWindowsZip
+    - ./gradlew combinedLinuxZip
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
     - ./gradlew html
     - ./gradlew page
-    - createrepo_c $CI_PROJECT_DIR/$RPM_DIR
-    - ls -la $CI_PROJECT_DIR/$RPM_DIR/.
+    - createrepo_c $RPM_DIR
+    - ls -la $RPM_DIR/.
   only:
     - master
     - develop
   when: on_success
-  allow_failure: true
-  #artifacts:
-  #  paths:
-  #    - $RPM_DIR
+  allow_failure: false
+  artifacts:
+    paths:
+      - $RPM_DIR
 
 
 build:ubuntu:
@@ -57,15 +58,17 @@ build:ubuntu:
     - chmod +x ./gradlew
     - ./gradlew build
     - ./gradlew combinedjavadoc
-    - ./gradlew combinedrpm
-    - ./gradlew combineddeb
-    - ./gradlew combinedWindowsZip
-    - ./gradlew combinedLinuxZip
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - ./gradlew publishPerstMavenPublicationToRootEccoRepository
+    - ./gradlew combinedWindowsZip
+    - ./gradlew combinedLinuxZip
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
     - ./gradlew html
     - ./gradlew page
-    - ls -la $CI_PROJECT_DIR/$DEB_DIR/.
+    - mkdir $ZIP_DIR/
+    - cp $DISTRIBUTION_DIR/*.zip $ZIP_DIR/
+    - ls -la $DEB_DIR/.
   only:
     - master
     - develop
@@ -73,11 +76,11 @@ build:ubuntu:
   allow_failure: false
   artifacts:
     paths:
-      - $MAVEN_DIR
       - $JAVADOC_DIR
-      - $DISTRIBUTION_DIR
-      - $PAGE_DIR
+      - $MAVEN_DIR
+      - $ZIP_DIR
       - $DEB_DIR
+      - $PAGE_DIR
       - $BUILD_DIR/downloads.html
 
 
@@ -95,7 +98,7 @@ pages:
     - cp -r $JAVADOC_DIR/. public/doc/
     - cp -r $RPM_DIR/. public/rpm/
     - cp -r $DEB_DIR/. public/deb/
-    - cp $DISTRIBUTION_DIR/*.zip public/
+    - cp -r $ZIP_DIR/. public/
     - cp -r $PAGE_DIR/. public/
     - cp $BUILD_DIR/downloads.html public/
     - cd public
