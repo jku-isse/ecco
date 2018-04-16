@@ -79,6 +79,15 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		this.entityFactory = entityFactory;
 		this.readers = readers;
+
+
+		// load custom ignore patterns from IGNORES_FILE_NAME file in this.repositoryDir folder
+		// TODO: load custom ignore patterns from .ignore file in .ecco folder
+		//this.customIgnorePatterns.add("");
+
+
+		// load plugin mappings from PLUGIN_MAPPINGS_FILE_NAME file in this.repositoryDir folder
+		// TODO
 	}
 
 	private Collection<ReadListener> listeners = new ArrayList<>();
@@ -108,11 +117,23 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return false;
 	}
 
+
+	private Map<String, ArtifactReader<Path, Set<Node.Op>>> globToReaderMap = new HashMap<>();
+
 	/**
 	 * @param file The file to be read.
 	 * @return The reader best suited for reading the file.
 	 */
 	private ArtifactReader<Path, Set<Node.Op>> getReaderForFile(Path base, Path file) {
+		// pick the first artifact reader whose glob matches the file
+		for (Map.Entry<String, ArtifactReader<Path, Set<Node.Op>>> entry : this.globToReaderMap.entrySet()) {
+			PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher(entry.getKey());
+			if (pathMatcher.matches(file)) {
+				return entry.getValue();
+			}
+		}
+
+
 		ArtifactReader<Path, Set<Node.Op>> currentReader = null;
 		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
 			if (reader.canRead(base.resolve(file)) && (currentReader == null || currentReader.getTypeHierarchy().length < reader.getTypeHierarchy().length))
@@ -290,16 +311,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
-//	private Set<Path> ignoredFiles = new HashSet<Path>();
-//
-//	public void setIgnoredFiles(Set<Path> ignoredFiles) {
-//		this.ignoredFiles = ignoredFiles;
-//	}
-//
-//	public Set<Path> getIgnoredFiles() {
-//		return this.ignoredFiles;
-//	}
-
 	private Set<String> ignorePatterns = new HashSet<>();
 
 	public Set<String> getIgnorePatterns() {
@@ -307,7 +318,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 	private boolean isIgnored(Path path) {
-//		return this.ignoredFiles.contains(path);
 		for (String ignorePattern : this.ignorePatterns) {
 			PathMatcher pm = FileSystems.getDefault().getPathMatcher(ignorePattern);
 			if (pm.matches(path))

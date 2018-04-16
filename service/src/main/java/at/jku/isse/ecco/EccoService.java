@@ -148,14 +148,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.baseDir = baseDir;
 		this.repositoryDir = repositoryDir;
 
-//		this.ignoredFiles.add(REPOSITORY_DIR_NAME);
-//		this.ignoredFiles.add(CONFIG_FILE_NAME);
-
+		// add default ignore patterns
 		this.defaultIgnorePatterns.add("glob:" + REPOSITORY_DIR_NAME.toString());
 		this.defaultIgnorePatterns.add("glob:" + CONFIG_FILE_NAME.toString());
 		this.defaultIgnorePatterns.add("glob:" + WARNINGS_FILE_NAME.toString());
 		this.defaultIgnorePatterns.add("glob:" + HASHES_FILE_NAME.toString());
-
 
 		// load properties file
 		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES_FILE);
