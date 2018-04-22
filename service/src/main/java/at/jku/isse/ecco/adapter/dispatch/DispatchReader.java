@@ -10,6 +10,7 @@ import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
+import javax.inject.Named;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
@@ -19,8 +20,6 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
-
-	private final EntityFactory entityFactory;
 
 	@Override
 	public String getPluginId() {
@@ -64,49 +63,62 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 //	}
 
 
+	private final EntityFactory entityFactory;
+
 	/**
 	 * The collection of readers to which should be dispatched.
 	 */
 	private Collection<ArtifactReader<Path, Set<Node.Op>>> readers;
+
+	private Path repositoryDir;
 
 	/**
 	 * @param entityFactory The entity factory used by this reader for creating nodes and artifacts.
 	 * @param readers       The collection of readers to which should be dispatched.
 	 */
 	@Inject
-	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node.Op>>> readers) {
+	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node.Op>>> readers, @Named("repositoryDir") Path repositoryDir) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
 		this.readers = readers;
+		this.repositoryDir = repositoryDir;
+	}
 
 
+	public void init() {
 		// load custom ignore patterns from IGNORES_FILE_NAME file in this.repositoryDir folder
 		// TODO: load custom ignore patterns from .ignore file in .ecco folder
 		//this.customIgnorePatterns.add("");
 
-
 		// load plugin mappings from PLUGIN_MAPPINGS_FILE_NAME file in this.repositoryDir folder
 		// TODO
+
+
+		// check if ignore file exists
+		// if not create it
+		// load ignored files list
+
+		// check if plugin mapping file exists
+		// if not create plugin mapping from loaded plugins and write mapping file
 	}
 
-	private Collection<ReadListener> listeners = new ArrayList<>();
 
-	@Override
-	public void addListener(ReadListener listener) {
-		this.listeners.add(listener);
+	private Set<String> ignorePatterns = new HashSet<>();
+
+	public Set<String> getIgnorePatterns() {
+		return this.ignorePatterns;
 	}
 
-	@Override
-	public void removeListener(ReadListener listener) {
-		this.listeners.remove(listener);
-	}
-
-	private void fireReadEvent(Path path, ArtifactReader reader) {
-		for (ReadListener listener : this.listeners) {
-			listener.fileReadEvent(path, reader);
+	private boolean isIgnored(Path path) {
+		for (String ignorePattern : this.ignorePatterns) {
+			PathMatcher pm = FileSystems.getDefault().getPathMatcher(ignorePattern);
+			if (pm.matches(path))
+				return true;
 		}
+		return false;
 	}
+
 
 	@Override
 	public boolean canRead(Path file) {
@@ -116,7 +128,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 		return false;
 	}
-
 
 	private Map<String, ArtifactReader<Path, Set<Node.Op>>> globToReaderMap = new HashMap<>();
 
@@ -310,23 +321,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return nodes;
 	}
 
-
-	private Set<String> ignorePatterns = new HashSet<>();
-
-	public Set<String> getIgnorePatterns() {
-		return this.ignorePatterns;
-	}
-
-	private boolean isIgnored(Path path) {
-		for (String ignorePattern : this.ignorePatterns) {
-			PathMatcher pm = FileSystems.getDefault().getPathMatcher(ignorePattern);
-			if (pm.matches(path))
-				return true;
-		}
-		return false;
-	}
-
-
 	private Node.Op readDirectories(Path base, Path current, Properties hashes, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToUnmodifiedFilesMap, Map<Path, Node.Op> directoryNodes) {
 		Path relativeCurrent = base.relativize(current);
 
@@ -392,6 +386,25 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 
 		return null;
+	}
+
+
+	private Collection<ReadListener> listeners = new ArrayList<>();
+
+	@Override
+	public void addListener(ReadListener listener) {
+		this.listeners.add(listener);
+	}
+
+	@Override
+	public void removeListener(ReadListener listener) {
+		this.listeners.remove(listener);
+	}
+
+	private void fireReadEvent(Path path, ArtifactReader reader) {
+		for (ReadListener listener : this.listeners) {
+			listener.fileReadEvent(path, reader);
+		}
 	}
 
 }
