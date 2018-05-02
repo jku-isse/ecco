@@ -17,8 +17,6 @@ dependencies {
 	compile project(':ecco-base')
 	compile project(':ecco-service')
 
-	testCompile project(':ecco-storage-perst')
-
 	testRuntime project(':ecco-adapter-file')
 	testRuntime project(':ecco-adapter-text')
 	testRuntime project(':ecco-adapter-image')
