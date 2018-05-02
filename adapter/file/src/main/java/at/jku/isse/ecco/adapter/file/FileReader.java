@@ -9,13 +9,9 @@ import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /* TODO: also include directories in this module? or move the file (or rather directory!) handling from modules to some sort of "super" module?
 i would say we include the folder structure in our artifact tree! that way we can even store folder properties (in case it ever becomes relevant).
@@ -37,16 +33,16 @@ public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return FilePlugin.class.getName();
 	}
 
-	private static final String[] typeHierarchy = new String[]{};
+	private static Map<Integer, String[]> prioritizedPatterns;
 
-	@Override
-	public String[] getTypeHierarchy() {
-		return typeHierarchy;
+	static {
+		prioritizedPatterns = new HashMap<>();
+		prioritizedPatterns.put(0, new String[]{"*"});
 	}
 
 	@Override
-	public boolean canRead(Path path) {
-		return (!Files.isDirectory(path) && Files.isRegularFile(path));
+	public Map<Integer, String[]> getPrioritizedPatterns() {
+		return Collections.unmodifiableMap(prioritizedPatterns);
 	}
 
 	@Override

@@ -61,8 +61,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	public static final String ORIGIN_REMOTE_NAME = "origin";
 
 	public static final String ECCO_PROPERTIES_FILE = "ecco.properties";
-	public static final String ECCO_PROPERTIES_DATA = "plugin.data";
-	public static final String ECCO_PROPERTIES_ARTIFACT = "plugin.artifact";
+	public static final String ECCO_PROPERTIES_STORAGE = "plugin.data";
+//	public static final String ECCO_PROPERTIES_ARTIFACT = "plugin.artifact";
 
 	public static final Path REPOSITORY_DIR_NAME = Paths.get(".ecco");
 	public static final Path DEFAULT_BASE_DIR = Paths.get("");
@@ -70,7 +70,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	public static final Path CONFIG_FILE_NAME = Paths.get(".config");
 	public static final Path WARNINGS_FILE_NAME = Paths.get(".warnings");
 	public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
-	public static final Path IGNORES_FILE_NAME = Paths.get(".ignores");
 
 
 	private Properties properties = new Properties();
@@ -148,12 +147,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.baseDir = baseDir;
 		this.repositoryDir = repositoryDir;
 
-		// add default ignore patterns
-		this.defaultIgnorePatterns.add("glob:" + REPOSITORY_DIR_NAME.toString());
-		this.defaultIgnorePatterns.add("glob:" + CONFIG_FILE_NAME.toString());
-		this.defaultIgnorePatterns.add("glob:" + WARNINGS_FILE_NAME.toString());
-		this.defaultIgnorePatterns.add("glob:" + HASHES_FILE_NAME.toString());
-
 		// load properties file
 		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES_FILE);
 		if (inputStream != null) {
@@ -209,47 +202,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	private RemoteDao remoteDao;
 	@Inject
 	private CommitDao commitDao;
-
-
-	// # IGNORE ########################################################################################################
-
-	private Set<String> defaultIgnorePatterns = new HashSet<>();
-	private Set<String> customIgnorePatterns = new HashSet<>(); // TODO: set this
-
-	public Set<String> getIgnorePatterns() {
-		//return this.settingsDao.loadIgnorePatterns();
-		return Collections.unmodifiableSet(this.customIgnorePatterns);
-	}
-
-	public void addIgnorePattern(String ignorePattern) {
-//		try {
-//			this.transactionStrategy.begin();
-//
-//			this.settingsDao.addIgnorePattern(ignorePattern);
-//
-//			this.transactionStrategy.end();
-//		} catch (Exception e) {
-//			this.transactionStrategy.rollback();
-//
-//			throw new EccoException("Error adding ignore pattern.", e);
-//		}
-		this.customIgnorePatterns.add(ignorePattern);
-	}
-
-	public void removeIgnorePattern(String ignorePattern) {
-//		try {
-//			this.transactionStrategy.begin();
-//
-//			this.settingsDao.removeIgnorePattern(ignorePattern);
-//
-//			this.transactionStrategy.end();
-//		} catch (Exception e) {
-//			this.transactionStrategy.rollback();
-//
-//			throw new EccoException("Error removing ignore pattern.", e);
-//		}
-		this.customIgnorePatterns.remove(ignorePattern);
-	}
 
 
 	// # LISTENERS #####################################################################################################
@@ -464,24 +416,24 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 
 		LOGGER.debug("PROPERTIES: " + this.properties);
-		if (this.properties.getProperty(ECCO_PROPERTIES_DATA) == null) {
+		if (this.properties.getProperty(ECCO_PROPERTIES_STORAGE) == null) {
 			throw new EccoException("No data plugin specified.");
 		}
-		Collection<String> artifactPluginsList = new ArrayList<>();
-		if (this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
-			artifactPluginsList = Arrays.asList(this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
-			LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
-		}
+//		Collection<String> artifactPluginsList = new ArrayList<>();
+//		if (this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
+//			artifactPluginsList = Arrays.asList(this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
+//			LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
+//		}
 
-		// artifact modules
+		// artifact adapter modules
 		List<Module> artifactModules = new ArrayList<>();
 		List<Module> allArtifactModules = new ArrayList<>();
 		this.artifactPlugins = new ArrayList<>();
 		for (ArtifactPlugin artifactPlugin : ArtifactPlugin.getArtifactPlugins()) {
-			if (artifactPluginsList == null || artifactPluginsList.contains(artifactPlugin.getPluginId())) {
-				artifactModules.add(artifactPlugin.getModule());
-				this.artifactPlugins.add(artifactPlugin);
-			}
+//			if (artifactPluginsList == null || artifactPluginsList.contains(artifactPlugin.getPluginId())) {
+			artifactModules.add(artifactPlugin.getModule());
+			this.artifactPlugins.add(artifactPlugin);
+//			}
 			allArtifactModules.add(artifactPlugin.getModule());
 		}
 		LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
@@ -489,26 +441,27 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		if (artifactModules.isEmpty())
 			throw new EccoException("At least one artifact plugin must be configured.");
 
-		// data modules
-		List<Module> dataModules = new ArrayList<>();
-		List<Module> allDataModules = new ArrayList<>();
+		// storage modules
+		String storagePluginId = this.properties.getProperty(ECCO_PROPERTIES_STORAGE);
+		List<Module> storageModules = new ArrayList<>();
+		List<Module> allStorageModules = new ArrayList<>();
 		for (StoragePlugin dataPlugin : StoragePlugin.getDataPlugins()) {
-			if (dataPlugin.getPluginId().equals(this.properties.get(ECCO_PROPERTIES_DATA))) {
-				dataModules.add(dataPlugin.getModule());
+			if (dataPlugin.getPluginId().equals(storagePluginId)) {
+				storageModules.add(dataPlugin.getModule());
 				this.dataPlugin = dataPlugin;
 			}
-			allDataModules.add(dataPlugin.getModule());
+			allStorageModules.add(dataPlugin.getModule());
 		}
-		LOGGER.debug("DATA PLUGINS: " + dataModules.toString());
-		LOGGER.debug("ALL DATA PLUGINS: " + allDataModules.toString());
-		if (dataModules.size() != 1)
-			throw new EccoException("Exactly one data plugin must be configured.");
+		LOGGER.debug("STORAGE PLUGINS: " + storageModules.toString());
+		LOGGER.debug("ALL STORAGE PLUGINS: " + allStorageModules.toString());
+		if (storageModules.size() != 1)
+			throw new EccoException("Exactly one storage plugin must be configured.");
 
 		// put modules together
 		List<Module> modules = new ArrayList<>();
 		modules.add(new DispatchModule());
 		modules.addAll(artifactModules);
-		modules.addAll(dataModules);
+		modules.addAll(storageModules);
 
 		return modules;
 	}
@@ -555,19 +508,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.remoteDao.init();
 		this.commitDao.init();
 
+		this.reader.init();
 
-		// ignored file patterns
-		try {
-			Path ignoresFile = this.repositoryDir.resolve(IGNORES_FILE_NAME);
-			if (!Files.exists(ignoresFile))
-				Files.createFile(ignoresFile);
-			this.defaultIgnorePatterns.addAll(Files.readAllLines(ignoresFile));
-		} catch (IOException e) {
-			throw new EccoException("Error creating or reading ignores file.", e);
-		}
-		this.reader.getIgnorePatterns().clear();
-		this.reader.getIgnorePatterns().addAll(this.customIgnorePatterns);
-		this.reader.getIgnorePatterns().addAll(this.defaultIgnorePatterns);
+		// add default ignore patterns
+		this.reader.addIgnorePattern(REPOSITORY_DIR_NAME.toString());
+		this.reader.addIgnorePattern(CONFIG_FILE_NAME.toString());
+		this.reader.addIgnorePattern(WARNINGS_FILE_NAME.toString());
+		this.reader.addIgnorePattern(HASHES_FILE_NAME.toString());
 
 		this.reader.addListener(this);
 		this.writer.addListener(this);

@@ -15,104 +15,177 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
+	public static final Path IGNORES_FILE_NAME = Paths.get(".ignores");
+	public static final Path ADAPTERS_FILE_NAME = Paths.get(".adapters");
+
+
 	@Override
 	public String getPluginId() {
 		return ArtifactPlugin.class.getName();
 	}
 
-	private static final String[] typeHierarchy = new String[]{};
+	private Map<Integer, String[]> prioritizedPatterns;
 
 	@Override
-	public String[] getTypeHierarchy() {
-		return typeHierarchy;
+	public Map<Integer, String[]> getPrioritizedPatterns() {
+		return Collections.unmodifiableMap(this.prioritizedPatterns);
 	}
 
-
-//	// map from glob patterns to plugins (string ids) to use for those files
+//	private static final String[] typeHierarchy = new String[]{};
 //
-//	public Map<String, String> loadPluginMap();
-//
-//	public void addPluginMapping(String pattern, String pluginId);
-//
-//	public void removePluginMapping(String pattern);
-//
-//
-//	// set of glob patterns (strings) for files to ignore
-//
-//	public Set<String> loadIgnorePatterns();
-//
-//	public void addIgnorePattern(String ignorePattern);
-//
-//	public void removeIgnorePattern(String ignorePattern);
-
-//	private final Set<String> ignorePatterns = new HashSet<>();
-//	private final Map<String, String> pluginMap = new HashMap<>();
-
-//	public Set<String> getIgnorePatterns() {
-//		return this.ignorePatterns;
+//	@Override
+//	public String[] getTypeHierarchy() {
+//		return typeHierarchy;
 //	}
 //
-//	public Map<String, String> getPluginMap() {
-//		return this.pluginMap;
+//	@Override
+//	public boolean canRead(Path file) {
+//		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
+//			if (reader.canRead(file))
+//				return true;
+//		}
+//		return false;
 //	}
 
 
 	private final EntityFactory entityFactory;
+
+	private Path repositoryDir;
 
 	/**
 	 * The collection of readers to which should be dispatched.
 	 */
 	private Collection<ArtifactReader<Path, Set<Node.Op>>> readers;
 
-	private Path repositoryDir;
+	/**
+	 * Set of glob patterns (strings) for files to ignore.
+	 */
+	private Set<String> ignorePatterns;
+
+	/**
+	 * Ordered pairs of glob patterns and plugin ids.
+	 */
+	private List<Mapping> adapterPatterns;
 
 	/**
 	 * @param entityFactory The entity factory used by this reader for creating nodes and artifacts.
 	 * @param readers       The collection of readers to which should be dispatched.
+	 * @param repositoryDir The repository directory.
 	 */
 	@Inject
 	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node.Op>>> readers, @Named("repositoryDir") Path repositoryDir) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
-		this.readers = readers;
 		this.repositoryDir = repositoryDir;
+
+		this.readers = readers;
+
+		this.ignorePatterns = new HashSet<>();
+
+		this.adapterPatterns = new ArrayList<>();
+
+		this.prioritizedPatterns = new HashMap<>();
+	}
+
+
+	public class Mapping {
+		private String pattern;
+		private ArtifactReader<Path, Set<Node.Op>> reader;
+
+		public Mapping(String pattern, ArtifactReader<Path, Set<Node.Op>> reader) {
+			this.pattern = pattern;
+			this.reader = reader;
+		}
+
+		public String getPattern() {
+			return this.pattern;
+		}
+
+		public ArtifactReader<Path, Set<Node.Op>> getReader() {
+			return this.reader;
+		}
 	}
 
 
 	public void init() {
-		// load custom ignore patterns from IGNORES_FILE_NAME file in this.repositoryDir folder
-		// TODO: load custom ignore patterns from .ignore file in .ecco folder
-		//this.customIgnorePatterns.add("");
+		// load ignore patterns from IGNORES_FILE_NAME file in this.repositoryDir folder
+		try {
+			Path ignoresFile = this.repositoryDir.resolve(IGNORES_FILE_NAME);
+			if (!Files.exists(ignoresFile))
+				Files.createFile(ignoresFile);
+			List<String> ignorePatterns = Files.readAllLines(ignoresFile);
+			this.ignorePatterns.addAll(ignorePatterns);
+		} catch (IOException e) {
+			throw new EccoException("Error creating or reading ignores file.", e);
+		}
 
-		// load plugin mappings from PLUGIN_MAPPINGS_FILE_NAME file in this.repositoryDir folder
-		// TODO
+		// load plugin mappings from ADAPTERS_FILE_NAME file in this.repositoryDir folder
+		try {
+			Path adaptersFile = this.repositoryDir.resolve(ADAPTERS_FILE_NAME);
+			// check if adapters file exists
+			if (!Files.exists(adaptersFile)) {
+				// if not create adapters mapping from loaded adapter plugins and write mappings to file
+				Files.createFile(adaptersFile);
+				// get adapter patterns for every adapter plugin
+				Map<Integer, Collection<Mapping>> prioritizedMappings = new HashMap<>();
+				for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
+					for (Map.Entry<Integer, String[]> entry : reader.getPrioritizedPatterns().entrySet()) {
+						Collection<Mapping> existingPatterns = prioritizedMappings.computeIfAbsent(entry.getKey(), k -> new ArrayList<>());
+						for (String pattern : entry.getValue()) {
+							existingPatterns.add(new Mapping(pattern, reader));
+						}
+					}
+				}
+				// write patterns to file, highest priority first
+				List<CharSequence> tempAdapterPatterns = prioritizedMappings.entrySet().stream().sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())).map(Map.Entry::getValue).flatMap(Collection::stream).map(m -> m.getReader().getPluginId() + ";" + "**/" + m.getPattern()).collect(Collectors.toList());
+				Files.write(adaptersFile, tempAdapterPatterns);
+			}
+			// load adapter mappings from file
+			List<String> adapterPatterns = Files.readAllLines(adaptersFile);
+			for (String adapterPattern : adapterPatterns) {
+				String[] pair = adapterPattern.split(";");
+				String pluginId = pair[0];
+				String pattern = pair[1];
 
-
-		// check if ignore file exists
-		// if not create it
-		// load ignored files list
-
-		// check if plugin mapping file exists
-		// if not create plugin mapping from loaded plugins and write mapping file
+				ArtifactReader<Path, Set<Node.Op>> reader = null;
+				for (ArtifactReader<Path, Set<Node.Op>> tempReader : this.readers) {
+					if (tempReader.getPluginId().equals(pluginId)) {
+						reader = tempReader;
+						break;
+					}
+				}
+				if (reader != null)
+					this.adapterPatterns.add(new Mapping(pattern, reader));
+			}
+		} catch (IOException e) {
+			throw new EccoException("Error creating or reading adapters file.", e);
+		}
 	}
 
 
-	private Set<String> ignorePatterns = new HashSet<>();
-
 	public Set<String> getIgnorePatterns() {
-		return this.ignorePatterns;
+		return Collections.unmodifiableSet(this.ignorePatterns);
+	}
+
+	public void addIgnorePattern(String ignorePattern) {
+		this.ignorePatterns.add(ignorePattern);
+	}
+
+	public void removeIgnorePattern(String ignorePattern) {
+		this.ignorePatterns.remove(ignorePattern);
 	}
 
 	private boolean isIgnored(Path path) {
 		for (String ignorePattern : this.ignorePatterns) {
-			PathMatcher pm = FileSystems.getDefault().getPathMatcher(ignorePattern);
+			PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:" + ignorePattern);
 			if (pm.matches(path))
 				return true;
 		}
@@ -120,37 +193,26 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
-	@Override
-	public boolean canRead(Path file) {
-		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
-			if (reader.canRead(file))
-				return true;
-		}
-		return false;
-	}
-
-	private Map<String, ArtifactReader<Path, Set<Node.Op>>> globToReaderMap = new HashMap<>();
-
 	/**
 	 * @param file The file to be read.
 	 * @return The reader best suited for reading the file.
 	 */
 	private ArtifactReader<Path, Set<Node.Op>> getReaderForFile(Path base, Path file) {
 		// pick the first artifact reader whose glob matches the file
-		for (Map.Entry<String, ArtifactReader<Path, Set<Node.Op>>> entry : this.globToReaderMap.entrySet()) {
-			PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher(entry.getKey());
+		for (Mapping mapping : this.adapterPatterns) {
+			PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + mapping.getPattern());
 			if (pathMatcher.matches(file)) {
-				return entry.getValue();
+				return mapping.getReader();
 			}
 		}
+		return null;
 
-
-		ArtifactReader<Path, Set<Node.Op>> currentReader = null;
-		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
-			if (reader.canRead(base.resolve(file)) && (currentReader == null || currentReader.getTypeHierarchy().length < reader.getTypeHierarchy().length))
-				currentReader = reader;
-		}
-		return currentReader;
+//		ArtifactReader<Path, Set<Node.Op>> currentReader = null;
+//		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
+//			if (reader.canRead(base.resolve(file)) && (currentReader == null || currentReader.getTypeHierarchy().length < reader.getTypeHierarchy().length))
+//				currentReader = reader;
+//		}
+//		return currentReader;
 	}
 
 
@@ -272,7 +334,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				ArrayList<Path> filesList = readerToFilesMap.get(reader);
 
 				if (filesList != null) {
-					Path[] pluginInput = filesList.toArray(new Path[filesList.size()]);
+					Path[] pluginInput = filesList.toArray(new Path[0]);
 
 					Set<Node.Op> pluginNodes = reader.read(base, pluginInput);
 					for (Node.Op pluginNode : pluginNodes) {

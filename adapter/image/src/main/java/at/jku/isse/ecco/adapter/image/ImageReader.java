@@ -12,7 +12,6 @@ import com.google.inject.Inject;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -39,21 +38,16 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return ImagePlugin.class.getName();
 	}
 
-	private static final String[] typeHierarchy = new String[]{"image"};
+	private static Map<Integer, String[]> prioritizedPatterns;
 
-	@Override
-	public String[] getTypeHierarchy() {
-		return typeHierarchy;
+	static {
+		prioritizedPatterns = new HashMap<>();
+		prioritizedPatterns.put(1, new String[]{"*.png", "*.jpg", "*.bmp", "*.gif", "*.jpeg"});
 	}
 
 	@Override
-	public boolean canRead(Path path) {
-		// TODO: actually check if file is an image
-		String lowerCaseFileName = path.getFileName().toString().toLowerCase();
-		if (!Files.isDirectory(path) && Files.isRegularFile(path) && lowerCaseFileName.endsWith(".jpg") || lowerCaseFileName.endsWith(".jpeg") || lowerCaseFileName.endsWith(".gif") || lowerCaseFileName.endsWith(".png"))
-			return true;
-		else
-			return false;
+	public Map<Integer, String[]> getPrioritizedPatterns() {
+		return Collections.unmodifiableMap(prioritizedPatterns);
 	}
 
 	@Override

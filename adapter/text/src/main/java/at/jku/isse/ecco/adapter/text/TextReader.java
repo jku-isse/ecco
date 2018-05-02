@@ -33,21 +33,33 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return TextPlugin.class.getName();
 	}
 
-	private static final String[] typeHierarchy = new String[]{"text"};
+	private static Map<Integer, String[]> prioritizedPatterns;
 
-	@Override
-	public String[] getTypeHierarchy() {
-		return typeHierarchy;
+	static {
+		prioritizedPatterns = new HashMap<>();
+		prioritizedPatterns.put(1, new String[]{"*.txt", "*.md", "*.xml", "*.html", "*.css", "*.js", "*.java", "*.c", "*.h", "*.cpp", "*.hpp"});
 	}
 
 	@Override
-	public boolean canRead(Path path) {
-		// TODO: actually check contents of file to see if it is a text file
-		if (!Files.isDirectory(path) && Files.isRegularFile(path) && path.getFileName().toString().toLowerCase().endsWith(".txt"))
-			return true;
-		else
-			return false;
+	public Map<Integer, String[]> getPrioritizedPatterns() {
+		return Collections.unmodifiableMap(prioritizedPatterns);
 	}
+
+//	private static final String[] typeHierarchy = new String[]{"text"};
+//
+//	@Override
+//	public String[] getTypeHierarchy() {
+//		return typeHierarchy;
+//	}
+//
+//	@Override
+//	public boolean canRead(Path path) {
+//		// TODO: actually check contents of file to see if it is a text file
+//		if (!Files.isDirectory(path) && Files.isRegularFile(path) && path.getFileName().toString().toLowerCase().endsWith(".txt"))
+//			return true;
+//		else
+//			return false;
+//	}
 
 	@Override
 	public Set<Node.Op> read(Path[] input) {
