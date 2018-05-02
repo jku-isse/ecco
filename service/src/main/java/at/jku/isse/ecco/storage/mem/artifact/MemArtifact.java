@@ -224,12 +224,12 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	}
 
 	@Override
-	public void addUses(Op target) {
+	public void addUses(Artifact.Op target) {
 		this.addUses(target, "");
 	}
 
 	@Override
-	public void addUses(Op target, String type) {
+	public void addUses(Artifact.Op target, String type) {
 		checkNotNull(target);
 		checkNotNull(type);
 
