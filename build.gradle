@@ -12,6 +12,13 @@ allprojects {
 }
 
 subprojects {
+	ext {
+		ecco = {
+			adapter = false
+			set("storage", false)
+		}
+	}
+
 	apply plugin: 'nebula.ospackage'
 	apply plugin: 'java'
 	apply plugin: 'maven-publish'

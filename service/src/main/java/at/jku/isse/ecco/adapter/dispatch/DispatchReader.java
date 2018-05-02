@@ -72,7 +72,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	/**
 	 * Ordered pairs of glob patterns and plugin ids.
 	 */
-	private List<Mapping> adapterPatterns;
+	private List<Mapping> adapterMappings;
 
 	/**
 	 * @param entityFactory The entity factory used by this reader for creating nodes and artifacts.
@@ -90,7 +90,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		this.ignorePatterns = new HashSet<>();
 
-		this.adapterPatterns = new ArrayList<>();
+		this.adapterMappings = new ArrayList<>();
 
 		this.prioritizedPatterns = new HashMap<>();
 	}
@@ -145,8 +145,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					}
 				}
 				// write patterns to file, highest priority first
-				List<CharSequence> tempAdapterPatterns = prioritizedMappings.entrySet().stream().sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())).map(Map.Entry::getValue).flatMap(Collection::stream).map(m -> m.getReader().getPluginId() + ";" + "**/" + m.getPattern()).collect(Collectors.toList());
-				Files.write(adaptersFile, tempAdapterPatterns);
+				List<CharSequence> adapterMappingsStrings = prioritizedMappings.entrySet().stream().sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())).map(Map.Entry::getValue).flatMap(Collection::stream).map(m -> m.getReader().getPluginId() + ";" + "**/" + m.getPattern()).collect(Collectors.toList());
+				Files.write(adaptersFile, adapterMappingsStrings);
 			}
 			// load adapter mappings from file
 			List<String> adapterPatterns = Files.readAllLines(adaptersFile);
@@ -163,7 +163,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					}
 				}
 				if (reader != null)
-					this.adapterPatterns.add(new Mapping(pattern, reader));
+					this.adapterMappings.add(new Mapping(pattern, reader));
 			}
 		} catch (IOException e) {
 			throw new EccoException("Error creating or reading adapters file.", e);
@@ -199,7 +199,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	 */
 	private ArtifactReader<Path, Set<Node.Op>> getReaderForFile(Path base, Path file) {
 		// pick the first artifact reader whose glob matches the file
-		for (Mapping mapping : this.adapterPatterns) {
+		for (Mapping mapping : this.adapterMappings) {
 			PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + mapping.getPattern());
 			if (pathMatcher.matches(file)) {
 				return mapping.getReader();

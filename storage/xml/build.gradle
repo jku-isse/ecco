@@ -1,3 +1,6 @@
+
+ecco.set("storage", true)
+
 dependencies {
     compile fileTree(dir: 'lib', include: '*.jar')
 

@@ -1,4 +1,6 @@
 
+ecco.set("storage", true)
+
 publishing {
 	publications {
 		eccoMaven(MavenPublication) {

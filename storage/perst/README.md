@@ -1,5 +1,5 @@
 
-# ECCO Perst Backend
+# ECCO Perst Storage Backend
 
-Perst database backend plugin for ECCO.
+Perst database storage backend plugin for ECCO.
 

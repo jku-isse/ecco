@@ -1,12 +1,9 @@
-ext {
-	eccoModule = true
-}
+
+ecco.adapter = true
 
 dependencies {
 	compile project(':ecco-base')
 	compile project(':ecco-service')
-
-	testCompile project(':ecco-storage-perst')
 }
 
 ospackage {

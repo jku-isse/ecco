@@ -3,7 +3,9 @@ apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.cli.Main"
 applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
 
-run {
+task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
+	main = "at.jku.isse.ecco.cli.Main"
+	jvmArgs += ["-ea", "-Xss1024m", "-Xmx8g"]
 	classpath = sourceSets.test.runtimeClasspath
 }
 
