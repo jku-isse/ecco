@@ -35,6 +35,11 @@ public class MemTransactionStrategy implements TransactionStrategy {
 	}
 
 	@Override
+	public void begin(TRANSACTION transaction) {
+
+	}
+
+	@Override
 	public void end() throws EccoException {
 
 	}

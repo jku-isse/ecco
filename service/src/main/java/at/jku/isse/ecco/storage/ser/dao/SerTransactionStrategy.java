@@ -28,6 +28,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class SerTransactionStrategy implements TransactionStrategy {
 
 	private static final boolean MULTIUSER_MODE = false;
+	private static final boolean DELETE_OLD_DB_FILES = true;
+
 	private static final String ID_FILENAME = "id";
 	private static final String WRITELOCK_FILENAME = "write";
 	private static final String DB_FILE_SUFFIX = ".ser.zip";
@@ -39,12 +41,17 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	protected final Path idFile;
 	// lock file for making sure there is onyl one write transaction going on at a time
 	protected final Path writeLockFile;
+
+	// id of currently loaded database file
+	protected String id;
 	// database file
 	protected Path dbFile;
 	// currently loaded database object
 	protected Database database;
-	// id of currently loaded database file
-	protected String id;
+
+	protected TRANSACTION transaction;
+
+	protected int transactionCounter;
 
 
 	@Inject
@@ -53,133 +60,229 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.repositoryDir = repositoryDir;
 		this.idFile = repositoryDir.resolve(ID_FILENAME);
 		this.writeLockFile = repositoryDir.resolve(WRITELOCK_FILENAME);
-		this.dbFile = repositoryDir.resolve(DB_FILENAME);
-		this.database = null;
-		this.id = null;
+		this.reset();
 	}
+
 
 	protected Database getDatabase() {
 		return this.database;
 	}
 
 
-	protected void updateDbFile() throws IOException {
-		// check if id file exists and if not create it and write new id
-		if (!Files.exists(this.idFile)) {
-			Files.write(this.idFile, UUID.randomUUID().toString().getBytes(Charset.defaultCharset()), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-		}
-
-		// get lock on id file, read id, set it as current, release lock
-		try (FileChannel fileChannel = FileChannel.open(this.idFile, StandardOpenOption.READ); FileLock fileLock = fileChannel.lock(0, Long.MAX_VALUE, true)) {
-			if (fileLock.isValid()) {
-				List<String> lines = Files.readAllLines(this.idFile, Charset.defaultCharset());
-				if (lines.size() == 1) {
-					this.id = lines.get(0);
-				} else {
-					throw new EccoException("ID file content is invalid.");
-				}
-			} else {
-				throw new EccoException("Could not obtain lock on ID file.");
-			}
-		}
-
-		this.dbFile = this.repositoryDir.resolve(this.id + DB_FILE_SUFFIX);
+	protected void reset() {
+		this.id = null;
+		this.dbFile = null;
+		this.database = null;
+		this.transaction = null;
+		this.transactionCounter = 0;
 	}
 
 
 	@Override
 	public void open() {
-		// read current serialized file and set this.database
+		this.reset();
+	}
+
+	@Override
+	public void close() {
+		this.reset();
+	}
+
+	@Override
+	public void rollback() {
+		this.reset();
+	}
+
+
+	/**
+	 * Begins a read/write transaction.
+	 */
+	@Deprecated
+	@Override
+	public void begin() {
+		this.begin(TRANSACTION.READ_WRITE);
+	}
+
+	@Override
+	public void begin(TRANSACTION transaction) {
 		try {
-			if (MULTIUSER_MODE) {
-				this.updateDbFile();
-			}
-
-
-			// TEMP: check if the serialization file exists. if it does load it. if not create a new database object.
-			if (Files.exists(this.dbFile)) {
-				this.database = (Database) deserialize(this.dbFile);
-			} else {
-				this.database = new Database();
-			}
+			if (transaction == TRANSACTION.READ_ONLY)
+				this.beginReadOnly();
+			else if (transaction == TRANSACTION.READ_WRITE)
+				this.beginReadWrite();
+			this.transactionCounter++;
 		} catch (IOException | ClassNotFoundException e) {
-			throw new EccoException("Error during database open.", e);
+			throw new EccoException("Error beginning transaction.", e);
 		}
 	}
 
+
+	/**
+	 * Ends a transaction.
+	 */
 	@Override
-	public void close() throws EccoException {
-		this.database = null;
+	public void end() {
+		this.transactionCounter--;
+		if (this.transactionCounter == 0) {
+			try {
+				if (this.transaction == TRANSACTION.READ_ONLY)
+					this.endReadOnly();
+				else if (this.transaction == TRANSACTION.READ_WRITE)
+					this.endReadWrite();
+			} catch (IOException e) {
+				throw new EccoException("Error ending transaction.", e);
+			}
+		}
 	}
 
 
-	@Override
-	public void begin() throws EccoException {
-		// for read/write transactions get a write lock (full lock) of WRITELOCK_FILENAME
+	protected void beginReadOnly() throws IOException, ClassNotFoundException {
+		if (this.transaction == null)
+			this.transaction = TRANSACTION.READ_ONLY;
 
+		// get shared lock on id file, read id, set it as current, release lock
+		try (FileChannel fileChannel = FileChannel.open(this.idFile, StandardOpenOption.READ); FileLock fileLock = fileChannel.lock(0, Long.MAX_VALUE, true)) {
+			if (!fileLock.isValid())
+				throw new EccoException("Could not obtain shared lock on ID file.");
+			List<String> lines = Files.readAllLines(this.idFile, Charset.defaultCharset());
+			if (lines.size() != 1)
+				throw new EccoException("ID file content is invalid.");
+			String id = lines.get(0);
+			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
+			if (this.id.equals(id))
+				return;
+			this.id = id;
+		}
+		this.dbFile = this.repositoryDir.resolve(this.id + DB_FILE_SUFFIX);
 
-		// check (while having full lock on the id file) if currently open file (this.id) is the same is in ID_FILENAME. if not deserialize new current file (according to ID_FILENAME) and set this.id and this.database (i.e. same as open)
-
-
-		// for read only transactions get a read lock on the database file?
-
-
-		// TEMP: nothing to do here
-	}
-
-	protected void beginReadOnly() {
-
-	}
-
-	protected void beginReadWrite() {
-
-	}
-
-
-	@Override
-	public void end() throws EccoException {
-		// for read only transactions simply release the read lock on the database file. if there are no more locks and the database file is not current anymore delete it.
-
-
-		// for read/write transactions serialize into a new UUID.randomUUID() folder and set the id in the lock file. then release the write lock on the lock file (the other lock file?).
-
-
-		// TEMP: write the serialization file
-		try {
-			serialize(this.database, this.dbFile);
-		} catch (IOException e) {
-			throw new EccoException("Error during transaction end.", e);
+		if (Files.exists(this.dbFile)) {
+			this.database = (Database) deserialize(this.dbFile);
+		} else {
+			throw new EccoException("DB file does not exist.");
 		}
 	}
 
 	protected void endReadOnly() {
-
-	}
-
-	protected void endReadWrite() {
-
 	}
 
 
-	@Override
-	public void rollback() throws EccoException {
-		// do not serialize. deserialize the old (i.e. still current) file again and set this.database
-		try {
-			if (MULTIUSER_MODE) {
-				this.updateDbFile();
-			}
-
-
-			// TEMP: just reread the serialization file
-			if (Files.exists(this.dbFile) && Files.isRegularFile(this.dbFile)) {
-				this.database = (Database) deserialize(this.dbFile);
-			} else {
-				this.database = new Database();
-			}
-		} catch (IOException | ClassNotFoundException e) {
-			throw new EccoException("Error during database rollback.", e);
+	protected void beginReadWrite() throws IOException, ClassNotFoundException {
+		// check if write lock file exists and if not create it
+		if (!Files.exists(this.writeLockFile)) {
+			Files.createFile(this.writeLockFile);
 		}
 
+		// obtain exclusive write lock
+		FileChannel writeFileChannel = FileChannel.open(this.writeLockFile, StandardOpenOption.WRITE);
+		FileLock writeFileLock = writeFileChannel.lock(0, Long.MAX_VALUE, false);
+		if (!writeFileLock.isValid())
+			throw new EccoException("Could not obtain exclusive lock on WRITE file.");
+
+		this.transaction = TRANSACTION.READ_WRITE;
+
+		// check if id file exists and if not create it and write new id
+		if (!Files.exists(this.idFile)) {
+			Files.write(this.idFile, UUID.randomUUID().toString().getBytes(Charset.defaultCharset()), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+		}
+
+		// get shared lock on id file, read id, set it as current, release lock
+		try (FileChannel idFileChannel = FileChannel.open(this.idFile, StandardOpenOption.READ); FileLock idFileLock = idFileChannel.lock(0, Long.MAX_VALUE, true)) {
+			if (!idFileLock.isValid())
+				throw new EccoException("Could not obtain shared lock on ID file.");
+
+			List<String> lines = Files.readAllLines(this.idFile, Charset.defaultCharset());
+			if (lines.size() != 1)
+				throw new EccoException("ID file content is invalid.");
+			String id = lines.get(0);
+			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
+			if (this.id != null && this.id.equals(id))
+				return;
+			this.id = id;
+		}
+		this.dbFile = this.repositoryDir.resolve(this.id + DB_FILE_SUFFIX);
+
+		if (Files.exists(this.dbFile)) {
+			try (FileChannel dbFileChannel = FileChannel.open(this.idFile, StandardOpenOption.READ); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, true)) {
+				if (!dbFileLock.isValid())
+					throw new EccoException("Could not obtain shared lock on DB file.");
+
+				this.database = (Database) deserialize(this.dbFile);
+			}
+			this.checkAndDeleteUnusedDatabaseFile(this.dbFile);
+		} else {
+			this.database = new Database();
+		}
+	}
+
+	protected void endReadWrite() throws IOException {
+		// check if we still have exclusive write lock and take it
+		try (FileChannel writeFileChannel = FileChannel.open(this.writeLockFile, StandardOpenOption.WRITE); FileLock writeFileLock = writeFileChannel.lock(0, Long.MAX_VALUE, false)) {
+			if (!writeFileLock.isValid())
+				throw new EccoException("Could not obtain exclusive lock on WRITE file.");
+
+			// compute new random id
+			String newId = UUID.randomUUID().toString();
+			// serialize to new db file
+			Path newDbFile = this.repositoryDir.resolve(newId + DB_FILE_SUFFIX);
+			serialize(this.database, newDbFile);
+
+			// obtain exclusive lock on id file, write new id, update current id and db file, release lock
+			try (FileChannel idFileChannel = FileChannel.open(this.idFile, StandardOpenOption.WRITE); FileLock idFileLock = idFileChannel.lock(0, Long.MAX_VALUE, false)) {
+				if (!idFileLock.isValid())
+					throw new EccoException("Could not obtain exclusive lock on ID file.");
+
+				// write new id to id file
+				Files.write(this.idFile, newId.getBytes(Charset.defaultCharset()), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+
+				// delete old db file if nobody has a shared lock anymore (i.e. if we can get an exclusive lock on it)
+				try (FileChannel oldDbFileChannel = FileChannel.open(this.dbFile, StandardOpenOption.WRITE); FileLock oldDbFileLock = oldDbFileChannel.lock(0, Long.MAX_VALUE, false)) {
+					if (oldDbFileLock.isValid())
+						Files.delete(this.dbFile);
+				}
+
+				// update id and db file
+				this.id = newId;
+				this.dbFile = newDbFile;
+
+				// release exclusive id lock automatically when exiting try block
+			}
+
+			// release exclusive write lock automatically after try block
+		}
+	}
+
+
+	/**
+	 * Delete db file if we can get exclusive lock and it does not match id file.
+	 *
+	 * @param dbFile The db file to check and delete.
+	 * @throws IOException When obtaining file lock or reading ID file or deleting DB file fails.
+	 */
+	private void checkAndDeleteUnusedDatabaseFile(Path dbFile) throws IOException {
+		if (!DELETE_OLD_DB_FILES)
+			return;
+
+		if (dbFile == null)
+			return;
+
+		// get current id from id file
+		try (FileChannel fileChannel = FileChannel.open(this.idFile, StandardOpenOption.READ); FileLock fileLock = fileChannel.lock(0, Long.MAX_VALUE, true)) {
+			if (!fileLock.isValid())
+				throw new EccoException("Could not obtain shared lock on ID file.");
+			List<String> lines = Files.readAllLines(this.idFile, Charset.defaultCharset());
+			if (lines.size() != 1)
+				throw new EccoException("ID file content is invalid.");
+			String currentId = lines.get(0);
+			Path currentDbFile = this.repositoryDir.resolve(currentId + DB_FILE_SUFFIX);
+
+			if (!currentDbFile.equals(dbFile)) {
+				// try to delete db file
+				try (FileChannel dbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, false)) {
+					if (dbFileLock.isValid())
+						Files.delete(dbFile);
+				}
+			}
+		}
 	}
 
 
