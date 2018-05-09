@@ -42,7 +42,7 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	static {
 		prioritizedPatterns = new HashMap<>();
-		prioritizedPatterns.put(1, new String[]{"*.png", "*.jpg", "*.bmp", "*.gif", "*.jpeg"});
+		prioritizedPatterns.put(1, new String[]{"**.png", "**.jpg", "**.bmp", "**.gif", "**.jpeg"});
 	}
 
 	@Override

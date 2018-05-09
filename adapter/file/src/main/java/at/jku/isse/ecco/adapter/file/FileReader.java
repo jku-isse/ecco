@@ -37,7 +37,7 @@ public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	static {
 		prioritizedPatterns = new HashMap<>();
-		prioritizedPatterns.put(0, new String[]{"*"});
+		prioritizedPatterns.put(0, new String[]{"**"});
 	}
 
 	@Override

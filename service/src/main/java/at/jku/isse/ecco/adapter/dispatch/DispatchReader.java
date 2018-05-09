@@ -145,7 +145,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					}
 				}
 				// write patterns to file, highest priority first
-				List<CharSequence> adapterMappingsStrings = prioritizedMappings.entrySet().stream().sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())).map(Map.Entry::getValue).flatMap(Collection::stream).map(m -> m.getReader().getPluginId() + ";" + "**/" + m.getPattern()).collect(Collectors.toList());
+				List<CharSequence> adapterMappingsStrings = prioritizedMappings.entrySet().stream().sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())).map(Map.Entry::getValue).flatMap(Collection::stream).map(m -> m.getReader().getPluginId() + ";" + m.getPattern()).collect(Collectors.toList());
 				Files.write(adaptersFile, adapterMappingsStrings);
 			}
 			// load adapter mappings from file
@@ -387,7 +387,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Path relativeCurrent = base.relativize(current);
 
 		try {
-			if (Files.isDirectory(current) && this.getReaderForFile(base, relativeCurrent) == null) { // deal with directories that cannot be dispatched
+			if (Files.isDirectory(current)) { // deal with directories
 				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
 					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
 					Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
@@ -406,7 +406,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 					return directoryNode;
 				}
-			} else { // deal with files and directories that can be dispatched
+			} else { // deal with files
 				if (!this.isIgnored(relativeCurrent)) { // if file is not ignored add it to readerToFilesMap
 					Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> filesMap;
 

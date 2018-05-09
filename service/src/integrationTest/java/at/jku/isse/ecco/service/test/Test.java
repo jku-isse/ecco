@@ -2,6 +2,7 @@ package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -27,7 +28,11 @@ public class Test {
 
 		ts.open();
 
-		ts.begin();
+		ts.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+		ts.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+
+		ts.end();
 
 		ts.end();
 

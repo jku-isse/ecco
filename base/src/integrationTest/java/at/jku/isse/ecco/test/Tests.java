@@ -37,9 +37,9 @@ public class Tests {
 
 	@Test(groups = {"unit", "base", "pathmatcher"})
 	public void PathMatcher_Test2() throws IOException {
-		PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:**/testfolder2/*.txt");
+		PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:**");
 
-		Path path = Paths.get("testfolder/testfolder/testfile.txt");
+		Path path = Paths.get("testfile.txt");
 		Path path2 = Paths.get("testfoldera/testfolder2/testfile.txt");
 
 		System.out.println(path + ": " + pm.matches(path));

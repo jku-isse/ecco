@@ -470,6 +470,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * Initializes the service.
 	 */
 	public synchronized void open() {
+		LOGGER.debug("OPEN()");
+
 		if (!this.repositoryDirectoryExists()) {
 			LOGGER.error("Repository does not exist.");
 			throw new EccoException("Repository does not exist.");
@@ -531,6 +533,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 */
 	@Override
 	public synchronized void close() {
+		LOGGER.debug("CLOSE()");
+
 		if (!this.initialized)
 			return;
 
@@ -1469,6 +1473,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return True if the repository was created, false otherwise.
 	 */
 	public synchronized boolean init() {
+		LOGGER.debug("INIT()");
+
 		if (this.isInitialized())
 			throw new EccoException("Service must not be initialized for init operation.");
 

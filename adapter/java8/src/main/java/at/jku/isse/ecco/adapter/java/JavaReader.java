@@ -35,7 +35,7 @@ public class JavaReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	static {
 		prioritizedPatterns = new HashMap<>();
-		prioritizedPatterns.put(2, new String[]{"*.java"});
+		prioritizedPatterns.put(2, new String[]{"**.java"});
 	}
 
 	@Override
