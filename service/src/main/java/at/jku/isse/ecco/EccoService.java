@@ -582,7 +582,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 			if (this.getRemote(name) != null)
 				throw new EccoException("Remote with this name already exists.");
@@ -605,7 +605,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 			this.remoteDao.removeRemote(name);
 
@@ -621,7 +621,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 			Remote remote = this.remoteDao.loadRemote(name);
 
@@ -639,7 +639,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 			Collection<Remote> remotes = this.remoteDao.loadAllRemotes();
 
@@ -659,7 +659,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		try {
 			this.repositoryDao.init();
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 			Repository repository = this.repositoryDao.load();
 			this.transactionStrategy.end();
 			return repository;
@@ -679,7 +679,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		try {
 			this.commitDao.init();
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 			List<Commit> commits = this.commitDao.loadAllCommits();
 			this.transactionStrategy.end();
 			return commits;
@@ -697,6 +697,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configurationString The configuration string to parse.
 	 * @return The configuration object.
 	 */
+	// TODO: this method creates temporary feature objects, but it does not create temporary feature revision objects! instead if adds new revisions directly to the repository!
 	public Configuration parseConfigurationString(String configurationString) {
 		checkNotNull(configurationString);
 
@@ -708,7 +709,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE); // TODO: this should be changed to READ_ONLY
 
 			Repository.Op repository = this.repositoryDao.load();
 
@@ -834,7 +835,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			throw new EccoException("Invalid feature revisions string provided.");
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 			Collection<FeatureRevision> featureRevisions = new ArrayList<>();
 
@@ -937,7 +938,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					switch (command) {
 						case "FETCH": { // if fetch, send data
 							// copy features using mem entity factory
-							this.transactionStrategy.begin();
+							this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 							Repository.Op repository = this.repositoryDao.load();
 							Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), this.memEntityFactory);
 							this.transactionStrategy.end();
@@ -968,7 +969,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							Collection<FeatureRevision> deselected = this.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
 
 							// compute subset repository using mem entity factory
-							this.transactionStrategy.begin();
+							this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 							Repository.Op repository = this.repositoryDao.load();
 							Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), this.memEntityFactory);
 							this.transactionStrategy.end();
@@ -1000,7 +1001,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							Repository.Op copiedRepository = subsetRepository.copy(this.entityFactory);
 
 							// merge into this repository
-							this.transactionStrategy.begin();
+							this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 							Repository.Op repository = this.repositoryDao.load();
 							repository.merge(copiedRepository);
 							this.repositoryDao.store(repository);
@@ -1060,7 +1061,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 			// load remote
 			Remote remote = this.remoteDao.loadRemote(remoteName);
@@ -1180,7 +1181,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.init();
 			this.open();
 
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 			// merge into this repository
 			Repository.Op repository = this.repositoryDao.load();
@@ -1228,7 +1229,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		try {
 			originService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
 
-			originService.transactionStrategy.begin();
+			originService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 			Repository.Op originRepository = originService.repositoryDao.load();
 			subsetOriginRepository = originRepository.subset(originService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
@@ -1244,7 +1245,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 			// merge into this repository
 			Repository.Op repository = this.repositoryDao.load();
@@ -1278,7 +1279,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 			// load remote
 			Remote remote = this.remoteDao.loadRemote(remoteName);
@@ -1333,7 +1334,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				// create subset repository
 				Repository.Op subsetParentRepository;
 				try {
-					parentService.transactionStrategy.begin();
+					parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 					Repository.Op parentRepository = parentService.repositoryDao.load();
 					subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), parentRepository.getMaxOrder(), this.entityFactory);
@@ -1377,7 +1378,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 			// load remote
 			Remote remote = this.remoteDao.loadRemote(remoteName);
@@ -1395,7 +1396,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						oos.writeObject("PUSH");
 
 						// compute subset repository using mem entity factory
-						this.transactionStrategy.begin();
+						this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 						Repository.Op repository = this.repositoryDao.load();
 						Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), this.memEntityFactory);
 						this.transactionStrategy.end();
@@ -1438,7 +1439,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 				// merge into parent repository
 				try {
-					parentService.transactionStrategy.begin();
+					parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 					Repository.Op parentRepository = parentService.repositoryDao.load();
 					parentRepository.merge(subsetRepository);
@@ -1490,7 +1491,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			// TODO: do some initialization in backend like generating root object, etc.?
 
 			try {
-				this.transactionStrategy.begin();
+				this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 				// set max order for new repository
 				Repository.Op repository = this.repositoryDao.load();
@@ -1553,7 +1554,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		checkNotNull(configuration);
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
 			Set<Node.Op> nodes = readFiles();
 			Repository.Op repository = this.repositoryDao.load();
@@ -1693,7 +1694,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 
 		try {
-			this.transactionStrategy.begin();
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 			Repository.Op repository = this.repositoryDao.load();
 

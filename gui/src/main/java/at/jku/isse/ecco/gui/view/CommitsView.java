@@ -70,13 +70,13 @@ public class CommitsView extends BorderPane implements EccoListener {
 		commitsTable.setTableMenuButtonVisible(true);
 		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<Commit, Integer> idCol = new TableColumn<>("Id");
+		TableColumn<Commit, String> idCol = new TableColumn<>("Id");
 		TableColumn<Commit, String> commitsCol = new TableColumn<>("Commits");
 
 		commitsCol.getColumns().addAll(idCol);
 		commitsTable.getColumns().setAll(commitsCol);
 
-		idCol.setCellValueFactory((TableColumn.CellDataFeatures<Commit, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getId()));
+		idCol.setCellValueFactory((TableColumn.CellDataFeatures<Commit, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getId()));
 
 		commitsTable.setItems(this.commitsData);
 

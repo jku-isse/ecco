@@ -3,6 +3,7 @@ package at.jku.isse.ecco.storage.ser.dao;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.CommitDao;
+import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.dao.Database;
 import com.google.inject.Inject;
@@ -36,6 +37,9 @@ public class SerCommitDao extends SerAbstractGenericDao implements CommitDao {
 
 	@Override
 	public void remove(String id) throws EccoException {
+		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
+			throw new EccoException("Attempted to remove commit without active READ_WRITE transaction.");
+
 		final Database root = this.transactionStrategy.getDatabase();
 
 		root.getCommitIndex().remove(id);
@@ -43,6 +47,9 @@ public class SerCommitDao extends SerAbstractGenericDao implements CommitDao {
 
 	@Override
 	public void remove(Commit entity) throws EccoException {
+		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
+			throw new EccoException("Attempted to remove commit without active READ_WRITE transaction.");
+
 		final Database root = this.transactionStrategy.getDatabase();
 
 		root.getCommitIndex().remove(entity.getId());

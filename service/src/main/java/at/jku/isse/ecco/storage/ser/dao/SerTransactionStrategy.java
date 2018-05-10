@@ -28,35 +28,33 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @Singleton
 public class SerTransactionStrategy implements TransactionStrategy {
 
-	private static final boolean MULTIUSER_MODE = false;
 	private static final boolean DELETE_OLD_DB_FILES = true;
 
 	private static final String ID_FILENAME = "id";
 	private static final String WRITELOCK_FILENAME = "write";
 	private static final String DB_FILE_SUFFIX = ".ser.zip";
-	private static final String DB_FILENAME = "ecco" + DB_FILE_SUFFIX;
 
 	// repository directory
-	protected final Path repositoryDir;
+	private final Path repositoryDir;
 	// file containing the current database id
-	protected final Path idFile;
+	private final Path idFile;
 	// lock file for making sure there is onyl one write transaction going on at a time
-	protected final Path writeLockFile;
+	private final Path writeLockFile;
 
 	// id of currently loaded database file
-	protected String id;
+	private String id;
 	// database file
-	protected Path dbFile;
+	private Path dbFile;
 	// currently loaded database object
-	protected Database database;
+	private Database database;
 	// type of current transaction
-	protected TRANSACTION transaction;
+	private TRANSACTION transaction;
 	// number of begin transaction calls
-	protected int transactionCounter;
+	private int transactionCounter;
 	// write file channel
-	protected FileChannel writeFileChannel;
+	private FileChannel writeFileChannel;
 	// write file lock
-	protected FileLock writeFileLock;
+	private FileLock writeFileLock;
 
 
 	@Inject
@@ -69,51 +67,44 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 
-	protected Database getDatabase() {
+	public Database getDatabase() {
 		return this.database;
 	}
 
-
-	protected void reset() {
-		this.id = null;
-		this.dbFile = null;
-		this.database = null;
-		this.transaction = null;
-		this.transactionCounter = 0;
-		this.writeFileChannel = null;
-		this.writeFileLock = null;
+	public TRANSACTION getTransaction() {
+		return this.transaction;
 	}
 
 
 	@Override
-	public void open() {
+	public synchronized void open() {
 		this.reset();
 	}
 
 	@Override
-	public void close() {
-		if (this.transactionCounter != 0)
+	public synchronized void close() {
+		if (this.transaction != null || this.transactionCounter != 0)
 			throw new EccoException("Error closing connection: Not all transactions have been ended.");
 		this.reset();
 	}
 
 	@Override
-	public void rollback() {
+	public synchronized void rollback() {
 		this.reset();
 	}
 
 
-	/**
-	 * Begins a read/write transaction.
-	 */
-	@Deprecated
-	@Override
-	public void begin() {
-		this.begin(TRANSACTION.READ_WRITE);
-	}
+//	/**
+//	 * Begins a read/write transaction.
+//	 */
+//	@Deprecated
+//	@Override
+//	public synchronized void begin() {
+//		this.begin(TRANSACTION.READ_WRITE);
+//	}
 
 	@Override
-	public void begin(TRANSACTION transaction) {
+	public synchronized void begin(TRANSACTION transaction) {
 		try {
 			if (transaction == TRANSACTION.READ_ONLY)
 				this.beginReadOnly();
@@ -130,7 +121,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * Ends a transaction.
 	 */
 	@Override
-	public void end() {
+	public synchronized void end() {
+		if (this.transaction == null || this.transactionCounter <= 0)
+			throw new EccoException("There is no active transaction.");
+
 		this.transactionCounter--;
 		if (this.transactionCounter == 0) {
 			try {
@@ -138,7 +132,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					this.endReadOnly();
 				else if (this.transaction == TRANSACTION.READ_WRITE)
 					this.endReadWrite();
-				this.transaction = null;
 			} catch (IOException e) {
 				throw new EccoException("Error ending transaction.", e);
 			}
@@ -146,44 +139,22 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 
-	protected void beginReadOnly() throws IOException, ClassNotFoundException {
+	private void beginReadOnly() throws IOException, ClassNotFoundException {
 		if (this.transaction == TRANSACTION.READ_ONLY) // nothing to do, we already have a read transaction going
 			return;
 
 		if (this.transaction == null)
 			this.transaction = TRANSACTION.READ_ONLY;
 
-		// check if id file exists and if not the repository is empty
-		if (Files.exists(this.idFile)) {
-			String id = this.readCurrentId();
-			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
-			if (this.id != null && this.id.equals(id))
-				return;
-			this.id = id;
-
-			Path dbFile = this.repositoryDir.resolve(this.id + DB_FILE_SUFFIX);
-			if (Files.exists(this.dbFile)) {
-				this.dbFile = dbFile;
-				try (FileChannel dbFileChannel = FileChannel.open(this.dbFile, StandardOpenOption.READ); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, true)) {
-					if (!dbFileLock.isValid())
-						throw new EccoException("Could not obtain shared lock on DB file.");
-
-					this.database = (Database) deserialize(this.dbFile);
-				}
-				this.checkAndDeleteUnusedDatabaseFile(this.dbFile);
-			} else {
-				throw new EccoException("DB file does not exist: " + this.dbFile);
-			}
-		} else {
-			this.database = new Database();
-		}
+		this.loadDatabase();
 	}
 
-	protected void endReadOnly() {
+	private void endReadOnly() {
+		this.transaction = null;
 	}
 
 
-	protected void beginReadWrite() throws IOException, ClassNotFoundException {
+	private void beginReadWrite() throws IOException, ClassNotFoundException {
 		if (this.transaction == TRANSACTION.READ_ONLY)
 			throw new EccoException("Cannot elevate a read only transaction to a read write transaction.");
 
@@ -198,33 +169,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		this.transaction = TRANSACTION.READ_WRITE;
 
-		// check if id file exists and if not create it and write new id
-		if (Files.exists(this.idFile)) {
-			String id = this.readCurrentId();
-			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
-			if (this.id != null && this.id.equals(id))
-				return;
-			this.id = id;
-
-			Path dbFile = this.repositoryDir.resolve(this.id + DB_FILE_SUFFIX);
-			if (Files.exists(dbFile)) {
-				this.dbFile = dbFile;
-				try (FileChannel dbFileChannel = FileChannel.open(this.dbFile, StandardOpenOption.READ); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, true)) {
-					if (!dbFileLock.isValid())
-						throw new EccoException("Could not obtain shared lock on DB file.");
-
-					this.database = (Database) deserialize(this.dbFile);
-				}
-				this.checkAndDeleteUnusedDatabaseFile(this.dbFile);
-			} else {
-				throw new EccoException("DB file does not exist: " + this.dbFile);
-			}
-		} else {
-			this.database = new Database();
-		}
+		this.loadDatabase();
 	}
 
-	protected void endReadWrite() throws IOException {
+	private void endReadWrite() throws IOException {
 		// check if we still have exclusive write lock and take it
 		if (!this.writeFileLock.isValid())
 			throw new EccoException("Lost exclusive lock on WRITE file.");
@@ -233,7 +181,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		String newId = UUID.randomUUID().toString();
 		// serialize to new db file
 		Path newDbFile = this.repositoryDir.resolve(newId + DB_FILE_SUFFIX);
-		serialize(this.database, newDbFile);
+		this.serialize(this.database, newDbFile);
 
 		// obtain exclusive lock on id file, write new id, update current id and db file, release lock
 		try (FileChannel idFileChannel = FileChannel.open(this.idFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE); FileLock idFileLock = idFileChannel.lock(0, Long.MAX_VALUE, false)) {
@@ -261,10 +209,22 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// release exclusive write lock automatically after try block
 		this.writeFileLock.close();
 		this.writeFileChannel.close();
+
+		this.transaction = null;
 	}
 
 
-	protected String readCurrentId() throws IOException {
+	private void reset() {
+		this.id = null;
+		this.dbFile = null;
+		this.database = null;
+		this.transaction = null;
+		this.transactionCounter = 0;
+		this.writeFileChannel = null;
+		this.writeFileLock = null;
+	}
+
+	private String readCurrentId() throws IOException {
 		// get shared lock on id file, read id, release lock, return it
 		try (RandomAccessFile ras = new RandomAccessFile(this.idFile.toFile(), "r"); FileChannel fileChannel = ras.getChannel(); FileLock fileLock = fileChannel.lock(0, Long.MAX_VALUE, true)) {
 			if (!fileLock.isValid())
@@ -274,33 +234,47 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 	}
 
-	/**
-	 * Delete db file if we can get exclusive lock and it does not match id file.
-	 *
-	 * @param dbFile The db file to check and delete.
-	 * @throws IOException When obtaining file lock or reading ID file or deleting DB file fails.
-	 */
-	private void checkAndDeleteUnusedDatabaseFile(Path dbFile) throws IOException {
-		if (!DELETE_OLD_DB_FILES)
-			return;
+	private void loadDatabase() throws IOException, ClassNotFoundException {
+		// check if id file exists
+		if (Files.exists(this.idFile)) {
+			String id = this.readCurrentId();
+			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
+			if (this.id != null && this.id.equals(id))
+				return;
+			this.id = id;
 
-		if (dbFile == null)
-			return;
+			Path dbFile = this.repositoryDir.resolve(this.id + DB_FILE_SUFFIX);
+			if (Files.exists(dbFile)) {
+				this.dbFile = dbFile;
+				try (FileChannel dbFileChannel = FileChannel.open(this.dbFile, StandardOpenOption.READ); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, true)) {
+					if (!dbFileLock.isValid())
+						throw new EccoException("Could not obtain shared lock on DB file.");
 
-		String currentId = this.readCurrentId();
-		Path currentDbFile = this.repositoryDir.resolve(currentId + DB_FILE_SUFFIX);
+					this.database = (Database) this.deserialize(this.dbFile);
+				}
 
-		if (!currentDbFile.equals(dbFile)) {
-			// try to delete db file
-			try (FileChannel dbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, false)) {
-				if (dbFileLock.isValid())
-					Files.delete(dbFile);
+				// delete db file if we can get exclusive lock and it does not match id file
+				if (DELETE_OLD_DB_FILES) {
+					String currentId = this.readCurrentId();
+					Path currentDbFile = this.repositoryDir.resolve(currentId + DB_FILE_SUFFIX);
+					if (!currentDbFile.equals(dbFile)) {
+						// try to delete db file
+						try (FileChannel dbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, false)) {
+							if (dbFileLock.isValid())
+								Files.delete(dbFile);
+						}
+					}
+				}
+			} else {
+				throw new EccoException("DB file does not exist: " + this.dbFile);
 			}
+		} else {
+			this.database = new Database();
 		}
 	}
 
 
-	private static Object deserialize(Path file) throws IOException, ClassNotFoundException {
+	private Object deserialize(Path file) throws IOException, ClassNotFoundException {
 		try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file))) {
 			ZipEntry e = null;
 			while ((e = zis.getNextEntry()) != null) {
@@ -314,7 +288,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		return null;
 	}
 
-	private static void serialize(Object object, Path file) throws IOException {
+	private void serialize(Object object, Path file) throws IOException {
 		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file, StandardOpenOption.CREATE))) {
 			zos.putNextEntry(new ZipEntry("ecco.ser"));
 			try (ObjectOutputStream oos = new ObjectOutputStream(zos)) {

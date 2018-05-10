@@ -13,9 +13,9 @@ public interface Commit extends Persistable {
 	 *
 	 * @return The identifier of the commit.
 	 */
-	public int getId();
+	public String getId();
 
-	public void setId(int id);
+	public void setId(String id);
 
 
 	public Configuration getConfiguration();

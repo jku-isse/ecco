@@ -9,6 +9,7 @@ import at.jku.isse.ecco.storage.mem.repository.MemRepository;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class Database implements Serializable {
 
@@ -17,11 +18,9 @@ public class Database implements Serializable {
 
 	private final Repository.Op repository;
 
-	private final Map<Integer, MemCommit> commitIndex;
+	private final Map<String, MemCommit> commitIndex;
 	private final Map<String, MemVariant> variantIndex;
 	private final Map<String, MemRemote> remoteIndex;
-
-	private int currentCommitId = 0;
 
 
 	public Database() {
@@ -33,9 +32,8 @@ public class Database implements Serializable {
 	}
 
 
-	public int nextCommitId() {
-		this.currentCommitId++;
-		return this.currentCommitId;
+	public String nextCommitId() {
+		return UUID.randomUUID().toString();
 	}
 
 
@@ -44,7 +42,7 @@ public class Database implements Serializable {
 	}
 
 
-	public Map<Integer, MemCommit> getCommitIndex() {
+	public Map<String, MemCommit> getCommitIndex() {
 		return this.commitIndex;
 	}
 

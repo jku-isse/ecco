@@ -11,7 +11,7 @@ public class MemCommit implements Commit {
 	public static final long serialVersionUID = 1L;
 
 
-	private int id;
+	private String id;
 	private String committer;
 	private Configuration configuration;
 
@@ -19,12 +19,12 @@ public class MemCommit implements Commit {
 	}
 
 	@Override
-	public int getId() {
+	public String getId() {
 		return this.id;
 	}
 
 	@Override
-	public void setId(int id) {
+	public void setId(String id) {
 		this.id = id;
 	}
 

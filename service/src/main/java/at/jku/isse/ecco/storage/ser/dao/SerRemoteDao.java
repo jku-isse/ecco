@@ -1,7 +1,9 @@
 package at.jku.isse.ecco.storage.ser.dao;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.RemoteDao;
+import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.dao.Database;
 import com.google.inject.Inject;
@@ -46,6 +48,9 @@ public class SerRemoteDao extends SerAbstractGenericDao implements RemoteDao {
 	public Remote storeRemote(Remote remote) {
 		checkNotNull(remote);
 
+		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
+			throw new EccoException("Attempted to store remote without active READ_WRITE transaction.");
+
 		final Database root = this.transactionStrategy.getDatabase();
 		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();
 
@@ -59,6 +64,9 @@ public class SerRemoteDao extends SerAbstractGenericDao implements RemoteDao {
 	@Override
 	public void removeRemote(String name) {
 		checkNotNull(name);
+
+		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
+			throw new EccoException("Attempted to remove remote without active READ_WRITE transaction.");
 
 		final Database root = this.transactionStrategy.getDatabase();
 		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();

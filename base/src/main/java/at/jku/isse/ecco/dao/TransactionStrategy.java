@@ -12,8 +12,6 @@ public interface TransactionStrategy {
 	public void close();
 
 
-	public void begin();
-
 	public void begin(TRANSACTION transaction);
 
 	public void end();

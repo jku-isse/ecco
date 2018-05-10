@@ -31,7 +31,6 @@ build:fedora:
     - ./gradlew build
     - ./gradlew combinedjavadoc
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
-    - ./gradlew publishPerstMavenPublicationToRootEccoRepository
     - ./gradlew combinedWindowsZip
     - ./gradlew combinedLinuxZip
     - ./gradlew combinedrpm
@@ -59,7 +58,6 @@ build:ubuntu:
     - ./gradlew build
     - ./gradlew combinedjavadoc
     - ./gradlew publishEccoMavenPublicationToRootEccoRepository
-    - ./gradlew publishPerstMavenPublicationToRootEccoRepository
     - ./gradlew combinedWindowsZip
     - ./gradlew combinedLinuxZip
     - ./gradlew combinedrpm
