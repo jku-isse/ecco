@@ -5,7 +5,10 @@ import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 
 public class DependencyGraph {
 
@@ -92,7 +95,7 @@ public class DependencyGraph {
 							this.associations.add(toA);
 						}
 						if (fromA != toA) {
-							Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.computeIfAbsent(fromA, k -> new HashMap<>());
+							Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.computeIfAbsent(fromA, k -> Maps.mutable.empty());
 							DependencyImpl dependency = fromDependencyMap.get(toA);
 							if (dependency == null) {
 								dependency = new DependencyImpl();
@@ -122,7 +125,7 @@ public class DependencyGraph {
 
 				if (parentA != null) {
 					if (fromA != parentA) {
-						Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.computeIfAbsent(fromA, k -> new HashMap<>());
+						Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.computeIfAbsent(fromA, k -> Maps.mutable.empty());
 						DependencyImpl dependency = fromDependencyMap.get(parentA);
 						if (dependency == null) {
 							dependency = new DependencyImpl();

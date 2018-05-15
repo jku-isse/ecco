@@ -7,11 +7,9 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.Charset;
@@ -29,6 +27,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class SerTransactionStrategy implements TransactionStrategy {
 
 	private static final boolean DELETE_OLD_DB_FILES = true;
+	private static final boolean REUSE_DB_ACROSS_TRANSACTIONS = true;
 
 	private static final String ID_FILENAME = "id";
 	private static final String WRITELOCK_FILENAME = "write";
@@ -90,18 +89,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 	@Override
 	public synchronized void rollback() {
+		if (this.transaction == null && this.transactionCounter == 0)
+			throw new EccoException("Error rolling back transaction: No transaction active.");
 		this.reset();
 	}
 
-
-//	/**
-//	 * Begins a read/write transaction.
-//	 */
-//	@Deprecated
-//	@Override
-//	public synchronized void begin() {
-//		this.begin(TRANSACTION.READ_WRITE);
-//	}
 
 	@Override
 	public synchronized void begin(TRANSACTION transaction) {
@@ -181,7 +173,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		String newId = UUID.randomUUID().toString();
 		// serialize to new db file
 		Path newDbFile = this.repositoryDir.resolve(newId + DB_FILE_SUFFIX);
-		this.serialize(this.database, newDbFile);
+		//this.serialize(this.database, newDbFile);
+		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(newDbFile, StandardOpenOption.CREATE))) {
+			zos.putNextEntry(new ZipEntry("ecco.ser"));
+			try (ObjectOutputStream oos = new ObjectOutputStream(zos)) {
+				oos.writeObject(this.database);
+			}
+		}
 
 		// obtain exclusive lock on id file, write new id, update current id and db file, release lock
 		try (FileChannel idFileChannel = FileChannel.open(this.idFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE); FileLock idFileLock = idFileChannel.lock(0, Long.MAX_VALUE, false)) {
@@ -239,7 +237,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		if (Files.exists(this.idFile)) {
 			String id = this.readCurrentId();
 			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
-			if (this.id != null && this.id.equals(id))
+			if (REUSE_DB_ACROSS_TRANSACTIONS && this.id != null && this.id.equals(id))
 				return;
 			this.id = id;
 
@@ -250,7 +248,18 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					if (!dbFileLock.isValid())
 						throw new EccoException("Could not obtain shared lock on DB file.");
 
-					this.database = (Database) this.deserialize(this.dbFile);
+					//this.database = (Database) this.deserialize(this.dbFile);
+					InputStream is = Channels.newInputStream(dbFileChannel);
+					try (ZipInputStream zis = new ZipInputStream(is)) {
+						ZipEntry e = null;
+						while ((e = zis.getNextEntry()) != null) {
+							if (e.getName().equals("ecco.ser")) {
+								try (ObjectInputStream ois = new ObjectInputStream(zis)) {
+									this.database = (Database) ois.readObject();
+								}
+							}
+						}
+					}
 				}
 
 				// delete db file if we can get exclusive lock and it does not match id file
@@ -259,8 +268,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					Path currentDbFile = this.repositoryDir.resolve(currentId + DB_FILE_SUFFIX);
 					if (!currentDbFile.equals(dbFile)) {
 						// try to delete db file
-						try (FileChannel dbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, false)) {
-							if (dbFileLock.isValid())
+						try (FileChannel oldDbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock oldDbFileLock = oldDbFileChannel.lock(0, Long.MAX_VALUE, false)) {
+							if (oldDbFileLock.isValid())
 								Files.delete(dbFile);
 						}
 					}
@@ -274,27 +283,27 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 
-	private Object deserialize(Path file) throws IOException, ClassNotFoundException {
-		try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file))) {
-			ZipEntry e = null;
-			while ((e = zis.getNextEntry()) != null) {
-				if (e.getName().equals("ecco.ser")) {
-					try (ObjectInputStream ois = new ObjectInputStream(zis)) {
-						return ois.readObject();
-					}
-				}
-			}
-		}
-		return null;
-	}
+//	private Object deserialize(Path file) throws IOException, ClassNotFoundException {
+//		try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file))) {
+//			ZipEntry e = null;
+//			while ((e = zis.getNextEntry()) != null) {
+//				if (e.getName().equals("ecco.ser")) {
+//					try (ObjectInputStream ois = new ObjectInputStream(zis)) {
+//						return ois.readObject();
+//					}
+//				}
+//			}
+//		}
+//		return null;
+//	}
 
-	private void serialize(Object object, Path file) throws IOException {
-		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file, StandardOpenOption.CREATE))) {
-			zos.putNextEntry(new ZipEntry("ecco.ser"));
-			try (ObjectOutputStream oos = new ObjectOutputStream(zos)) {
-				oos.writeObject(object);
-			}
-		}
-	}
+//	private void serialize(Object object, Path file) throws IOException {
+//		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file, StandardOpenOption.CREATE))) {
+//			zos.putNextEntry(new ZipEntry("ecco.ser"));
+//			try (ObjectOutputStream oos = new ObjectOutputStream(zos)) {
+//				oos.writeObject(object);
+//			}
+//		}
+//	}
 
 }

@@ -198,7 +198,7 @@ public interface Repository extends Persistable {
 		/**
 		 * Adds all features and feature revisions in the given configuration that are not already contained in the repository to the repository.
 		 * In the process, all associations in the repository are updated with new modules containing the new features negatively.
-		 * Returns a collection of all feature revisions instances in the repository that are contained in the repository, those that already existed and those that were added.
+		 * Returns a collection of all feature revision instances in the repository that are contained in the repository, those that already existed and those that were added.
 		 *
 		 * @param configuration The configuration whose features are added to the repository.
 		 * @return Collection of all feature revision instances of the repository that are contained in the configuration.
@@ -240,7 +240,7 @@ public interface Repository extends Persistable {
 		 * If a module or module revision does not yet exist in the repository it is created and added to the repository.
 		 *
 		 * @param configuration The configuration whose modules are computed and added to the repository.
-		 * @return All module revision instances of the repository that are contained in the configuration.
+		 * @return Collection of all module revision instances of the repository that are contained in the configuration.
 		 */
 		public default Collection<ModuleRevision> addConfigurationModules(Configuration configuration) {
 			checkNotNull(configuration);
@@ -376,7 +376,7 @@ public interface Repository extends Persistable {
 			Collection<FeatureRevision> repoFeatureRevisions = this.addConfigurationFeatures(configuration);
 
 			// create configuration with repo feature revisions
-			Configuration repoConfiguration = this.getEntityFactory().createConfiguration(repoFeatureRevisions.toArray(new FeatureRevision[repoFeatureRevisions.size()]));
+			Configuration repoConfiguration = this.getEntityFactory().createConfiguration(repoFeatureRevisions.toArray(new FeatureRevision[0]));
 
 			// add configuration modules and module revisions
 			Collection<ModuleRevision> moduleRevisions = this.addConfigurationModules(repoConfiguration);

@@ -5,9 +5,9 @@ import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.repository.MemRepository;
+import org.eclipse.collections.impl.factory.Maps;
 
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,9 +26,9 @@ public class Database implements Serializable {
 	public Database() {
 		this.repository = new MemRepository();
 
-		this.commitIndex = new HashMap<>();
-		this.variantIndex = new HashMap<>();
-		this.remoteIndex = new HashMap<>();
+		this.commitIndex = Maps.mutable.empty();
+		this.variantIndex = Maps.mutable.empty();
+		this.remoteIndex = Maps.mutable.empty();
 	}
 
 
@@ -53,6 +53,5 @@ public class Database implements Serializable {
 	public Map<String, MemVariant> getVariantIndex() {
 		return this.variantIndex;
 	}
-
 
 }
