@@ -365,7 +365,6 @@ public interface SequenceGraph extends Persistable {
 		 */
 		public default void align(List<? extends Artifact.Op<?>> artifacts) {
 			int finalCost = this.alignRec(this.getRoot(), artifacts, 0, 0, Integer.MAX_VALUE);
-			System.out.println("FINAL COST: " + finalCost);
 
 			// check if either a sequence number or NOT_MATCHED_SEQUENCE_NUMBER was assigned to every artifact
 			for (Artifact artifact : artifacts) {
