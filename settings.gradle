@@ -25,6 +25,8 @@ include 'cli'
 include 'gui'
 include 'web'
 
+include 'storage-xml'
+
 include 'adapter-file'
 include 'adapter-text'
 include 'adapter-image'
@@ -35,6 +37,8 @@ project(':service').projectDir = file('service')
 project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
+
+project(':storage-xml').projectDir = file('extras/xml')
 
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')

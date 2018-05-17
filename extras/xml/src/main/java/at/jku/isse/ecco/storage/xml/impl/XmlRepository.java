@@ -18,7 +18,7 @@ public class XmlRepository implements Repository.Op {
     private Collection<Association.Op> associations = new ArrayList<>();
     private List<Map<Module, Module>> modules = new ArrayList<>();
     private int maxOrder;
-    private Map<Integer, MemCommit> commitIndex;
+    private Map<String, MemCommit> commitIndex;
     private Map<String, MemRemote> remoteIndex;
 
 
@@ -38,7 +38,7 @@ public class XmlRepository implements Repository.Op {
     }
 
 
-    public Map<Integer, MemCommit> getCommitIndex() {
+    public Map<String, MemCommit> getCommitIndex() {
         return commitIndex;
     }
 
