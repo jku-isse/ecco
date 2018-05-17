@@ -99,12 +99,14 @@ public class XmlTransactionStrategy implements TransactionStrategy {
     }
 
     @Override
-    public void begin() throws EccoException {
+    public void begin(TRANSACTION transaction) {
 
     }
 
     @Override
     public void end() throws EccoException {
+        if (curRepo != null)
+            store(curRepo);
     }
 
     @Override

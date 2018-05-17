@@ -23,7 +23,7 @@ public class XmlRepositoryDao implements RepositoryDao {
 
     @Override
     public void store(Repository.Op repository) {
-        transactionStrategy.store(repository);
+
     }
 
 

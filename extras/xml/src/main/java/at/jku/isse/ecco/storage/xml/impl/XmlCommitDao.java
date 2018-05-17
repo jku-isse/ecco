@@ -26,12 +26,12 @@ public class XmlCommitDao implements CommitDao {
 
     @Override
     public Commit load(String id) throws EccoException {
-        return transactionStrategy.load().getCommitIndex().get(Integer.parseInt(id));
+        return transactionStrategy.load().getCommitIndex().get(id);
     }
 
     @Override
     public void remove(String id) throws EccoException {
-        transactionStrategy.load().getCommitIndex().remove(Integer.parseInt(id));
+        transactionStrategy.load().getCommitIndex().remove(id);
     }
 
     @Override
@@ -45,7 +45,7 @@ public class XmlCommitDao implements CommitDao {
         final MemCommit baseEntity = (MemCommit) entity;
 
         if (!root.getCommitIndex().containsKey(baseEntity.getId())) {
-            baseEntity.setId(root.getCommitIndex().size());
+            baseEntity.setId(Integer.toString(root.getCommitIndex().size()));
         }
         while (!root.getCommitIndex().containsKey(baseEntity.getId())) {
             baseEntity.setId(baseEntity.getId() + 1);

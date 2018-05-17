@@ -698,8 +698,13 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(LabeledStatement node) {
-        performAction(node);
-        TODO(node); // needs testing
+        JavaTreeArtifactData label = new JavaTreeArtifactData();
+        label.setType(SIMPLE_JUST_A_STRING);
+        label.setDataAsString(node.getLabel() + ":");
+        Node.Op eccoNode = newNode.apply(label);
+        calculateLineNumbers(node, eccoNode);
+        parentEccoNode.addChild(eccoNode);
+        recursiveReadAst.accept(node.getBody(), parentEccoNode);
         return super.visit(node);
     }
 
@@ -1136,7 +1141,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
             visit((EnumDeclaration) declaration);
         else
             throw new IllegalStateException("Subclass not expected!");
-        TODO(node); // need example of this
         return super.visit(node);
     }
 
