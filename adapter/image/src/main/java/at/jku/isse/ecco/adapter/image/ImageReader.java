@@ -68,6 +68,8 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 				nodes.add(pluginNode);
 
 				final BufferedImage image = ImageIO.read(resolvedPath.toFile());
+				if (image == null)
+					throw new EccoException("Could not read image: " + resolvedPath);
 				pluginNode.addChild(parseImage(image));
 
 				pluginNode.addChild(this.entityFactory.createNode(new ImageArtifactData(new int[]{image.getType()}, "TYPE")));

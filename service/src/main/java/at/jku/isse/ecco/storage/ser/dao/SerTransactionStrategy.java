@@ -250,14 +250,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 					//this.database = (Database) this.deserialize(this.dbFile);
 					InputStream is = Channels.newInputStream(dbFileChannel);
-					try (ZipInputStream zis = new ZipInputStream(is)) {
-						ZipEntry e = null;
-						while ((e = zis.getNextEntry()) != null) {
-							if (e.getName().equals("ecco.ser")) {
-								try (ObjectInputStream ois = new ObjectInputStream(zis)) {
-									this.database = (Database) ois.readObject();
-								}
-							}
+					ZipInputStream zis = new ZipInputStream(is);
+					ZipEntry e = null;
+					while ((e = zis.getNextEntry()) != null) {
+						if (e.getName().equals("ecco.ser")) {
+							ObjectInputStream ois = new ObjectInputStream(zis);
+							this.database = (Database) ois.readObject();
+							break;
 						}
 					}
 				}
