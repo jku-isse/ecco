@@ -1,0 +1,8 @@
+
+ecco.adapter = true
+
+dependencies {
+	compile 'com.github.javaparser:javaparser-symbol-solver-core:3.6.7'
+
+	compile project(':ecco-service')
+}
