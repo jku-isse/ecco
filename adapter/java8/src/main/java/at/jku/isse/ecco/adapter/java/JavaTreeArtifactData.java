@@ -27,7 +27,7 @@ public class JavaTreeArtifactData implements ArtifactData {
         BEFORE,
         AFTER,
         STATEMENT_IF,
-        STATEMENT_IFFS,
+//        STATEMENT_IFFS,
         STATEMENT_ELSE,
         EXPRESSION_PREFIX,
         EXPRESION_POSTFIX,

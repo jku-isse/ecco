@@ -210,9 +210,9 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
                 case ENUM_DECLARATION:
                     handleEnumDeclaration(stringBuilder, curNode, artifactData);
                     break;
-                case STATEMENT_IFFS:
-                    handleIfStatements(stringBuilder, curNode, artifactData);
-                    break;
+//                case STATEMENT_IFFS:
+//                    handleIfStatements(stringBuilder, curNode, artifactData);
+//                    break;
                 case EXPRESSION_CAST:
                     handleCast(stringBuilder, curNode, artifactData);
                     break;

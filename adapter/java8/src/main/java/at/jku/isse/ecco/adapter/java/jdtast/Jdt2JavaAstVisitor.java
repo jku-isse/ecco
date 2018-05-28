@@ -226,7 +226,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
         recursiveReadAst.accept(node.getMessage(), assertMessageNode);
         //ID of root node should be the assertion condition
-        assertData.setDataAsString(node.getExpression().toString().trim());
+        //assertData.setDataAsString(node.getExpression().toString().trim());
+		assertData.setDataAsString(node.toString());
         return super.visit(node);
     }
 
@@ -530,7 +531,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final JavaTreeArtifactData childData = (JavaTreeArtifactData) expressionStatementNode.getChildren().get(0).getArtifact().getData();
 
         String id = childData.getType().ordinal() + "-" + childData.getDataAsString();
-        expressionStatementData.setDataAsString(id);
+        //expressionStatementData.setDataAsString(id);
+		expressionStatementData.setDataAsString(node.toString());
         return super.visit(node);
     }
 
@@ -587,19 +589,19 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(IfStatement node) {
-        Node.Op iffsNode;
-        {
-            JavaTreeArtifactData parentArtifactData = (JavaTreeArtifactData) parentEccoNode.getArtifact().getData();
-            if (parentArtifactData.getType() == STATEMENT_IFFS) {
-                iffsNode = parentEccoNode;
-            } else {
-                JavaTreeArtifactData iffs = new JavaTreeArtifactData();
-                iffs.setOrdered(true);
-                iffs.setType(STATEMENT_IFFS);
-                iffsNode = newNode.apply(iffs);
-                parentEccoNode.addChild(iffsNode);
-            }
-        }
+//        Node.Op iffsNode;
+//        {
+//            JavaTreeArtifactData parentArtifactData = (JavaTreeArtifactData) parentEccoNode.getArtifact().getData();
+//            if (parentArtifactData.getType() == STATEMENT_IFFS) {
+//                iffsNode = parentEccoNode;
+//            } else {
+//                JavaTreeArtifactData iffs = new JavaTreeArtifactData();
+//                iffs.setOrdered(true);
+//                iffs.setType(STATEMENT_IFFS);
+//                iffsNode = newNode.apply(iffs);
+//                parentEccoNode.addChild(iffsNode);
+//            }
+//        }
 
         JavaTreeArtifactData ifData = new JavaTreeArtifactData();
         ifData.setType(STATEMENT_IF);
@@ -607,7 +609,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
         final Node.Op ifNode = newNode.apply(ifData);
         calculateLineNumbers(node, ifNode);
-        iffsNode.addChild(ifNode);
+        parentEccoNode.addChild(ifNode);
 
         recursiveReadAst.accept(node.getThenStatement(), ifNode);
 
@@ -616,8 +618,19 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
             JavaTreeArtifactData.NodeType elseStatementType = elseStatement instanceof IfStatement ? STATEMENT_IF : STATEMENT_ELSE;
 
             if (elseStatementType == STATEMENT_IF) {
-                recursiveReadAst.accept(elseStatement, iffsNode);
+                // else if
+                // insert "duzmmy else" node without any children
+                JavaTreeArtifactData elseData = new JavaTreeArtifactData();
+                elseData.setDataAsString("else");
+                elseData.setType(STATEMENT_ELSE);
+                final Node.Op elseNode = newNode.apply(elseData);
+                calculateLineNumbers(elseStatement, elseNode);
+                parentEccoNode.addChild(elseNode);
+                // add "if child" to "parentEccoNode"
+                recursiveReadAst.accept(elseStatement, parentEccoNode);
             } else {
+                // else
+                // add else node with block as child
                 JavaTreeArtifactData elseData = new JavaTreeArtifactData();
                 elseData.setDataAsString("else");
                 elseData.setType(STATEMENT_ELSE);
@@ -917,6 +930,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         //Does not need an ID
         final JavaTreeArtifactData returnData = new JavaTreeArtifactData();
         returnData.setType(STATEMENT_RETURN);
+        returnData.setDataAsString(node.toString());
         final Node.Op returnNode = newNode.apply(returnData);
         calculateLineNumbers(node, returnNode);
         parentEccoNode.addChild(returnNode);
@@ -1199,6 +1213,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         JavaTreeArtifactData variableDeclaration = new JavaTreeArtifactData();
         variableDeclaration.setType(STATEMENT_VARIABLE_DECLARATION);
         variableDeclaration.setOrdered(true);
+        variableDeclaration.setDataAsString(node.toString());
         final Node.Op variableDeclarationNode = newNode.apply(variableDeclaration);
         calculateLineNumbers(node, variableDeclarationNode);
         parentEccoNode.addChild(variableDeclarationNode);
