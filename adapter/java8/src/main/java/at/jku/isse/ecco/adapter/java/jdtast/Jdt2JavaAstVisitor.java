@@ -498,9 +498,12 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         parentEccoNode.addChild(whileNode);
         whileNode.addChild(bodyNode);
 
+        Statement doBody = node.getBody();
+        Node.Op bodyParent = ensureBlockNode(doBody, bodyNode);
+
         // Condition of the do-while is the ID
         whileData.setDataAsString(node.getExpression().toString());
-        recursiveReadAst.accept(node.getBody(), bodyNode);
+        recursiveReadAst.accept(doBody, bodyParent);
         return super.visit(node);
     }
 
@@ -530,7 +533,10 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         referenceCheckingConsumer.accept(enhancedForNode.getArtifact(), parameter);
         referenceCheckingConsumer.accept(enhancedForNode.getArtifact(), parameter.getType());
 
-        recursiveReadAst.accept(node.getBody(), bodyNode);
+        Statement forBody = node.getBody();
+        Node.Op bodyNodeParent = ensureBlockNode(forBody, bodyNode);
+
+        recursiveReadAst.accept(forBody, bodyNodeParent);
 
         return super.visit(node);
     }
@@ -679,7 +685,10 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         sj.add(updaters.collect(Collectors.joining(",")));
         forData.setDataAsString(sj.toString());
 
-        recursiveReadAst.accept(node.getBody(), bodyNode);
+        Statement forBody = node.getBody();
+        Node.Op bodyNodeParent = ensureBlockNode(forBody, bodyNode);
+
+        recursiveReadAst.accept(forBody, bodyNodeParent);
 
         return super.visit(node);
     }
@@ -698,7 +707,11 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         parentEccoNode.addChild(ifNode);
         ifNode.addChild(thenNode);
 
-        recursiveReadAst.accept(node.getThenStatement(), thenNode);
+        Statement thenStatement = node.getThenStatement();
+
+        Node.Op thenParent = ensureBlockNode(thenStatement, thenNode);
+
+        recursiveReadAst.accept(thenStatement, thenParent);
 
         Statement optionalElseBranch = node.getElseStatement();
         if (optionalElseBranch != null) {
@@ -1419,7 +1432,10 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final Node.Op whileNode = newNode.apply(whileData), bodyNode = newNode.apply(body);
         parentEccoNode.addChild(whileNode);
         whileNode.addChild(bodyNode);
-        recursiveReadAst.accept(node.getBody(), bodyNode);
+
+        Statement whileBody = node.getBody();
+        Node.Op whileBodyParent = ensureBlockNode(whileBody, bodyNode);
+        recursiveReadAst.accept(whileBody, whileBodyParent);
         return super.visit(node);
     }
 
@@ -1453,6 +1469,19 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         NeedsMoreDetailASTVisitor astVisitor = new NeedsMoreDetailASTVisitor();
         n.accept(astVisitor);
         return astVisitor.lambdaFound();
+    }
+
+    private Node.Op ensureBlockNode(Statement statement, Node.Op curParent) {
+        if (statement instanceof Block)
+            return curParent;
+        else {
+            JavaTreeArtifactData fakeBlockData = new JavaTreeArtifactData();
+            fakeBlockData.setType(BLOCK);
+            fakeBlockData.setOrdered(true);
+            Node.Op fakeBlockNode = newNode.apply(fakeBlockData);
+            curParent.addChild(fakeBlockNode);
+            return fakeBlockNode;
+        }
     }
 
 }
