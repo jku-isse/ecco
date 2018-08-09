@@ -10,7 +10,7 @@ public class JavaIntegrityTests {
 
     @Test
     public void debugTest1() {
-        integrityTest("SimpleIf.java");
+        integrityTest("VariablePool.java");
     }
 
     @Test(expected = Error.class)

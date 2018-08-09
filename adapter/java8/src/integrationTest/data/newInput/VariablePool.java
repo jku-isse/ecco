@@ -4,7 +4,6 @@ import at.jku.mevss.ppu.BooleanContainer;
 import at.jku.mevss.ppu.ExtBooleanSupplier;
 import at.jku.mevss.ppu.j6.Consumer;
 
-import java.awt.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;

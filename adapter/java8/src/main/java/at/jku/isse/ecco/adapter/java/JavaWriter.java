@@ -118,7 +118,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         else {
             switch (curNodeType) {
                 case TYPE_DECLARATION:
-                case ANNOTATIONTYPE_DECLARATION:
+                case ANNOTATION_TYPE_DECLARATION:
                 case FIELD_DECLARATION:
                 case METHOD_DECLARATION:
                 case ENUM_DECLARATION:
@@ -217,7 +217,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
                 case EXPRESSION_TRENARY:
                     handleTrenaryExpression(stringBuilder, curNode, artifactData);
                     break;
-                case ANNOTATIONTYPE_DECLARATION:
+                case ANNOTATION_TYPE_DECLARATION:
                     handleAnnotationTypeDeclaration(stringBuilder, curNode, artifactData);
                     break;
                 case ANNOTATIONMEMBER:
@@ -257,6 +257,33 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
                     throw new IllegalStateException(curNodeType + " is not supported");
             }
         }
+    }
+
+    private void handleParameters(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
+        //Group elements by parameter position
+        List<Map.Entry<Integer, List<? extends Node>>> orderedParameters = curNode.getChildren().stream().map(e -> {
+            JavaTreeArtifactData data = ((JavaTreeArtifactData) e.getArtifact().getData());
+            return new AbstractMap.SimpleImmutableEntry<Integer, List<? extends Node>>(Integer.parseInt(data.getDataAsString()), e.getChildren());
+        }).sequential().sorted(Comparator.comparing(AbstractMap.SimpleImmutableEntry::getKey)).collect(Collectors.toList());
+
+        stringBuilder.append('(');
+        StringJoiner paramPositionJoiner = new StringJoiner(",");
+
+        for (Map.Entry<?, List<? extends Node>> cur : orderedParameters) {
+            StringJoiner sj = new StringJoiner(" ");
+            StringBuilder tmp = new StringBuilder();
+
+            for (Node n : cur.getValue()) {
+                processJavaAst(tmp, n, mapToJavaArtifact(n));
+                sj.add(tmp);
+                tmp.setLength(0);
+            }
+
+            paramPositionJoiner.add(sj.toString());
+        }
+
+        stringBuilder.append(paramPositionJoiner);
+        stringBuilder.append(')');
     }
 
     private void handleElseStatement(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
@@ -436,21 +463,18 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         if (isPresent)
             stringBuilder.append('.');
         stringBuilder.append(artifactData.getDataAsString());
-        getChildrenAsStream(curNode).filter(e -> PARAMETERS.equals(e.getArtifact().getType())).forEach(it -> processJavaAst(stringBuilder, it));
+        if (hasChild(curNode, PARAMETERS))
+            findChildren(curNode, PARAMETERS).forEach(nae -> processJavaAst(stringBuilder, nae));
+        else stringBuilder.append("()");
     }
 
-    private void handleParameters(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        final List<? extends Node> children = curNode.getChildren();
-        stringBuilder.append('(');
-
-        handleCommaSeperatedExpressions(children, stringBuilder);
-        stringBuilder.append(')');
-    }
 
     private void handleClassInstanceCreation(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
         stringBuilder.append(" new ").append(artifactData.getDataAsString());
 
-        findChildren(curNode, PARAMETERS).forEach(it -> processJavaAst(stringBuilder, it));
+        if (hasChild(curNode, PARAMETERS))
+            findChildren(curNode, PARAMETERS).forEach(it -> processJavaAst(stringBuilder, it));
+        else stringBuilder.append("()");
 
         getChildrenAsStream(curNode).filter(it -> !PARAMETERS.equals(it.getArtifact().getType())).forEach(it -> processJavaAst(stringBuilder, it));
     }
@@ -535,6 +559,10 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         handleGenerics(curNode, stringBuilder);
 
         processJavaAstForChildsChildren(curNode, BEFORE, stringBuilder);
+        if (hasChild(curNode, PARAMETERS))
+            findChildren(curNode, PARAMETERS).forEach(child -> processJavaAst(stringBuilder, child));
+        else
+            stringBuilder.append("()");
 
         findChildren(curNode, THROWS_LIST).forEach(throwsNode -> {
             stringBuilder.append("throws ");
@@ -579,10 +607,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
             stringBuilder.append(" implements ").append(implementsPart);
         stringBuilder.append('{');
         //Recursion -> body elements
-        final NodeArtifactEntry afterNode = findChildren(curNode, AFTER).findFirst().orElse(null);
-        if (afterNode != null) {
-            getChildrenAsStream(afterNode).forEach(nae -> processJavaAst(stringBuilder, nae));
-        }
+        findChildren(curNode, AFTER).findFirst().ifPresent(afterNode -> getChildrenAsStream(afterNode).forEach(nae -> processJavaAst(stringBuilder, nae)));
         stringBuilder.append('}');
     }
 

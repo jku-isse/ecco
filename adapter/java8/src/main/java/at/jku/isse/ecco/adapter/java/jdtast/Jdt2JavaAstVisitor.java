@@ -6,7 +6,6 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.*;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -50,14 +49,15 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final Node.Op methodNode = newNode.apply(methodDeclarationData);
         parentEccoNode.addChild(methodNode);
         List<SingleVariableDeclaration> singleVariableDeclarationList = node.parameters();
-        String parameters = getStringFromVariableDeclaration(singleVariableDeclarationList, methodNode.getArtifact());
+
+        handleParameters(singleVariableDeclarationList, methodNode);
 
         handleModifiers(node.modifiers(), methodNode);
         final Type returnType = node.getReturnType2();
 
         handleGenericParameters(node.typeParameters(), methodNode);
 
-        String beforeChildren = (returnType == null ? "" : returnType.toString() + " ") + methodName.getIdentifier() + "(" + parameters + ")";
+        String beforeChildren = (returnType == null ? "" : returnType.toString() + " ") + methodName.getIdentifier();
 
         JavaTreeArtifactData before = new JavaTreeArtifactData();
         before.setType(BEFORE);
@@ -162,7 +162,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
             return super.visit(node);
         //Does not need an ID
         JavaTreeArtifactData typeDeclarationData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
-        typeDeclarationData.setType(ANNOTATIONTYPE_DECLARATION);
+        typeDeclarationData.setType(ANNOTATION_TYPE_DECLARATION);
         body.setType(BLOCK);
         final Node.Op typeDeclarationNode = newNode.apply(typeDeclarationData), bodyNode = newNode.apply(body);
         parentEccoNode.addChild(typeDeclarationNode);
@@ -320,7 +320,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(BlockComment node) {
         // No handling of comments
-        throw new NotImplementedException();
+        throw new TODO("Not implemented");
     }
 
     @Override
@@ -393,17 +393,27 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         referenceCheckingConsumer.accept(newClassNode.getArtifact(), type);
         recursiveReadAst.accept(node.getAnonymousClassDeclaration(), newClassNode);
 
-        JavaTreeArtifactData parameters = new JavaTreeArtifactData();
-        parameters.setOrdered(true);
-        parameters.setType(PARAMETERS);
-        final Node.Op argumentNode = newNode.apply(parameters);
-        newClassNode.addChild(argumentNode);
-
-        List<Expression> arguments = node.arguments();
-        for (Expression p : arguments)
-            recursiveReadAst.accept(p, argumentNode);
+        handleParameters(((List<Expression>) node.arguments()), newClassNode);
 
         return super.visit(node);
+    }
+
+    private void handleParameters(List<? extends ASTNode> expressionList, Node.Op parentEccoNode) {
+        if (expressionList.isEmpty()) return;
+        JavaTreeArtifactData parameters = new JavaTreeArtifactData();
+        parameters.setType(PARAMETERS);
+        Node.Op parameterNode = newNode.apply(parameters);
+        parentEccoNode.addChild(parameterNode);
+
+        for (int i = 0; i < expressionList.size(); i++) {
+            ASTNode next = expressionList.get(i);
+            JavaTreeArtifactData cPar = new JavaTreeArtifactData();
+            cPar.setType(PARAMETER_POSITION);
+            cPar.setDataAsString(Integer.toString(i));
+            Node.Op cParNode = newNode.apply(cPar);
+            parameterNode.addChild(cParNode);
+            recursiveReadAst.accept(next, cParNode);
+        }
     }
 
 
@@ -412,9 +422,13 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final List<AbstractTypeDeclaration> types = (List<AbstractTypeDeclaration>) node.types();
         //Check if errors are detected
         IProblem[] problems = node.getProblems();
-        boolean notCompiling = Arrays.stream(problems).anyMatch(p -> p.getMessage().startsWith("Syntax error"));
-        if (notCompiling)
+        List<IProblem> notCompiling = Arrays.stream(problems).filter(p -> p.getMessage().startsWith("Syntax error")).collect(Collectors.toList());
+        if (!notCompiling.isEmpty()) {
+            System.out.println("Problems:");
+            notCompiling.stream().map(problem -> "Line " + problem.getSourceLineNumber() + " => " + problem.getMessage()).forEach(System.out::println);
+
             throw new Error("Compilation problem detected at" + types.toString(), new Error(Arrays.toString(problems)));
+        }
         //No new node needs to be generated
         final PackageDeclaration packageDeclaration = node.getPackage();
         if (packageDeclaration != null)
@@ -901,14 +915,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
         }
 
-        final List<Expression> arguments = node.arguments();
-
-        JavaTreeArtifactData argumentData = new JavaTreeArtifactData();
-        argumentData.setOrdered(true);
-        argumentData.setType(PARAMETERS);
-        final Node.Op argumentNode = newNode.apply(argumentData);
-        methodInvocationNode.addChild(argumentNode);
-        arguments.forEach(argument -> recursiveReadAst.accept(argument, argumentNode));
+        final List<Expression> arguments = ((List<Expression>) node.arguments());
+        handleParameters(arguments, methodInvocationNode);
         return super.visit(node);
     }
 
@@ -1088,6 +1096,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final JavaTreeArtifactData singleVariableDeclaration = artifactFromSimpleNode(node);
         final Node.Op variableDeclarationNode = newNode.apply(singleVariableDeclaration);
         referenceCheckingConsumer.accept(variableDeclarationNode.getArtifact(), node);
+        parentEccoNode.addChild(variableDeclarationNode);
         return super.visit(node);
     }
 
@@ -1131,13 +1140,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final Node.Op methodInvocationNode = newNode.apply(methodInvocationData);
         parentEccoNode.addChild(methodInvocationNode);
 
-        final List<Expression> arguments = node.arguments();
+        final List<Expression> arguments = ((List<Expression>) node.arguments());
+        handleParameters(arguments, methodInvocationNode);
 
-        JavaTreeArtifactData argumentData = new JavaTreeArtifactData();
-        argumentData.setType(PARAMETERS);
-        final Node.Op argumentNode = newNode.apply(argumentData);
-        methodInvocationNode.addChild(argumentNode);
-        arguments.forEach(argument -> recursiveReadAst.accept(argument, argumentNode));
         return super.visit(node);
     }
 
@@ -1462,7 +1467,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
             parentEccoNode.addChild(newNode.apply(artifactFromSimpleNode(e)));
         }
         return done;
-
     }
 
     private boolean actualCheckForLambda(ASTNode n) {
@@ -1483,5 +1487,4 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
             return fakeBlockNode;
         }
     }
-
 }

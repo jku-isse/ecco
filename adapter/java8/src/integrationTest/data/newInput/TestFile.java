@@ -2,7 +2,6 @@ package at.jku.isse.ecco.adapter.java.test;
 
 import com.google.common.base.Function;
 import com.sun.istack.internal.NotNull;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import java.beans.Transient;
