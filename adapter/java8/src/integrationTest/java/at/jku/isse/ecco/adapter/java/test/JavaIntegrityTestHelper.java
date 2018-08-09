@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.adapter.java.test;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.storage.perst.dao.PerstEntityFactory;
 import at.jku.isse.ecco.adapter.java.JavaReader;
 import at.jku.isse.ecco.adapter.java.JavaWriter;
+import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.Assert;
 
@@ -29,7 +29,7 @@ public class JavaIntegrityTestHelper {
     private static void integrityTestInternal(Path inRoot, Path outRoot, String... files) {
         if (files == null || files.length == 0)
             throw new IllegalStateException("Remember to pass filenames!!");
-        JavaReader reader = new JavaReader(new PerstEntityFactory());
+        JavaReader reader = new JavaReader(new MemEntityFactory());
         final Set<? extends Node> originalSet = reader.read(inRoot, Arrays.stream(files).map(Paths::get).toArray(Path[]::new));
         final List<Node> read1 = Collections.unmodifiableList(new ArrayList<>(originalSet));
 

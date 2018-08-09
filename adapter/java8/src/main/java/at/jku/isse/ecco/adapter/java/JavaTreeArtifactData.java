@@ -27,7 +27,6 @@ public class JavaTreeArtifactData implements ArtifactData {
         BEFORE,
         AFTER,
         STATEMENT_IF,
-//        STATEMENT_IFFS,
         STATEMENT_ELSE,
         EXPRESSION_PREFIX,
         EXPRESION_POSTFIX,
@@ -64,7 +63,9 @@ public class JavaTreeArtifactData implements ArtifactData {
         STATEMENT_RETURN,
         THROW_STATEMENT,
         GENERIC_TYPE_INFO,
-        DIMENSION
+        DIMENSION,
+        FIELD_TYPE,
+        FIELD_INIT
     }
 
     private NodeType type;

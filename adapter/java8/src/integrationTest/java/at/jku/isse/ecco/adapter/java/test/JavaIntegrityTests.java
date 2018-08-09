@@ -10,7 +10,7 @@ public class JavaIntegrityTests {
 
     @Test
     public void debugTest1() {
-        integrityTest("VariablePool.java");
+        integrityTest("SimpleIf.java");
     }
 
     @Test(expected = Error.class)
@@ -60,7 +60,8 @@ public class JavaIntegrityTests {
         integrityTest(
                 "Constants.java",
                 "InvisibleHandOverZoneImpl.java",
-                "VariablePool.java"
+                "VariablePool.java",
+                "Simple.java"
         );
     }
 
