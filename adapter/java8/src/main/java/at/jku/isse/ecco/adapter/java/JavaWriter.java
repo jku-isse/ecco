@@ -118,7 +118,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         else {
             switch (curNodeType) {
                 case TYPE_DECLARATION:
-                case ANNOTATIONTYPE_DECLARATION:
+                case ANNOTATION_TYPE_DECLARATION:
                 case FIELD_DECLARATION:
                 case METHOD_DECLARATION:
                 case ENUM_DECLARATION:
@@ -186,8 +186,9 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
                 case TYPE_DECLARATION:
                     handleTypeDeclaration(stringBuilder, curNode, artifactData);
                     break;
-                case MODIFIER:
-                    //should be handled above
+                case FIELD_INIT:
+                case BEFORE:
+                    processChildrenOnly(stringBuilder, curNode, artifactData);
                     break;
                 case SWITCH_SWITCH:
                     handleSwitchCase(stringBuilder, curNode, artifactData);
@@ -210,16 +211,13 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
                 case ENUM_DECLARATION:
                     handleEnumDeclaration(stringBuilder, curNode, artifactData);
                     break;
-//                case STATEMENT_IFFS:
-//                    handleIfStatements(stringBuilder, curNode, artifactData);
-//                    break;
                 case EXPRESSION_CAST:
                     handleCast(stringBuilder, curNode, artifactData);
                     break;
                 case EXPRESSION_TRENARY:
                     handleTrenaryExpression(stringBuilder, curNode, artifactData);
                     break;
-                case ANNOTATIONTYPE_DECLARATION:
+                case ANNOTATION_TYPE_DECLARATION:
                     handleAnnotationTypeDeclaration(stringBuilder, curNode, artifactData);
                     break;
                 case ANNOTATIONMEMBER:
@@ -243,18 +241,62 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
                 case FIELD_DECLARATION:
                     handleFieldDeclaration(stringBuilder, curNode, artifactData);
                     break;
-                case STATEMENT_ELSE:
-                    handleElse(stringBuilder, curNode, artifactData);
-                    break;
                 case STATEMENT_ASSERT:
                     handleAssert(stringBuilder, curNode, artifactData);
                     break;
                 case LAMBDA_PARAMETERS:
                     handleLambdaParameters(stringBuilder, curNode, artifactData);
                     break;
+                case STATEMENT_IF:
+                    handleIfStatement(stringBuilder, curNode, artifactData);
+                    break;
+                case STATEMENT_ELSE:
+                    handleElseStatement(stringBuilder, curNode, artifactData);
+                    break;
                 default:
                     throw new IllegalStateException(curNodeType + " is not supported");
             }
+        }
+    }
+
+    private void handleParameters(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
+        //Group elements by parameter position
+        List<Map.Entry<Integer, List<? extends Node>>> orderedParameters = curNode.getChildren().stream().map(e -> {
+            JavaTreeArtifactData data = ((JavaTreeArtifactData) e.getArtifact().getData());
+            return new AbstractMap.SimpleImmutableEntry<Integer, List<? extends Node>>(Integer.parseInt(data.getDataAsString()), e.getChildren());
+        }).sequential().sorted(Comparator.comparing(AbstractMap.SimpleImmutableEntry::getKey)).collect(Collectors.toList());
+
+        stringBuilder.append('(');
+        StringJoiner paramPositionJoiner = new StringJoiner(",");
+
+        for (Map.Entry<?, List<? extends Node>> cur : orderedParameters) {
+            StringJoiner sj = new StringJoiner(" ");
+            StringBuilder tmp = new StringBuilder();
+
+            for (Node n : cur.getValue()) {
+                processJavaAst(tmp, n, mapToJavaArtifact(n));
+                sj.add(tmp);
+                tmp.setLength(0);
+            }
+
+            paramPositionJoiner.add(sj.toString());
+        }
+
+        stringBuilder.append(paramPositionJoiner);
+        stringBuilder.append(')');
+    }
+
+    private void handleElseStatement(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
+        stringBuilder.append(" else ");
+        processJavaAstForChildsChildren(curNode, AFTER, stringBuilder);
+    }
+
+    private void processChildrenOnly(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
+        if (!curNode.getChildren().isEmpty())
+            stringBuilder.append("=");
+        for (Node c : curNode.getChildren()) {
+            JavaTreeArtifactData data = mapToJavaArtifact(c);
+            processJavaAst(stringBuilder, c, data);
         }
     }
 
@@ -273,28 +315,28 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         }
 
         stringBuilder.append(';');
-
     }
 
-    private void handleElse(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        stringBuilder.append("else ");
-        getChildrenAsStream(curNode).forEach(it -> processJavaAst(stringBuilder, it));
+    private void handleIfStatement(final StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
+        stringBuilder.append(" if(").append(artifactData.getDataAsString()).append(')');
+
+        processJavaAstForChildsChildren(curNode, AFTER, stringBuilder);
     }
 
-    private void handleFieldDeclaration(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        stringBuilder.append(' ').append(artifactData.getDataAsString()).append(' ');
+    private void handleFieldDeclaration(final StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
+        // Find type and modifiers, then print name. If initializer is there, print it last
+        String fieldName = artifactData.getDataAsString();
+        String type = findChildren(curNode, FIELD_TYPE).map(NodeArtifactEntry::getArtifact).filter(Objects::nonNull).map(JavaTreeArtifactData::getDataAsString).collect(Collectors.joining(" "));
+        stringBuilder.append(type).append(" ").append(fieldName);
+        curNode.getChildren().stream().filter(e -> {
+            JavaTreeArtifactData data = mapToJavaArtifact(e);
+            assert data != null;
+            NodeType nType = data.getType();
+            return nType != MODIFIER && nType != FIELD_TYPE;
+        }).forEach(e -> processJavaAst(stringBuilder, e, ((JavaTreeArtifactData) e.getArtifact().getData())));
 
-        final List<NodeArtifactEntry> variableDeclarationFragments = findChildren(curNode, VARIABLE_DECLARATION_FRAGMENT).collect(Collectors.toList());
+        stringBuilder.append(";");
 
-        final int maxComma = variableDeclarationFragments.size() - 1;
-        for (int i = 0; i < variableDeclarationFragments.size(); i++) {
-            final NodeArtifactEntry nae = variableDeclarationFragments.get(i);
-            processJavaAst(stringBuilder, nae);
-            if (i < maxComma)
-                stringBuilder.append(',');
-        }
-
-        stringBuilder.append(';');
     }
 
     private void handleTry(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
@@ -367,27 +409,6 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 
     }
 
-    private void handleIfStatements(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        StringJoiner stringJoiner = new StringJoiner("else ");
-        findChildren(curNode, STATEMENT_IF).forEach(it -> handleIfStatement(stringJoiner, it));
-        stringBuilder.append(stringJoiner.toString());
-        findChildren(curNode, STATEMENT_ELSE).forEach(it -> processJavaAst(stringBuilder, it));
-
-    }
-
-    private void handleIfStatement(StringJoiner stringBuilder, NodeArtifactEntry nae) {
-        handleIfStatement(stringBuilder, nae.getNode(), nae.getArtifact());
-    }
-
-    private void handleIfStatement(StringJoiner stringJoiner, Node curNode, JavaTreeArtifactData artifactData) {
-        StringBuilder ifStatementAsString = new StringBuilder();
-        ifStatementAsString.append(artifactData.getDataAsString());
-
-        getChildrenAsStream(curNode).forEach(it -> processJavaAst(ifStatementAsString, it));
-
-        stringJoiner.add(ifStatementAsString.toString());
-    }
-
     private void handleEnumDeclaration(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
         stringBuilder.append(artifactData.getDataAsString());
         processJavaAstForChildsChildren(curNode, DECLARATION_IMPLEMENTS, stringBuilder);
@@ -442,21 +463,18 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         if (isPresent)
             stringBuilder.append('.');
         stringBuilder.append(artifactData.getDataAsString());
-        getChildrenAsStream(curNode).filter(e -> PARAMETERS.equals(e.getArtifact().getType())).forEach(it -> processJavaAst(stringBuilder, it));
+        if (hasChild(curNode, PARAMETERS))
+            findChildren(curNode, PARAMETERS).forEach(nae -> processJavaAst(stringBuilder, nae));
+        else stringBuilder.append("()");
     }
 
-    private void handleParameters(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
-        final List<? extends Node> children = curNode.getChildren();
-        stringBuilder.append('(');
-
-        handleCommaSeperatedExpressions(children, stringBuilder);
-        stringBuilder.append(')');
-    }
 
     private void handleClassInstanceCreation(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
         stringBuilder.append(" new ").append(artifactData.getDataAsString());
 
-        findChildren(curNode, PARAMETERS).forEach(it -> processJavaAst(stringBuilder, it));
+        if (hasChild(curNode, PARAMETERS))
+            findChildren(curNode, PARAMETERS).forEach(it -> processJavaAst(stringBuilder, it));
+        else stringBuilder.append("()");
 
         getChildrenAsStream(curNode).filter(it -> !PARAMETERS.equals(it.getArtifact().getType())).forEach(it -> processJavaAst(stringBuilder, it));
     }
@@ -540,7 +558,11 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
     private void handleMethodDeclaration(StringBuilder stringBuilder, Node curNode, JavaTreeArtifactData artifactData) {
         handleGenerics(curNode, stringBuilder);
 
-        stringBuilder.append(artifactData.getDataAsString());
+        processJavaAstForChildsChildren(curNode, BEFORE, stringBuilder);
+        if (hasChild(curNode, PARAMETERS))
+            findChildren(curNode, PARAMETERS).forEach(child -> processJavaAst(stringBuilder, child));
+        else
+            stringBuilder.append("()");
 
         findChildren(curNode, THROWS_LIST).forEach(throwsNode -> {
             stringBuilder.append("throws ");
@@ -585,10 +607,7 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
             stringBuilder.append(" implements ").append(implementsPart);
         stringBuilder.append('{');
         //Recursion -> body elements
-        final NodeArtifactEntry afterNode = findChildren(curNode, AFTER).findFirst().orElse(null);
-        if (afterNode != null) {
-            getChildrenAsStream(afterNode).forEach(nae -> processJavaAst(stringBuilder, nae));
-        }
+        findChildren(curNode, AFTER).findFirst().ifPresent(afterNode -> getChildrenAsStream(afterNode).forEach(nae -> processJavaAst(stringBuilder, nae)));
         stringBuilder.append('}');
     }
 
@@ -619,7 +638,6 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         return null;
     }
 
-
     private Stream<NodeArtifactEntry> findChildren(Node node, NodeType nodeType) {
         return node.getChildren().stream().sequential().
                 filter(e -> nodeType.equals(((JavaTreeArtifactData) e.getArtifact().getData()).getType())).map(NodeArtifactEntry::fromNode);
@@ -629,7 +647,6 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
         return node.getChildren().stream().
                 anyMatch(e -> nodeType.equals(((JavaTreeArtifactData) e.getArtifact().getData()).getType()));
     }
-
 
     private void handleCommaSeperatedExpressions(List<? extends Node> children, StringBuilder stringBuilder) {
         final int maxComma = children.size() - 1;
@@ -642,5 +659,4 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
             i++;
         }
     }
-
 }

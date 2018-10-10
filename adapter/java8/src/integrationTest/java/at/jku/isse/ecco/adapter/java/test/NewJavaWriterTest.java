@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.adapter.java.test;
 
-import at.jku.isse.ecco.storage.perst.dao.PerstEntityFactory;
 import at.jku.isse.ecco.adapter.java.JavaReader;
 import at.jku.isse.ecco.adapter.java.JavaWriter;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.Test;
 
@@ -49,7 +49,7 @@ public class NewJavaWriterTest {
     }
 
     private void writeTest(String... filename) {
-        JavaReader javaReader = new JavaReader(new PerstEntityFactory());
+        JavaReader javaReader = new JavaReader(new MemEntityFactory());
         final Set<? extends Node> nodes = NewJavaReaderTests.read(javaReader, filename);
         JavaWriter javaWriter = new JavaWriter();
         javaWriter.write(outRoot, ((Set<Node>) nodes));
@@ -57,7 +57,7 @@ public class NewJavaWriterTest {
 
     private void writeJdkTest(String... filename) {
         Path outRoot = NewJavaWriterTest.outRoot.resolve("jdk");
-        JavaReader javaReader = new JavaReader(new PerstEntityFactory());
+        JavaReader javaReader = new JavaReader(new MemEntityFactory());
         final Set<? extends Node> nodes = NewJavaReaderTests.readJDK(javaReader, filename);
         JavaWriter javaWriter = new JavaWriter();
         javaWriter.write(outRoot, ((Set<Node>) nodes));

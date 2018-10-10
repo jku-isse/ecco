@@ -58,7 +58,7 @@ public class StackPushControl implements ControlComponent {
                     //#if !stackCylinderDetectsEmptyStack
                     state = AirPressureState.OFF;
                     //#endif
-                //#endif
+                    //#endif
                     //#if somefeature.2 && !stackCylinderDetectsEmptyStack
                     state = AirPressureState.OFF2;
                     //#endif

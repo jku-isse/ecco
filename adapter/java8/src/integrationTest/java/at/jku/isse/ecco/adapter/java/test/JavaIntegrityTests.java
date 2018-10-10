@@ -60,7 +60,8 @@ public class JavaIntegrityTests {
         integrityTest(
                 "Constants.java",
                 "InvisibleHandOverZoneImpl.java",
-                "VariablePool.java"
+                "VariablePool.java",
+                "Simple.java"
         );
     }
 

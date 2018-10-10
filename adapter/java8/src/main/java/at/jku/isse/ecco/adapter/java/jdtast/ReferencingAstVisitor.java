@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.adapter.java.jdtast;
 
+import at.jku.isse.ecco.adapter.java.JDTFileAstRequestor;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.adapter.java.JDTFileAstRequestor;
 import org.eclipse.jdt.core.dom.*;
 
 import java.util.LinkedList;
@@ -294,7 +294,6 @@ public class ReferencingAstVisitor<T extends ArtifactData> extends SingleJDTNode
     private void visitExpression(Expression e) {
         addBinding(e.resolveTypeBinding());
     }
-
 
 
     private void addBinding(IBinding iBinding) {
