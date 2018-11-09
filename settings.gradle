@@ -25,7 +25,7 @@ include 'cli'
 include 'gui'
 include 'web'
 
-include 'storage-xml'
+include 'storage-neo4j'
 
 include 'adapter-file'
 include 'adapter-text'
@@ -38,7 +38,7 @@ project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
 
-project(':storage-xml').projectDir = file('storage/xml')
+project(':storage-neo4j').projectDir = file('storage/neo4j')
 
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
