@@ -5,8 +5,10 @@ import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.neo4j.impl.NeoRepository;
 import at.jku.isse.ecco.storage.neo4j.impl.NeoRepositoryDao;
 import at.jku.isse.ecco.storage.neo4j.impl.NeoTransactionStrategy;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.TemporaryFolder;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,11 +22,19 @@ import static com.google.common.collect.Sets.powerSet;
 
 public class SimpleTest {
 
-    private static final Path resourceRoot = Paths.get("src/integrationTest/data/out");
+    private static final Path repoDir = Paths.get("src\\integrationTest\\data\\.ecco\\");
+    private static final String testDataDir = "..\\..\\examples\\demo_variants\\V";
 
-    @BeforeClass
-    public static void prepare() throws IOException {
-        Files.createDirectories(resourceRoot);
+    @BeforeTest(alwaysRun = true)
+    public void prepare() throws IOException {
+        Files.deleteIfExists(this.repoDir.resolve(".adapters"));
+        Files.deleteIfExists(this.repoDir.resolve(".ignores"));
+        Files.deleteIfExists(this.repoDir.resolve("ecco.db.xml.zip"));
+        Files.createDirectories(repoDir);
+    }
+
+    @AfterTest(alwaysRun = true)
+    public void shutdown() {
     }
 
 
@@ -32,7 +42,7 @@ public class SimpleTest {
     public void fillRepo() {
         // create new repository
         EccoService service = new EccoService();
-        service.setRepositoryDir(Paths.get("G:\\Dropbox\\_uni\\_2018Ws\\Praktikum\\repo\\.ecco"));
+        service.setRepositoryDir(repoDir);
         service.init();
         System.out.println("Repository initialized.");
 
@@ -40,7 +50,7 @@ public class SimpleTest {
         //TODO: delete after creation
         // commit all existing variants to the new repository
        for (int i = 1; i< 10; i++) {
-            service.setBaseDir(Paths.get("G:\\Dropbox\\_uni\\_2018Ws\\Praktikum\\ecco\\examples\\demo_variants\\V" + i +"\\"));
+            service.setBaseDir(Paths.get(testDataDir + i +"\\"));
             service.commit();
             System.out.println("Committed: " + "V" +i);
         }
