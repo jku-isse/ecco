@@ -25,19 +25,20 @@ public class SimpleTest {
     private static final Path repoDir = Paths.get("src\\integrationTest\\data\\.ecco\\");
     private static final String testDataDir = "..\\..\\examples\\demo_variants\\V";
 
-    @BeforeTest(alwaysRun = true)
-    public void prepare() throws IOException {
-        Files.deleteIfExists(this.repoDir.resolve(".adapters"));
-        Files.deleteIfExists(this.repoDir.resolve(".ignores"));
-        Files.deleteIfExists(this.repoDir.resolve("ecco.db.xml.zip"));
-        Files.createDirectories(repoDir);
+    @BeforeClass
+    public static void prepare() throws IOException {
+        Files.deleteIfExists(repoDir.resolve(".adapters"));
+        Files.deleteIfExists(repoDir.resolve(".ignores"));
+        Files.deleteIfExists(repoDir.resolve("ecco.db.xml.zip"));
+        Files.deleteIfExists(repoDir);
     }
 
     @AfterTest(alwaysRun = true)
     public void shutdown() {
     }
 
-
+    // https://github.com/neo4j-examples/neo4j-ogm-university/blob/master/src/main/groovy/school/domain/Course.groovy
+    // https://neo4j.com/docs/java-reference/current/tutorials-java-embedded/
     @Test
     public void fillRepo() {
         // create new repository
@@ -47,7 +48,6 @@ public class SimpleTest {
         System.out.println("Repository initialized.");
 
         //TODO: iterate directoy
-        //TODO: delete after creation
         // commit all existing variants to the new repository
        for (int i = 1; i< 10; i++) {
             service.setBaseDir(Paths.get(testDataDir + i +"\\"));
