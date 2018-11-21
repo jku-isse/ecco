@@ -1,12 +1,9 @@
 package at.jku.isse.ecco.composition;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -43,63 +40,48 @@ public class DefaultOrderSelector implements OrderSelector {
 //			return null;
 
 		List<at.jku.isse.ecco.tree.Node> orderedChildren = new ArrayList<>();
+		PartialOrderGraph graph = node.getArtifact().getSequenceGraph();
+		boolean uncertainOrder = false;
 
-		boolean uncertainOrder = this.traverseSequenceGraph(node.getArtifact().getSequenceGraph().getRoot(), node.getChildren(), orderedChildren);
+		Map<PartialOrderGraph.Node, Integer> pogNodes = new HashMap<>();
+		pogNodes.put(graph.getHead(), 0);
+
+		// for every node in start match state ...
+		while (!pogNodes.isEmpty()) {
+			Map.Entry<PartialOrderGraph.Node, Integer> entry = pogNodes.entrySet().iterator().next();
+			PartialOrderGraph.Node pogNode = entry.getKey();
+
+			// check if all parents of the node have been processed
+			if (pogNodes.get(pogNode) >= pogNode.getParents().size()) {
+				// ... process the node ...
+
+				// check if order is ambiguous
+				if (pogNode.getChildren().size() > 1)
+					uncertainOrder = true;
+
+				// check if node is in input
+				for (at.jku.isse.ecco.tree.Node childNode : node.getChildren()) {
+					if (childNode.getArtifact().equals(pogNode.getArtifact())) {
+						// add node to order
+						orderedChildren.add(childNode);
+						break;
+					}
+				}
+
+				// remove current node and all its parent nodes from match state
+				pogNodes.remove(pogNode);
+				// add children of current node to match state
+				for (PartialOrderGraph.Node child : pogNode.getChildren()) {
+					pogNodes.putIfAbsent(child, 0);
+					pogNodes.computeIfPresent(child, (op, integer) -> integer + 1);
+				}
+			}
+		}
 
 		if (uncertainOrder)
 			this.uncertainOrder.add(node.getArtifact());
 
 		return orderedChildren;
-	}
-
-
-	/**
-	 * Traverses the sequence graph of the ordered node to retrieve the first valid order it can find.
-	 *
-	 * @param sgn               The sequence graph to traverse.
-	 * @param unorderedChildren The list of children of the ordered node without specific order (i.e. not yet ordered according to the sequence graph).
-	 * @param orderedChildren   The same children, but now put in valid order.
-	 * @return True if the order was ambiguous, false otherwise.
-	 */
-	private boolean traverseSequenceGraph(SequenceGraph.Node sgn, List<? extends at.jku.isse.ecco.tree.Node> unorderedChildren, List<at.jku.isse.ecco.tree.Node> orderedChildren) {
-		boolean uncertainOrder = false;
-
-		if (sgn.getChildren().isEmpty())
-			return false;
-
-		SequenceGraph.Transition transition = sgn.getChildren().iterator().next();
-
-		at.jku.isse.ecco.tree.Node match = null;
-		Iterator<? extends at.jku.isse.ecco.tree.Node> iterator = unorderedChildren.iterator();
-		while (iterator.hasNext()) {
-			at.jku.isse.ecco.tree.Node next = iterator.next();
-			if (next.getArtifact().equals(transition.getKey())) {
-				match = next;
-				iterator.remove();
-				break;
-			}
-		}
-		if (match != null) {
-			orderedChildren.add(match);
-
-			// check if we would have other order options
-			for (SequenceGraph.Transition otherTransition : sgn.getChildren()) {
-				for (at.jku.isse.ecco.tree.Node node : unorderedChildren) {
-					if (node.getArtifact() != null && node.getArtifact().equals(otherTransition.getKey())) {
-						if (match != node)
-							uncertainOrder = true;
-						break;
-					}
-				}
-				if (uncertainOrder)
-					break;
-			}
-		}
-
-		boolean childUncertainOrder = this.traverseSequenceGraph(transition.getValue(), unorderedChildren, orderedChildren);
-		uncertainOrder = uncertainOrder || childUncertainOrder;
-
-		return uncertainOrder;
 	}
 
 }

@@ -3,8 +3,8 @@ package at.jku.isse.ecco.storage.mem.artifact;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.sg.SequenceGraph;
-import at.jku.isse.ecco.storage.mem.sg.MemSequenceGraph;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
+import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
@@ -29,7 +29,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	private boolean ordered;
 
-	private SequenceGraph.Op sequenceGraph;
+	private PartialOrderGraph.Op sequenceGraph;
 
 	private int sequenceNumber;
 
@@ -44,7 +44,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		checkNotNull(data);
 		this.data = data;
 		this.ordered = ordered;
-		this.sequenceNumber = SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER;
+		this.sequenceNumber = PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
 		this.useReferencesInEquals = false;
 	}
 
@@ -64,7 +64,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		MemArtifact<?> that = (MemArtifact<?>) o;
 
 		if (this.isOrdered() != that.isOrdered()) return false;
-		if (this.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
+		if (this.getSequenceNumber() != PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
 			return false;
 
 		if (!this.useReferencesInEquals())
@@ -148,12 +148,12 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	}
 
 	@Override
-	public SequenceGraph.Op getSequenceGraph() {
+	public PartialOrderGraph.Op getSequenceGraph() {
 		return this.sequenceGraph;
 	}
 
 	@Override
-	public void setSequenceGraph(SequenceGraph.Op sequenceGraph) {
+	public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph) {
 		this.sequenceGraph = sequenceGraph;
 	}
 
@@ -174,8 +174,8 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 
 	@Override
-	public SequenceGraph.Op createSequenceGraph() {
-		return new MemSequenceGraph();
+	public PartialOrderGraph.Op createSequenceGraph() {
+		return new MemPartialOrderGraph();
 	}
 
 
