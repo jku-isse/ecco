@@ -10,11 +10,13 @@ import org.junit.rules.TemporaryFolder;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -27,10 +29,7 @@ public class SimpleTest {
 
     @BeforeClass
     public static void prepare() throws IOException {
-        Files.deleteIfExists(repoDir.resolve(".adapters"));
-        Files.deleteIfExists(repoDir.resolve(".ignores"));
-        Files.deleteIfExists(repoDir.resolve("ecco.db.xml.zip"));
-        Files.deleteIfExists(repoDir);
+        deleteDirectory(repoDir);
     }
 
     @AfterTest(alwaysRun = true)
@@ -61,5 +60,11 @@ public class SimpleTest {
 
     }
 
-
+    // https://softwarecave.org/2018/03/24/delete-directory-with-contents-in-java/
+    private static void deleteDirectory(Path path) throws IOException {
+        Files.walk(path)
+                .sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(File::delete);
+    }
 }

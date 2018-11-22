@@ -42,11 +42,12 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 
 
     private transient final Path repositoryDir;
-    private final GraphDatabaseService neoDb;
+    private final NeoDatabase neoDb;
 
     @Inject
     public NeoTransactionStrategy(@Named("repositoryDir") Path repositoryDir) {
         this.repositoryDir = requireNonNull(repositoryDir);
+        this.neoDb = new NeoDatabase(this.getRepoPath().toFile());
     }
 
 
