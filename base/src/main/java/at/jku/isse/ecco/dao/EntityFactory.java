@@ -8,6 +8,7 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -52,6 +53,9 @@ public interface EntityFactory {
 	 * @return An artifact containing the given data object.
 	 */
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data);
+
+
+	public Repository.Op createRepository();
 
 
 	/**

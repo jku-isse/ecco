@@ -8,12 +8,14 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.core.MemAssociation;
 import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
 import at.jku.isse.ecco.storage.mem.feature.MemFeature;
+import at.jku.isse.ecco.storage.mem.repository.MemRepository;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
@@ -45,6 +47,11 @@ public class MemEntityFactory implements EntityFactory {
 	@Override
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
 		return new MemArtifact<T>(data);
+	}
+
+	@Override
+	public Repository.Op createRepository() {
+		return new MemRepository();
 	}
 
 

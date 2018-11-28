@@ -8,7 +8,7 @@ public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 	public static final long serialVersionUID = 1L;
 
 
-	private Association containingAssociation;
+	private Association.Op containingAssociation;
 
 
 	public MemRootNode() {
@@ -39,7 +39,7 @@ public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 	}
 
 	@Override
-	public Association getContainingAssociation() {
+	public Association.Op getContainingAssociation() {
 		return this.containingAssociation;
 	}
 

@@ -14,6 +14,8 @@ public interface PartialOrderGraph extends Persistable {
 
 	public Node getHead();
 
+	public Collection<? extends Node> collectNodes();
+
 
 	public interface Op extends PartialOrderGraph {
 
@@ -22,6 +24,23 @@ public interface PartialOrderGraph extends Persistable {
 		public Node.Op getTail();
 
 		public List<Node.Op> getNodes();
+
+		public default Collection<Node.Op> collectNodes() {
+			Collection<Node.Op> nodes = new ArrayList<>();
+			// for every node ...
+			LinkedList<Node.Op> stack = new LinkedList<>();
+			stack.push(this.getHead());
+			while (!stack.isEmpty()) {
+				Node.Op node = stack.pop();
+
+				nodes.add(node);
+
+				for (Node.Op child : node.getChildren()) {
+					stack.push(child);
+				}
+			}
+			return nodes;
+		}
 
 		public Node.Op createNode(Artifact.Op<?> artifact);
 
@@ -389,8 +408,35 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param symbols Symbols to keep.
 		 */
 		public default void trim(Collection<? extends Artifact.Op<?>> symbols) {
-			// TODO
-			throw new UnsupportedOperationException("Not yet implemented.");
+			// for every node ...
+			LinkedList<Node.Op> stack = new LinkedList<>();
+			stack.push(this.getHead());
+			while (!stack.isEmpty()) {
+				Node.Op current = stack.pop();
+
+				// ... check if it is contained in symbols
+				if (current.getArtifact() != null && !symbols.contains(current.getArtifact())) {
+					// if not remove node and connect all its parents to all its children
+
+					// connect every parent ...
+					for (Node.Op parent : current.getParents()) {
+						// ... to every child
+						for (Node.Op child : current.getChildren()) {
+							parent.addChild(child);
+						}
+						// and remove it as child from parent
+						parent.removeChild(current);
+					}
+					// remove all children from current node (and subsequently the current node as parent of its children)
+					for (Node.Op child : current.getChildren()) {
+						current.removeChild(child);
+					}
+				}
+
+				for (Node.Op child : current.getChildren()) {
+					stack.push(child);
+				}
+			}
 		}
 
 
@@ -441,14 +487,24 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		public default void updateArtifactReferences() {
-			for (Node.Op node : this.getNodes()) {
+			// for every node ...
+			LinkedList<Node.Op> stack = new LinkedList<>();
+			stack.push(this.getHead());
+			while (!stack.isEmpty()) {
+				Node.Op node = stack.pop();
+
 				if (node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
 					Artifact.Op<?> replacing = node.getArtifact().<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
 					replacing.setSequenceNumber(node.getArtifact().getSequenceNumber());
 					node.setArtifact(replacing);
 				}
+
+				for (Node.Op child : node.getChildren()) {
+					stack.push(child);
+				}
 			}
 		}
+
 	}
 
 

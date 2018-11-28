@@ -50,7 +50,7 @@ public class MemNode implements Node, Node.Op {
 
 
 	@Override
-	public Association getContainingAssociation() {
+	public Association.Op getContainingAssociation() {
 		if (this.parent == null)
 			return null;
 		else

@@ -39,6 +39,19 @@ public interface Node extends Persistable {
 	public String toString();
 
 
+	public default void traverse(NodeVisitor visitor) {
+		visitor.visit(this);
+
+		for (Node child : this.getChildren()) {
+			child.traverse(visitor);
+		}
+	}
+
+	public interface NodeVisitor {
+		public void visit(Node node);
+	}
+
+
 	/**
 	 * Returns whether this node is atomic or not.
 	 *
@@ -185,6 +198,21 @@ public interface Node extends Persistable {
 	 * Private interface for node operands that are used internally and not passed outside.
 	 */
 	public interface Op extends Node {
+
+		public default void traverse(NodeVisitor visitor) {
+			visitor.visit(this);
+
+			for (Node.Op child : this.getChildren()) {
+				child.traverse(visitor);
+			}
+		}
+
+		public interface NodeVisitor {
+			public void visit(Node.Op node);
+		}
+
+
+		public Association.Op getContainingAssociation();
 
 		/**
 		 * Sets the node to be unique or not.
