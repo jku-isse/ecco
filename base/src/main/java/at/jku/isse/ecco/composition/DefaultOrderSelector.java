@@ -52,11 +52,11 @@ public class DefaultOrderSelector implements OrderSelector {
 			PartialOrderGraph.Node pogNode = entry.getKey();
 
 			// check if all parents of the node have been processed
-			if (pogNodes.get(pogNode) >= pogNode.getParents().size()) {
+			if (pogNodes.get(pogNode) >= pogNode.getPrevious().size()) {
 				// ... process the node ...
 
 				// check if order is ambiguous
-				if (pogNode.getChildren().size() > 1)
+				if (pogNode.getNext().size() > 1)
 					uncertainOrder = true;
 
 				// check if node is in input
@@ -71,7 +71,7 @@ public class DefaultOrderSelector implements OrderSelector {
 				// remove current node and all its parent nodes from match state
 				pogNodes.remove(pogNode);
 				// add children of current node to match state
-				for (PartialOrderGraph.Node child : pogNode.getChildren()) {
+				for (PartialOrderGraph.Node child : pogNode.getNext()) {
 					pogNodes.putIfAbsent(child, 0);
 					pogNodes.computeIfPresent(child, (op, integer) -> integer + 1);
 				}

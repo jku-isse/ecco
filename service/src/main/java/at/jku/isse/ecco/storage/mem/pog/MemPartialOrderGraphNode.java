@@ -27,12 +27,12 @@ public class MemPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	}
 
 	@Override
-	public Collection<Op> getParents() {
+	public Collection<Op> getPrevious() {
 		return this.parents;
 	}
 
 	@Override
-	public Collection<Op> getChildren() {
+	public Collection<Op> getNext() {
 		return this.children;
 	}
 

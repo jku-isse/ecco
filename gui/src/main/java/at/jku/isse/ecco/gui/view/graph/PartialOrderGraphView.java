@@ -85,12 +85,12 @@ public class PartialOrderGraphView extends BorderPane {
 			gsNode = this.graph.addNode("N" + nodeMap.size() + 1);
 			gsNode.setAttribute("label", pogNode.getArtifact() + " [" + (pogNode.getArtifact() != null ? pogNode.getArtifact().getSequenceNumber() : "-") + "]");
 
-			if (pogNode.getParents().isEmpty()) {
+			if (pogNode.getPrevious().isEmpty()) {
 				gsNode.setAttribute("ui.class", "start");
 				gsNode.setAttribute("label", "HEAD");
 			}
 
-			if (pogNode.getChildren().isEmpty()) {
+			if (pogNode.getNext().isEmpty()) {
 				gsNode.setAttribute("ui.class", "end");
 				gsNode.setAttribute("label", "TAIL");
 			}
@@ -100,7 +100,7 @@ public class PartialOrderGraphView extends BorderPane {
 		if (gsParent != null) {
 			this.graph.addEdge("E" + gsParent.getId() + "-" + gsNode.getId(), gsParent, gsNode, true);
 		}
-		for (PartialOrderGraph.Node pogChild : pogNode.getChildren()) {
+		for (PartialOrderGraph.Node pogChild : pogNode.getNext()) {
 			this.traversePartialOrderGraph(pogChild, gsNode, nodeMap);
 		}
 	}

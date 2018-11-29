@@ -72,6 +72,12 @@ public class PartialOrderGraphTest {
 		pog1.merge(artifacts4);
 
 		displayPOG(pog1);
+
+		// print all orders in pog
+		Collection<List<PartialOrderGraph.Node.Op>> orders = pog1.computeAllOrders();
+		for (List<PartialOrderGraph.Node.Op> order : orders) {
+			System.out.println(order.stream().map(node -> node.getArtifact() != null ? node.getArtifact().toString() : "NULL").collect(Collectors.joining(" - ")));
+		}
 	}
 
 
