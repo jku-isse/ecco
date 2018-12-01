@@ -87,12 +87,12 @@ public class PartialOrderGraphView extends BorderPane {
 
 			if (pogNode.getPrevious().isEmpty()) {
 				gsNode.setAttribute("ui.class", "start");
-				gsNode.setAttribute("label", "HEAD");
+				//gsNode.setAttribute("label", "HEAD");
 			}
 
 			if (pogNode.getNext().isEmpty()) {
 				gsNode.setAttribute("ui.class", "end");
-				gsNode.setAttribute("label", "TAIL");
+				//gsNode.setAttribute("label", "TAIL");
 			}
 
 			nodeMap.put(pogNode, gsNode);

@@ -7,9 +7,11 @@ import java.util.*;
 
 public interface PartialOrderGraph extends Persistable {
 
-	public static final int UNASSIGNED_SEQUENCE_NUMBER = -2;
-
+	public static final int INITIAL_SEQUENCE_NUMBER = 0;
 	public static final int NOT_MATCHED_SEQUENCE_NUMBER = -1;
+	public static final int UNASSIGNED_SEQUENCE_NUMBER = -2;
+	public static final int HEAD_SEQUENCE_NUMBER = -3;
+	public static final int TAIL_SEQUENCE_NUMBER = -4;
 
 
 	public Node getHead();
@@ -448,7 +450,7 @@ public interface PartialOrderGraph extends Persistable {
 			while (!stack.isEmpty()) {
 				Node.Op node = stack.pop();
 
-				if (node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+				if (node.getArtifact() != null && node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
 					Artifact.Op<?> replacing = node.getArtifact().<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
 					replacing.setSequenceNumber(node.getArtifact().getSequenceNumber());
 					node.setArtifact(replacing);
