@@ -42,8 +42,7 @@ public class MemPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 
 	@Override
 	public Node.Op createNode(Artifact.Op<?> artifact) {
-		Node.Op node = new MemPartialOrderGraphNode(artifact);
-		return node;
+		return new MemPartialOrderGraphNode(artifact);
 	}
 
 	@Override

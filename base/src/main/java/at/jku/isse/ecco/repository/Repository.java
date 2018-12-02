@@ -666,7 +666,7 @@ public interface Repository extends Persistable {
 
 				// copy artifact tree
 				RootNode.Op copiedRootNode = entityFactory.createRootNode();
-				newAssociation.setRootNode(copiedRootNode);
+				newAssociation.setRootNode(copiedRootNode); // TODO: have association implementation take care of creating root node in constructor.
 				// clone tree
 				for (Node.Op parentChildNode : association.getRootNode().getChildren()) {
 					Node.Op copiedChildNode = EccoUtil.deepCopyTree(parentChildNode, entityFactory);
@@ -735,7 +735,7 @@ public interface Repository extends Persistable {
 		 */
 		public default void merge(Repository.Op other) {
 			checkNotNull(other);
-			checkArgument(other.getClass().equals(this.getClass()));
+			checkArgument(other.getClass().equals(this.getClass())); // TODO: this might not be necessary! saves an additional repo copy/subset in service.push/pull!
 
 			// add features (that have at least one revision) and feature revisions in other repository to this repository
 			for (Feature otherFeature : other.getFeatures()) {
@@ -778,25 +778,30 @@ public interface Repository extends Persistable {
 							}
 						}
 					}
-
 				}
 			}
 
 			// add features in this repository that are not in other repository negatively to other repository
 			for (Feature feature : this.getFeatures()) {
-				if (other.getFeature(feature.getId()) == null)
-					other.addNegativeFeatureModules(feature);
+				if (other.getFeature(feature.getId()) == null) {
+					Feature otherFeature = other.addFeature(feature.getId(), feature.getName());
+					otherFeature.setDescription(feature.getDescription());
+					other.addNegativeFeatureModules(otherFeature);
+				}
 			}
 
 			// prepare new associations for commit
 			Map<Set<ModuleRevision>, Association.Op> conditionAssociationMap = new HashMap<>();
+			Map<Set<ModuleRevision>, Association.Op> andConditionAssociationMap = new HashMap<>();
+			Map<Set<ModuleRevision>, Association.Op> orConditionAssociationMap = new HashMap<>();
+			Collection<Association.Op> newAssociations = new ArrayList<>();
 			// for every association in other repository
-			for (Association.Op oldAssociation : other.getAssociations()) {
-				Condition oldCondition = oldAssociation.computeCondition();
+			for (Association.Op otherAssociation : other.getAssociations()) {
+				Condition otherCondition = otherAssociation.computeCondition();
 
 				// compute set of module revisions (instances from this repository) that need to be added to the new association
 				Set<ModuleRevision> newModuleRevisions = new HashSet<>();
-				for (Map.Entry<Module, Collection<ModuleRevision>> entry : oldCondition.getModules().entrySet()) {
+				for (Map.Entry<Module, Collection<ModuleRevision>> entry : otherCondition.getModules().entrySet()) {
 					Module oldModule = entry.getKey();
 					// exclude modules that contain positive features that are not in this repository
 					if (Arrays.stream(oldModule.getPos()).noneMatch(feature -> this.getFeature(feature.getId()) == null)) {
@@ -815,39 +820,50 @@ public interface Repository extends Persistable {
 
 
 				// check if a new association with equal condition (ignoring negative features without revisions) already exists
-				Association.Op newAssociation = conditionAssociationMap.get(newModuleRevisions);
-				// if not create a new association
-				if (newAssociation == null) {
-					newAssociation = this.getEntityFactory().createAssociation();
+//				Association.Op newAssociation = conditionAssociationMap.get(newModuleRevisions);
+//				// if not create a new association
+//				if (newAssociation == null) {
+//					newAssociation = this.getEntityFactory().createAssociation();
+//					conditionAssociationMap.put(newModuleRevisions, newAssociation);
+//				}
+				Association.Op newAssociation = null;
+				if (otherCondition.getType() == Condition.TYPE.OR) {
+					newAssociation = orConditionAssociationMap.get(newModuleRevisions);
+					// if not create a new association
+					if (newAssociation == null) {
+						newAssociation = this.getEntityFactory().createAssociation();
+						orConditionAssociationMap.put(newModuleRevisions, newAssociation);
+						newAssociation.getCounter().setCount(2);
+						newAssociations.add(newAssociation);
+					}
+				} else if (otherCondition.getType() == Condition.TYPE.AND) {
+					newAssociation = andConditionAssociationMap.get(newModuleRevisions);
+					// if not create a new association
+					if (newAssociation == null) {
+						newAssociation = this.getEntityFactory().createAssociation();
+						andConditionAssociationMap.put(newModuleRevisions, newAssociation);
+						newAssociation.getCounter().setCount(1);
+						newAssociations.add(newAssociation);
+					}
 				}
 
 				// merge artifact tree of current old association into artifact tree of new association
-				newAssociation.getRootNode().merge(oldAssociation.getRootNode());
+				newAssociation.setRootNode(getEntityFactory().createRootNode());
+				newAssociation.getRootNode().merge(otherAssociation.getRootNode());
 
 				// set observations of new association:
 				for (ModuleRevision newModuleRevision : newModuleRevisions) {
 					// add module revisions as observations to new association
 					ModuleCounter newModuleCounter = newAssociation.getCounter().getChild(newModuleRevision.getModule());
 					// check if observation is already part of this association
-					if (newModuleCounter != null && newModuleCounter.getChild(newModuleRevision) != null) {
+					if (!(newModuleCounter != null && newModuleCounter.getChild(newModuleRevision) != null)) {
 						newAssociation.addObservation(newModuleRevision);
 					}
 				}
-//				for (Map.Entry<Module, Collection<ModuleRevision>> entry : oldCondition.getModules().entrySet()) {
-//					Module oldModule = entry.getKey();
-//					for (ModuleRevision oldModuleRevision : entry.getValue()) {
-//						// add all module revisions as observations to new association
-//						ModuleCounter newModuleCounter = newAssociation.getCounter().getChild(oldModule);
-//						// check if observation is already part of this association
-//						if (newModuleCounter != null && newModuleCounter.getChild(oldModuleRevision) != null) {
-//							newAssociation.addObservation(this.getModule(oldModule.getPos(), oldModule.getNeg()).getRevision(oldModuleRevision.getPos(), oldModuleRevision.getNeg()));
-//						}
-//					}
-//				}
 			}
 
 			// commit associations to this repository
-			this.extract(conditionAssociationMap.values());
+			this.extract(newAssociations);
 		}
 
 		/**

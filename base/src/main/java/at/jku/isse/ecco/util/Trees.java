@@ -92,8 +92,7 @@ public class Trees {
 		}
 
 
-		Node.Op intersection = left.createNode();
-		intersection.setArtifact(left.getArtifact());
+		Node.Op intersection = left.createNode(left.getArtifact());
 		if (left.isUnique() && right.isUnique()) {
 			intersection.setUnique(true);
 			left.setUnique(false);
@@ -319,8 +318,7 @@ public class Trees {
 
 	private static Node.Op extractMarkedRec(Node.Op left) {
 		// create right node
-		Node.Op right = left.createNode();
-		right.setArtifact(left.getArtifact());
+		Node.Op right = left.createNode(left.getArtifact());
 
 		// process children
 		Iterator<Node.Op> iterator = left.getChildren().iterator();

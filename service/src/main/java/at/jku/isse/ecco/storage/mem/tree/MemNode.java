@@ -26,6 +26,7 @@ public class MemNode implements Node, Node.Op {
 	private Op parent = null;
 
 
+	@Deprecated
 	public MemNode() {
 	}
 
@@ -35,8 +36,8 @@ public class MemNode implements Node, Node.Op {
 
 
 	@Override
-	public Op createNode() {
-		return new MemNode();
+	public Op createNode(Artifact.Op<?> artifact) {
+		return new MemNode(artifact);
 	}
 
 

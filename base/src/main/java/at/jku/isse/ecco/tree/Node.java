@@ -7,6 +7,7 @@ import at.jku.isse.ecco.util.Trees;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,12 +28,7 @@ public interface Node extends Persistable {
 
 
 	public default String getNodeString() {
-		if (this instanceof RootNode)
-			return "root";
-		else if (this.getArtifact() != null)
-			return this.getArtifact().toString();
-		else
-			return "null";
+		return Objects.toString(this.getArtifact());
 	}
 
 	@Override
@@ -273,9 +269,10 @@ public interface Node extends Persistable {
 		/**
 		 * Creates a new instance of this type of node.
 		 *
+		 * @param artifact The artifact to set for this node.
 		 * @return The new node instance.
 		 */
-		public Op createNode();
+		public Op createNode(Artifact.Op<?> artifact);
 
 
 		/**

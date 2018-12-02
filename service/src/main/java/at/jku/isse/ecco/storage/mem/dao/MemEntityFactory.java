@@ -94,6 +94,7 @@ public class MemEntityFactory implements EntityFactory {
 		return new MemRootNode();
 	}
 
+	@Deprecated
 	@Override
 	public Node.Op createNode() {
 		return new MemNode();
@@ -103,8 +104,7 @@ public class MemEntityFactory implements EntityFactory {
 	public Node.Op createNode(final Artifact.Op artifact) {
 		checkNotNull(artifact);
 
-		final Node.Op node = this.createNode();
-		node.setArtifact(artifact);
+		final Node.Op node = new MemNode(artifact);
 		artifact.setContainingNode(node);
 
 		return node;

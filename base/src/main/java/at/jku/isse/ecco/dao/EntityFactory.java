@@ -96,6 +96,7 @@ public interface EntityFactory {
 	 *
 	 * @return A new empty node.
 	 */
+	@Deprecated
 	public Node.Op createNode();
 
 	/**

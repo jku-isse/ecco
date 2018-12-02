@@ -536,6 +536,7 @@ public interface PartialOrderGraph extends Persistable {
 
 			public Collection<Node.Op> getNext();
 
+			@Override
 			public Artifact.Op<?> getArtifact();
 
 			public void setArtifact(Artifact.Op<?> artifact);

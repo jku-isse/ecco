@@ -2,14 +2,12 @@ package at.jku.isse.ecco.artifact;
 
 import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 public class StringArtifactData implements ArtifactData {
 
 	private String value;
 
 	public StringArtifactData(String value) {
-		checkNotNull(value);
+		Objects.requireNonNull(value);
 		this.value = value;
 	}
 

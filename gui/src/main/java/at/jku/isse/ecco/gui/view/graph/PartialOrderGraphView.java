@@ -21,9 +21,7 @@ public class PartialOrderGraphView extends BorderPane {
 	private Viewer viewer;
 	private ViewPanel view;
 
-
 	public PartialOrderGraphView() {
-
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
 
@@ -78,7 +76,6 @@ public class PartialOrderGraphView extends BorderPane {
 		this.viewer.enableAutoLayout(this.layout);
 	}
 
-
 	private void traversePartialOrderGraph(PartialOrderGraph.Node pogNode, org.graphstream.graph.Node gsParent, Map<PartialOrderGraph.Node, org.graphstream.graph.Node> nodeMap) {
 		org.graphstream.graph.Node gsNode = nodeMap.get(pogNode);
 		if (gsNode == null) {
@@ -87,12 +84,10 @@ public class PartialOrderGraphView extends BorderPane {
 
 			if (pogNode.getPrevious().isEmpty()) {
 				gsNode.setAttribute("ui.class", "start");
-				//gsNode.setAttribute("label", "HEAD");
 			}
 
 			if (pogNode.getNext().isEmpty()) {
 				gsNode.setAttribute("ui.class", "end");
-				//gsNode.setAttribute("label", "TAIL");
 			}
 
 			nodeMap.put(pogNode, gsNode);
