@@ -43,37 +43,37 @@ public class DefaultOrderSelector implements OrderSelector {
 		PartialOrderGraph graph = node.getArtifact().getSequenceGraph();
 		boolean uncertainOrder = false;
 
-		Map<PartialOrderGraph.Node, Integer> pogNodes = new HashMap<>();
-		pogNodes.put(graph.getHead(), 0);
+		Map<PartialOrderGraph.Node, Integer> pogNodesCounter = new HashMap<>();
+		Stack<PartialOrderGraph.Node> stack = new Stack<>();
+		stack.push(graph.getHead());
 
 		// for every node in start match state ...
-		while (!pogNodes.isEmpty()) {
-			Map.Entry<PartialOrderGraph.Node, Integer> entry = pogNodes.entrySet().iterator().next();
-			PartialOrderGraph.Node pogNode = entry.getKey();
+		while (!stack.isEmpty()) {
+			PartialOrderGraph.Node pogNode = stack.pop();
 
-			// check if all parents of the node have been processed
-			if (pogNodes.get(pogNode) >= pogNode.getPrevious().size()) {
-				// ... process the node ...
+			// check if order is ambiguous
+			if (pogNode.getNext().size() > 1)
+				uncertainOrder = true;
 
-				// check if order is ambiguous
-				if (pogNode.getNext().size() > 1)
-					uncertainOrder = true;
-
-				// check if node is in input
-				for (at.jku.isse.ecco.tree.Node childNode : node.getChildren()) {
-					if (childNode.getArtifact().equals(pogNode.getArtifact())) {
-						// add node to order
-						orderedChildren.add(childNode);
-						break;
-					}
+			// check if node is in input
+			for (at.jku.isse.ecco.tree.Node childNode : node.getChildren()) {
+				if (childNode.getArtifact().equals(pogNode.getArtifact())) {
+					// add node to order
+					orderedChildren.add(childNode);
+					break;
 				}
+			}
 
-				// remove current node and all its parent nodes from match state
-				pogNodes.remove(pogNode);
-				// add children of current node to match state
-				for (PartialOrderGraph.Node child : pogNode.getNext()) {
-					pogNodes.putIfAbsent(child, 0);
-					pogNodes.computeIfPresent(child, (op, integer) -> integer + 1);
+			// add children of current node to match state
+			for (PartialOrderGraph.Node child : pogNode.getNext()) {
+				pogNodesCounter.putIfAbsent(child, 0);
+				int counter = pogNodesCounter.computeIfPresent(child, (op, integer) -> integer + 1);
+				// check if all parents of the node have been processed
+				if (counter >= child.getPrevious().size()) {
+					// remove node from counters
+					pogNodesCounter.remove(child);
+					// push node onto stack
+					stack.push(child);
 				}
 			}
 		}

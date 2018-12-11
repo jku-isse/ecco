@@ -18,7 +18,7 @@ public class MemPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	private Artifact.Op<?> artifact;
 
 	public MemPartialOrderGraphNode(Artifact.Op<?> artifact) {
-		Objects.requireNonNull(artifact);
+//		Objects.requireNonNull(artifact);
 		this.artifact = artifact;
 		this.previous = new ArrayList<>();
 		this.next = new ArrayList<>();

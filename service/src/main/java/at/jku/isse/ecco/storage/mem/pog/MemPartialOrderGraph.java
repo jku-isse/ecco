@@ -1,9 +1,7 @@
 package at.jku.isse.ecco.storage.mem.pog;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.StringArtifactData;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
-import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 
 public class MemPartialOrderGraph implements PartialOrderGraph, PartialOrderGraph.Op {
 
@@ -14,10 +12,12 @@ public class MemPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 	private int maxIdentifier = INITIAL_SEQUENCE_NUMBER;
 
 	public MemPartialOrderGraph() {
-		this.head = new MemPartialOrderGraphNode(new MemArtifact<StringArtifactData>(new StringArtifactData("HEAD")));
-		this.head.getArtifact().setSequenceNumber(HEAD_SEQUENCE_NUMBER);
-		this.tail = new MemPartialOrderGraphNode(new MemArtifact<StringArtifactData>(new StringArtifactData("TAIL")));
-		this.tail.getArtifact().setSequenceNumber(TAIL_SEQUENCE_NUMBER);
+//		this.head = new MemPartialOrderGraphNode(new MemArtifact<StringArtifactData>(new StringArtifactData("HEAD")));
+//		this.head.getArtifact().setSequenceNumber(HEAD_SEQUENCE_NUMBER);
+//		this.tail = new MemPartialOrderGraphNode(new MemArtifact<StringArtifactData>(new StringArtifactData("TAIL")));
+//		this.tail.getArtifact().setSequenceNumber(TAIL_SEQUENCE_NUMBER);
+		this.head = new MemPartialOrderGraphNode(null);
+		this.tail = new MemPartialOrderGraphNode(null);
 	}
 
 	@Override
