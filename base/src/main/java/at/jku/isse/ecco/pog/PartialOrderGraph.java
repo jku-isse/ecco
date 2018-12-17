@@ -29,7 +29,7 @@ public interface PartialOrderGraph extends Persistable {
 
 		public void incMaxIdentifier();
 
-		public default Collection<Node.Op> collectNodes() {
+		public default Collection<Node.Op> collectNodes() { // TODO: this potentially adds the same nodes multiple times!
 			Collection<Node.Op> nodes = new ArrayList<>();
 			LinkedList<Node.Op> stack = new LinkedList<>();
 			stack.push(this.getHead());
@@ -199,20 +199,24 @@ public interface PartialOrderGraph extends Persistable {
 							Node.Op current = stack.pop();
 							// remove current node from result match state
 							resultMatchState.nodes.remove(current);
+
 							// add children of current node to result match state
 							for (Node.Op child : current.getNext()) {
 								if (child != previous)
 									resultMatchState.nodes.add(child);
 							}
-							matchStates.add(resultMatchState);
 							previous = current;
 							// add parents to stack
 							for (Node.Op parent : current.getPrevious()) {
 								// but not past the "barrier" nodes from which we started
-								if (!startMatchState.nodes.contains(parent))
+								if (!startMatchState.nodes.contains(current))
 									stack.push(parent);
+								else
+									resultMatchState.nodes.remove(parent);
 							}
+
 						}
+						matchStates.add(resultMatchState);
 					}
 				}
 
@@ -363,16 +367,42 @@ public interface PartialOrderGraph extends Persistable {
 		 */
 		// private
 		static boolean canReach(Node node, Artifact<?> artifact) {
-			LinkedList<Node> stack = new LinkedList<>();
+//			LinkedList<Node> stack = new LinkedList<>();
+//			stack.push(node);
+//			while (!stack.isEmpty()) {
+//				Node current = stack.pop();
+//
+//				if ((artifact == null && current.getArtifact() == null) || (artifact != null && current.getArtifact() != null && current.getArtifact().getSequenceNumber() == artifact.getSequenceNumber()))
+//					return true;
+//
+//				for (Node child : current.getNext()) {
+//					stack.push(child);
+//				}
+//			}
+//			return false;
+
+			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node> stack = new Stack<>();
 			stack.push(node);
+
 			while (!stack.isEmpty()) {
 				Node current = stack.pop();
 
+				// process node
 				if ((artifact == null && current.getArtifact() == null) || (artifact != null && current.getArtifact() != null && current.getArtifact().getSequenceNumber() == artifact.getSequenceNumber()))
 					return true;
 
+				// add children of current node
 				for (Node child : current.getNext()) {
-					stack.push(child);
+					counters.putIfAbsent(child, 0);
+					int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+					// check if all parents of the node have been processed
+					if (counter >= child.getPrevious().size()) {
+						// remove node from counters
+						counters.remove(child);
+						// push node onto stack
+						stack.push(child);
+					}
 				}
 			}
 			return false;
@@ -383,8 +413,35 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		public default void copy(PartialOrderGraph.Op other) {
-			// TODO: just create a new empty graph and merge the one to be copied into the new one
-			throw new UnsupportedOperationException("Not yet implemented.");
+//			// TODO: just create a new empty graph and merge the one to be copied into the new one
+//
+//			if (!this.getHead().getNext().isEmpty())
+//				throw new EccoException("Partial order graph must be empty to copy another.");
+//
+//			this.copyRec(this.getHead(), other.getHead());
+//
+//
+//			HashSet<Artifact.Op<?>> path = new HashSet<>();
+//			Map<Set<Artifact.Op<?>>, SequenceGraph.Node.Op> leftNodes = new HashMap<>();
+//			leftNodes.put(path, this.getRoot());
+//
+//			this.copyRec(path, leftNodes, this.getRoot(), other.getRoot(), other.getPol());
+//
+//			this.setCurrentSequenceNumber(other.getCurrentSequenceNumber());
+//
+//
+//			throw new UnsupportedOperationException("Not yet implemented.");
+		}
+
+		//private
+		default void copyRec(PartialOrderGraph.Node.Op left, PartialOrderGraph.Node.Op right) {
+//
+//			for (Node.Op rightChild : right.getNext()) {
+//				Node.Op leftChild = this.createNode(rightChild.getArtifact());
+//				left.addChild(leftChild);
+//				this.copyRec(leftChild, rightChild);
+//			}
+
 		}
 
 
@@ -531,6 +588,36 @@ public interface PartialOrderGraph extends Persistable {
 
 		public Artifact<?> getArtifact();
 
+		public default void traverse(NodeVisitor visitor) {
+			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node> stack = new Stack<>();
+			stack.push(this);
+
+			while (!stack.isEmpty()) {
+				Node node = stack.pop();
+
+				visitor.visit(this);
+
+				// add children of current node
+				for (Node child : node.getNext()) {
+					counters.putIfAbsent(child, 0);
+					int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+					// check if all parents of the node have been processed
+					if (counter >= child.getPrevious().size()) {
+						// remove node from counters
+						counters.remove(child);
+						// push node onto stack
+						stack.push(child);
+					}
+				}
+			}
+		}
+
+		public interface NodeVisitor {
+			public void visit(Node node);
+		}
+
+
 		public interface Op extends Node {
 			public Collection<Node.Op> getPrevious();
 
@@ -544,6 +631,17 @@ public interface PartialOrderGraph extends Persistable {
 			public Node.Op addChild(Node.Op child);
 
 			public void removeChild(Node.Op child);
+
+			public default void traverse(NodeVisitor visitor) {
+				visitor.visit(this);
+
+				throw new UnsupportedOperationException("Not yet implemented.");
+			}
+
+			public interface NodeVisitor {
+				public void visit(Node.Op node);
+			}
+
 		}
 	}
 

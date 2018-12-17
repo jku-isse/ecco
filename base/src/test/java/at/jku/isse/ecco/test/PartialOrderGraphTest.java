@@ -18,6 +18,30 @@ import java.util.stream.Collectors;
 
 public class PartialOrderGraphTest {
 
+
+	@Test(groups = {"unit", "base", "pog", "ppu"})
+	public void PPU_Test() {
+		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("A"), A("B"), A("C"), A("D"), A("E"), A("F"), A("G"), A("H"), A("I"), A("J"), A("K"), A("L"), A("M"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("A"), A("H"), A("I"), A("J"), A("K"), A("L"), A("N"), A("O"), A("F"), A("B"), A("C"), A("M"));
+
+		PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+
+
+		pog.merge(artifacts1);
+		System.out.println("--------------");
+
+//		pog.align(artifacts2);
+//		for (Artifact.Op<?> artifact : artifacts2) {
+//			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+//		}
+
+		pog.merge(artifacts2);
+
+
+		displayPOG(pog);
+	}
+
+
 	@Test(groups = {"unit", "base", "pog"})
 	public void SequenceGraphs_Full() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
