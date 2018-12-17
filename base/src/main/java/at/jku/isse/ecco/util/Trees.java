@@ -607,6 +607,8 @@ public class Trees {
 		parentHasNodeAsChild(node);
 
 		for (Node.Op child : node.getChildren()) {
+			if (child.getParent() != node)
+				throw new IllegalStateException("Node is child of a node that is not its parent.");
 			checkConsistency(child);
 		}
 	}

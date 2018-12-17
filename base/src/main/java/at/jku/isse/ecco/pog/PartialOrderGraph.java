@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.pog;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.Persistable;
 
@@ -26,6 +27,8 @@ public interface PartialOrderGraph extends Persistable {
 		public Node.Op getTail();
 
 		public int getMaxIdentifier();
+
+		public void setMaxIdentifier(int value);
 
 		public void incMaxIdentifier();
 
@@ -413,35 +416,34 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		public default void copy(PartialOrderGraph.Op other) {
-//			// TODO: just create a new empty graph and merge the one to be copied into the new one
-//
-//			if (!this.getHead().getNext().isEmpty())
-//				throw new EccoException("Partial order graph must be empty to copy another.");
-//
-//			this.copyRec(this.getHead(), other.getHead());
-//
-//
-//			HashSet<Artifact.Op<?>> path = new HashSet<>();
-//			Map<Set<Artifact.Op<?>>, SequenceGraph.Node.Op> leftNodes = new HashMap<>();
-//			leftNodes.put(path, this.getRoot());
-//
-//			this.copyRec(path, leftNodes, this.getRoot(), other.getRoot(), other.getPol());
-//
-//			this.setCurrentSequenceNumber(other.getCurrentSequenceNumber());
-//
-//
-//			throw new UnsupportedOperationException("Not yet implemented.");
-		}
+			//if (this.getHead().getNext().size() != 1 || this.getHead().getNext().iterator().next() != this.getTail())
+			if (!this.getHead().getNext().isEmpty())
+				throw new EccoException("Partial order graph must be empty to copy another.");
 
-		//private
-		default void copyRec(PartialOrderGraph.Node.Op left, PartialOrderGraph.Node.Op right) {
-//
-//			for (Node.Op rightChild : right.getNext()) {
-//				Node.Op leftChild = this.createNode(rightChild.getArtifact());
-//				left.addChild(leftChild);
-//				this.copyRec(leftChild, rightChild);
-//			}
+			this.getHead().removeChild(this.getTail());
+			this.setMaxIdentifier(other.getMaxIdentifier());
 
+			Map<PartialOrderGraph.Node.Op, PartialOrderGraph.Node.Op> matches = new HashMap<>();
+			matches.put(other.getHead(), this.getTail());
+			matches.put(other.getTail(), this.getTail());
+
+			Stack<PartialOrderGraph.Node.Op[]> stack = new Stack<>();
+			stack.push(new Node.Op[]{this.getHead(), other.getHead()});
+			while (!stack.isEmpty()) {
+				Node.Op[] nodes = stack.pop();
+
+				// add children of current node
+				for (Node.Op rightChild : nodes[1].getNext()) {
+					// push new pair of nodes onto stack
+					Node.Op leftChild = matches.get(rightChild);
+					if (leftChild == null) {
+						leftChild = this.createNode(rightChild.getArtifact());
+						matches.put(rightChild, leftChild);
+						stack.push(new Node.Op[]{leftChild, rightChild});
+					}
+					nodes[0].addChild(leftChild);
+				}
+			}
 		}
 
 

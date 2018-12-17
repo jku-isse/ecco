@@ -424,6 +424,8 @@ public interface Repository extends Persistable {
 		public default void extract(Association.Op association) {
 			checkNotNull(association);
 
+			Trees.checkConsistency(association.getRootNode());
+
 			Collection<? extends Association.Op> originalAssociations = this.getAssociations();
 
 			Collection<Association.Op> toAdd = new ArrayList<>();
@@ -852,7 +854,7 @@ public interface Repository extends Persistable {
 							Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().collectNodes().stream().map(PartialOrderGraph.Node.Op::getArtifact).collect(Collectors.toList());
 
 							// remove symbols that are not contained in the given associations
-							symbols.removeIf(symbol -> !newAssociations.contains(symbol.getContainingNode().getContainingAssociation()));
+							symbols.removeIf(symbol -> symbol != null && !newAssociations.contains(symbol.getContainingNode().getContainingAssociation()));
 
 							// trim sequence graph
 							node.getArtifact().getSequenceGraph().trim(symbols);
@@ -912,7 +914,7 @@ public interface Repository extends Persistable {
 			}
 
 			// add modules and module revisions (i.e. add new ones and increase the counters of existing ones)
-			for (int order = 0; order < this.getMaxOrder(); order++) {
+			for (int order = 0; order <= this.getMaxOrder(); order++) {
 				for (final Module otherModule : otherRepository.getModules(order)) {
 					// check if module contains any negative features without any revisions
 					if (Arrays.stream(otherModule.getNeg()).noneMatch(feature -> feature.getRevisions().isEmpty())) {

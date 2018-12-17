@@ -111,8 +111,10 @@ public class MemNode implements Node, Node.Op {
 	public void removeChild(Op child) {
 		checkNotNull(child);
 
-		this.children.remove(child);
-		child.setParent(null);
+		if (this.children.remove(child))
+			child.setParent(null);
+		else
+			throw new EccoException("Attempted to remove child that does not exist.");
 	}
 
 

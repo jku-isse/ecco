@@ -18,6 +18,7 @@ public class MemPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 //		this.tail.getArtifact().setSequenceNumber(TAIL_SEQUENCE_NUMBER);
 		this.head = new MemPartialOrderGraphNode(null);
 		this.tail = new MemPartialOrderGraphNode(null);
+//		this.head.addChild(this.tail);
 	}
 
 	@Override
@@ -33,6 +34,11 @@ public class MemPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 	@Override
 	public int getMaxIdentifier() {
 		return this.maxIdentifier;
+	}
+
+	@Override
+	public void setMaxIdentifier(int value) {
+		this.maxIdentifier = value;
 	}
 
 	@Override
