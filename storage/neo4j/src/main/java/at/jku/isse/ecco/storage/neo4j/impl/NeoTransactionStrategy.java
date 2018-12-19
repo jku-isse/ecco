@@ -9,6 +9,9 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.CompactWriter;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +33,7 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 
 
     public Path getRepoPath() {
-        return repositoryDir.resolve(JSON_DB_NAME);
+        return repositoryDir;
     }
 
     public Path getTempRepoPath() {
@@ -39,6 +42,7 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 
 
     private transient final Path repositoryDir;
+    private NeoRepository curRepo = null;
 
     @Inject
     public NeoTransactionStrategy(@Named("repositoryDir") Path repositoryDir) {
@@ -67,6 +71,7 @@ public class NeoTransactionStrategy implements TransactionStrategy {
     private static final String ZIP_NAME = "ecco.xml";
 
     public void storeRepo(Path storageFile, NeoRepository repo) throws IOException {
+
         try (ZipOutputStream zipOut = new ZipOutputStream(Files.newOutputStream(storageFile, StandardOpenOption.CREATE_NEW));
              BufferedWriter repoStorage = new BufferedWriter(new OutputStreamWriter(zipOut, StandardCharsets.UTF_8))) {
             zipOut.putNextEntry(new ZipEntry(ZIP_NAME));
@@ -118,29 +123,23 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 
 
     public NeoRepository load() {
-        if (curRepo != null)
+
+        if (curRepo != null) {
             return curRepo;
-        final Path repoPath = getRepoPath();
-        if (!Files.exists(repoPath))
-            return curRepo = new NeoRepository();
-        try {
-            return curRepo = loadFromDisk(repoPath);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
+
+        //does not care if path exists - creates if not existing, loads if existing
+        return curRepo = new NeoRepository(getRepoPath());
     }
-
-    private NeoRepository curRepo = null;
-
 
     public void store(Repository.Op repository) {
         if (repository instanceof NeoRepository) {
             NeoRepository jsonRepository = (NeoRepository) repository;
-            try {
-                storeToFile(jsonRepository);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+//            try {
+//                storeToFile(jsonRepository);
+//            } catch (IOException e) {
+//                throw new UncheckedIOException(e);
+//            }
         } else
             throw new IllegalStateException("Repository of type '" +
                     (repository == null ? null : repository.getClass()

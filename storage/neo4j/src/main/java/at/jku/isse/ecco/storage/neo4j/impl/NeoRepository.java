@@ -10,6 +10,7 @@ import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 
+import java.nio.file.Path;
 import java.util.*;
 
 public class NeoRepository implements Repository.Op {
@@ -30,8 +31,10 @@ public class NeoRepository implements Repository.Op {
         return new HashSet<>();
     }
 
-    //Needs to be public
-    public NeoRepository() {
+    private final NeoDatabase neoDb;
+
+    public NeoRepository(Path repoPath) {
+        neoDb = new NeoDatabase(repoPath.toFile());
         commitIndex = newMap();
         remoteIndex = newMap();
         features = newMap();

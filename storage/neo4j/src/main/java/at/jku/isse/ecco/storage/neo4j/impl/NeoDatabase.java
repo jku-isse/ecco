@@ -4,26 +4,24 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 
+import java.io.File;
+
 public class NeoDatabase {
 
-    private static NeoDatabase instance;
-    GraphDatabaseFactory neoDb;
+    GraphDatabaseService neoDb;
+    private File databasePath;
 
-    private NeoDatabase(){
+    public NeoDatabase(File databasePath){
+        this.databasePath = databasePath;
+
+        //https://www.baeldung.com/java-neo4j
         neoDb = new GraphDatabaseFactory()
-                .newEmbeddedDatabaseBuilder( this.getRepoPath().toFile() )
+                .newEmbeddedDatabaseBuilder(databasePath)
                 .setConfig(GraphDatabaseSettings.pagecache_memory, "512M" )
-                .setConfig( GraphDatabaseSettings.string_block_size, "60" )
-                .setConfig( GraphDatabaseSettings.array_block_size, "300" )
+                .setConfig(GraphDatabaseSettings.string_block_size, "60" )
+                .setConfig(GraphDatabaseSettings.array_block_size, "300" )
                 .newGraphDatabase();
         registerShutdownHook(neoDb);
-    }
-
-    public static synchronized NeoDatabase getInstance(){
-        if(instance == null){
-            instance = new NeoDatabase();
-        }
-        return instance;
     }
 
     private static void registerShutdownHook( final GraphDatabaseService graphDb )
@@ -39,5 +37,9 @@ public class NeoDatabase {
                 graphDb.shutdown();
             }
         } );
+    }
+
+    public File getDatabasePath() {
+        return databasePath;
     }
 }
