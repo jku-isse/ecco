@@ -34,17 +34,30 @@ public interface PartialOrderGraph extends Persistable {
 
 		public default Collection<Node.Op> collectNodes() { // TODO: this potentially adds the same nodes multiple times!
 			Collection<Node.Op> nodes = new ArrayList<>();
-			LinkedList<Node.Op> stack = new LinkedList<>();
+
+			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
 			stack.push(this.getHead());
+
 			while (!stack.isEmpty()) {
 				Node.Op node = stack.pop();
 
 				nodes.add(node);
 
+				// add children of current node
 				for (Node.Op child : node.getNext()) {
-					stack.push(child);
+					counters.putIfAbsent(child, 0);
+					int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+					// check if all parents of the node have been processed
+					if (counter >= child.getPrevious().size()) {
+						// remove node from counters
+						counters.remove(child);
+						// push node onto stack
+						stack.push(child);
+					}
 				}
 			}
+
 			return nodes;
 		}
 
@@ -504,8 +517,10 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		public default void updateArtifactReferences() {
-			LinkedList<Node.Op> stack = new LinkedList<>();
+			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
 			stack.push(this.getHead());
+
 			while (!stack.isEmpty()) {
 				Node.Op node = stack.pop();
 
@@ -515,8 +530,17 @@ public interface PartialOrderGraph extends Persistable {
 					node.setArtifact(replacing);
 				}
 
+				// add children of current node
 				for (Node.Op child : node.getNext()) {
-					stack.push(child);
+					counters.putIfAbsent(child, 0);
+					int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+					// check if all parents of the node have been processed
+					if (counter >= child.getPrevious().size()) {
+						// remove node from counters
+						counters.remove(child);
+						// push node onto stack
+						stack.push(child);
+					}
 				}
 			}
 		}

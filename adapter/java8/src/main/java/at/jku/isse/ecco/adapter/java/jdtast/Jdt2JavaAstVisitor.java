@@ -1368,16 +1368,17 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     public boolean visit(VariableDeclarationStatement node) {
         String type = node.getType().toString();
         List<IExtendedModifier> modifiers = (List<IExtendedModifier>) node.modifiers();
-        JavaTreeArtifactData modifierData = new JavaTreeArtifactData();
-        modifierData.setType(MODIFIER);
-        Node.Op modifierNode = newNode.apply(modifierData);
-        for (IExtendedModifier mod : modifiers) {
-            JavaTreeArtifactData data = new JavaTreeArtifactData();
-            data.setType(SIMPLE_JUST_A_STRING);
-            data.setDataAsString(mod.toString().trim());
-            modifierNode.addChild(newNode.apply(data));
-        }
         for (VariableDeclarationFragment fragment : (List<VariableDeclarationFragment>) node.fragments()) {
+            JavaTreeArtifactData modifierData = new JavaTreeArtifactData();
+            modifierData.setType(MODIFIER);
+            Node.Op modifierNode = newNode.apply(modifierData);
+            for (IExtendedModifier mod : modifiers) {
+                JavaTreeArtifactData data = new JavaTreeArtifactData();
+                data.setType(SIMPLE_JUST_A_STRING);
+                data.setDataAsString(mod.toString().trim());
+                modifierNode.addChild(newNode.apply(data));
+            }
+
             Expression initializer = fragment.getInitializer();
             String name = fragment.getName().toString();
 
