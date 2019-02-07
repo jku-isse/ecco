@@ -281,7 +281,7 @@ public interface PartialOrderGraph extends Persistable {
 
 		// private
 		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
-			System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
+			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
 
 			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact().equals(right.getArtifact())) {
 
@@ -298,7 +298,7 @@ public interface PartialOrderGraph extends Persistable {
 						left.addChild(newLeft);
 						// add tail as child of new node
 						newLeft.addChild(this.getTail());
-						System.out.println("Added new node " + newLeft + " as child to node " + left);
+						//System.out.println("Added new node " + newLeft + " as child to node " + left);
 					}
 				}
 
@@ -323,7 +323,7 @@ public interface PartialOrderGraph extends Persistable {
 									// we do not need left connection -> delete it
 									it.remove();
 									childLeft.getPrevious().remove(left);
-									System.out.println("Removed node " + childLeft + " as child from node " + left);
+									//System.out.println("Removed node " + childLeft + " as child from node " + left);
 								}
 							}
 						}
@@ -348,11 +348,11 @@ public interface PartialOrderGraph extends Persistable {
 								// we need right connection -> add it
 								if (childRight.getArtifact() == null) { // this is ugly for checking if it is the tail!
 									left.addChild(this.getTail());
-									System.out.println("Added new node " + this.getTail() + " as child to node " + left);
+									//System.out.println("Added new node " + this.getTail() + " as child to node " + left);
 								} else {
 									Node.Op childLeft = shared.get(childRight.getArtifact().getSequenceNumber());
 									left.addChild(childLeft);
-									System.out.println("Added new node " + childLeft + " matching " + childRight + " as child to node " + left);
+									//System.out.println("Added new node " + childLeft + " matching " + childRight + " as child to node " + left);
 								}
 							}
 						}
