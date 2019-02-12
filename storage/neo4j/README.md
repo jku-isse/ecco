@@ -1,5 +1,5 @@
 
-# ECCO XML/JSON Storage Backend
+# ECCO Neo4J Storage Backend
 
-XStream serialization storage backend plugin for ECCO.
+Neo4J serialization storage backend plugin for ECCO.
 

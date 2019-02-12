@@ -1,26 +1,15 @@
 package at.jku.isse.ecco.storage.xml.test;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
-import at.jku.isse.ecco.storage.neo4j.impl.NeoRepository;
-import at.jku.isse.ecco.storage.neo4j.impl.NeoRepositoryDao;
-import at.jku.isse.ecco.storage.neo4j.impl.NeoTransactionStrategy;
 import org.junit.*;
-import org.junit.rules.TemporaryFolder;
 import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
-
-import static com.google.common.collect.Sets.powerSet;
 
 public class SimpleTest {
 

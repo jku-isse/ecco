@@ -13,3 +13,4 @@ bin
 u
 ui
 test-output
+storage/neo4j/src/integrationTest/data/.ecco/
