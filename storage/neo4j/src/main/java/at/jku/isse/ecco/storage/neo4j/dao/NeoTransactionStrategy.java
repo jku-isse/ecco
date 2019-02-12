@@ -24,15 +24,9 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 	// repository directory
 	private final Path repositoryDir;
 
-	// database file
-	private NeoDatabase database;
-	// type of current transaction
 	private TRANSACTION transaction;
-	// number of begin transaction calls
-	private int transactionCounter;
 
     private NeoSessionFactory sessionFactory;
-
 
 	protected boolean initialized = false;
 	private Session currentSession = null;
@@ -79,12 +73,19 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 	public void close() throws EccoException {}
 
 	@Override
-	public void begin(TRANSACTION transactionType) throws EccoException {
+	public void begin(TRANSACTION transaction) throws EccoException {
 		this.checkInitialized();
+
+		this.transaction = transaction;
 
 		if (this.currentSession == null) {
 			this.currentSession = this.sessionFactory.getNeoSession();
-			this.currentSession.beginTransaction(Transaction.Type.READ_WRITE); //TODO: use transactionType?
+
+			if (transaction == TRANSACTION.READ_ONLY) {
+				this.currentSession.beginTransaction(Transaction.Type.READ_ONLY);
+			} else {
+				this.currentSession.beginTransaction(Transaction.Type.READ_WRITE);
+			}
 		} else {
 			throw new EccoException("Transaction is already in progress.");
 		}
@@ -132,11 +133,6 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 			this.currentSession.clear();
 			this.currentSession = null;
 		}
-	}
-
-
-	public NeoDatabase getDatabase() {
-		return this.database;
 	}
 
 	public TRANSACTION getTransaction() {

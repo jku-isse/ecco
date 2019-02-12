@@ -10,6 +10,8 @@ import at.jku.isse.ecco.storage.neo4j.domain.NeoRepository;
 import com.google.inject.Inject;
 import org.neo4j.ogm.session.Session;
 
+import java.util.ArrayList;
+
 public class NeoRepositoryDao extends NeoAbstractGenericDao implements RepositoryDao {
 
 	@Inject
@@ -20,7 +22,16 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 	@Override
 	public Repository.Op load() {
 		final Session neoSession = this.transactionStrategy.getNeoSession();
-		return neoSession.load(NeoRepository.class, 1); // TODO: load which one?
+		ArrayList<NeoRepository> repositories = new ArrayList<>(neoSession.loadAll(NeoRepository.class)); // TODO: load which one?
+		if (repositories.isEmpty()) {
+			return new NeoRepository();
+		} else if (repositories.size() == 1) {
+			return repositories.get(1);
+		} else {
+			//What now?
+			throw new EccoException("Multiple repositories loaded!");
+		}
+
 	}
 
 	@Override
