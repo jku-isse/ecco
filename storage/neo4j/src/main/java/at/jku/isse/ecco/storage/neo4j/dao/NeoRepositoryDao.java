@@ -4,8 +4,6 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.RepositoryDao;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.mem.dao.Database;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoDatabase;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoRepository;
 import com.google.inject.Inject;
 import org.neo4j.ogm.session.Session;
