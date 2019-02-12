@@ -8,6 +8,7 @@ import at.jku.isse.ecco.storage.mem.dao.Database;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoDatabase;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoRepository;
 import com.google.inject.Inject;
+import org.neo4j.ogm.session.Session;
 
 public class NeoRepositoryDao extends NeoAbstractGenericDao implements RepositoryDao {
 
@@ -18,17 +19,17 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 
 	@Override
 	public Repository.Op load() {
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-
-		return root.getRepository();
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		return neoSession.load(NeoRepository.class, 1); // TODO: load which one?
 	}
 
 	@Override
 	public void store(Repository.Op repository) {
-		// nothing to do
-
 		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
 			throw new EccoException("Attempted to store repository without active READ_WRITE transaction.");
+
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		neoSession.save(repository);
 	}
 
 }

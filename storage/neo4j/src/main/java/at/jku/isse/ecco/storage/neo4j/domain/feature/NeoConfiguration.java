@@ -13,6 +13,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoConfiguration extends NeoEntity implements Configuration {
 
+
+
     @Relationship("HAS")
 	private final FeatureRevision[] featureRevisions;
 

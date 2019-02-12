@@ -11,6 +11,9 @@ import java.io.Serializable;
 import java.util.Map;
 import java.util.UUID;
 
+
+//TODO: This is probably not needed for database! Remove it!
+
 @NodeEntity
 public class NeoDatabase extends NeoEntity implements Serializable {
 

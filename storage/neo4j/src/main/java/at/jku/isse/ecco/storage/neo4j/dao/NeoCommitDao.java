@@ -7,9 +7,12 @@ import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.neo4j.domain.core.NeoCommit;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoDatabase;
 import com.google.inject.Inject;
+import org.neo4j.ogm.session.Session;
+import org.neo4j.ogm.session.SessionFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class NeoCommitDao extends NeoAbstractGenericDao implements CommitDao {
 
@@ -18,21 +21,16 @@ public class NeoCommitDao extends NeoAbstractGenericDao implements CommitDao {
 		super(transactionStrategy);
 	}
 
-
 	@Override
 	public List<Commit> loadAllCommits() throws EccoException {
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-
-		final List<Commit> commits = new ArrayList<>(root.getCommitIndex().values());
-
-		return commits;
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		return new ArrayList<>(neoSession.loadAll(NeoCommit.class));
 	}
 
 	@Override
-	public Commit load(String id) throws EccoException {
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-
-		return root.getCommitIndex().get(id);
+	public NeoCommit load(String id) throws EccoException {
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		return neoSession.load(NeoCommit.class, id);
 	}
 
 	@Override
@@ -40,9 +38,9 @@ public class NeoCommitDao extends NeoAbstractGenericDao implements CommitDao {
 		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
 			throw new EccoException("Attempted to remove commit without active READ_WRITE transaction.");
 
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-
-		root.getCommitIndex().remove(id);
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		NeoCommit commit = neoSession.load(NeoCommit.class, id);
+		neoSession.delete(commit);
 	}
 
 	@Override
@@ -50,24 +48,17 @@ public class NeoCommitDao extends NeoAbstractGenericDao implements CommitDao {
 		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
 			throw new EccoException("Attempted to remove commit without active READ_WRITE transaction.");
 
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-
-		root.getCommitIndex().remove(entity.getId());
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		NeoCommit commit = neoSession.load(NeoCommit.class, entity.getId());
+		neoSession.delete(commit);
 	}
 
 	@Override
 	public Commit save(Commit entity) throws EccoException {
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		neoSession.save(entity);
 
-		final NeoCommit baseEntity = (NeoCommit) entity;
-
-		if (!root.getCommitIndex().containsKey(baseEntity.getId())) {
-			baseEntity.setId(root.nextCommitId());
-		}
-
-		root.getCommitIndex().put(baseEntity.getId(), baseEntity);
-
-		return baseEntity;
+		return entity;
 	}
 
 }

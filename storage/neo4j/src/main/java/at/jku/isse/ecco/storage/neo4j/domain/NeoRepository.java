@@ -17,6 +17,9 @@ import java.util.*;
 /**
  * Memory implementation of {@link Repository}.
  */
+
+//TODO: This is probably not needed for database! Remove it!
+
 @NodeEntity
 public final class NeoRepository implements Repository, Repository.Op {
 

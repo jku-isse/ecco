@@ -9,9 +9,14 @@ import at.jku.isse.ecco.storage.mem.dao.Database;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoDatabase;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoRemote;
 import com.google.inject.Inject;
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
+import org.neo4j.ogm.session.Session;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -27,9 +32,8 @@ public class NeoRemoteDao extends NeoAbstractGenericDao implements RemoteDao {
 
 	@Override
 	public Collection<Remote> loadAllRemotes() {
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-
-		final Collection<Remote> remotes = new ArrayList<>(root.getRemoteIndex().values());
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		final Collection<Remote> remotes = new ArrayList<>(neoSession.loadAll(NeoRemote.class));
 
 		return remotes;
 	}
@@ -39,11 +43,15 @@ public class NeoRemoteDao extends NeoAbstractGenericDao implements RemoteDao {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
 
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
+		final Session neoSession = this.transactionStrategy.getNeoSession();
 
-		final Remote remote = root.getRemoteIndex().get(name);
+		// prepare statement
+		Map<String, Object> params = new HashMap<>(1);
+		params.put ("name", name);
+		String query = "MATCH(n:NeoRemote {name:$name}) " +
+						"RETURN n";
 
-		return remote;
+		return neoSession.queryForObject(NeoRemote.class, query, params);
 	}
 
 	@Override
@@ -53,14 +61,9 @@ public class NeoRemoteDao extends NeoAbstractGenericDao implements RemoteDao {
 		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
 			throw new EccoException("Attempted to store remote without active READ_WRITE transaction.");
 
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-		final Map<String, NeoRemote> remoteIndex = root.getRemoteIndex();
-
-		final NeoRemote neoEntity = (NeoRemote) remote;
-
-		remoteIndex.put(neoEntity.getName(), neoEntity);
-
-		return neoEntity;
+		final Session neoSession = this.transactionStrategy.getNeoSession();
+		neoSession.save(remote);
+		return remote;
 	}
 
 	@Override
@@ -70,10 +73,13 @@ public class NeoRemoteDao extends NeoAbstractGenericDao implements RemoteDao {
 		if (this.transactionStrategy.getTransaction() != TransactionStrategy.TRANSACTION.READ_WRITE)
 			throw new EccoException("Attempted to remove remote without active READ_WRITE transaction.");
 
-		final NeoDatabase root = this.transactionStrategy.getDatabase();
-		final Map<String, NeoRemote> remoteIndex = root.getRemoteIndex();
+		final Session neoSession = this.transactionStrategy.getNeoSession();
 
-		remoteIndex.remove(name);
+		Filters composite = new Filters();
+		Filter filter = new Filter("name", ComparisonOperator.EQUALS, name);
+		composite.add(filter);
+
+		neoSession.delete(NeoRemote.class, composite, false);
 	}
 
 }

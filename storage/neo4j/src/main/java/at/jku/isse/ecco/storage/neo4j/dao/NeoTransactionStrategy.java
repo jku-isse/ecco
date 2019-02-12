@@ -15,6 +15,7 @@ import java.nio.channels.FileLock;
 import java.nio.file.Path;
 import java.util.Collection;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @Singleton
@@ -29,21 +30,108 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 	private TRANSACTION transaction;
 	// number of begin transaction calls
 	private int transactionCounter;
-	// write file channel
-	private FileChannel writeFileChannel;
-	// write file lock
-	private FileLock writeFileLock;
 
     private NeoSessionFactory sessionFactory;
-    private Session session; //TODO: good practice?
+
+
+	protected boolean initialized = false;
+	private Session currentSession = null;
 
 
 	@Inject
 	public NeoTransactionStrategy(@Named("repositoryDir") final Path repositoryDir) {
 		checkNotNull(repositoryDir);
 		this.repositoryDir = repositoryDir;
+	}
 
-		this.reset();
+	protected void checkInitialized() throws EccoException {
+		if (!this.initialized){
+			throw new EccoException("Neo Transaction Strategy has not been initialized");
+		}
+	}
+
+	protected Session getNeoSession() throws EccoException {
+		this.checkInitialized();
+
+		if (this.currentSession == null) {
+			return this.sessionFactory.getNeoSession();
+		} else {
+			return this.currentSession;
+		}
+	}
+
+	@Override
+	public void open() throws EccoException {
+		if (!this.initialized) {
+			sessionFactory = new NeoSessionFactory(repositoryDir);
+			this.initialized = true;
+		}
+
+		//session = sessionFactory.getNeoSession();
+		//loadDatabase();
+//        NeoDatabase test = new NeoDatabase();
+//        test.getRepository().addAssociation(new NeoAssociation());
+//        session.save(test);
+		//https://stackoverflow.com/questions/38884526/neo4j-null-pointer-exception-while-saving-via-repository
+	}
+
+	@Override
+	public void close() throws EccoException {}
+
+	@Override
+	public void begin(TRANSACTION transactionType) throws EccoException {
+		this.checkInitialized();
+
+		if (this.currentSession == null) {
+			this.currentSession = this.sessionFactory.getNeoSession();
+			this.currentSession.beginTransaction(Transaction.Type.READ_WRITE); //TODO: use transactionType?
+		} else {
+			throw new EccoException("Transaction is already in progress.");
+		}
+	}
+
+	@Override
+	public void end() throws EccoException {
+		this.checkInitialized();
+
+		if (this.currentSession == null) {
+			throw new EccoException("No transaction in progress.");
+		} else {
+			this.currentSession.getTransaction().commit();
+			this.currentSession.clear();
+			this.currentSession = null;
+		}
+
+
+//		try {
+//			if (this.transaction == TRANSACTION.READ_ONLY) {
+//				session.getTransaction().close();
+//			}
+//			else if (this.transaction == TRANSACTION.READ_WRITE) {
+//				session.save(this.database);
+//				session.getTransaction().commit();
+//			}
+//		} catch (Exception e) {
+//			throw new EccoException("Error ending transaction.", e);
+//		} finally {
+//			if (session.getTransaction() != null) {
+//				session.getTransaction().rollback();
+//			}
+//		}
+
+	}
+
+	@Override
+	public void rollback() throws EccoException {
+		this.checkInitialized();
+
+		if (this.currentSession == null) {
+			throw new EccoException("No transaction in progress.");
+		} else {
+			this.currentSession.getTransaction().rollback();
+			this.currentSession.clear();
+			this.currentSession = null;
+		}
 	}
 
 
@@ -56,113 +144,15 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 	}
 
 
-	@Override
-	public synchronized void open() {
-		this.reset();
-
-        sessionFactory = new NeoSessionFactory(repositoryDir);
-        session = sessionFactory.getNeoSession();
-        loadDatabase();
-//        NeoDatabase test = new NeoDatabase();
-//        test.getRepository().addAssociation(new NeoAssociation());
-//        session.save(test);
-        //https://stackoverflow.com/questions/38884526/neo4j-null-pointer-exception-while-saving-via-repository
-
-        this.transactionCounter = 0;
-	}
-
-	@Override
-	public synchronized void close() {
-		if (this.transaction != null || this.transactionCounter != 0)
-			throw new EccoException("Error closing connection: Not all transactions have been ended.");
-		this.reset();
-	}
-
-	@Override
-	public synchronized void rollback() {
-		if (this.transaction == null && this.transactionCounter == 0 || session.getTransaction() == null) {
-            throw new EccoException("Error rolling back transaction: No transaction active.");
-        } else
-        {
-            session.getTransaction().rollback();
-        }
-		this.reset();
-	}
-
-
-	@Override
-	public synchronized void begin(TRANSACTION transaction) {
-
-		try {
-			if (transaction == TRANSACTION.READ_ONLY) {
-                session.beginTransaction(Transaction.Type.READ_ONLY);
-                this.transaction = TRANSACTION.READ_ONLY;
-            }
-			else if (transaction == TRANSACTION.READ_WRITE) {
-                session.beginTransaction(Transaction.Type.READ_WRITE);
-                this.transaction = TRANSACTION.READ_WRITE;
-            }
-			this.transactionCounter++;
-
-			loadDatabase();
-		} catch (Exception e) {
-			throw new EccoException("Error beginning transaction.", e);
-		}
-
-	}
-
-
-	/**
-	 * Ends a transaction.
-	 */
-	@Override
-	public synchronized void end() {
-		if (this.transaction == null || this.transactionCounter <= 0)
-			throw new EccoException("There is no active transaction.");
-
-		this.transactionCounter--;
-		if (this.transactionCounter == 0) {
-			try {
-				if (this.transaction == TRANSACTION.READ_ONLY) {
-                    session.getTransaction().close();
-                }
-				else if (this.transaction == TRANSACTION.READ_WRITE) {
-				    session.save(this.database);
-				    session.getTransaction().commit();
-                }
-			} catch (Exception e) {
-				throw new EccoException("Error ending transaction.", e);
-			} finally {
-			    if (session.getTransaction() != null) {
-                    session.getTransaction().rollback();
-                }
-            }
-            this.transaction = null;
-		}
-	}
-
-	private void reset() {
-		this.database = null;
-		this.transaction = null;
-		this.transactionCounter = 0;
-		this.writeFileChannel = null;
-		this.writeFileLock = null;
-
-		/*if (session!= null) {
-
-            session.clear();
-        }*/
-	}
-
 	private void loadDatabase() {
 
-        Collection<NeoDatabase> db = session.loadAll(NeoDatabase.class);
-
-        if (db.isEmpty()) {
-            this.database = new NeoDatabase();
-        } else {
-            this.database = db.iterator().next(); //TODO: what if more than one result?
-        }
+//        Collection<NeoDatabase> db = session.loadAll(NeoDatabase.class);
+//
+//        if (db.isEmpty()) {
+//            this.database = new NeoDatabase();
+//        } else {
+//            this.database = db.iterator().next(); //TODO: what if more than one result?
+//        }
 	}
 
 

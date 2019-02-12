@@ -44,7 +44,7 @@ public class NeoEntityFactory implements EntityFactory {
 
 	@Override
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
-		return new NeoArtifact<T>(data);
+		return new NeoArtifact<>(data);
 	}
 
 
