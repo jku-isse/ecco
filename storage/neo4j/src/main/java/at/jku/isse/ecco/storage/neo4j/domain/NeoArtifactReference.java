@@ -1,8 +1,7 @@
-package at.jku.isse.ecco.storage.neo4j.domain.artifact;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
 import org.neo4j.ogm.annotation.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;

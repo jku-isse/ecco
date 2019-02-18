@@ -1,11 +1,10 @@
-package at.jku.isse.ecco.storage.neo4j.domain.module;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;

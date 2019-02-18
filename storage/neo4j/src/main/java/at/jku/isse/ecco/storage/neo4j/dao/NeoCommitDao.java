@@ -4,15 +4,12 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.CommitDao;
 import at.jku.isse.ecco.dao.TransactionStrategy;
-import at.jku.isse.ecco.storage.neo4j.domain.core.NeoCommit;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoDatabase;
+import at.jku.isse.ecco.storage.neo4j.domain.NeoCommit;
 import com.google.inject.Inject;
 import org.neo4j.ogm.session.Session;
-import org.neo4j.ogm.session.SessionFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class NeoCommitDao extends NeoAbstractGenericDao implements CommitDao {
 

@@ -1,10 +1,8 @@
-package at.jku.isse.ecco.storage.neo4j.domain.sg;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.sg.SequenceGraph;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
-import at.jku.isse.ecco.storage.neo4j.domain.artifact.NeoArtifact;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;

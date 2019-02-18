@@ -1,37 +1,34 @@
-package at.jku.isse.ecco.storage.neo4j.domain.module;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
+import at.jku.isse.ecco.module.ModuleRevision;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @NodeEntity
-public class NeoModule extends NeoEntity implements Module {
+public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 
     @Relationship("HAS")
-	private Feature[] pos;
+	private FeatureRevision[] pos;
 
     @Relationship("HAS")
 	private Feature[] neg;
 
     @Property("count")
-    private int count;
+	private int count;
 
     @Relationship("HAS")
-	private Collection<NeoModuleRevision> revisions;
+	private Module module;
 
 
-	public NeoModule(Feature[] pos, Feature[] neg) {
+	public NeoModuleRevision(NeoModule module, FeatureRevision[] pos, Feature[] neg) {
+		checkNotNull(module);
 		checkNotNull(pos);
 		checkNotNull(neg);
 		checkArgument(pos.length > 0);
@@ -39,12 +36,12 @@ public class NeoModule extends NeoEntity implements Module {
 		this.pos = pos;
 		this.neg = neg;
 		this.count = 0;
-		this.revisions = new ArrayList<>();
+		this.module = module;
 	}
 
 
 	@Override
-	public Feature[] getPos() {
+	public FeatureRevision[] getPos() {
 		return this.pos;
 	}
 
@@ -74,28 +71,8 @@ public class NeoModule extends NeoEntity implements Module {
 	}
 
 	@Override
-	public Collection<NeoModuleRevision> getRevisions() {
-		return Collections.unmodifiableCollection(this.revisions);
-	}
-
-	@Override
-	public NeoModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
-		if (!this.matchesRevision(pos, neg))
-			return null;
-		NeoModuleRevision moduleRevision = new NeoModuleRevision(this, pos, neg);
-		if (this.revisions.contains(moduleRevision))
-			return null;
-		this.revisions.add(moduleRevision);
-		return moduleRevision;
-	}
-
-	@Override
-	public NeoModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg) {
-		NeoModuleRevision queryModuleRevision = new NeoModuleRevision(this, pos, neg);
-		for (NeoModuleRevision moduleRevision : this.revisions)
-			if (moduleRevision.equals(queryModuleRevision))
-				return moduleRevision;
-		return null;
+	public Module getModule() {
+		return this.module;
 	}
 
 
@@ -103,15 +80,15 @@ public class NeoModule extends NeoEntity implements Module {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		NeoModule neoModule = (NeoModule) o;
+		NeoModuleRevision neoModuleRevision = (NeoModuleRevision) o;
 
-		//return Arrays.equals(pos, neoModule.pos) && Arrays.equals(neg, neoModule.neg);
-		if (this.pos.length != neoModule.pos.length || this.neg.length != neoModule.neg.length)
+		//return Arrays.equals(pos, neoModuleRevision.pos) && Arrays.equals(neg, neoModuleRevision.neg);
+		if (this.pos.length != neoModuleRevision.pos.length || this.neg.length != neoModuleRevision.neg.length)
 			return false;
 		for (int i = 0; i < this.pos.length; i++) {
 			boolean found = false;
-			for (int j = 0; j < neoModule.pos.length; j++) {
-				if (this.pos[i].equals(neoModule.pos[j])) {
+			for (int j = 0; j < neoModuleRevision.pos.length; j++) {
+				if (this.pos[i].equals(neoModuleRevision.pos[j])) {
 					found = true;
 					break;
 				}
@@ -121,8 +98,8 @@ public class NeoModule extends NeoEntity implements Module {
 		}
 		for (int i = 0; i < this.neg.length; i++) {
 			boolean found = false;
-			for (int j = 0; j < neoModule.neg.length; j++) {
-				if (this.neg[i].equals(neoModule.neg[j])) {
+			for (int j = 0; j < neoModuleRevision.neg.length; j++) {
+				if (this.neg[i].equals(neoModuleRevision.neg[j])) {
 					found = true;
 					break;
 				}
@@ -139,8 +116,8 @@ public class NeoModule extends NeoEntity implements Module {
 //		result = 31 * result + Arrays.hashCode(neg);
 //		return result;
 		int result = 0;
-		for (Feature feature : this.pos)
-			result += feature.hashCode();
+		for (FeatureRevision featureRevision : this.pos)
+			result += featureRevision.hashCode();
 		result *= 31;
 		for (Feature feature : this.neg)
 			result += feature.hashCode();
@@ -149,7 +126,7 @@ public class NeoModule extends NeoEntity implements Module {
 
 	@Override
 	public String toString() {
-		return this.getModuleString();
+		return this.getModuleRevisionString();
 	}
 
 }

@@ -6,8 +6,6 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.dao.NeoEntityFactory;
-import at.jku.isse.ecco.storage.neo4j.domain.feature.NeoFeature;
-import at.jku.isse.ecco.storage.neo4j.domain.module.NeoModule;
 import org.eclipse.collections.impl.factory.Maps;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
@@ -18,10 +16,10 @@ import java.util.*;
  * Memory implementation of {@link Repository}.
  */
 
-//TODO: This is probably not needed for database! Remove it!
+//TODO: Is this really needed for Neo4J representation?
 
 @NodeEntity
-public final class NeoRepository implements Repository, Repository.Op {
+public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
     @Relationship("HAS")
     private Map<String, Feature> features;

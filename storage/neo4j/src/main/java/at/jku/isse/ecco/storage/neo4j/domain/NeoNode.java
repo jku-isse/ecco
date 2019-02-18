@@ -1,9 +1,8 @@
-package at.jku.isse.ecco.storage.neo4j.domain.tree;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 import org.neo4j.ogm.annotation.NodeEntity;

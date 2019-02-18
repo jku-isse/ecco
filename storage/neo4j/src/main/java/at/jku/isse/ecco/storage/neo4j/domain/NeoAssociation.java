@@ -1,10 +1,8 @@
-package at.jku.isse.ecco.storage.neo4j.domain.core;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.module.Condition;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoCondition;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
 import at.jku.isse.ecco.tree.RootNode;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;

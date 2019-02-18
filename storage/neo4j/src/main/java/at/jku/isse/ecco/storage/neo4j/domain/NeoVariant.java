@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.storage.neo4j.domain.core;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;

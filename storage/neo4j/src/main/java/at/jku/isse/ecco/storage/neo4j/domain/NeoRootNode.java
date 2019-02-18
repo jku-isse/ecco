@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.storage.neo4j.domain.tree;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.RootNode;
