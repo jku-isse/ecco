@@ -196,6 +196,8 @@ public interface PartialOrderGraph extends Persistable {
 				Map.Entry<Node.Op, Integer> entry = traversalState.entrySet().iterator().next();
 				Node.Op node = entry.getKey();
 
+				boolean foundMatch = false;
+
 				// check if all parents of the node have been processed
 				//if (traversalMatchState.getNodeCount(node) >= node.getParents().size()) {
 				if (traversalState.get(node) >= node.getPrevious().size()) {
@@ -233,15 +235,18 @@ public interface PartialOrderGraph extends Persistable {
 
 						}
 						matchStates.add(resultMatchState);
+						foundMatch = true;
 					}
 				}
 
 				// remove current node and all its parent nodes from match state
 				traversalState.remove(node);
-				// add children of current node to match state
-				for (Node.Op child : node.getNext()) {
-					traversalState.putIfAbsent(child, 0);
-					traversalState.computeIfPresent(child, (op, integer) -> integer + 1);
+				// add children of current node to match state (only if we haven't already found a match on this path)
+				if (!foundMatch) {
+					for (Node.Op child : node.getNext()) {
+						traversalState.putIfAbsent(child, 0);
+						traversalState.computeIfPresent(child, (op, integer) -> integer + 1);
+					}
 				}
 			}
 
