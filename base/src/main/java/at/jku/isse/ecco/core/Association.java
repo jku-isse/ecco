@@ -7,6 +7,7 @@ import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**
@@ -34,6 +35,10 @@ public interface Association extends Persistable {
 	 * @return The root of the artifact tree.
 	 */
 	public RootNode getRootNode();
+
+
+	// TODO: make use of this! use it to check added modules that do not already exist in counter.
+	public Repository getContainingRepository();
 
 
 	public Condition computeCondition();
@@ -65,6 +70,9 @@ public interface Association extends Persistable {
 		 * @param root The root of the artifact tree (may be null).
 		 */
 		public void setRootNode(RootNode.Op root);
+
+
+		public Repository.Op getContainingRepository();
 
 
 		public AssociationCounter getCounter();
@@ -151,7 +159,7 @@ public interface Association extends Persistable {
 			ModuleCounter moduleCounter = associationCounter.getChild(module);
 			// if module counter does not exist yet add it
 			if (moduleCounter == null) {
-				moduleCounter = associationCounter.addChild(module);
+				moduleCounter = associationCounter.addChild(module); // TODO: get module instance from containing repository here?
 			}
 			// increase module counter
 			moduleCounter.incCount(count);
@@ -159,7 +167,7 @@ public interface Association extends Persistable {
 			ModuleRevisionCounter moduleRevisionCounter = moduleCounter.getChild(moduleRevision);
 			// if module revision counter does not exist yet add it
 			if (moduleRevisionCounter == null) {
-				moduleRevisionCounter = moduleCounter.addChild(moduleRevision);
+				moduleRevisionCounter = moduleCounter.addChild(moduleRevision); // TODO: get module revision instance from containing repository here?
 			}
 			// increase module revision counter
 			moduleRevisionCounter.incCount(count);

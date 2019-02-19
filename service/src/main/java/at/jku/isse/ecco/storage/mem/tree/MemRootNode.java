@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.mem.tree;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -8,10 +9,11 @@ public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 	public static final long serialVersionUID = 1L;
 
 
-	private Association containingAssociation;
+	private Association.Op containingAssociation;
 
 
 	public MemRootNode() {
+		//super(new MemArtifact<>(new StringArtifactData("ROOT")));
 		super();
 	}
 
@@ -28,7 +30,7 @@ public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 
 
 	@Override
-	public RootNode.Op createNode() {
+	public RootNode.Op createNode(Artifact.Op<?> artifact) {
 		return new MemRootNode();
 	}
 
@@ -39,13 +41,8 @@ public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 	}
 
 	@Override
-	public Association getContainingAssociation() {
+	public Association.Op getContainingAssociation() {
 		return this.containingAssociation;
-	}
-
-	@Override
-	public String toString() {
-		return "root";
 	}
 
 }

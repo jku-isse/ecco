@@ -8,6 +8,7 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -54,6 +55,9 @@ public interface EntityFactory {
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data);
 
 
+	public Repository.Op createRepository();
+
+
 	/**
 	 * Creates a new empty instance of an association with all fields being initialized to the standard value.
 	 *
@@ -92,6 +96,7 @@ public interface EntityFactory {
 	 *
 	 * @return A new empty node.
 	 */
+	@Deprecated
 	public Node.Op createNode();
 
 	/**

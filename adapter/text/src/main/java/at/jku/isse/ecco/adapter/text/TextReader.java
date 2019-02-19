@@ -8,12 +8,12 @@ import at.jku.isse.ecco.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -75,11 +75,10 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 			Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
 			nodes.add(pluginNode);
 
-			try (Stream<String> lines = Files.lines(resolvedPath)) {
-				Iterator<String> it = lines.iterator();
+			try (BufferedReader br = new BufferedReader(new FileReader(resolvedPath.toFile()))) {
+				String line;
 				int i = 0;
-				while (it.hasNext()) {
-					String line = it.next();
+				while ((line = br.readLine()) != null) {
 					i++;
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
 					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);

@@ -7,6 +7,7 @@ import at.jku.isse.ecco.util.Trees;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,16 +28,24 @@ public interface Node extends Persistable {
 
 
 	public default String getNodeString() {
-		if (this instanceof RootNode)
-			return "root";
-		else if (this.getArtifact() != null)
-			return this.getArtifact().toString();
-		else
-			return "null";
+		return Objects.toString(this.getArtifact());
 	}
 
 	@Override
 	public String toString();
+
+
+	public default void traverse(NodeVisitor visitor) {
+		visitor.visit(this);
+
+		for (Node child : this.getChildren()) {
+			child.traverse(visitor);
+		}
+	}
+
+	public interface NodeVisitor {
+		public void visit(Node node);
+	}
 
 
 	/**
@@ -186,6 +195,21 @@ public interface Node extends Persistable {
 	 */
 	public interface Op extends Node {
 
+		public default void traverse(NodeVisitor visitor) {
+			visitor.visit(this);
+
+			for (Node.Op child : this.getChildren()) {
+				child.traverse(visitor);
+			}
+		}
+
+		public interface NodeVisitor {
+			public void visit(Node.Op node);
+		}
+
+
+		public Association.Op getContainingAssociation();
+
 		/**
 		 * Sets the node to be unique or not.
 		 *
@@ -245,9 +269,10 @@ public interface Node extends Persistable {
 		/**
 		 * Creates a new instance of this type of node.
 		 *
+		 * @param artifact The artifact to set for this node.
 		 * @return The new node instance.
 		 */
-		public Op createNode();
+		public Op createNode(Artifact.Op<?> artifact);
 
 
 		/**

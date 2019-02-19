@@ -3,6 +3,7 @@ package at.jku.isse.ecco.storage.mem.core;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.counter.MemAssociationCounter;
 import at.jku.isse.ecco.storage.mem.module.MemCondition;
 import at.jku.isse.ecco.tree.RootNode;
@@ -18,12 +19,14 @@ public class MemAssociation implements Association, Association.Op {
 	private String id;
 	private RootNode.Op artifactTreeRoot;
 	private AssociationCounter associationCounter;
+	private Repository.Op containingRepository;
 
 
 	public MemAssociation() {
 		this.id = "";
 		this.artifactTreeRoot = null;
 		this.associationCounter = new MemAssociationCounter(this);
+		this.containingRepository = null;
 	}
 
 
@@ -46,6 +49,11 @@ public class MemAssociation implements Association, Association.Op {
 	public void setRootNode(final RootNode.Op root) {
 		this.artifactTreeRoot = root;
 		root.setContainingAssociation(this);
+	}
+
+	@Override
+	public Repository.Op getContainingRepository() {
+		return this.containingRepository;
 	}
 
 	@Override

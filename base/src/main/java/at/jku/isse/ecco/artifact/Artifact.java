@@ -2,7 +2,7 @@ package at.jku.isse.ecco.artifact;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.Persistable;
-import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.Collection;
@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @param <DataType> The type of the data object stored in the artifact.
  */
-public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.Symbol, Persistable {
+public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 	/**
 	 * Setting this property indicates that the artifact's file representation was not modified since it was written.
@@ -89,11 +89,11 @@ public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.S
 	/**
 	 * There are two types of artifacts: ordered and unordered.
 	 *
-	 * <i>Unordered</i> artifacts do not contain a sequence graph (see {@link at.jku.isse.ecco.sg.SequenceGraph}) and therefore its children (or more accurately the children of nodes containing the unordered artifact) will not be assigned a sequence number.
+	 * <i>Unordered</i> artifacts do not contain a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) and therefore its children (or more accurately the children of nodes containing the unordered artifact) will not be assigned a sequence number.
 	 * As a consequence of this, and because the children of an artifact must be unique, the child artifacts of an unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number (see {@link at.jku.isse.ecco.artifact.Artifact#equals(Object)}.
 	 * In other words, no two child artifacts can contain equal data objects.
 	 *
-	 * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.sg.SequenceGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
+	 * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
 	 * This process is called <i>sequencing</i> of an ordered artifact. During this process the children of the ordered artifact are assigned sequence numbers based on their order of occurrence.
 	 * This assigned sequence number is used as an additional means of identifying the child artifacts. This makes it possible to have child artifacts containing equal data objects but different sequence numbers.
 	 * This is for example necessary when the child artifacts represent statements in a programming language: statements are not unique, the same statement can appear multiple times in a sequence of statements, and the position of a statement in the sequence matters. This is what the sequence number is used for.
@@ -111,7 +111,18 @@ public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.S
 	 */
 	public boolean isSequenced();
 
-	public SequenceGraph getSequenceGraph();
+	public PartialOrderGraph getSequenceGraph();
+
+
+	public boolean equalsIgnoreSequenceNumber(Object obj);
+
+	/**
+	 * Returns the assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.pog.PartialOrderGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
+	 *
+	 * @return The assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.pog.PartialOrderGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
+	 */
+	public int getSequenceNumber();
+
 
 	/**
 	 * Returns the one unique node from the artifact tree that contains this artifact.
@@ -213,7 +224,7 @@ public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.S
 	 *
 	 * @param <DataType> The type of the data object stored in the artifact.
 	 */
-	public interface Op<DataType extends ArtifactData> extends Artifact<DataType>, SequenceGraph.Symbol.Op {
+	public interface Op<DataType extends ArtifactData> extends Artifact<DataType> {
 
 		/**
 		 * Sets whether this artifact is atomic or not (see {@link Artifact#isAtomic()}).
@@ -234,7 +245,15 @@ public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.S
 		 *
 		 * @param sequenceGraph The sequence graph.
 		 */
-		public void setSequenceGraph(SequenceGraph.Op sequenceGraph);
+		public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph);
+
+
+		/**
+		 * Sets the sequence number of the artifact. This is used by the sequence graph.
+		 *
+		 * @param sequenceNumber The sequence number to assign to this artifact.
+		 */
+		public void setSequenceNumber(int sequenceNumber);
 
 
 		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
@@ -321,7 +340,7 @@ public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.S
 		public void addUses(Artifact.Op artifact, String type);
 
 
-		public SequenceGraph.Op getSequenceGraph();
+		public PartialOrderGraph.Op getSequenceGraph();
 
 
 		/**
@@ -350,7 +369,7 @@ public interface Artifact<DataType extends ArtifactData> extends SequenceGraph.S
 		public Node.Op getContainingNode();
 
 
-		public SequenceGraph.Op createSequenceGraph();
+		public PartialOrderGraph.Op createSequenceGraph();
 
 		// TODO: possibly remove these:
 

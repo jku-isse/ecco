@@ -3,6 +3,7 @@ package at.jku.isse.ecco.util;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -49,17 +50,17 @@ public class Trees {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getSequenceGraph() != right.getArtifact().getSequenceGraph()) {
 					//throw new EccoException("Sequence Graphs did not match!");
-					left.getArtifact().getSequenceGraph().sequence(right.getArtifact().getSequenceGraph());
+					left.getArtifact().getSequenceGraph().merge(right.getArtifact().getSequenceGraph());
 					right.getArtifact().setSequenceGraph(left.getArtifact().getSequenceGraph());
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
-					left.getArtifact().getSequenceGraph().sequence(left.getChildrenArtifacts());
+					left.getArtifact().getSequenceGraph().merge(left.getChildrenArtifacts());
 				}
 
 				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
-					left.getArtifact().getSequenceGraph().sequence(right.getChildrenArtifacts());
+					left.getArtifact().getSequenceGraph().merge(right.getChildrenArtifacts());
 				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
-					right.getArtifact().getSequenceGraph().sequence(left.getChildrenArtifacts());
+					right.getArtifact().getSequenceGraph().merge(left.getChildrenArtifacts());
 					left.getArtifact().setSequenceGraph(right.getArtifact().getSequenceGraph());
 					throw new EccoException("Left node was not sequenced but right node was!");
 				}
@@ -91,8 +92,7 @@ public class Trees {
 		}
 
 
-		Node.Op intersection = left.createNode();
-		intersection.setArtifact(left.getArtifact());
+		Node.Op intersection = left.createNode(left.getArtifact());
 		if (left.isUnique() && right.isUnique()) {
 			intersection.setUnique(true);
 			left.setUnique(false);
@@ -233,7 +233,7 @@ public class Trees {
 	public static void sequence(Node.Op node) throws EccoException {
 		if (node.getArtifact() != null && node.getArtifact().isOrdered() && !node.getArtifact().isSequenced()) {
 			node.getArtifact().setSequenceGraph(node.getArtifact().createSequenceGraph());
-			node.getArtifact().getSequenceGraph().sequence(node.getChildrenArtifacts());
+			node.getArtifact().getSequenceGraph().merge(node.getChildrenArtifacts());
 			//SequenceGraphUtil.sequence(node.getArtifact().getSequenceGraph(), node);
 		}
 		for (Node.Op child : node.getChildren()) {
@@ -318,8 +318,7 @@ public class Trees {
 
 	private static Node.Op extractMarkedRec(Node.Op left) {
 		// create right node
-		Node.Op right = left.createNode();
-		right.setArtifact(left.getArtifact());
+		Node.Op right = left.createNode(left.getArtifact());
 
 		// process children
 		Iterator<Node.Op> iterator = left.getChildren().iterator();
@@ -435,7 +434,7 @@ public class Trees {
 					throw new EccoException("Sequence Graphs did not match!");
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
-					left.getArtifact().getSequenceGraph().sequence(left.getChildrenArtifacts());
+					left.getArtifact().getSequenceGraph().merge(left.getChildrenArtifacts());
 				}
 
 				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
@@ -462,14 +461,14 @@ public class Trees {
 
 			Node.Op rightChild = right.getChildren().get(ri);
 
-			map(leftChild, rightChild);
+			Trees.map(leftChild, rightChild);
 		}
 
 
 		if (left.getArtifact() != null && right.getArtifact() != null) {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
-					right.getChildren().forEach((Node.Op n) -> n.getArtifact().setSequenceNumber(-1));
+					right.getChildren().forEach((Node.Op n) -> n.getArtifact().setSequenceNumber(PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER));
 				}
 			}
 		}
@@ -608,6 +607,8 @@ public class Trees {
 		parentHasNodeAsChild(node);
 
 		for (Node.Op child : node.getChildren()) {
+			if (child.getParent() != node)
+				throw new IllegalStateException("Node is child of a node that is not its parent.");
 			checkConsistency(child);
 		}
 	}
