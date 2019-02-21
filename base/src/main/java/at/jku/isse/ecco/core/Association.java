@@ -105,15 +105,26 @@ public interface Association extends Persistable {
 			if (moduleCondition.getModules().isEmpty()) {
 				moduleCondition.setType(Condition.TYPE.OR);
 				for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
+
+					// 1) M was present at least once when A was present
 					if (moduleCounter.getCount() > 0) { // it is in ALL
-						//moduleCondition.addModule(moduleCounter.getObject());
-						// now check to which revisions it traces
-						for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
-							if (moduleRevisionCounter.getCount() == associationCounter.getCount()) { // it is not in NOT
-								moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
+					//if (moduleCounter.getCount() == moduleCounter.getObject().getCount()) { // it is in ALL
+
+						// 2) A was always present when M_r was present
+						if (moduleCounter.getChildren().stream().noneMatch(moduleRevisionCounter -> moduleRevisionCounter.getCount() != moduleRevisionCounter.getObject().getCount())) {
+							//moduleCondition.addModule(moduleCounter.getObject());
+							// now check to which revisions it traces
+							for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
+								//if (moduleRevisionCounter.getCount() == associationCounter.getCount()) { // it is not in NOT
+								//if (moduleRevisionCounter.getCount() > 0) { // it is not in NOT
+								//if (moduleRevisionCounter.getCount() == moduleRevisionCounter.getObject().getCount()) { // it is not in NOT
+									moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
+								//}
 							}
 						}
+
 					}
+
 				}
 			}
 
