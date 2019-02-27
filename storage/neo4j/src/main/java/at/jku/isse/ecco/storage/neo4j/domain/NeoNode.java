@@ -38,13 +38,6 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
 		this.artifact = artifact;
 	}
 
-
-	@Override
-	public Op createNode() {
-		return new NeoNode();
-	}
-
-
 	@Override
 	public boolean isAtomic() {
 		if (this.artifact != null)
@@ -55,7 +48,7 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
 
 
 	@Override
-	public Association getContainingAssociation() {
+	public Association.Op getContainingAssociation() {
 		if (this.parent == null)
 			return null;
 		else
@@ -117,6 +110,11 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
 
 		this.children.remove(child);
 		child.setParent(null);
+	}
+
+	@Override
+	public Op createNode(Artifact.Op<?> artifact) {
+		return new NeoNode(artifact);
 	}
 
 

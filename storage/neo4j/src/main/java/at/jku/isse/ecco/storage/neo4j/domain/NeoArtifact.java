@@ -3,7 +3,7 @@ package at.jku.isse.ecco.storage.neo4j.domain;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 import org.neo4j.ogm.annotation.NodeEntity;
@@ -34,7 +34,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	private boolean ordered;
 
     @Relationship("HAS")
-	private SequenceGraph.Op sequenceGraph;
+	private PartialOrderGraph.Op sequenceGraph;
 
     @Property("sequenceNumber")
 	private int sequenceNumber;
@@ -51,7 +51,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 		checkNotNull(data);
 		this.data = data;
 		this.ordered = ordered;
-		this.sequenceNumber = SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER;
+		this.sequenceNumber = PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
 		this.useReferencesInEquals = false;
 	}
 
@@ -71,7 +71,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 		NeoArtifact<?> that = (NeoArtifact<?>) o;
 
 		if (this.isOrdered() != that.isOrdered()) return false;
-		if (this.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != SequenceGraph.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
+		if (this.getSequenceNumber() != PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
 			return false;
 
 		if (!this.useReferencesInEquals())
@@ -155,12 +155,12 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	}
 
 	@Override
-	public SequenceGraph.Op getSequenceGraph() {
+	public PartialOrderGraph.Op getSequenceGraph() {
 		return this.sequenceGraph;
 	}
 
 	@Override
-	public void setSequenceGraph(SequenceGraph.Op sequenceGraph) {
+	public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph) {
 		this.sequenceGraph = sequenceGraph;
 	}
 
@@ -181,8 +181,8 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 
 
 	@Override
-	public SequenceGraph.Op createSequenceGraph() {
-		return new NeoSequenceGraph();
+	public PartialOrderGraph.Op createSequenceGraph() {
+		return new NeoPartialOrderGraph();
 	}
 
 

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.neo4j.domain;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.RootNode;
 import org.neo4j.ogm.annotation.NodeEntity;
@@ -9,7 +10,7 @@ import org.neo4j.ogm.annotation.Relationship;
 public class NeoRootNode extends NeoNode implements RootNode, RootNode.Op {
 
     @Relationship("HAS")
-	private Association containingAssociation;
+	private Association.Op containingAssociation;
 
 
 	public NeoRootNode() {
@@ -29,7 +30,7 @@ public class NeoRootNode extends NeoNode implements RootNode, RootNode.Op {
 
 
 	@Override
-	public RootNode.Op createNode() {
+	public RootNode.Op createNode(Artifact.Op<?> artifact) {
 		return new NeoRootNode();
 	}
 
@@ -40,7 +41,7 @@ public class NeoRootNode extends NeoNode implements RootNode, RootNode.Op {
 	}
 
 	@Override
-	public Association getContainingAssociation() {
+	public Association.Op getContainingAssociation() {
 		return this.containingAssociation;
 	}
 

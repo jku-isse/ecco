@@ -8,6 +8,7 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.domain.*;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoArtifact;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoAssociation;
@@ -45,6 +46,11 @@ public class NeoEntityFactory implements EntityFactory {
 	@Override
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
 		return new NeoArtifact<>(data);
+	}
+
+	@Override
+	public Repository.Op createRepository() {
+		return new NeoRepository();
 	}
 
 
