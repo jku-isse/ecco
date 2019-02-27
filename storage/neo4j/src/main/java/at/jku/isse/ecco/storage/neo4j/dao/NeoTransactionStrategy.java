@@ -3,7 +3,6 @@ package at.jku.isse.ecco.storage.neo4j.dao;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.neo4j.NeoSessionFactory;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoDatabase;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
