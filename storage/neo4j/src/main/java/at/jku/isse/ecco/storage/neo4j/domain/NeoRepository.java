@@ -93,8 +93,8 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     public void setMaxOrder(int maxOrder) {
         this.maxOrder = maxOrder;
         for (int order = this.modules.size(); order <= this.maxOrder; order++) {
-            //this.modules.add(new HashMap<>());
-            this.modules.add(Maps.mutable.empty());
+            this.modules.add(new HashMap<>());
+            //this.modules.add(Maps.mutable.empty());
         }
     }
 

@@ -3,6 +3,7 @@ package at.jku.isse.ecco.storage.neo4j.domain;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -13,10 +14,10 @@ public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
     @Relationship("HAS")
 	private Feature feature;
 
-    @Relationship("HAS")
+    @Property("id")
 	private String id;
 
-    @Relationship("HAS")
+    @Property("description")
 	private String description;
 
 

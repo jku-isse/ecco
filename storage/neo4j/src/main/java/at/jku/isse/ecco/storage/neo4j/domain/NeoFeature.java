@@ -28,7 +28,7 @@ public class NeoFeature extends NeoEntity implements Feature {
     @Relationship("HAS")
 	private Collection<NeoFeatureRevision> revisions;
 
-    @Property("latestRevision")
+    @Relationship("latestRevision")
 	private NeoFeatureRevision latest;
 
 	public NeoFeature(String id, String name) {

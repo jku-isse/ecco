@@ -7,6 +7,7 @@ import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.RootNode;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
 
 @NodeEntity
 public class NeoAssociation extends NeoEntity implements Association, Association.Op {
@@ -14,13 +15,13 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
     @Property("associationId")
 	private String id;
 
-    @Property("artifactTreeRoot")
+    @Relationship("artifactTreeRoot")
 	private RootNode.Op artifactTreeRoot;
 
-    @Property("associationCounter")
+    @Relationship("HAS")
 	private AssociationCounter associationCounter;
 
-	@Property("containingRepository")
+	@Relationship("HAS")
 	private Repository.Op containingRepository;
 
 
