@@ -13,7 +13,7 @@ import java.util.Comparator;
 
 public class SimpleTest {
 
-    private static final Path repoDir = Paths.get("src\\integrationTest\\data\\.ecco\\");
+    private static final Path repoDir = Paths.get("src\\integrationTest\\data\\ecco\\");
     private static final String testDataDir = "..\\..\\examples\\demo_variants\\V";
 
     @BeforeClass
@@ -33,7 +33,7 @@ public class SimpleTest {
     // https://github.com/neo4j-examples/neo4j-ogm-university/blob/master/src/main/groovy/school/domain/Course.groovy
     // https://neo4j.com/docs/java-reference/current/tutorials-java-embedded/
     @Test
-    public void fillRepo() {
+    public void fillRepo() throws InterruptedException {
         // create new repository
         EccoService service = new EccoService();
         service.setRepositoryDir(repoDir);
@@ -48,6 +48,7 @@ public class SimpleTest {
             System.out.println("Committed: " + "V" +i);
         }
 
+        Thread.sleep(2000000);
         // close repository
         service.close();
         System.out.println("Repository closed.");

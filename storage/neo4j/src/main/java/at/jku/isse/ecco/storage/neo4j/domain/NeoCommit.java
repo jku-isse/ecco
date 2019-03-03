@@ -5,6 +5,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
 
 /**
  * Memory implementation of {@link Commit}.
@@ -19,7 +20,7 @@ public class NeoCommit extends NeoEntity implements Commit {
     @Property("committer")
 	private String committer;
 
-    @Property("configuration")
+    @Relationship("hasConfiguration")
 	private Configuration configuration;
 
 	public NeoCommit() {

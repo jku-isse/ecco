@@ -14,18 +14,19 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 
-    @Relationship("HAS")
+    @Relationship("hasPosFeatureRevision")
 	private FeatureRevision[] pos;
 
-    @Relationship("HAS")
+    @Relationship("hasNegFeatureRevision")
 	private Feature[] neg;
 
     @Property("count")
 	private int count;
 
-    @Relationship("HAS")
+    @Relationship("hasModule")
 	private Module module;
 
+    public NeoModuleRevision() {}
 
 	public NeoModuleRevision(NeoModule module, FeatureRevision[] pos, Feature[] neg) {
 		checkNotNull(module);

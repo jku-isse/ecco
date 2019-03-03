@@ -19,10 +19,10 @@ public class NeoRemote extends NeoEntity implements Remote  {
     @Property("address")
 	private String address;
 
-    @Property("type")
+    @Relationship("hasType")
 	private Type type;
 
-	@Relationship("HAS")
+	@Relationship("hasFeature")
 	private List<Feature> features;
 
 	public NeoRemote() {

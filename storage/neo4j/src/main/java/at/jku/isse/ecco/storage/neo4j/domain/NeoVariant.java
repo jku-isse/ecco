@@ -5,9 +5,12 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoEntity;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
 
 @NodeEntity
 public class NeoVariant extends NeoEntity implements Variant {
+
+	public NeoVariant() {}
 
     @Property("name")
 	private String name;
@@ -15,7 +18,7 @@ public class NeoVariant extends NeoEntity implements Variant {
     @Property("description")
 	private String description;
 
-    @Property("configuration")
+    @Relationship("hasConfiguration")
     private Configuration configuration;
 
 	@Override

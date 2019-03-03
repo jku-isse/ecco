@@ -24,7 +24,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implements Artifact<DataType>, Artifact.Op<DataType> {
 
-    @Relationship("HAS")
+	public NeoArtifact() {}
+
+    @Relationship("hasData")
 	private DataType data;
 
     @Property("atomic")
@@ -33,8 +35,8 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
     @Property("ordered")
 	private boolean ordered;
 
-    @Relationship("HAS")
-	private PartialOrderGraph.Op sequenceGraph;
+    @Relationship("hasPOG")
+	private PartialOrderGraph.Op partialOrderGraph;
 
     @Property("sequenceNumber")
 	private int sequenceNumber;
@@ -155,13 +157,13 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	}
 
 	@Override
-	public PartialOrderGraph.Op getSequenceGraph() {
-		return this.sequenceGraph;
+	public PartialOrderGraph.Op getPartialOrderGraph() {
+		return this.partialOrderGraph;
 	}
 
 	@Override
-	public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph) {
-		this.sequenceGraph = sequenceGraph;
+	public void setPartialOrderGraph(PartialOrderGraph.Op partialOrderGraph) {
+		this.partialOrderGraph = partialOrderGraph;
 	}
 
 	@Override
@@ -176,7 +178,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 
 	@Override
 	public boolean isSequenced() {
-		return this.sequenceGraph != null;
+		return this.partialOrderGraph != null;
 	}
 
 

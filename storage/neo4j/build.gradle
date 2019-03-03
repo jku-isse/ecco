@@ -11,13 +11,26 @@ dependencies {
     compile group: 'com.thoughtworks.xstream', name: 'xstream', version: '1.4.10'
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j
-    compile group: 'org.neo4j', name: 'neo4j', version: '3.5.2'
+    compile group: 'org.neo4j', name: 'neo4j', version: '3.5.3'
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-core
-    compile group: 'org.neo4j', name: 'neo4j-ogm-core', version: '3.1.7'
+    compile group: 'org.neo4j', name: 'neo4j-ogm-core', version: '3.1.8'
     
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-embedded-driver
-    compile group: 'org.neo4j', name: 'neo4j-ogm-embedded-driver', version: '3.1.7'
+    compile group: 'org.neo4j', name: 'neo4j-ogm-embedded-driver', version: '3.1.8'
+
+    // https://mvnrepository.com/artifact/org.neo4j/neo4j-bolt
+    testCompile group: 'org.neo4j', name: 'neo4j-bolt', version: '3.5.3'
+
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+    testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-core
+    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.26'
+
 
     testRuntime project(':ecco-adapter-file')
     testRuntime project(':ecco-adapter-text')
@@ -31,3 +44,4 @@ ospackage {
 
     requires('ecco-base', version, EQUAL)
 }
+

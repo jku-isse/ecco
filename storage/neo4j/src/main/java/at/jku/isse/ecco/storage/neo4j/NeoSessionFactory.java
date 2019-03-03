@@ -4,17 +4,19 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.kernel.configuration.BoltConnector;
-import org.neo4j.kernel.configuration.Connector;
 import org.neo4j.ogm.config.Configuration;
 import org.neo4j.ogm.drivers.embedded.driver.EmbeddedDriver;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.logging.Level;
 
 public class NeoSessionFactory {
 
-    public static final String _BOLT_CONNECTION_STRING = "ecco";
+    public static final String _BOLT_CONNECTION_STRING = "0";
     private final Path databasePath;
     private final SessionFactory factory;
 
@@ -30,7 +32,9 @@ public class NeoSessionFactory {
                 .setConfig(boltConnector.type, "BOLT" )
                 .setConfig(boltConnector.enabled, "true" )
                 .setConfig(boltConnector.listen_address, "localhost:7687" )
-                .setConfig(GraphDatabaseSettings.auth_enabled, "FALSE")
+                .setConfig(GraphDatabaseSettings.auth_enabled, "false")
+                .setConfig(GraphDatabaseSettings.log_queries, "true")
+                .setConfig(GraphDatabaseSettings.log_queries_filename, databasePath.toAbsolutePath().toString().concat("\\querylog.txt"))
                 .newGraphDatabase();
 
         registerShutdownHook(graphDb);

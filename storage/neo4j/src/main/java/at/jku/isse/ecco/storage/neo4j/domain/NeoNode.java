@@ -21,18 +21,17 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
     @Property("unique")
 	private boolean unique = true;
 
-    @Relationship("HAS")
+    @Relationship("hasChild")
 	private final List<Op> children = new ArrayList<>();
 
-    @Relationship("HAS")
+    @Relationship("hasArtifact")
 	private Artifact.Op<?> artifact = null;
 
-    @Relationship("HAS")
+    @Relationship("hasParent")
 	private Op parent = null;
 
 
-	public NeoNode() {
-	}
+	public NeoNode() {}
 
 	public NeoNode(Artifact.Op<?> artifact) {
 		this.artifact = artifact;

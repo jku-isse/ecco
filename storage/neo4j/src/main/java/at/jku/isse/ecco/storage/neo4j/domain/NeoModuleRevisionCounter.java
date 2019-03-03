@@ -10,12 +10,13 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleRevisionCounter extends NeoEntity implements ModuleRevisionCounter {
 
-    @Relationship("HAS")
+    @Relationship("hasModuleRevision")
 	private NeoModuleRevision moduleRevision;
 
     @Property("count")
 	private int count;
 
+    public NeoModuleRevisionCounter () {}
 
 	public NeoModuleRevisionCounter(NeoModuleRevision moduleRevision) {
 		checkNotNull(moduleRevision);

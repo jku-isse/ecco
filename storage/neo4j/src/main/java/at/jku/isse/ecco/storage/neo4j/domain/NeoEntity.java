@@ -7,9 +7,8 @@ import org.neo4j.ogm.annotation.NodeEntity;
 @NodeEntity
 public abstract class NeoEntity {
 
-    @Id
-    @GeneratedValue
-    private long neoId;
+    @Id @GeneratedValue
+    private Long neoId;
 
     public Long getNeoId() {
         return neoId;

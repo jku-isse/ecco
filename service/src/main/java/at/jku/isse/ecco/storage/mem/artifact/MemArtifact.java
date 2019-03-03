@@ -148,13 +148,13 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	}
 
 	@Override
-	public PartialOrderGraph.Op getSequenceGraph() {
+	public PartialOrderGraph.Op getPartialOrderGraph() {
 		return this.sequenceGraph;
 	}
 
 	@Override
-	public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph) {
-		this.sequenceGraph = sequenceGraph;
+	public void setPartialOrderGraph(PartialOrderGraph.Op partialOrderGraph) {
+		this.sequenceGraph = partialOrderGraph;
 	}
 
 	@Override

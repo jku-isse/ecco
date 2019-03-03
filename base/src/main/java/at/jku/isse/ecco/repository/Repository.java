@@ -697,16 +697,16 @@ public interface Repository extends Persistable {
 			// trim sequence graphs to only contain artifacts from the selected associations
 			for (Association.Op newAssociation : newAssociations) {
 				newAssociation.getRootNode().traverse((Node.Op node) -> {
-					if (node.getArtifact() != null && node.getArtifact().isOrdered() && node.getArtifact().isSequenced() && node.getArtifact().getSequenceGraph() != null) {
-						if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
+					if (node.getArtifact() != null && node.getArtifact().isOrdered() && node.getArtifact().isSequenced() && node.getArtifact().getPartialOrderGraph() != null) {
+						if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
 							// get all symbols from sequence graph
-							Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().collectNodes().stream().map(PartialOrderGraph.Node.Op::getArtifact).collect(Collectors.toList());
+							Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getPartialOrderGraph().collectNodes().stream().map(PartialOrderGraph.Node.Op::getArtifact).collect(Collectors.toList());
 
 							// remove symbols that are not contained in the given associations
 							symbols.removeIf(symbol -> !newAssociations.contains(symbol.getContainingNode().getContainingAssociation()));
 
 							// trim sequence graph
-							node.getArtifact().getSequenceGraph().trim(symbols);
+							node.getArtifact().getPartialOrderGraph().trim(symbols);
 						}
 					}
 				});
@@ -848,16 +848,16 @@ public interface Repository extends Persistable {
 			// trim sequence graphs to only contain artifacts from the selected associations
 			for (Association.Op newAssociation : newAssociations) {
 				newAssociation.getRootNode().traverse((Node.Op node) -> {
-					if (node.getArtifact() != null && node.getArtifact().isOrdered() && node.getArtifact().isSequenced() && node.getArtifact().getSequenceGraph() != null) {
-						if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
+					if (node.getArtifact() != null && node.getArtifact().isOrdered() && node.getArtifact().isSequenced() && node.getArtifact().getPartialOrderGraph() != null) {
+						if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
 							// get all symbols from sequence graph
-							Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().collectNodes().stream().map(PartialOrderGraph.Node.Op::getArtifact).collect(Collectors.toList());
+							Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getPartialOrderGraph().collectNodes().stream().map(PartialOrderGraph.Node.Op::getArtifact).collect(Collectors.toList());
 
 							// remove symbols that are not contained in the given associations
 							symbols.removeIf(symbol -> symbol != null && !newAssociations.contains(symbol.getContainingNode().getContainingAssociation()));
 
 							// trim sequence graph
-							node.getArtifact().getSequenceGraph().trim(symbols);
+							node.getArtifact().getPartialOrderGraph().trim(symbols);
 						}
 					}
 				});

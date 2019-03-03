@@ -51,9 +51,9 @@ public class ArtifactDetailView extends BorderPane {
 		detailsSplitPane.getItems().add(detailView);
 
 		// if node is an ordered node display its sequence graph
-		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
+		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
 			detailsSplitPane.getItems().add(this.partialOrderGraphView);
-			this.partialOrderGraphView.showGraph(node.getArtifact().getSequenceGraph());
+			this.partialOrderGraphView.showGraph(node.getArtifact().getPartialOrderGraph());
 		}
 
 

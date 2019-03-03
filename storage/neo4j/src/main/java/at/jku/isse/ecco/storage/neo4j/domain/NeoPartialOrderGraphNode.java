@@ -3,6 +3,7 @@ package at.jku.isse.ecco.storage.neo4j.domain;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
+import org.neo4j.ogm.annotation.Relationship;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,12 +11,16 @@ import java.util.Objects;
 
 public class NeoPartialOrderGraphNode extends NeoEntity implements PartialOrderGraph.Node, PartialOrderGraph.Node.Op {
 
-	public static final long serialVersionUID = 1L;
-
+	@Relationship("hasPrevious")
 	private Collection<Op> previous;
+
+	@Relationship("hasNext")
 	private Collection<Op> next;
 
+	@Relationship("hasArtifact")
 	private Artifact.Op<?> artifact;
+
+	public NeoPartialOrderGraphNode() {}
 
 	public NeoPartialOrderGraphNode(Artifact.Op<?> artifact) {
 //		Objects.requireNonNull(artifact);

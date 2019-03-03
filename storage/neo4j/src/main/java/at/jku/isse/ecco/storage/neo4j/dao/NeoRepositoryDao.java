@@ -24,7 +24,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 		if (repositories.isEmpty()) {
 			return new NeoRepository();
 		} else if (repositories.size() == 1) {
-			return repositories.get(1);
+			return repositories.get(0);
 		} else {
 			//What now?
 			throw new EccoException("Multiple repositories loaded!");

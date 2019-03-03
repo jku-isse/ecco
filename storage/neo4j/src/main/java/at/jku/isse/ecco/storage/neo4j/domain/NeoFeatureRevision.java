@@ -20,6 +20,7 @@ public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
     @Property("description")
 	private String description;
 
+    public NeoFeatureRevision() {}
 
 	public NeoFeatureRevision(Feature feature, String id) {
 		checkNotNull(feature);

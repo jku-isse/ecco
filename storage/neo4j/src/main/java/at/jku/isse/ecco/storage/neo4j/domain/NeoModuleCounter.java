@@ -18,16 +18,17 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleCounter extends NeoEntity implements ModuleCounter {
 
-    @Relationship("HAS")
+    @Relationship("hasModule")
 	private NeoModule module;
 
     @Property("count")
 	private int count;
 
-    @Relationship("HAS")
+    @Relationship("hasChildren")
 	private Collection<NeoModuleRevisionCounter> children;
 	//private Map<NeoModuleRevision, NeoModuleRevisionCounter> children;
 
+	public NeoModuleCounter() {}
 
 	public NeoModuleCounter(NeoModule module) {
 		checkNotNull(module);
@@ -37,29 +38,6 @@ public class NeoModuleCounter extends NeoEntity implements ModuleCounter {
 		//this.children = Maps.mutable.empty();
 		//this.children = HashObjObjMaps.newMutableMap();
 	}
-
-
-//	@Override
-//	public NeoModuleRevisionCounter addChild(ModuleRevision child) {
-//		if (!(child instanceof NeoModuleRevision))
-//			throw new EccoException("Only NeoModuleRevision can be added as a child to NeoModuleCounter!");
-//		NeoModuleRevision memChild = (NeoModuleRevision) child;
-//		if (this.children.containsKey(memChild))
-//			return null;
-//		NeoModuleRevisionCounter moduleRevisionCounter = new NeoModuleRevisionCounter(memChild);
-//		this.children.put(moduleRevisionCounter.getObject(), moduleRevisionCounter);
-//		return moduleRevisionCounter;
-//	}
-//
-//	@Override
-//	public ModuleRevisionCounter getChild(ModuleRevision child) {
-//		return this.children.get(child);
-//	}
-//
-//	@Override
-//	public Collection<ModuleRevisionCounter> getChildren() {
-//		return Collections.unmodifiableCollection(this.children.values());
-//	}
 
 	@Override
 	public NeoModuleRevisionCounter addChild(ModuleRevision child) {

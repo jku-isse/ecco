@@ -59,13 +59,6 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 			sessionFactory = new NeoSessionFactory(repositoryDir);
 			this.initialized = true;
 		}
-
-		//session = sessionFactory.getNeoSession();
-		//loadDatabase();
-//        NeoDatabase test = new NeoDatabase();
-//        test.getRepository().addAssociation(new NeoAssociation());
-//        session.save(test);
-		//https://stackoverflow.com/questions/38884526/neo4j-null-pointer-exception-while-saving-via-repository
 	}
 
 	@Override
@@ -101,24 +94,6 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 			this.currentSession.clear();
 			this.currentSession = null;
 		}
-
-
-//		try {
-//			if (this.transaction == TRANSACTION.READ_ONLY) {
-//				session.getTransaction().close();
-//			}
-//			else if (this.transaction == TRANSACTION.READ_WRITE) {
-//				session.save(this.database);
-//				session.getTransaction().commit();
-//			}
-//		} catch (Exception e) {
-//			throw new EccoException("Error ending transaction.", e);
-//		} finally {
-//			if (session.getTransaction() != null) {
-//				session.getTransaction().rollback();
-//			}
-//		}
-
 	}
 
 	@Override
@@ -137,19 +112,5 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 	public TRANSACTION getTransaction() {
 		return this.transaction;
 	}
-
-
-	private void loadDatabase() {
-
-//        Collection<NeoDatabase> db = session.loadAll(NeoDatabase.class);
-//
-//        if (db.isEmpty()) {
-//            this.database = new NeoDatabase();
-//        } else {
-//            this.database = db.iterator().next(); //TODO: what if more than one result?
-//        }
-	}
-
-
 
 }

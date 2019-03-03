@@ -18,12 +18,11 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
     @Relationship("artifactTreeRoot")
 	private RootNode.Op artifactTreeRoot;
 
-    @Relationship("HAS")
+    @Relationship("hasAssociationCounter")
 	private AssociationCounter associationCounter;
 
-	@Relationship("HAS")
+	@Relationship(type = "containingRepo")
 	private Repository.Op containingRepository;
-
 
 	public NeoAssociation() {
 		this.id = "";

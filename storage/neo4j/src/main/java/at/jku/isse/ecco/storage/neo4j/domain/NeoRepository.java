@@ -7,31 +7,27 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.dao.NeoEntityFactory;
 import org.eclipse.collections.impl.factory.Maps;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.*;
 
 import java.util.*;
 
 /**
- * Memory implementation of {@link Repository}.
+ * Neo4J implementation of {@link Repository}.
  */
-
-//TODO: Is this really needed for Neo4J representation?
-
 @NodeEntity
 public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
-    @Relationship("HAS")
+    @Relationship("hasFeature")
     private Map<String, Feature> features;
 
-    @Relationship("HAS")
+    @Relationship("hasAssociation")
     private Collection<Association.Op> associations;
 
-    @Relationship("HAS")
+    @Relationship("hasModule")
     private List<Map<Module, Module>> modules;
 
+    @Property
     private int maxOrder;
-
 
     public NeoRepository() {
         //this.features = new HashMap<>();

@@ -18,15 +18,16 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoAssociationCounter extends NeoEntity implements AssociationCounter {
 
-    @Relationship("HAS")
+    @Relationship("hasAssociation")
 	private Association association;
 
     @Property("count")
 	private int count;
 
-    @Relationship("HAS")
+    @Relationship("hasChild")
 	private Collection<NeoModuleCounter> children;
 
+    public NeoAssociationCounter() {}
 
 	public NeoAssociationCounter(Association association) {
 		checkNotNull(association);

@@ -14,12 +14,11 @@ import java.util.Objects;
 @NodeEntity
 public class NeoCondition extends NeoEntity implements Condition {
 
-    @Relationship("HAS")
+    @Relationship("hasType")
 	private TYPE type;
 
-    @Relationship("HAS")
+    @Relationship("hasModuleToRevisionsMap")
 	private Map<Module, Collection<ModuleRevision>> moduleToRevisionsMap;
-
 
 	public NeoCondition() {
 		this.type = TYPE.AND;

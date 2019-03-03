@@ -2,13 +2,19 @@ package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
+import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
 
 public class NeoPartialOrderGraph extends NeoEntity implements PartialOrderGraph, PartialOrderGraph.Op {
 
-	public static final long serialVersionUID = 1L;
-
+	@Relationship("hasHead")
 	private Node.Op head;
+
+	@Relationship("hasTail")
 	private Node.Op tail;
+
+	@Property
 	private int maxIdentifier = INITIAL_SEQUENCE_NUMBER;
 
 	public NeoPartialOrderGraph() {
