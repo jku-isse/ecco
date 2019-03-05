@@ -12,7 +12,13 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 dependencies {
 	compile 'org.graphstream:gs-core:1.3'
 	compile 'org.graphstream:gs-algo:1.3'
-	compile 'org.graphstream:gs-ui:1.3'
+    compile 'org.graphstream:gs-ui:1.3'
+
+	// This scala import is necessary to make Neo4J storage plugin work
+	// Issue: https://github.com/neo4j/neo4j/issues/8832
+	
+	// https://mvnrepository.com/artifact/org.scala-lang/scala-library
+	compile group: 'org.scala-lang', name: 'scala-library', version: '2.11.12'
 
 	compile project(':ecco-base')
 	compile project(':ecco-service')
@@ -21,6 +27,7 @@ dependencies {
 	testRuntime project(':ecco-adapter-text')
 	testRuntime project(':ecco-adapter-image')
 	testRuntime project(':ecco-adapter-java')
+	testRuntime project(':ecco-storage-neo4j')
 }
 
 ospackage {
