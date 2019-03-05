@@ -20,15 +20,27 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 	@Override
 	public Repository.Op load() {
 		final Session neoSession = this.transactionStrategy.getNeoSession();
-		ArrayList<NeoRepository> repositories = new ArrayList<>(neoSession.loadAll(NeoRepository.class)); // TODO: load which one?
-		if (repositories.isEmpty()) {
-			return new NeoRepository();
-		} else if (repositories.size() == 1) {
-			return repositories.get(0);
+
+		NeoRepository repository = neoSession.load(NeoRepository.class, 0L);
+		if (repository == null) {
+			NeoRepository repo = new NeoRepository();
+			return repo;
 		} else {
-			//What now?
-			throw new EccoException("Multiple repositories loaded!");
+			return repository;
 		}
+
+//		ArrayList<NeoRepository> repositories = new ArrayList<>(neoSession.loadAll(NeoRepository.class)); // TODO: load which one?
+//		if (repositories.isEmpty()) {
+//			NeoRepository repo = new NeoRepository();
+//			this.transactionStrategy.setRepository(repo);
+//			return repo;
+//		} else if (repositories.size() == 1) {
+//			this.transactionStrategy.setRepository(repositories.get(0));
+//			return repositories.get(0);
+//		} else {
+//			//What now?
+//			throw new EccoException("Multiple repositories loaded!");
+//		}
 
 	}
 

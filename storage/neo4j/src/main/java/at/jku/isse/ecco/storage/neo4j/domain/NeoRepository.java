@@ -17,26 +17,25 @@ import java.util.*;
 @NodeEntity
 public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
-    @Relationship("hasFeature")
+    @Relationship("hasFeaturesRp")
     private Map<String, Feature> features;
 
-    @Relationship("hasAssociation")
+    @Relationship("hasAssociationRp")
     private Collection<Association.Op> associations;
 
-    @Relationship("hasModule")
+    @Relationship("hasModuleRp")
     private List<Map<Module, Module>> modules;
 
     @Property
     private int maxOrder;
 
     public NeoRepository() {
-        //this.features = new HashMap<>();
-        this.features = Maps.mutable.empty();
+        this.features = new HashMap<>();
+        //this.features = Maps.mutable.empty();
         this.associations = new ArrayList<>();
         this.modules = new ArrayList<>();
         this.setMaxOrder(2);
     }
-
 
     @Override
     public Collection<Feature> getFeatures() {

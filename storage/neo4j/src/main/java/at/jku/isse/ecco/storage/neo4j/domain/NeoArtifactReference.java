@@ -12,10 +12,10 @@ public class NeoArtifactReference extends NeoEntity implements ArtifactReference
     @Property("type")
 	private final String type;
 
-    @Relationship("HAS")
+    @Relationship("hasSourceARf")
 	private Artifact.Op<?> source;
 
-    @Relationship("HAS")
+    @Relationship("hasTargetARf")
 	private Artifact.Op<?> target;
 
 	/**
