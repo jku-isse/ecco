@@ -21,7 +21,7 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
     @Relationship("hasAssociationCounterAs")
 	private AssociationCounter associationCounter;
 
-	@Relationship(type = "containingRepoAs")
+	@Relationship("containingRepoAs")
 	private Repository.Op containingRepository;
 
 	public NeoAssociation() {

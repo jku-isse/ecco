@@ -10,6 +10,7 @@ import org.neo4j.ogm.annotation.Relationship;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -17,17 +18,17 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModule extends NeoEntity implements Module {
 
-    @Relationship("hasPosFeatureMd")
+    @Relationship(type = "hasPosFeatureMd", direction = "INCOMING")
 	private Feature[] pos;
 
-    @Relationship("hasNegFeatureMd")
+    @Relationship(type = "hasNegFeatureMd", direction = "INCOMING")
 	private Feature[] neg;
 
     @Property("count")
     private int count;
 
     @Relationship("hasRevisionMd")
-	private Collection<NeoModuleRevision> revisions;
+	private List<NeoModuleRevision> revisions;
 
     public NeoModule() {}
 

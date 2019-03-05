@@ -14,7 +14,7 @@ public class NeoConfiguration extends NeoEntity implements Configuration {
 
 
 
-    @Relationship("hasFeatureRevision")
+    @Relationship("hasFeatureRevisionCf")
 	private FeatureRevision[] featureRevisions;
 
     public NeoConfiguration() {}

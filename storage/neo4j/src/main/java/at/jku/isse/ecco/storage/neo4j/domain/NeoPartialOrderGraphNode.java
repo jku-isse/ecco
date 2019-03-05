@@ -11,13 +11,13 @@ import java.util.Objects;
 
 public class NeoPartialOrderGraphNode extends NeoEntity implements PartialOrderGraph.Node, PartialOrderGraph.Node.Op {
 
-	@Relationship("hasPrevious")
+	@Relationship("hasPreviousPOGN")
 	private Collection<Op> previous;
 
-	@Relationship("hasNext")
+	@Relationship("hasNextPOGN")
 	private Collection<Op> next;
 
-	@Relationship("hasArtifact")
+	@Relationship("hasArtifactPOGN")
 	private Artifact.Op<?> artifact;
 
 	public NeoPartialOrderGraphNode() {}

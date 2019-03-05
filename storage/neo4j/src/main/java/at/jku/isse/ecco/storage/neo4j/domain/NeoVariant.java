@@ -18,7 +18,7 @@ public class NeoVariant extends NeoEntity implements Variant {
     @Property("description")
 	private String description;
 
-    @Relationship("hasConfiguration")
+    @Relationship("hasConfigurationVr")
     private Configuration configuration;
 
 	@Override

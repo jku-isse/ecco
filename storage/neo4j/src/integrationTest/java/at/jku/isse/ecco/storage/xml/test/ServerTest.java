@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class ServerTest {
-    private static final Path repoDir = Paths.get("src\\integrationTest\\data\\ecco\\");
+    private static final Path repoDir = Paths.get("src\\integrationTest\\data\\.ecco\\");
 
     @Test
     public void fillRepo() throws InterruptedException, IOException {

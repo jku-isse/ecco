@@ -6,8 +6,11 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.dao.NeoEntityFactory;
-import org.eclipse.collections.impl.factory.Maps;
-import org.neo4j.ogm.annotation.*;
+import at.jku.isse.ecco.storage.neo4j.dao.NeoTransactionStrategy;
+import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 import java.util.*;
 
@@ -18,32 +21,45 @@ import java.util.*;
 public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
     @Relationship("hasFeaturesRp")
-    private Map<String, Feature> features;
+    private List<NeoFeature> features;
 
     @Relationship("hasAssociationRp")
-    private Collection<Association.Op> associations;
+    private List<Association.Op> associations;
 
-    @Relationship("hasModuleRp")
+    //@Relationship("hasModuleRp")
+    @Transient
     private List<Map<Module, Module>> modules;
+
+
 
     @Property
     private int maxOrder;
 
+    public NeoRepository(NeoTransactionStrategy transactionStrategy) {
+        this();
+    }
+
     public NeoRepository() {
-        this.features = new HashMap<>();
-        //this.features = Maps.mutable.empty();
+        this.features = new ArrayList<>();
         this.associations = new ArrayList<>();
         this.modules = new ArrayList<>();
         this.setMaxOrder(2);
     }
 
+    public void setTransactionStrategy(NeoTransactionStrategy transactionStrategy) {
+    }
+
     @Override
     public Collection<Feature> getFeatures() {
-        return Collections.unmodifiableCollection(this.features.values());
+//        Session neoSession = transactionStrategy.getNeoSession();
+//        features = neoSession.loadAll(NeoFeature.class, DEPTH).stream().collect(Collectors.toMap(NeoFeature::getId, feature -> feature));
+        return Collections.unmodifiableCollection(this.features);
     }
 
     @Override
     public Collection<Association.Op> getAssociations() {
+//        Session neoSession = transactionStrategy.getNeoSession();
+//        associations = neoSession.loadAll(NeoAssociation.Op.class, DEPTH);
         return Collections.unmodifiableCollection(this.associations);
     }
 
@@ -55,15 +71,15 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
     @Override
     public Feature getFeature(String id) {
-        return this.features.get(id);
+        return this.features.stream().filter(f -> f.getId().equals(id)).findFirst().orElse(null);
     }
 
     @Override
     public Feature addFeature(String id, String name) {
-        if (this.features.containsKey(id))
+        if (this.features.stream().filter(f -> f.getId().equals(id)).findFirst().orElse(null) != null)
             return null;
         NeoFeature feature = new NeoFeature(id, name);
-        this.features.put(feature.getId(), feature);
+        this.features.add(feature);
         return feature;
     }
 

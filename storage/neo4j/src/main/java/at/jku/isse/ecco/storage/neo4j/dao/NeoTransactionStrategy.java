@@ -43,7 +43,7 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 		}
 	}
 
-	protected Session getNeoSession() throws EccoException {
+	public Session getNeoSession() throws EccoException {
 		this.checkInitialized();
 
 		if (this.currentSession == null) {

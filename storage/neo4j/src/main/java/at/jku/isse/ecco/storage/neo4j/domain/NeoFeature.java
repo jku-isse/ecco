@@ -5,10 +5,7 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Objects;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -25,10 +22,10 @@ public class NeoFeature extends NeoEntity implements Feature {
     @Property("description")
 	private String description;
 
-    @Relationship("hasRevision")
-	private Collection<NeoFeatureRevision> revisions;
+    @Relationship("hasRevisionFt")
+	private List<NeoFeatureRevision> revisions = new ArrayList<>();
 
-    @Relationship("latestRevision")
+    @Relationship(type = "latestRevisionFt", direction = "INCOMING")
 	private NeoFeatureRevision latest;
 
 	public NeoFeature() {}
@@ -39,14 +36,13 @@ public class NeoFeature extends NeoEntity implements Feature {
 		this.id = id;
 		this.name = name;
 		this.description = "";
-		this.revisions = new ArrayList<>();
 		this.latest = null;
 	}
 
 
 	@Override
 	public Collection<NeoFeatureRevision> getRevisions() {
-		return Collections.unmodifiableCollection(this.revisions);
+		return this.revisions;
 	}
 
 	@Override

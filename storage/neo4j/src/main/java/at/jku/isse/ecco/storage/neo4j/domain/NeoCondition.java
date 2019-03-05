@@ -6,6 +6,7 @@ import at.jku.isse.ecco.module.ModuleRevision;
 import org.eclipse.collections.impl.factory.Maps;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 import java.util.Collection;
 import java.util.Map;
@@ -14,10 +15,11 @@ import java.util.Objects;
 @NodeEntity
 public class NeoCondition extends NeoEntity implements Condition {
 
-    @Relationship("hasType")
+    @Relationship("hasTypeCd")
 	private TYPE type;
 
-    @Relationship("hasModuleToRevisionsMap")
+    //@Relationship("hasModuleToRevisionsMapCd")
+	@Transient
 	private Map<Module, Collection<ModuleRevision>> moduleToRevisionsMap;
 
 	public NeoCondition() {

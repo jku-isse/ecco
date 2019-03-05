@@ -8,7 +8,6 @@ import at.jku.isse.ecco.storage.neo4j.domain.NeoRepository;
 import com.google.inject.Inject;
 import org.neo4j.ogm.session.Session;
 
-import java.util.ArrayList;
 
 public class NeoRepositoryDao extends NeoAbstractGenericDao implements RepositoryDao {
 
@@ -23,25 +22,15 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 
 		NeoRepository repository = neoSession.load(NeoRepository.class, 0L);
 		if (repository == null) {
-			NeoRepository repo = new NeoRepository();
+			NeoRepository repo = new NeoRepository(this.transactionStrategy);
 			return repo;
 		} else {
+//			repository.features.putAll(neoSession.loadAll(NeoFeature.class, 4).stream().collect(Collectors.toMap(NeoFeature::getId, feature -> feature)));
+//			repository.getAssociations().addAll((neoSession.loadAll(NeoAssociation.class, 4)));
+//			repository.setTransactionStrategy(this.transactionStrategy);
+//			repository.getFeatures();
 			return repository;
 		}
-
-//		ArrayList<NeoRepository> repositories = new ArrayList<>(neoSession.loadAll(NeoRepository.class)); // TODO: load which one?
-//		if (repositories.isEmpty()) {
-//			NeoRepository repo = new NeoRepository();
-//			this.transactionStrategy.setRepository(repo);
-//			return repo;
-//		} else if (repositories.size() == 1) {
-//			this.transactionStrategy.setRepository(repositories.get(0));
-//			return repositories.get(0);
-//		} else {
-//			//What now?
-//			throw new EccoException("Multiple repositories loaded!");
-//		}
-
 	}
 
 	@Override

@@ -42,10 +42,18 @@ public class NeoSessionFactory {
         EmbeddedDriver driver = new EmbeddedDriver(graphDb);
         final String[] packages = new String[] {
                 "at.jku.isse.ecco.storage.neo4j.domain",
+                "at.jku.isse.ecco.feature",
+                "at.jku.isse.ecco.tree",
+                "at.jku.isse.ecco.artifact",
+//                "at.jku.isse.ecco.core",
+                "at.jku.isse.ecco.pog",
+//                "at.jku.isse.ecco.module",
+                "at.jku.isse.ecco.repository",
+                "at.jku.isse.ecco.counter"
         };
 
         factory = new SessionFactory(driver, packages);
-        //factory.setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
+        factory.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
     }
 
     public SessionFactory getFactory() {

@@ -12,20 +12,21 @@ import org.neo4j.ogm.annotation.Relationship;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @NodeEntity
 public class NeoModuleCounter extends NeoEntity implements ModuleCounter {
 
-    @Relationship("hasModule")
+    @Relationship("hasModuleMCt")
 	private NeoModule module;
 
     @Property("count")
 	private int count;
 
-    @Relationship("hasChildren")
-	private Collection<NeoModuleRevisionCounter> children;
+    @Relationship("hasChildrenMCt")
+	private List<NeoModuleRevisionCounter> children;
 	//private Map<NeoModuleRevision, NeoModuleRevisionCounter> children;
 
 	public NeoModuleCounter() {}

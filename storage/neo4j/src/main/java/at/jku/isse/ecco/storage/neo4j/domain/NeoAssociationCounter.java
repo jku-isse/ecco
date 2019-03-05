@@ -12,20 +12,21 @@ import org.neo4j.ogm.annotation.Relationship;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @NodeEntity
 public class NeoAssociationCounter extends NeoEntity implements AssociationCounter {
 
-    @Relationship("hasAssociation")
+    @Relationship(type = "hasAssociationAc", direction = "INCOMING")
 	private Association association;
 
     @Property("count")
 	private int count;
 
-    @Relationship("hasChild")
-	private Collection<NeoModuleCounter> children;
+    @Relationship("hasChildAC")
+	private List<NeoModuleCounter> children;
 
     public NeoAssociationCounter() {}
 

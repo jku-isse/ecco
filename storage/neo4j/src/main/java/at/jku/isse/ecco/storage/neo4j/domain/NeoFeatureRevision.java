@@ -11,13 +11,13 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
 
-    @Relationship("hasFeatureRv")
+    @Relationship(type = "hasFeatureRv", direction = "INCOMING")
 	private Feature feature;
 
-    @Property("id")
+    @Property("featureRevId")
 	private String id;
 
-    @Property("description")
+    @Property("featureRevDescription")
 	private String description;
 
     public NeoFeatureRevision() {}
