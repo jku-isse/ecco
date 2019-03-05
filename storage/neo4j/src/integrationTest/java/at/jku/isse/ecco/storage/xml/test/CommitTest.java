@@ -11,9 +11,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
 
-public class SimpleTest {
+public class CommitTest {
 
-    private static final Path repoDir = Paths.get("src\\integrationTest\\data\\ecco\\");
+    private static final Path repoDir = Paths.get("src\\integrationTest\\data\\.ecco\\");
     private static final String testDataDir = "..\\..\\examples\\demo_variants\\V";
 
     @BeforeClass
@@ -48,12 +48,20 @@ public class SimpleTest {
             System.out.println("Committed: " + "V" +i);
         }
 
-        Thread.sleep(2000000);
-        // close repository
         service.close();
         System.out.println("Repository closed.");
 
     }
+
+//    @Test
+//    public void loadRepo() throws InterruptedException {
+//        EccoService service = new EccoService();
+//        service.setRepositoryDir(repoDir);
+//        service.init();
+//        System.out.println("Repository initialized.");
+//
+//        service.
+//    }
 
     // https://softwarecave.org/2018/03/24/delete-directory-with-contents-in-java/
     private static void deleteDirectory(Path path) throws IOException {
