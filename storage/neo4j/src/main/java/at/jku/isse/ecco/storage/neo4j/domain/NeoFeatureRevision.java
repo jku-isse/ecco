@@ -5,17 +5,18 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @NodeEntity
 public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
 
-    @Relationship(type = "hasFeatureRv", direction = "INCOMING")
+    @Relationship("hasFeatureRv")
 	private Feature feature;
 
     @Property("featureRevId")
-	private String id;
+	private String frId;
 
     @Property("featureRevDescription")
 	private String description;
@@ -26,7 +27,7 @@ public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
 		checkNotNull(feature);
 		checkNotNull(id);
 		this.feature = feature;
-		this.id = id;
+		this.frId = id;
 	}
 
 
@@ -37,7 +38,7 @@ public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
 
 	@Override
 	public String getId() {
-		return this.id;
+		return this.frId;
 	}
 
 	@Override

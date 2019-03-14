@@ -9,9 +9,8 @@ import org.neo4j.ogm.annotation.Relationship;
 @NodeEntity
 public class NeoRootNode extends NeoNode implements RootNode, RootNode.Op {
 
-    @Relationship(type = "hasContaingAssociationRn", direction = "INCOMING")
+    @Relationship("hasContaingAssociationRn")
 	private Association.Op containingAssociation;
-
 
 	public NeoRootNode() {
 		super();

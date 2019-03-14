@@ -20,7 +20,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 	public Repository.Op load() {
 		final Session neoSession = this.transactionStrategy.getNeoSession();
 
-		NeoRepository repository = neoSession.load(NeoRepository.class, 0L);
+		NeoRepository repository = neoSession.load(NeoRepository.class, 0L, -1);
 		if (repository == null) {
 			NeoRepository repo = new NeoRepository(this.transactionStrategy);
 			return repo;

@@ -23,7 +23,7 @@ public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
     @Property("count")
 	private int count;
 
-    @Relationship(type = "hasModuleRv", direction = "INCOMING")
+    @Relationship("hasModuleRv")
 	private NeoModule module;
 
     public NeoModuleRevision() {}

@@ -8,6 +8,7 @@ import at.jku.isse.ecco.module.ModuleRevision;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,13 +20,15 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleCounter extends NeoEntity implements ModuleCounter {
 
-    @Relationship("hasModuleMCt")
+    //Relationship("hasModuleMCt")
+	@Transient
 	private NeoModule module;
 
     @Property("count")
 	private int count;
 
-    @Relationship("hasChildrenMCt")
+    @Transient
+    //@Relationship(type = "hasChildrenMCt", direction = Relationship.INCOMING)
 	private List<NeoModuleRevisionCounter> children;
 	//private Map<NeoModuleRevision, NeoModuleRevisionCounter> children;
 
@@ -92,12 +95,6 @@ public class NeoModuleCounter extends NeoEntity implements ModuleCounter {
 	@Override
 	public void incCount(int count) {
 		this.count += count;
-	}
-
-
-	@Override
-	public String toString() {
-		return this.getModuleCounterString();
 	}
 
 }

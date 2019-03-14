@@ -9,6 +9,7 @@ import org.eclipse.collections.impl.factory.Maps;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,6 +28,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	public NeoArtifact() {}
 
     @Relationship("hasDataAf")
+	@Transient
 	private DataType data;
 
     @Property("atomic")
@@ -36,6 +38,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	private boolean ordered;
 
     @Relationship("hasPOGAf")
+	@Transient
 	private PartialOrderGraph.Op partialOrderGraph;
 
     @Property("sequenceNumber")

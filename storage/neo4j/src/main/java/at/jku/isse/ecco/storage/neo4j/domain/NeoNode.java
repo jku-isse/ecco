@@ -8,6 +8,7 @@ import org.eclipse.collections.impl.factory.Maps;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,15 +22,15 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
     @Property("unique")
 	private boolean unique = true;
 
-    @Relationship("hasChildNd")
-	private final List<Op> children = new ArrayList<>();
+    //@Relationship(type = "hasChildrenNd", direction = Relationship.INCOMING)
+	@Transient
+	private ArrayList<Op> children = new ArrayList<>();
 
-    @Relationship("hasArtifactNd")
-	private Artifact.Op<?> artifact = null;
+    @Relationship(type = "hasArtifactNd", direction = Relationship.INCOMING)
+	private NeoArtifact.Op<?> artifact;
 
-    @Relationship("hasParentNd")
-	private Op parent = null;
-
+	@Relationship(type = "hasChildrenNd", direction = Relationship.OUTGOING)
+	private Op parent;
 
 	public NeoNode() {}
 

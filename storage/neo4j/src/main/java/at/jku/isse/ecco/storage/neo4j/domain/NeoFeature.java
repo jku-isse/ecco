@@ -13,35 +13,30 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoFeature extends NeoEntity implements Feature {
 
-    @Property("id")
-	private String id;
+    @Property("featureId")
+	private String featureId;
 
     @Property("name")
 	private String name;
 
     @Property("description")
-	private String description;
+	private String description = "";
 
     @Relationship("hasRevisionFt")
-	private List<NeoFeatureRevision> revisions = new ArrayList<>();
-
-    @Relationship(type = "latestRevisionFt", direction = "INCOMING")
-	private NeoFeatureRevision latest;
+	private ArrayList<NeoFeatureRevision> revisions = new ArrayList<>();
 
 	public NeoFeature() {}
 
 	public NeoFeature(String id, String name) {
 		checkNotNull(id);
 		checkNotNull(name);
-		this.id = id;
+		this.featureId = id;
 		this.name = name;
-		this.description = "";
-		this.latest = null;
 	}
 
 
 	@Override
-	public Collection<NeoFeatureRevision> getRevisions() {
+	public ArrayList<NeoFeatureRevision> getRevisions() {
 		return this.revisions;
 	}
 
@@ -50,7 +45,6 @@ public class NeoFeature extends NeoEntity implements Feature {
 		NeoFeatureRevision featureRevision = new NeoFeatureRevision(this, id);
 		if (!this.revisions.contains(featureRevision)) {
 			this.revisions.add(featureRevision);
-			this.latest = featureRevision;
 			return featureRevision;
 		}
 		return null;
@@ -58,21 +52,23 @@ public class NeoFeature extends NeoEntity implements Feature {
 
 	@Override
 	public NeoFeatureRevision getRevision(String id) {
-		for (NeoFeatureRevision featureVersion : this.revisions) {
-			if (featureVersion.getId().equals(id))
-				return featureVersion;
+		if (this.revisions != null) {
+			for (NeoFeatureRevision featureVersion : this.revisions) {
+				if (featureVersion.getId().equals(id))
+					return featureVersion;
+			}
 		}
 		return null;
 	}
 
 	@Override
 	public NeoFeatureRevision getLatestRevision() {
-		return this.latest;
+		return this.revisions.get(revisions.size() - 1);
 	}
 
 	@Override
 	public String getId() {
-		return this.id;
+		return this.featureId;
 	}
 
 	@Override
@@ -107,7 +103,7 @@ public class NeoFeature extends NeoEntity implements Feature {
 		if (!(obj instanceof NeoFeature)) return false;
 
 		final Feature other = (Feature) obj;
-		return this.id.equals(other.getId());
+		return this.featureId.equals(other.getId());
 	}
 
 	@Override

@@ -53,7 +53,7 @@ public class NeoSessionFactory {
         };
 
         factory = new SessionFactory(driver, packages);
-        factory.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
+        factory.setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
     }
 
     public SessionFactory getFactory() {

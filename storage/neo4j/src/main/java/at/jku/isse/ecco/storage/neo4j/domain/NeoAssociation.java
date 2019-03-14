@@ -8,24 +8,26 @@ import at.jku.isse.ecco.tree.RootNode;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 @NodeEntity
 public class NeoAssociation extends NeoEntity implements Association, Association.Op {
 
     @Property("associationId")
-	private String id;
+	private String associationId;
 
-    @Relationship("artifactTreeRootAs")
+    @Relationship(type = "artifactTreeRootAs", direction = Relationship.INCOMING)
 	private RootNode.Op artifactTreeRoot;
 
-    @Relationship("hasAssociationCounterAs")
+    @Relationship(type = "hasAssociationCounterAs", direction = Relationship.INCOMING)
+	//@Transient
 	private AssociationCounter associationCounter;
 
 	@Relationship("containingRepoAs")
 	private Repository.Op containingRepository;
 
 	public NeoAssociation() {
-		this.id = "";
+		this.associationId = "";
 		this.artifactTreeRoot = null;
 		this.associationCounter = new NeoAssociationCounter(this);
 		this.containingRepository = null;
@@ -34,12 +36,12 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
 
 	@Override
 	public String getId() {
-		return this.id;
+		return this.associationId;
 	}
 
 	@Override
 	public void setId(final String id) {
-		this.id = id;
+		this.associationId = id;
 	}
 
 	@Override

@@ -30,8 +30,6 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Transient
     private List<Map<Module, Module>> modules;
 
-
-
     @Property
     private int maxOrder;
 

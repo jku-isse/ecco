@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.storage.xml.test;
 
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.core.Commit;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.file.Path;
