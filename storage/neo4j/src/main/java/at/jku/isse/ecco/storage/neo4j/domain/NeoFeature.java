@@ -5,6 +5,7 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 
+import javax.management.relation.Relation;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -22,7 +23,7 @@ public class NeoFeature extends NeoEntity implements Feature {
     @Property("description")
 	private String description = "";
 
-    @Relationship("hasRevisionFt")
+    @Relationship(type = "hasRevisionFt", direction = Relationship.INCOMING)
 	private ArrayList<NeoFeatureRevision> revisions = new ArrayList<>();
 
 	public NeoFeature() {}

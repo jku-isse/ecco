@@ -20,15 +20,24 @@ import java.util.*;
 @NodeEntity
 public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
-    @Relationship("hasFeaturesRp")
+    @Relationship(type = "hasFeaturesRp", direction = Relationship.INCOMING)
     private List<NeoFeature> features;
 
-    @Relationship("hasAssociationRp")
+    @Relationship(type = "hasAssociationRp", direction = Relationship.INCOMING)
     private List<Association.Op> associations;
 
     //@Relationship("hasModuleRp")
     @Transient
     private List<Map<Module, Module>> modules;
+
+    @Relationship(type = "hasModules0Rp", direction = Relationship.INCOMING)
+    private List<Module> modules0;
+
+    @Relationship(type = "hasModules1Rp", direction = Relationship.INCOMING)
+    private List<Module> modules1;
+
+    @Relationship(type = "hasModules2Rp", direction = Relationship.INCOMING)
+    private List<Module> modules2;
 
     @Property
     private int maxOrder;
@@ -41,6 +50,9 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
         this.features = new ArrayList<>();
         this.associations = new ArrayList<>();
         this.modules = new ArrayList<>();
+        this.modules0 = new ArrayList<>();
+        this.modules1 = new ArrayList<>();
+        this.modules2 = new ArrayList<>();
         this.setMaxOrder(2);
     }
 
@@ -63,7 +75,14 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
     @Override
     public Collection<? extends Module> getModules(int order) {
-        return Collections.unmodifiableCollection(this.modules.get(order).values());
+        //return Collections.unmodifiableCollection(this.modules.get(order).values());
+        if (order <= 0) {
+            return Collections.unmodifiableCollection(modules0);
+        } else if (order == 1) {
+            return Collections.unmodifiableCollection(modules1);
+        } else {
+            return Collections.unmodifiableCollection(modules2);
+        }
     }
 
 
@@ -103,7 +122,6 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
         this.maxOrder = maxOrder;
         for (int order = this.modules.size(); order <= this.maxOrder; order++) {
             this.modules.add(new HashMap<>());
-            //this.modules.add(Maps.mutable.empty());
         }
     }
 
@@ -117,7 +135,17 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Override
     public Module getModule(Feature[] pos, Feature[] neg) {
         NeoModule queryModule = new NeoModule(pos, neg);
-        return this.modules.get(queryModule.getOrder()).get(queryModule);
+        //return this.modules.get(queryModule.getOrder()).get(queryModule);
+        if (queryModule.getOrder() <= 0) {
+            int index = this.modules0.indexOf(queryModule);
+            return index != -1 ? modules0.get(index) : null;
+        } else if (queryModule.getOrder() == 1) {
+            int index = this.modules1.indexOf(queryModule);
+            return index != -1 ? modules1.get(index) : null;
+        } else {
+            int index = this.modules2.indexOf(queryModule);
+            return index != -1 ? modules2.get(index) : null;
+        }
     }
 
     @Override
@@ -126,6 +154,15 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
         if (this.modules.get(module.getOrder()).containsKey(module))
             return null;
         this.modules.get(module.getOrder()).put(module, module);
+
+        if (module.getOrder() <= 0) {
+            this.modules0.add(module);
+        } else if (module.getOrder() == 1) {
+            this.modules1.add(module);
+        } else {
+            this.modules2.add(module);
+        }
+
         return module;
     }
 

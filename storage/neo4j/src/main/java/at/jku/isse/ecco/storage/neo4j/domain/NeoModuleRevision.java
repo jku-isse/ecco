@@ -117,11 +117,15 @@ public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 //		result = 31 * result + Arrays.hashCode(neg);
 //		return result;
 		int result = 0;
-		for (FeatureRevision featureRevision : this.pos)
-			result += featureRevision.hashCode();
-		result *= 31;
-		for (Feature feature : this.neg)
-			result += feature.hashCode();
+		if (this.pos != null) {
+			for (FeatureRevision featureRevision : this.pos)
+				result += featureRevision.hashCode();
+			result *= 31;
+		}
+		if (this.neg != null) {
+			for (Feature feature : this.neg)
+				result += feature.hashCode();
+		}
 		return result;
 	}
 
