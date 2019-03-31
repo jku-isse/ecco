@@ -9,7 +9,7 @@ import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.text.LineArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.exceptions.WrongArtifactDataTypeException;
-import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.tree.Node;
 
 /**
@@ -19,13 +19,13 @@ import at.jku.isse.ecco.tree.Node;
  */
 public class TraceExporter {
 
-	private final PresenceCondition condition;
+	private final Condition condition;
 	private final Path toPath;
 
 	public TraceExporter(Association a, Path toPath) throws WrongArtifactDataTypeException {
-		if (a == null || toPath == null || a.getRootNode() == null || a.getPresenceCondition() == null)
+		if (a == null || toPath == null || a.getRootNode() == null || a.computeCondition() == null)
 			throw new IllegalArgumentException("The argument(s) cannot be null");
-		this.condition = a.getPresenceCondition();
+		this.condition = a.computeCondition();
 		this.toPath = toPath;
 
 		for (Node node : a.getRootNode().getChildren().get(0).getChildren())

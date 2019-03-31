@@ -7,7 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.module.Condition;
 
 /**
  * 
@@ -17,7 +17,7 @@ import at.jku.isse.ecco.module.PresenceCondition;
 public class FileOperations {
 
 	
-	public void insertAtLineNumber(Map<PresenceCondition, Integer> lines, Path path) {
+	public void insertAtLineNumber(Map<Condition, Integer> lines, Path path) {
 		try	(BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
 			
 		} catch (IOException e) {
@@ -25,7 +25,7 @@ public class FileOperations {
 		}	
 	}
 	
-	public void insertAtEqualText(Map<PresenceCondition, String> lines) {
+	public void insertAtEqualText(Map<Condition, String> lines) {
 		
 	}
 	

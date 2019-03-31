@@ -13,11 +13,12 @@ import at.jku.isse.ecco.adapter.text.LineArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.exceptions.WrongArtifactDataTypeException;
 import at.jku.isse.ecco.exporter.TraceExporter;
-import at.jku.isse.ecco.storage.mem.artifact.BaseArtifact;
-import at.jku.isse.ecco.storage.mem.core.BaseAssociation;
-import at.jku.isse.ecco.storage.mem.module.BasePresenceCondition;
-import at.jku.isse.ecco.storage.mem.tree.BaseNode;
-import at.jku.isse.ecco.storage.mem.tree.BaseRootNode;
+import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
+import at.jku.isse.ecco.storage.mem.core.MemAssociation;
+import at.jku.isse.ecco.storage.mem.module.MemCondition;
+import at.jku.isse.ecco.storage.mem.tree.MemNode;
+import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.RootNode;
 
 public class FileArtifactTest {
@@ -26,22 +27,22 @@ public class FileArtifactTest {
 	at.jku.isse.ecco.tree.Node.Op node2;
 	at.jku.isse.ecco.tree.Node.Op node3;
 	at.jku.isse.ecco.tree.Node.Op node4;
-	Artifact.Op<PluginArtifactData> a1 = new BaseArtifact<>(new PluginArtifactData("1", Paths.get("../../Rep/t1.txt")));
-	Artifact.Op<LineArtifactData> a2 = new BaseArtifact<>(new LineArtifactData("line1"));
-	BasePresenceCondition condition;
-	BaseAssociation a;
+	Artifact.Op<PluginArtifactData> a1;
+	Artifact.Op<LineArtifactData> a2;
+	Condition condition;
+	MemAssociation a;
 	
 	@Before
 	public void init() {
-		root = new BaseRootNode();
-		node = new BaseNode();
-		node2 = new BaseNode();
-		node3 = new BaseNode();
-		node4 = new BaseNode();
-		a1 = new BaseArtifact<>(new PluginArtifactData("1", Paths.get("../../Rep/t1.txt")));
-		a2 = new BaseArtifact<>(new LineArtifactData("line1"));
-		condition = new BasePresenceCondition();
-		a = new BaseAssociation();
+		root = new MemRootNode();
+		node = new MemNode();
+		node2 = new MemNode();
+		node3 = new MemNode();
+		node4 = new MemNode();
+		a1 = new MemArtifact<>(new PluginArtifactData("1", Paths.get("../../Rep/t1.txt")));
+		a2 = new MemArtifact<>(new LineArtifactData("line1"));
+		condition = new MemCondition();
+		a = new MemAssociation();
 	}	
 	
 	@Test
@@ -51,7 +52,6 @@ public class FileArtifactTest {
 		node.addChildren(node2, node3);
 		root.addChild(node);
 		a.setRootNode(root);
-		a.setPresenceCondition(condition);
 		TraceExporter te = new TraceExporter(a, Paths.get("../../RepCopy/"));
 	}
 	
@@ -62,18 +62,17 @@ public class FileArtifactTest {
 	
 	@Test(expected=IllegalArgumentException.class)
 	public void testNullPath() throws WrongArtifactDataTypeException {
-		new TraceExporter(new BaseAssociation(), null);
+		new TraceExporter(new MemAssociation(), null);
 	}
 	
 	@Test(expected=IllegalArgumentException.class)
 	public void testEmptyAssociation() throws WrongArtifactDataTypeException {
-		new TraceExporter(new BaseAssociation(), Paths.get("../../Rep/t1.txt"));
+		new TraceExporter(new MemAssociation(), Paths.get("../../Rep/t1.txt"));
 	}
 	
 	@Test
 	public void testEmptyNodeL1() throws WrongArtifactDataTypeException { //FIXME root ohne kind sollte ohne Fehler möglich sein
 		a.setRootNode(root);
-		a.setPresenceCondition(condition);
 		new TraceExporter(a, Paths.get("../../RepCopy/"));
 	}
 	
@@ -81,7 +80,6 @@ public class FileArtifactTest {
 	public void testEmptyNodeL2() throws WrongArtifactDataTypeException {
 		root.addChild(node);
 		a.setRootNode(root);
-		a.setPresenceCondition(condition);
 		new TraceExporter(a, Paths.get("../../RepCopy/"));
 	}
 	
@@ -90,7 +88,6 @@ public class FileArtifactTest {
 		node.addChildren(node2);
 		root.addChild(node);
 		a.setRootNode(root);
-		a.setPresenceCondition(condition);
 		new TraceExporter(a, Paths.get("../../RepCopy/"));
 	}
 	
@@ -101,7 +98,6 @@ public class FileArtifactTest {
 		node2.addChildren(node3);
 		root.addChild(node);
 		a.setRootNode(root);
-		a.setPresenceCondition(condition);
 		new TraceExporter(a, Paths.get("../../RepCopy/"));
 	}
 	
@@ -112,7 +108,6 @@ public class FileArtifactTest {
 		node.addChildren(node2, node3);
 		root.addChild(node);
 		a.setRootNode(root);
-		a.setPresenceCondition(condition);
 		new TraceExporter(a, Paths.get("../../RepCopy/"));
 	}
 	
@@ -125,7 +120,6 @@ public class FileArtifactTest {
 		node2.addChildren(node3, node4);
 		root.addChild(node);
 		a.setRootNode(root);
-		a.setPresenceCondition(condition);
 		new TraceExporter(a, Paths.get("../../RepCopy/"));
 	}
 	
