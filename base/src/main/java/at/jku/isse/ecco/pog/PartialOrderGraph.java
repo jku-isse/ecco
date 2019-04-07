@@ -663,7 +663,7 @@ public interface PartialOrderGraph extends Persistable {
 			while (!stack.isEmpty()) {
 				Node node = stack.pop();
 
-				visitor.visit(this);
+				visitor.visit(node);
 
 				// add children of current node
 				for (Node child : node.getNext()) {
