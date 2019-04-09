@@ -285,9 +285,9 @@ public interface PartialOrderGraph extends Persistable {
 		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
 			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
 
+			// left and right are equal
 			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
-
-				// add all unshared (i.e. new) symbols in right children to left children (and add tail as their child?) and assign new sequence number to them
+				// add all unshared (i.e. new) symbols in right children to left children. add tail as their child. assign new sequence number to them.
 				for (Node.Op childRight : right.getNext()) {
 					// check if symbol is unshared
 					if (childRight.getArtifact() != null && !shared.containsKey(childRight.getArtifact().getSequenceNumber())) { // && childRight.getArtifact().getSequenceNumber() == PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
@@ -303,7 +303,10 @@ public interface PartialOrderGraph extends Persistable {
 						//System.out.println("Added new node " + newLeft + " as child to node " + left);
 					}
 				}
+			}
 
+			// left and right are equal
+			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
 				// find shared symbols that are in left and not in right. REMOVE those that can be reached from right node because that means that the right graph is more restrictive.
 				{
 					Iterator<Node.Op> it = left.getNext().iterator();
@@ -313,7 +316,8 @@ public interface PartialOrderGraph extends Persistable {
 						if (childLeft.getArtifact() == null || childLeft.getArtifact() != null && shared.containsKey(childLeft.getArtifact().getSequenceNumber())) {
 							Node.Op matchingChildRight = null;
 							for (Node.Op childRight : right.getNext()) {
-								if (childLeft.getArtifact() != null && childLeft.getArtifact().getData() != null && childRight.getArtifact() != null && childLeft.getArtifact().getData().equals(childRight.getArtifact().getData())) {
+								//if (childLeft.getArtifact() != null && childLeft.getArtifact().getData() != null && childRight.getArtifact() != null && childLeft.getArtifact().getData().equals(childRight.getArtifact().getData())) {
+								if (childLeft.getArtifact() != null && childLeft.getArtifact().equals(childRight.getArtifact())) {
 									matchingChildRight = childRight;
 									break;
 								}
@@ -331,14 +335,18 @@ public interface PartialOrderGraph extends Persistable {
 						}
 					}
 				}
+			}
 
+			// left and right are equal
+			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
 				// find shared symbols that are in right and not in left. ADD those that cannot be reached from left node because that means the right graph is more restrictive.
 				for (Node.Op childRight : right.getNext()) {
 					// check if right symbol is shared
 					if (childRight.getArtifact() == null || childRight.getArtifact() != null && shared.containsKey(childRight.getArtifact().getSequenceNumber())) {
 						Node.Op matchingChildLeft = null;
 						for (Node.Op childLeft : left.getNext()) {
-							if (childRight.getArtifact() != null && childRight.getArtifact().getData() != null && childLeft.getArtifact() != null && childRight.getArtifact().getData().equals(childLeft.getArtifact().getData())) {
+							//if (childRight.getArtifact() != null && childRight.getArtifact().getData() != null && childLeft.getArtifact() != null && childRight.getArtifact().getData().equals(childLeft.getArtifact().getData())) {
+							if (childRight.getArtifact() != null && childRight.getArtifact().equals(childLeft.getArtifact())) {
 								matchingChildLeft = childLeft;
 								break;
 							}
@@ -360,7 +368,6 @@ public interface PartialOrderGraph extends Persistable {
 						}
 					}
 				}
-
 			}
 
 			// find matching nodes (shared or unshared) in children of left and right
@@ -495,8 +502,7 @@ public interface PartialOrderGraph extends Persistable {
 			}
 
 			if (!counters.isEmpty()) {
-				System.out.println(counters);
-				//throw new EccoException("Not all partial order graph nodes can be reached (this indicates a cycle or an orphan node without parent)!");
+				throw new EccoException("Not all partial order graph nodes can be reached (this indicates a cycle or an orphan node without parent)!");
 			}
 		}
 
