@@ -30,13 +30,16 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Transient
     private List<Map<Module, Module>> modules;
 
-    @Relationship(type = "hasModules0Rp", direction = Relationship.INCOMING)
+    //@Relationship(type = "hasModules0Rp", direction = Relationship.INCOMING)
+    @Transient
     private List<Module> modules0;
 
-    @Relationship(type = "hasModules1Rp", direction = Relationship.INCOMING)
+    //@Relationship(type = "hasModules1Rp", direction = Relationship.INCOMING)
+    @Transient
     private List<Module> modules1;
 
-    @Relationship(type = "hasModules2Rp", direction = Relationship.INCOMING)
+    //@Relationship(type = "hasModules2Rp", direction = Relationship.INCOMING)
+    @Transient
     private List<Module> modules2;
 
     @Property

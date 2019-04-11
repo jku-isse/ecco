@@ -14,10 +14,10 @@ public class NeoPartialOrderGraphNode extends NeoEntity implements PartialOrderG
 	@Relationship("hasPreviousPOGN")
 	private Collection<Op> previous;
 
-	@Relationship("hasNextPOGN")
+	@Relationship("hasPreviousPOGN")
 	private Collection<Op> next;
 
-	@Relationship("hasArtifactPOGN")
+	@Relationship("hasPOGAf")
 	private Artifact.Op<?> artifact;
 
 	public NeoPartialOrderGraphNode() {}

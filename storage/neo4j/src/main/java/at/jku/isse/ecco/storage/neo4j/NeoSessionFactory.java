@@ -17,9 +17,13 @@ public class NeoSessionFactory {
     private final Path databasePath;
     private final SessionFactory factory;
 
+    public NeoSessionFactory(Path databasePath) {
+        this(databasePath, LoadStrategy.SCHEMA_LOAD_STRATEGY);
+    }
+
     // https://stackoverflow.com/questions/38077512/access-the-neo4j-browser-while-running-an-embedded-connection-with-a-bolt-connec?rq=1
     // https://stackoverflow.com/q/54907818/691007
-    public NeoSessionFactory(Path databasePath){
+    public NeoSessionFactory(Path databasePath, LoadStrategy loadStrategy){
         this.databasePath = databasePath;
 
         // create embedded graph database
@@ -49,11 +53,12 @@ public class NeoSessionFactory {
                 "at.jku.isse.ecco.pog",
 //                "at.jku.isse.ecco.module",
                 "at.jku.isse.ecco.repository",
-                "at.jku.isse.ecco.counter"
+                "at.jku.isse.ecco.counter",
+                "at.jku.isse.ecco.storage.neo4j.test.domain"
         };
 
         factory = new SessionFactory(driver, packages);
-        factory.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
+        factory.setLoadStrategy(loadStrategy);
     }
 
     public SessionFactory getFactory() {

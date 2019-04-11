@@ -23,8 +23,8 @@ public class NeoFeature extends NeoEntity implements Feature {
     @Property("description")
 	private String description = "";
 
-    @Relationship(type = "hasRevisionFt", direction = Relationship.INCOMING)
-	private ArrayList<NeoFeatureRevision> revisions = new ArrayList<>();
+    @Relationship("hasRevisionFt")
+	public ArrayList<NeoFeatureRevision> revisions = new ArrayList<>();
 
 	public NeoFeature() {}
 

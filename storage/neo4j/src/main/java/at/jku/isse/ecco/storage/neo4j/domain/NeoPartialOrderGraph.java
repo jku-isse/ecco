@@ -8,10 +8,10 @@ import org.neo4j.ogm.annotation.Relationship;
 
 public class NeoPartialOrderGraph extends NeoEntity implements PartialOrderGraph, PartialOrderGraph.Op {
 
-	@Relationship("hasHeadPOG")
+	@Relationship
 	private Node.Op head;
 
-	@Relationship("hasTailPOG")
+	@Relationship
 	private Node.Op tail;
 
 	@Property

@@ -3,10 +3,13 @@ package at.jku.isse.ecco.storage.neo4j.dao;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.RepositoryDao;
 import at.jku.isse.ecco.dao.TransactionStrategy;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoRepository;
+import at.jku.isse.ecco.storage.neo4j.domain.*;
 import com.google.inject.Inject;
 import org.neo4j.ogm.session.Session;
+
+import java.util.Collection;
 
 
 public class NeoRepositoryDao extends NeoAbstractGenericDao implements RepositoryDao {
@@ -28,7 +31,13 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 //			repository.features.putAll(neoSession.loadAll(NeoFeature.class, 4).stream().collect(Collectors.toMap(NeoFeature::getId, feature -> feature)));
 //			repository.getAssociations().addAll((neoSession.loadAll(NeoAssociation.class, 4)));
 //			repository.setTransactionStrategy(this.transactionStrategy);
-//			repository.getFeatures();
+//			System.out.println("FEATURESIZE: " + repository.getFeatures().size());
+//			repository.getFeatures().forEach(f-> {
+//				System.out.println("REVISIONS: " + f.getRevisions());
+//			});
+//			Collection<NeoFeatureRevision> featureRevisions = neoSession.loadAll(NeoFeatureRevision.class);
+//			Collection<NeoRootNode> neoRootNodes = neoSession.loadAll(NeoRootNode.class);
+//			Collection<NeoNode> neoNodes = neoSession.loadAll(NeoNode.class);
 			return repository;
 		}
 	}

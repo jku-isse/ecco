@@ -27,8 +27,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 
 	public NeoArtifact() {}
 
-    @Relationship("hasDataAf")
-	@Transient
+    @Relationship
 	private DataType data;
 
     @Property("atomic")
@@ -38,7 +37,6 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	private boolean ordered;
 
     @Relationship("hasPOGAf")
-	@Transient
 	private PartialOrderGraph.Op partialOrderGraph;
 
     @Property("sequenceNumber")

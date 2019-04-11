@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.storage.xml.test;
+package at.jku.isse.ecco.storage.neo4j.test;
 
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Commit;

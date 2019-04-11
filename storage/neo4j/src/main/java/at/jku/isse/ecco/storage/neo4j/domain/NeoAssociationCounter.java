@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoAssociationCounter extends NeoEntity implements AssociationCounter {
 
-    @Relationship("hasAssociationAc")
+    @Relationship("hasAssociationCounterAs")
 	private Association association;
 
     @Property("countAc")

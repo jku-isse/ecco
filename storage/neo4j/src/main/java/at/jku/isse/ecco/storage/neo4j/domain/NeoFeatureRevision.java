@@ -12,7 +12,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
 
-    @Relationship("hasFeatureRv")
+    @Relationship("hasRevisionFt")
 	private Feature feature;
 
     @Property("featureRevId")

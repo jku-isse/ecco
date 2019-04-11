@@ -28,6 +28,10 @@ dependencies {
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.26'
 
+    // https://mvnrepository.com/artifact/uk.co.jemos.podam/podam
+    testCompile group: 'uk.co.jemos.podam', name: 'podam', version: '7.2.3.RELEASE'
+
+
 
     testRuntime project(':ecco-adapter-file')
     testRuntime project(':ecco-adapter-text')

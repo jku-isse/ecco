@@ -22,15 +22,17 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
     @Property("unique")
 	private boolean unique = true;
 
-    //@Relationship(type = "hasChildrenNd", direction = Relationship.INCOMING)
-	@Transient
-	private ArrayList<Op> children = new ArrayList<>();
+    @Relationship(type = "hasChildrenNd", direction = Relationship.INCOMING)
+	//@Transient
+	private ArrayList<NeoNode.Op> children = new ArrayList<>();
 
-    @Relationship(type = "hasArtifactNd", direction = Relationship.INCOMING)
+    @Relationship(type = "hasDataAf", direction = Relationship.INCOMING)
+	//@Transient
 	private NeoArtifact.Op<?> artifact;
 
-	@Relationship(type = "hasChildrenNd", direction = Relationship.OUTGOING)
-	private Op parent;
+	@Relationship(type = "hasChildrenNd")
+	@Transient
+	private NeoNode.Op parent;
 
 	public NeoNode() {}
 
