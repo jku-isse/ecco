@@ -1,16 +1,17 @@
 package at.jku.isse.ecco.exporter;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.text.LineArtifactData;
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.exceptions.WrongArtifactDataTypeException;
-import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.Node.NodeVisitor;
 
 /**
  * 
@@ -19,54 +20,52 @@ import at.jku.isse.ecco.tree.Node;
  */
 public class TraceExporter {
 
-	private final Condition condition;
-	private final Path toPath;
-
-	public TraceExporter(Association a, Path toPath) throws WrongArtifactDataTypeException {
-		if (a == null || toPath == null || a.getRootNode() == null || a.computeCondition() == null)
+	public static void exportAssociations(Collection<Association> associations, Path toPath) {
+		if (associations == null || toPath == null)
 			throw new IllegalArgumentException("The argument(s) cannot be null");
-		this.condition = a.computeCondition();
-		this.toPath = toPath;
-
-		for (Node node : a.getRootNode().getChildren().get(0).getChildren())
-			processPluginNode(node);
+		Set<Path> processedFiles = new HashSet<>();
+		for (Association association : associations) {
+			exportAssociation(association, toPath, processedFiles);
+		}
 	}
 
-	private void processPluginNode(Node node) throws WrongArtifactDataTypeException {
-		try {
-			PluginArtifactData pad = (PluginArtifactData) node.getArtifact().getData();
-			if (!pad.getFileName().toString().endsWith(".txt"))
-				return;
-			Files.copy(pad.getPath(), toPath.resolve(pad.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+	/**
+	 * 
+	 * @param association
+	 * @param toPath
+	 * @param processedFiles
+	 *            Use an empty list if there are no already processed files or
+	 *            if you want to reprocess them.
+	 */
+	public static void exportAssociation(Association association, Path toPath, Set<Path> processedFiles) {
+		if (association == null || toPath == null || association.getRootNode() == null
+				|| association.computeCondition() == null || processedFiles == null)
+			throw new IllegalArgumentException("The argument(s) cannot be null");
+		association.getRootNode().traverse(new NodeVisitor() {
 
-			// process children
-			for (Node n : node.getChildren()) {
-				processLineNode(n); // TODO kann Child nur LineNode sein?
+			@Override
+			public void visit(Node node) {
+				try {
+					Artifact<?> artifact = node.getArtifact();
+					if (artifact != null) {
+						PluginArtifactData pad = (PluginArtifactData) artifact.getData();
+						if (pad.getFileName().toString().endsWith(".txt")) {
+							if (processedFiles.add(pad.getPath())) {
+								if (artifact.isSequenced())
+									PartialOrderGraphExporter.export(artifact.getSequenceGraph(), toPath.resolve(pad.getFileName()));
+								else
+									; // TODO ist das möglich? wenn ja wie wird
+										// das
+										// behandelt
+							}
+						}
+					}
+				} catch (ClassCastException e) {
+					System.out.println("wrong type");
+					// ignor all other artifacts
+				}
+
 			}
-		} catch (ClassCastException e) {
-			throw new WrongArtifactDataTypeException("Wrong Type"); // TODO
-																	// bessere
-																	// Fehlermeldung
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void processLineNode(Node node) throws WrongArtifactDataTypeException {
-		try {
-			LineArtifactData lad = (LineArtifactData) node.getArtifact().getData();
-			// TODO
-			System.out.println("LineAD");
-		} catch (ClassCastException e) {
-			throw new WrongArtifactDataTypeException("Wrong Type"); // TODO
-																	// bessere
-																	// Fehlermeldung
-		}
-
-		// process children, but there must not be children.
-		for (Node n : node.getChildren()) {
-			// processLineNode(n);
-			System.err.println("A Line Node must not have children. \n" + n.toString());
-		}
+		});
 	}
 }

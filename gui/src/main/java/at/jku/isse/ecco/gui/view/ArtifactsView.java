@@ -4,6 +4,8 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.exporter.PartialOrderGraphExporter;
+import at.jku.isse.ecco.exporter.TraceExporter;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
@@ -23,6 +25,7 @@ import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -140,6 +143,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 						}
 					});
 					Platform.runLater(() -> toolBar.setDisable(false));
+					TraceExporter.exportAssociations((Collection<Association>) associations, Paths.get("../../RepCopy/"));
 					return null;
 				}
 			};

@@ -5,9 +5,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.pog.PartialOrderGraph.Node;
 import at.jku.isse.ecco.pog.PartialOrderGraph.Node.NodeVisitor;
+import at.jku.isse.ecco.tree.RootNode;
 
 public class PartialOrderGraphExporter {
 	
@@ -17,9 +20,24 @@ public class PartialOrderGraphExporter {
 			head.traverse(new NodeVisitor() {				
 				@Override
 				public void visit(Node node) {
+					Condition condition = null;
 					try {
-						if(node.getArtifact()!=null)
-						bufferedWriter.write(node.getArtifact().toString());
+						if(node.getArtifact()!=null) {
+							at.jku.isse.ecco.tree.Node memNode = node.getArtifact().getContainingNode();
+							while (memNode.getParent() != null) {
+								memNode = memNode.getParent();
+							}
+							if(memNode instanceof RootNode) {
+								Association association = ((RootNode) memNode).getContainingAssociation(); 
+								if(association != null)
+									condition = association.computeCondition();								
+							}
+							if(condition != null) {
+								bufferedWriter.write("#if " + condition.getSimpleModuleRevisionConditionString() + "\n");
+								bufferedWriter.write(node.getArtifact().toString());
+								bufferedWriter.write("\n#endif\n");
+							} else bufferedWriter.write(node.getArtifact().toString()+"\n");							
+						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

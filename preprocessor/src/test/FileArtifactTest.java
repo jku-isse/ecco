@@ -11,6 +11,7 @@ import at.jku.isse.ecco.adapter.text.LineArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.exceptions.WrongArtifactDataTypeException;
 import at.jku.isse.ecco.exporter.TraceExporter;
+import at.jku.isse.ecco.exporter.TraceExporter_2;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.core.MemAssociation;
@@ -50,35 +51,35 @@ public class FileArtifactTest {
 		node.addChildren(node2, node3);
 		root.addChild(node);
 		a.setRootNode(root);
-		TraceExporter te = new TraceExporter(a, Paths.get("../../RepCopy/"));
+		TraceExporter_2 te = new TraceExporter_2(a, Paths.get("../../RepCopy/"));
 	}
 	
 	@Test(expected=IllegalArgumentException.class)
 	public void testNullAssociation() throws WrongArtifactDataTypeException {		
-		new TraceExporter(null, Paths.get("../../RepCopy/"));
+		new TraceExporter_2(null, Paths.get("../../RepCopy/"));
 	}
 	
 	@Test(expected=IllegalArgumentException.class)
 	public void testNullPath() throws WrongArtifactDataTypeException {
-		new TraceExporter(new MemAssociation(), null);
+		new TraceExporter_2(new MemAssociation(), null);
 	}
 	
 	@Test(expected=IllegalArgumentException.class)
 	public void testEmptyAssociation() throws WrongArtifactDataTypeException {
-		new TraceExporter(new MemAssociation(), Paths.get("../../Rep/t1.txt"));
+		new TraceExporter_2(new MemAssociation(), Paths.get("../../Rep/t1.txt"));
 	}
 	
 	@Test
 	public void testEmptyNodeL1() throws WrongArtifactDataTypeException { //FIXME root ohne kind sollte ohne Fehler möglich sein
 		a.setRootNode(root);
-		new TraceExporter(a, Paths.get("../../RepCopy/"));
+		new TraceExporter_2(a, Paths.get("../../RepCopy/"));
 	}
 	
 	@Test
 	public void testEmptyNodeL2() throws WrongArtifactDataTypeException {
 		root.addChild(node);
 		a.setRootNode(root);
-		new TraceExporter(a, Paths.get("../../RepCopy/"));
+		new TraceExporter_2(a, Paths.get("../../RepCopy/"));
 	}
 	
 	@Test
@@ -86,7 +87,7 @@ public class FileArtifactTest {
 		node.addChildren(node2);
 		root.addChild(node);
 		a.setRootNode(root);
-		new TraceExporter(a, Paths.get("../../RepCopy/"));
+		new TraceExporter_2(a, Paths.get("../../RepCopy/"));
 	}
 	
 	@Test
@@ -96,7 +97,7 @@ public class FileArtifactTest {
 		node2.addChildren(node3);
 		root.addChild(node);
 		a.setRootNode(root);
-		new TraceExporter(a, Paths.get("../../RepCopy/"));
+		new TraceExporter_2(a, Paths.get("../../RepCopy/"));
 	}
 	
 	@Test(expected=WrongArtifactDataTypeException.class)
@@ -106,7 +107,7 @@ public class FileArtifactTest {
 		node.addChildren(node2, node3);
 		root.addChild(node);
 		a.setRootNode(root);
-		new TraceExporter(a, Paths.get("../../RepCopy/"));
+		new TraceExporter_2(a, Paths.get("../../RepCopy/"));
 	}
 	
 	@Test(expected=WrongArtifactDataTypeException.class)
@@ -118,7 +119,7 @@ public class FileArtifactTest {
 		node2.addChildren(node3, node4);
 		root.addChild(node);
 		a.setRootNode(root);
-		new TraceExporter(a, Paths.get("../../RepCopy/"));
+		new TraceExporter_2(a, Paths.get("../../RepCopy/"));
 	}
 	
 	
