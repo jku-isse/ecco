@@ -13,38 +13,45 @@ import at.jku.isse.ecco.pog.PartialOrderGraph.Node.NodeVisitor;
 import at.jku.isse.ecco.tree.RootNode;
 
 public class PartialOrderGraphExporter {
-	
+
 	public static void export(PartialOrderGraph graph, Path path) {
 		Node head = graph.getHead();
-		try	(BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-			head.traverse(new NodeVisitor() {				
+		try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
+			head.traverse(new NodeVisitor() {
+				Condition oldCondition = null;
+
 				@Override
 				public void visit(Node node) {
 					Condition condition = null;
 					try {
-						if(node.getArtifact()!=null) {
+						if (node.getArtifact() != null) {
 							at.jku.isse.ecco.tree.Node memNode = node.getArtifact().getContainingNode();
 							while (memNode.getParent() != null) {
 								memNode = memNode.getParent();
 							}
-							if(memNode instanceof RootNode) {
-								Association association = ((RootNode) memNode).getContainingAssociation(); 
-								if(association != null)
-									condition = association.computeCondition();								
+							if (memNode instanceof RootNode) {
+								Association association = ((RootNode) memNode).getContainingAssociation();
+								if (association != null)
+									condition = association.computeCondition();
 							}
-							if(condition != null) {
-								bufferedWriter.write("#if " + condition.getSimpleModuleRevisionConditionString() + "\n");
-								bufferedWriter.write(node.getArtifact().toString());
-								bufferedWriter.write("\n#endif\n");
-							} else bufferedWriter.write(node.getArtifact().toString()+"\n");							
+							if (condition != null && !condition.equals(oldCondition)) {
+								if (oldCondition != null)
+									bufferedWriter.write("#endif\n");
+								bufferedWriter
+										.write("#if " + condition.getSimpleModuleRevisionConditionString() + "\n");
+								bufferedWriter.write(node.getArtifact().toString() + "\n");
+								oldCondition = condition;
+							} else
+								bufferedWriter.write(node.getArtifact().toString() + "\n");
 						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
 				}
 			});
+			bufferedWriter.write("#endif");
 		} catch (IOException e) {
 			e.printStackTrace();
-		}	
+		}
 	}
 }
