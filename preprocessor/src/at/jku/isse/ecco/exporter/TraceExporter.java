@@ -1,10 +1,8 @@
 package at.jku.isse.ecco.exporter;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -19,7 +17,12 @@ import at.jku.isse.ecco.tree.Node.NodeVisitor;
  *
  */
 public class TraceExporter {
-
+	
+	/**
+	 * 
+	 * @param associations The list of associations to be exported.
+	 * @param toPath The directory where the annotated files should be written to.
+	 */
 	public static void exportAssociations(Collection<Association> associations, Path toPath) {
 		if (associations == null || toPath == null)
 			throw new IllegalArgumentException("The argument(s) cannot be null");
@@ -31,8 +34,8 @@ public class TraceExporter {
 
 	/**
 	 * 
-	 * @param association
-	 * @param toPath
+	 * @param association The association to be exported. 
+	 * @param toPath The directory where the annotated files should be written to. 
 	 * @param processedFiles
 	 *            Use an empty list if there are no already processed files or
 	 *            if you want to reprocess them.
@@ -49,7 +52,7 @@ public class TraceExporter {
 					Artifact<?> artifact = node.getArtifact();
 					if (artifact != null) {
 						PluginArtifactData pad = (PluginArtifactData) artifact.getData();
-						if (pad.getFileName().toString().endsWith(".txt")) {
+						if (pad.getFileName().toString().endsWith(".txt")) { //TODO support other file types
 							if (processedFiles.add(pad.getPath())) {
 								if (artifact.isSequenced())
 									PartialOrderGraphExporter.export(artifact.getSequenceGraph(), toPath.resolve(pad.getFileName()));
@@ -61,7 +64,6 @@ public class TraceExporter {
 						}
 					}
 				} catch (ClassCastException e) {
-					System.out.println("wrong type");
 					// ignor all other artifacts
 				}
 

@@ -12,9 +12,23 @@ import at.jku.isse.ecco.pog.PartialOrderGraph.Node;
 import at.jku.isse.ecco.pog.PartialOrderGraph.Node.NodeVisitor;
 import at.jku.isse.ecco.tree.RootNode;
 
+/**
+ * 
+ * @author Simon Eilmsteiner
+ *
+ */
 public class PartialOrderGraphExporter {
 
+	/**
+	 * 
+	 * @param graph
+	 *            The partial order graph of the given file.
+	 * @param path
+	 *            The path of the <b>new</b> preprocessor annotated file.
+	 */
 	public static void export(PartialOrderGraph graph, Path path) {
+		if (graph == null || path == null)
+			throw new IllegalArgumentException("The argument(s) cannot be null");
 		Node head = graph.getHead();
 		try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
 			head.traverse(new NodeVisitor() {
