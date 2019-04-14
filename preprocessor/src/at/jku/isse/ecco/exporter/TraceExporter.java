@@ -20,14 +20,14 @@ public class TraceExporter {
 	
 	/**
 	 * 
-	 * @param associations The list of associations to be exported.
+	 * @param collection The list of associations to be exported.
 	 * @param toPath The directory where the annotated files should be written to.
 	 */
-	public static void exportAssociations(Collection<Association> associations, Path toPath) {
-		if (associations == null || toPath == null)
+	public static void exportAssociations(Collection<? extends Association> collection, Path toPath) {
+		if (collection == null || toPath == null)
 			throw new IllegalArgumentException("The argument(s) cannot be null");
 		Set<Path> processedFiles = new HashSet<>();
-		for (Association association : associations) {
+		for (Association association : collection) {
 			exportAssociation(association, toPath, processedFiles);
 		}
 	}
@@ -64,7 +64,7 @@ public class TraceExporter {
 						}
 					}
 				} catch (ClassCastException e) {
-					// ignor all other artifacts
+					// ignore all other artifacts
 				}
 
 			}
