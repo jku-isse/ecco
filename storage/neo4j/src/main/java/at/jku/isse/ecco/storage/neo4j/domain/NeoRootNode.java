@@ -12,7 +12,7 @@ import org.neo4j.ogm.annotation.Relationship;
 public class NeoRootNode extends NeoNode implements RootNode, RootNode.Op {
 
     @Relationship("artifactTreeRootAs")
-	private Association.Op containingAssociation;
+	private NeoAssociation.Op containingAssociation;
 
 	public NeoRootNode() {
 		super();
@@ -42,7 +42,7 @@ public class NeoRootNode extends NeoNode implements RootNode, RootNode.Op {
 	}
 
 	@Override
-	public Association.Op getContainingAssociation() {
+	public NeoAssociation.Op getContainingAssociation() {
 		return this.containingAssociation;
 	}
 

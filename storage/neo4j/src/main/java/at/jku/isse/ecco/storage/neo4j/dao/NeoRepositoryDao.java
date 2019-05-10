@@ -23,7 +23,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 	public Repository.Op load() {
 		final Session neoSession = this.transactionStrategy.getNeoSession();
 
-		NeoRepository repository = neoSession.load(NeoRepository.class, 0L);
+		NeoRepository repository = neoSession.load(NeoRepository.class, 0L, 1);
 		if (repository == null) {
 			NeoRepository repo = new NeoRepository(this.transactionStrategy);
 			return repo;
@@ -38,6 +38,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 //			Collection<NeoFeatureRevision> featureRevisions = neoSession.loadAll(NeoFeatureRevision.class);
 //			Collection<NeoRootNode> neoRootNodes = neoSession.loadAll(NeoRootNode.class);
 //			Collection<NeoNode> neoNodes = neoSession.loadAll(NeoNode.class);
+			repository.setTransactionStrategy(this.transactionStrategy);
 			return repository;
 		}
 	}

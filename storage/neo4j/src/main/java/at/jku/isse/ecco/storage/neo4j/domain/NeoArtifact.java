@@ -11,6 +11,7 @@ import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.Transient;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -25,26 +26,30 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implements Artifact<DataType>, Artifact.Op<DataType> {
 
-	public NeoArtifact() {}
+	@Property("buffer")
+	private byte[] buffer = null;
 
-    @Relationship
+	@Transient
 	private DataType data;
 
-    @Property("atomic")
+	@Property("atomic")
 	private boolean atomic;
 
-    @Property("ordered")
+	@Property("ordered")
 	private boolean ordered;
 
-    @Relationship("hasPOGAf")
+	@Relationship("hasPOGAf")
 	private PartialOrderGraph.Op partialOrderGraph;
 
-    @Property("sequenceNumber")
+	@Property("sequenceNumber")
 	private int sequenceNumber;
 
-    @Property("useReferencesInEquals")
+	@Property("useReferencesInEquals")
 	private boolean useReferencesInEquals;
 
+
+
+	public NeoArtifact() {}
 
 	public NeoArtifact(DataType data) {
 		this(data, false);
@@ -52,12 +57,44 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 
 	public NeoArtifact(DataType data, boolean ordered) {
 		checkNotNull(data);
-		this.data = data;
+		this.setData(data);
 		this.ordered = ordered;
 		this.sequenceNumber = PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
 		this.useReferencesInEquals = false;
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public DataType getData() {
+		if (this.data == null) {
+			if (this.buffer == null)
+				return null;
+			else {
+				try (ByteArrayInputStream bis = new ByteArrayInputStream(this.buffer)) {
+					try (ObjectInput in = new ObjectInputStream(bis)) {
+						this.data = (DataType) in.readObject();
+					}
+				} catch (IOException | ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		return this.data;
+	}
+
+	public void setData(DataType data) {
+		this.data = data;
+
+		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+			try (ObjectOutput out = new ObjectOutputStream(bos)) {
+				out.writeObject(this.data);
+				this.buffer = bos.toByteArray();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
 	@Override
 	public int hashCode() {
@@ -103,6 +140,13 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	}
 
 	@Override
+	public String toString() {
+		if (this.getData() == null)
+			return "NULL";
+		return this.getData().toString();
+	}
+
+	@Override
 	public boolean useReferencesInEquals() {
 		return this.useReferencesInEquals;
 	}
@@ -123,19 +167,6 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 
 		return getData().equals(that.getData());
 	}
-
-
-	@Override
-	public String toString() {
-		return this.data.toString();
-	}
-
-
-	@Override
-	public DataType getData() {
-		return this.data;
-	}
-
 
 	@Override
 	public boolean isAtomic() {

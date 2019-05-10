@@ -4,6 +4,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.neo4j.dao.NeoTransactionStrategy;
 import at.jku.isse.ecco.tree.RootNode;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
@@ -17,13 +18,13 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
 	private String associationId;
 
     @Relationship(type = "artifactTreeRootAs", direction = Relationship.INCOMING)
-	private RootNode.Op artifactTreeRoot;
+	public RootNode.Op artifactTreeRoot;
 
     @Relationship(type = "hasAssociationCounterAs", direction = Relationship.INCOMING)
-	private AssociationCounter associationCounter;
+	public NeoAssociationCounter associationCounter;
 
 	@Relationship("hasAssociationRp")
-	private Repository.Op containingRepository;
+	private NeoRepository containingRepository;
 
 	public NeoAssociation() {
 		this.associationId = "";
@@ -45,6 +46,8 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
 
 	@Override
 	public RootNode.Op getRootNode() {
+//		NeoTransactionStrategy transactionStrategy = containingRepository.getTransactionStrategy();
+//		transactionStrategy.getNeoSession().load(NeoRootNode.class, this.artifactTreeRoot.getNeoId());
 		return artifactTreeRoot;
 	}
 
@@ -55,7 +58,7 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
 	}
 
 	@Override
-	public Repository.Op getContainingRepository() {
+	public NeoRepository.Op getContainingRepository() {
 		return this.containingRepository;
 	}
 

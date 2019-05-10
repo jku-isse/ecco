@@ -11,8 +11,10 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.Transient;
+import org.neo4j.ogm.session.Session;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Neo4J implementation of {@link Repository}.
@@ -20,11 +22,12 @@ import java.util.*;
 @NodeEntity
 public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
+    private static final int DEPTH = 1;
     @Relationship(type = "hasFeaturesRp", direction = Relationship.INCOMING)
     private List<NeoFeature> features;
 
     @Relationship(type = "hasAssociationRp", direction = Relationship.INCOMING)
-    private List<Association.Op> associations;
+    private Set<NeoAssociation.Op> associations;
 
     //@Relationship("hasModuleRp")
     @Transient
@@ -42,16 +45,20 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Transient
     private List<Module> modules2;
 
+    @Transient
+    NeoTransactionStrategy transactionStrategy;
+
     @Property
     private int maxOrder;
 
     public NeoRepository(NeoTransactionStrategy transactionStrategy) {
         this();
+        this.transactionStrategy = transactionStrategy;
     }
 
     public NeoRepository() {
         this.features = new ArrayList<>();
-        this.associations = new ArrayList<>();
+        this.associations = new HashSet<>();
         this.modules = new ArrayList<>();
         this.modules0 = new ArrayList<>();
         this.modules1 = new ArrayList<>();
@@ -60,19 +67,56 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     }
 
     public void setTransactionStrategy(NeoTransactionStrategy transactionStrategy) {
+        this.transactionStrategy = transactionStrategy;
     }
 
     @Override
     public Collection<Feature> getFeatures() {
-//        Session neoSession = transactionStrategy.getNeoSession();
-//        features = neoSession.loadAll(NeoFeature.class, DEPTH).stream().collect(Collectors.toMap(NeoFeature::getId, feature -> feature));
+        Session neoSession = transactionStrategy.getNeoSession();
+        // redundant? neoSession.loadAll(NeoFeature.class, DEPTH).stream().collect(Collectors.toList());
+
+          //does not load revisions - why?
+//        Collection<NeoFeature> localFeatures = neoSession.loadAll(this.features, 2);
+//        this.features = new ArrayList(localFeatures);
+
+        // we have to overwrite the features because they are not replaced when loaded - why?
+        for (int i = 0; i < this.features.size(); i++) {
+            NeoFeature actFeature = this.features.get(i);
+
+            // if feature was loaded from db
+            if (actFeature.getNeoId() != null) {
+                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 2);
+                this.features.set(i, loadedFeature);
+            }
+        }
+
+        // same result as above
+//        ArrayList<NeoFeature> localFeatures = new ArrayList<>();
+//        for (NeoFeature feature: this.features) {
+//            NeoFeature feat = neoSession.load(NeoFeature.class, feature.getNeoId(), 2);
+//            localFeatures.add(feat);
+//        }
+//        this.features = localFeatures;
+
         return Collections.unmodifiableCollection(this.features);
     }
 
     @Override
     public Collection<Association.Op> getAssociations() {
-//        Session neoSession = transactionStrategy.getNeoSession();
-//        associations = neoSession.loadAll(NeoAssociation.Op.class, DEPTH);
+        Session neoSession = transactionStrategy.getNeoSession();
+        Collection<NeoAssociation> loadedAss = neoSession.loadAll(NeoAssociation.class, 2).stream().collect(Collectors.toList());
+        this.associations.addAll(loadedAss);
+
+//        for (int i = 0; i < this.associations.size(); i++) {
+//            NeoAssociation actAssoc = this.associations..get(i);
+//
+//            // if feature was loaded from db
+//            if (actFeature.getNeoId() != null) {
+//                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 2);
+//                this.features.set(i, loadedFeature);
+//            }
+//        }
+
         return Collections.unmodifiableCollection(this.associations);
     }
 
@@ -167,6 +211,10 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
         }
 
         return module;
+    }
+
+    public NeoTransactionStrategy getTransactionStrategy() {
+        return transactionStrategy;
     }
 
 }
