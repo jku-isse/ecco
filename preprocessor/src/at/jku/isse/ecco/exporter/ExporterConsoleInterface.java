@@ -25,7 +25,7 @@ public class ExporterConsoleInterface {
 			TraceExporter.exportAssociations(service.getRepository().getAssociations(), toPath);
 		} catch (EccoException e) {
 			// ignore Exception, error message is printed in the EccoService
-			System.out.println("Repository does not exist.");
+			System.err.println("Repository does not exist.");
 		}
 	}
 
