@@ -1,8 +1,7 @@
 package at.jku.isse.ecco.storage.neo4j.test;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.core.Commit;
-import org.junit.Before;
+import at.jku.isse.ecco.repository.Repository;
 import org.junit.Test;
 
 import java.nio.file.Path;
@@ -18,8 +17,11 @@ public class OpenRepoTest {
         EccoService service = new EccoService();
         service.setRepositoryDir(repoDir);
         service.open();
-        service.getRepository();
+        Repository repo = service.getRepository();
         System.out.println("Repository loaded.");
+
+        repo.getFeatures();
+        repo.getAssociations();
 
 
         service.close();

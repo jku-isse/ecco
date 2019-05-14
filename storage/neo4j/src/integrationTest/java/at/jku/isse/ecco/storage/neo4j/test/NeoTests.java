@@ -64,6 +64,8 @@ public class NeoTests {
         BaseContainer repo = getRandomTestRepo();
 
         session.save(repo);
+
+        System.out.println("ID: " + repo.getTree().getChildren().get(0).getChildren().get(0).getChildren().get(0).getNeoId());
     }
 
     /*
@@ -144,15 +146,28 @@ public class NeoTests {
     }
 
     /*
-    Test hydration with path strategy depth 2
+    Test hydration from Lukas
      */
     @Test
-    public void testLoadPathStrategyDepth2() {
-        factory.getFactory().setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
+    public void testLoadLukas() {
+        //factory.getFactory().setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
+        factory.getFactory().setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
         Session session = factory.getNeoSession();
 
-        Collection<BaseContainer> repos = session.loadAll(BaseContainer.class, 2);
+        Collection<BaseContainer> repos = session.loadAll(BaseContainer.class, 1);
         BaseContainer container = repos.iterator().next();
+
+//        repos = session.loadAll(BaseContainer.class, 100);
+//        container = repos.iterator().next();
+//
+//        TreeNode testNode1 = session.load(TreeNode.class, container.getTree().getChildren().get(0).getChildren().get(0).getChildren().get(0).getNeoId());
+
+        TreeNode testNode1 = session.load(TreeRootNode.class, container.getTree().getNeoId(), 1);
+        TreeNode testNode2 = session.load(TreeNode.class, testNode1.getChildren().get(0).getNeoId());
+        TreeNode testNode3 = session.load(TreeNode.class, testNode2.getChildren().get(0).getNeoId());
+
+        repos = session.loadAll(BaseContainer.class, -1);
+        container = repos.iterator().next();
 
         TreeRootNode treeRoot = container.getTree();
         List<TreeNode> children = treeRoot.getChildren();
@@ -193,6 +208,7 @@ public class NeoTests {
         TreeNode evenDeeperNode = factory.manufacturePojo(TreeNode.class);
 
         deeperNode.getChildren().get(0).getChildren().get(0).addChild(evenDeeperNode);
+        evenDeeperNode.addChild(deeperNode); // add loop
         repo.getTree().getChildren().get(0).getChildren().get(0).getChildren().get(0).addChild(deeperNode);
         return repo;
     }
