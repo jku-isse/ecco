@@ -98,7 +98,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 
 	@Override
 	public int hashCode() {
-		int result = this.data.hashCode();
+		int result = this.getData().hashCode();
 		result = 31 * result + (this.ordered ? 1 : 0);
 		return result;
 	}

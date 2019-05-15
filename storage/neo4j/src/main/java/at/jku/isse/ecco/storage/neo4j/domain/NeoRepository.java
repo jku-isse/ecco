@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 @NodeEntity
 public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
-    private static final int DEPTH = 1;
     @Relationship(type = "hasFeaturesRp", direction = Relationship.INCOMING)
     private List<NeoFeature> features;
 
@@ -73,10 +72,12 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Override
     public Collection<Feature> getFeatures() {
         Session neoSession = transactionStrategy.getNeoSession();
+        System.out.println(neoSession);
+        System.out.println(transactionStrategy);
         // redundant? neoSession.loadAll(NeoFeature.class, DEPTH).stream().collect(Collectors.toList());
 
           //does not load revisions - why?
-//        Collection<NeoFeature> localFeatures = neoSession.loadAll(this.features, 2);
+//        Collection<NeoFeature> localFeatures = neoSession.loadAll(this.features, 5);
 //        this.features = new ArrayList(localFeatures);
 
         // we have to overwrite the features because they are not replaced when loaded - why?
@@ -86,7 +87,7 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
             // if feature was loaded from db
             if (actFeature.getNeoId() != null) {
                 NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 2);
-                this.features.set(i, loadedFeature);
+                //this.features.set(i, loadedFeature);
             }
         }
 
@@ -102,19 +103,16 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     }
 
     @Override
-    public Collection<Association.Op> getAssociations() {
+    public Collection<NeoAssociation.Op> getAssociations() {
         Session neoSession = transactionStrategy.getNeoSession();
         Collection<NeoAssociation> loadedAss = neoSession.loadAll(NeoAssociation.class, 2).stream().collect(Collectors.toList());
         this.associations.addAll(loadedAss);
 
-//        for (int i = 0; i < this.associations.size(); i++) {
-//            NeoAssociation actAssoc = this.associations..get(i);
-//
-//            // if feature was loaded from db
-//            if (actFeature.getNeoId() != null) {
-//                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 2);
-//                this.features.set(i, loadedFeature);
-//            }
+        /** set has no fixed order */
+        /** loading of artifactTreeRoot */
+//        for(NeoAssociation.Op actAssoc : this.associations) {
+//            NeoAssociation.Op loadedAssoc = neoSession.load(NeoRootNode.class, actAssoc.getRootNode(), 2);
+//            System.out.println();
 //        }
 
         return Collections.unmodifiableCollection(this.associations);

@@ -47,7 +47,8 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
 	@Override
 	public RootNode.Op getRootNode() {
 //		NeoTransactionStrategy transactionStrategy = containingRepository.getTransactionStrategy();
-//		transactionStrategy.getNeoSession().load(NeoRootNode.class, this.artifactTreeRoot.getNeoId());
+//		NeoRootNode neoTreeRoot = (NeoRootNode) this.artifactTreeRoot;
+//		transactionStrategy.getNeoSession().load(NeoRootNode.class, neoTreeRoot.getNeoId(), -1);
 		return artifactTreeRoot;
 	}
 
@@ -64,6 +65,10 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
 
 	@Override
 	public AssociationCounter getCounter() {
+//		NeoTransactionStrategy transactionStrategy = containingRepository.getTransactionStrategy();
+
+		/** where does this wrong containing repository come from? */
+		//transactionStrategy.getNeoSession().loadAll(NeoModuleCounter.class, this.associationCounter.getChildren());
 		return this.associationCounter;
 	}
 
