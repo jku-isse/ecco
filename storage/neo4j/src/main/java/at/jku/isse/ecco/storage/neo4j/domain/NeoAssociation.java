@@ -49,9 +49,10 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
 
 	@Override
 	public RootNode.Op getRootNode() {
-//		NeoTransactionStrategy transactionStrategy = containingRepository.getTransactionStrategy();
 //		NeoRootNode neoTreeRoot = (NeoRootNode) this.artifactTreeRoot;
-//		transactionStrategy.getNeoSession().load(NeoRootNode.class, neoTreeRoot.getNeoId(), -1);
+//		if (neoTreeRoot.getNeoId() != null) {
+//			getNeoSession().load(NeoRootNode.class, neoTreeRoot.getNeoId(), 4);
+//		}
 		return artifactTreeRoot;
 	}
 

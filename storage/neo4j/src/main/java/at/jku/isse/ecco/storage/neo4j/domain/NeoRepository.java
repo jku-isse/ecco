@@ -70,57 +70,40 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     }
 
     @Override
-    public Collection<Feature> getFeatures() {
+    public Collection<NeoFeature> getFeatures() {
         Session neoSession = transactionStrategy.getNeoSession();
-        System.out.println(neoSession);
-        System.out.println(transactionStrategy);
-        // redundant? neoSession.loadAll(NeoFeature.class, DEPTH).stream().collect(Collectors.toList());
-
-          //does not load revisions - why?
-//        Collection<NeoFeature> localFeatures = neoSession.loadAll(this.features, 5);
-//        this.features = new ArrayList(localFeatures);
 
         // we have to overwrite the features because they are not replaced when loaded - why?
-        for (int i = 0; i < this.features.size(); i++) {
-            NeoFeature actFeature = this.features.get(i);
-
-            // if feature was loaded from db
-            if (actFeature.getNeoId() != null) {
-                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 3);
-                //this.features.set(i, loadedFeature);
-            }
-        }
-
-        // same result as above
-//        ArrayList<NeoFeature> localFeatures = new ArrayList<>();
-//        for (NeoFeature feature: this.features) {
-//            NeoFeature feat = neoSession.load(NeoFeature.class, feature.getNeoId(), 2);
-//            localFeatures.add(feat);
+//        for (int i = 0; i < this.features.size(); i++) {
+//            NeoFeature actFeature = this.features.get(i);
+//
+//            // if feature was loaded from db
+//            if (actFeature.getNeoId() != null) {
+//                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 3);
+//                //this.features.set(i, loadedFeature);
+//            }
 //        }
-//        this.features = localFeatures;
 
-        return Collections.unmodifiableCollection(this.features);
+        return this.features;
     }
 
     @Override
     public Collection<NeoAssociation.Op> getAssociations() {
         Session neoSession = transactionStrategy.getNeoSession();
-        Collection<NeoAssociation> loadedAss = neoSession.loadAll(NeoAssociation.class).stream().collect(Collectors.toList());
-        loadedAss.forEach(a -> {
-            NeoAssociation assoc = neoSession.load(NeoAssociation.class, a.getNeoId(), 3);
-            System.out.println();
-        });
-        this.associations.addAll(loadedAss);
+//        Collection<NeoAssociation> loadedAss = neoSession.loadAll(NeoAssociation.class, 3).stream().collect(Collectors.toList());
 
 
-        /** set has no fixed order */
-        /** loading of artifactTreeRoot */
-//        for(NeoAssociation.Op actAssoc : this.associations) {
-//            NeoAssociation.Op loadedAssoc = neoSession.load(NeoRootNode.class, actAssoc.getRootNode(), 2);
-//            System.out.println();
+//        Iterator<NeoAssociation> it = this.associations.iterator();
+//        while(it.hasNext()) {
+//            NeoAssociation assoc =  it.next();
+//            assoc.setNeoSession(neoSession);
+////            NeoRootNode rootNode = (NeoRootNode) assoc.getRootNode();
+////            if (rootNode.getNeoId() != null) {
+////                neoSession.load(NeoRootNode.class, rootNode.getNeoId(), 2);
+////            }
 //        }
 
-        return Collections.unmodifiableCollection(this.associations);
+        return this.associations;
     }
 
     @Override
@@ -152,8 +135,8 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
 
     @Override
-    public void addAssociation(Association.Op association) {
-        this.associations.add(association);
+    public void addAssociation(NeoAssociation.Op association) {
+        this.associations.add((NeoAssociation) association);
     }
 
     @Override

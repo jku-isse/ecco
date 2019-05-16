@@ -163,5 +163,4 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
 			this.properties = Maps.mutable.empty();
 		return this.properties;
 	}
-
 }
