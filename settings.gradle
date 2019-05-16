@@ -43,6 +43,6 @@ project(':storage-xml').projectDir = file('storage/xml')
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
-project(':adapter-java').projectDir = file('adapter/java8')
+project(':adapter-java').projectDir = file('adapter/java')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }
