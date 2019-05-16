@@ -17,12 +17,15 @@ public class NeoAssociation extends NeoEntity implements Association, Associatio
     @Property("associationId")
 	private String associationId;
 
+    // incoming from NeoRootNode
     @Relationship(type = "artifactTreeRootAs", direction = Relationship.INCOMING)
 	public RootNode.Op artifactTreeRoot;
 
+    // incoming from NAC
     @Relationship(type = "hasAssociationCounterAs", direction = Relationship.INCOMING)
 	public NeoAssociationCounter associationCounter;
 
+    // backref
 	@Relationship("hasAssociationRp")
 	private NeoRepository containingRepository;
 

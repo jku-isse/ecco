@@ -20,15 +20,15 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleCounter extends NeoEntity implements ModuleCounter {
 
-    //Relationship("hasModuleMCt")
-	@Transient
+	// no incoming from Module
+    @Relationship(type = "hasModuleMCt")
 	private NeoModule module;
 
     @Property("count")
 	private int count;
 
-    @Transient
-    //@Relationship(type = "hasChildrenMCt", direction = Relationship.INCOMING)
+    // no incoming from ModuleRevCounter
+    @Relationship(type = "hasChildrenMCt")
 	private List<NeoModuleRevisionCounter> children;
 	//private Map<NeoModuleRevision, NeoModuleRevisionCounter> children;
 

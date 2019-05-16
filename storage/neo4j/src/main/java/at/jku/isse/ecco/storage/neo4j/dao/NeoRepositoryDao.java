@@ -7,6 +7,7 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.domain.*;
 import com.google.inject.Inject;
+import org.neo4j.ogm.session.LoadStrategy;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Collection;
@@ -26,7 +27,9 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 		System.out.println(transactionStrategy);
 
 
-		NeoRepository repository = neoSession.load(NeoRepository.class, 0L, -1);
+		neoSession.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
+		NeoRepository repository = neoSession.load(NeoRepository.class, 0L);
+		//neoSession.setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
 		if (repository == null) {
 			NeoRepository repo = new NeoRepository(this.transactionStrategy);
 			return repo;

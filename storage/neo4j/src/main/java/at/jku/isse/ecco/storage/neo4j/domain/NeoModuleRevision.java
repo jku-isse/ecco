@@ -14,15 +14,17 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 
-    @Relationship(type = "hasPosFeatureRevisionRv", direction = "INCOMING")
+	// no incoming from FeatureRevision
+    @Relationship(type = "hasPosFeatureRevisionRv")
 	private FeatureRevision[] pos;
 
-    @Relationship(type = "hasNegFeatureRevisionRv", direction = "INCOMING")
+    @Relationship(type = "hasNegFeatureRevisionRv")
 	private Feature[] neg;
 
     @Property("count")
 	private int count;
 
+    // backref
     @Relationship("hasModuleRv")
 	private NeoModule module;
 

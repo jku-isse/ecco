@@ -6,16 +6,29 @@ import org.neo4j.ogm.annotation.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-@NodeEntity
-public class NeoArtifactReference extends NeoEntity implements ArtifactReference, ArtifactReference.Op {
+@RelationshipEntity
+public class NeoArtifactReference implements ArtifactReference, ArtifactReference.Op {
+
+	@Id @GeneratedValue
+	private Long neoId;
+
+	public Long getNeoId() {
+		return neoId;
+	}
 
     @Property("type")
 	private final String type;
 
-    @Relationship("hasSourceARf")
+//    @Relationship("hasSourceARf")
+//	private Artifact.Op<?> source;
+//
+//    @Relationship("hasTargetARf")
+//	private Artifact.Op<?> target;
+
+	@StartNode
 	private Artifact.Op<?> source;
 
-    @Relationship("hasTargetARf")
+	@EndNode
 	private Artifact.Op<?> target;
 
 	/**

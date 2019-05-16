@@ -12,8 +12,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoConfiguration extends NeoEntity implements Configuration {
 
-
-
+	// no backref from configuration
     @Relationship("hasFeatureRevisionCf")
 	private FeatureRevision[] featureRevisions;
 

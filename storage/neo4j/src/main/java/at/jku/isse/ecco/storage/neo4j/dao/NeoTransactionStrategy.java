@@ -71,17 +71,13 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 
 		this.transaction = transaction;
 
-//		if (this.currentSession == null) {
-			this.currentSession = this.sessionFactory.getNeoSession();
+		this.currentSession = this.sessionFactory.getNeoSession();
 
-			if (transaction == TRANSACTION.READ_ONLY) {
-				this.currentSession.beginTransaction(Transaction.Type.READ_ONLY);
-			} else {
-				this.currentSession.beginTransaction(Transaction.Type.READ_WRITE);
-			}
-//		} else {
-//			throw new EccoException("Transaction is already in progress.");
-//		}
+		if (transaction == TRANSACTION.READ_ONLY) {
+			this.currentSession.beginTransaction(Transaction.Type.READ_ONLY);
+		} else {
+			this.currentSession.beginTransaction(Transaction.Type.READ_WRITE);
+		}
 	}
 
 	@Override
@@ -92,8 +88,6 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 			throw new EccoException("No transaction in progress.");
 		} else {
 			this.currentSession.getTransaction().commit();
-//			this.currentSession.clear();
-//			this.currentSession = null;
 		}
 	}
 
@@ -105,8 +99,6 @@ public class NeoTransactionStrategy implements TransactionStrategy {
 			throw new EccoException("No transaction in progress.");
 		} else {
 			this.currentSession.getTransaction().rollback();
-//			this.currentSession.clear();
-//			this.currentSession = null;
 		}
 	}
 

@@ -20,17 +20,19 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModule extends NeoEntity implements Module {
 
-    @Relationship(type = "hasPosFeatureMd", direction = Relationship.INCOMING)
+	// no incoming from Feature
+    @Relationship(type = "hasPosFeatureMd")
 	private Feature[] pos;
 
-    @Relationship(type = "hasNegFeatureMd", direction = Relationship.INCOMING)
+	// no incoming from Feature
+    @Relationship(type = "hasNegFeatureMd")
 	private Feature[] neg;
 
     @Property("count")
     private int count;
 
-    //@Transient
-    @Relationship("hasRevisionMd")
+    // incoming from NMR
+    @Relationship(value = "hasRevisionMd", direction = Relationship.INCOMING)
 	private ArrayList<NeoModuleRevision> revisions  = new ArrayList<>();
 
     public NeoModule() {}

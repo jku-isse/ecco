@@ -18,6 +18,7 @@ public class NeoCondition extends NeoEntity implements Condition {
     @Relationship("hasTypeCd")
 	private TYPE type;
 
+    //TODO: make this a list
     //@Relationship("hasModuleToRevisionsMapCd")
 	@Transient
 	private Map<Module, Collection<ModuleRevision>> moduleToRevisionsMap;

@@ -20,6 +20,7 @@ public class NeoCommit extends NeoEntity implements Commit {
     @Property("committer")
 	private String committer;
 
+    // no incoming from Config
     @Relationship("hasConfigurationCm")
 	private Configuration configuration;
 

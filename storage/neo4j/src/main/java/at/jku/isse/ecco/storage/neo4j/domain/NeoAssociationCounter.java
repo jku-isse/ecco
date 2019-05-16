@@ -19,13 +19,15 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoAssociationCounter extends NeoEntity implements AssociationCounter {
 
+	// backref
     @Relationship("hasAssociationCounterAs")
 	private Association association;
 
     @Property("countAc")
 	private int count;
 
-    @Relationship(type = "hasChildAC", direction = "INCOMING")
+    // no relation coming from NMC
+    @Relationship("hasChildAC")
 	private ArrayList<NeoModuleCounter> children  = new ArrayList<>();
 
     public NeoAssociationCounter() {}

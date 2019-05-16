@@ -18,7 +18,7 @@ public class NeoSessionFactory {
     private final SessionFactory factory;
 
     public NeoSessionFactory(Path databasePath) {
-        this(databasePath, LoadStrategy.PATH_LOAD_STRATEGY);
+        this(databasePath, LoadStrategy.SCHEMA_LOAD_STRATEGY);
     }
 
     // https://stackoverflow.com/questions/38077512/access-the-neo4j-browser-while-running-an-embedded-connection-with-a-bolt-connec?rq=1

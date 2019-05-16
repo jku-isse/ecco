@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @NodeEntity
 public final class NeoRepository extends NeoEntity implements Repository, Repository.Op {
 
-    @Relationship(type = "hasFeaturesRp", direction = Relationship.INCOMING)
+    @Relationship(type = "hasFeaturesRp")
     private List<NeoFeature> features;
 
     @Relationship(type = "hasAssociationRp", direction = Relationship.INCOMING)
@@ -32,16 +32,16 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Transient
     private List<Map<Module, Module>> modules;
 
-    //@Relationship(type = "hasModules0Rp", direction = Relationship.INCOMING)
-    @Transient
+    @Relationship(type = "hasModules0Rp", direction = Relationship.INCOMING)
+    //@Transient
     private List<Module> modules0;
 
-    //@Relationship(type = "hasModules1Rp", direction = Relationship.INCOMING)
-    @Transient
+    @Relationship(type = "hasModules1Rp", direction = Relationship.INCOMING)
+    //@Transient
     private List<Module> modules1;
 
-    //@Relationship(type = "hasModules2Rp", direction = Relationship.INCOMING)
-    @Transient
+    @Relationship(type = "hasModules2Rp", direction = Relationship.INCOMING)
+    //@Transient
     private List<Module> modules2;
 
     @Transient
@@ -86,7 +86,7 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
             // if feature was loaded from db
             if (actFeature.getNeoId() != null) {
-                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 2);
+                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 3);
                 //this.features.set(i, loadedFeature);
             }
         }
@@ -105,8 +105,13 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Override
     public Collection<NeoAssociation.Op> getAssociations() {
         Session neoSession = transactionStrategy.getNeoSession();
-        Collection<NeoAssociation> loadedAss = neoSession.loadAll(NeoAssociation.class, 2).stream().collect(Collectors.toList());
+        Collection<NeoAssociation> loadedAss = neoSession.loadAll(NeoAssociation.class).stream().collect(Collectors.toList());
+        loadedAss.forEach(a -> {
+            NeoAssociation assoc = neoSession.load(NeoAssociation.class, a.getNeoId(), 3);
+            System.out.println();
+        });
         this.associations.addAll(loadedAss);
+
 
         /** set has no fixed order */
         /** loading of artifactTreeRoot */

@@ -11,6 +11,7 @@ import org.neo4j.ogm.annotation.Relationship;
 @NodeEntity
 public class NeoRootNode extends NeoNode implements RootNode, RootNode.Op {
 
+	// backref
     @Relationship("artifactTreeRootAs")
 	private NeoAssociation.Op containingAssociation;
 

@@ -18,6 +18,7 @@ public class NeoVariant extends NeoEntity implements Variant {
     @Property("description")
 	private String description;
 
+    // no backref from NC
     @Relationship("hasConfigurationVr")
     private Configuration configuration;
 

@@ -38,6 +38,7 @@ public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implem
 	@Property("ordered")
 	private boolean ordered;
 
+	// backref
 	@Relationship("hasPOGAf")
 	private PartialOrderGraph.Op partialOrderGraph;
 

@@ -10,6 +10,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleRevisionCounter extends NeoEntity implements ModuleRevisionCounter {
 
+	// no incoming from mR
     @Relationship("hasModuleRevisionRvCt")
 	private NeoModuleRevision moduleRevision;
 

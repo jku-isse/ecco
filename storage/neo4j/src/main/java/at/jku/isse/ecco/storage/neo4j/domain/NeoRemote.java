@@ -22,6 +22,7 @@ public class NeoRemote extends NeoEntity implements Remote  {
     @Relationship("hasTypeRm")
 	private Type type;
 
+    // no incoming from Feature
 	@Relationship("hasFeatureRm")
 	private List<Feature> features;
 
