@@ -654,13 +654,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-	public synchronized Repository getRepository() {
+	public synchronized Repository.Op getRepository() {
 		this.checkInitialized();
 
 		try {
 			this.repositoryDao.init();
 			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-			Repository repository = this.repositoryDao.load();
+			Repository.Op repository = this.repositoryDao.load();
 			this.transactionStrategy.end();
 			return repository;
 		} catch (EccoException e) {
