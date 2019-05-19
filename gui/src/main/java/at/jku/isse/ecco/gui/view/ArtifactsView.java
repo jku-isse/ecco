@@ -143,7 +143,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 						}
 					});
 					Platform.runLater(() -> toolBar.setDisable(false));
-					TraceExporter.exportAssociations((Collection<Association>) associations, Paths.get("../../RepCopy/"));
 					return null;
 				}
 			};
