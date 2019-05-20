@@ -26,17 +26,16 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Relationship(type = "hasAssociationRp", direction = Relationship.INCOMING)
     private Set<NeoAssociation.Op> associations;
 
-    //@Relationship("hasModuleRp")
     @Transient
     private List<Map<Module, Module>> modules;
 
-    @Relationship(type = "hasModules0Rp", direction = Relationship.INCOMING)
+    @Relationship(type = "hasModules0Rp")
     private List<Module> modules0;
 
-    @Relationship(type = "hasModules1Rp", direction = Relationship.INCOMING)
+    @Relationship(type = "hasModules1Rp")
     private List<Module> modules1;
 
-    @Relationship(type = "hasModules2Rp", direction = Relationship.INCOMING)
+    @Relationship(type = "hasModules2Rp")
     private List<Module> modules2;
 
     @Transient

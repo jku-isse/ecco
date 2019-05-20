@@ -14,6 +14,7 @@ import java.util.Iterator;
 
 
 public class NeoRepositoryDao extends NeoAbstractGenericDao implements RepositoryDao {
+	private NeoRepository repository;
 
 	@Inject
 	public NeoRepositoryDao(NeoTransactionStrategy transactionStrategy) {
@@ -26,34 +27,37 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 		System.out.println(neoSession);
 		System.out.println(transactionStrategy);
 
+		if (this.repository == null) {
+			neoSession.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
+			NeoRepository repo = neoSession.load(NeoRepository.class, 0L);
+			neoSession.setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
+			if (repo == null) {
+				repo = new NeoRepository(this.transactionStrategy);
+				this.repository = repo;
+				return repo;
+			} else {
+				repo.setTransactionStrategy(this.transactionStrategy);
 
-		neoSession.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
-		NeoRepository repository = neoSession.load(NeoRepository.class, 0L);
-		neoSession.setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
-		if (repository == null) {
-			NeoRepository repo = new NeoRepository(this.transactionStrategy);
-			return repo;
-		} else {
-			repository.setTransactionStrategy(this.transactionStrategy);
+				{
+					/** load features */
+					Iterator<NeoFeature> it = repo.getFeatures().iterator();
+					while (it.hasNext()) {
+						NeoFeature actFeature = it.next();
 
-			{
-				/** load features */
-				Iterator<NeoFeature> it = repository.getFeatures().iterator();
-				while (it.hasNext()) {
-					NeoFeature actFeature = it.next();
-
-					if (actFeature.getNeoId() != null) {
-						NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 3);
+						if (actFeature.getNeoId() != null) {
+							NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 3);
+						}
 					}
 				}
-			}
 
-			/** load associations */
-			neoSession.loadAll(NeoAssociation.class, 4);
-			neoSession.loadAll(NeoNode.class, 2);
+				/** load associations */
+				// TODO: REAKTIVIEREN - NUR ZWECKS PERFORMANCE DEAKTIVIERT
+				neoSession.loadAll(NeoAssociation.class, 4);
+				neoSession.loadAll(NeoNode.class, 2);
+				neoSession.loadAll(NeoArtifact.class, 2);
 
-			/** load all */
-			neoSession.loadAll(NeoArtifact.class, 2);
+				/** load all */
+
 //			neoSession.loadAll(NeoArtifactReference.class, 2);
 //			neoSession.loadAll(NeoAssociationCounter.class, 2);
 //			neoSession.loadAll(NeoCommit.class, 2);
@@ -61,9 +65,9 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 //			neoSession.loadAll(NeoConfiguration.class, 2);
 //			Collection<NeoFeature> neoFeatures = neoSession.loadAll(NeoFeature.class, 2);
 //			neoSession.loadAll(NeoFeatureRevision.class, 2);
-			Collection<NeoModule> neoModules = neoSession.loadAll(NeoModule.class, 4);
+			Collection<NeoModule> neoModules = neoSession.loadAll(NeoModule.class, 2);
 //			neoSession.loadAll(NeoModuleCounter.class, 2);
-//			neoSession.loadAll(NeoModuleRevision.class, 2);
+//				neoSession.loadAll(NeoModuleRevision.class, 2);
 //			neoSession.loadAll(NeoPartialOrderGraph.class, 2);
 //			neoSession.loadAll(NeoPartialOrderGraphNode.class, 2);
 //			neoSession.loadAll(NeoRemote.class, 2);
@@ -77,8 +81,11 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 //
 //				System.out.println();
 //			}
-
-			return repository;
+				this.repository = repo;
+				return repo;
+			}
+		} else {
+			return this.repository;
 		}
 	}
 
