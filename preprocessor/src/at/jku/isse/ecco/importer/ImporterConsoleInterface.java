@@ -28,7 +28,7 @@ public class ImporterConsoleInterface {
 			else service.init();
 			TraceImporter.importTrace(service.getRepository(), fromPath);
 		} catch (EccoException e) {
-			// ignore Exception, error message is printed in the EccoService
+			e.printStackTrace();
 		}
 	}
 

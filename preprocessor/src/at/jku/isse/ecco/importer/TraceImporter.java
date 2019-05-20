@@ -34,48 +34,47 @@ public class TraceImporter {
 	private static List<MemArtifact<PluginArtifactData>> pluginsPerFile;
 
 	public static void importTrace(Repository.Op repository, Path fromPath) {
-		Association.Op base = new MemAssociation();
-		base.setRootNode(new MemRootNode());
-		base.addObservation(null); // TODO Observation
-		actualAssociations.add(base);
-		repository.addAssociation(base);
 		try {
-			Files.walk(fromPath).filter(file -> file.toString().endsWith(".txt")).forEach(file -> {
-				pluginsPerFile = new ArrayList<>();
-				PluginArtifactData pad = new PluginArtifactData(UUID.randomUUID().toString(), file);
-				// TODO jede Association hat eigenes PAD glaube ich
-				Artifact.Op<PluginArtifactData> pluginArtifact = new MemArtifact<>(pad);
-				List<MemArtifact<LineArtifactData>> lines = new ArrayList<>();
-				PartialOrderGraph.Op sequenceGraph = new MemPartialOrderGraph();
-				try {
-					Files.lines(file).forEach(line -> {
-						if (line.matches("^((\\s)*(#if (.)*|#endif))")) {
-							if (line.matches("^((\\s)*#if (.)*)")) {
-								String condition = line.replaceFirst("(\\s)*#if ", "");
-								addNewFeatures(condition, repository);
-								startNewBlock(condition, file);
-							} else {
-								endBlock(file);
-							}
-						} else {
-							MemArtifact<LineArtifactData> lineArtifact = new MemArtifact<LineArtifactData>(
-									new LineArtifactData(line));
-							lineArtifact.setAtomic(true); // TODO set ordered
-							fillBlock(lineArtifact, file);
-							lines.add(lineArtifact);
+			Files.walk(fromPath)
+					.filter(file -> file.toString().endsWith(".txt"))
+					.forEach(file -> {
+						pluginsPerFile = new ArrayList<>();
+						List<MemArtifact<LineArtifactData>> lines = new ArrayList<>();
+						startNewBlock("base", file);
+
+						try {
+							Files.lines(file)
+									.forEach(line -> {
+										if (line.matches("^((\\s)*(#if (.)*|#endif))")) {
+											if (line.matches("^((\\s)*#if (.)*)")) {
+												String condition = line.replaceFirst("(\\s)*#if ", "");
+												addNewFeatures(condition, repository);
+												startNewBlock(condition, file);
+											} else {
+												endBlock(file);
+											}
+										} else {
+											MemArtifact<LineArtifactData> lineArtifact = new MemArtifact<LineArtifactData>(
+													new LineArtifactData(line));
+											lineArtifact.setAtomic(true); // TODO set ordered
+											fillBlock(lineArtifact, file);
+											lines.add(lineArtifact);
+										}
+									});
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+
+						PartialOrderGraph.Op sequenceGraph = new MemPartialOrderGraph();
+						sequenceGraph.merge(lines);
+						for (MemArtifact<PluginArtifactData> artifact : pluginsPerFile) {
+							artifact.setSequenceGraph(sequenceGraph);
 						}
 					});
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				sequenceGraph.merge(lines);
-				for (MemArtifact<PluginArtifactData> artifact : pluginsPerFile) {
-					artifact.setSequenceGraph(sequenceGraph);
-				}
-			});
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		System.out.println("end");
 	}
 
 	private static void addNewFeatures(String condition, Op repository) {
@@ -84,6 +83,7 @@ public class TraceImporter {
 		// ev return von Liste
 	}
 
+	@SuppressWarnings("unchecked")
 	private static void startNewBlock(String condition, Path file) {
 		map.putIfAbsent(condition, new MemAssociation());
 		MemAssociation association = map.get(condition);
@@ -112,7 +112,8 @@ public class TraceImporter {
 			dirNode.addChild(pluginNode);
 		}
 
-		actualPluginNode = (MemNode) dirNode;
+		actualPluginNode = pluginNode;
+		pluginsPerFile.add((MemArtifact<PluginArtifactData>) pluginNode.getArtifact()); // safe cast
 		actualAssociations.push(association);
 	}
 
@@ -125,13 +126,7 @@ public class TraceImporter {
 		actualPluginNode = getPluginNode(file, actualAssociations.peek());
 	}
 
-	private static MemNode getPluginNode(Path file, Association association) { // TODO
-																				// muss
-																				// nicht
-																				// in
-																				// ebene
-																				// 2
-																				// sein
+	private static MemNode getPluginNode(Path file, Association association) { // TODO muss nicht in Ebene 2 sein
 		for (Node node : association.getRootNode().getChildren().get(0).getChildren()) {
 			PluginArtifactData data = (PluginArtifactData) node.getArtifact().getData();
 			if (data.getPath().equals(file)) {
