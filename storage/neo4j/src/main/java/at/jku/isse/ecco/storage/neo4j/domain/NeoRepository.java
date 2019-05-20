@@ -10,9 +10,9 @@ import at.jku.isse.ecco.storage.neo4j.dao.NeoTransactionStrategy;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.Transient;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Neo4J implementation of {@link Repository}.
@@ -26,41 +26,21 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Relationship(type = "hasAssociationRp", direction = Relationship.INCOMING)
     private Set<NeoAssociation.Op> associations;
 
-    @Transient
-    private List<Map<Module, Module>> modules;
-
-    @Relationship(type = "hasModules0Rp")
-    private List<Module> modules0;
-
-    @Relationship(type = "hasModules1Rp")
-    private List<Module> modules1;
-
-    @Relationship(type = "hasModules2Rp")
-    private List<Module> modules2;
-
-    @Transient
-    NeoTransactionStrategy transactionStrategy;
+    @Relationship(type = "hasModulesRp", direction = Relationship.INCOMING)
+    private List<NeoModule> modules;
 
     @Property
     private int maxOrder;
 
     public NeoRepository(NeoTransactionStrategy transactionStrategy) {
         this();
-        this.transactionStrategy = transactionStrategy;
     }
 
     public NeoRepository() {
         this.features = new ArrayList<>();
         this.associations = new HashSet<>();
         this.modules = new ArrayList<>();
-        this.modules0 = new ArrayList<>();
-        this.modules1 = new ArrayList<>();
-        this.modules2 = new ArrayList<>();
         this.setMaxOrder(2);
-    }
-
-    public void setTransactionStrategy(NeoTransactionStrategy transactionStrategy) {
-        this.transactionStrategy = transactionStrategy;
     }
 
     @Override
@@ -75,16 +55,13 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
     @Override
     public Collection<? extends Module> getModules(int order) {
-        //return Collections.unmodifiableCollection(this.modules.get(order).values());
-        if (order <= 0) {
-            return Collections.unmodifiableCollection(modules0);
-        } else if (order == 1) {
-            return Collections.unmodifiableCollection(modules1);
-        } else {
-            return Collections.unmodifiableCollection(modules2);
-        }
+        List<NeoModule> orderModules = this.modules.stream().filter(m -> m.getOrder() == order).collect(Collectors.toList());
+        return orderModules;
     }
 
+    public List<NeoModule> getModules() {
+        return this.modules;
+    }
 
     @Override
     public Feature getFeature(String id) {
@@ -103,7 +80,7 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
     @Override
     public void addAssociation(NeoAssociation.Op association) {
-        this.associations.add((NeoAssociation) association);
+        this.associations.add(association);
     }
 
     @Override
@@ -120,9 +97,6 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     @Override
     public void setMaxOrder(int maxOrder) {
         this.maxOrder = maxOrder;
-        for (int order = this.modules.size(); order <= this.maxOrder; order++) {
-            this.modules.add(new HashMap<>());
-        }
     }
 
 
@@ -134,40 +108,26 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
     @Override
     public Module getModule(Feature[] pos, Feature[] neg) {
-        NeoModule queryModule = new NeoModule(pos, neg);
-        //return this.modules.get(queryModule.getOrder()).get(queryModule);
-        if (queryModule.getOrder() <= 0) {
-            int index = this.modules0.indexOf(queryModule);
-            return index != -1 ? modules0.get(index) : null;
-        } else if (queryModule.getOrder() == 1) {
-            int index = this.modules1.indexOf(queryModule);
-            return index != -1 ? modules1.get(index) : null;
+        NeoModule queryModule = new NeoModule(pos, neg, this);
+        int index = this.modules.indexOf(queryModule);
+        if (index != -1) {
+            return this.modules.get(index);
         } else {
-            int index = this.modules2.indexOf(queryModule);
-            return index != -1 ? modules2.get(index) : null;
+            return null;
         }
     }
 
     @Override
     public Module addModule(Feature[] pos, Feature[] neg) {
-        NeoModule module = new NeoModule(pos, neg);
-        if (this.modules.get(module.getOrder()).containsKey(module))
+        NeoModule module = new NeoModule(pos, neg, this);
+        if (this.modules.contains(module))
             return null;
-        this.modules.get(module.getOrder()).put(module, module);
-
-        if (module.getOrder() <= 0) {
-            this.modules0.add(module);
-        } else if (module.getOrder() == 1) {
-            this.modules1.add(module);
-        } else {
-            this.modules2.add(module);
-        }
-
+        this.modules.add(module);
         return module;
     }
 
-    public NeoTransactionStrategy getTransactionStrategy() {
-        return transactionStrategy;
+    public void setModules(List<NeoModule> modules) {
+        this.modules = modules;
     }
 
 }

@@ -17,7 +17,7 @@ public class OpenRepoTest {
     private static final Path repoDir = Paths.get("src\\integrationTest\\data\\.ecco\\");
 
     @Test
-    public void fillRepo() throws InterruptedException {
+    public void openRepo() throws InterruptedException {
         // create new repository
         EccoService service = new EccoService();
         service.setRepositoryDir(repoDir);

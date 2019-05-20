@@ -22,11 +22,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class NeoModule extends NeoEntity implements Module {
 
 	// no incoming from Feature
-    @Relationship(type = "hasPosFeatureMd", direction = Relationship.UNDIRECTED)
+    @Relationship(type = "hasPosFeatureMd")
 	private Feature[] pos;
 
 	// no incoming from Feature
-    @Relationship(type = "hasNegFeatureMd", direction = Relationship.UNDIRECTED)
+    @Relationship(type = "hasNegFeatureMd")
 	private Feature[] neg;
 
     @Property("count")
@@ -36,18 +36,22 @@ public class NeoModule extends NeoEntity implements Module {
     @Relationship(value = "hasRevisionMd", direction = Relationship.INCOMING)
 	private ArrayList<NeoModuleRevision> revisions  = new ArrayList<>();
 
+	// backref
+	@Relationship("hasModulesRp")
+	private NeoRepository containingRepository;
+
     public NeoModule() {}
 
-	public NeoModule(Feature[] pos, Feature[] neg) {
+	public NeoModule(Feature[] pos, Feature[] neg, NeoRepository repository) {
 		checkNotNull(pos);
 		checkNotNull(neg);
 		checkArgument(pos.length > 0);
 		this.verify(pos, neg);
 		this.pos = pos;
-		this.neg = neg;
+		this.neg =  neg;
 		this.count = 0;
+		this.containingRepository = repository;
 	}
-
 
 	@Override
 	public Feature[] getPos() {
@@ -147,6 +151,8 @@ public class NeoModule extends NeoEntity implements Module {
 					return false;
 			}
 		}
+		if (this.getOrder() != neoModule.getOrder()) return false;
+
 		return true;
 	}
 

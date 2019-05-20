@@ -9,6 +9,7 @@ import com.google.inject.Inject;
 import org.neo4j.ogm.session.LoadStrategy;
 import org.neo4j.ogm.session.Session;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -36,7 +37,6 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 				this.repository = repo;
 				return repo;
 			} else {
-				repo.setTransactionStrategy(this.transactionStrategy);
 
 				{
 					/** load features */
@@ -56,6 +56,20 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 				neoSession.loadAll(NeoNode.class, 2);
 				neoSession.loadAll(NeoArtifact.class, 2);
 
+				/** load modules */
+				// does not load any modules, hence set them manually
+				Collection<NeoModule> neoModules = neoSession.loadAll(NeoModule.class, 2);
+				repo.setModules(new ArrayList<>(neoModules));
+//				Iterator<NeoModule> it = repo.getModules().iterator();
+//				while (it.hasNext()) {
+//					NeoModule actModule = it.next();
+//
+//					if (actModule.getNeoId() != null) {
+//						NeoModule loadedModule = neoSession.load(NeoModule.class, actModule.getNeoId(), 2);
+//						System.out.println();
+//					}
+//				}
+
 				/** load all */
 
 //			neoSession.loadAll(NeoArtifactReference.class, 2);
@@ -65,7 +79,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 //			neoSession.loadAll(NeoConfiguration.class, 2);
 //			Collection<NeoFeature> neoFeatures = neoSession.loadAll(NeoFeature.class, 2);
 //			neoSession.loadAll(NeoFeatureRevision.class, 2);
-			Collection<NeoModule> neoModules = neoSession.loadAll(NeoModule.class, 2);
+
 //			neoSession.loadAll(NeoModuleCounter.class, 2);
 //				neoSession.loadAll(NeoModuleRevision.class, 2);
 //			neoSession.loadAll(NeoPartialOrderGraph.class, 2);
