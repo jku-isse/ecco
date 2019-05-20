@@ -11,10 +11,8 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.Transient;
-import org.neo4j.ogm.session.Session;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Neo4J implementation of {@link Repository}.
@@ -33,15 +31,12 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
     private List<Map<Module, Module>> modules;
 
     @Relationship(type = "hasModules0Rp", direction = Relationship.INCOMING)
-    //@Transient
     private List<Module> modules0;
 
     @Relationship(type = "hasModules1Rp", direction = Relationship.INCOMING)
-    //@Transient
     private List<Module> modules1;
 
     @Relationship(type = "hasModules2Rp", direction = Relationship.INCOMING)
-    //@Transient
     private List<Module> modules2;
 
     @Transient
@@ -71,38 +66,11 @@ public final class NeoRepository extends NeoEntity implements Repository, Reposi
 
     @Override
     public Collection<NeoFeature> getFeatures() {
-        Session neoSession = transactionStrategy.getNeoSession();
-
-        // we have to overwrite the features because they are not replaced when loaded - why?
-//        for (int i = 0; i < this.features.size(); i++) {
-//            NeoFeature actFeature = this.features.get(i);
-//
-//            // if feature was loaded from db
-//            if (actFeature.getNeoId() != null) {
-//                NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 3);
-//                //this.features.set(i, loadedFeature);
-//            }
-//        }
-
         return this.features;
     }
 
     @Override
     public Collection<NeoAssociation.Op> getAssociations() {
-        Session neoSession = transactionStrategy.getNeoSession();
-//        Collection<NeoAssociation> loadedAss = neoSession.loadAll(NeoAssociation.class, 3).stream().collect(Collectors.toList());
-
-
-//        Iterator<NeoAssociation> it = this.associations.iterator();
-//        while(it.hasNext()) {
-//            NeoAssociation assoc =  it.next();
-//            assoc.setNeoSession(neoSession);
-////            NeoRootNode rootNode = (NeoRootNode) assoc.getRootNode();
-////            if (rootNode.getNeoId() != null) {
-////                neoSession.load(NeoRootNode.class, rootNode.getNeoId(), 2);
-////            }
-//        }
-
         return this.associations;
     }
 

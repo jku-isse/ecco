@@ -23,17 +23,18 @@ public class NeoNode extends NeoEntity implements Node, Node.Op {
 	private boolean unique = true;
 
     // incoming from parent, but does not work
-    @Relationship(type = "hasChildrenNd", direction = Relationship.INCOMING)
-	private ArrayList<Op> children = new ArrayList<>();
-
-    // no incoming from NA
-    @Relationship(type = "hasDataAf")
-	private NeoArtifact.Op<?> artifact;
+    @Relationship(type = "hasChildrenNd", direction = Relationship.OUTGOING)
+	private List<Op> children = new ArrayList<>();
 
     // this really is a problem! -why?
-	//@Relationship(type = "hasChildrenNd", direction = Relationship.OUTGOING)
-	@Transient
+	//@Transient
+	@Relationship(type = "hasChildrenNd", direction = Relationship.INCOMING)
 	private Op parent;
+
+
+	// no incoming from NA
+	@Relationship(type = "hasDataAf")
+	private Artifact.Op<?> artifact;
 
 	public NeoNode() {}
 

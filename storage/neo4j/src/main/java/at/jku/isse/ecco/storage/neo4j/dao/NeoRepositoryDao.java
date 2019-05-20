@@ -1,20 +1,16 @@
 package at.jku.isse.ecco.storage.neo4j.dao;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.RepositoryDao;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.domain.*;
-import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.RootNode;
 import com.google.inject.Inject;
 import org.neo4j.ogm.session.LoadStrategy;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.stream.Collectors;
 
 
 public class NeoRepositoryDao extends NeoAbstractGenericDao implements RepositoryDao {
@@ -33,7 +29,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 
 		neoSession.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
 		NeoRepository repository = neoSession.load(NeoRepository.class, 0L);
-		//neoSession.setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
+		neoSession.setLoadStrategy(LoadStrategy.PATH_LOAD_STRATEGY);
 		if (repository == null) {
 			NeoRepository repo = new NeoRepository(this.transactionStrategy);
 			return repo;
@@ -53,19 +49,34 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 			}
 
 			/** load associations */
-			neoSession.loadAll(NeoAssociation.class, 3);
-			Iterator<NeoAssociation.Op> it = repository.getAssociations().iterator();
-			while(it.hasNext()) {
-				NeoAssociation.Op actAssoc =  it.next();
-				NeoRootNode actRootNode = (NeoRootNode) actAssoc.getRootNode();
-				NeoRootNode load = neoSession.load(NeoRootNode.class, actRootNode.getNeoId(), 3);
+			neoSession.loadAll(NeoAssociation.class, 4);
+			neoSession.loadAll(NeoNode.class, 2);
 
-				System.out.println();
-//            NeoRootNode rootNode = (NeoRootNode) assoc.getRootNode();
-//            if (rootNode.getNeoId() != null) {
-//                neoSession.load(NeoRootNode.class, rootNode.getNeoId(), 2);
-//            }
-			}
+			/** load all */
+			neoSession.loadAll(NeoArtifact.class, 2);
+//			neoSession.loadAll(NeoArtifactReference.class, 2);
+//			neoSession.loadAll(NeoAssociationCounter.class, 2);
+//			neoSession.loadAll(NeoCommit.class, 2);
+//			neoSession.loadAll(NeoCondition.class, 2);
+//			neoSession.loadAll(NeoConfiguration.class, 2);
+//			Collection<NeoFeature> neoFeatures = neoSession.loadAll(NeoFeature.class, 2);
+//			neoSession.loadAll(NeoFeatureRevision.class, 2);
+			Collection<NeoModule> neoModules = neoSession.loadAll(NeoModule.class, 4);
+//			neoSession.loadAll(NeoModuleCounter.class, 2);
+//			neoSession.loadAll(NeoModuleRevision.class, 2);
+//			neoSession.loadAll(NeoPartialOrderGraph.class, 2);
+//			neoSession.loadAll(NeoPartialOrderGraphNode.class, 2);
+//			neoSession.loadAll(NeoRemote.class, 2);
+//			neoSession.loadAll(NeoVariant.class, 2);
+
+//			Iterator<NeoAssociation.Op> it = repository.getAssociations().iterator();
+//			while(it.hasNext()) {
+//				NeoAssociation.Op actAssoc =  it.next();
+//				NeoRootNode actRootNode = (NeoRootNode) actAssoc.getRootNode();
+//				NeoRootNode load = neoSession.load(NeoRootNode.class, actRootNode.getNeoId(), 3);
+//
+//				System.out.println();
+//			}
 
 			return repository;
 		}

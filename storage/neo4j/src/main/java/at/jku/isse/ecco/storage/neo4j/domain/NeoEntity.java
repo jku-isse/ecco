@@ -16,16 +16,4 @@ public abstract class NeoEntity {
     public Long getNeoId() {
         return neoId;
     }
-
-    private Session neoSession;
-
-    @Transient
-    public Session getNeoSession() {
-        return neoSession;
-    }
-
-    @Transient
-    public void setNeoSession(Session neoSession) {
-        this.neoSession = neoSession;
-    }
 }
