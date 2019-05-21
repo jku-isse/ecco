@@ -6,7 +6,7 @@ import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
-import junit.framework.Assert;
+import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -77,10 +77,10 @@ public class TreesTest {
 	 *
 	 * @return Root of the tree.
 	 */
-	public Node.Op createTestTree1() {
+	private Node.Op createTestTree1() {
 		EntityFactory ef = new MemEntityFactory();
 
-		RootNode root = ef.createRootNode();
+		RootNode.Op root = ef.createRootNode();
 
 		// first level
 		Node.Op n00 = ef.createNode(new TestArtifactData("00"));
@@ -133,10 +133,10 @@ public class TreesTest {
 		return root;
 	}
 
-	public Node.Op createTestTree2() {
+	private Node.Op createTestTree2() {
 		EntityFactory ef = new MemEntityFactory();
 
-		RootNode root = ef.createRootNode();
+		RootNode.Op root = ef.createRootNode();
 
 		// first level
 		Node.Op n00 = ef.createNode(new TestArtifactData("00"));

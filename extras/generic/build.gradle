@@ -1,0 +1,20 @@
+
+ecco.adapter = true
+
+dependencies {
+	compile('org.antlr:antlr4:4.5.1-1')
+
+	compile('org.apache.commons:commons-lang3:3.3.2')
+	compile('org.apache.commons:commons-collections4:4.0')
+
+	compile('com.google.code.gson:gson:2.6.2')
+
+	compile project(':at.jku.isse.ecco.base')
+	compile project(':at.jku.isse.ecco.service')
+
+	testCompile project(':at.jku.isse.ecco.perst')
+}
+
+ospackage {
+	requires('at.jku.isse.ecco.base', version, EQUAL)
+}

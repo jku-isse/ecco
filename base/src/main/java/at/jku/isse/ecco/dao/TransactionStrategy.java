@@ -1,18 +1,21 @@
 package at.jku.isse.ecco.dao;
 
-import at.jku.isse.ecco.EccoException;
-
 public interface TransactionStrategy {
 
-	public void open() throws EccoException;
+	public enum TRANSACTION {
+		READ_ONLY, READ_WRITE
+	}
 
-	public void close() throws EccoException;
+
+	public void open();
+
+	public void close();
 
 
-	public void begin() throws EccoException;
+	public void begin(TRANSACTION transaction);
 
-	public void end() throws EccoException;
+	public void end();
 
-	public void rollback() throws EccoException;
+	public void rollback();
 
 }

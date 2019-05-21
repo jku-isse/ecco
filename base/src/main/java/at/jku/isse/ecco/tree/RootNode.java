@@ -5,7 +5,7 @@ import at.jku.isse.ecco.core.Association;
 /**
  * Public interface for the root node of an artifact tree containing a reference to the association containing the tree.
  */
-public interface RootNode extends Node, Node.Op {
+public interface RootNode extends Node {
 
 	/**
 	 * Private interface for root nodes.

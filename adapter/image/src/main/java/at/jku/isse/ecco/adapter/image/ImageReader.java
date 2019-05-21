@@ -1,18 +1,17 @@
 package at.jku.isse.ecco.adapter.image;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -39,21 +38,16 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return ImagePlugin.class.getName();
 	}
 
-	private static final String[] typeHierarchy = new String[]{"image"};
+	private static Map<Integer, String[]> prioritizedPatterns;
 
-	@Override
-	public String[] getTypeHierarchy() {
-		return typeHierarchy;
+	static {
+		prioritizedPatterns = new HashMap<>();
+		prioritizedPatterns.put(1, new String[]{"**.png", "**.jpg", "**.bmp", "**.gif", "**.jpeg"});
 	}
 
 	@Override
-	public boolean canRead(Path path) {
-		// TODO: actually check if file is an image
-		String lowerCaseFileName = path.getFileName().toString().toLowerCase();
-		if (!Files.isDirectory(path) && Files.isRegularFile(path) && lowerCaseFileName.endsWith(".jpg") || lowerCaseFileName.endsWith(".jpeg") || lowerCaseFileName.endsWith(".gif") || lowerCaseFileName.endsWith(".png"))
-			return true;
-		else
-			return false;
+	public Map<Integer, String[]> getPrioritizedPatterns() {
+		return Collections.unmodifiableMap(prioritizedPatterns);
 	}
 
 	@Override
@@ -70,14 +64,19 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			try {
 				Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-				Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+				Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
 				nodes.add(pluginNode);
 
 				final BufferedImage image = ImageIO.read(resolvedPath.toFile());
+				if (image == null)
+					throw new EccoException("Could not read image: " + resolvedPath);
 				pluginNode.addChild(parseImage(image));
 
+				pluginNode.addChild(this.entityFactory.createNode(new ImageArtifactData(new int[]{image.getType()}, "TYPE")));
+				pluginNode.addChild(this.entityFactory.createNode(new ImageArtifactData(new int[]{image.getTransparency()}, "TRANSPARENCY")));
+
+				// TODO: also store other image properties like global background color and metadata!
 				System.out.println(image.getColorModel());
-				System.out.println(image.getType());
 			} catch (IOException e) {
 				throw new EccoException("Could not read the image: " + resolvedPath, e);
 			}

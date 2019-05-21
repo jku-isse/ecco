@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui.view.detail;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -106,7 +106,7 @@ public class RemoteDetailView extends BorderPane {
 			for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
 				TreeItem<FeatureInfo> featureTreeItem = new TreeItem<>();
 				featureTreeItem.setValue(new FeatureInfo(feature, null));
-				for (FeatureVersion featureVersion : feature.getVersions()) {
+				for (FeatureRevision featureVersion : feature.getRevisions()) {
 					TreeItem<FeatureInfo> featureVersionTreeItem = new TreeItem<>();
 					featureVersionTreeItem.setValue(new FeatureInfo(feature, featureVersion));
 					featureTreeItem.getChildren().add(featureVersionTreeItem);
@@ -129,10 +129,10 @@ public class RemoteDetailView extends BorderPane {
 
 	public static class FeatureInfo {
 		private Feature feature;
-		private FeatureVersion featureVersion;
+		private FeatureRevision featureVersion;
 		private SimpleBooleanProperty sbp;
 
-		private FeatureInfo(Feature feature, FeatureVersion featureVersion) {
+		private FeatureInfo(Feature feature, FeatureRevision featureVersion) {
 			this.feature = feature;
 			this.featureVersion = featureVersion;
 			this.sbp = new SimpleBooleanProperty(true);
@@ -142,7 +142,7 @@ public class RemoteDetailView extends BorderPane {
 			return this.feature;
 		}
 
-		public FeatureVersion getFeatureVersion() {
+		public FeatureRevision getFeatureVersion() {
 			return this.featureVersion;
 		}
 

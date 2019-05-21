@@ -8,6 +8,7 @@ import java.util.function.Supplier;
 
 public class Simple {
 
+    private String i = "Test";
     private String o;
 
     public Simple(String s) throws IllegalArgumentException {
@@ -20,7 +21,7 @@ public class Simple {
     }
 
     public <T, R extends Comparable<T>> void test(List<Simple> uneedded, T... f) throws Exception {
-        Supplier<String> a = (Serializable & Supplier<String>) () -> "TEST";
+        final Supplier<String> a = (Serializable & Supplier<String>) () -> "TEST";
         Function<String, String> c = b -> b;
         synchronized (a) {
             for (int i = 0, y = 2; i < y; i += 2, y++) {

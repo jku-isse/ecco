@@ -2,7 +2,7 @@ package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.ArrayList;
@@ -15,8 +15,8 @@ public class Checkout {
 	private Configuration configuration;
 	private Collection<Warning> warnings;
 
-	private Set<Module> missing;
-	private Set<Module> surplus;
+	private Set<ModuleRevision> missing;
+	private Set<ModuleRevision> surplus;
 
 	private Collection<Artifact<?>> orderWarnings;
 
@@ -58,11 +58,11 @@ public class Checkout {
 		return this.warnings;
 	}
 
-	public Set<Module> getSurplus() {
+	public Set<ModuleRevision> getSurplus() {
 		return this.surplus;
 	}
 
-	public Set<Module> getMissing() {
+	public Set<ModuleRevision> getMissing() {
 		return this.missing;
 	}
 

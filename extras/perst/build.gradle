@@ -1,0 +1,39 @@
+
+ecco.set("storage", true)
+
+publishing {
+	publications {
+		eccoMaven(MavenPublication) {
+			pom.withXml {
+				Node dependenciesNode = asNode().dependencies[0];
+				Node dependencyNode = dependenciesNode.appendNode('dependency');
+				Node groupIdNode = dependencyNode.appendNode('groupId','org.garret.perst');
+				Node artifactIdNode = dependencyNode.appendNode('artifactId','perst');
+				Node versionNode = dependencyNode.appendNode('version','4.38');
+				Node scopeNode = dependencyNode.appendNode('scope','compile');
+			}
+		}
+		perstMaven(MavenPublication) {
+			groupId 'org.garret.perst'
+			artifactId 'perst'
+			version '4.38'
+			artifact file('lib/perst-4.38.jar')
+		}
+	}
+}
+
+dependencies {
+	compile fileTree(dir: 'lib', include: '*.jar')
+
+	compile project(':ecco-base')
+	compile project(':ecco-service')
+
+	testCompile project(':ecco-adapter-file')
+}
+
+ospackage {
+	summary 'Perst database backend for ECCO.'
+	packageDescription 'This package provides a data backend module for ECCO which uses the Perst (http://www.mcobject.com/perst) database.'
+
+	requires('ecco-base', version, EQUAL)
+}

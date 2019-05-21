@@ -1,10 +1,10 @@
 
+ecco.adapter = true
+
 dependencies {
-	//compile fileTree(dir: 'lib', include: '*.jar')
-	compile 'org.eclipse.jdt:org.eclipse.jdt.core:3.11.0'
+	//compile 'com.github.javaparser:javaparser-core:3.14.1'
+	compile 'com.github.javaparser:javaparser-symbol-solver-core:3.5.15'
 
 	compile project(':ecco-base')
 	compile project(':ecco-service')
-
-	testCompile project(':ecco-storage-perst')
 }

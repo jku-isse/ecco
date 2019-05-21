@@ -1,18 +1,23 @@
 package at.jku.isse.ecco.artifact;
 
-import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
 /**
  * Public interface for artifacts that stores the actual data and references to other artifacts.
  *
  * @param <DataType> The type of the data object stored in the artifact.
  */
-public interface Artifact<DataType extends ArtifactData> {
+public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 	/**
 	 * Setting this property indicates that the artifact's file representation was not modified since it was written.
@@ -33,11 +38,6 @@ public interface Artifact<DataType extends ArtifactData> {
 	 * This property is set by {@link at.jku.isse.ecco.util.Trees#map(Node.Op, Node.Op)} and contains another artifact from another tree that maps to this one.
 	 */
 	public static final String PROPERTY_MAPPED_ARTIFACT = "mapped";
-
-	/**
-	 * A constant indicating that an artifact does not yet have a sequence number assigned.
-	 */
-	public static final int UNASSIGNED_SEQUENCE_NUMBER = -1;
 
 
 	/**
@@ -88,17 +88,17 @@ public interface Artifact<DataType extends ArtifactData> {
 
 	/**
 	 * There are two types of artifacts: ordered and unordered.
-	 * <p>
-	 * <i>Unordered</i> artifacts do not contain a sequence graph (see {@link at.jku.isse.ecco.sg.SequenceGraph}) and therefore its children (or more accurately the children of nodes containing the unordered artifact) will not be assigned a sequence number.
+	 *
+	 * <i>Unordered</i> artifacts do not contain a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) and therefore its children (or more accurately the children of nodes containing the unordered artifact) will not be assigned a sequence number.
 	 * As a consequence of this, and because the children of an artifact must be unique, the child artifacts of an unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number (see {@link at.jku.isse.ecco.artifact.Artifact#equals(Object)}.
 	 * In other words, no two child artifacts can contain equal data objects.
-	 * <p>
-	 * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.sg.SequenceGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
+	 *
+	 * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
 	 * This process is called <i>sequencing</i> of an ordered artifact. During this process the children of the ordered artifact are assigned sequence numbers based on their order of occurrence.
 	 * This assigned sequence number is used as an additional means of identifying the child artifacts. This makes it possible to have child artifacts containing equal data objects but different sequence numbers.
 	 * This is for example necessary when the child artifacts represent statements in a programming language: statements are not unique, the same statement can appear multiple times in a sequence of statements, and the position of a statement in the sequence matters. This is what the sequence number is used for.
 	 *
-	 * @return
+	 * @return True if the node is ordered, false otherwise.
 	 */
 	public boolean isOrdered();
 
@@ -111,14 +111,18 @@ public interface Artifact<DataType extends ArtifactData> {
 	 */
 	public boolean isSequenced();
 
-	public SequenceGraph getSequenceGraph();
+	public PartialOrderGraph getSequenceGraph();
+
+
+	public boolean equalsIgnoreSequenceNumber(Object obj);
 
 	/**
-	 * Returns the assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.artifact.Artifact#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
+	 * Returns the assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.pog.PartialOrderGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
 	 *
-	 * @return The assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.artifact.Artifact#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
+	 * @return The assigned sequence number in case this artifact is the child of an ordered artifact that has already been sequenced, or {@link at.jku.isse.ecco.pog.PartialOrderGraph#UNASSIGNED_SEQUENCE_NUMBER} otherwise.
 	 */
 	public int getSequenceNumber();
+
 
 	/**
 	 * Returns the one unique node from the artifact tree that contains this artifact.
@@ -155,31 +159,62 @@ public interface Artifact<DataType extends ArtifactData> {
 
 	// PROPERTIES
 
+	public Map<String, Object> getProperties();
+
 	/**
 	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
 	 * <p>
 	 * These properties are volatile, i.e. they are not persisted!
 	 *
 	 * @param name of the property that should be retrieved
+	 * @param <T>  The type of the property.
 	 * @return An optional which contains the actual property or nothing.
 	 */
-	public <T> Optional<T> getProperty(String name);
+	public default <T> Optional<T> getProperty(final String name) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+
+		Optional<T> result = Optional.empty();
+		if (this.getProperties().containsKey(name)) {
+			final Object obj = this.getProperties().get(name);
+			try {
+				@SuppressWarnings("unchecked") final T item = (T) obj;
+				result = Optional.of(item);
+			} catch (final ClassCastException e) {
+				System.err.println("Expected a different type of the property.");
+			}
+		}
+
+		return result;
+	}
 
 	/**
 	 * Adds a new property to this artifact. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
 	 * <p>
 	 * These properties are volatile, i.e. they are not persisted!
 	 *
-	 * @param property that should be added
+	 * @param name     The name of the property.
+	 * @param property The object to be stored as a property.
+	 * @param <T>      The type of the property.
 	 */
-	public <T> void putProperty(String name, T property);
+	public default <T> void putProperty(final String name, final T property) {
+		checkNotNull(name);
+		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
+		checkNotNull(property);
+
+		this.getProperties().put(name, property);
+	}
 
 	/**
 	 * Removes the property with the given name. If the name could not be found in the map it does nothing.
 	 *
 	 * @param name of the property that should be removed
 	 */
-	public void removeProperty(String name);
+	public default void removeProperty(String name) {
+		checkNotNull(name);
+
+		this.getProperties().remove(name);
+	}
 
 
 	// OPERATION INTERFACE
@@ -210,36 +245,102 @@ public interface Artifact<DataType extends ArtifactData> {
 		 *
 		 * @param sequenceGraph The sequence graph.
 		 */
-		public void setSequenceGraph(SequenceGraph.Op sequenceGraph);
+		public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph);
+
 
 		/**
 		 * Sets the sequence number of the artifact. This is used by the sequence graph.
 		 *
-		 * @param sequenceNumber
+		 * @param sequenceNumber The sequence number to assign to this artifact.
 		 */
 		public void setSequenceNumber(int sequenceNumber);
 
 
 		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
 
-		public void checkConsistency();
+		public default void checkConsistency() {
+			for (ArtifactReference.Op uses : this.getUses()) {
+				if (uses.getSource() != this)
+					throw new EccoException("Source of uses artifact reference must be identical to artifact.");
+				for (ArtifactReference.Op usedBy : uses.getTarget().getUsedBy()) {
+					if (usedBy.getSource() == this) {
+						if (uses != usedBy)
+							throw new EccoException("Artifact reference instance must be identical in source and target.");
+					}
+				}
+			}
+		}
 
-		public boolean hasReplacingArtifact();
+		public default boolean hasReplacingArtifact() {
+			return this.<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent();
+		}
 
-		public Op getReplacingArtifact();
+		public default Artifact.Op<?> getReplacingArtifact() {
+			if (this.hasReplacingArtifact())
+				return this.<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+			else
+				return null;
+		}
 
-		public void setReplacingArtifact(Op replacingArtifact);
+		public default void setReplacingArtifact(Artifact.Op<?> replacingArtifact) {
+			checkNotNull(replacingArtifact);
+			this.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, replacingArtifact);
+		}
 
-		public void updateArtifactReferences();
+		public default void updateArtifactReferences() {
+			// update "uses" artifact references
+			for (ArtifactReference.Op uses : this.getUses()) {
+				if (uses.getSource() != this)
+					throw new EccoException("Source of uses artifact reference must be identical to artifact.");
 
-		public boolean uses(Op target);
+				if (uses.getTarget().hasReplacingArtifact()) {
+					Artifact.Op<?> replacingArtifact = uses.getTarget().getReplacingArtifact();
+					if (replacingArtifact != null) {
+						uses.setTarget(replacingArtifact);
+						if (!replacingArtifact.getUsedBy().contains(uses)) {
+							replacingArtifact.addUsedBy(uses);
+						}
+					}
+				}
+			}
 
-		public void addUses(Op artifact);
+			// update "used by" artifact references
+			for (ArtifactReference.Op usedBy : this.getUsedBy()) {
+				if (usedBy.getTarget() != this)
+					throw new EccoException("Target of usedBy artifact reference must be identical to artifact.");
 
-		public void addUses(Op artifact, String type);
+				if (usedBy.getSource().hasReplacingArtifact()) {
+					Artifact.Op<?> replacingArtifact = usedBy.getSource().getReplacingArtifact();
+					if (replacingArtifact != null) {
+						usedBy.setSource(replacingArtifact);
+						if (!replacingArtifact.getUses().contains(usedBy)) {
+							replacingArtifact.addUses(usedBy);
+						}
+					}
+				}
+			}
+
+			// update sequence graph symbols (which are artifacts)
+			if (this.getSequenceGraph() != null) {
+				this.getSequenceGraph().updateArtifactReferences();
+			}
+		}
+
+		public default boolean uses(Artifact.Op<?> target) {
+			for (ArtifactReference.Op uses : this.getUses()) {
+				if (uses.getTarget() == target) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public void addUses(Artifact.Op artifact);
+
+		public void addUses(Artifact.Op artifact, String type);
 
 
-		public SequenceGraph.Op getSequenceGraph();
+		public PartialOrderGraph.Op getSequenceGraph();
 
 
 		/**
@@ -264,13 +365,11 @@ public interface Artifact<DataType extends ArtifactData> {
 		@Override
 		public Collection<ArtifactReference.Op> getUsedBy();
 
-		public Map<String, Object> getProperties();
-
 		@Override
 		public Node.Op getContainingNode();
 
 
-		public SequenceGraph.Op createSequenceGraph();
+		public PartialOrderGraph.Op createSequenceGraph();
 
 		// TODO: possibly remove these:
 

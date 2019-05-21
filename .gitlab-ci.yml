@@ -1,17 +1,12 @@
 variables:
   GIT_DEPTH: "3"
 
-  NATIVE_INSTALL_DIR: "native_install"
-  NATIVE_INSTALL_UBUNTU_DIR: "native_install_ubuntu"
-  NATIVE_INSTALL_MINGW_DIR: "native_install_mingw"
-  NATIVE_TEST_DIR: "native_tests"
-  NATIVE_TEST_UBUNTU_DIR: "native_tests_ubuntu"
-  WEB_INSTALL_DIR: "web_install"
-
   BUILD_DIR: "build"
-  MAVEN_DIR: "$BUILD_DIR/maven2"
   JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
+  MAVEN_DIR: "$BUILD_DIR/maven2"
+  PAGE_DIR: "$BUILD_DIR/page"
   DISTRIBUTION_DIR: "$BUILD_DIR/distributions"
+  ZIP_DIR: "$BUILD_DIR/distributions/zip"
   #RPM_DIR: "$DISTRIBUTION_DIR/rpm"
   #DEB_DIR: "$DISTRIBUTION_DIR/deb"
   RPM_DIR: "$BUILD_DIR/distributions/rpm"
@@ -35,22 +30,23 @@ build:fedora:
     - chmod +x ./gradlew
     - ./gradlew build
     - ./gradlew combinedjavadoc
-    - ./gradlew combinedrpm
-    - ./gradlew combineddeb
+    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - ./gradlew combinedWindowsZip
     - ./gradlew combinedLinuxZip
-    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
-    - ./gradlew publishPerstMavenPublicationToRootEccoRepository
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
     - ./gradlew html
-    - createrepo_c $CI_PROJECT_DIR/$RPM_DIR
-    - ls -la $CI_PROJECT_DIR/$RPM_DIR/.
-  #only:
-  #  - master
+    - ./gradlew page
+    - createrepo_c $RPM_DIR
+    - ls -la $RPM_DIR/.
+  only:
+    - master
+    - develop
   when: on_success
-  allow_failure: true
-  #artifacts:
-  #  paths:
-  #    - $RPM_DIR
+  allow_failure: false
+  artifacts:
+    paths:
+      - $RPM_DIR
 
 
 build:ubuntu:
@@ -61,25 +57,29 @@ build:ubuntu:
     - chmod +x ./gradlew
     - ./gradlew build
     - ./gradlew combinedjavadoc
-    - ./gradlew combinedrpm
-    - ./gradlew combineddeb
+    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
     - ./gradlew combinedWindowsZip
     - ./gradlew combinedLinuxZip
-    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
-    - ./gradlew publishPerstMavenPublicationToRootEccoRepository
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
     - ./gradlew html
-    - ls -la $CI_PROJECT_DIR/$DEB_DIR/.
-  #only:
-  #  - master
+    - ./gradlew page
+    - mkdir $ZIP_DIR/
+    - cp $DISTRIBUTION_DIR/*.zip $ZIP_DIR/
+    - ls -la $DEB_DIR/.
+  only:
+    - master
+    - develop
   when: on_success
   allow_failure: false
   artifacts:
     paths:
-      - $MAVEN_DIR
       - $JAVADOC_DIR
-      - $DISTRIBUTION_DIR
+      - $MAVEN_DIR
+      - $ZIP_DIR
       - $DEB_DIR
-      - $BUILD_DIR/index.html
+      - $PAGE_DIR
+      - $BUILD_DIR/downloads.html
 
 
 pages:
@@ -96,13 +96,15 @@ pages:
     - cp -r $JAVADOC_DIR/. public/doc/
     - cp -r $RPM_DIR/. public/rpm/
     - cp -r $DEB_DIR/. public/deb/
-    - cp $DISTRIBUTION_DIR/*.zip public/
-    - cp $BUILD_DIR/index.html public/
+    - cp -r $ZIP_DIR/. public/
+    - cp -r $PAGE_DIR/. public/
+    - cp $BUILD_DIR/downloads.html public/
     - cd public
     - pwd
     - ls -la
-  #only:
-  #  - master
+  only:
+    - master
+    - develop
   when: on_success
   allow_failure: false
   dependencies:

@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.service.test;
 
-import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
-import at.jku.isse.ecco.storage.perst.PerstModule;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
+import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
 import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
+import at.jku.isse.ecco.storage.mem.MemModule;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.*;
 import com.google.inject.name.Names;
@@ -85,7 +85,7 @@ public class DispatcherTest {
 		for (ArtifactPlugin ap : ArtifactPlugin.getArtifactPlugins()) {
 			modules.add(ap.getModule());
 		}
-		modules.addAll(Arrays.asList(new DispatchModule(), new PerstModule(), repositoryDirModule, connectionStringModule));
+		modules.addAll(Arrays.asList(new DispatchModule(), new MemModule(), repositoryDirModule, connectionStringModule));
 
 		// create injector
 		Injector injector = Guice.createInjector(modules);

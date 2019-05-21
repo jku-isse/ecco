@@ -10,13 +10,13 @@
 <a href="maven2">https://llinsbauer.gitlab.io/ecco/maven2/</a>
 <h3>Javadoc</h3>
 <a href="doc">https://llinsbauer.gitlab.io/ecco/doc/</a>
-<h3>Fedora PPA</h3>
+<h3>Fedora Repository</h3>
 <a href="rpm">https://llinsbauer.gitlab.io/ecco/rpm/</a><br/>
 <h3>RPMs</h3>
 <% rpms.each { rpm -> %>
 <a href="rpm/${rpm}">https://llinsbauer.gitlab.io/ecco/rpm/${rpm}</a><br/>
 <% } %>
-<h3>Ubuntu PPA</h3>
+<h3>Ubuntu Repository</h3>
 <a href="deb">https://llinsbauer.gitlab.io/ecco/deb/</a><br/>
 <h3>DEBs</h3>
 <% debs.each { deb -> %>

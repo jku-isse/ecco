@@ -2,11 +2,10 @@ package at.jku.isse.ecco;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.sg.SequenceGraph;
+import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 
@@ -19,7 +18,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 
 public class EccoUtil {
 
@@ -30,10 +28,11 @@ public class EccoUtil {
 	public static Collection<Feature> deepCopyFeatures(Collection<? extends Feature> features, EntityFactory entityFactory) {
 		Collection<Feature> copiedFeatures = new ArrayList<>();
 		for (Feature feature : features) {
-			Feature copiedFeature = entityFactory.createFeature(feature.getId(), feature.getName(), feature.getDescription());
+			Feature copiedFeature = entityFactory.createFeature(feature.getId(), feature.getName());
+			copiedFeature.setDescription(feature.getDescription());
 
-			for (FeatureVersion featureVersion : feature.getVersions()) {
-				FeatureVersion copiedFeatureVersion = copiedFeature.addVersion(featureVersion.getId());
+			for (FeatureRevision featureVersion : feature.getRevisions()) {
+				FeatureRevision copiedFeatureVersion = copiedFeature.addRevision(featureVersion.getId());
 				copiedFeatureVersion.setDescription(featureVersion.getDescription());
 			}
 
@@ -45,50 +44,11 @@ public class EccoUtil {
 
 
 	/**
-	 * Trims all sequence graphs in the given set of associations by removing all artifacts that are not part of the given associations.
-	 * Note:
-	 * Should being part of an association in this case means solid as well as not solid?
-	 * While it should not happen that an artifact is not contained in any of the associations solid (because that would violate dependencies) it could theoretically happen.
-	 *
-	 * @param associations Associations that contain artifacts to retain in the sequence graphs.
-	 */
-	public static void trimSequenceGraph(Collection<? extends Association.Op> associations) {
-		for (Association.Op association : associations) {
-			EccoUtil.trimSequenceGraphRec(associations, association.getRootNode());
-		}
-	}
-
-	private static void trimSequenceGraphRec(Collection<? extends Association.Op> associations, Node.Op node) {
-
-		if (node.isUnique() && node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
-			// get all symbols from sequence graph
-			Collection<? extends Artifact.Op<?>> symbols = node.getArtifact().getSequenceGraph().getSymbols();
-
-			// remove symbols that are not contained in the given associations
-			Iterator<? extends Artifact.Op<?>> symbolsIterator = symbols.iterator();
-			while (symbolsIterator.hasNext()) {
-				Artifact<?> symbol = symbolsIterator.next();
-				if (!associations.contains(symbol.getContainingNode().getContainingAssociation())) {
-					symbolsIterator.remove();
-				}
-			}
-
-			// trim sequence graph
-			node.getArtifact().getSequenceGraph().trim(symbols);
-		}
-
-		for (Node.Op child : node.getChildren()) {
-			EccoUtil.trimSequenceGraphRec(associations, child);
-		}
-	}
-
-
-	/**
 	 * Creates a deep copy of a tree using the given entity factory.
 	 *
-	 * @param node
-	 * @param entityFactory
-	 * @return
+	 * @param node          The tree to copy.
+	 * @param entityFactory The entity factory to use for creating tree nodes and other necessary objects for the copied tree.
+	 * @return The copied tree.
 	 */
 	public static Node.Op deepCopyTree(Node.Op node, EntityFactory entityFactory) {
 		Node.Op node2 = EccoUtil.deepCopyTreeRec(node, entityFactory);
@@ -128,8 +88,8 @@ public class EccoUtil {
 
 			// sequence graph
 			if (artifact.getSequenceGraph() != null && firstMatch) {
-				SequenceGraph.Op sequenceGraph = artifact.getSequenceGraph();
-				SequenceGraph.Op sequenceGraph2 = artifact2.createSequenceGraph();
+				PartialOrderGraph.Op sequenceGraph = artifact.getSequenceGraph();
+				PartialOrderGraph.Op sequenceGraph2 = artifact2.createSequenceGraph();
 
 				artifact2.setSequenceGraph(sequenceGraph2);
 

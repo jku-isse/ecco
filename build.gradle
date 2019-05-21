@@ -6,18 +6,29 @@ allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
 	group = 'at.jku.isse.ecco'
-	//version = '0.1.6'
-	version = '0.1.6-' + new java.text.SimpleDateFormat("YYYY-MM-dd", Locale.ENGLISH).format(new Date())
+	//version = '0.1.7'
+	version = '0.1.7-' + new java.text.SimpleDateFormat("YYYY-MM-dd", Locale.ENGLISH).format(new Date())
 	//version = new java.text.SimpleDateFormat("YYYY.M.d", Locale.ENGLISH).format(new Date())
 }
 
 subprojects {
+	ext {
+		ecco = {
+			adapter = false
+			set("storage", false)
+		}
+	}
+
 	apply plugin: 'nebula.ospackage'
 	apply plugin: 'java'
 	apply plugin: 'maven-publish'
 
 	sourceCompatibility = 1.8
 	targetCompatibility = 1.8
+
+	compileJava {
+		//options.compilerArgs << '-Xlint:unchecked'
+	}
 
 	repositories {
 		mavenCentral()
@@ -274,20 +285,45 @@ task combinedWindowsZip(type: Zip, group: 'packaging') {
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+
 task html(type: Copy, dependsOn: [combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
 	from "."
 	into "$buildDir"
 	include "index.html.template"
-	rename { file -> 'index.html' }
-	//expand(project: project, rpms: fileTree(dir: combinedrpm.outputs.files[0], include: '*.rpm').files.name, debs: fileTree(dir: combinedrpm.outputs.files[0], include: '*.deb').files.name)
+	rename { file -> 'downloads.html' }
 	expand(project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
 }
+
+
+task page_static(type: Copy) {
+	from ("page") {
+		include "**/*"
+		exclude "*.html"
+	}
+	into "$buildDir/page"
+}
+
+def _include = { String filename, binding ->
+	def engine = new groovy.text.SimpleTemplateEngine()
+	def template = engine.createTemplate(new File("page", filename).getText())
+	return template.make(binding).toString();
+}
+
+task page(type: Copy, dependsOn: [page_static, combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
+	from ("page") {
+		include "**/index.html"
+	}
+	into "$buildDir/page"
+	expand(include: _include, baseUrl: "/ecco/", project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
+}
+
 
 idea {
 	project {
 		languageLevel = '1.8'
 	}
 }
+
 
 task wrapper(type: Wrapper) {
 	gradleVersion = '4.4'

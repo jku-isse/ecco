@@ -1,12 +1,12 @@
 package at.jku.isse.ecco.adapter.java;
 
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.java.jdtast.Jdt2JavaAstVisitor;
 import at.jku.isse.ecco.adapter.java.jdtast.ReferencedAstVisitor;
 import at.jku.isse.ecco.adapter.java.jdtast.ReferencingAstVisitor;
+import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.google.common.io.Files;
 import org.eclipse.jdt.core.dom.*;
@@ -20,7 +20,7 @@ public class JDTFileAstRequestor extends FileASTRequestor {
     private final Path sourcesPath;
     private final Set<Node.Op> nodeSet = new HashSet<>();
     private final Map<IBinding, Artifact.Op<JavaTreeArtifactData>> referenced = new IdentityHashMap<>();
-    private final List<JDTFileAstRequestor.Pair> referencing = new LinkedList<>();
+    private final List<Pair> referencing = new LinkedList<>();
 
     public Map<IBinding, Artifact.Op<JavaTreeArtifactData>> getReferenced() {
         return referenced;

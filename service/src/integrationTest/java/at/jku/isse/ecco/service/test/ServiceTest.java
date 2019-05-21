@@ -41,14 +41,14 @@ public class ServiceTest {
 		System.out.println("Commit 1:");
 		service.commit();
 		for (Association a : service.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 		}
 
 		System.out.println("Commit 2:");
 		service.setBaseDir(inputDir.resolve(Paths.get("V2")));
 		service.commit();
 		for (Association a : service.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 		}
 
 		service.close();
@@ -66,14 +66,14 @@ public class ServiceTest {
 		parentService.commit();
 		System.out.println("OUTPUT1:");
 		for (Association a : parentService.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 		}
 		parentService.close();
 
 		parentService.open();
 		System.out.println("OUTPUT2:");
 		for (Association a : parentService.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 		}
 		parentService.close();
 
@@ -83,7 +83,7 @@ public class ServiceTest {
 		service.fork(outputDir.resolve(Paths.get("parent_repo/.ecco")));
 		System.out.println("OUTPUT3:");
 		for (Association a : service.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 		}
 		service.close();
 	}
@@ -120,7 +120,7 @@ public class ServiceTest {
 		parentService.commit();
 		System.out.println("OUTPUT1:");
 		for (Association a : parentService.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 			a.getRootNode().print();
 		}
 		parentService.close();
@@ -134,7 +134,7 @@ public class ServiceTest {
 		service.pull("origin");
 		System.out.println("OUTPUT2:");
 		for (Association a : service.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 		}
 		service.close();
 	}
@@ -156,8 +156,7 @@ public class ServiceTest {
 
 		System.out.println("OUTPUT:");
 		for (Association a : service2.getRepository().getAssociations()) {
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().toString());
-			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.getPresenceCondition().isEmpty());
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
 		}
 
 		service2.close();

@@ -1,0 +1,353 @@
+<% title = "Showcase" %>
+${include("_header.html", binding.variables)}
+
+<div id="showcase" class="container">
+
+    <!--<h1>Showcase</h1>-->
+
+    <section id="image">
+        <h3>Images</h3>
+
+        <p>This example uses six variants of an image to illustrate ECCO.</p>
+
+	<div class="row">
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_variants/V1.png" target="_blank"><img src="image_variants/V1.png" alt="Variant 1"></a>
+			<div class="caption">
+			<h5>Variant 1</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_variants/V2.png" target="_blank"><img src="image_variants/V2.png" alt="Variant 2"></a>
+			<div class="caption">
+			<h5>Variant 2</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">striped shirt</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_variants/V3.png" target="_blank"><img src="image_variants/V3.png" alt="Variant 3"></a>
+			<div class="caption">
+			<h5>Variant 3</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">jacket</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_variants/V4.png" target="_blank"><img src="image_variants/V4.png" alt="Variant 4"></a>
+			<div class="caption">
+			<h5>Variant 4</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">jacket</span> <span class="label label-default">glasses</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_variants/V5.png" target="_blank"><img src="image_variants/V5.png" alt="Variant 5"></a>
+			<div class="caption">
+			<h5>Variant 5</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">striped shirt</span> <span class="label label-default">jacket</span> <span class="label label-default">glasses</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_variants/V6.png" target="_blank"><img src="image_variants/V9.png" alt="Variant 6"></a>
+			<div class="caption">
+			<h5>Variant 6</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">striped shirt</span> <span class="label label-default">jacket</span> <span class="label label-default">hat</span></p>
+			</div>
+		</div>
+		</div>
+	</div>
+
+	<p>Given these six variants ECCO automatically computes traces.</p>
+
+	<div class="row">
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_traces/person.png" target="_blank"><img src="image_traces/person.png" alt="Trace 1"></a>
+			<div class="caption">
+			<h5>Trace 1</h5>
+			<p class="features"><span class="label label-default">person</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_traces/purpleshirt_nojacket.png" target="_blank"><img src="image_traces/purpleshirt_nojacket.png" alt="Trace 2"></a>
+			<div class="caption">
+			<h5>Trace 2</h5>
+			<p class="features"><span class="label label-default">purple shirt</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_traces/stripedshirt_nojacket.png" target="_blank"><img src="image_traces/stripedshirt_nojacket.png" alt="Trace 3"></a>
+			<div class="caption">
+			<h5>Trace 3</h5>
+			<p class="features"><span class="label label-default">striped shirt</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_traces/jacket.png" target="_blank"><img src="image_traces/jacket.png" alt="Trace 4"></a>
+			<div class="caption">
+			<h5>Trace 4</h5>
+			<p class="features"><span class="label label-default">jacket</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_traces/glasses.png" target="_blank"><img src="image_traces/glasses.png" alt="Trace 5"></a>
+			<div class="caption">
+			<h5>Trace 5</h5>
+			<p class="features"><span class="label label-default">glasses</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_traces/hat.png" target="_blank"><img src="image_traces/hat.png" alt="Trace 6"></a>
+			<div class="caption">
+			<h5>Trace 6</h5>
+			<p class="features"><span class="label label-default">hat</span></p>
+			</div>
+		</div>
+		</div>
+	</div>
+
+	<p>Using these traces ECCO can then compose new variants of the image with a given set of features.</p>
+
+	<div class="row">
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_composed/person_purpleshirt_glasses.png" target="_blank"><img src="image_composed/person_purpleshirt_glasses.png" alt="Composed Variant 1"></a>
+			<div class="caption">
+			<h5>Composed Variant 1</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">glasses</span></p>
+			</div>
+		</div>
+		</div>
+		<div class="col-sm-2 col-md-2">
+		<div class="thumbnail">
+			<a href="image_composed/person_purpleshirt_glasses_hat.png" target="_blank"><img src="image_composed/person_purpleshirt_glasses_hat.png" alt="Composed Variant 2"></a>
+			<div class="caption">
+			<h5>Composed Variant 2</h5>
+			<p class="features"><span class="label label-default">person</span> <span class="label label-default">purple shirt</span> <span class="label label-default">glasses</span> <span class="label label-default">hat</span></p>
+			</div>
+		</div>
+		</div>
+	</div>
+
+    </section>
+
+
+
+
+    <section>
+        <h3>Simple 3D Models</h3>
+
+        <p>STEP models.</p>
+
+        <div class="row">
+            <div class="col-sm-3 col-md-3">
+                <div class="thumbnail">
+                    <a href="step/singleCubeDraht.jpg" target="_blank"><img src="step/singleCubeDraht.jpg" alt="Robot Variant 1: Normal Arm, Normal Base"></a>
+                    <div class="caption">
+                        <h4>3D Variant 1: Right Cube</h4>
+                        <p>The first variant of the 3D model shows a simple cube.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-3 col-md-3">
+                <div class="thumbnail">
+                    <a href="step/cubeLeftDraht.jpg" target="_blank"><img src="step/cubeLeftDraht.jpg" alt="Robot Variant 2: Normal Arm, Greater Base"></a>
+                    <div class="caption">
+                        <h4>3D Variant 2: Right Cube, Left Cube</h4>
+                        <p>The second variant of the 3D model shows two cubes.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-3 col-md-3">
+                <div class="thumbnail">
+                    <a href="step/cubeCylinderDraht.jpg" target="_blank"><img src="step/cubeCylinderDraht.jpg" alt="Robot Variant 3: Smaller Arm, Normal Base"></a>
+                    <div class="caption">
+                        <h4>3D Variant 3: Right Cube, Cylinder</h4>
+                        <p>The third variant of the 3D model shows a cube and a cylinder.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-3 col-md-3">
+                <div class="thumbnail">
+                    <a href="step/composedVariant.jpg" target="_blank"><img src="step/composedVariant.jpg" alt="Robot Variant 3: Smaller Arm, Normal Base"></a>
+                    <div class="caption">
+                        <h4>3D Variant 4: Right Cube, Left Cube, Cylinder</h4>
+                        <p>The newly composed fourth variant of the 3D model contains both cubes and the cylinder.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+
+
+
+    <section>
+        <h3>Robot 3D Models</h3>
+
+        <p><em>Robot</em> is a set of initially three variants of a 3D CAD model of a simple robot.</p>
+
+
+        <div class="row">
+            <div class="col-sm-4 col-md-4">
+                <div class="thumbnail">
+                    <a href="robot/CoreNormalArmNormalBase.jpg" target="_blank"><img src="robot/CoreNormalArmNormalBase.jpg" alt="Robot Variant 1: Normal Arm, Normal Base"></a>
+                    <div class="caption">
+                        <h4>Robot Variant 1: Normal Arm, Normal Base</h4>
+                        <p>The first variant of the robot features a normal sized base and arms of equal length.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-4 col-md-4">
+                <div class="thumbnail">
+                    <a href="robot/CoreNormalArmGreaterBase.jpg" target="_blank"><img src="robot/CoreNormalArmGreaterBase.jpg" alt="Robot Variant 2: Normal Arm, Greater Base"></a>
+                    <div class="caption">
+                        <h4>Robot Variant 2: Normal Arm, Greater Base</h4>
+                        <p>The second variant of the robot features a greater sized base and arms of equal length.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-4 col-md-4">
+                <div class="thumbnail">
+                    <a href="robot/CoreSmallerArmNormalBase.jpg" target="_blank"><img src="robot/CoreSmallerArmNormalBase.jpg" alt="Robot Variant 3: Smaller Arm, Normal Base"></a>
+                    <div class="caption">
+                        <h4>Robot Variant 3: Smaller Arm, Normal Base</h4>
+                        <p>The third variant of the robot features a normal sized base and one shorter arm.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p>The file format of these variants is <a href="${baseUrl}https://en.wikipedia.org/wiki/ISO_10303">STEP</a>. There is currently
+            no plugin for <a href="${baseUrl}">ECCO</a> that supports STEP. However, a plugin exists that applies grammar inference
+            to automatically derive a grammar and construct an ECCO model from sample files. The following shows that ECCO
+            in combination with this plugin already produces useful results even in cases where no specific plugin for certain
+            file types exists. With the first three robot variants as input ECCO can automatically compose a new fourth variant.
+            With a dedicated plugin written specifically for STEP files the result could be improved.</p>
+
+        <div class="row">
+            <div class="col-sm-12 col-md-12">
+                <div class="thumbnail">
+                    <a href="robot/Composed_CoreSmallerArmGreaterBase.jpg" target="_blank"><img src="robot/Composed_CoreSmallerArmGreaterBase.jpg" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <div class="caption">
+                        <h4>Robot Variant 4: Greater Arm, Smaller Base</h4>
+                        <p>The newly composed fourth variant of the robot features a greater sized base and one shorter arm.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+
+    <section id="dpl">
+        <h3>Source Code</h3>
+
+        <p>Java source code of a simple <a href="${baseUrl}https://github.com/llinsbauer/dpl">draw application</a>.</p>
+
+        <div class="row">
+            <div class="col-sm-4 col-md-4">
+                <div class="thumbnail">
+                    <a href="dpl/v1_ss.png" target="_blank"><img src="dpl/v1_ss.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <a href="dpl/v1_code.png" target="_blank"><img src="dpl/v1_code.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <div class="caption">
+                        <h4>Draw Variant 1: Canvas, Line, Wipe</h4>
+                        <p>The first variant of the drawing application that supports a basic drawing canvas, drawing lines
+                            and wiping the canvas clean.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-4 col-md-4">
+                <div class="thumbnail">
+                    <a href="dpl/v2_ss.png" target="_blank"><img src="dpl/v2_ss.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <a href="dpl/v2_code.png" target="_blank"><img src="dpl/v2_code.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <div class="caption">
+                        <h4>Draw Variant 2: Canvas, Line, Color</h4>
+                        <p>The second variant of the drawing application that supports a basic drawing canvas, drawing lines
+                            and choosing a color to draw with.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-4 col-md-4">
+                <div class="thumbnail">
+                    <a href="dpl/v3_ss.png" target="_blank"><img src="dpl/v3_ss.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <a href="dpl/v3_code.png" target="_blank"><img src="dpl/v3_code.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <div class="caption">
+                        <h4>Draw Variant 3: Canvas, Line, Rectangle, Color</h4>
+                        <p>The third variant of the drawing application that supports a basic drawing canvas, drawing lines
+                            and rectangles, and choosing a color to draw with.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p>Newly composed variant initially is incomplete.</p>
+
+        <div class="row">
+            <div class="col-sm-4 col-md-4" style="float: none; margin: 0 auto;">
+                <div class="thumbnail">
+                    <a href="dpl/v4_ss.png" target="_blank"><img src="dpl/v4_ss.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <a href="dpl/v4_code_incomplete.png" target="_blank"><img src="dpl/v4_code_incomplete.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <div class="caption">
+                        <h4>Incomplete Draw Variant 4: Line, Rectangle, Wipe</h4>
+                        <p>The newly composed, incomplete fourth variant of the draw application.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p>Fixed new variant.</p>
+
+        <div class="row">
+            <div class="col-sm-4 col-md-4" style="float: none; margin: 0 auto;">
+                <div class="thumbnail">
+                    <a href="dpl/v4_code_fixed.png" target="_blank"><img src="dpl/v4_code_fixed.png" alt="Robot Variant 4: Greater Arm, Smaller Base"></a>
+                    <div class="caption">
+                        <h4>Complete Draw Variant 4: Line, Rectangle, Wipe</h4>
+                        <p>The newly composed, complete fourth variant of the draw application.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+
+    <section>
+        <h3>UML Diagrams</h3>
+
+        <p>...</p>
+
+    </section>
+
+</div>
+
+${include("_footer.html", binding.variables)}

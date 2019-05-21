@@ -6,7 +6,6 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.*;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -15,6 +14,8 @@ import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static at.jku.isse.ecco.adapter.java.JavaTreeArtifactData.NodeType.*;
 
@@ -40,7 +41,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
 
     public boolean visit(MethodDeclaration node) {
-
+        //Does not need an ID
         JavaTreeArtifactData methodDeclarationData = new JavaTreeArtifactData();
         methodDeclarationData.setType(METHOD_DECLARATION);
         SimpleName methodName = node.getName();
@@ -48,14 +49,42 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final Node.Op methodNode = newNode.apply(methodDeclarationData);
         parentEccoNode.addChild(methodNode);
         List<SingleVariableDeclaration> singleVariableDeclarationList = node.parameters();
-        String parameters = getStringFromVariableDeclaration(singleVariableDeclarationList, methodNode.getArtifact());
+
+        handleParameters(singleVariableDeclarationList, methodNode);
 
         handleModifiers(node.modifiers(), methodNode);
         final Type returnType = node.getReturnType2();
 
         handleGenericParameters(node.typeParameters(), methodNode);
 
-        String beforeChildren = (returnType == null ? "" : returnType.toString() + " ") + methodName.getIdentifier() + "(" + parameters + ")";
+        String beforeChildren = (returnType == null ? "" : returnType.toString() + " ") + methodName.getIdentifier();
+
+        JavaTreeArtifactData before = new JavaTreeArtifactData();
+        before.setType(BEFORE);
+        Node.Op beforeNode = newNode.apply(before);
+        methodNode.addChild(beforeNode);
+
+        JavaTreeArtifactData data = new JavaTreeArtifactData();
+        data.setType(SIMPLE_JUST_A_STRING);
+        data.setDataAsString(beforeChildren);
+
+        beforeNode.addChild(newNode.apply(data));
+
+        StringBuilder id = new StringBuilder();
+        id.append((returnType == null ? "" : returnType.toString() + " "))
+                .append(methodName.getIdentifier()).append('(');
+        boolean tmp = false;
+        for (SingleVariableDeclaration d : singleVariableDeclarationList) {
+            if (tmp) {
+                id.append(',');
+            }
+            id.append(d.getType());
+            if (d.isVarargs())
+                id.append("...");
+            tmp = true;
+
+        }
+        id.append(')');
 
         referenceCheckingConsumer.accept(methodNode.getArtifact(), node);
         referenceCheckingConsumer.accept(methodNode.getArtifact(), returnType);
@@ -75,7 +104,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
             methodNode.addChild(throwsNode);
         }
-        methodDeclarationData.setDataAsString(beforeChildren);
+        methodDeclarationData.setDataAsString(id.toString());
 
         recursiveReadAst.accept(node.getBody(), methodNode);
         return super.visit(node);
@@ -129,8 +158,11 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
 
     public boolean visit(AnnotationTypeDeclaration node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not need an ID
         JavaTreeArtifactData typeDeclarationData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
-        typeDeclarationData.setType(ANNOTATIONTYPE_DECLARATION);
+        typeDeclarationData.setType(ANNOTATION_TYPE_DECLARATION);
         body.setType(BLOCK);
         final Node.Op typeDeclarationNode = newNode.apply(typeDeclarationData), bodyNode = newNode.apply(body);
         parentEccoNode.addChild(typeDeclarationNode);
@@ -146,6 +178,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(AnnotationTypeMemberDeclaration node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not need an ID
         JavaTreeArtifactData memberData = new JavaTreeArtifactData();
         memberData.setType(ANNOTATIONMEMBER);
         memberData.setDataAsString(node.getType() + " " + node.getName() + "()");
@@ -165,6 +200,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(AnonymousClassDeclaration node) {
+        //Does not need an ID
         JavaTreeArtifactData anonymousClasDeclaration = new JavaTreeArtifactData();
         anonymousClasDeclaration.setType(ANONYMOUS_CLASS_DECLARATION);
         final Node.Op anonymousClassDeclarationNode = newNode.apply(anonymousClasDeclaration);
@@ -179,6 +215,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ArrayAccess node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not need an ID
         final JavaTreeArtifactData arrayAccessData = artifactFromSimpleNode(node);
         final Node.Op arrayAccessNode = newNode.apply(arrayAccessData);
         referenceCheckingConsumer.accept(arrayAccessNode.getArtifact(), node);
@@ -188,6 +227,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ArrayCreation node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not need an ID
         final JavaTreeArtifactData arrayCreationData = artifactFromSimpleNode(node);
         final Node.Op arrayCreationNode = newNode.apply(arrayCreationData);
         referenceCheckingConsumer.accept(arrayCreationNode.getArtifact(), node);
@@ -198,6 +240,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ArrayInitializer node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not need an ID
         final JavaTreeArtifactData data = artifactFromSimpleNode(node);
         final Node.Op eccoNode = newNode.apply(data);
         referenceCheckingConsumer.accept(eccoNode.getArtifact(), node);
@@ -207,6 +252,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ArrayType node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not need an ID
         final Node.Op typeNode = newNode.apply(artifactFromSimpleNode(node));
         parentEccoNode.addChild(typeNode);
         referenceCheckingConsumer.accept(typeNode.getArtifact(), node);
@@ -215,26 +263,32 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(AssertStatement node) {
-        JavaTreeArtifactData assertData = new JavaTreeArtifactData(), assertConditionData = new JavaTreeArtifactData(), assertMessageData = new JavaTreeArtifactData();
+        if (needsExpansion(node))
+            return super.visit(node);
+        JavaTreeArtifactData assertData = new JavaTreeArtifactData(), assertMessageData = new JavaTreeArtifactData();
         assertData.setType(STATEMENT_ASSERT);
 
-        assertConditionData.setType(STATEMENT_ASSERT_CONDITION);
+
         assertMessageData.setType(STATEMENT_ASSERT_MESSAGE);
 
-        final Node.Op assertNode = newNode.apply(assertData), assertConditionNode = newNode.apply(assertConditionData), assertMessageNode = newNode.apply(assertMessageData);
+        final Node.Op assertNode = newNode.apply(assertData), assertMessageNode = newNode.apply(assertMessageData);
         parentEccoNode.addChild(assertNode);
-        assertNode.addChildren(assertConditionNode, assertMessageNode);
+        assertNode.addChild(assertMessageNode);
         referenceCheckingConsumer.accept(assertNode.getArtifact(), node);
 
-        recursiveReadAst.accept(node.getExpression(), assertConditionNode);
         recursiveReadAst.accept(node.getMessage(), assertMessageNode);
+        //ID of root node should be the assertion condition
+        assertData.setDataAsString(node.getExpression().toString().trim());
         return super.visit(node);
     }
 
     @Override
     public boolean visit(Assignment node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final JavaTreeArtifactData assignmentData = new JavaTreeArtifactData();
-        assignmentData.setDataAsString(node.getOperator().toString());
+        //ID of assignment should be the node on the left
+        assignmentData.setDataAsString(node.getLeftHandSide() + node.getOperator().toString());
         assignmentData.setType(ASSIGNMENT);
         final JavaTreeArtifactData before = new JavaTreeArtifactData(), after = new JavaTreeArtifactData();
         before.setType(BEFORE);
@@ -244,7 +298,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         parentEccoNode.addChild(assignmentNode);
         assignmentNode.addChildren(beforeNode, afterNode);
 
-        recursiveReadAst.accept(node.getLeftHandSide(), beforeNode);
+
         recursiveReadAst.accept(node.getRightHandSide(), afterNode);
 
         return super.visit(node);
@@ -266,7 +320,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     @Override
     public boolean visit(BlockComment node) {
         // No handling of comments
-        throw new NotImplementedException();
+        throw new TODO("Not implemented");
     }
 
     @Override
@@ -287,6 +341,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(CastExpression node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData castData = new JavaTreeArtifactData();
         castData.setType(EXPRESSION_CAST);
         Type castType = node.getType();
@@ -325,6 +381,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ClassInstanceCreation node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData newData = new JavaTreeArtifactData();
         newData.setType(CLASS_INSTANCE_CREATION);
         newData.setDataAsString(node.getType().toString());
@@ -335,28 +393,42 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         referenceCheckingConsumer.accept(newClassNode.getArtifact(), type);
         recursiveReadAst.accept(node.getAnonymousClassDeclaration(), newClassNode);
 
-        JavaTreeArtifactData parameters = new JavaTreeArtifactData();
-        parameters.setOrdered(true);
-        parameters.setType(PARAMETERS);
-        final Node.Op argumentNode = newNode.apply(parameters);
-        newClassNode.addChild(argumentNode);
-
-        List<Expression> arguments = node.arguments();
-        for (Expression p : arguments)
-            recursiveReadAst.accept(p, argumentNode);
+        handleParameters(((List<Expression>) node.arguments()), newClassNode);
 
         return super.visit(node);
+    }
+
+    private void handleParameters(List<? extends ASTNode> expressionList, Node.Op parentEccoNode) {
+        if (expressionList.isEmpty()) return;
+        JavaTreeArtifactData parameters = new JavaTreeArtifactData();
+        parameters.setType(PARAMETERS);
+        Node.Op parameterNode = newNode.apply(parameters);
+        parentEccoNode.addChild(parameterNode);
+
+        for (int i = 0; i < expressionList.size(); i++) {
+            ASTNode next = expressionList.get(i);
+            JavaTreeArtifactData cPar = new JavaTreeArtifactData();
+            cPar.setType(PARAMETER_POSITION);
+            cPar.setDataAsString(Integer.toString(i));
+            Node.Op cParNode = newNode.apply(cPar);
+            parameterNode.addChild(cParNode);
+            recursiveReadAst.accept(next, cParNode);
+        }
     }
 
 
     @Override
     public boolean visit(final CompilationUnit node) {
         final List<AbstractTypeDeclaration> types = (List<AbstractTypeDeclaration>) node.types();
-        //Chefk if errors are detected
+        //Check if errors are detected
         IProblem[] problems = node.getProblems();
-        boolean notCompiling = Arrays.stream(problems).anyMatch(p -> p.getMessage().startsWith("Syntax error"));
-        if (notCompiling)
-            throw new IllegalStateException("Compilation problem detected at" + types.toString(), new Error(Arrays.toString(problems)));
+        List<IProblem> notCompiling = Arrays.stream(problems).filter(p -> p.getMessage().startsWith("Syntax error")).collect(Collectors.toList());
+        if (!notCompiling.isEmpty()) {
+            System.out.println("Problems:");
+            notCompiling.stream().map(problem -> "Line " + problem.getSourceLineNumber() + " => " + problem.getMessage()).forEach(System.out::println);
+
+            throw new Error("Compilation problem detected at" + types.toString(), new Error(Arrays.toString(problems)));
+        }
         //No new node needs to be generated
         final PackageDeclaration packageDeclaration = node.getPackage();
         if (packageDeclaration != null)
@@ -364,8 +436,6 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         List<ImportDeclaration> imports = (List<ImportDeclaration>) node.imports();
         if (imports != null)
             imports.forEach(this::visit);
-        // No new Ecco node should be created here TODO
-
 
         types.forEach(abstractTypeDeclaration -> recursiveReadAst.accept(abstractTypeDeclaration, parentEccoNode));
         referenceCheckingConsumer.accept(parentEccoNode.getArtifact(), node);
@@ -375,6 +445,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ConditionalExpression node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData meta = new JavaTreeArtifactData(), condition = new JavaTreeArtifactData(), ifBranch = new JavaTreeArtifactData(), elseBranch = new JavaTreeArtifactData();
         meta.setType(EXPRESSION_TRENARY);
         condition.setType(CONDITION);
@@ -392,7 +464,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ConstructorInvocation node) {
-        //TODO is treating as simple node sufficient
+        if (needsExpansion(node))
+            return super.visit(node);
         final JavaTreeArtifactData constructorData = artifactFromSimpleNode(node);
         final Node.Op constructorNode = newNode.apply(constructorData);
         parentEccoNode.addChild(constructorNode);
@@ -401,6 +474,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ContinueStatement node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final Node.Op continueNode = newNode.apply(artifactFromSimpleNode(node));
         parentEccoNode.addChild(continueNode);
         return super.visit(node);
@@ -416,6 +491,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(Dimension node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData dimensionData = new JavaTreeArtifactData();
         dimensionData.setType(DIMENSION);
         final Node.Op dimensionNode = newNode.apply(dimensionData);
@@ -427,17 +504,20 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(DoStatement node) {
-        JavaTreeArtifactData whileData = new JavaTreeArtifactData(), condition = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
+        JavaTreeArtifactData whileData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
         whileData.setType(LOOP_DO_WHILE);
-        condition.setType(CONDITION);
         body.setType(AFTER);
 
-        final Node.Op whileNode = newNode.apply(whileData), conditionNode = newNode.apply(condition), bodyNode = newNode.apply(body);
+        final Node.Op whileNode = newNode.apply(whileData), bodyNode = newNode.apply(body);
         parentEccoNode.addChild(whileNode);
-        whileNode.addChildren(conditionNode, bodyNode);
+        whileNode.addChild(bodyNode);
 
-        recursiveReadAst.accept(node.getExpression(), conditionNode);
-        recursiveReadAst.accept(node.getBody(), bodyNode);
+        Statement doBody = node.getBody();
+        Node.Op bodyParent = ensureBlockNode(doBody, bodyNode);
+
+        // Condition of the do-while is the ID
+        whileData.setDataAsString(node.getExpression().toString());
+        recursiveReadAst.accept(doBody, bodyParent);
         return super.visit(node);
     }
 
@@ -453,27 +533,32 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(EnhancedForStatement node) {
-        JavaTreeArtifactData enhancedForData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData(), rightSide = new JavaTreeArtifactData();
+        JavaTreeArtifactData enhancedForData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
         enhancedForData.setType(LOOP_ENHANCED_FOR);
-        rightSide.setType(BEFORE);
         body.setType(AFTER);
         final SingleVariableDeclaration parameter = node.getParameter();
 
-        enhancedForData.setDataAsString(parameter.toString());
-        Node.Op enhancedForNode = newNode.apply(enhancedForData), bodyNode = newNode.apply(body), rightSideNode = newNode.apply(rightSide);
+        //The ID of the enhanced for should be the element, which it iterates over
+        enhancedForData.setDataAsString(node.getParameter() + ":" + node.getExpression());
+
+        Node.Op enhancedForNode = newNode.apply(enhancedForData), bodyNode = newNode.apply(body);
         parentEccoNode.addChild(enhancedForNode);
-        enhancedForNode.addChildren(bodyNode, rightSideNode);
+        enhancedForNode.addChild(bodyNode);
         referenceCheckingConsumer.accept(enhancedForNode.getArtifact(), parameter);
         referenceCheckingConsumer.accept(enhancedForNode.getArtifact(), parameter.getType());
 
-        recursiveReadAst.accept(node.getExpression(), rightSideNode);
-        recursiveReadAst.accept(node.getBody(), bodyNode);
+        Statement forBody = node.getBody();
+        Node.Op bodyNodeParent = ensureBlockNode(forBody, bodyNode);
+
+        recursiveReadAst.accept(forBody, bodyNodeParent);
 
         return super.visit(node);
     }
 
     @Override
     public boolean visit(EnumConstantDeclaration node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final Node.Op eccoNode = newNode.apply(artifactFromSimpleNode(node));
         parentEccoNode.addChild(eccoNode);
         return super.visit(node);
@@ -515,6 +600,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ExpressionMethodReference node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         handleMethodReference(node);
         return super.visit(node);
     }
@@ -529,17 +616,25 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ExpressionStatement node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData expressionStatementData = new JavaTreeArtifactData();
         expressionStatementData.setType(STATEMENT_EXPRESSION);
         final Node.Op expressionStatementNode = newNode.apply(expressionStatementData);
         parentEccoNode.addChild(expressionStatementNode);
-
         recursiveReadAst.accept(node.getExpression(), expressionStatementNode);
+        //Create ID for parent node
+        final JavaTreeArtifactData childData = (JavaTreeArtifactData) expressionStatementNode.getChildren().get(0).getArtifact().getData();
+
+        String id = childData.getType().ordinal() + "-" + childData.getDataAsString();
+        expressionStatementData.setDataAsString(id);
         return super.visit(node);
     }
 
     @Override
     public boolean visit(FieldAccess node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final Node.Op eccoNode = newNode.apply(artifactFromSimpleNode(node));
         parentEccoNode.addChild(eccoNode);
         referenceCheckingConsumer.accept(eccoNode.getArtifact(), node);
@@ -548,89 +643,108 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(FieldDeclaration node) {
-        JavaTreeArtifactData fieldDeclarationData = new JavaTreeArtifactData();
-        fieldDeclarationData.setType(FIELD_DECLARATION);
-        final Node.Op fieldCreationNode = newNode.apply(fieldDeclarationData);
-        parentEccoNode.addChild(fieldCreationNode);
-        handleModifiers(node.modifiers(), fieldCreationNode);
-        final Type type = node.getType();
+        List<VariableDeclarationFragment> fragments = (List<VariableDeclarationFragment>) node.fragments();
+        for (VariableDeclarationFragment fragment : fragments) {
+            JavaTreeArtifactData field = new JavaTreeArtifactData();
+            field.setType(FIELD_DECLARATION);
+            field.setDataAsString(fragment.getName().toString());
+            JavaTreeArtifactData type = new JavaTreeArtifactData();
+            type.setType(FIELD_TYPE);
+            type.setDataAsString(node.getType().toString());
+            JavaTreeArtifactData modifiers = new JavaTreeArtifactData();
+            modifiers.setType(MODIFIER);
+            Expression e = fragment.getInitializer();
 
-        referenceCheckingConsumer.accept(fieldCreationNode.getArtifact(), node);
-        referenceCheckingConsumer.accept(fieldCreationNode.getArtifact(), type);
 
-        fieldDeclarationData.setDataAsString(type.toString());
+            Node.Op fieldNode = newNode.apply(field), typeNode = newNode.apply(type), modifyerNode = newNode.apply(modifiers);
+            parentEccoNode.addChild(fieldNode);
+            fieldNode.addChildren(typeNode, modifyerNode);
+            if (e != null) {
+                JavaTreeArtifactData init = new JavaTreeArtifactData();
+                init.setType(FIELD_INIT);
+                Node.Op op = newNode.apply(init);
+                fieldNode.addChild(op);
+                recursiveReadAst.accept(e, op);
+            }
 
-        ((List<VariableDeclarationFragment>) node.fragments()).forEach(fragment -> recursiveReadAst.accept(fragment, fieldCreationNode));
+            List<IExtendedModifier> modifierList = (List<IExtendedModifier>) node.modifiers();
+            for (IExtendedModifier mod :
+                    modifierList) {
+                JavaTreeArtifactData jtad = new JavaTreeArtifactData();
+                jtad.setType(SIMPLE_JUST_A_STRING);
+                jtad.setDataAsString(mod.toString().trim());
+                modifyerNode.addChild(newNode.apply(jtad));
+            }
+        }
 
         return super.visit(node);
     }
 
     @Override
     public boolean visit(ForStatement node) {
-        JavaTreeArtifactData forData = new JavaTreeArtifactData(), initializer = new JavaTreeArtifactData(), condition = new JavaTreeArtifactData(), updaters = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
+        JavaTreeArtifactData forData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
         forData.setType(LOOP_FOR);
-
-        initializer.setType(FOR_INITALIZER);
-        updaters.setType(FOR_UPDATERS);
         body.setType(AFTER);
-        condition.setType(CONDITION);
 
         final Node.Op forNode = newNode.apply(forData);
-        final Node.Op initializerNode = newNode.apply(initializer), updaterNode = newNode.apply(updaters), bodyNode = newNode.apply(body), conditionNode = newNode.apply(condition);
+        final Node.Op bodyNode = newNode.apply(body);
         parentEccoNode.addChild(forNode);
-        forNode.addChildren(initializerNode, conditionNode, updaterNode, bodyNode);
+        forNode.addChild(bodyNode);
 
-        ((List<Expression>) node.initializers()).forEach(i -> recursiveReadAst.accept(i, initializerNode));
-        // node
-        Optional.ofNullable(node.getExpression()).ifPresent(expression -> recursiveReadAst.accept(expression, conditionNode));
-        recursiveReadAst.accept(node.getBody(), bodyNode);
-        ((List<Expression>) node.updaters()).forEach(i -> recursiveReadAst.accept(i, updaterNode));
+        StringJoiner sj = new StringJoiner(";");
+        final Stream<String> inits = node.initializers().stream().map(e -> e.toString());
+        sj.add(inits.collect(Collectors.joining(",")));
+        sj.add(Optional.ofNullable(node.getExpression()).map(e -> e.toString()).orElse(""));
+        final Stream<String> updaters = node.updaters().stream().map(e -> e.toString());
+        sj.add(updaters.collect(Collectors.joining(",")));
+        forData.setDataAsString(sj.toString());
+
+        Statement forBody = node.getBody();
+        Node.Op bodyNodeParent = ensureBlockNode(forBody, bodyNode);
+
+        recursiveReadAst.accept(forBody, bodyNodeParent);
 
         return super.visit(node);
     }
 
     @Override
     public boolean visit(IfStatement node) {
-        Node.Op iffsNode;
-        {
-            JavaTreeArtifactData parentArtifactData = (JavaTreeArtifactData) parentEccoNode.getArtifact().getData();
-            if (parentArtifactData.getType() == STATEMENT_IFFS) {
-                iffsNode = parentEccoNode;
-            } else {
-                JavaTreeArtifactData iffs = new JavaTreeArtifactData();
-                iffs.setOrdered(true);
-                iffs.setType(STATEMENT_IFFS);
-                iffsNode = newNode.apply(iffs);
-                parentEccoNode.addChild(iffsNode);
-            }
-        }
-
         JavaTreeArtifactData ifData = new JavaTreeArtifactData();
-        ifData.setType(STATEMENT_IF);
-        ifData.setDataAsString("if(" + node.getExpression() + ")");
 
-        final Node.Op ifNode = newNode.apply(ifData);
-        iffsNode.addChild(ifNode);
+        ifData.setDataAsString(node.getExpression().toString());
+        ifData.setType(JavaTreeArtifactData.NodeType.STATEMENT_IF);
+        JavaTreeArtifactData thenData = new JavaTreeArtifactData();
+        thenData.setType(AFTER);
 
-        recursiveReadAst.accept(node.getThenStatement(), ifNode);
+        Node.Op ifNode = newNode.apply(ifData), thenNode = newNode.apply(thenData);
 
-        final Statement elseStatement = node.getElseStatement();
-        if (elseStatement != null) {
-            JavaTreeArtifactData.NodeType elseStatementType = elseStatement instanceof IfStatement ? STATEMENT_IF : STATEMENT_ELSE;
+        parentEccoNode.addChild(ifNode);
+        ifNode.addChild(thenNode);
 
-            if (elseStatementType == STATEMENT_IF) {
-                recursiveReadAst.accept(elseStatement, iffsNode);
+        Statement thenStatement = node.getThenStatement();
+
+        Node.Op thenParent = ensureBlockNode(thenStatement, thenNode);
+
+        recursiveReadAst.accept(thenStatement, thenParent);
+
+        Statement optionalElseBranch = node.getElseStatement();
+        if (optionalElseBranch != null) {
+            JavaTreeArtifactData elseData = new JavaTreeArtifactData();
+            elseData.setType(JavaTreeArtifactData.NodeType.STATEMENT_ELSE);
+            Node.Op elseNode = newNode.apply(elseData);
+            parentEccoNode.addChild(elseNode);
+            if (optionalElseBranch instanceof IfStatement) {
+                IfStatement elseIfStaterment = ((IfStatement) optionalElseBranch);
+                visit(elseIfStaterment);
             } else {
-                JavaTreeArtifactData elseData = new JavaTreeArtifactData();
-                elseData.setDataAsString("else");
-                elseData.setType(STATEMENT_ELSE);
-                final Node.Op elseNode = newNode.apply(elseData);
-                parentEccoNode.addChild(elseNode);
-
-                recursiveReadAst.accept(elseStatement, elseNode);
+                JavaTreeArtifactData data = new JavaTreeArtifactData();
+                data.setType(AFTER);
+                Node.Op dataNode = newNode.apply(data);
+                elseNode.addChild(dataNode);
+                recursiveReadAst.accept(optionalElseBranch, dataNode);
             }
-
         }
+
         return super.visit(node);
     }
 
@@ -647,6 +761,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     //TODO maybe more fine granular handling
     @Override
     public boolean visit(InfixExpression node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final JavaTreeArtifactData javaTreeArtifactData = artifactFromSimpleNode(node);
         final Node.Op expressionNode = newNode.apply(javaTreeArtifactData);
         parentEccoNode.addChild(expressionNode);
@@ -655,6 +771,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(Initializer node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData data = new JavaTreeArtifactData();
         data.setType(BLOCK);
         data.setOrdered(true);
@@ -670,6 +788,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(InstanceofExpression node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData data = new JavaTreeArtifactData();
         data.setDataAsString(" instanceof ");
         data.setType(ASSIGNMENT);
@@ -704,6 +824,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(LabeledStatement node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final Node.Op labeledStatementNode = newNode.apply(artifactFromSimpleNode(node));
         parentEccoNode.addChild(labeledStatementNode);
         TODO(node); // needs testing
@@ -712,6 +834,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(LambdaExpression node) {
+        //Does not need an ID, no 2 lambdas following each other
         JavaTreeArtifactData lambdaData = new JavaTreeArtifactData(), parametersData = new JavaTreeArtifactData();
         lambdaData.setType(LAMBDA);
         parametersData.setType(LAMBDA_PARAMETERS);
@@ -768,30 +891,32 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(MethodInvocation node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData methodInvocationData = new JavaTreeArtifactData();
         methodInvocationData.setOrdered(true);
         methodInvocationData.setType(METHOD_INVOCATION);
+
         final Node.Op methodInvocationNode = newNode.apply(methodInvocationData);
         parentEccoNode.addChild(methodInvocationNode);
 
         Expression e = node.getExpression();
-        if (e != null) {
+
+        if (e == null || e instanceof Name || e instanceof ThisExpression) {
+            String base = e == null ? "" : e.toString() + ".";
+            methodInvocationData.setDataAsString(base + node.getName().toString());
+        } else {
+            methodInvocationData.setDataAsString(node.getName().toString());
             JavaTreeArtifactData expressionBefore = new JavaTreeArtifactData();
             expressionBefore.setType(BEFORE);
             final Node.Op expressionNode = newNode.apply(expressionBefore);
             methodInvocationNode.addChild(expressionNode);
             recursiveReadAst.accept(e, expressionNode);
+
         }
 
-        methodInvocationData.setDataAsString(node.getName().toString());
-        final List<Expression> arguments = node.arguments();
-
-        JavaTreeArtifactData argumentData = new JavaTreeArtifactData();
-        argumentData.setOrdered(true);
-        argumentData.setType(PARAMETERS);
-        final Node.Op argumentNode = newNode.apply(argumentData);
-        methodInvocationNode.addChild(argumentNode);
-        arguments.forEach(argument -> recursiveReadAst.accept(argument, argumentNode));
+        final List<Expression> arguments = ((List<Expression>) node.arguments());
+        handleParameters(arguments, methodInvocationNode);
         return super.visit(node);
     }
 
@@ -846,7 +971,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(PackageDeclaration node) {
-        final JavaTreeArtifactData packageData = artifactFromSimpleNode(node);
+        final JavaTreeArtifactData packageData = new JavaTreeArtifactData();
+        packageData.setType(SIMPLE_JUST_A_STRING);
+        packageData.setDataAsString("package " + node.getName().toString() + ";");
         final Node.Op packageDataNode = newNode.apply(packageData);
         parentEccoNode.addChild(packageDataNode);
         // End of recursion
@@ -865,6 +992,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ParenthesizedExpression node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not really need an ID
         JavaTreeArtifactData expressionData = new JavaTreeArtifactData();
         expressionData.setType(EXPRESSION_PARENTHESIS);
         final Node.Op expressionNode = newNode.apply(expressionData);
@@ -875,6 +1005,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(PostfixExpression node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData postfixData = artifactFromSimpleNode(node);
         final Node.Op postfixNode = newNode.apply(postfixData);
         parentEccoNode.addChild(postfixNode);
@@ -883,19 +1015,11 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(PrefixExpression node) {
-        final JavaTreeArtifactData prefixExpressionData = new JavaTreeArtifactData();
-        prefixExpressionData.setType(EXPRESSION_PREFIX);
-        prefixExpressionData.setDataAsString(node.toString());
-        final Node.Op prefixExpressionNode = newNode.apply(prefixExpressionData);
-        parentEccoNode.addChild(prefixExpressionNode);
-
-        JavaTreeArtifactData operandData = new JavaTreeArtifactData();
-        operandData.setType(AFTER);
-
-        final Node.Op operandNode = newNode.apply(operandData);
-        prefixExpressionNode.addChild(operandNode);
-
-        recursiveReadAst.accept(node.getOperand(), operandNode);
+        if (needsExpansion(node))
+            return super.visit(node);
+        JavaTreeArtifactData prefixData = artifactFromSimpleNode(node);
+        final Node.Op prefixNode = newNode.apply(prefixData);
+        parentEccoNode.addChild(prefixNode);
         return super.visit(node);
     }
 
@@ -936,6 +1060,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ReturnStatement node) {
+        if (needsExpansion(node))
+            return super.visit(node);
+        //Does not need an ID
         final JavaTreeArtifactData returnData = new JavaTreeArtifactData();
         returnData.setType(STATEMENT_RETURN);
         final Node.Op returnNode = newNode.apply(returnData);
@@ -969,6 +1096,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
         final JavaTreeArtifactData singleVariableDeclaration = artifactFromSimpleNode(node);
         final Node.Op variableDeclarationNode = newNode.apply(singleVariableDeclaration);
         referenceCheckingConsumer.accept(variableDeclarationNode.getArtifact(), node);
+        parentEccoNode.addChild(variableDeclarationNode);
         return super.visit(node);
     }
 
@@ -983,6 +1111,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(SuperConstructorInvocation node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final JavaTreeArtifactData superConstructorData = artifactFromSimpleNode(node);
         final Node.Op superConstructorNode = newNode.apply(superConstructorData);
         parentEccoNode.addChild(superConstructorNode);
@@ -991,6 +1121,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(SuperFieldAccess node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final JavaTreeArtifactData superFieldAccessData = artifactFromSimpleNode(node);
         final Node.Op superFieldAccessNode = newNode.apply(superFieldAccessData);
         parentEccoNode.addChild(superFieldAccessNode);
@@ -999,25 +1131,25 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(SuperMethodInvocation node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData methodInvocationData = new JavaTreeArtifactData();
-        methodInvocationData.setDataAsString("super." + node.getName());
+        methodInvocationData.setDataAsString("super." + node.getName()); //Might need something more dynamic than super
         methodInvocationData.setOrdered(true);
         methodInvocationData.setType(METHOD_INVOCATION);
         final Node.Op methodInvocationNode = newNode.apply(methodInvocationData);
         parentEccoNode.addChild(methodInvocationNode);
 
-        final List<Expression> arguments = node.arguments();
+        final List<Expression> arguments = ((List<Expression>) node.arguments());
+        handleParameters(arguments, methodInvocationNode);
 
-        JavaTreeArtifactData argumentData = new JavaTreeArtifactData();
-        argumentData.setType(PARAMETERS);
-        final Node.Op argumentNode = newNode.apply(argumentData);
-        methodInvocationNode.addChild(argumentNode);
-        arguments.forEach(argument -> recursiveReadAst.accept(argument, argumentNode));
         return super.visit(node);
     }
 
     @Override
     public boolean visit(SuperMethodReference node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         handleMethodReference(node);
         return super.visit(node);
     }
@@ -1076,6 +1208,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ThisExpression node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         final JavaTreeArtifactData thisData = artifactFromSimpleNode(node);
         final Node.Op thisNode = newNode.apply(thisData);
         parentEccoNode.addChild(thisNode);
@@ -1084,6 +1218,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(ThrowStatement node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         JavaTreeArtifactData throwData = new JavaTreeArtifactData();
         throwData.setType(THROW_STATEMENT);
         final Node.Op throwNode = newNode.apply(throwData);
@@ -1094,6 +1230,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(TryStatement node) {
+        //No ID needed here
         final JavaTreeArtifactData metaData = new JavaTreeArtifactData(), try7Data = new JavaTreeArtifactData(), catchMeta = new JavaTreeArtifactData(),
                 finallyData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
         metaData.setType(TRY_META);
@@ -1184,6 +1321,8 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(TypeMethodReference node) {
+        if (needsExpansion(node))
+            return super.visit(node);
         handleMethodReference(node);
         return super.visit(node);
     }
@@ -1227,22 +1366,48 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(VariableDeclarationStatement node) {
-        JavaTreeArtifactData variableDeclaration = new JavaTreeArtifactData();
-        variableDeclaration.setType(STATEMENT_VARIABLE_DECLARATION);
-        variableDeclaration.setOrdered(true);
-        final Node.Op variableDeclarationNode = newNode.apply(variableDeclaration);
-        parentEccoNode.addChild(variableDeclarationNode);
-        handleModifiers(node.modifiers(), variableDeclarationNode);
-        final Type type = node.getType();
+        String type = node.getType().toString();
+        List<IExtendedModifier> modifiers = (List<IExtendedModifier>) node.modifiers();
+        for (VariableDeclarationFragment fragment : (List<VariableDeclarationFragment>) node.fragments()) {
+            JavaTreeArtifactData modifierData = new JavaTreeArtifactData();
+            modifierData.setType(MODIFIER);
+            Node.Op modifierNode = newNode.apply(modifierData);
+            for (IExtendedModifier mod : modifiers) {
+                JavaTreeArtifactData data = new JavaTreeArtifactData();
+                data.setType(SIMPLE_JUST_A_STRING);
+                data.setDataAsString(mod.toString().trim());
+                modifierNode.addChild(newNode.apply(data));
+            }
 
-        referenceCheckingConsumer.accept(variableDeclarationNode.getArtifact(), node);
-        referenceCheckingConsumer.accept(variableDeclarationNode.getArtifact(), type);
+            Expression initializer = fragment.getInitializer();
+            String name = fragment.getName().toString();
 
-        String before = type.toString();
+            JavaTreeArtifactData data = new JavaTreeArtifactData();
+            data.setType(FIELD_DECLARATION);
+            data.setDataAsString(name);
 
-        variableDeclaration.setDataAsString(before);
+            Node.Op declarationNode = newNode.apply(data);
+            parentEccoNode.addChild(declarationNode);
 
-        ((List<VariableDeclarationFragment>) node.fragments()).forEach(fragment -> recursiveReadAst.accept(fragment, variableDeclarationNode));
+            JavaTreeArtifactData typeData = new JavaTreeArtifactData();
+            typeData.setType(FIELD_TYPE);
+            typeData.setDataAsString(type);
+
+            Node.Op typeNode = newNode.apply(typeData);
+            declarationNode.addChildren(modifierNode, typeNode);
+
+            if (initializer != null) {
+                JavaTreeArtifactData init = new JavaTreeArtifactData();
+                init.setType(FIELD_INIT);
+                Node.Op initNode = newNode.apply(init);
+                declarationNode.addChild(initNode);
+
+                recursiveReadAst.accept(initializer, initNode);
+            }
+
+
+        }
+
         return super.visit(node);
     }
 
@@ -1263,18 +1428,20 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
     @Override
     public boolean visit(WhileStatement node) {
-        JavaTreeArtifactData whileData = new JavaTreeArtifactData(), condition = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
+        if (needsExpansion(node))
+            return super.visit(node);
+        JavaTreeArtifactData whileData = new JavaTreeArtifactData(), body = new JavaTreeArtifactData();
         whileData.setType(LOOP_WHILE);
-        whileData.setDataAsString("while");
-        condition.setType(CONDITION);
+        whileData.setDataAsString(node.getExpression().toString());
         body.setType(AFTER);
 
-        final Node.Op whileNode = newNode.apply(whileData), conditionNode = newNode.apply(condition), bodyNode = newNode.apply(body);
+        final Node.Op whileNode = newNode.apply(whileData), bodyNode = newNode.apply(body);
         parentEccoNode.addChild(whileNode);
-        whileNode.addChildren(conditionNode, bodyNode);
+        whileNode.addChild(bodyNode);
 
-        recursiveReadAst.accept(node.getExpression(), conditionNode);
-        recursiveReadAst.accept(node.getBody(), bodyNode);
+        Statement whileBody = node.getBody();
+        Node.Op whileBodyParent = ensureBlockNode(whileBody, bodyNode);
+        recursiveReadAst.accept(whileBody, whileBodyParent);
         return super.visit(node);
     }
 
@@ -1286,7 +1453,39 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
     private JavaTreeArtifactData artifactFromSimpleNode(ASTNode astNode) {
         JavaTreeArtifactData javaTreeArtifactData = new JavaTreeArtifactData();
         javaTreeArtifactData.setType(SIMPLE_JUST_A_STRING);
-        javaTreeArtifactData.setDataAsString(astNode.toString().trim());
+
+        String data = astNode.toString().trim().replaceAll("\\s\\s+", " ");
+
+
+        javaTreeArtifactData.setDataAsString(data);
         return javaTreeArtifactData;
+    }
+
+    private boolean needsExpansion(ASTNode e) {
+        boolean done = !actualCheckForLambda(e);
+        if (done) {
+            //Treat as one
+            parentEccoNode.addChild(newNode.apply(artifactFromSimpleNode(e)));
+        }
+        return done;
+    }
+
+    private boolean actualCheckForLambda(ASTNode n) {
+        NeedsMoreDetailASTVisitor astVisitor = new NeedsMoreDetailASTVisitor();
+        n.accept(astVisitor);
+        return astVisitor.lambdaFound();
+    }
+
+    private Node.Op ensureBlockNode(Statement statement, Node.Op curParent) {
+        if (statement instanceof Block)
+            return curParent;
+        else {
+            JavaTreeArtifactData fakeBlockData = new JavaTreeArtifactData();
+            fakeBlockData.setType(BLOCK);
+            fakeBlockData.setOrdered(true);
+            Node.Op fakeBlockNode = newNode.apply(fakeBlockData);
+            curParent.addChild(fakeBlockNode);
+            return fakeBlockNode;
+        }
     }
 }

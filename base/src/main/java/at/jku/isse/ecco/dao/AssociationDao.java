@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.dao;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 
 import java.util.List;
@@ -8,8 +7,6 @@ import java.util.List;
 /**
  * A data access object that handles {@link Association} entities.
  *
- * @author Hannes Thaller
- * @version 1.0
  * @see Association Association
  */
 public interface AssociationDao extends EntityDao<Association> {
@@ -19,6 +16,6 @@ public interface AssociationDao extends EntityDao<Association> {
 	 *
 	 * @return Returns all stored associations.
 	 */
-	List<Association> loadAllAssociations() throws EccoException;
+	List<Association.Op> loadAllAssociations();
 
 }

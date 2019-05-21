@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.adapter.image;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.awt.image.BufferedImage;
@@ -35,12 +35,8 @@ public class AwtImageWriter implements ArtifactWriter<Set<Node>, BufferedImage> 
 			if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData)) {
 				throw new EccoException("Top nodes must be plugin nodes!");
 			} else {
-				if (pluginNode.getChildren().size() != 1 || !(((Node) pluginNode.getChildren().iterator().next()).getArtifact().getData() instanceof ImageArtifactData) || !((ImageArtifactData) ((Node) pluginNode.getChildren().iterator().next()).getArtifact().getData()).getType().equals("IMAGE")) {
-					throw new EccoException("There must be exactly one image node!");
-				} else {
-					BufferedImage outputImage = ImageUtil.createBufferedImage(pluginNode, this.backgroundColor, this.enableBlending);
-					output.add(outputImage);
-				}
+				BufferedImage outputImage = ImageUtil.createBufferedImage(pluginNode, this.backgroundColor, this.enableBlending);
+				output.add(outputImage);
 			}
 		}
 
@@ -48,7 +44,7 @@ public class AwtImageWriter implements ArtifactWriter<Set<Node>, BufferedImage> 
 	}
 
 
-	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();
+	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(WriteListener listener) {

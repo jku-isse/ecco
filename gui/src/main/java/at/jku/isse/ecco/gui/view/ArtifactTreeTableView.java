@@ -54,7 +54,7 @@ public class ArtifactTreeTableView extends TreeTableView<Node> {
 		isMarkedNodeCol.setCellValueFactory(
 				(TreeTableColumn.CellDataFeatures<Node, Boolean> param) ->
 				{
-					Artifact artifact = param.getValue().getValue().getArtifact();
+					Artifact<?> artifact = param.getValue().getValue().getArtifact();
 
 					if (artifact != null) {
 						SimpleBooleanProperty sbp = new SimpleBooleanProperty() {
@@ -89,7 +89,7 @@ public class ArtifactTreeTableView extends TreeTableView<Node> {
 
 
 		uniqueNodeCol.setCellFactory(new Callback<TreeTableColumn<Node, Boolean>, TreeTableCell<Node, Boolean>>() {
-			public TreeTableCell call(TreeTableColumn param) {
+			public TreeTableCell<Node, Boolean> call(TreeTableColumn param) {
 				return new TreeTableCell<Node, Boolean>() {
 					@Override
 					public void updateItem(Boolean item, boolean empty) {
@@ -134,7 +134,7 @@ public class ArtifactTreeTableView extends TreeTableView<Node> {
 	public void markSelected() {
 		// TODO: mark selected
 		for (TreeItem<Node> item : this.getSelectionModel().getSelectedItems()) {
-			Artifact artifact = item.getValue().getArtifact();
+			Artifact<?> artifact = item.getValue().getArtifact();
 			if (artifact != null) {
 				artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, true);
 			}

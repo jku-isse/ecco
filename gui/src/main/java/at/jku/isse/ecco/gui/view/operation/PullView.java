@@ -3,7 +3,7 @@ package at.jku.isse.ecco.gui.view.operation;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -202,7 +202,7 @@ public class PullView extends OperationView {
 		for (Feature feature : this.service.getRemote(this.remoteComboBox.getValue().getName()).getFeatures()) {
 			CheckBoxTreeItem<FeatureInfo> featureTreeItem = new CheckBoxTreeItem<>();
 			featureTreeItem.setValue(new FeatureInfo(feature, null));
-			for (FeatureVersion featureVersion : feature.getVersions()) {
+			for (FeatureRevision featureVersion : feature.getRevisions()) {
 				CheckBoxTreeItem<FeatureInfo> featureVersionTreeItem = new CheckBoxTreeItem<>();
 				featureVersionTreeItem.setValue(new FeatureInfo(feature, featureVersion));
 				//featureVersionTreeItem.setSelected(true);
@@ -275,10 +275,10 @@ public class PullView extends OperationView {
 
 	public static class FeatureInfo {
 		private Feature feature;
-		private FeatureVersion featureVersion;
+		private FeatureRevision featureVersion;
 		private SimpleBooleanProperty sbp;
 
-		private FeatureInfo(Feature feature, FeatureVersion featureVersion) {
+		private FeatureInfo(Feature feature, FeatureRevision featureVersion) {
 			this.feature = feature;
 			this.featureVersion = featureVersion;
 			this.sbp = new SimpleBooleanProperty(true);
@@ -288,7 +288,7 @@ public class PullView extends OperationView {
 			return this.feature;
 		}
 
-		public FeatureVersion getFeatureVersion() {
+		public FeatureRevision getFeatureVersion() {
 			return this.featureVersion;
 		}
 

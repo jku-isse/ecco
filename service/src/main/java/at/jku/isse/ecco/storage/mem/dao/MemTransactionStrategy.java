@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.storage.mem.dao;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -12,7 +11,7 @@ public class MemTransactionStrategy implements TransactionStrategy {
 
 	@Inject
 	public MemTransactionStrategy() {
-
+		this.database = null;
 	}
 
 	protected Database getDatabase() {
@@ -20,22 +19,22 @@ public class MemTransactionStrategy implements TransactionStrategy {
 	}
 
 	@Override
-	public void open() throws EccoException {
+	public void open() {
 		this.database = new Database();
 	}
 
 	@Override
-	public void close() throws EccoException {
+	public void close() {
 		this.database = null;
 	}
 
 	@Override
-	public void begin() throws EccoException {
+	public void begin(TRANSACTION transaction) {
 
 	}
 
 	@Override
-	public void end() throws EccoException {
+	public void end() {
 
 	}
 

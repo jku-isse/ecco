@@ -1,9 +1,11 @@
 package at.jku.isse.ecco.adapter.text;
 
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.io.BufferedWriter;
@@ -36,11 +38,15 @@ public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 
 		System.out.println("BASE: " + base);
 
-		List<Path> output = new ArrayList<Path>();
+		List<Path> output = new ArrayList<>();
 
 		for (Node fileNode : input) {
-			Artifact<PluginArtifactData> fileArtifact = (Artifact<PluginArtifactData>) fileNode.getArtifact();
-			Path outputPath = base.resolve(fileArtifact.getData().getPath());
+			Artifact<?> fileArtifact = fileNode.getArtifact();
+			ArtifactData artifactData = fileArtifact.getData();
+			if (!(artifactData instanceof PluginArtifactData))
+				throw new EccoException("Expected plugin artifact data.");
+			PluginArtifactData pluginArtifactData = (PluginArtifactData) artifactData;
+			Path outputPath = base.resolve(pluginArtifactData.getPath());
 			output.add(outputPath);
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath)) {
@@ -55,7 +61,7 @@ public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 			}
 		}
 
-		return output.toArray(new Path[output.size()]);
+		return output.toArray(new Path[0]);
 	}
 
 

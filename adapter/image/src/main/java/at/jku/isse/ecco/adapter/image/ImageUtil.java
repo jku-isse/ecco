@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.image;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.tree.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
@@ -14,7 +15,14 @@ public class ImageUtil {
 
 
 	protected static Image createImage(Node pluginNode, int backgroundColor, boolean enableBlending) {
-		Node imageNode = (Node) pluginNode.getChildren().iterator().next();
+		Node imageNode = null;
+		for (Node node : pluginNode.getChildren()) {
+			if ((node.getArtifact().getData() instanceof ImageArtifactData) && ((ImageArtifactData) node.getArtifact().getData()).getType().equals(ImageReader.TYPE_IMAGE)) {
+				imageNode = node;
+			}
+		}
+		if (imageNode == null)
+			throw new EccoException("There must be exactly one image node!");
 		// ImageArtifact imageArtifact = (ImageArtifact) fileNode.getAllChildren().iterator().next().getArtifact();
 		ImageArtifactData imageArtifact = (ImageArtifactData) imageNode.getArtifact().getData();
 		int width = imageArtifact.getValues()[0];
