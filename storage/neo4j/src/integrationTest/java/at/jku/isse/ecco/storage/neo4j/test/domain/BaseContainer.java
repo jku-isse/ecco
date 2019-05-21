@@ -4,8 +4,6 @@ import org.neo4j.ogm.annotation.Relationship;
 
 public class BaseContainer extends NeoEntity {
 
-
-
     int integerValue;
     String stringValue;
 
@@ -14,13 +12,16 @@ public class BaseContainer extends NeoEntity {
 
     SpecializedClass1 referenceToObject;
 
+    ArrayClass referenceToArrayClass;
+
     public BaseContainer() {}
 
-    public BaseContainer(int integerValue, String stringValue, TreeRootNode tree, SpecializedClass1 referenceToObject) {
+    public BaseContainer(int integerValue, String stringValue, TreeRootNode tree, SpecializedClass1 referenceToObject, ArrayClass arrayClass) {
         this.integerValue = integerValue;
         this.stringValue = stringValue;
         this.tree = tree;
         this.referenceToObject = referenceToObject;
+        this.referenceToArrayClass = arrayClass;
     }
 
     public int getIntegerValue() {
@@ -37,6 +38,14 @@ public class BaseContainer extends NeoEntity {
 
     public void setStringValue(String stringValue) {
         this.stringValue = stringValue;
+    }
+
+    public ArrayClass getReferenceToArrayClass() {
+        return referenceToArrayClass;
+    }
+
+    public void setReferenceToArrayClass(ArrayClass referenceToArrayClass) {
+        this.referenceToArrayClass = referenceToArrayClass;
     }
 
     public TreeRootNode getTree() {

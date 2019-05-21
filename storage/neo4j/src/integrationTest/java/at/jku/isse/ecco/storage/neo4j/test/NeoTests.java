@@ -10,6 +10,7 @@ import org.neo4j.ogm.session.Session;
 import uk.co.jemos.podam.api.PodamFactory;
 import uk.co.jemos.podam.api.PodamFactoryImpl;
 
+import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -60,6 +61,8 @@ public class NeoTests {
         session.deleteAll(SpecializedClass3.class);
         session.deleteAll(TreeRootNode.class);
         session.deleteAll(TreeNode.class);
+        session.deleteAll(ArrayClass.class);
+        session.deleteAll(SomeClass.class);
 
         BaseContainer repo = getRandomTestRepo();
 
@@ -210,6 +213,9 @@ public class NeoTests {
         deeperNode.getChildren().get(0).getChildren().get(0).addChild(evenDeeperNode);
         evenDeeperNode.addChild(deeperNode); // add loop
         repo.getTree().getChildren().get(0).getChildren().get(0).getChildren().get(0).addChild(deeperNode);
+
+        ArrayClass aClass = factory.manufacturePojo(ArrayClass.class);
+        repo.setReferenceToArrayClass(aClass);
         return repo;
     }
 }
