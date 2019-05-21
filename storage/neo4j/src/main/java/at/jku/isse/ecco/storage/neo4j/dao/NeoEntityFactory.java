@@ -10,13 +10,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.domain.*;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoArtifact;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoAssociation;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoCommit;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoConfiguration;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoFeature;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoNode;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 

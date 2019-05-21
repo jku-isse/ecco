@@ -2,7 +2,6 @@ package at.jku.isse.ecco.storage.neo4j.domain;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
-import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 

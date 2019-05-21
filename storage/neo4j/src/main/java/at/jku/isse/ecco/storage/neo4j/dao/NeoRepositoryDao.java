@@ -25,8 +25,6 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 	@Override
 	public Repository.Op load() {
 		final Session neoSession = this.transactionStrategy.getNeoSession();
-		System.out.println(neoSession);
-		System.out.println(transactionStrategy);
 
 		if (this.repository == null) {
 			neoSession.setLoadStrategy(LoadStrategy.SCHEMA_LOAD_STRATEGY);
@@ -50,7 +48,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 					}
 				}
 
-				/** SOBALD ETWAS GELADEN WIRD, WERDEN ANDERE TEILE DES REPOSITORIES WIEDER ENTFERNT - WARUM? */
+				/** As soon as something is loaded, other relations get unloaded and collections replaces - why? */
 				//https://stackoverflow.com/questions/56233105/neo4j-ogm-replaces-collections-on-load-losing-already-hydrated-data
 
 				/** load associations */

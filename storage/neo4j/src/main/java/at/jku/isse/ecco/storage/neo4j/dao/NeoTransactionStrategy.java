@@ -3,19 +3,14 @@ package at.jku.isse.ecco.storage.neo4j.dao;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.neo4j.NeoSessionFactory;
-import at.jku.isse.ecco.storage.neo4j.domain.NeoRepository;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.transaction.Transaction;
 
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 import java.nio.file.Path;
-import java.util.Collection;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @Singleton

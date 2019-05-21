@@ -12,7 +12,6 @@ import org.neo4j.ogm.annotation.Relationship;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 

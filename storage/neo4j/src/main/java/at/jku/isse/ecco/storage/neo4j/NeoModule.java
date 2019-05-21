@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.storage.neo4j;
 
 import at.jku.isse.ecco.dao.*;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.neo4j.dao.*;
 import com.google.inject.AbstractModule;
 import com.google.inject.Key;

@@ -5,7 +5,6 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.Transient;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 

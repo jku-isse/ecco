@@ -8,7 +8,6 @@ import org.eclipse.collections.impl.factory.Maps;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.Transient;
 
 import java.util.ArrayList;
 import java.util.List;
