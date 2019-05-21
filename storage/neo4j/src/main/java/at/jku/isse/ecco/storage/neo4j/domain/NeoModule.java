@@ -10,10 +10,8 @@ import org.neo4j.ogm.annotation.Transient;
 
 import javax.management.relation.Relation;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -21,20 +19,27 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModule extends NeoEntity implements Module {
 
-	// no incoming from Feature
-    @Relationship(type = "hasPosFeatureMd", direction = Relationship.UNDIRECTED)
+	@Transient
 	private Feature[] pos;
 
-	// no incoming from Feature
-    //@Relationship(type = "hasNegFeatureMd")
 	@Transient
 	private Feature[] neg;
+
+	/** arrays do not get hydrated by OGM, using lists instead */
+
+	// no incoming from Feature
+	@Relationship(type = "hasPosFeatureMd", direction = Relationship.UNDIRECTED)
+	private List<Feature> posList;
+
+	// no incoming from Feature
+	@Relationship(type = "hasNegFeatureMd", direction = Relationship.UNDIRECTED)
+	private List<Feature> negList;
 
     @Property("count")
     private int count;
 
     // incoming from NMR
-    @Relationship(value = "hasRevisionMd", direction = Relationship.INCOMING)
+	@Relationship(value = "hasRevisionMd", direction = Relationship.INCOMING)
 	private ArrayList<NeoModuleRevision> revisions  = new ArrayList<>();
 
 	// backref
@@ -52,21 +57,31 @@ public class NeoModule extends NeoEntity implements Module {
 		this.neg = neg;
 		this.count = 0;
 		this.containingRepository = repository;
+		this.posList = new ArrayList<>(Arrays.stream(pos).map(o -> (NeoFeature) o).collect(Collectors.toList()));
+		this.negList = new ArrayList<>(Arrays.stream(neg).map(o -> (NeoFeature) o).collect(Collectors.toList()));
 	}
 
 	@Override
 	public Feature[] getPos() {
-//		if (this.pos == null) {
-//			return new Feature[] {};
-//		}
+    	if (posList != null) {
+			pos = posList.stream().toArray(Feature[]::new);
+		} else
+		{
+			this.posList = new ArrayList<>();
+			this.pos = new Feature[] {};
+		}
     	return this.pos;
 	}
 
 	@Override
 	public Feature[] getNeg() {
-//		if (this.neg == null) {
-//			return new Feature[] {};
-//		}
+    	if (negList != null) {
+			neg = negList.stream().toArray(Feature[]::new);
+		} else
+		{
+			this.negList = new ArrayList<>();
+			this.neg = new Feature[] {};
+		}
 		return this.neg;
 	}
 
@@ -122,15 +137,15 @@ public class NeoModule extends NeoEntity implements Module {
 		if (o == null || getClass() != o.getClass()) return false;
 		NeoModule neoModule = (NeoModule) o;
 
-		if (this.pos != null && neoModule.pos != null || this.neg != null && neoModule.neg != null) {
-			if (this.pos.length != neoModule.pos.length || this.neg.length != neoModule.neg.length)
+		if (this.getPos() != null && neoModule.getPos() != null || this.getNeg() != null && neoModule.getNeg() != null) {
+			if (this.getPos().length != neoModule.getPos().length || this.getNeg().length != neoModule.getNeg().length)
 				return false;
 		}
-		if (this.pos != null && neoModule.pos != null) {
-			for (int i = 0; i < this.pos.length; i++) {
+		if (this.getPos() != null && neoModule.getPos() != null) {
+			for (int i = 0; i < this.getPos().length; i++) {
 				boolean found = false;
-				for (int j = 0; j < neoModule.pos.length; j++) {
-					if (this.pos[i].equals(neoModule.pos[j])) {
+				for (int j = 0; j < neoModule.getPos().length; j++) {
+					if (this.getPos()[i].equals(neoModule.getPos()[j])) {
 						found = true;
 						break;
 					}
@@ -139,11 +154,11 @@ public class NeoModule extends NeoEntity implements Module {
 					return false;
 			}
 		}
-		if (this.neg != null && neoModule.neg != null) {
-			for (int i = 0; i < this.neg.length; i++) {
+		if (this.getNeg() != null && neoModule.getNeg() != null) {
+			for (int i = 0; i < this.getNeg().length; i++) {
 				boolean found = false;
-				for (int j = 0; j < neoModule.neg.length; j++) {
-					if (this.neg[i].equals(neoModule.neg[j])) {
+				for (int j = 0; j < neoModule.getNeg().length; j++) {
+					if (this.getNeg()[i].equals(neoModule.getNeg()[j])) {
 						found = true;
 						break;
 					}
@@ -163,13 +178,13 @@ public class NeoModule extends NeoEntity implements Module {
 //		result = 31 * result + Arrays.hashCode(neg);
 //		return result;
 		int result = 0;
-		if (this.pos != null) {
-			for (Feature feature : this.pos)
+		if (this.getPos() != null) {
+			for (Feature feature : this.getPos())
 				result += feature.hashCode();
 			result *= 31;
 		}
-		if (this.neg != null) {
-			for (Feature feature : this.neg)
+		if (this.getNeg() != null) {
+			for (Feature feature : this.getNeg())
 				result += feature.hashCode();
 		}
 		return result;

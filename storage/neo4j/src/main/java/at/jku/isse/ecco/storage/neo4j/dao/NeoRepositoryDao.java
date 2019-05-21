@@ -45,7 +45,7 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 						NeoFeature actFeature = it.next();
 
 						if (actFeature.getNeoId() != null) {
-							NeoFeature loadedFeature = neoSession.load(NeoFeature.class, actFeature.getNeoId(), 3);
+							neoSession.load(NeoFeature.class, actFeature.getNeoId(), 1);
 						}
 					}
 				}

@@ -14,7 +14,7 @@ public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
 
 	// backref
     @Relationship("hasRevisionFt")
-	private Feature feature;
+	private NeoFeature feature;
 
     @Property("featureRevId")
 	private String frId;
@@ -24,7 +24,7 @@ public class NeoFeatureRevision extends NeoEntity implements FeatureRevision {
 
     public NeoFeatureRevision() {}
 
-	public NeoFeatureRevision(Feature feature, String id) {
+	public NeoFeatureRevision(NeoFeature feature, String id) {
 		checkNotNull(feature);
 		checkNotNull(id);
 		this.feature = feature;

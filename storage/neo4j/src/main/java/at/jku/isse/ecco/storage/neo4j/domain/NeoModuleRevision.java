@@ -7,6 +7,12 @@ import at.jku.isse.ecco.module.ModuleRevision;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -14,12 +20,21 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @NodeEntity
 public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 
-	// no incoming from FeatureRevision
-    @Relationship(type = "hasPosFeatureRevisionRv")
+	@Transient
 	private FeatureRevision[] pos;
 
-    @Relationship(type = "hasNegFeatureRevisionRv")
+	@Transient
 	private Feature[] neg;
+
+	/** arrays do not get hydrated by OGM, using lists instead */
+
+	// no incoming from Feature
+	@Relationship(type = "hasPosFeatureRevisionRv", direction = Relationship.UNDIRECTED)
+	private List<FeatureRevision> posList;
+
+	// no incoming from Feature
+	@Relationship(type = "hasNegFeatureRevisionRv", direction = Relationship.UNDIRECTED)
+	private List<Feature> negList;
 
     @Property("count")
 	private int count;
@@ -40,16 +55,33 @@ public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 		this.neg = neg;
 		this.count = 0;
 		this.module = module;
+
+		this.posList = new ArrayList<>(Arrays.stream(pos).map(o -> (NeoFeatureRevision) o).collect(Collectors.toList()));
+		this.negList = new ArrayList<>(Arrays.stream(neg).map(o -> (NeoFeature) o).collect(Collectors.toList()));
 	}
 
 
 	@Override
 	public FeatureRevision[] getPos() {
+		if (posList != null) {
+			pos = posList.stream().toArray(FeatureRevision[]::new);
+		} else
+		{
+			this.posList = new ArrayList<>();
+			this.pos = new FeatureRevision[] {};
+		}
 		return this.pos;
 	}
 
 	@Override
 	public Feature[] getNeg() {
+		if (negList != null) {
+			neg = negList.stream().toArray(Feature[]::new);
+		} else
+		{
+			this.negList = new ArrayList<>();
+			this.neg = new Feature[] {};
+		}
 		return this.neg;
 	}
 
@@ -86,12 +118,12 @@ public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 		NeoModuleRevision neoModuleRevision = (NeoModuleRevision) o;
 
 		//return Arrays.equals(pos, neoModuleRevision.pos) && Arrays.equals(neg, neoModuleRevision.neg);
-		if (this.pos.length != neoModuleRevision.pos.length || this.neg.length != neoModuleRevision.neg.length)
+		if (this.getPos().length != neoModuleRevision.getPos().length || this.getNeg().length != neoModuleRevision.getNeg().length)
 			return false;
-		for (int i = 0; i < this.pos.length; i++) {
+		for (int i = 0; i < this.getPos().length; i++) {
 			boolean found = false;
-			for (int j = 0; j < neoModuleRevision.pos.length; j++) {
-				if (this.pos[i].equals(neoModuleRevision.pos[j])) {
+			for (int j = 0; j < neoModuleRevision.getPos().length; j++) {
+				if (this.getPos()[i].equals(neoModuleRevision.getPos()[j])) {
 					found = true;
 					break;
 				}
@@ -99,10 +131,10 @@ public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 			if (!found)
 				return false;
 		}
-		for (int i = 0; i < this.neg.length; i++) {
+		for (int i = 0; i < this.getNeg().length; i++) {
 			boolean found = false;
-			for (int j = 0; j < neoModuleRevision.neg.length; j++) {
-				if (this.neg[i].equals(neoModuleRevision.neg[j])) {
+			for (int j = 0; j < neoModuleRevision.getNeg().length; j++) {
+				if (this.getNeg()[i].equals(neoModuleRevision.getNeg()[j])) {
 					found = true;
 					break;
 				}
@@ -119,13 +151,13 @@ public class NeoModuleRevision extends NeoEntity implements ModuleRevision {
 //		result = 31 * result + Arrays.hashCode(neg);
 //		return result;
 		int result = 0;
-		if (this.pos != null) {
-			for (FeatureRevision featureRevision : this.pos)
+		if (this.getPos() != null) {
+			for (FeatureRevision featureRevision : this.getPos())
 				result += featureRevision.hashCode();
 			result *= 31;
 		}
-		if (this.neg != null) {
-			for (Feature feature : this.neg)
+		if (this.getNeg() != null) {
+			for (Feature feature : this.getNeg())
 				result += feature.hashCode();
 		}
 		return result;
