@@ -95,11 +95,30 @@ public interface PartialOrderGraph extends Persistable {
 			Map<Node.Op, Integer> rightNodes = new HashMap<>();
 			rightNodes.put(other.getHead(), 0);
 
-			this.alignRec(leftMatchState, rightNodes, 0, Integer.MAX_VALUE);
+			// compute lower bound on best cost that is theoretically possible
+			int bestPossibleCost = 0;
+			Collection<PartialOrderGraph.Node.Op> tempLeftNodes = this.collectNodes();
+			Collection<PartialOrderGraph.Node.Op> tempRightNodes = other.collectNodes();
+			for (PartialOrderGraph.Node tempRightNode : tempRightNodes) {
+				boolean found = false;
+				Iterator<PartialOrderGraph.Node.Op> it = tempLeftNodes.iterator();
+				while (it.hasNext()) {
+					PartialOrderGraph.Node.Op tempLeftNode = it.next();
+					if (tempLeftNode.getArtifact() != null && tempLeftNode.getArtifact().getData() != null && tempRightNode.getArtifact() != null && tempLeftNode.getArtifact().getData().equals(tempRightNode.getArtifact().getData())) {
+						it.remove();
+						found = true;
+						break;
+					}
+				}
+				if (!found && tempRightNode.getArtifact() != null)
+					bestPossibleCost++;
+			}
+
+			this.alignRec(leftMatchState, rightNodes, 0, Integer.MAX_VALUE, bestPossibleCost);
 		}
 
 		//private
-		default int alignRec(Alignment leftMatchState, Map<Node.Op, Integer> rightNodes, int currentCost, int bestCost) {
+		default int alignRec(Alignment leftMatchState, Map<Node.Op, Integer> rightNodes, int currentCost, int bestCost, int bestPossibleCost) {
 			// traverse RIGHT in all possible orders
 
 			// move to next node in RIGHT. if there are multiple options ... consider every order? unless a traversal state without skipped artifacts was found, in which case no other orders need to be considered.
@@ -114,6 +133,10 @@ public interface PartialOrderGraph extends Persistable {
 			// if we finished traversing RIGHT we are done
 			if (rightNodes.isEmpty())
 				return currentCost;
+
+			// if we reached best possible cost we are done
+			if (bestCost <= bestPossibleCost)
+				return Integer.MAX_VALUE;
 
 			int localBestCost = bestCost;
 
@@ -141,7 +164,7 @@ public interface PartialOrderGraph extends Persistable {
 						}
 						// advance match state for right by current node and continue recursively with all other possible nodes in right match state
 						// continue recursively with next match state
-						int tempCost = this.alignRec(nextLeftMatchState, nextRightNodes, currentCost, localBestCost);
+						int tempCost = this.alignRec(nextLeftMatchState, nextRightNodes, currentCost, localBestCost, bestPossibleCost);
 						if (tempCost < localBestCost) {
 							localBestCost = tempCost;
 							// set sequence number of artifact to the one of the matching artifact that was found in LEFT
@@ -165,7 +188,7 @@ public interface PartialOrderGraph extends Persistable {
 						}
 						// advance match state for right by current node and continue recursively with all other possible nodes in right match state
 						// continue recursively with next match state
-						int tempCost = this.alignRec(leftMatchState, nextRightNodes, currentCost + 1, localBestCost);
+						int tempCost = this.alignRec(leftMatchState, nextRightNodes, currentCost + 1, localBestCost, bestPossibleCost);
 						if (tempCost < localBestCost) {
 							localBestCost = tempCost;
 							// indicate that this artifact needs a new sequence number assigned
