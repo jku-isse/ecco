@@ -36,7 +36,6 @@ public class NeoFeature extends NeoEntity implements Feature {
 		this.name = name;
 	}
 
-
 	@Override
 	public ArrayList<NeoFeatureRevision> getRevisions() {
 		return this.revisions;

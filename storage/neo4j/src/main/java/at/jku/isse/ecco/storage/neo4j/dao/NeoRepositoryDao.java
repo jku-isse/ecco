@@ -50,51 +50,21 @@ public class NeoRepositoryDao extends NeoAbstractGenericDao implements Repositor
 					}
 				}
 
+				/** SOBALD ETWAS GELADEN WIRD, WERDEN ANDERE TEILE DES REPOSITORIES WIEDER ENTFERNT - WARUM? */
+				//https://stackoverflow.com/questions/56233105/neo4j-ogm-replaces-collections-on-load-losing-already-hydrated-data
+
 				/** load associations */
-				// TODO: REAKTIVIEREN - NUR ZWECKS PERFORMANCE DEAKTIVIERT
 				neoSession.loadAll(NeoAssociation.class, 4);
 				neoSession.loadAll(NeoNode.class, 2);
 				neoSession.loadAll(NeoArtifact.class, 2);
 
+
 				/** load modules */
-				// does not load any modules, hence set them manually
-				Collection<NeoModule> neoModules = neoSession.loadAll(NeoModule.class, 2);
-				repo.setModules(new ArrayList<>(neoModules));
-//				Iterator<NeoModule> it = repo.getModules().iterator();
-//				while (it.hasNext()) {
-//					NeoModule actModule = it.next();
-//
-//					if (actModule.getNeoId() != null) {
-//						NeoModule loadedModule = neoSession.load(NeoModule.class, actModule.getNeoId(), 2);
-//						System.out.println();
-//					}
-//				}
+				// removes modules after loading other items, hence set them manually
+				Collection<NeoModule> loadedModules = neoSession.loadAll(NeoModule.class, 1);
+				repo.setModules(new ArrayList(loadedModules));
 
-				/** load all */
 
-//			neoSession.loadAll(NeoArtifactReference.class, 2);
-//			neoSession.loadAll(NeoAssociationCounter.class, 2);
-//			neoSession.loadAll(NeoCommit.class, 2);
-//			neoSession.loadAll(NeoCondition.class, 2);
-//			neoSession.loadAll(NeoConfiguration.class, 2);
-//			Collection<NeoFeature> neoFeatures = neoSession.loadAll(NeoFeature.class, 2);
-//			neoSession.loadAll(NeoFeatureRevision.class, 2);
-
-//			neoSession.loadAll(NeoModuleCounter.class, 2);
-//				neoSession.loadAll(NeoModuleRevision.class, 2);
-//			neoSession.loadAll(NeoPartialOrderGraph.class, 2);
-//			neoSession.loadAll(NeoPartialOrderGraphNode.class, 2);
-//			neoSession.loadAll(NeoRemote.class, 2);
-//			neoSession.loadAll(NeoVariant.class, 2);
-
-//			Iterator<NeoAssociation.Op> it = repository.getAssociations().iterator();
-//			while(it.hasNext()) {
-//				NeoAssociation.Op actAssoc =  it.next();
-//				NeoRootNode actRootNode = (NeoRootNode) actAssoc.getRootNode();
-//				NeoRootNode load = neoSession.load(NeoRootNode.class, actRootNode.getNeoId(), 3);
-//
-//				System.out.println();
-//			}
 				this.repository = repo;
 				return repo;
 			}
