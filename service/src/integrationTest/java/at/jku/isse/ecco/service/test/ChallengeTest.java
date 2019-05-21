@@ -31,13 +31,13 @@ public class ChallengeTest {
 		// create new repository
 		EccoService service = new EccoService();
 		//service.setRepositoryDir(Paths.get("C:\\Users\\user\\Desktop\\splc_repo\\.ecco"));
-		service.setRepositoryDir(Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\repository2\\.ecco"));
+		service.setRepositoryDir(Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\repository\\.ecco"));
 		service.init();
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
 		//Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
-		Path scenarioDir = Paths.get("C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom002Variants");
+		Path scenarioDir = Paths.get("C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom003Variants");
 		//Path scenarioDir = Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\testedpl");
 		Path variantsDir = scenarioDir.resolve("variants");
 		Path configsDir = scenarioDir.resolve("configs");
