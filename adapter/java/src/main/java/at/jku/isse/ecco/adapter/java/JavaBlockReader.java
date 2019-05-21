@@ -11,6 +11,7 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.comments.BlockComment;
 import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.visitor.VoidVisitor;
@@ -90,7 +91,7 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 
                     //add classChild from imports
                     for (ImportDeclaration importDeclaration : cu.getImports()) {
-                        String importName = importDeclaration.getName().asString();
+                        String importName = "import "+importDeclaration.getName().asString();
                         Artifact.Op<ImportsArtifactData> importsArtifact = this.entityFactory.createArtifact(new ImportsArtifactData(importName));
                         Node.Op importNode = this.entityFactory.createNode(importsArtifact);
                         classNode.addChild(importNode);
@@ -230,8 +231,13 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
             methodNode.addChild(blockNode);
 
             if (statement.getChildNodes().size() > 1) {
-                BlockStmt blockStatement = ((BlockStmt) statement.getChildNodes().get(1));
-                addMethodChild(blockStatement, blockNode);
+                if(statement.getChildNodes().get(1) instanceof BreakStmt){
+                    BreakStmt breakStatement = ((BreakStmt) statement.getChildNodes().get(1));
+                    addMethodChild(breakStatement, blockNode);
+                }else if(statement.getChildNodes().get(1) instanceof BreakStmt) {
+                    BlockStmt blockStatement = ((BlockStmt) statement.getChildNodes().get(1));
+                    addMethodChild(blockStatement, blockNode);
+                }
 
                 //    String stmt = statement.getChildNodes().get(j).toString();
                 //    Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
@@ -256,7 +262,7 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
                 Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
                 blockNode.addChild(lineNode);
             }*/
-            String stmt = "for(" + statement.getChildNodes().get(0).toString() + "; " + statement.getChildNodes().get(1).toString() + "; " + statement.getChildNodes().get(2).toString() + ")";
+            String stmt = "for(" + statement.getChildNodes().get(0).toString() + "; "; //+ statement.getChildNodes().get(1).toString() + "; " + statement.getChildNodes().get(2).toString() + ")";
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
             Node.Op blockNode = this.entityFactory.createNode(blockArtifact);
             methodNode.addChild(blockNode);
@@ -349,8 +355,12 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
             methodNode.addChild(blockNode);
 
             if (statement.getChildNodes().size() > 1) {
-                BlockStmt blockStatement = ((BlockStmt) statement.getChildNodes().get(1));
-                addMethodChild(blockStatement, blockNode);
+                if(statement.getChildNodes().get(1)instanceof BlockComment){
+                    //not add as child the comments
+                }else {
+                    BlockStmt blockStatement = ((BlockStmt) statement.getChildNodes().get(1));
+                    addMethodChild(blockStatement, blockNode);
+                }
             }
 
         } else if (statement instanceof SwitchStmt) {
@@ -506,10 +516,10 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
                 if ((exp.getExpression() instanceof VariableDeclarationExpr)) {
                     expr = (VariableDeclarationExpr) exp.getExpression();
 
-                    if (expr.getVariable(0).getInitializer().get() instanceof ArrayInitializerExpr) {
+                    if (expr.getVariable(0).getInitializer().isPresent()) {
                         String stmt = "Array " + expr.getVariable(0).getName().toString();
                         Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                        Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+                        Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
                         methodNode.addChild(lineNode);
                         for (com.github.javaparser.ast.Node childNode : expr.getVariable(0).getChildNodes().get(2).getChildNodes()) {
                             String stmtChild = childNode.toString();
@@ -588,6 +598,12 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
                     }
                 }
             }
+        } else if (statement instanceof BreakStmt){
+                String stmt = "break";
+                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
+                Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+                methodNode.addChild(lineNode);
+
         }
     }
 
