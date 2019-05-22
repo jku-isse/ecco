@@ -37,7 +37,7 @@ public class ChallengeTest {
 
 		// commit all existing variants to the new repository
 		//Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
-		Path scenarioDir = Paths.get("C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom003Variants");
+		Path scenarioDir = Paths.get("C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom002Variants");
 		//Path scenarioDir = Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\testedpl");
 		Path variantsDir = scenarioDir.resolve("variants");
 		Path configsDir = scenarioDir.resolve("configs");
@@ -339,7 +339,7 @@ public class ChallengeTest {
 					sb.append(currentClass + "\n");
 				} else {
 					if (nonMethodDescendants) {
-						//sb.append(currentClass + " Refinement\n");
+						sb.append(currentClass + " Refinement\n");
 					}
 				}
 			}
@@ -366,9 +366,9 @@ public class ChallengeTest {
 				//if (node.isUnique()) {
 				//	sb.append(currentClass + " " + methodSignature + "\n");
 				//} else {
-					if (!node.getChildren().isEmpty() && !(node.getParent().isUnique())) { // it has unique descendants
+					if (!node.getChildren().isEmpty() && !(node.isUnique())) { // it has unique descendants
 						sb.append(currentClass + " " + methodSignature + " Refinement\n");
-					}else if(!node.isUnique()&& (node.getParent().isUnique())){
+					}else if(node.isUnique() && !(node.getParent().isUnique())){
 						sb.append(currentClass + " " + methodSignature + "\n");
 					}
 				//}
