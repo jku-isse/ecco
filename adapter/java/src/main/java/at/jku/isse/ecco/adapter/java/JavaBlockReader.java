@@ -14,6 +14,7 @@ import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.comments.BlockComment;
 import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.*;
+import com.github.javaparser.ast.type.ArrayType;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.google.inject.Inject;
 import com.sun.org.apache.xerces.internal.dom.ChildNode;
@@ -72,8 +73,6 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
             nodes.add(pluginNode);
 
 
-            // TODO: user JavaParser to create remaining tree
-
             try {
                 CompilationUnit cu = JavaParser.parse(resolvedPath);
 
@@ -110,35 +109,11 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
                                 Artifact.Op<LineArtifactData> lineArtifactChild = this.entityFactory.createArtifact(new LineArtifactData(enumInitializerName));
                                 Node.Op lineNodeChild = this.entityFactory.createNode(lineArtifactChild);
                                 lineNode.addChild(lineNodeChild);
-                                //System.out.println("entrada: "+((EnumDeclaration) node).getEntries().get(i).getName());
                             }
-
-                            //System.out.println("nome: "+((EnumDeclaration) node).getName());
                         } else
                             //add classChild from fields
                             if (node instanceof FieldDeclaration) {
-
-                                if (((FieldDeclaration) node).getVariables().get(0).getInitializer().isPresent()) {
-                                    if (((FieldDeclaration) node).getVariables().get(0).getInitializer().get() instanceof ArrayInitializerExpr) {
-                                        String stmt = "Array " + ((FieldDeclaration) node).getVariables().get(0).getName().toString();
-                                        Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                                        Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
-                                        classNode.addChild(lineNode);
-                                        for (com.github.javaparser.ast.Node childNode : ((FieldDeclaration) node).getVariables().get(0).getChildNodes().get(2).getChildNodes()) {
-                                            String stmtChild = childNode.toString();
-                                            Artifact.Op<LineArtifactData> lineArtifactChild = this.entityFactory.createArtifact(new LineArtifactData(stmtChild));
-                                            Node.Op lineNodeChild = this.entityFactory.createNode(lineArtifactChild);
-                                            lineNode.addChild(lineNodeChild);
-                                        }
-
-                                    }
-                                } else {
-
-                                    String fieldOfClass = node.removeComment().toString();
-                                    Artifact.Op<FieldArtifactData> fieldArtifact = this.entityFactory.createArtifact(new FieldArtifactData(fieldOfClass));
-                                    Node.Op fieldNode = this.entityFactory.createNode(fieldArtifact);
-                                    classNode.addChild(fieldNode);
-                                }
+                                addFieldChild(node, classNode);
                             } else
                                 //add classChild from constructorMethod
                                 if (node instanceof ConstructorDeclaration) {
@@ -146,9 +121,9 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
                                     Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
                                     Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
                                     classNode.addChild(methodNode);
-                                    if(((ConstructorDeclaration) node).getBody().getStatements().size() > 0) {
-                                        for(Statement stm : ((ConstructorDeclaration) node).getBody().getStatements()){
-                                            addMethodChild(stm,methodNode);
+                                    if (((ConstructorDeclaration) node).getBody().getStatements().size() > 0) {
+                                        for (Statement stm : ((ConstructorDeclaration) node).getBody().getStatements()) {
+                                            addMethodChild(stm, methodNode);
                                         }
                                     }
                                 }
@@ -163,18 +138,12 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
                         Optional<BlockStmt> block = methodDeclaration.getBody();
                         Boolean hasAnyStatement = false;
                         if (methodDeclaration.getBody().isPresent()) {
-                            for (int i = 0; i < block.get().getStatements().size(); i++) {
-                                Statement blockStatement = block.get().getStatements().get(i);
-                                addMethodChild(blockStatement, methodNode);
-                                //if(statereturn instanceof Statement){
-                                //    addMethodChild(statereturn, methodNode);
-                                // }
-                                   /*
-
-                                   } else if (block.get().getStatements().get(i).getChildNodes().get(j) instanceof EnumDeclaration) {
-
-                                   } else if (block.get().getStatements().get(i).getChildNodes().get(j) instanceof FieldDeclaration) {
-                                   }*/
+                            for (com.github.javaparser.ast.Node node : methodDeclaration.getBody().get().getChildNodes()) {
+                                if (node instanceof FieldDeclaration) {
+                                    addFieldChild(node, methodNode);
+                                } else {
+                                    addMethodChild(node, methodNode);
+                                }
                             }
 
 
@@ -182,41 +151,6 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 
                     }
                 }
-
-
-							/*
-							NodeList<Statement> statements = block.get().getStatements();
-							for (Statement tmp : statements) {
-								tmp.getChildNodes().get(0).getChildNodes().get(0);
-								String line = tmp.removeComment().toString();
-								Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
-								Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-								methodNode.addChild(lineNode);
-							}*/
-
-
-                //}
-                //}
-
-                //print tree
-                //System.out.println("\n Class: "+classNode.toString());
-                //for (int i = 0; i < classNode.getChildren().size(); i++) { //imports, fields and methods declaration
-                //    //	System.out.println("\n Class child: "+classNode.getChildren().get(i));
-                //    if (classNode.getChildren().get(i).getChildren().size() > 0) { //methods statements and methods fields declaration
-                //        for (int j = 0; j < classNode.getChildren().get(i).getChildren().size(); j++) {
-                //            //System.out.println("\n class child: "+classNode.getChildren().get(i).getChildren().get(j));
-                //            for (int k = 0; k < classNode.getChildren().get(i).getChildren().get(j).getChildren().size(); k++) {
-                //	System.out.println("\n Statement: "+classNode.getChildren().get(i).getChildren().get(j).getChildren().get(k));
-                //            }
-                //        }
-                //    }
-                // }
-
-                //System.out.println(typeDeclaration.getMethods().get(0).getBody().get().toString());
-                //System.out.println(Arrays.asList(typeDeclaration.getMethods().get(0).getBody().get().toString().split("\\r?\\n")));
-
-                // }
-                // }
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -227,181 +161,111 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
         return nodes;
     }
 
+    public void addFieldChild(com.github.javaparser.ast.Node node, Node.Op patternNode) {
+        if (((FieldDeclaration) node).getVariables().get(0).getInitializer().isPresent()) {
+            if (((FieldDeclaration) node).getVariables().get(0).getInitializer().get() instanceof ArrayInitializerExpr) {
+                String stmt = "Array " + ((FieldDeclaration) node).getVariables().get(0).getName().toString();
+                Artifact.Op<FieldArtifactData> fieldArtifact = this.entityFactory.createArtifact(new FieldArtifactData(stmt));
+                Node.Op fieldNode = this.entityFactory.createOrderedNode(fieldArtifact);
+                patternNode.addChild(fieldNode);
+                for (com.github.javaparser.ast.Node childNode : ((FieldDeclaration) node).getVariables().get(0).getChildNodes().get(2).getChildNodes()) {
+                    String stmtChild = childNode.toString();
+                    Artifact.Op<LineArtifactData> lineArtifactChild = this.entityFactory.createArtifact(new LineArtifactData(stmtChild));
+                    Node.Op lineNodeChild = this.entityFactory.createNode(lineArtifactChild);
+                    fieldNode.addChild(lineNodeChild);
+                }
 
-    public void addMethodChild(Statement statement, Node.Op methodNode) {
-        if (statement instanceof IfStmt) {
-            String stmt = "if (" + statement.getChildNodes().get(0).toString() + ")";
+            } else {
+                String stmtChild = node.toString();
+                Artifact.Op<FieldArtifactData> fieldArtifactChild = this.entityFactory.createArtifact(new FieldArtifactData(stmtChild));
+                Node.Op fieldNode = this.entityFactory.createNode(fieldArtifactChild);
+                patternNode.addChild(fieldNode);
+            }
+        } else {
+
+            String fieldOfClass = node.removeComment().toString();
+            Artifact.Op<FieldArtifactData> fieldArtifact = this.entityFactory.createArtifact(new FieldArtifactData(fieldOfClass));
+            Node.Op fieldNode = this.entityFactory.createNode(fieldArtifact);
+            patternNode.addChild(fieldNode);
+        }
+    }
+
+
+    public void addMethodChild(com.github.javaparser.ast.Node node, Node.Op methodNode) {
+        if (node instanceof IfStmt) {
+            String stmt = "if (" + node.getChildNodes().get(0).toString() + ")";
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
             Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             methodNode.addChild(blockNode);
 
-            if (statement.getChildNodes().size() > 1) {
-                if (statement.getChildNodes().get(1) instanceof BreakStmt) {
-                    BreakStmt breakStatement = ((BreakStmt) statement.getChildNodes().get(1));
-                    addMethodChild(breakStatement, blockNode);
-                } else if (statement.getChildNodes().get(1) instanceof BlockStmt) {
-                    BlockStmt blockStatement = ((BlockStmt) statement.getChildNodes().get(1));
-                    addMethodChild(blockStatement, blockNode);
-                }else if (statement.getChildNodes().get(1) instanceof Statement) {
-                    Statement st = (Statement) statement.getChildNodes().get(1);
-                    addMethodChild(st, blockNode);
-                }
-
-                //    String stmt = statement.getChildNodes().get(j).toString();
-                //    Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                //    Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                //    blockNode.addChild(lineNode);
-            }
-            //   String ifstmt = statement.toString();//.getChildNodes().get(j).toString();
-            //   Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(ifstmt));
-            //   blockNode = this.entityFactory.createNode(blockArtifact);
-            //    methodNode.addChild(blockNode);
-        } else if (statement instanceof ForStmt) {
-            /*Node.Op blockNode = null;
-            int endFor = statement.toString().indexOf("{");
-            String forstmt = statement.toString().substring(0, endFor - 1);
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(forstmt));
-            blockNode = this.entityFactory.createNode(blockArtifact);
-            methodNode.addChild(blockNode);
-            ForStmt forStmt = statement.asForStmt();
-            for (int j = 0; j < forStmt.getBody().getChildNodes().size(); j++) {
-                String stmt = forStmt.getBody().getChildNodes().get(j).toString();
-                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                blockNode.addChild(lineNode);
-            }*/
-            String stmt = "for(" + statement.getChildNodes().get(0).toString() + "; "; //+ statement.getChildNodes().get(1).toString() + "; " + statement.getChildNodes().get(2).toString() + ")";
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
-            Node.Op blockNode = this.entityFactory.createNode(blockArtifact);
-            methodNode.addChild(blockNode);
-
-            if (statement.getChildNodes().size() > 3) {
-                for (com.github.javaparser.ast.Node stmtaux : ((ForStmt) statement).getBody().getChildNodes()) {
-                    if (stmtaux instanceof BlockStmt) {
-                        BlockStmt blockStatement = (BlockStmt) stmtaux;
-                        addMethodChild(blockStatement, blockNode);
-                    } else if (stmtaux instanceof Statement) {
-                        Statement stmtchild = (Statement) stmtaux;
-                        addMethodChild(stmtchild, blockNode);
+            if (node.getChildNodes().size() > 0) {
+                for (int j = 0; j < node.getChildNodes().size(); j++) {
+                    if(!(node.getChildNodes().get(j) instanceof  BinaryExpr)) {
+                        addMethodChild(node.getChildNodes().get(j), blockNode);
                     }
-
                 }
             }
-        } else if (statement instanceof DoStmt) {
-            Node.Op blockNode = null;
-            int endDo = statement.toString().indexOf("{");
-            String dostmt = statement.toString().substring(0, endDo - 1) + " (" + ((DoStmt) statement).getCondition().toString() + " )";
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(dostmt));
-            blockNode = this.entityFactory.createNode(blockArtifact);
-            methodNode.addChild(blockNode);
-            DoStmt doStmt = statement.asDoStmt();
-            if (doStmt.getChildNodes().size() > 1) {
-                if (doStmt.getChildNodes().get(0) instanceof Statement) {
-                    Statement statementChild = (Statement) doStmt.getChildNodes().get(0);
-                    addMethodChild(statementChild, blockNode);
-                } else if (doStmt.getChildNodes().get(0) instanceof BlockStmt) {
-                    BlockStmt statementChild = (BlockStmt) doStmt.getChildNodes().get(0);
-                    addMethodChild(statementChild, blockNode);
-                }
-            }
-
-            //Node.Op blockNode = null;
-            //int endDo = statement.toString().indexOf("{");
-            //String dostmt = statement.toString().substring(0, endDo - 1);
-            //Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(dostmt));
-            //blockNode = this.entityFactory.createNode(blockArtifact);
-            //methodNode.addChild(blockNode);
-            //DoStmt doStmt = statement.asDoStmt();
-            //for (int j = 0; j < doStmt.getBody().getChildNodes().size(); j++) {
-            //    String stmt = doStmt.getBody().getChildNodes().get(j).toString();
-            //    Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-            //    Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-            //    blockNode.addChild(lineNode);
-            //}
-            //String condition = doStmt.getCondition().toString();
-            //Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(condition));
-            //Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-            //blockNode.addChild(lineNode);
-        } else if (statement instanceof ForeachStmt) {
-            /*Node.Op blockNode = null;
-            int foreach = statement.toString().indexOf("{");
-            String foreachstmt = statement.toString().substring(0, foreach - 1);
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(foreachstmt));
-            blockNode = this.entityFactory.createNode(blockArtifact);
-            methodNode.addChild(blockNode);
-            ForeachStmt foreachStmt = statement.asForeachStmt();
-            for (int j = 0; j < foreachStmt.getBody().getChildNodes().size(); j++) {
-                String stmt = foreachStmt.getBody().getChildNodes().get(j).toString();
-                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                blockNode.addChild(lineNode);
-            }*/
-            String stmt = "for (" + statement.getChildNodes().get(0).toString() + " : " + statement.getChildNodes().get(1).toString() + ")";
+        } else if (node instanceof ForStmt) {
+            String stmt = "for(" + node.getChildNodes().get(0).toString() + "; "; //+ statement.getChildNodes().get(1).toString() + "; " + statement.getChildNodes().get(2).toString() + ")";
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
             Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             methodNode.addChild(blockNode);
 
-            if (statement.getChildNodes().size() > 2) {
-                for (int l = 2; l < statement.getChildNodes().size(); l++) {
-                    BlockStmt blockStatement = ((BlockStmt) statement.getChildNodes().get(l));
-                    addMethodChild(blockStatement, blockNode);
+            if (node.getChildNodes().size() > 3) {
+                for (com.github.javaparser.ast.Node stmtaux : ((ForStmt) node).getBody().getChildNodes()) {
+                    addMethodChild(stmtaux, blockNode);
                 }
             }
-
-        } else if (statement instanceof ReturnStmt) {
-            /*Node.Op blockNode = null;
-            int inicio = statement.asReturnStmt().toString().indexOf("return");
-            String returnstmt = statement.asReturnStmt().toString().substring(inicio);
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(returnstmt));
-            blockNode = this.entityFactory.createNode(blockArtifact);
+        } else if (node instanceof DoStmt) {
+            Node.Op blockNode = null;
+            int endDo = node.toString().indexOf("{");
+            String dostmt = node.toString().substring(0, endDo - 1) + " (" + ((DoStmt) node).getCondition().toString() + " )";
+            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(dostmt));
+            blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             methodNode.addChild(blockNode);
-             */
-            int inicio = statement.asReturnStmt().toString().indexOf("return");
-            String stmt = statement.asReturnStmt().toString().substring(inicio);
+            DoStmt doStmt = (DoStmt) node;
+            if (doStmt.getChildNodes().size() > 1) {
+                for (com.github.javaparser.ast.Node nodeChild : node.getChildNodes()) {
+                    addMethodChild(nodeChild, blockNode);
+                }
+            }
+        } else if (node instanceof ForeachStmt) {
+            String stmt = "for (" + node.getChildNodes().get(0).toString() + " : " + node.getChildNodes().get(1).toString() + ")";
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
-            Node.Op blockNode = this.entityFactory.createNode(blockArtifact);
+            Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             methodNode.addChild(blockNode);
 
-            if (statement.getChildNodes().size() > 1) {
-                if (statement.getChildNodes().get(1) instanceof BlockComment) {
-                    //not add as child the comments
-                } else {
-                    BlockStmt blockStatement = ((BlockStmt) statement.getChildNodes().get(1));
-                    addMethodChild(blockStatement, blockNode);
+            if (node.getChildNodes().size() > 2) {
+                for (int l = 2; l < node.getChildNodes().size(); l++) {
+                    addMethodChild(node.getChildNodes().get(l), blockNode);
                 }
             }
 
-        } else if (statement instanceof SwitchStmt) {
-            /*Node.Op blockNode = null;
-            int end = statement.asSwitchStmt().toString().indexOf("{");
-            String switchstmt = statement.asSwitchStmt().toString().substring(0, end - 1);
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(switchstmt));
-            blockNode = this.entityFactory.createNode(blockArtifact);
-            methodNode.addChild(blockNode);
-            SwitchStmt switchStmt = statement.asSwitchStmt();
-            for (int j = 0; j < switchStmt.getEntries().size(); j++) {
-                int endSwitchEntry = switchStmt.getEntries().get(j).asSwitchEntryStmt().toString().indexOf(":");
-                String entry = switchStmt.getEntries().get(j).asSwitchEntryStmt().toString().substring(0, endSwitchEntry);
-                Artifact.Op<BlockArtifactData> blockArtifactEntry = this.entityFactory.createArtifact(new BlockArtifactData(entry));
-                Node.Op blockNodeEntry = this.entityFactory.createNode(blockArtifactEntry);
-                blockNode.addChild(blockNodeEntry);
-                for (Statement statement2 : switchStmt.getEntries().get(j).getStatements()) {
-                    String stmt = statement2.toString();
-                    Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                    Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                    blockNodeEntry.addChild(lineNode);
-                }
-            }
-
-             */
-            int end = statement.asSwitchStmt().toString().indexOf("{");
-            String stmt = statement.asSwitchStmt().toString().substring(0, end - 1);
+        } else if (node instanceof ReturnStmt) {
+            int inicio = node.toString().indexOf("return");
+            String stmt = node.toString().substring(inicio);
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
-            Node.Op blockNode = this.entityFactory.createNode(blockArtifact);
+            Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             methodNode.addChild(blockNode);
 
-            if (((SwitchStmt) statement).getEntries().size() > 1) {
-                for (SwitchEntryStmt entryStmt : ((SwitchStmt) statement).getEntries()) {
+            if (node.getChildNodes().size() > 1) {
+                for (int j = 1; j < node.getChildNodes().size(); j++) {
+                    if (node.getChildNodes().get(j) instanceof BlockComment) {
+                    } else {
+                        addMethodChild(node.getChildNodes().get(j), blockNode);
+                    }
+                }
+            }
+
+        } else if (node instanceof SwitchStmt) {
+            int end = node.toString().indexOf("{");
+            String stmt = node.toString().substring(0, end - 1);
+            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
+            Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
+            methodNode.addChild(blockNode);
+
+            if (((SwitchStmt) node).getEntries().size() > 1) {
+                for (SwitchEntryStmt entryStmt : ((SwitchStmt) node).getEntries()) {
                     SwitchEntryStmt switchEntryStmt = entryStmt;
                     int endSwitchEntry = switchEntryStmt.toString().indexOf(":");
                     String entry = switchEntryStmt.toString().substring(0, endSwitchEntry);
@@ -413,193 +277,118 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 
             }
 
-        } else if (statement instanceof ThrowStmt) {
-            /*Node.Op lineNode = null;
-            String throwstmt = statement.asThrowStmt().toString();
-            Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(throwstmt));
-            lineNode = this.entityFactory.createNode(lineArtifact);
-            methodNode.addChild(lineNode);
-
-             */
-            String stmt = statement.getChildNodes().get(0).toString();
+        } else if (node instanceof ThrowStmt) {
+            String stmt = node.getChildNodes().get(0).toString();
             Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-            Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+            Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
             methodNode.addChild(lineNode);
-            if (statement.getChildNodes().size() > 1) {
-                if (statement.getChildNodes().get(1) instanceof Statement) {
-                    Statement statementChild = (Statement) statement.getChildNodes().get(1);
-                    addMethodChild(statementChild, methodNode);
-                } else if (statement.getChildNodes().get(1) instanceof BlockStmt) {
-                    BlockStmt statementChild = (BlockStmt) statement.getChildNodes().get(1);
-                    addMethodChild(statementChild, methodNode);
+            if (node.getChildNodes().size() > 1) {
+                for (int j = 0; j < node.getChildNodes().size(); j++) {
+                    addMethodChild(node.getChildNodes().get(j), methodNode);
                 }
             }
 
-        } else if (statement instanceof TryStmt) {
-            /*Node.Op blockNode = null;
+        } else if (node instanceof TryStmt) {
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData("try"));
-            blockNode = this.entityFactory.createNode(blockArtifact);
-            methodNode.addChild(blockNode);
-            TryStmt tryStmt = statement.asTryStmt();
-            for (int j = 0; j < tryStmt.getTryBlock().getStatements().size(); j++) {
-                String stmt = tryStmt.getTryBlock().getStatements().get(j).toString();
-                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                blockNode.addChild(lineNode);
-            }
-            Node.Op blockNodeCatch = null;
-            Artifact.Op<BlockArtifactData> catchBlockArtifact = this.entityFactory.createArtifact(new BlockArtifactData("catch"));
-            blockNodeCatch = this.entityFactory.createNode(catchBlockArtifact);
-            blockNode.addChild(blockNodeCatch);
-            for (int k = 0; k < tryStmt.getCatchClauses().size(); k++) {
-                for (int a = 0; a < tryStmt.getCatchClauses().get(k).getChildNodes().size(); a++) {
-                    String catchclause = tryStmt.getCatchClauses().get(k).getChildNodes().get(a).toString();
-                    Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(catchclause));
-                    Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                    blockNodeCatch.addChild(lineNode);
-                }
-            }*/
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData("try"));
-            Node.Op blockNode = this.entityFactory.createNode(blockArtifact);
+            Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             methodNode.addChild(blockNode);
 
-            if (statement.getChildNodes().size() > 1) {
-                for (com.github.javaparser.ast.Node childNode : statement.getChildNodes()) {
-                    if (childNode instanceof BlockStmt) {
-                        BlockStmt statementChild = (BlockStmt) childNode;
-                        addMethodChild(statementChild, blockNode);
-                    } else if (childNode instanceof CatchClause) {
-                        Artifact.Op<BlockArtifactData> catchArtifact = this.entityFactory.createArtifact(new BlockArtifactData(childNode.toString().substring(0, childNode.toString().indexOf(")") + 1)));
-                        Node.Op catchNode = this.entityFactory.createNode(catchArtifact);
-                        methodNode.addChild(catchNode);
-                        if (((CatchClause) childNode).getBody() instanceof BlockStmt) {
-                            BlockStmt blockStatement = ((CatchClause) childNode).getBody();
-                            addMethodChild(blockStatement, catchNode);
-                        } else if (((CatchClause) childNode).getBody() instanceof Statement) {
-                            Statement stmtchild = ((CatchClause) childNode).getBody();
-                            addMethodChild(stmtchild, catchNode);
-                        }
-
-                    }
+            if (node.getChildNodes().size() > 1) {
+                for (com.github.javaparser.ast.Node childNode : node.getChildNodes()) {
+                    addMethodChild(childNode, blockNode);
                 }
             }
 
-        } else if (statement instanceof WhileStmt) {
-            /*Node.Op blockNode = null;
-            int whilend = statement.toString().indexOf("{");
-            String whilestmt = statement.toString().substring(0, whilend - 1);
-            Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(whilestmt));
-            blockNode = this.entityFactory.createNode(blockArtifact);
-            methodNode.addChild(blockNode);
-            WhileStmt whileStmt = statement.asWhileStmt();
-            for (int j = 0; j < whileStmt.getBody().getChildNodes().size(); j++) {
-                String stmt = whileStmt.getBody().getChildNodes().get(j).toString();
-                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                blockNode.addChild(lineNode);
-            }*/
-            //int whilend = statement.toString().indexOf("{");
-            String whilestmt = "while("+((WhileStmt) statement).getCondition().toString()+")";
+        } else if (node instanceof WhileStmt) {
+            String whilestmt = "while(" + ((WhileStmt) node).getCondition().toString() + ")";
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(whilestmt));
             Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             methodNode.addChild(blockNode);
 
-            if (statement.getChildNodes().size() > 1) {
-                for (com.github.javaparser.ast.Node stmtaux : ((WhileStmt) statement).getBody().getChildNodes()) {
-                    if (stmtaux instanceof BlockStmt) {
-                        BlockStmt blockStatement = (BlockStmt) stmtaux;
-                        addMethodChild(blockStatement, blockNode);
-                    } else if (stmtaux instanceof Statement) {
-                        Statement stmtchild = (Statement) stmtaux;
-                        addMethodChild(stmtchild, blockNode);
-                    }
-
+            if (node.getChildNodes().size() > 1) {
+                for (com.github.javaparser.ast.Node stmtaux : ((WhileStmt) node).getBody().getChildNodes()) {
+                    addMethodChild(stmtaux, blockNode);
                 }
             }
 
-        } else if (statement instanceof BlockStmt) {
-            if (statement.getChildNodes().size() > 0) {
-                if (statement.getChildNodes().get(0) instanceof ExpressionStmt) {
-                    ExpressionStmt exp = (ExpressionStmt) statement.getChildNodes().get(0);
-                    VariableDeclarationExpr expr;
-                    if ((exp.getExpression() instanceof VariableDeclarationExpr)) {
-                        expr = (VariableDeclarationExpr) exp.getExpression();
+        } else if (node instanceof BlockStmt) {
+            if (node.getChildNodes().size() > 0) {
+                for (com.github.javaparser.ast.Node st : node.getChildNodes()) {
+                    addMethodChild(st, methodNode);
+                }
+            }
+        } else if (node instanceof ExpressionStmt) {
+            ExpressionStmt exp = (ExpressionStmt) node;
+            VariableDeclarationExpr expr;
+            if ((exp.getExpression() instanceof VariableDeclarationExpr)) {
+                expr = (VariableDeclarationExpr) exp.getExpression();
 
-                        if (expr.getVariable(0).getInitializer().isPresent()) {
-                            String stmt = "Array " + expr.getVariable(0).getName().toString();
-                            Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                            Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
-                            methodNode.addChild(lineNode);
-                            for (com.github.javaparser.ast.Node childNode : expr.getVariable(0).getChildNodes().get(2).getChildNodes()) {
-                                String stmtChild = childNode.toString();
-                                Artifact.Op<LineArtifactData> lineArtifactChild = this.entityFactory.createArtifact(new LineArtifactData(stmtChild));
-                                Node.Op lineNodeChild = this.entityFactory.createNode(lineArtifactChild);
-                                lineNode.addChild(lineNodeChild);
-                            }
-
+                if (expr.getVariable(0).getInitializer().isPresent()) {
+                    if (expr.getVariable(0).getInitializer().get() instanceof ArrayInitializerExpr) {
+                        String stmt = "Array " + expr.getVariable(0).getName().toString();
+                        Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
+                        Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+                        methodNode.addChild(lineNode);
+                        for (com.github.javaparser.ast.Node childNode : expr.getVariable(0).getChildNodes().get(2).getChildNodes()) {
+                            String stmtChild = childNode.toString();
+                            Artifact.Op<LineArtifactData> lineArtifactChild = this.entityFactory.createArtifact(new LineArtifactData(stmtChild));
+                            Node.Op lineNodeChild = this.entityFactory.createOrderedNode(lineArtifactChild);
+                            lineNode.addChild(lineNodeChild);
                         }
+                    } else {
+                        String stmt = expr.toString();
+                        Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
+                        Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+                        methodNode.addChild(lineNode);
                     }
                 } else {
-                    String stmt = statement.getChildNodes().get(0).toString();
+                    String stmt = node.getChildNodes().get(0).toString();
                     Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                    Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+                    Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
                     methodNode.addChild(lineNode);
-
-                    if (statement.getChildNodes().size() > 1) {
-                        if (statement.getChildNodes().get(1) instanceof Statement) {
-                            Statement statementChild = (Statement) statement.getChildNodes().get(1);
-                            addMethodChild(statementChild, methodNode);
-                        } else if (statement.getChildNodes().get(1) instanceof BlockStmt) {
-                            BlockStmt statementChild = (BlockStmt) statement.getChildNodes().get(1);
-                            addMethodChild(statementChild, methodNode);
+                    if (node.getChildNodes().size() > 1) {
+                        for (int j = 1; j < node.getChildNodes().size(); j++) {
+                            addMethodChild(node.getChildNodes().get(j), lineNode);
                         }
-
                     }
                 }
-            } else {
-                String stmt = statement.toString();
+            }else{
+                String stmt = node.toString();
                 Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+                Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
                 methodNode.addChild(lineNode);
             }
-        } else if (statement instanceof ExpressionStmt) {
-            String stmt = statement.getChildNodes().get(0).toString();
-            Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-            Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-            methodNode.addChild(lineNode);
-            if (statement.getChildNodes().size() > 1) {
-                if (statement.getChildNodes().get(1) instanceof Statement) {
-                    Statement statementChild = (Statement) statement.getChildNodes().get(1);
-                    addMethodChild(statementChild, methodNode);
-                } else if (statement.getChildNodes().get(1) instanceof BlockStmt) {
-                    BlockStmt statementChild = (BlockStmt) statement.getChildNodes().get(1);
-                    addMethodChild(statementChild, methodNode);
-                }
-            }
-        } else if (statement instanceof SwitchEntryStmt) {
 
-            if (((SwitchEntryStmt) statement).getStatements().size() > 1) {
-                for (Statement switchentry : ((SwitchEntryStmt) statement).getStatements()) {
-                    if (switchentry instanceof Statement) {
-                        Statement statementChild = switchentry;
-                        addMethodChild(statementChild, methodNode);
-                    } else if (switchentry instanceof BlockStmt) {
-                        BlockStmt statementChild = (BlockStmt) switchentry;
-                        addMethodChild(statementChild, methodNode);
-                    }
+        } else if (node instanceof SwitchEntryStmt) {
+
+            if (((SwitchEntryStmt) node).getStatements().size() > 1) {
+                for (com.github.javaparser.ast.Node switchentry : node.getChildNodes()) {
+                    addMethodChild(switchentry, methodNode);
                 }
             }
-        } else if (statement instanceof BreakStmt) {
+        } else if (node instanceof BreakStmt) {
             String stmt = "break";
             Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
+            Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+            methodNode.addChild(lineNode);
+        } else if (node instanceof ExplicitConstructorInvocationStmt) {
+            String stmt = node.toString();
+            Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
             Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
             methodNode.addChild(lineNode);
-
-        }else if(statement instanceof ExplicitConstructorInvocationStmt){
-                String stmt = statement.toString();
-                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(stmt));
-                Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-                methodNode.addChild(lineNode);
+        } else if (node instanceof CatchClause) {
+            Artifact.Op<BlockArtifactData> catchArtifact = this.entityFactory.createArtifact(new BlockArtifactData(node.toString().substring(0, node.toString().indexOf(")") + 1)));
+            Node.Op catchNode = this.entityFactory.createOrderedNode(catchArtifact);
+            methodNode.addChild(catchNode);
+            if (((CatchClause) node).getBody().getChildNodes().size() > 0) {
+                for (com.github.javaparser.ast.Node childNode : ((CatchClause) node).getBody().getChildNodes()) {
+                    addMethodChild(childNode, catchNode);
+                }
+            }
+        } else if (node instanceof MethodCallExpr){
+            Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(node.toString()));
+            Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+            methodNode.addChild(lineNode);
         }
 
     }

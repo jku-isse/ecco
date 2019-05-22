@@ -37,7 +37,7 @@ public class ChallengeTest {
 
 		// commit all existing variants to the new repository
 		//Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
-		Path scenarioDir = Paths.get("C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom002Variants");
+		Path scenarioDir = Paths.get("C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom003Variants");
 		//Path scenarioDir = Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\testedpl");
 		Path variantsDir = scenarioDir.resolve("variants");
 		Path configsDir = scenarioDir.resolve("configs");
