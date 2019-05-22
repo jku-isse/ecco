@@ -42,7 +42,7 @@ public class CommitTest {
 
         //TODO: iterate directoy
         // commit all existing variants to the new repository
-       for (int i = 1; i < 7; i++) {
+       for (int i = 1; i <= 6; i++) {
             service.setBaseDir(Paths.get(testDataDir + i +"\\"));
             service.commit();
             System.out.println("Committed: " + "V" +i);

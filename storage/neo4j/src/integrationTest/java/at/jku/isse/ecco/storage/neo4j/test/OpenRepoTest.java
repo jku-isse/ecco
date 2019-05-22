@@ -1,8 +1,6 @@
 package at.jku.isse.ecco.storage.neo4j.test;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoAssociation;
 import at.jku.isse.ecco.storage.neo4j.domain.NeoRepository;
 import org.junit.Test;
@@ -10,7 +8,6 @@ import org.junit.Test;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Set;
 
 public class OpenRepoTest {
 
