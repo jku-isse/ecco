@@ -19,7 +19,7 @@ public class JavaAdapterTest {
 
 	@Test(groups = {"integration", "java"})
 	public void Text_Module_Test() {
-		Path[] inputFiles = new Path[]{Paths.get("FigStateVertex.java")};
+		Path[] inputFiles = new Path[]{Paths.get("UseCasesFactoryEUMLImpl.java")};
 
 		JavaBlockReader reader = new JavaBlockReader(new MemEntityFactory());
 
