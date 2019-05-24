@@ -1,7 +1,6 @@
-package at.jku.isse.ecco.adapter.java;
+package at.jku.isse.ecco.adapter.java.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
-import com.github.javaparser.ast.stmt.BlockStmt;
 
 import java.util.Objects;
 

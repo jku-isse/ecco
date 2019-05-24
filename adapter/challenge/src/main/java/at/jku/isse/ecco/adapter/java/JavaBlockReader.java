@@ -3,22 +3,19 @@ package at.jku.isse.ecco.adapter.java;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.adapter.java.data.ClassArtifactData;
+import at.jku.isse.ecco.adapter.java.data.ImportArtifactData;
+import at.jku.isse.ecco.adapter.java.data.LineArtifactData;
+import at.jku.isse.ecco.adapter.java.data.MethodArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
-import com.github.javaparser.ast.comments.BlockComment;
-import com.github.javaparser.ast.comments.JavadocComment;
-import com.github.javaparser.ast.comments.LineComment;
-import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.*;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-import com.google.errorprone.annotations.Var;
 import com.google.inject.Inject;
 
 import java.io.BufferedReader;
@@ -104,7 +101,7 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
                     //add classChild from imports
                     for (ImportDeclaration importDeclaration : cu.getImports()) {
                         String importName = "import " + importDeclaration.getName().asString();
-                        Artifact.Op<ImportsArtifactData> importsArtifact = this.entityFactory.createArtifact(new ImportsArtifactData(importName));
+                        Artifact.Op<ImportArtifactData> importsArtifact = this.entityFactory.createArtifact(new ImportArtifactData(importName));
                         Node.Op importNode = this.entityFactory.createNode(importsArtifact);
                         classNode.addChild(importNode);
                     }

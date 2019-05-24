@@ -18,7 +18,7 @@ public class JavaAdapterTest {
 
 
 	@Test(groups = {"integration", "java"})
-	public void Text_Module_Test() {
+	public void Java_Adapter_Test() {
 		Path[] inputFiles = new Path[]{Paths.get("FigStateVertex.java")};
 
 		JavaBlockReader reader = new JavaBlockReader(new MemEntityFactory());

@@ -1,13 +1,18 @@
-package at.jku.isse.ecco.service.test;
+package at.jku.isse.ecco.adapter.java.test;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.adapter.java.*;
+import at.jku.isse.ecco.adapter.java.JavaBlockReader;
+import at.jku.isse.ecco.adapter.java.data.ClassArtifactData;
+import at.jku.isse.ecco.adapter.java.data.FieldArtifactData;
+import at.jku.isse.ecco.adapter.java.data.ImportArtifactData;
+import at.jku.isse.ecco.adapter.java.data.MethodArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 import org.testng.annotations.Test;
@@ -17,28 +22,48 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ChallengeTest {
+
+	@Test(groups = {"integration", "java"})
+	public void Java_Adapter_Test() {
+		Path[] inputFiles = new Path[]{Paths.get("FigStateVertex.java")};
+
+		JavaBlockReader reader = new JavaBlockReader(new MemEntityFactory());
+
+		System.out.println("READ");
+		Set<Node.Op> nodes = reader.read(Paths.get("C:\\Users\\gabil\\Desktop"), inputFiles);
+
+		System.out.println(nodes);
+
+		//Path source = Paths.get(FILE_PATH);
+		//try {
+		//	Files.walkFileTree(source, new MyFileVisitor());
+		//} catch (IOException e) {
+		//	e.printStackTrace();
+		//}
+	}
+
+
+	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\v2");
+	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
+	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
+	;
+
 
 	@Test(groups = {"integration", "challenge"})
 	public void Test_Create_Repo() throws IOException {
 
 		// create new repository
 		EccoService service = new EccoService();
-		//service.setRepositoryDir(Paths.get("C:\\Users\\user\\Desktop\\splc_repo\\.ecco"));
-		service.setRepositoryDir(Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\repository2\\.ecco"));
+		service.setRepositoryDir(REPO_DIR);
 		service.init();
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
-		//Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
-		Path scenarioDir = Paths.get("C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom002Variants");
-		//Path scenarioDir = Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\testedpl");
+		Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
 		Path variantsDir = scenarioDir.resolve("variants");
 		Path configsDir = scenarioDir.resolve("configs");
 
@@ -52,8 +77,8 @@ public class ChallengeTest {
 			String configurationString = Files.readAllLines(configFile).stream().map(featureString -> featureString + ".1").collect(Collectors.joining(","));
 			if (configurationString.isEmpty())
 				configurationString = "BASE.1";
-			//else
-			//configurationString = "BASE.1," + configurationString;
+			else
+				configurationString = "BASE.1," + configurationString;
 			System.out.println("CONFIG: " + configurationString);
 
 			service.setBaseDir(variantDir.resolve("src"));
@@ -238,9 +263,11 @@ public class ChallengeTest {
 
 		// open repository
 		EccoService service = new EccoService();
-		service.setRepositoryDir(Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\repository2\\.ecco"));
+		service.setRepositoryDir(REPO_DIR);
 		service.open();
 		System.out.println("Repository opened.");
+
+		Map<String, Set<String>> results = new HashMap<>();
 
 		// for every association create results file with name of minimal to string
 		Repository repository = service.getRepository();
@@ -258,7 +285,8 @@ public class ChallengeTest {
 
 			// compute results
 			StringBuilder sb = new StringBuilder();
-			this.computeString(association.getRootNode(), sb, null);
+			List<String> lines = new ArrayList<>();
+			this.computeString(association.getRootNode(), sb, lines, null);
 			System.out.println(sb.toString());
 
 			// write results to file
@@ -283,19 +311,32 @@ public class ChallengeTest {
 						negNames.add(feature.getName());
 					}
 				}
+
 				// build file name
 				String filename = names.stream().sorted().map(name -> {
 					if (posNames.contains(name)) return name;
 					else if (negNames.contains(name)) return "not_" + name;
 					else return "";
 				}).collect(Collectors.joining("_" + condition.getType().toString().toLowerCase() + "_"));
-				// write to file
-				Path resultsDir = Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\results\\A" + assocCounter);
+
+				// write to file (per association)
+				Path resultsDir = RESULTS_DIR.resolve("A" + assocCounter);
 				if (!Files.exists(resultsDir))
 					Files.createDirectory(resultsDir);
-				Files.write(resultsDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE);
+				Files.write(resultsDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+				// add lines to results
+				results.computeIfAbsent(filename, s -> new HashSet<>());
+				results.get(filename).addAll(lines);
 			}
 
+			// write to file (for all)
+			Path resultsAllDir = RESULTS_DIR.resolve("ALL");
+			if (!Files.exists(resultsAllDir))
+				Files.createDirectory(resultsAllDir);
+			for (Map.Entry<String, Set<String>> entry : results.entrySet()) {
+				Files.write(resultsAllDir.resolve(entry.getKey() + ".txt"), entry.getValue(), StandardOpenOption.CREATE);
+			}
 
 			System.out.println("---------");
 		}
@@ -307,12 +348,10 @@ public class ChallengeTest {
 	}
 
 	private boolean checkNonMethodDescendants(Node node) {
-
-		//get the node data and see if it exists
+		// get the node data and see if it exists
 		if (node.getArtifact() != null && node.getArtifact().getData() != null) {
-
 			// see if the node is an import or variable declaration child
-			if (node.getArtifact().getData() instanceof ImportsArtifactData || node.getArtifact().getData() instanceof FieldArtifactData) {
+			if (node.getArtifact().getData() instanceof ImportArtifactData || node.getArtifact().getData() instanceof FieldArtifactData) {
 				return true;
 			}
 		}
@@ -324,29 +363,28 @@ public class ChallengeTest {
 		return nonMethodDescendants;
 	}
 
-	private void computeString(Node node, StringBuilder sb, String currentClass) {
+	private void computeString(Node node, StringBuilder sb, List<String> lines, String currentClassName) {
 
 		if (node.getArtifact() != null && node.getArtifact().getData() != null) {
 			// if file (i.e. class)
 			if (node.getArtifact().getData() instanceof ClassArtifactData) {
-				if (currentClass != null)
+				if (currentClassName != null)
 					throw new EccoException("Encounter class within class!");
-				currentClass = ((ClassArtifactData) node.getArtifact().getData()).getName();
+				currentClassName = ((ClassArtifactData) node.getArtifact().getData()).getName();
 
 				boolean nonMethodDescendants = this.checkNonMethodDescendants(node);
 
 				if (node.isUnique()) {
-					sb.append(currentClass + "\n");
-				} else {
-					if (nonMethodDescendants) {
-						sb.append(currentClass + " Refinement\n");
-					}
+					sb.append(currentClassName + "\n");
+					lines.add(currentClassName + "");
+				} else if (nonMethodDescendants) {
+					sb.append(currentClassName + " Refinement\n");
+					lines.add(currentClassName + " Refinement");
 				}
 			}
-			// see if is a method
+			// if method
 			else if (node.getArtifact().getData() instanceof MethodArtifactData) {
-				String fullMethodString = ((MethodArtifactData) node.getArtifact().getData()).getSignature().replaceAll(" ","");
-
+				String fullMethodString = ((MethodArtifactData) node.getArtifact().getData()).getSignature().replaceAll(" ", "");
 				// get method name
                 /*String part1 = fullMethodString.substring(0, fullMethodString.indexOf("("));
                 String methodName = part1.substring(part1.indexOf(" ") + 1);
@@ -360,39 +398,33 @@ public class ChallengeTest {
                         return "";
                 }).collect(Collectors.joining(","));
                 // build method signature
-                */String methodSignature = fullMethodString;
+                */
+				String methodSignature = fullMethodString;
 
+				if (node.isUnique() && !node.getParent().isUnique()) {
+					sb.append(currentClassName + " " + methodSignature + "\n");
+					lines.add(currentClassName + " " + methodSignature + "");
+				} else if (!node.isUnique() && !node.getChildren().isEmpty()) { // it has unique descendants
+					sb.append(currentClassName + " " + methodSignature + " Refinement\n");
+					lines.add(currentClassName + " " + methodSignature + " Refinement");
+				}
 
-				//if (node.isUnique()) {
-				//	sb.append(currentClass + " " + methodSignature + "\n");
-				//} else {
-					if (!node.getChildren().isEmpty() && !(node.isUnique())) { // it has unique descendants
-						sb.append(currentClass + " " + methodSignature + " Refinement\n");
-					}else if(node.isUnique() && !(node.getParent().isUnique())){
-						sb.append(currentClass + " " + methodSignature + "\n");
-					}
-				//}
+//				MethodArtifactData method = ((MethodArtifactData) node.getArtifact().getData());
+//				String methodSignature = method.getSignature().replaceAll("\\s+", "");
+//
+//				if (node.isUnique()) {
+//					sb.append(currentClass + " " + methodSignature + "\n");
+//				} else {
+//					if (!node.getChildren().isEmpty()) { // it has unique descendants
+//						sb.append(currentClass + " " + methodSignature + " Refinement\n");
+//					}
+//				}
 			}
-
-
-                /*if (node.getArtifact().getData() instanceof MethodArtifactData) {
-                    MethodArtifactData method = ((MethodArtifactData) node.getArtifact().getData());
-                    String methodSignature = method.getSignature().replaceAll("\\s+", "");
-
-                    if (node.isUnique()) {
-                        sb.append(currentClass + " " + methodSignature + "\n");
-                    } else {
-                        if (!node.getChildren().isEmpty()) { // it has unique descendants
-                            sb.append(currentClass + " " + methodSignature + " Refinement\n");
-                        }
-                    }
-                }*/
-
 		}
 
 
 		for (Node childNode : node.getChildren()) {
-			this.computeString(childNode, sb, currentClass);
+			this.computeString(childNode, sb, lines, currentClassName);
 		}
 
 	}

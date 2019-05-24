@@ -1,18 +1,18 @@
-package at.jku.isse.ecco.adapter.java;
+package at.jku.isse.ecco.adapter.java.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Objects;
 
-public class ImportsArtifactData implements ArtifactData {
+public class ImportArtifactData implements ArtifactData {
 
     private String importName;
 
-    protected ImportsArtifactData() {
+    protected ImportArtifactData() {
         this.importName = null;
     }
 
-    public ImportsArtifactData(String importName) {
+    public ImportArtifactData(String importName) {
         this.importName = importName;
     }
 
@@ -42,7 +42,7 @@ public class ImportsArtifactData implements ArtifactData {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        ImportsArtifactData other = (ImportsArtifactData) obj;
+        ImportArtifactData other = (ImportArtifactData) obj;
         if (importName == null) {
             if (other.importName != null)
                 return false;
