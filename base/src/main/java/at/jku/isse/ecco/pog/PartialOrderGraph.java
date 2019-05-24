@@ -90,7 +90,7 @@ public interface PartialOrderGraph extends Persistable {
 		 */
 		public default void align(PartialOrderGraph.Op other) {
 			Alignment leftMatchState = new Alignment();
-			leftMatchState.nodes.add(this.getHead());
+			leftMatchState.counters.put(this.getHead(), new ArrayList<>());
 
 			Map<Node.Op, Integer> rightNodes = new HashMap<>();
 			rightNodes.put(other.getHead(), 0);
@@ -207,11 +207,18 @@ public interface PartialOrderGraph extends Persistable {
 		default List<Alignment> collectMatches(Alignment startMatchState, Artifact.Op artifact) {
 			List<Alignment> matchStates = new LinkedList<>(); // TODO: linked list for insertion sort? sorted by the number of skipped artifacts?
 
+			// initialize counters with match state counters
 			Map<Node.Op, Integer> counters = new HashMap<>();
+			for (Map.Entry<Node.Op, List<Node.Op>> entry : startMatchState.counters.entrySet()) {
+				counters.put(entry.getKey(), entry.getValue().size());
+			}
 			// fill stack using nodes in startMatchState
 			Stack<Node.Op> stack = new Stack<>();
-			for (Node.Op initialNode : startMatchState.nodes) {
-				stack.push(initialNode);
+			for (Node.Op initialNode : startMatchState.counters.keySet()) {
+				if (counters.get(initialNode) >= initialNode.getPrevious().size()) {
+					stack.push(initialNode);
+					counters.remove(initialNode);
+				}
 			}
 
 			// for every node in start match state ...
@@ -223,6 +230,7 @@ public interface PartialOrderGraph extends Persistable {
 					// copy start match state
 					Alignment resultMatchState = new Alignment(startMatchState);
 					resultMatchState.matchedArtifact = node.getArtifact();
+
 					// remove current node and all its parent nodes from result match state and add all (other) children of encountered fork nodes to result match state. stop at nodes in start match state.
 					LinkedList<Node.Op> upwardsStack = new LinkedList<>();
 					upwardsStack.add(node);
@@ -231,21 +239,25 @@ public interface PartialOrderGraph extends Persistable {
 						// remove current node from stack
 						Node.Op current = upwardsStack.pop();
 						// remove current node from result match state
-						resultMatchState.nodes.remove(current);
+						resultMatchState.counters.remove(current);
 
 						// add children of current node to result match state
 						for (Node.Op child : current.getNext()) {
-							if (child != previous)
-								resultMatchState.nodes.add(child);
+							if (child != previous) {
+								resultMatchState.counters.putIfAbsent(child, new ArrayList<>());
+								resultMatchState.counters.get(child).add(current);
+							}
 						}
 						previous = current;
+
 						// add parents to stack
 						for (Node.Op parent : current.getPrevious()) {
 							// but not past the "barrier" nodes from which we started
-							if (!startMatchState.nodes.contains(current))
+							if (!startMatchState.counters.containsKey(current) || !startMatchState.counters.get(current).contains(parent)) {
 								upwardsStack.push(parent);
-							else
-								resultMatchState.nodes.remove(parent);
+							}
+							//else
+							resultMatchState.counters.remove(parent);
 						}
 
 					}
@@ -297,8 +309,13 @@ public interface PartialOrderGraph extends Persistable {
 				}
 			}
 
+			// check if alignment is valid
+			this.checkAlignment(other, shared);
+
 			// merge other partial order graph into this partial order graph
 			this.mergeRec(this.getHead(), other.getHead(), shared);
+			//this.mergeRecNew(this.getHead(), other.getHead(), shared);
+			//this.trimRec(this.getHead());
 
 			// check if graph has cycles and throw exception if it does
 			this.checkConsistency();
@@ -312,7 +329,7 @@ public interface PartialOrderGraph extends Persistable {
 			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
 				// add all unshared (i.e. new) symbols in right children to left children. add tail as their child. assign new sequence number to them.
 				for (Node.Op childRight : right.getNext()) {
-					// check if symbol is unshared
+					// check if right symbol is unshared
 					if (childRight.getArtifact() != null && !shared.containsKey(childRight.getArtifact().getSequenceNumber())) { // && childRight.getArtifact().getSequenceNumber() == PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
 						// create node for new artifact
 						Node.Op newLeft = this.createNode(childRight.getArtifact());
@@ -410,6 +427,124 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
+
+		default void trimRec(Node.Op node) {
+			// trim transitives, i.e. remove direct children that can be reached indirectly via any of the other children
+
+			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
+			stack.push(node);
+
+			while (!stack.isEmpty()) {
+				Node.Op current = stack.pop();
+
+				// process node
+				Iterator<Node.Op> it = current.getNext().iterator();
+				while (it.hasNext()) {
+					Node.Op child = it.next();
+
+					for (Node.Op otherChild : current.getNext()) {
+						if (otherChild != child && canReach(otherChild, child.getArtifact())) {
+							// we do not need connection -> delete it
+							it.remove();
+							child.getPrevious().remove(current);
+							System.out.println("Removed node " + child + " as child from node " + current);
+							break;
+						}
+					}
+				}
+
+				// add children of current node
+				for (Node.Op child : current.getNext()) {
+					counters.putIfAbsent(child, 0);
+					int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+					// check if all parents of the node have been processed
+					if (counter >= child.getPrevious().size()) {
+						// remove node from counters
+						counters.remove(child);
+						// push node onto stack
+						stack.push(child);
+					}
+				}
+			}
+		}
+
+		default void mergeRecNew(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
+			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
+
+			// left and right are equal
+			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
+
+				// add all unshared (i.e. new) symbols in right children to left children. add tail as their child. assign new sequence number to them.
+				for (Node.Op childRight : right.getNext()) {
+					// check if right symbol is unshared
+					if (childRight.getArtifact() != null && !shared.containsKey(childRight.getArtifact().getSequenceNumber())) { // && childRight.getArtifact().getSequenceNumber() == PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
+						// create node for new artifact
+						Node.Op newLeft = this.createNode(childRight.getArtifact());
+						// assign new sequence number to new artifact
+						newLeft.getArtifact().setSequenceNumber(this.getMaxIdentifier());
+						this.incMaxIdentifier();
+						// add it to left
+						left.addChild(newLeft);
+//						// add tail as child of new node
+//						newLeft.addChild(this.getTail());
+						//System.out.println("Added new node " + newLeft + " as child to node " + left);
+					}
+				}
+
+				// find shared symbols that are in right and not in left. ADD those that cannot be reached from left node because that means the right graph is more restrictive.
+				for (Node.Op childRight : right.getNext()) {
+					// check if right symbol is shared
+					if (childRight.getArtifact() == null || childRight.getArtifact() != null && shared.containsKey(childRight.getArtifact().getSequenceNumber())) {
+						Node.Op matchingChildLeft = null;
+						for (Node.Op childLeft : left.getNext()) {
+							if (childRight.getArtifact() != null && childRight.getArtifact().equals(childLeft.getArtifact())) {
+								matchingChildLeft = childLeft;
+								break;
+							}
+						}
+
+						// when encountering a connection to a shared symbol that is in RIGHT that is not in LEFT
+						if (matchingChildLeft == null) {
+							if (!canReach(left, childRight.getArtifact())) {
+								// we need right connection -> add it
+								if (childRight.getArtifact() == null) { // this is ugly for checking if it is the tail!
+									left.addChild(this.getTail());
+									//System.out.println("Added new node " + this.getTail() + " as child to node " + left);
+								} else {
+									Node.Op childLeft = shared.get(childRight.getArtifact().getSequenceNumber());
+
+									// make sure left node cannot be reached from childLeft
+									if (canReach(childLeft, left.getArtifact()))
+										throw new EccoException("Introduced cycle!");
+
+									left.addChild(childLeft);
+									//System.out.println("Added new node " + childLeft + " matching " + childRight + " as child to node " + left);
+								}
+							}
+						}
+					}
+				}
+
+			}
+
+			// find matching nodes (shared or unshared) in children of left and right
+			for (Node.Op childLeft : left.getNext()) {
+				boolean foundMatchingChildRight = false;
+				for (Node.Op childRight : right.getNext()) {
+					if ((childLeft.getArtifact() == null && childRight.getArtifact() == null) || (childLeft.getArtifact() != null && childLeft.getArtifact().equals(childRight.getArtifact()))) {
+						this.mergeRecNew(childLeft, childRight, shared);
+						foundMatchingChildRight = true;
+						break;
+					}
+				}
+				// if left is unshared and was not added from right before then rec right here
+				if (!foundMatchingChildRight && childLeft.getArtifact() != null && !shared.containsKey(childLeft.getArtifact().getSequenceNumber()))
+					this.mergeRecNew(childLeft, right, shared);
+			}
+		}
+
+
 		/**
 		 * Checks whether an artifact can be reached from a given node.
 		 *
@@ -419,20 +554,6 @@ public interface PartialOrderGraph extends Persistable {
 		 */
 		// private
 		static boolean canReach(Node node, Artifact<?> artifact) {
-//			LinkedList<Node> stack = new LinkedList<>();
-//			stack.push(node);
-//			while (!stack.isEmpty()) {
-//				Node current = stack.pop();
-//
-//				if ((artifact == null && current.getArtifact() == null) || (artifact != null && current.getArtifact() != null && current.getArtifact().getSequenceNumber() == artifact.getSequenceNumber()))
-//					return true;
-//
-//				for (Node child : current.getNext()) {
-//					stack.push(child);
-//				}
-//			}
-//			return false;
-
 			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
 			Stack<PartialOrderGraph.Node> stack = new Stack<>();
 			stack.push(node);
@@ -493,6 +614,15 @@ public interface PartialOrderGraph extends Persistable {
 					nodes[0].addChild(leftChild);
 				}
 			}
+		}
+
+
+		/**
+		 * checks if the alignments of this pog and the other pog are compatible
+		 */
+		default void checkAlignment(PartialOrderGraph.Op other, Map<Integer, Node.Op> shared) {
+			// TODO: try to traverse other pog until the very end. if this is not possible the alignments are not compatible.
+			// NOTE: use NOT_MATCHED_SEQUENCE_NUMBER instead of shared. anything in other that is not NOT_MATCHED_SEQUENCE_NUMBER is shared.
 		}
 
 
@@ -662,17 +792,17 @@ public interface PartialOrderGraph extends Persistable {
 
 
 	public class Alignment {
-		public Set<Node.Op> nodes;
+		public Map<Node.Op, List<Node.Op>> counters;
 		public Artifact.Op<?> matchedArtifact;
 
 		public Alignment() {
-			this.nodes = new HashSet<>();
+			this.counters = new HashMap<>();
 			this.matchedArtifact = null;
 		}
 
 		public Alignment(Alignment other) {
 			this();
-			this.nodes.addAll(other.nodes);
+			this.counters.putAll(other.counters);
 		}
 	}
 
