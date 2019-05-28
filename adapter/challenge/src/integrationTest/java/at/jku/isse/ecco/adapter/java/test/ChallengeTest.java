@@ -26,12 +26,12 @@ public class ChallengeTest {
 
 	@Test(groups = {"integration", "java"})
 	public void Java_Adapter_Test() {
-		Path[] inputFiles = new Path[]{Paths.get("FigStateVertex.java")};
+		Path[] inputFiles = new Path[]{Paths.get("AbstractFilePersister.java")};
 
 		JavaBlockReader reader = new JavaBlockReader(new MemEntityFactory());
 
 		System.out.println("READ");
-		Set<Node.Op> nodes = reader.read(Paths.get("C:\\Users\\gabil\\Desktop"), inputFiles);
+		Set<Node.Op> nodes = reader.read(Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\argouml-app\\src\\org\\argouml\\persistence"), inputFiles);
 
 		System.out.println(nodes);
 
@@ -44,7 +44,7 @@ public class ChallengeTest {
 	}
 
 
-	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\v3");
+	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\v4");
 	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
 	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
 
@@ -390,18 +390,18 @@ public class ChallengeTest {
 		if (node.getArtifact() != null && node.getArtifact().getData() != null) {
 			// if file (i.e. class)
 			if (node.getArtifact().getData() instanceof ClassArtifactData) {
-				if (currentClassName != null)
-					throw new EccoException("Encounter class within class!");
+//				if (currentClassName != null)
+//					throw new EccoException("Encounter class within class!");
 				currentClassName = ((ClassArtifactData) node.getArtifact().getData()).getName();
 
 				boolean nonMethodDescendants = this.checkNonMethodDescendants(node);
 
 				if (lines.containsKey(currentClassName))
 					throw new EccoException("Class already exists.");
-				if (node.isUnique()) {
+				if (node.isUnique() && (!node.getParent().isUnique() || (node.getParent().getArtifact() != null && node.getArtifact().getData() != null && !(node.getParent().getArtifact().getData() instanceof ClassArtifactData)))) {
 					sb.append(currentClassName + "\n");
 					lines.put(currentClassName, true);
-				} else if (nonMethodDescendants) {
+				} else if (!node.isUnique() && nonMethodDescendants) {
 					sb.append(currentClassName + " Refinement\n");
 					lines.put(currentClassName, false);
 				}
@@ -424,7 +424,7 @@ public class ChallengeTest {
 //				// build method signature
 //				String methodSignature = fullMethodString;
 
-				String methodSignature = ((MethodArtifactData) node.getArtifact().getData()).getSignature().replaceAll(" ", "");
+				String methodSignature = ((MethodArtifactData) node.getArtifact().getData()).getSignature().replaceAll(", ", ",");
 				String fullMethodSignature = currentClassName + " " + methodSignature;
 				if (lines.containsKey(fullMethodSignature))
 					throw new EccoException("Method already exists.");
