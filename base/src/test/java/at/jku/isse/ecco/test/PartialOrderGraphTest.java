@@ -11,6 +11,9 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -18,6 +21,104 @@ import java.util.stream.Collectors;
 
 public class PartialOrderGraphTest {
 
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void CycleTest() {
+		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("2"), A("3"), A("4"), A("5"), A("6"), A("7"), A("8"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("2"), A("3"), A("X"), A("4"), A("5"), A("6"), A("Y"), A("7"), A("8"));
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+
+		pog1.merge(artifacts1);
+		for (Artifact.Op<?> artifact : artifacts1) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		pog1.align(artifacts2);
+		for (Artifact.Op<?> artifact : artifacts2) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+		pog1.merge(artifacts2);
+
+		displayPOG(pog1);
+	}
+
+
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void YetAnotherTest3() throws IOException {
+		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s2\\1.txt"));
+		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s2\\2.txt"));
+		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s2\\3.txt"));
+
+		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts3 = lines3.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+
+//		pog1.align(artifacts3);
+//		for (Artifact.Op<?> artifact : artifacts3) {
+//			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+//		}
+//		System.out.println();
+
+		pog1.merge(artifacts3);
+
+		displayPOG(pog1);
+	}
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void YetAnotherTest2() throws IOException {
+		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\yetanothersequence\\1.txt"));
+		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\yetanothersequence\\2.txt"));
+		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\yetanothersequence\\3.txt"));
+
+		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts3 = lines3.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+
+//		pog1.align(artifacts3);
+//		for (Artifact.Op<?> artifact : artifacts3) {
+//			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+//		}
+//		System.out.println();
+
+		pog1.merge(artifacts3);
+
+		displayPOG(pog1);
+	}
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void YetAnotherTest() throws IOException {
+		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\othersequence\\1.java"));
+		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\othersequence\\2.java"));
+
+		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+
+		displayPOG(pog1);
+	}
 
 
 	@Test(groups = {"unit", "base", "pog"})
@@ -39,7 +140,6 @@ public class PartialOrderGraphTest {
 
 		displayPOG(pog2);
 	}
-
 
 
 	@Test(groups = {"unit", "base", "pog"})

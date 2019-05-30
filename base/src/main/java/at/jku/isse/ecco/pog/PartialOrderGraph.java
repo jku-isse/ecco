@@ -3,12 +3,15 @@ package at.jku.isse.ecco.pog;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.Persistable;
+import org.eclipse.collections.api.map.primitive.IntObjectMap;
+import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
+import org.eclipse.collections.impl.factory.primitive.IntObjectMaps;
 
 import java.util.*;
 
 public interface PartialOrderGraph extends Persistable {
 
-	public static final int INITIAL_SEQUENCE_NUMBER = 0;
+	public static final int INITIAL_SEQUENCE_NUMBER = 1;
 	public static final int NOT_MATCHED_SEQUENCE_NUMBER = -1;
 	public static final int UNASSIGNED_SEQUENCE_NUMBER = -2;
 	public static final int HEAD_SEQUENCE_NUMBER = -3;
@@ -32,8 +35,8 @@ public interface PartialOrderGraph extends Persistable {
 
 		public void incMaxIdentifier();
 
-		public default Collection<Node.Op> collectNodes() { // TODO: this potentially adds the same nodes multiple times!
-			Collection<Node.Op> nodes = new ArrayList<>();
+		public default List<Node.Op> collectNodes() { // TODO: this potentially adds the same nodes multiple times!
+			List<Node.Op> nodes = new ArrayList<>();
 
 			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
 			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
@@ -69,7 +72,6 @@ public interface PartialOrderGraph extends Persistable {
 
 		// #############################################################################################################
 
-
 		/**
 		 * Creates a new partial order graph (see {@link #fromList(List)}) reflecting the given list of artifacts and aligns it to this partial order graph (see {@link #align(Op)}).
 		 *
@@ -89,6 +91,11 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param other
 		 */
 		public default void align(PartialOrderGraph.Op other) {
+			this.alignMemoized(other);
+		}
+
+
+		public default void alignOld(PartialOrderGraph.Op other) {
 			Alignment leftMatchState = new Alignment();
 			leftMatchState.counters.put(this.getHead(), new ArrayList<>());
 
@@ -114,11 +121,11 @@ public interface PartialOrderGraph extends Persistable {
 					bestPossibleCost++;
 			}
 
-			this.alignRec(leftMatchState, rightNodes, 0, Integer.MAX_VALUE, bestPossibleCost);
+			this.alignOldRec(leftMatchState, rightNodes, 0, Integer.MAX_VALUE, bestPossibleCost);
 		}
 
 		//private
-		default int alignRec(Alignment leftMatchState, Map<Node.Op, Integer> rightNodes, int currentCost, int bestCost, int bestPossibleCost) {
+		default int alignOldRec(Alignment leftMatchState, Map<Node.Op, Integer> rightNodes, int currentCost, int bestCost, int bestPossibleCost) {
 			// traverse RIGHT in all possible orders
 
 			// move to next node in RIGHT. if there are multiple options ... consider every order? unless a traversal state without skipped artifacts was found, in which case no other orders need to be considered.
@@ -164,7 +171,7 @@ public interface PartialOrderGraph extends Persistable {
 						}
 						// advance match state for right by current node and continue recursively with all other possible nodes in right match state
 						// continue recursively with next match state
-						int tempCost = this.alignRec(nextLeftMatchState, nextRightNodes, currentCost, localBestCost, bestPossibleCost);
+						int tempCost = this.alignOldRec(nextLeftMatchState, nextRightNodes, currentCost, localBestCost, bestPossibleCost);
 						if (tempCost < localBestCost) {
 							localBestCost = tempCost;
 							// set sequence number of artifact to the one of the matching artifact that was found in LEFT
@@ -188,7 +195,7 @@ public interface PartialOrderGraph extends Persistable {
 						}
 						// advance match state for right by current node and continue recursively with all other possible nodes in right match state
 						// continue recursively with next match state
-						int tempCost = this.alignRec(leftMatchState, nextRightNodes, currentCost + 1, localBestCost, bestPossibleCost);
+						int tempCost = this.alignOldRec(leftMatchState, nextRightNodes, currentCost + 1, localBestCost, bestPossibleCost);
 						if (tempCost < localBestCost) {
 							localBestCost = tempCost;
 							// indicate that this artifact needs a new sequence number assigned
@@ -280,6 +287,203 @@ public interface PartialOrderGraph extends Persistable {
 			}
 
 			return matchStates;
+		}
+
+
+		// private
+		default void alignTable(PartialOrderGraph.Op other) {
+			// collect nodes
+			Node.Op[] thisNodes = this.collectNodes().toArray(new Node.Op[0]);
+			Node.Op[] otherNodes = other.collectNodes().toArray(new Node.Op[0]);
+			// assign index as sequence number to every node
+			for (int i = 0; i < thisNodes.length; i++)
+				if (thisNodes[i].getArtifact() != null)
+					thisNodes[i].getArtifact().setSequenceNumber(i);
+			for (int j = 0; j < otherNodes.length; j++)
+				if (otherNodes[j].getArtifact() != null)
+					otherNodes[j].getArtifact().setSequenceNumber(j);
+
+			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
+			//Map<Integer, Node.Op>[][] matrix = new Map[thisNodes.length][otherNodes.length];
+			IntObjectMap<Node.Op>[][] matrix = new IntObjectMap[thisNodes.length][otherNodes.length];
+			// initialize matrix column and row 0 with empty map
+			for (int i = 0; i < thisNodes.length; i++) {
+				//matrix[i][0] = new HashMap<>();
+				matrix[i][0] = IntObjectMaps.immutable.empty();
+			}
+			for (int j = 0; j < otherNodes.length; j++) {
+				//matrix[0][j] = new HashMap<>();
+				matrix[0][j] = IntObjectMaps.immutable.empty();
+			}
+
+			// iterate over nodes
+			for (int i = 1; i < thisNodes.length; i++) {
+				for (int j = 1; j < otherNodes.length; j++) {
+					Node.Op thisNode = thisNodes[i];
+					Node.Op otherNode = otherNodes[j];
+
+					if (thisNode == this.getHead() && otherNode == other.getHead()) {
+						throw new EccoException("This should not happen. Heads should be excluded from alignment.");
+					} else if (thisNode == this.getTail() && otherNode == other.getTail()) {
+						// same as below but without adding a new value to cell
+						// compute score for previous nodes of left and right and use it for current cell
+						//Map<Integer, Node.Op> cell = new HashMap<>();
+						MutableIntObjectMap<Node.Op> cell = IntObjectMaps.mutable.empty();
+						for (Node.Op thisPrevious : thisNode.getPrevious()) {
+							for (Node.Op otherPrevious : otherNode.getPrevious()) {
+								cell.putAll(matrix[thisPrevious.getArtifact() == null ? 0 : thisPrevious.getArtifact().getSequenceNumber()][otherPrevious.getArtifact() == null ? 0 : otherPrevious.getArtifact().getSequenceNumber()]);
+							}
+						}
+						// set current cell value
+						matrix[i][j] = cell;
+					} else if (thisNode.getArtifact() != null && thisNode.getArtifact().getData() != null && otherNode.getArtifact() != null && thisNode.getArtifact().getData().equals(otherNode.getArtifact().getData())) {
+						// compute score for previous nodes of left and right and use it for current cell
+						//Map<Integer, Node.Op> cell = new HashMap<>();
+						MutableIntObjectMap<Node.Op> cell = IntObjectMaps.mutable.empty();
+						for (Node.Op thisPrevious : thisNode.getPrevious()) {
+							for (Node.Op otherPrevious : otherNode.getPrevious()) {
+								cell.putAll(matrix[thisPrevious.getArtifact() == null ? 0 : thisPrevious.getArtifact().getSequenceNumber()][otherPrevious.getArtifact() == null ? 0 : otherPrevious.getArtifact().getSequenceNumber()]);
+							}
+						}
+//						// copy diagonally previous cell
+//						Map<Integer, Node.Op> cell = new HashMap<>(matrix[i - 1][j - 1]);
+						// add matching node to new cell
+						cell.put(thisNode.getArtifact().getSequenceNumber(), otherNode);
+						// set current cell value
+						matrix[i][j] = cell;
+					} else { // mismatch
+						// compute score for previous nodes of left
+						//Map<Integer, Node.Op> thisCell = new HashMap<>();
+						MutableIntObjectMap<Node.Op> thisCell = IntObjectMaps.mutable.empty();
+						for (Node.Op thisPrevious : thisNode.getPrevious()) {
+							thisCell.putAll(matrix[thisPrevious.getArtifact() == null ? 0 : thisPrevious.getArtifact().getSequenceNumber()][j]);
+						}
+						// compute score for previous nodes of right
+						//Map<Integer, Node.Op> otherCell = new HashMap<>();
+						MutableIntObjectMap<Node.Op> otherCell = IntObjectMaps.mutable.empty();
+						for (Node.Op otherPrevious : otherNode.getPrevious()) {
+							otherCell.putAll(matrix[i][otherPrevious.getArtifact() == null ? 0 : otherPrevious.getArtifact().getSequenceNumber()]);
+						}
+						// check which score is higher and use it for current cell
+						if (thisCell.size() >= otherCell.size())
+							matrix[i][j] = thisCell;
+						else
+							matrix[i][j] = otherCell;
+//						if (matrix[i - 1][j].size() >= matrix[i][j - 1].size()) {
+//							matrix[i][j] = new HashMap<>(matrix[i - 1][j]);
+//						} else {
+//							matrix[i][j] = new HashMap<>(matrix[i][j - 1]);
+//						}
+					}
+
+				}
+			}
+
+			// set sequence number of matched artifacts
+			Arrays.stream(otherNodes).filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
+			//matrix[thisNodes.length - 1][otherNodes.length - 1].forEach((key, value) -> value.getArtifact().setSequenceNumber(key));
+			matrix[thisNodes.length - 1][otherNodes.length - 1].forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
+		}
+
+
+		// private
+		default void alignMemoized(PartialOrderGraph.Op other) {
+			// collect nodes
+			Node.Op[] thisNodes = this.collectNodes().toArray(new Node.Op[0]);
+			Node.Op[] otherNodes = other.collectNodes().toArray(new Node.Op[0]);
+			// assign index as sequence number to every node
+			for (int i = 0; i < thisNodes.length; i++)
+				if (thisNodes[i].getArtifact() != null)
+					thisNodes[i].getArtifact().setSequenceNumber(i);
+			for (int j = 0; j < otherNodes.length; j++)
+				if (otherNodes[j].getArtifact() != null)
+					otherNodes[j].getArtifact().setSequenceNumber(j);
+
+			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
+			IntObjectMap<Node.Op>[][] matrix = new IntObjectMap[thisNodes.length][otherNodes.length];
+
+			// recursive memoized lcs
+			this.alignMemoizedRec(matrix, this, other, thisNodes, otherNodes, this.getTail(), other.getTail());
+
+			// set sequence number of matched artifacts
+			Arrays.stream(otherNodes).filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
+			matrix[thisNodes.length - 1][otherNodes.length - 1].forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
+		}
+
+		//private
+		default IntObjectMap<Node.Op> alignMemoizedRec(IntObjectMap<Node.Op>[][] matrix, PartialOrderGraph.Op left, PartialOrderGraph.Op right, Node.Op[] leftNodes, Node.Op[] rightNodes, Node.Op leftNode, Node.Op rightNode) {
+			int i;
+			if (leftNode == left.getHead())
+				i = 0;
+			else if (leftNode == left.getTail())
+				i = leftNodes.length - 1;
+			else if (leftNode.getArtifact() != null)
+				i = leftNode.getArtifact().getSequenceNumber();
+			else
+				throw new EccoException("This should not happen.");
+			int j;
+			if (rightNode == right.getHead())
+				j = 0;
+			else if (rightNode == right.getTail())
+				j = rightNodes.length - 1;
+			else if (rightNode.getArtifact() != null)
+				j = rightNode.getArtifact().getSequenceNumber();
+			else
+				throw new EccoException("This should not happen.");
+
+			// check if value is already memoized
+			if (matrix[i][j] == null) {
+				// compute value
+				if (i == 0 || j == 0) {
+					matrix[i][j] = IntObjectMaps.immutable.empty();
+				} else if (i == leftNodes.length - 1 && j == rightNodes.length - 1) {
+					// same as below but without adding a new value to cell and without setting cell value
+					// compute score for previous nodes of left and right and use it for current cell
+					MutableIntObjectMap<Node.Op> cell = IntObjectMaps.mutable.empty();
+					for (Node.Op leftPrevious : leftNode.getPrevious()) {
+						for (Node.Op rightPrevious : rightNode.getPrevious()) {
+							IntObjectMap<Node.Op> previousCell = this.alignMemoizedRec(matrix, left, right, leftNodes, rightNodes, leftPrevious, rightPrevious);
+							cell.putAll(previousCell);
+						}
+					}
+					// set current cell value
+					matrix[i][j] = cell;
+				} else if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+					// compute score for previous nodes of left and right and use it for current cell
+					MutableIntObjectMap<Node.Op> cell = IntObjectMaps.mutable.empty();
+					for (Node.Op leftPrevious : leftNode.getPrevious()) {
+						for (Node.Op rightPrevious : rightNode.getPrevious()) {
+							IntObjectMap<Node.Op> previousCell = this.alignMemoizedRec(matrix, left, right, leftNodes, rightNodes, leftPrevious, rightPrevious);
+							cell.putAll(previousCell);
+						}
+					}
+					// add matching node to new cell
+					cell.put(leftNode.getArtifact().getSequenceNumber(), rightNode);
+					// set current cell value
+					matrix[i][j] = cell;
+				} else {
+					// compute score for previous nodes of left
+					MutableIntObjectMap<Node.Op> leftCell = IntObjectMaps.mutable.empty();
+					for (Node.Op leftPrevious : leftNode.getPrevious()) {
+						//leftCell.putAll(matrix[leftPrevious.getArtifact() == null ? 0 : leftPrevious.getArtifact().getSequenceNumber()][j]);
+						IntObjectMap<Node.Op> previousCell = this.alignMemoizedRec(matrix, left, right, leftNodes, rightNodes, leftPrevious, rightNode);
+						leftCell.putAll(previousCell);
+					}
+					// compute score for previous nodes of right
+					MutableIntObjectMap<Node.Op> rightCell = IntObjectMaps.mutable.empty();
+					for (Node.Op rightPrevious : rightNode.getPrevious()) {
+						//rightCell.putAll(matrix[i][rightPrevious.getArtifact() == null ? 0 : rightPrevious.getArtifact().getSequenceNumber()]);
+						IntObjectMap<Node.Op> previousCell = this.alignMemoizedRec(matrix, left, right, leftNodes, rightNodes, leftNode, rightPrevious);
+						rightCell.putAll(previousCell);
+					}
+					// check which score is higher and use it for current cell
+					if (leftCell.size() >= rightCell.size())
+						matrix[i][j] = leftCell;
+					else
+						matrix[i][j] = rightCell;
+				}
+			}
+			return matrix[i][j];
 		}
 
 
@@ -401,6 +605,14 @@ public interface PartialOrderGraph extends Persistable {
 									//System.out.println("Added new node " + this.getTail() + " as child to node " + left);
 								} else {
 									Node.Op childLeft = shared.get(childRight.getArtifact().getSequenceNumber());
+
+									if (!childLeft.getArtifact().equals(childRight.getArtifact()))
+										throw new EccoException("This should not happen!");
+
+									// make sure left node cannot be reached from childLeft
+									if (canReach(childLeft, left.getArtifact()))
+										throw new EccoException("Introduced cycle!");
+
 									left.addChild(childLeft);
 									//System.out.println("Added new node " + childLeft + " matching " + childRight + " as child to node " + left);
 								}
@@ -623,6 +835,8 @@ public interface PartialOrderGraph extends Persistable {
 		default void checkAlignment(PartialOrderGraph.Op other, Map<Integer, Node.Op> shared) {
 			// TODO: try to traverse other pog until the very end. if this is not possible the alignments are not compatible.
 			// NOTE: use NOT_MATCHED_SEQUENCE_NUMBER instead of shared. anything in other that is not NOT_MATCHED_SEQUENCE_NUMBER is shared.
+
+
 		}
 
 

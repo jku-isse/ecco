@@ -3,10 +3,7 @@ package at.jku.isse.ecco.adapter.java;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.java.data.ClassArtifactData;
-import at.jku.isse.ecco.adapter.java.data.ImportArtifactData;
-import at.jku.isse.ecco.adapter.java.data.LineArtifactData;
-import at.jku.isse.ecco.adapter.java.data.MethodArtifactData;
+import at.jku.isse.ecco.adapter.java.data.*;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
@@ -15,7 +12,6 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
-import com.github.javaparser.ast.stmt.BlockStmt;
 import com.google.inject.Inject;
 
 import java.io.BufferedReader;
@@ -27,12 +23,12 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
+public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
 
 	@Inject
-	public JavaBlockReader(EntityFactory entityFactory) {
+	public JavaChallengeReader(EntityFactory entityFactory) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
@@ -99,13 +95,14 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 					pluginNode.addChild(classNode);
 
 					//add classChild from imports
-//					Artifact.Op<AbstractArtifactData> importsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("IMPORTS"));
-//					Node.Op importsGroupNode = this.entityFactory.createNode(importsGroupArtifact);
+					Artifact.Op<AbstractArtifactData> importsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("IMPORTS"));
+					Node.Op importsGroupNode = this.entityFactory.createNode(importsGroupArtifact);
+					classNode.addChild(importsGroupNode);
 					for (ImportDeclaration importDeclaration : cu.getImports()) {
 						String importName = "import " + importDeclaration.getName().asString();
 						Artifact.Op<ImportArtifactData> importArtifact = this.entityFactory.createArtifact(new ImportArtifactData(importName));
 						Node.Op importNode = this.entityFactory.createNode(importArtifact);
-						classNode.addChild(importNode);
+						importsGroupNode.addChild(importNode);
 					}
 
 					for (BodyDeclaration<?> node : typeDeclaration.getMembers()) {
@@ -113,13 +110,16 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 							Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className + "." + ((ClassOrInterfaceDeclaration) node).getName().toString()));
 							Node.Op nestedClassNode = this.entityFactory.createOrderedNode(nestedClassArtifact);
 							classNode.addChild(nestedClassNode);
-							addNestedClassChild(classNode, nestedClassNode, node, lines);
+							addNestedClassChild(nestedClassNode, node, lines);
 						} else {
 							addClassChild(node, classNode, lines);
 						}
 					}
 
 					//add classChild from Methods
+					Artifact.Op<AbstractArtifactData> methodsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("METHODS"));
+					Node.Op methodsGroupNode = this.entityFactory.createNode(methodsGroupArtifact);
+					classNode.addChild(methodsGroupNode);
 					for (MethodDeclaration methodDeclaration : typeDeclaration.getMethods()) {
 						String methodSignature = methodDeclaration.getName().toString() + "(";
 						for (int j = 0; j < methodDeclaration.getParameters().size(); j++) {
@@ -131,7 +131,7 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 						methodSignature += ")";
 						Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
 						Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
-						classNode.addChild(methodNode);
+						methodsGroupNode.addChild(methodNode);
 						addMethodChild(methodNode, methodDeclaration, lines);
 					}
 				}
@@ -145,8 +145,10 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return nodes;
 	}
 
-	public void addNestedClassChild(Node.Op classNode, Node.Op nestedClassNode, com.github.javaparser.ast.Node node, ArrayList<String> lines) {
-
+	public void addNestedClassChild(Node.Op nestedClassNode, com.github.javaparser.ast.Node node, ArrayList<String> lines) {
+		Artifact.Op<AbstractArtifactData> methodsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("METHODS"));
+		Node.Op methodsGroupNode = this.entityFactory.createNode(methodsGroupArtifact);
+		nestedClassNode.addChild(methodsGroupNode);
 		for (BodyDeclaration<?> nestedClassBody : ((ClassOrInterfaceDeclaration) node).getMembers()) {
 			if (nestedClassBody instanceof MethodDeclaration) {
 				String methodSignature = ((MethodDeclaration) nestedClassBody).getName().toString() + "(";
@@ -159,13 +161,13 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 				methodSignature += ")";
 				Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
 				Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
-				nestedClassNode.addChild(methodNode);
+				methodsGroupNode.addChild(methodNode);
 				addMethodChild(methodNode, ((MethodDeclaration) nestedClassBody), lines);
 			} else if (nestedClassBody instanceof ClassOrInterfaceDeclaration) {
 				Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(nestedClassNode.toString() + "." + (((ClassOrInterfaceDeclaration) nestedClassBody).getName().toString())));
 				Node.Op nestedClassChildNode = this.entityFactory.createOrderedNode(nestedClassArtifact);
 				nestedClassNode.addChild(nestedClassChildNode);
-				addNestedClassChild(nestedClassNode, nestedClassChildNode, nestedClassBody, lines);
+				addNestedClassChild(nestedClassChildNode, nestedClassBody, lines);
 			} else {
 				addClassChild(nestedClassBody, nestedClassNode, lines);
 			}
@@ -177,7 +179,6 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 		if (node instanceof EnumDeclaration) {
 			int beginLine = node.getRange().get().begin.line;
 			int endLine = node.getRange().get().end.line;
-			String line;
 			int i = beginLine - 1;
 			while (i <= endLine) {
 				Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
@@ -217,7 +218,6 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 					if (((ConstructorDeclaration) node).getBody().getStatements().isNonEmpty()) {
 						int beginLine = node.getRange().get().begin.line;
 						int endLine = node.getRange().get().end.line;
-						String line;
 						int i = beginLine;
 						while (i < endLine - 1) {
 							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
@@ -231,12 +231,9 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	public void addMethodChild(Node.Op methodNode, MethodDeclaration methodDeclaration, ArrayList<String> lines) {
 		//add classChild from Methods
-		Optional<BlockStmt> block = methodDeclaration.getBody();
-		Boolean hasAnyStatement = false;
 		if (methodDeclaration.getBody().isPresent()) {
 			int beginLine = methodDeclaration.getBody().get().getRange().get().begin.line;
 			int endLine = methodDeclaration.getBody().get().getRange().get().end.line;
-			String line;
 			int i = beginLine;
 			while (i < endLine - 1) {
 				Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
@@ -244,9 +241,9 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 				methodNode.addChild(lineNode);
 				i++;
 			}
-
 		}
 	}
+
 
 	private Collection<ReadListener> listeners = new ArrayList<>();
 
