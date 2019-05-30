@@ -122,5 +122,11 @@ public interface Condition extends Persistable {
 
 	@Override
 	public String toString();
+	
+	public default String getPreprocessorConditionString() {
+		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
+		int minOrder = modules.isEmpty() ? 0 : modules.keySet().stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
+		return modules.keySet().stream().filter(module -> module.getOrder() <= minOrder).map(Module::getPreprocessorModuleString).collect(Collectors.joining((this.getType() == TYPE.AND?" && ":" || ")));
+	}
 
 }

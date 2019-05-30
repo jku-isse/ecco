@@ -74,6 +74,7 @@ public class TraceImporter {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		map.forEach((key, value) -> repository.addAssociation(value));
 		System.out.println("end");
 	}
 
