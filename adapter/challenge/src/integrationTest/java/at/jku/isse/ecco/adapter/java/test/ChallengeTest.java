@@ -44,9 +44,10 @@ public class ChallengeTest {
 	}
 
 
-	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\v_test");
+	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\pairwise");
 	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
 	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
+	private static final Path TIME_FILE = CHALLENGE_DIR.resolve("time.txt");
 
 
 	@Test(groups = {"integration", "challenge"})
@@ -59,13 +60,16 @@ public class ChallengeTest {
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
-		Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
+		Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioPairWiseVariants");
 		Path variantsDir = scenarioDir.resolve("variants");
 		Path configsDir = scenarioDir.resolve("configs");
 
+		List<Long> runtimes = new ArrayList<>();
 		int counter = 0;
 		Collection<Path> variantsDirs = Files.list(variantsDir).collect(Collectors.toList());
 		for (Path variantDir : variantsDirs) {
+			long before = System.currentTimeMillis();
+
 			System.out.println("COUNT: " + counter);
 			System.out.println("Committing: " + variantDir);
 
@@ -82,176 +86,19 @@ public class ChallengeTest {
 
 			System.out.println("Committed: " + variantDir);
 			counter++;
-			if (counter >= 500)
-				break;
+
+			long after = System.currentTimeMillis();
+			long runtime = after - before;
+			runtimes.add(runtime);
+			System.out.println("TIME: " + runtime + "ms");
 		}
 
 		// close repository
 		service.close();
 		System.out.println("Repository closed.");
 
+		Files.write(TIME_FILE, runtimes.stream().map(Object::toString).collect(Collectors.toList()));
 	}
-
-//    @Test(groups = {"integration", "challenge"})
-//    public void Test_Compute_Results() throws IOException {
-//
-//        // open repository
-//        EccoService service = new EccoService();
-//        //service.setRepositoryDir(Paths.get("C:\\Users\\user\\Desktop\\splc_repo\\.ecco"));
-//        service.setRepositoryDir(Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\repository2\\.ecco"));
-//        service.open();
-//        System.out.println("Repository opened.");
-//
-//        // for every association create results file with name of minimal to string
-//        Repository repository = service.getRepository();
-//        System.out.println("Max Order: " + ((Repository.Op) repository).getMaxOrder());
-//        Collection<? extends Association> associations = repository.getAssociations();
-//        int assocCounter = 0;
-//        for (Association association : associations) {
-//            assocCounter++;
-//            System.out.println("NUM_ARTIFACTS: " + Trees.countArtifacts(association.getRootNode()));
-//
-//            Condition condition = association.computeCondition();
-//            System.out.println("TYPE: " + condition.getType());
-//            System.out.println("LONG: " + condition.getModuleConditionString());
-//            System.out.println("SHORT: " + condition.getSimpleModuleConditionString());
-//
-//            // compute results
-//            StringBuilder sb = new StringBuilder();
-//            this.computeString(association.getRootNode(), sb, null);
-//            System.out.println(sb.toString());
-//
-//            // write results to file
-//            Collection<Module> modules = condition.getModules().keySet();
-//            int minOrder = modules.isEmpty() ? 0 : modules.stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
-//            Collection<Module> minModules = modules.stream().filter(module -> module.getOrder() <= minOrder).collect(Collectors.toList());
-//            // loop over modules, create filename by: removing base feature, concatenating with "_and_" or "_or" (depending on type) and prefixing "not_" for negative modules
-//            for (Module module : minModules) {
-//                List<String> names = new ArrayList<>();
-//
-//                List<String> posNames = new ArrayList<>();
-//                for (Feature feature : module.getPos()) {
-//                    if (!feature.getName().equals("BASE")) {
-//                        names.add(feature.getName());
-//                        posNames.add(feature.getName());
-//                    }
-//                }
-//                List<String> negNames = new ArrayList<>();
-//                for (Feature feature : module.getNeg()) {
-//                    if (!feature.getName().equals("BASE")) {
-//                        names.add(feature.getName());
-//                        negNames.add(feature.getName());
-//                    }
-//                }
-//                // build file name
-//                String filename = names.stream().sorted().map(name -> {
-//                    if (posNames.contains(name)) return name;
-//                    else if (negNames.contains(name)) return "not_" + name;
-//                    else return "";
-//                }).collect(Collectors.joining("_and_"));
-//                // write to file
-//                //Path resultsDir = Paths.get("C:\\Users\\user\\Desktop\\splc_repo\\results\\A" + assocCounter);
-//                Path resultsDir = Paths.get("C:\\Users\\gabil\\Desktop\\SPLC\\results\\A" + assocCounter);
-//                if (!Files.exists(resultsDir))
-//                    Files.createDirectory(resultsDir);
-//                Files.write(resultsDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE);
-//            }
-//
-//
-//            System.out.println("---------");
-//        }
-//
-//        // close repository
-//        service.close();
-//        System.out.println("Repository closed.");
-//
-//    }
-//
-//    private boolean checkNonMethodDescendants(Node node) {
-//
-//        if (node.getArtifact() != null && node.getArtifact().getData() != null) {
-//
-//            if (node.getArtifact().getData() instanceof JavaTreeArtifactData) {
-//                JavaTreeArtifactData jtad = ((JavaTreeArtifactData) node.getArtifact().getData());
-//
-//                // if import or variable declaration
-//                if (jtad.getType() == JavaTreeArtifactData.NodeType.FIELD_DECLARATION || jtad.getType() == JavaTreeArtifactData.NodeType.SIMPLE_JUST_A_STRING) {
-//                    return true;
-//                }
-//
-//            }
-//
-//        }
-//
-//        boolean nonMethodDescendants = false;
-//        for (Node childNode : node.getChildren()) {
-//            nonMethodDescendants = nonMethodDescendants | this.checkNonMethodDescendants(childNode);
-//        }
-//        return nonMethodDescendants;
-//    }
-//
-//    private void computeString(Node node, StringBuilder sb, String currentClass) {
-//
-//        if (node.getArtifact() != null && node.getArtifact().getData() != null) {
-//
-//            // if file (i.e. class)
-//            if (node.getArtifact().getData() instanceof JavaFileArtifactData) {
-//                if (currentClass != null)
-//                    throw new EccoException("Encounter class within class!");
-//                currentClass = ((JavaFileArtifactData) node.getArtifact().getData()).getClassName();
-//
-//                boolean nonMethodDescendants = this.checkNonMethodDescendants(node);
-//
-//                if (node.isUnique()) {
-//                    sb.append(currentClass + "\n");
-//                } else {
-//                    if (nonMethodDescendants) {
-//                        sb.append(currentClass + " Refinement\n");
-//                    }
-//                }
-//            }
-//            // if tree
-//            else if (node.getArtifact().getData() instanceof JavaTreeArtifactData) {
-//                JavaTreeArtifactData jtad = ((JavaTreeArtifactData) node.getArtifact().getData());
-//
-//                // if method
-//                if (jtad.getType() == JavaTreeArtifactData.NodeType.METHOD_DECLARATION) {
-//                    String fullMethodString = jtad.getDataAsString();
-//                    //sb.append("AAA: " + fullMethodString);
-//                    // get method name
-//                    String part1 = fullMethodString.substring(0, fullMethodString.indexOf("("));
-//                    String methodName = part1.substring(part1.indexOf(" ") + 1);
-//                    // extract params
-//                    String[] fullParams = fullMethodString.substring(fullMethodString.indexOf("(") + 1, fullMethodString.indexOf(")")).split(",");
-//                    String params = Arrays.stream(fullParams).map(fullParam -> {
-//                        String[] tempParams = fullParam.split(" ");
-//                        if (tempParams.length - 2 >= 0)
-//                            return tempParams[tempParams.length - 2];
-//                        else
-//                            return "";
-//                    }).collect(Collectors.joining(","));
-//                    // build method signature
-//                    String methodSignature = methodName + "(" + params + ")";
-//
-//
-//                    if (node.isUnique()) {
-//                        sb.append(currentClass + " " + methodSignature + "\n");
-//                    } else {
-//                        if (!node.getChildren().isEmpty()) { // it has unique descendants
-//                            sb.append(currentClass + " " + methodSignature + " Refinement\n");
-//                        }
-//                    }
-//                }
-//
-//            }
-//
-//        }
-//
-//        for (Node childNode : node.getChildren()) {
-//            this.computeString(childNode, sb, currentClass);
-//        }
-//
-//    }
 
 
 	private static final boolean NO_OR = false;

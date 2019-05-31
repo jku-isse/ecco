@@ -22,6 +22,86 @@ import java.util.stream.Collectors;
 
 public class PartialOrderGraphTest {
 
+	@Test(groups = {"unit", "base", "pog"})
+	public void MergeTest5() {
+		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("3"), A("4"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("3"), A("L"), A("C"), A("D"), A("L"), A("4"));
+		List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("3"), A("L"), A("E"), A("F"), A("L"), A("4"));
+		List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("3"), A("C"), A("D"), A("L"), A("E"), A("F"), A("L"), A("4"));
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+		pog1.merge(artifacts3);
+
+		pog1.align(artifacts4);
+		for (Artifact.Op<?> artifact : artifacts4) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		displayPOG(pog1);
+
+		pog1.merge(artifacts4);
+	}
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void MergeTest4() {
+		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("3"), A("L"), A("L"), A("S"), A("4"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("3"), A("L"), A("A"), A("B"), A("L"), A("L"), A("C"), A("D"), A("L"), A("S"), A("4"));
+		List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("3"), A("L"), A("A"), A("B"), A("L"), A("L"), A("S"), A("E"), A("F"), A("L"), A("4"));
+		List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("3"), A("L"), A("L"), A("C"), A("D"), A("L"), A("S"), A("E"), A("F"), A("L"), A("4"));
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+		pog1.merge(artifacts3);
+
+		pog1.align(artifacts4);
+		for (Artifact.Op<?> artifact : artifacts4) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		displayPOG(pog1);
+
+		pog1.merge(artifacts4);
+	}
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void SequenceTest3() throws IOException {
+		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\1.txt"));
+		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\2.txt"));
+		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\3.txt"));
+		List<String> lines4 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\4.txt"));
+
+		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts3 = lines3.stream().map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts4 = lines4.stream().map(line -> A(line)).collect(Collectors.toList());
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+		pog1.merge(artifacts3);
+
+		pog1.align(artifacts4);
+		for (Artifact.Op<?> artifact : artifacts4) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		System.out.println(pog1.collectNodes().size());
+
+		//pog1.merge(artifacts4);
+
+		displayPOG(pog1);
+	}
+
 
 	@Test(groups = {"unit", "base", "pog"})
 	public void ComplexMergeTest() {

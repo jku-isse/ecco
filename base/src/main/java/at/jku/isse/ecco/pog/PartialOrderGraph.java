@@ -478,7 +478,7 @@ public interface PartialOrderGraph extends Persistable {
 						rightCell.putAll(previousCell);
 					}
 					// check which score is higher and use it for current cell
-					if (leftCell.size() >= rightCell.size())
+					if (leftCell.size() >= rightCell.size()) // TODO: change this to ">"
 						matrix[i][j] = leftCell;
 					else
 						matrix[i][j] = rightCell;
