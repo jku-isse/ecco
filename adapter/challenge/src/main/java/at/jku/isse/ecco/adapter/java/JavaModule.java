@@ -17,7 +17,7 @@ public class JavaModule extends AbstractModule {
 		final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactReader<Path, Set<Node.Op>>>() {
 				});
-		readerMultibinder.addBinding().to(JavaBlockReader.class);
+		readerMultibinder.addBinding().to(JavaChallengeReader.class);
 
 		final Multibinder<ArtifactWriter<Set<Node>, Path>> writerMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {

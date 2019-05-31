@@ -16,11 +16,111 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class PartialOrderGraphTest {
 
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void ComplexMergeTest() {
+		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("10"), A("3"));
+		List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("1"), A("9"), A("2"), A("4"), A("5"));
+		List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("1"), A("6"), A("4"), A("3"));
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+		PartialOrderGraph.Op pog2 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts3);
+
+		pog2.merge(artifacts2);
+		pog2.merge(artifacts4);
+
+		pog1.align(pog2);
+
+		for (PartialOrderGraph.Node.Op node : pog1.collectNodes()) {
+			System.out.println(node.getArtifact() + " [" + (node.getArtifact() != null ? node.getArtifact().getSequenceNumber() : "-") + "]");
+		}
+		System.out.println();
+		for (PartialOrderGraph.Node.Op node : pog2.collectNodes()) {
+			System.out.println(node.getArtifact() + " [" + (node.getArtifact() != null ? node.getArtifact().getSequenceNumber() : "-") + "]");
+		}
+		System.out.println();
+
+		for (Artifact.Op<?> artifact : artifacts1) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+		for (Artifact.Op<?> artifact : artifacts2) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+		for (Artifact.Op<?> artifact : artifacts3) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+		for (Artifact.Op<?> artifact : artifacts4) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		displayPOG(pog2);
+
+		pog1.merge(pog2);
+
+		displayPOG(pog1);
+	}
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void OnlyOneTest() {
+		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"));
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		for (Artifact.Op<?> artifact : artifacts1) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		pog1.align(artifacts2);
+		for (Artifact.Op<?> artifact : artifacts2) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+		pog1.merge(artifacts2);
+
+		displayPOG(pog1);
+	}
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void EmpytTest() {
+		List<Artifact.Op<?>> artifacts1 = Collections.emptyList();
+		List<Artifact.Op<?>> artifacts2 = Collections.emptyList();
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		for (Artifact.Op<?> artifact : artifacts1) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		pog1.align(artifacts2);
+		for (Artifact.Op<?> artifact : artifacts2) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+		pog1.merge(artifacts2);
+
+		displayPOG(pog1);
+	}
 
 
 	@Test(groups = {"unit", "base", "pog"})
@@ -46,8 +146,6 @@ public class PartialOrderGraphTest {
 
 		displayPOG(pog1);
 	}
-
-
 
 
 	@Test(groups = {"unit", "base", "pog"})

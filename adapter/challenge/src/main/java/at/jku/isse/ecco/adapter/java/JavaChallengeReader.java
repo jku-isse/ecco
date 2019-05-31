@@ -56,6 +56,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return this.read(Paths.get("."), input);
 	}
 
+
 	@Override
 	public Set<Node.Op> read(Path base, Path[] input) {
 		Set<Node.Op> nodes = new HashSet<>();
@@ -63,10 +64,12 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
 
+			// create plugin artifact/node
 			Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
 			Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
 			nodes.add(pluginNode);
 
+			// read raw file contents
 			ArrayList<String> lines = new ArrayList<>();
 			try (BufferedReader br = new BufferedReader(new FileReader(resolvedPath.toFile()))) {
 				String line;
@@ -82,6 +85,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			try {
 				CompilationUnit cu = JavaParser.parse(resolvedPath);
 
+				// package name
 				String packageName = "";
 				if (cu.getPackageDeclaration().isPresent())
 					packageName = cu.getPackageDeclaration().get().getName().toString();
@@ -89,12 +93,13 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 				for (TypeDeclaration<?> typeDeclaration : cu.getTypes()) {
 
+					// create class artifact/node
 					String className = typeDeclaration.getName().toString();
 					Artifact.Op<ClassArtifactData> classArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className));
-					Node.Op classNode = this.entityFactory.createOrderedNode(classArtifact);
+					Node.Op classNode = this.entityFactory.createNode(classArtifact);
 					pluginNode.addChild(classNode);
 
-					//add classChild from imports
+					// imports
 					Artifact.Op<AbstractArtifactData> importsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("IMPORTS"));
 					Node.Op importsGroupNode = this.entityFactory.createNode(importsGroupArtifact);
 					classNode.addChild(importsGroupNode);
@@ -105,35 +110,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 						importsGroupNode.addChild(importNode);
 					}
 
-					for (BodyDeclaration<?> node : typeDeclaration.getMembers()) {
-						if (node instanceof ClassOrInterfaceDeclaration) {
-							Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className + "." + ((ClassOrInterfaceDeclaration) node).getName().toString()));
-							Node.Op nestedClassNode = this.entityFactory.createOrderedNode(nestedClassArtifact);
-							classNode.addChild(nestedClassNode);
-							addNestedClassChild(nestedClassNode, node, lines);
-						} else {
-							addClassChild(node, classNode, lines);
-						}
-					}
-
-					//add classChild from Methods
-					Artifact.Op<AbstractArtifactData> methodsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("METHODS"));
-					Node.Op methodsGroupNode = this.entityFactory.createNode(methodsGroupArtifact);
-					classNode.addChild(methodsGroupNode);
-					for (MethodDeclaration methodDeclaration : typeDeclaration.getMethods()) {
-						String methodSignature = methodDeclaration.getName().toString() + "(";
-						for (int j = 0; j < methodDeclaration.getParameters().size(); j++) {
-							if (j < methodDeclaration.getParameters().size() - 1)
-								methodSignature += methodDeclaration.getParameters().get(j).getType().toString() + ",";
-							else
-								methodSignature += methodDeclaration.getParameters().get(j).getType().toString();
-						}
-						methodSignature += ")";
-						Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
-						Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
-						methodsGroupNode.addChild(methodNode);
-						addMethodChild(methodNode, methodDeclaration, lines);
-					}
+					this.addClassChildren(typeDeclaration, classNode, lines);
 				}
 
 			} catch (IOException e) {
@@ -145,50 +122,42 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return nodes;
 	}
 
-	public void addNestedClassChild(Node.Op nestedClassNode, com.github.javaparser.ast.Node node, ArrayList<String> lines) {
+	public void addClassChildren(TypeDeclaration<?> typeDeclaration, Node.Op classNode, ArrayList<String> lines) {
+		// create methods artifact/node
 		Artifact.Op<AbstractArtifactData> methodsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("METHODS"));
 		Node.Op methodsGroupNode = this.entityFactory.createNode(methodsGroupArtifact);
-		nestedClassNode.addChild(methodsGroupNode);
-		for (BodyDeclaration<?> nestedClassBody : ((ClassOrInterfaceDeclaration) node).getMembers()) {
-			if (nestedClassBody instanceof MethodDeclaration) {
-				String methodSignature = ((MethodDeclaration) nestedClassBody).getName().toString() + "(";
-				for (int j = 0; j < ((MethodDeclaration) nestedClassBody).getParameters().size(); j++) {
-					if (j < ((MethodDeclaration) nestedClassBody).getParameters().size() - 1)
-						methodSignature += ((MethodDeclaration) nestedClassBody).getParameters().get(j).getType().toString() + ",";
-					else
-						methodSignature += ((MethodDeclaration) nestedClassBody).getParameters().get(j).getType().toString();
+		classNode.addChild(methodsGroupNode);
+		// create fields artifact/node
+		Artifact.Op<AbstractArtifactData> fieldsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("FIELDS"));
+		Node.Op fieldsGroupNode = this.entityFactory.createOrderedNode(fieldsGroupArtifact);
+		classNode.addChild(fieldsGroupNode);
+		// create enums artifact/node
+		Artifact.Op<AbstractArtifactData> enumsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("ENUMS"));
+		Node.Op enumsGroupNode = this.entityFactory.createOrderedNode(enumsGroupArtifact);
+		classNode.addChild(enumsGroupNode);
+		for (BodyDeclaration<?> node : typeDeclaration.getMembers()) {
+			// nested classes/interfaces
+			if (node instanceof ClassOrInterfaceDeclaration) {
+				Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(classNode.toString() + "." + ((ClassOrInterfaceDeclaration) node).getName().toString()));
+				Node.Op nestedClassNode = this.entityFactory.createNode(nestedClassArtifact);
+				classNode.addChild(nestedClassNode);
+				//addNestedClassChild(nestedClassNode, node, lines);
+				addClassChildren((ClassOrInterfaceDeclaration) node, nestedClassNode, lines);
+			}
+			// nested enumerations
+			else if (node instanceof EnumDeclaration) {
+				int beginLine = node.getRange().get().begin.line;
+				int endLine = node.getRange().get().end.line;
+				int i = beginLine - 1;
+				while (i <= endLine) {
+					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+					enumsGroupNode.addChild(lineNode);
+					i++;
 				}
-				methodSignature += ")";
-				Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
-				Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
-				methodsGroupNode.addChild(methodNode);
-				addMethodChild(methodNode, ((MethodDeclaration) nestedClassBody), lines);
-			} else if (nestedClassBody instanceof ClassOrInterfaceDeclaration) {
-				Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(nestedClassNode.toString() + "." + (((ClassOrInterfaceDeclaration) nestedClassBody).getName().toString())));
-				Node.Op nestedClassChildNode = this.entityFactory.createOrderedNode(nestedClassArtifact);
-				nestedClassNode.addChild(nestedClassChildNode);
-				addNestedClassChild(nestedClassChildNode, nestedClassBody, lines);
-			} else {
-				addClassChild(nestedClassBody, nestedClassNode, lines);
 			}
-		}
-	}
-
-	public void addClassChild(com.github.javaparser.ast.Node node, Node.Op classNode, ArrayList<String> lines) {
-		//add classChild from enums
-		if (node instanceof EnumDeclaration) {
-			int beginLine = node.getRange().get().begin.line;
-			int endLine = node.getRange().get().end.line;
-			int i = beginLine - 1;
-			while (i <= endLine) {
-				Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
-				Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-				classNode.addChild(lineNode);
-				i++;
-			}
-		} else
-			//add classChild from fields
-			if (node instanceof FieldDeclaration) {
+			// fields
+			else if (node instanceof FieldDeclaration) {
 				// addFieldChild(node, classNode);
 				int beginLine = node.getRange().get().begin.line;
 				int endLine = node.getRange().get().end.line;
@@ -197,40 +166,72 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				while (i < endLine) {
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
 					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-					classNode.addChild(lineNode);
+					fieldsGroupNode.addChild(lineNode);
 					i++;
 				}
 
-			} else
-				//add classChild from constructorMethod
-				if (node instanceof ConstructorDeclaration) {
-					String methodSignature = ((ConstructorDeclaration) node).getName().toString() + "(";
-					for (int j = 0; j < ((ConstructorDeclaration) node).getParameters().size(); j++) {
-						if (j < ((ConstructorDeclaration) node).getParameters().size() - 1)
-							methodSignature += ((ConstructorDeclaration) node).getParameters().get(j).getType().toString() + ",";
-						else
-							methodSignature += ((ConstructorDeclaration) node).getParameters().get(j).getType().toString();
-					}
-					methodSignature += ")";
-					Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
-					Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
-					classNode.addChild(methodNode);
-					if (((ConstructorDeclaration) node).getBody().getStatements().isNonEmpty()) {
-						int beginLine = node.getRange().get().begin.line;
-						int endLine = node.getRange().get().end.line;
-						int i = beginLine;
-						while (i < endLine - 1) {
-							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
-							Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-							methodNode.addChild(lineNode);
-							i++;
-						}
+			}
+			// constructors
+			else if (node instanceof ConstructorDeclaration) {
+				String methodSignature = ((ConstructorDeclaration) node).getName().toString() + "(";
+				for (int j = 0; j < ((ConstructorDeclaration) node).getParameters().size(); j++) {
+					if (j < ((ConstructorDeclaration) node).getParameters().size() - 1)
+						methodSignature += ((ConstructorDeclaration) node).getParameters().get(j).getType().toString() + ",";
+					else
+						methodSignature += ((ConstructorDeclaration) node).getParameters().get(j).getType().toString();
+				}
+				methodSignature += ")";
+				Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
+				Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
+				methodsGroupNode.addChild(methodNode);
+				if (((ConstructorDeclaration) node).getBody().getStatements().isNonEmpty()) {
+					int beginLine = node.getRange().get().begin.line;
+					int endLine = node.getRange().get().end.line;
+					int i = beginLine;
+					while (i < endLine - 1) {
+						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+						methodNode.addChild(lineNode);
+						i++;
 					}
 				}
+			}
+//			// methods
+//			else if (node instanceof MethodDeclaration) {
+//				String methodSignature = ((MethodDeclaration) node).getName().toString() + "(";
+//				for (int j = 0; j < ((MethodDeclaration) node).getParameters().size(); j++) {
+//					if (j < ((MethodDeclaration) node).getParameters().size() - 1)
+//						methodSignature += ((MethodDeclaration) node).getParameters().get(j).getType().toString() + ",";
+//					else
+//						methodSignature += ((MethodDeclaration) node).getParameters().get(j).getType().toString();
+//				}
+//				methodSignature += ")";
+//				Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
+//				Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
+//				methodsGroupNode.addChild(methodNode);
+//				addMethodChildren((MethodDeclaration) node, methodNode, lines);
+//			}
+		}
+
+		// methods
+		for (MethodDeclaration methodDeclaration : typeDeclaration.getMethods()) {
+			String methodSignature = methodDeclaration.getName().toString() + "(";
+			for (int j = 0; j < methodDeclaration.getParameters().size(); j++) {
+				if (j < methodDeclaration.getParameters().size() - 1)
+					methodSignature += methodDeclaration.getParameters().get(j).getType().toString() + ",";
+				else
+					methodSignature += methodDeclaration.getParameters().get(j).getType().toString();
+			}
+			methodSignature += ")";
+			Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
+			Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
+			methodsGroupNode.addChild(methodNode);
+			addMethodChildren(methodDeclaration, methodNode, lines);
+		}
 	}
 
-	public void addMethodChild(Node.Op methodNode, MethodDeclaration methodDeclaration, ArrayList<String> lines) {
-		//add classChild from Methods
+	public void addMethodChildren(MethodDeclaration methodDeclaration, Node.Op methodNode, ArrayList<String> lines) {
+		// lines inside method
 		if (methodDeclaration.getBody().isPresent()) {
 			int beginLine = methodDeclaration.getBody().get().getRange().get().begin.line;
 			int endLine = methodDeclaration.getBody().get().getRange().get().end.line;

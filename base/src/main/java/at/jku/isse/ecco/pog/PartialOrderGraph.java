@@ -95,7 +95,8 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		public default void alignOld(PartialOrderGraph.Op other) {
+		//private
+		default void alignOld(PartialOrderGraph.Op other) {
 			Alignment leftMatchState = new Alignment();
 			leftMatchState.counters.put(this.getHead(), new ArrayList<>());
 
@@ -210,7 +211,7 @@ public interface PartialOrderGraph extends Persistable {
 			return localBestCost;
 		}
 
-		// private
+		//private
 		default List<Alignment> collectMatches(Alignment startMatchState, Artifact.Op artifact) {
 			List<Alignment> matchStates = new LinkedList<>(); // TODO: linked list for insertion sort? sorted by the number of skipped artifacts?
 
@@ -290,7 +291,7 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		// private
+		//private
 		default void alignTable(PartialOrderGraph.Op other) {
 			// collect nodes
 			Node.Op[] thisNodes = this.collectNodes().toArray(new Node.Op[0]);
@@ -386,7 +387,7 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		// private
+		//private
 		default void alignMemoized(PartialOrderGraph.Op other) {
 			// collect nodes
 			Node.Op[] thisNodes = this.collectNodes().toArray(new Node.Op[0]);
@@ -525,7 +526,7 @@ public interface PartialOrderGraph extends Persistable {
 			this.checkConsistency();
 		}
 
-		// private
+		//private
 		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
 			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
 
@@ -640,6 +641,7 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
+		//private
 		default void trimRec(Node.Op node) {
 			// trim transitives, i.e. remove direct children that can be reached indirectly via any of the other children
 
@@ -681,6 +683,7 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
+		//private
 		default void mergeRecNew(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
 			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
 
@@ -764,7 +767,7 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param artifact The artifact to look for.
 		 * @return
 		 */
-		// private
+		//private
 		static boolean canReach(Node node, Artifact<?> artifact) {
 			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
 			Stack<PartialOrderGraph.Node> stack = new Stack<>();

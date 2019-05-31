@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.java.test;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.adapter.java.JavaBlockReader;
+import at.jku.isse.ecco.adapter.java.JavaChallengeReader;
 import at.jku.isse.ecco.adapter.java.data.*;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
@@ -28,7 +28,7 @@ public class ChallengeTest {
 	public void Java_Adapter_Test() {
 		Path[] inputFiles = new Path[]{Paths.get("AbstractFilePersister.java")};
 
-		JavaBlockReader reader = new JavaBlockReader(new MemEntityFactory());
+		JavaChallengeReader reader = new JavaChallengeReader(new MemEntityFactory());
 
 		System.out.println("READ");
 		Set<Node.Op> nodes = reader.read(Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\argouml-app\\src\\org\\argouml\\persistence"), inputFiles);
@@ -44,7 +44,7 @@ public class ChallengeTest {
 	}
 
 
-	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\v5");
+	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\v_test");
 	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
 	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
 
