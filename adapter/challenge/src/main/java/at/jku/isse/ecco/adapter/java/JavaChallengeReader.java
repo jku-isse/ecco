@@ -141,7 +141,6 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(classNode.toString() + "." + ((ClassOrInterfaceDeclaration) node).getName().toString()));
 				Node.Op nestedClassNode = this.entityFactory.createNode(nestedClassArtifact);
 				classNode.addChild(nestedClassNode);
-				//addNestedClassChild(nestedClassNode, node, lines);
 				addClassChildren((ClassOrInterfaceDeclaration) node, nestedClassNode, lines);
 			}
 			// nested enumerations
@@ -150,23 +149,26 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				int endLine = node.getRange().get().end.line;
 				int i = beginLine - 1;
 				while (i <= endLine) {
-					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
-					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-					enumsGroupNode.addChild(lineNode);
+					if (!lines.get(i).trim().isEmpty()) {
+						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+						enumsGroupNode.addChild(lineNode);
+					}
 					i++;
 				}
 			}
 			// fields
 			else if (node instanceof FieldDeclaration) {
-				// addFieldChild(node, classNode);
 				int beginLine = node.getRange().get().begin.line;
 				int endLine = node.getRange().get().end.line;
 				String line;
 				int i = beginLine - 1;
 				while (i < endLine) {
-					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
-					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-					fieldsGroupNode.addChild(lineNode);
+					if (!lines.get(i).trim().isEmpty()) {
+						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+						fieldsGroupNode.addChild(lineNode);
+					}
 					i++;
 				}
 
@@ -189,9 +191,11 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					int endLine = node.getRange().get().end.line;
 					int i = beginLine;
 					while (i < endLine - 1) {
-						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
-						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-						methodNode.addChild(lineNode);
+						if (!lines.get(i).trim().isEmpty()) {
+							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+							Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+							methodNode.addChild(lineNode);
+						}
 						i++;
 					}
 				}
@@ -237,9 +241,11 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			int endLine = methodDeclaration.getBody().get().getRange().get().end.line;
 			int i = beginLine;
 			while (i < endLine - 1) {
-				Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
-				Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-				methodNode.addChild(lineNode);
+				if (!lines.get(i).trim().isEmpty()) {
+					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+					methodNode.addChild(lineNode);
+				}
 				i++;
 			}
 		}

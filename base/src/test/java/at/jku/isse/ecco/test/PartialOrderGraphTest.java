@@ -25,9 +25,9 @@ public class PartialOrderGraphTest {
 	@Test(groups = {"unit", "base", "pog"})
 	public void MergeTest5() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("3"), A("4"));
-		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("3"), A("L"), A("C"), A("D"), A("L"), A("4"));
-		List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("3"), A("L"), A("E"), A("F"), A("L"), A("4"));
-		List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("3"), A("C"), A("D"), A("L"), A("E"), A("F"), A("L"), A("4"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("3"), A("L"), A("C"), A("D"), A("L2"), A("4"));
+		List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("3"), A("L"), A("E"), A("F"), A("L2"), A("4"));
+		List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("3"), A("C"), A("D"), A("L"), A("E"), A("F"), A("L2"), A("4"));
 
 		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
 
@@ -147,7 +147,7 @@ public class PartialOrderGraphTest {
 		}
 		System.out.println();
 
-		displayPOG(pog2);
+		//displayPOG(pog2);
 
 		pog1.merge(pog2);
 
@@ -180,7 +180,7 @@ public class PartialOrderGraphTest {
 
 
 	@Test(groups = {"unit", "base", "pog"})
-	public void EmpytTest() {
+	public void EmptyTest() {
 		List<Artifact.Op<?>> artifacts1 = Collections.emptyList();
 		List<Artifact.Op<?>> artifacts2 = Collections.emptyList();
 
@@ -270,13 +270,13 @@ public class PartialOrderGraphTest {
 		pog1.merge(artifacts1);
 		pog1.merge(artifacts2);
 
-//		pog1.align(artifacts3);
-//		for (Artifact.Op<?> artifact : artifacts3) {
-//			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
-//		}
-//		System.out.println();
+		pog1.align(artifacts3);
+		for (Artifact.Op<?> artifact : artifacts3) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
 
-		pog1.merge(artifacts3);
+//		pog1.merge(artifacts3);
 
 		displayPOG(pog1);
 	}

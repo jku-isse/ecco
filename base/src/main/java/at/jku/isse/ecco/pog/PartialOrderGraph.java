@@ -5,6 +5,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.Persistable;
 import org.eclipse.collections.api.map.primitive.IntObjectMap;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
+import org.eclipse.collections.impl.factory.Maps;
 import org.eclipse.collections.impl.factory.primitive.IntObjectMaps;
 
 import java.util.*;
@@ -91,7 +92,7 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param other
 		 */
 		public default void align(PartialOrderGraph.Op other) {
-			this.alignMemoized(other);
+			this.alignMemoizedFixed(other);
 		}
 
 
@@ -485,6 +486,184 @@ public interface PartialOrderGraph extends Persistable {
 				}
 			}
 			return matrix[i][j];
+		}
+
+
+		//private
+		default void alignMemoizedFixed(PartialOrderGraph.Op other) {
+			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
+			Map<Pair, IntObjectMap<Node.Op>> matrix = Maps.mutable.empty();
+
+			// recursive memoized lcs
+			State leftState = new State();
+			leftState.counters.put(this.getTail(), 0);
+			State rightState = new State();
+			rightState.counters.put(other.getTail(), 0);
+			IntObjectMap<Node.Op> result = this.alignMemoizedFixedRec(leftState, rightState, matrix);
+
+			// set sequence number of matched artifacts
+			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
+			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
+		}
+
+		public class Pair {
+			public State leftState;
+			public State rightState;
+
+			public Pair(State leftState, State rightState) {
+				this.leftState = leftState;
+				this.rightState = rightState;
+			}
+
+			@Override
+			public boolean equals(Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				Pair pair = (Pair) o;
+				return Objects.equals(leftState, pair.leftState) &&
+						Objects.equals(rightState, pair.rightState);
+			}
+
+			@Override
+			public int hashCode() {
+				return Objects.hash(leftState, rightState);
+			}
+		}
+
+		public class State {
+			public Map<Node.Op, Integer> counters;
+
+			public State() {
+				this.counters = Maps.mutable.empty();
+			}
+
+			public State(State other) {
+				this.counters = Maps.mutable.empty();
+				this.counters.putAll(other.counters);
+			}
+
+			public void advance(Node.Op node) {
+				// remove node from counters
+				this.counters.remove(node);
+				// add previous of node to counters
+				for (Node.Op previousNode : node.getPrevious()) {
+					this.counters.putIfAbsent(previousNode, 0);
+					this.counters.computeIfPresent(previousNode, (op, integer) -> integer + 1);
+				}
+			}
+
+			public boolean isStart() {
+				return this.counters.keySet().size() == 1 && this.counters.keySet().iterator().next().getNext().isEmpty();
+			}
+
+			public boolean isEnd() {
+				return this.counters.keySet().size() == 1 && this.counters.keySet().iterator().next().getPrevious().isEmpty();
+			}
+
+			@Override
+			public boolean equals(Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				State state = (State) o;
+				return Objects.equals(counters, state.counters);
+			}
+
+			@Override
+			public int hashCode() {
+
+				return Objects.hash(counters);
+			}
+		}
+
+		//private
+		default IntObjectMap<Node.Op> alignMemoizedFixedRec(State leftState, State rightState, Map<Pair, IntObjectMap<Node.Op>> matrix) {
+			// check if value is already memoized
+			Pair pair = new Pair(leftState, rightState);
+			IntObjectMap<Node.Op> value = matrix.get(pair);
+			if (value == null) {
+				// compute value
+				if (leftState.isEnd() || rightState.isEnd()) {
+					// if we reached the head of either of the two pogs
+					value = IntObjectMaps.immutable.empty();
+				} else if (leftState.isStart() && rightState.isStart()) {
+					// if we are at the tail of both of the two pogs
+					State newLeftState = new State(leftState);
+					for (Node.Op node : leftState.counters.keySet())
+						newLeftState.advance(node);
+					State newRightState = new State(rightState);
+					for (Node.Op node : rightState.counters.keySet())
+						newRightState.advance(node);
+					value = this.alignMemoizedFixedRec(newLeftState, newRightState, matrix);
+				} else {
+					// find matches
+					boolean matchFound = false;
+					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+						Node.Op rightNode = rightEntry.getKey();
+						if (rightEntry.getValue() == rightNode.getNext().size()) {
+							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+								Node.Op leftNode = leftEntry.getKey();
+								if (leftEntry.getValue() == leftNode.getNext().size()) {
+									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+										State newLeftState = new State(leftState);
+										newLeftState.advance(leftNode);
+										State newRightState = new State(rightState);
+										newRightState.advance(rightNode);
+
+										IntObjectMap<Node.Op> previousValue = this.alignMemoizedFixedRec(newLeftState, newRightState, matrix);
+										MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
+										newValue.putAll(previousValue);
+										newValue.put(leftNode.getArtifact().getSequenceNumber(), rightNode);
+										value = newValue;
+
+										matchFound = true;
+										break;
+									}
+								}
+							}
+						}
+						if (matchFound)
+							break;
+					}
+
+					// if there is not a single match recurse previous of all left and right nodes
+					if (!matchFound) {
+						IntObjectMap<Node.Op> currentBest = null;
+						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+							Node.Op leftNode = leftEntry.getKey();
+							if (leftEntry.getValue() == leftNode.getNext().size()) {
+								State newLeftState = new State(leftState);
+								newLeftState.advance(leftNode);
+
+								IntObjectMap<Node.Op> previousValue = this.alignMemoizedFixedRec(newLeftState, rightState, matrix);
+
+								if (currentBest == null || previousValue.size() > currentBest.size()) {
+									MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
+									newValue.putAll(previousValue);
+									currentBest = newValue;
+								}
+							}
+						}
+						for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+							Node.Op rightNode = rightEntry.getKey();
+							if (rightEntry.getValue() == rightNode.getNext().size()) {
+								State newRightState = new State(rightState);
+								newRightState.advance(rightNode);
+
+								IntObjectMap<Node.Op> previousValue = this.alignMemoizedFixedRec(leftState, newRightState, matrix);
+
+								if (currentBest == null || previousValue.size() > currentBest.size()) {
+									MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
+									newValue.putAll(previousValue);
+									currentBest = newValue;
+								}
+							}
+						}
+						value = currentBest;
+					}
+				}
+				matrix.put(pair, value);
+			}
+			return value;
 		}
 
 
