@@ -44,7 +44,7 @@ public class ChallengeTest {
 	}
 
 
-	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\pairwise");
+	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\traditional2");
 	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
 	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
 	private static final Path TIME_FILE = CHALLENGE_DIR.resolve("time.txt");
@@ -102,6 +102,8 @@ public class ChallengeTest {
 
 
 	private static final boolean NO_OR = false;
+	private static final boolean USE_ONLY_MIN_ORDER = false;
+	private static final int MAX_ORDER = 1;
 
 
 	@Test(groups = {"integration", "challenge"})
@@ -137,6 +139,20 @@ public class ChallengeTest {
 			if (NO_OR && condition.getType() == Condition.TYPE.OR && minModules.size() > 1)
 				continue;
 
+			// decide which modules to use
+			Collection<Module> finalModules = null;
+			if (USE_ONLY_MIN_ORDER) {
+				finalModules = minModules;
+			} else {
+				if (condition.getType() == Condition.TYPE.OR) {
+					// use min modules for OR traces still
+					finalModules = minModules;
+				} else if (condition.getType() == Condition.TYPE.AND) {
+					// use modules up to including MAX_ORDER or the minimal order if no such module exists
+					finalModules = modules.stream().filter(module -> module.getOrder() <= Math.max(MAX_ORDER, minOrder)).collect(Collectors.toList());
+				}
+			}
+
 			// compute results
 			StringBuilder sb = new StringBuilder();
 			Map<String, Boolean> lines = new HashMap<>();
@@ -144,7 +160,7 @@ public class ChallengeTest {
 			System.out.println(sb.toString());
 
 			// loop over modules, create filename by: removing base feature, concatenating with "_and_" or "_or" (depending on type) and prefixing "not_" for negative modules
-			for (Module module : minModules) {
+			for (Module module : finalModules) {
 				List<String> names = new ArrayList<>();
 
 				List<String> posNames = new ArrayList<>();

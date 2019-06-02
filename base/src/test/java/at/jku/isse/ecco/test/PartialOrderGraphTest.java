@@ -276,7 +276,7 @@ public class PartialOrderGraphTest {
 		}
 		System.out.println();
 
-//		pog1.merge(artifacts3);
+		pog1.merge(artifacts3);
 
 		displayPOG(pog1);
 	}
