@@ -1060,9 +1060,15 @@ public interface PartialOrderGraph extends Persistable {
 			while (!stack.isEmpty()) {
 				Node node = stack.pop();
 
-				if (visited.contains(node))
-					throw new EccoException("The same partial order graph node is being visited twice (this indicates a cycle)!");
-				else
+				if (visited.contains(node)) {
+					at.jku.isse.ecco.tree.Node current = node.getArtifact().getContainingNode();
+					StringBuilder sb = new StringBuilder();
+					while (current != null) {
+						sb.append(current.toString() + " - ");
+						current = current.getParent();
+					}
+					throw new EccoException("The same partial order graph node is being visited twice (this indicates a cycle)! " + sb.toString());
+				} else
 					visited.add(node);
 
 				// add children of current node

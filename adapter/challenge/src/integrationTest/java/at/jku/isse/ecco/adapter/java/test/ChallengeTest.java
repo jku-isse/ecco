@@ -44,7 +44,7 @@ public class ChallengeTest {
 	}
 
 
-	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\traditional2");
+	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\v8");
 	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
 	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
 	private static final Path TIME_FILE = CHALLENGE_DIR.resolve("time.txt");
@@ -52,7 +52,6 @@ public class ChallengeTest {
 
 	@Test(groups = {"integration", "challenge"})
 	public void Test_Create_Repo() throws IOException {
-
 		// create new repository
 		EccoService service = new EccoService();
 		service.setRepositoryDir(REPO_DIR);
@@ -102,13 +101,12 @@ public class ChallengeTest {
 
 
 	private static final boolean NO_OR = false;
-	private static final boolean USE_ONLY_MIN_ORDER = false;
+	private static final boolean USE_ONLY_MIN_ORDER = true;
 	private static final int MAX_ORDER = 1;
 
 
 	@Test(groups = {"integration", "challenge"})
 	public void Test_Compute_Results() throws IOException {
-
 		// open repository
 		EccoService service = new EccoService();
 		service.setRepositoryDir(REPO_DIR);
@@ -225,7 +223,6 @@ public class ChallengeTest {
 		// close repository
 		service.close();
 		System.out.println("Repository closed.");
-
 	}
 
 	private boolean checkNonMethodDescendants(Node node) {
@@ -249,7 +246,6 @@ public class ChallengeTest {
 	}
 
 	private void computeString(Node node, StringBuilder sb, Map<String, Boolean> lines, String currentClassName) {
-
 		if (node.getArtifact() != null && node.getArtifact().getData() != null) {
 			// if file (i.e. class)
 			if (node.getArtifact().getData() instanceof ClassArtifactData) {
@@ -316,7 +312,6 @@ public class ChallengeTest {
 		for (Node childNode : node.getChildren()) {
 			this.computeString(childNode, sb, lines, currentClassName);
 		}
-
 	}
 
 
