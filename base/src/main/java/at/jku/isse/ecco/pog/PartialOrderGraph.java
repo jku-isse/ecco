@@ -808,8 +808,17 @@ public interface PartialOrderGraph extends Persistable {
 										throw new EccoException("This should not happen!");
 
 									// make sure left node cannot be reached from childLeft
-									if (canReach(childLeft, left.getArtifact()))
-										throw new EccoException("Introduced cycle!");
+									if (canReach(childLeft, left.getArtifact())) {
+										StringBuilder sb = new StringBuilder();
+										if (left.getArtifact() != null) {
+											at.jku.isse.ecco.tree.Node current = left.getArtifact().getContainingNode();
+											while (current != null) {
+												sb.append(current.toString() + " - ");
+												current = current.getParent();
+											}
+										}
+										throw new EccoException("Introduced cycle! " + sb.toString());
+									}
 
 									left.addChild(childLeft);
 									//System.out.println("Added new node " + childLeft + " matching " + childRight + " as child to node " + left);
@@ -1061,11 +1070,13 @@ public interface PartialOrderGraph extends Persistable {
 				Node node = stack.pop();
 
 				if (visited.contains(node)) {
-					at.jku.isse.ecco.tree.Node current = node.getArtifact().getContainingNode();
 					StringBuilder sb = new StringBuilder();
-					while (current != null) {
-						sb.append(current.toString() + " - ");
-						current = current.getParent();
+					if (node.getArtifact() != null) {
+						at.jku.isse.ecco.tree.Node current = node.getArtifact().getContainingNode();
+						while (current != null) {
+							sb.append(current.toString() + " - ");
+							current = current.getParent();
+						}
 					}
 					throw new EccoException("The same partial order graph node is being visited twice (this indicates a cycle)! " + sb.toString());
 				} else
@@ -1086,7 +1097,15 @@ public interface PartialOrderGraph extends Persistable {
 			}
 
 			if (!counters.isEmpty()) {
-				throw new EccoException("Not all partial order graph nodes can be reached (this indicates a cycle or an orphan node without parent)!");
+				StringBuilder sb = new StringBuilder();
+				if (!this.getHead().getNext().isEmpty() && this.getHead().getNext().iterator().next().getArtifact() != null) {
+					at.jku.isse.ecco.tree.Node current = this.getHead().getNext().iterator().next().getArtifact().getContainingNode();
+					while (current != null) {
+						sb.append(current.toString() + " - ");
+						current = current.getParent();
+					}
+				}
+				throw new EccoException("Not all partial order graph nodes can be reached (this indicates a cycle or an orphan node without parent)! " + sb.toString());
 			}
 		}
 
