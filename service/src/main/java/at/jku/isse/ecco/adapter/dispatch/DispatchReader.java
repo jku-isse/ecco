@@ -121,7 +121,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 			Path ignoresFile = this.repositoryDir.resolve(IGNORES_FILE_NAME);
 			if (!Files.exists(ignoresFile))
 				Files.createFile(ignoresFile);
-			List<String> ignorePatterns = Files.readAllLines(ignoresFile);
+			List<String> ignorePatterns = Files.readAllLines(ignoresFile).stream().filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
 			this.ignorePatterns.addAll(ignorePatterns);
 		} catch (IOException e) {
 			throw new EccoException("Error creating or reading ignores file.", e);

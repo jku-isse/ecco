@@ -44,7 +44,7 @@ public class ChallengeTest {
 	}
 
 
-	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\7variants");
+	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\traditional");
 	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
 	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
 	private static final Path TIME_FILE = CHALLENGE_DIR.resolve("time.txt");
@@ -59,7 +59,7 @@ public class ChallengeTest {
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
-		Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioRandom007Variants");
+		Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
 		Path variantsDir = scenarioDir.resolve("variants");
 		Path configsDir = scenarioDir.resolve("configs");
 
@@ -181,7 +181,7 @@ public class ChallengeTest {
 					if (posNames.contains(name)) return name;
 					else if (negNames.contains(name)) return "not_" + name;
 					else return "";
-				}).collect(Collectors.joining("_" + condition.getType().toString().toLowerCase() + "_"));
+				}).collect(Collectors.joining("_and_"));
 
 				// write to file (per association)
 				Path resultsDir = RESULTS_DIR.resolve("A" + assocCounter);
