@@ -715,7 +715,7 @@ public interface PartialOrderGraph extends Persistable {
 			this.checkAlignment(other, shared);
 
 			// merge other partial order graph into this partial order graph
-			this.mergeRec(this.getHead(), other.getHead(), shared);
+			this.mergeRec(this.getHead(), other.getHead(), shared, new HashSet<>(), new HashMap<>());
 			//this.mergeRecNew(this.getHead(), other.getHead(), shared);
 			this.trimRec(this.getHead());
 
@@ -724,8 +724,9 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 		//private
-		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
+		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared, Set<Node.Op> leftVisited, Map<Node.Op, Node.Op> addedFromRight) {
 			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
+			leftVisited.add(left);
 
 			// left and right are equal
 			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
@@ -733,15 +734,19 @@ public interface PartialOrderGraph extends Persistable {
 				for (Node.Op childRight : right.getNext()) {
 					// check if right symbol is unshared
 					if (childRight.getArtifact() != null && !shared.containsKey(childRight.getArtifact().getSequenceNumber())) { // && childRight.getArtifact().getSequenceNumber() == PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
-						// create node for new artifact
-						Node.Op newLeft = this.createNode(childRight.getArtifact());
-						// assign new sequence number to new artifact
-						newLeft.getArtifact().setSequenceNumber(this.getMaxIdentifier());
-						this.incMaxIdentifier();
+						Node.Op newLeft = addedFromRight.get(childRight);
+						if (newLeft == null) {
+							// create node for new artifact
+							newLeft = this.createNode(childRight.getArtifact());
+							// assign new sequence number to new artifact
+							newLeft.getArtifact().setSequenceNumber(this.getMaxIdentifier());
+							this.incMaxIdentifier();
+							// add tail as child of new node
+							newLeft.addChild(this.getTail());
+							addedFromRight.put(childRight, newLeft);
+						}
 						// add it to left
 						left.addChild(newLeft);
-						// add tail as child of new node
-						newLeft.addChild(this.getTail());
 						//System.out.println("Added new node " + newLeft + " as child to node " + left);
 					}
 				}
@@ -835,14 +840,16 @@ public interface PartialOrderGraph extends Persistable {
 				for (Node.Op childRight : right.getNext()) {
 					//if ((childLeft.getArtifact() == null && childRight.getArtifact() == null) || (childLeft.getArtifact() != null && childRight.getArtifact() != null && childLeft.getArtifact().getData() != null && childRight.getArtifact() != null && childLeft.getArtifact().getData().equals(childRight.getArtifact().getData()))) {
 					if ((childLeft.getArtifact() == null && childRight.getArtifact() == null) || (childLeft.getArtifact() != null && childLeft.getArtifact().equals(childRight.getArtifact()))) {
-						this.mergeRec(childLeft, childRight, shared);
+						if (!leftVisited.contains(childLeft))
+							this.mergeRec(childLeft, childRight, shared, leftVisited, addedFromRight);
 						foundMatchingChildRight = true;
 						break;
 					}
 				}
 				// if left is unshared and was not added from right before then rec right here
 				if (!foundMatchingChildRight && childLeft.getArtifact() != null && !shared.containsKey(childLeft.getArtifact().getSequenceNumber()))
-					this.mergeRec(childLeft, right, shared);
+					if (!leftVisited.contains(childLeft))
+						this.mergeRec(childLeft, right, shared, leftVisited, addedFromRight);
 			}
 		}
 

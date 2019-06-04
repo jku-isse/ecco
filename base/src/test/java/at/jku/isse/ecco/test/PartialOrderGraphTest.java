@@ -22,6 +22,65 @@ import java.util.stream.Collectors;
 
 public class PartialOrderGraphTest {
 
+	// TODO: at some point move all the test data into the repository after it is cleaned up properly!
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void MergeTest6() {
+		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("2"), A("3"), A("5"), A("6"));
+		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("4"), A("3"), A("5"), A("6"));
+		List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("1"), A("3"), A("5"), A("7"), A("6"));
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+
+		pog1.align(artifacts3);
+		for (Artifact.Op<?> artifact : artifacts3) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		pog1.merge(artifacts3);
+
+		displayPOG(pog1);
+
+		pog1.merge(artifacts3);
+	}
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void SequenceTest4() throws IOException {
+		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s4simple\\1.txt"));
+		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s4simple\\2.txt"));
+		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s4simple\\3.txt"));
+
+		List<Artifact.Op<?>> artifacts1 = lines1.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts2 = lines2.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts3 = lines3.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+
+		pog1.align(artifacts3);
+		for (Artifact.Op<?> artifact : artifacts3) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+
+		System.out.println(pog1.collectNodes().size());
+
+		pog1.merge(artifacts3);
+
+		displayPOG(pog1);
+
+		pog1.merge(artifacts3);
+	}
+
+
 	@Test(groups = {"unit", "base", "pog"})
 	public void MergeTest5() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("3"), A("4"));
