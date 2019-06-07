@@ -167,6 +167,26 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
+		//private
+		class Cell {
+			public int score;
+			//public int state_size;
+
+			public Cell() {
+				this.score = 0;
+				//this.state_size = 0;
+			}
+
+			public Cell(Cell other) {
+				this.score = other.score;
+				//this.state_size = other.state_size;
+			}
+
+			public boolean isBetterThan(Cell other) {
+				return this.score > other.score;// || this.score == other.score && this.state_size < other.state_size;
+			}
+		}
+
 
 		//private
 		default void alignMemoized(PartialOrderGraph.Op other) {
@@ -280,7 +300,7 @@ public interface PartialOrderGraph extends Persistable {
 		//private
 		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
 			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
-			Map<Pair, Integer> matrix = Maps.mutable.empty();
+			Map<Pair, Cell> matrix = Maps.mutable.empty();
 
 			// recursive memoized lcs
 			State leftState = new State();
@@ -296,15 +316,18 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 		//private
-		default int alignMemoizedBacktrackingRec(State leftState, State rightState, Map<Pair, Integer> matrix) {
+		static final Cell ZERO_CELL = new Cell();
+
+		//private
+		default Cell alignMemoizedBacktrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
 			// check if value is already memoized
 			Pair pair = new Pair(leftState, rightState);
-			Integer value = matrix.get(pair);
+			Cell value = matrix.get(pair);
 			if (value == null) {
 				// compute value
 				if (leftState.isEnd() || rightState.isEnd()) {
 					// if we reached the head of either of the two pogs
-					value = 0;
+					value = this.ZERO_CELL;
 				} else if (leftState.isStart() && rightState.isStart()) {
 					// if we are at the tail of both of the two pogs
 					State newLeftState = new State(leftState);
@@ -329,8 +352,9 @@ public interface PartialOrderGraph extends Persistable {
 										State newRightState = new State(rightState);
 										newRightState.advance(rightNode);
 
-										int previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
-										value = previousValue + 1;
+										Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
+										value = new Cell(previousValue);
+										value.score += 1;
 
 										matchFound = true;
 										break;
@@ -344,16 +368,16 @@ public interface PartialOrderGraph extends Persistable {
 
 					// if there is not a single match recurse previous of all left and right nodes
 					if (!matchFound) {
-						int localBest = -1;
+						Cell localBest = null;
 						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
 							Node.Op leftNode = leftEntry.getKey();
 							if (leftEntry.getValue() == leftNode.getNext().size()) {
 								State newLeftState = new State(leftState);
 								newLeftState.advance(leftNode);
 
-								int previousValue = this.alignMemoizedBacktrackingRec(newLeftState, rightState, matrix);
+								Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, rightState, matrix);
 
-								if (previousValue > localBest) {
+								if (localBest == null || previousValue.isBetterThan(localBest)) {
 									localBest = previousValue;
 								}
 							}
@@ -364,9 +388,9 @@ public interface PartialOrderGraph extends Persistable {
 								State newRightState = new State(rightState);
 								newRightState.advance(rightNode);
 
-								int previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
+								Cell previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
 
-								if (previousValue > localBest) {
+								if (localBest == null || previousValue.isBetterThan(localBest)) {
 									localBest = previousValue;
 								}
 							}
@@ -380,7 +404,7 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 		//private
-		default MutableIntObjectMap<Node.Op> backtrackingRec(State leftState, State rightState, Map<Pair, Integer> matrix) {
+		default MutableIntObjectMap<Node.Op> backtrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
 			if (leftState.isEnd() || rightState.isEnd()) {
 				// if we reached the head of either of the two pogs: do nothing
 				return IntObjectMaps.mutable.empty();
@@ -407,9 +431,15 @@ public interface PartialOrderGraph extends Persistable {
 									State newRightState = new State(rightState);
 									newRightState.advance(rightNode);
 
-									MutableIntObjectMap<Node.Op> returnedAlignment = this.backtrackingRec(newLeftState, newRightState, matrix);
-									returnedAlignment.put(leftNode.getArtifact().getSequenceNumber(), rightNode);
-									return returnedAlignment;
+									Pair pair = new Pair(newLeftState, newRightState);
+									Cell value = matrix.get(pair);
+									if (value == null) {
+										System.out.println("WARNING: No cell value at this position in sparse matrix during match. This should not happen!");
+									} else {
+										MutableIntObjectMap<Node.Op> returnedAlignment = this.backtrackingRec(newLeftState, newRightState, matrix);
+										returnedAlignment.put(leftNode.getArtifact().getSequenceNumber(), rightNode);
+										return returnedAlignment;
+									}
 								}
 							}
 						}
@@ -419,7 +449,7 @@ public interface PartialOrderGraph extends Persistable {
 				// if there is not a single match recurse previous of all left and right nodes
 				State bestLeftState = null;
 				State bestRightState = null;
-				int currentBest = -1;
+				Cell currentBest = null;
 				for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
 					Node.Op leftNode = leftEntry.getKey();
 					if (leftEntry.getValue() == leftNode.getNext().size()) {
@@ -427,8 +457,10 @@ public interface PartialOrderGraph extends Persistable {
 						newLeftState.advance(leftNode);
 
 						Pair pair = new Pair(newLeftState, rightState);
-						int value = matrix.get(pair);
-						if (value > currentBest) {
+						Cell value = matrix.get(pair);
+						if (value == null) {
+							System.out.println("WARNING: No cell value at this position in sparse matrix. This should not happen!");
+						} else if (currentBest == null || value.isBetterThan(currentBest)) {
 							currentBest = value;
 							bestLeftState = newLeftState;
 							bestRightState = rightState;
@@ -442,8 +474,10 @@ public interface PartialOrderGraph extends Persistable {
 						newRightState.advance(rightNode);
 
 						Pair pair = new Pair(leftState, newRightState);
-						int value = matrix.get(pair);
-						if (value > currentBest) {
+						Cell value = matrix.get(pair);
+						if (value == null) {
+							System.out.println("WARNING: No cell value at this position in sparse matrix. This should not happen!");
+						} else if (currentBest == null || value.isBetterThan(currentBest)) {
 							currentBest = value;
 							bestLeftState = leftState;
 							bestRightState = newRightState;

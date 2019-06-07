@@ -61,8 +61,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	public static final String ORIGIN_REMOTE_NAME = "origin";
 
 	public static final String ECCO_PROPERTIES_FILE = "ecco.properties";
-	public static final String ECCO_PROPERTIES_STORAGE = "plugin.data";
-//	public static final String ECCO_PROPERTIES_ARTIFACT = "plugin.artifact";
+	public static final String ECCO_PROPERTIES_STORAGE = "ecco.storage";
 
 	public static final Path REPOSITORY_DIR_NAME = Paths.get(".ecco");
 	public static final Path DEFAULT_BASE_DIR = Paths.get("");

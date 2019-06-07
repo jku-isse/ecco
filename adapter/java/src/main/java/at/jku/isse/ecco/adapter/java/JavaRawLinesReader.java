@@ -27,12 +27,12 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
+public class JavaRawLinesReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
 
 	@Inject
-	public JavaBlockReader(EntityFactory entityFactory) {
+	public JavaRawLinesReader(EntityFactory entityFactory) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;

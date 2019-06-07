@@ -7,8 +7,10 @@ import at.jku.isse.ecco.tree.Node;
 import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 
@@ -39,6 +41,7 @@ public class JavaAdapterTest {
 
 	static class MyFileVisitor extends SimpleFileVisitor<Path> {
 		Path[] inputFiles;
+
 		public FileVisitResult visitFile(Path path, BasicFileAttributes fileAttributes) throws FileNotFoundException {
 			String auxFileJava = path.getFileName().toString();
 			if (auxFileJava.endsWith(".java")) {

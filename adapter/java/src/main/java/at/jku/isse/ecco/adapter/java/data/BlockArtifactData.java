@@ -8,10 +8,6 @@ public class BlockArtifactData implements ArtifactData {
 
 	private String block;
 
-	protected BlockArtifactData() {
-		this.block = null;
-	}
-
 	public BlockArtifactData(String block) {
 		this.block = block;
 	}
@@ -50,5 +46,4 @@ public class BlockArtifactData implements ArtifactData {
 			return false;
 		return true;
 	}
-
 }

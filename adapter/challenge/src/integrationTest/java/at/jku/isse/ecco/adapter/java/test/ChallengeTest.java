@@ -2,14 +2,12 @@ package at.jku.isse.ecco.adapter.java.test;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.adapter.java.JavaChallengeReader;
 import at.jku.isse.ecco.adapter.java.data.*;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 import org.testng.annotations.Test;
@@ -24,34 +22,14 @@ import java.util.stream.Collectors;
 
 public class ChallengeTest {
 
-	@Test(groups = {"integration", "java"})
-	public void Java_Adapter_Test() {
-		Path[] inputFiles = new Path[]{Paths.get("AbstractFilePersister.java")};
-
-		JavaChallengeReader reader = new JavaChallengeReader(new MemEntityFactory());
-
-		System.out.println("READ");
-		Set<Node.Op> nodes = reader.read(Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\argouml-app\\src\\org\\argouml\\persistence"), inputFiles);
-
-		System.out.println(nodes);
-
-		//Path source = Paths.get(FILE_PATH);
-		//try {
-		//	Files.walkFileTree(source, new MyFileVisitor());
-		//} catch (IOException e) {
-		//	e.printStackTrace();
-		//}
-	}
-
-
-	private static final Path CHALLENGE_DIR = Paths.get("C:\\Users\\user\\Desktop\\eccotest\\challenge\\traditional");
-	private static final Path REPO_DIR = CHALLENGE_DIR.resolve("repo\\.ecco");
-	private static final Path RESULTS_DIR = CHALLENGE_DIR.resolve("results");
-	private static final Path TIME_FILE = CHALLENGE_DIR.resolve("time.txt");
-
+	private static final Path SCENARIO_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
+	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\output\\traditional");
+	private static final Path REPO_DIR = OUTPUT_DIR.resolve("repo\\.ecco");
+	private static final Path RESULTS_DIR = OUTPUT_DIR.resolve("results");
+	private static final Path TIME_FILE = OUTPUT_DIR.resolve("time.txt");
 
 	@Test(groups = {"integration", "challenge"})
-	public void Test_Create_Repo() throws IOException {
+	public void Create_Repo() throws IOException {
 		// create new repository
 		EccoService service = new EccoService();
 		service.setRepositoryDir(REPO_DIR);
@@ -59,9 +37,8 @@ public class ChallengeTest {
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
-		Path scenarioDir = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
-		Path variantsDir = scenarioDir.resolve("variants");
-		Path configsDir = scenarioDir.resolve("configs");
+		Path variantsDir = SCENARIO_DIR.resolve("variants");
+		Path configsDir = SCENARIO_DIR.resolve("configs");
 
 		List<Long> runtimes = new ArrayList<>();
 		int counter = 0;
@@ -104,9 +81,8 @@ public class ChallengeTest {
 	private static final boolean USE_ONLY_MIN_ORDER = true;
 	private static final int MAX_ORDER = 1;
 
-
 	@Test(groups = {"integration", "challenge"})
-	public void Test_Compute_Results() throws IOException {
+	public void Compute_Results() throws IOException {
 		// open repository
 		EccoService service = new EccoService();
 		service.setRepositoryDir(REPO_DIR);
@@ -316,7 +292,7 @@ public class ChallengeTest {
 
 
 	@Test(groups = {"integration", "challenge"})
-	public void Test_Analyze_Differences() throws IOException {
+	public void Analyze_Differences() throws IOException {
 		Path GT_PATH = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\groundTruth");
 		Path MY_PATH = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\yourResults");
 
