@@ -323,10 +323,17 @@ public class PartialOrderGraphTest {
 		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line.trim())).collect(Collectors.toList());
 		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line.trim())).collect(Collectors.toList());
 		List<Artifact.Op<?>> artifacts3 = lines3.stream().map(line -> A(line.trim())).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts4 = lines3.stream().map(line -> A(line.trim())).collect(Collectors.toList());
 
 		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
 
 		pog1.merge(artifacts1);
+
+		pog1.align(artifacts2);
+		for (Artifact.Op<?> artifact : artifacts2) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
 		pog1.merge(artifacts2);
 
 		pog1.align(artifacts3);
@@ -334,8 +341,14 @@ public class PartialOrderGraphTest {
 			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
 		}
 		System.out.println();
-
 		pog1.merge(artifacts3);
+
+		pog1.align(artifacts4);
+		for (Artifact.Op<?> artifact : artifacts4) {
+			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
+		}
+		System.out.println();
+		pog1.merge(artifacts4);
 
 		displayPOG(pog1);
 	}

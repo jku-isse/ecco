@@ -152,6 +152,10 @@ public interface PartialOrderGraph extends Persistable {
 				return this.counters.keySet().size() == 1 && this.counters.keySet().iterator().next().getPrevious().isEmpty();
 			}
 
+//			public int getBreadth() {
+//				return this.counters.values().stream().reduce((i1, i2) -> i1 + i2).orElse(0);
+//			}
+
 			@Override
 			public boolean equals(Object o) {
 				if (this == o) return true;
@@ -170,131 +174,257 @@ public interface PartialOrderGraph extends Persistable {
 		//private
 		class Cell {
 			public int score;
-			//public int state_size;
+			//public int stateBreadthDifference;
+			//public int switches;
+			//public SKIP last_skip;
+
+			//enum SKIP {LEFT, RIGHT, BOTH}
 
 			public Cell() {
 				this.score = 0;
-				//this.state_size = 0;
+				//this.stateBreadthDifference = 0;
+				//this.switches = 0;
+				//this.last_skip = null;
 			}
 
 			public Cell(Cell other) {
 				this.score = other.score;
-				//this.state_size = other.state_size;
+				//this.stateBreadthDifference = other.stateBreadthDifference;
+				//this.switches = other.switches;
+				//this.last_skip = other.last_skip;
 			}
 
 			public boolean isBetterThan(Cell other) {
-				return this.score > other.score;// || this.score == other.score && this.state_size < other.state_size;
+				return this.score > other.score;// || this.score == other.score && this.switches < other.switches;
 			}
 		}
 
 
-		//private
-		default void alignMemoized(PartialOrderGraph.Op other) {
-			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
-			Map<Pair, IntObjectMap<Node.Op>> matrix = Maps.mutable.empty();
+//		//private
+//		default void alignMemoized(PartialOrderGraph.Op other) {
+//			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
+//			Map<Pair, IntObjectMap<Node.Op>> matrix = Maps.mutable.empty();
+//
+//			// recursive memoized lcs
+//			State leftState = new State();
+//			leftState.counters.put(this.getTail(), 0);
+//			State rightState = new State();
+//			rightState.counters.put(other.getTail(), 0);
+//			IntObjectMap<Node.Op> result = this.alignMemoizedRec(leftState, rightState, matrix);
+//
+//			// set sequence number of matched artifacts
+//			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
+//			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
+//		}
+//
+//		//private
+//		default IntObjectMap<Node.Op> alignMemoizedRec(State leftState, State rightState, Map<Pair, IntObjectMap<Node.Op>> matrix) {
+//			// check if value is already memoized
+//			Pair pair = new Pair(leftState, rightState);
+//			IntObjectMap<Node.Op> value = matrix.get(pair);
+//			if (value == null) {
+//				// compute value
+//				if (leftState.isEnd() || rightState.isEnd()) {
+//					// if we reached the head of either of the two pogs
+//					value = IntObjectMaps.immutable.empty();
+//				} else if (leftState.isStart() && rightState.isStart()) {
+//					// if we are at the tail of both of the two pogs
+//					State newLeftState = new State(leftState);
+//					for (Node.Op node : leftState.counters.keySet())
+//						newLeftState.advance(node);
+//					State newRightState = new State(rightState);
+//					for (Node.Op node : rightState.counters.keySet())
+//						newRightState.advance(node);
+//					value = this.alignMemoizedRec(newLeftState, newRightState, matrix);
+//				} else {
+//					// find matches
+//					boolean matchFound = false;
+//					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//						Node.Op rightNode = rightEntry.getKey();
+//						if (rightEntry.getValue() == rightNode.getNext().size()) {
+//							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//								Node.Op leftNode = leftEntry.getKey();
+//								if (leftEntry.getValue() == leftNode.getNext().size()) {
+//									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+//										State newLeftState = new State(leftState);
+//										newLeftState.advance(leftNode);
+//										State newRightState = new State(rightState);
+//										newRightState.advance(rightNode);
+//
+//										IntObjectMap<Node.Op> previousValue = this.alignMemoizedRec(newLeftState, newRightState, matrix);
+//										MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
+//										newValue.putAll(previousValue);
+//										newValue.put(leftNode.getArtifact().getSequenceNumber(), rightNode);
+//										value = newValue;
+//
+//										matchFound = true;
+//										break;
+//									}
+//								}
+//							}
+//						}
+//						if (matchFound)
+//							break;
+//					}
+//
+//					// if there is not a single match recurse previous of all left and right nodes
+//					if (!matchFound) {
+//						IntObjectMap<Node.Op> currentBest = null;
+//						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//							Node.Op leftNode = leftEntry.getKey();
+//							if (leftEntry.getValue() == leftNode.getNext().size()) {
+//								State newLeftState = new State(leftState);
+//								newLeftState.advance(leftNode);
+//
+//								IntObjectMap<Node.Op> previousValue = this.alignMemoizedRec(newLeftState, rightState, matrix);
+//
+//								if (currentBest == null || previousValue.size() > currentBest.size()) {
+//									MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
+//									newValue.putAll(previousValue);
+//									currentBest = newValue;
+//								}
+//							}
+//						}
+//						for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//							Node.Op rightNode = rightEntry.getKey();
+//							if (rightEntry.getValue() == rightNode.getNext().size()) {
+//								State newRightState = new State(rightState);
+//								newRightState.advance(rightNode);
+//
+//								IntObjectMap<Node.Op> previousValue = this.alignMemoizedRec(leftState, newRightState, matrix);
+//
+//								if (currentBest == null || previousValue.size() > currentBest.size()) {
+//									MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
+//									newValue.putAll(previousValue);
+//									currentBest = newValue;
+//								}
+//							}
+//						}
+//						value = currentBest;
+//					}
+//				}
+//				matrix.put(pair, value);
+//			}
+//			return value;
+//		}
 
-			// recursive memoized lcs
-			State leftState = new State();
-			leftState.counters.put(this.getTail(), 0);
-			State rightState = new State();
-			rightState.counters.put(other.getTail(), 0);
-			IntObjectMap<Node.Op> result = this.alignMemoizedRec(leftState, rightState, matrix);
 
-			// set sequence number of matched artifacts
-			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
-			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
-		}
-
-		//private
-		default IntObjectMap<Node.Op> alignMemoizedRec(State leftState, State rightState, Map<Pair, IntObjectMap<Node.Op>> matrix) {
-			// check if value is already memoized
-			Pair pair = new Pair(leftState, rightState);
-			IntObjectMap<Node.Op> value = matrix.get(pair);
-			if (value == null) {
-				// compute value
-				if (leftState.isEnd() || rightState.isEnd()) {
-					// if we reached the head of either of the two pogs
-					value = IntObjectMaps.immutable.empty();
-				} else if (leftState.isStart() && rightState.isStart()) {
-					// if we are at the tail of both of the two pogs
-					State newLeftState = new State(leftState);
-					for (Node.Op node : leftState.counters.keySet())
-						newLeftState.advance(node);
-					State newRightState = new State(rightState);
-					for (Node.Op node : rightState.counters.keySet())
-						newRightState.advance(node);
-					value = this.alignMemoizedRec(newLeftState, newRightState, matrix);
-				} else {
-					// find matches
-					boolean matchFound = false;
-					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-						Node.Op rightNode = rightEntry.getKey();
-						if (rightEntry.getValue() == rightNode.getNext().size()) {
-							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-								Node.Op leftNode = leftEntry.getKey();
-								if (leftEntry.getValue() == leftNode.getNext().size()) {
-									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
-										State newLeftState = new State(leftState);
-										newLeftState.advance(leftNode);
-										State newRightState = new State(rightState);
-										newRightState.advance(rightNode);
-
-										IntObjectMap<Node.Op> previousValue = this.alignMemoizedRec(newLeftState, newRightState, matrix);
-										MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
-										newValue.putAll(previousValue);
-										newValue.put(leftNode.getArtifact().getSequenceNumber(), rightNode);
-										value = newValue;
-
-										matchFound = true;
-										break;
-									}
-								}
-							}
-						}
-						if (matchFound)
-							break;
-					}
-
-					// if there is not a single match recurse previous of all left and right nodes
-					if (!matchFound) {
-						IntObjectMap<Node.Op> currentBest = null;
-						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-							Node.Op leftNode = leftEntry.getKey();
-							if (leftEntry.getValue() == leftNode.getNext().size()) {
-								State newLeftState = new State(leftState);
-								newLeftState.advance(leftNode);
-
-								IntObjectMap<Node.Op> previousValue = this.alignMemoizedRec(newLeftState, rightState, matrix);
-
-								if (currentBest == null || previousValue.size() > currentBest.size()) {
-									MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
-									newValue.putAll(previousValue);
-									currentBest = newValue;
-								}
-							}
-						}
-						for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-							Node.Op rightNode = rightEntry.getKey();
-							if (rightEntry.getValue() == rightNode.getNext().size()) {
-								State newRightState = new State(rightState);
-								newRightState.advance(rightNode);
-
-								IntObjectMap<Node.Op> previousValue = this.alignMemoizedRec(leftState, newRightState, matrix);
-
-								if (currentBest == null || previousValue.size() > currentBest.size()) {
-									MutableIntObjectMap<Node.Op> newValue = IntObjectMaps.mutable.empty();
-									newValue.putAll(previousValue);
-									currentBest = newValue;
-								}
-							}
-						}
-						value = currentBest;
-					}
-				}
-				matrix.put(pair, value);
-			}
-			return value;
-		}
+//		//private
+//		default Cell alignMemoizedBacktrackingSwitchesRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
+//			// check if value is already memoized
+//			Pair pair = new Pair(leftState, rightState);
+//			Cell value = matrix.get(pair);
+//			if (value == null) {
+//				// compute value
+//				if (leftState.isEnd() || rightState.isEnd()) {
+//					// if we reached the head of either of the two pogs
+//					//value = this.ZERO_CELL;
+//					value = new Cell();
+//					if (!leftState.isEnd()) {
+//						value.switches++;
+//						value.last_skip = Cell.SKIP.LEFT;
+//					}
+//					if (!rightState.isEnd()) {
+//						value.switches++;
+//						value.last_skip = Cell.SKIP.RIGHT;
+//					}
+//				} else if (leftState.isStart() && rightState.isStart()) {
+//					// if we are at the tail of both of the two pogs
+//					State newLeftState = new State(leftState);
+//					for (Node.Op node : leftState.counters.keySet())
+//						newLeftState.advance(node);
+//					State newRightState = new State(rightState);
+//					for (Node.Op node : rightState.counters.keySet())
+//						newRightState.advance(node);
+//					value = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
+//				} else {
+//					// find matches
+//					boolean matchFound = false;
+//					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//						Node.Op rightNode = rightEntry.getKey();
+//						if (rightEntry.getValue() == rightNode.getNext().size()) {
+//							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//								Node.Op leftNode = leftEntry.getKey();
+//								if (leftEntry.getValue() == leftNode.getNext().size()) {
+//									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+//										State newLeftState = new State(leftState);
+//										newLeftState.advance(leftNode);
+//										State newRightState = new State(rightState);
+//										newRightState.advance(rightNode);
+//
+//										Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
+//										value = new Cell(previousValue);
+//										value.score += 1;
+//										value.last_skip = Cell.SKIP.BOTH;
+//										if (previousValue.last_skip != null && previousValue.last_skip != Cell.SKIP.BOTH)
+//											value.switches++;
+//
+//										matchFound = true;
+//										break;
+//									}
+//								}
+//							}
+//						}
+//						if (matchFound)
+//							break;
+//					}
+//
+//					// if there is not a single match recurse previous of all left and right nodes
+//					if (!matchFound) {
+//						Cell localBest = null;
+//						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//							Node.Op leftNode = leftEntry.getKey();
+//							if (leftEntry.getValue() == leftNode.getNext().size()) {
+//								State newLeftState = new State(leftState);
+//								newLeftState.advance(leftNode);
+//
+//								Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, rightState, matrix);
+//
+//								Cell localValue;
+//								if (previousValue.last_skip != Cell.SKIP.LEFT) {
+//									localValue = new Cell(previousValue);
+//									localValue.last_skip = Cell.SKIP.LEFT;
+//									if (previousValue.last_skip != null)
+//										localValue.switches++;
+//								} else {
+//									localValue = previousValue;
+//								}
+//
+//								if (localBest == null || localValue.isBetterThan(localBest)) {
+//									localBest = localValue;
+//								}
+//							}
+//						}
+//						for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//							Node.Op rightNode = rightEntry.getKey();
+//							if (rightEntry.getValue() == rightNode.getNext().size()) {
+//								State newRightState = new State(rightState);
+//								newRightState.advance(rightNode);
+//
+//								Cell previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
+//
+//								Cell localValue;
+//								if (previousValue.last_skip != Cell.SKIP.RIGHT) {
+//									localValue = new Cell(previousValue);
+//									localValue.last_skip = Cell.SKIP.RIGHT;
+//									if (previousValue.last_skip != null)
+//										localValue.switches++;
+//								} else {
+//									localValue = previousValue;
+//								}
+//
+//								if (localBest == null || localValue.isBetterThan(localBest)) {
+//									localBest = localValue;
+//								}
+//							}
+//						}
+//						value = localBest;
+//					}
+//				}
+//				matrix.put(pair, value);
+//			}
+//			return value;
+//		}
 
 
 		//private
