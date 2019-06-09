@@ -1,0 +1,9 @@
+{
+// <model> is not used in current implementation
+profile = getMatchingUserDefinedProfile(filename, ProfileFacade.getManager());
+if (profile == null) {
+unresolvedFilenames.add(filename);
+} else {
+profiles.add(profile);
+}
+}

@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.web.rest.resource;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.composition.LazyCompositionRootNode;
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.web.rest.EccoApplication;
 import at.jku.isse.ecco.web.rest.dto.ArtifactsGraphDTO;
 import org.slf4j.Logger;

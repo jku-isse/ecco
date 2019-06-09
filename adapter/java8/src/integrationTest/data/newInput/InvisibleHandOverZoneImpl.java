@@ -3,8 +3,6 @@ package at.jku.mevss.ppu.simulation.machine.parts;
 import at.jku.mevss.ppu.control.VariablePool;
 import at.jku.mevss.ppu.j6.Optional;
 
-import java.awt.*;
-
 import static at.jku.mevss.ppu.simulation.Constants.OFFSET_ELEMENT_HANDOVERZONE;
 import static at.jku.mevss.ppu.simulation.GraphicUtils.drawAndFillRectangle;
 

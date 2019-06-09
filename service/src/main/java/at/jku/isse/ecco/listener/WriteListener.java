@@ -9,7 +9,8 @@ public interface WriteListener {
 	/**
 	 * Fired when a file has been written from artifacts.
 	 *
-	 * @param file The file that was written.
+	 * @param file   The file that was written.
+	 * @param writer The used writer.
 	 */
 	public default void fileWriteEvent(Path file, ArtifactWriter writer) {
 		// do nothing

@@ -5,7 +5,7 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.tree.Node;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -272,7 +272,7 @@ public class ForkView extends OperationView {
 		for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
 			TreeItem<FeatureInfo> featureTreeItem = new TreeItem<FeatureInfo>();
 			featureTreeItem.setValue(new FeatureInfo(feature, null));
-			for (FeatureVersion featureVersion : feature.getVersions()) {
+			for (FeatureRevision featureVersion : feature.getRevisions()) {
 				TreeItem<FeatureInfo> featureVersionTreeItem = new TreeItem<FeatureInfo>();
 				featureVersionTreeItem.setValue(new FeatureInfo(feature, featureVersion));
 				featureTreeItem.getChildren().add(featureVersionTreeItem);
@@ -287,9 +287,9 @@ public class ForkView extends OperationView {
 
 	public static class FeatureInfo {
 		private Feature feature;
-		private FeatureVersion featureVersion;
+		private FeatureRevision featureVersion;
 
-		private FeatureInfo(Feature feature, FeatureVersion featureVersion) {
+		private FeatureInfo(Feature feature, FeatureRevision featureVersion) {
 			this.feature = feature;
 			this.featureVersion = featureVersion;
 		}
@@ -298,7 +298,7 @@ public class ForkView extends OperationView {
 			return this.feature;
 		}
 
-		public FeatureVersion getFeatureVersion() {
+		public FeatureRevision getFeatureVersion() {
 			return this.featureVersion;
 		}
 	}

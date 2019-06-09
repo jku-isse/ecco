@@ -44,9 +44,9 @@ public class FeaturesView extends BorderPane implements EccoListener {
 				Task featuresRefreshTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						Collection<? extends Feature> featureVersions = FeaturesView.this.service.getRepository().getFeatures();
+						Collection<? extends Feature> featureRevisions = FeaturesView.this.service.getRepository().getFeatures();
 						Platform.runLater(() -> {
-							for (Feature feature : featureVersions) {
+							for (Feature feature : featureRevisions) {
 								FeaturesView.this.featuresData.add(feature);
 							}
 						});
@@ -73,9 +73,9 @@ public class FeaturesView extends BorderPane implements EccoListener {
 				Task commitTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						Collection<? extends Feature> featureVersions = FeaturesView.this.service.getRepository().getFeatures();
+						Collection<? extends Feature> featureRevisions = FeaturesView.this.service.getRepository().getFeatures();
 						Platform.runLater(() -> {
-							for (Feature feature : featureVersions) {
+							for (Feature feature : featureRevisions) {
 								FeaturesView.this.featuresData.add(feature);
 							}
 						});

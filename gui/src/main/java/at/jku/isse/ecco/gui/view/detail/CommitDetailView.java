@@ -27,7 +27,6 @@ public class CommitDetailView extends BorderPane {
 
 	private TextField commitId;
 	private TextField commitConfiguration;
-	private TextField commitCommitter;
 
 
 	public CommitDetailView(EccoService service) {
@@ -59,8 +58,6 @@ public class CommitDetailView extends BorderPane {
 		this.commitId.setEditable(false);
 		this.commitConfiguration = new TextField();
 		this.commitConfiguration.setEditable(false);
-		this.commitCommitter = new TextField();
-		this.commitCommitter.setEditable(false);
 
 		int row = 0;
 		detailsPane.add(new Label("Id: "), 1, row, 1, 1);
@@ -73,11 +70,6 @@ public class CommitDetailView extends BorderPane {
 		detailsPane.add(this.commitConfiguration, 1, row, 1, 1);
 		row++;
 
-		detailsPane.add(new Label("Committer: "), 1, row, 1, 1);
-		row++;
-		detailsPane.add(this.commitCommitter, 1, row, 1, 1);
-		row++;
-
 
 		// list of associations
 		TableView<AssociationInfo> associationsTable = new TableView<>();
@@ -85,16 +77,14 @@ public class CommitDetailView extends BorderPane {
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
-		TableColumn<AssociationInfo, String> nameAssociationsCol = new TableColumn<>("Name");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, nameAssociationsCol, conditionAssociationsCol);
+		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		nameAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getName()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getPresenceCondition().toString()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().toString()));
 
 		associationsTable.setItems(this.associationsData);
 
@@ -118,7 +108,6 @@ public class CommitDetailView extends BorderPane {
 
 			this.commitId.setText(String.valueOf(commit.getId()));
 			this.commitConfiguration.setText(commit.getConfiguration() == null ? "" : commit.getConfiguration().toString());
-			this.commitCommitter.setText(commit.getCommiter());
 
 //			// show associations
 //			for (Association association : commit.getAssociations()) {
@@ -130,7 +119,6 @@ public class CommitDetailView extends BorderPane {
 
 			this.commitId.setText("");
 			this.commitConfiguration.setText("");
-			this.commitCommitter.setText("");
 		}
 	}
 

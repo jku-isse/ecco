@@ -13,7 +13,7 @@ public class JavaIntegrityTests {
         integrityTest("VariablePool.java");
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = Error.class)
     public void ensureFailure() {
         try {
             integrityTest("VariablePoolErr.java");
@@ -60,7 +60,8 @@ public class JavaIntegrityTests {
         integrityTest(
                 "Constants.java",
                 "InvisibleHandOverZoneImpl.java",
-                "VariablePool.java"
+                "VariablePool.java",
+                "Simple.java"
         );
     }
 

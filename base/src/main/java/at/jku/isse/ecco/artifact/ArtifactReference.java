@@ -1,9 +1,11 @@
 package at.jku.isse.ecco.artifact;
 
+import at.jku.isse.ecco.dao.Persistable;
+
 /**
  * Public interface for artifact references that represent the dependency of a source artifact on a target artifact.
  */
-public interface ArtifactReference {
+public interface ArtifactReference extends Persistable {
 
 	/**
 	 * An artifact reference's hash code is based on the hash codes of the source and target artifacts and its type string.

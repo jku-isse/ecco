@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.adapter.java;
 
+import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import org.eclipse.jdt.core.BindingKey;
@@ -13,7 +13,6 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.FileASTRequestor;
 import org.eclipse.jdt.core.dom.IBinding;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -21,10 +20,15 @@ import java.util.function.Consumer;
 
 public class JavaReader implements ArtifactReader<Path, Set<Node.Op>> {
     private final EntityFactory entityFactory;
+    private static Map<Integer, String[]> prioritizedPatterns = new HashMap();
 
     @Inject
     public JavaReader(EntityFactory entityFactory) {
         this.entityFactory = entityFactory;
+    }
+
+    public Map<Integer, String[]> getPrioritizedPatterns() {
+        return Collections.unmodifiableMap(prioritizedPatterns);
     }
 
     @Override
@@ -32,15 +36,8 @@ public class JavaReader implements ArtifactReader<Path, Set<Node.Op>> {
         return JavaPlugin.class.getName();
     }
 
-    @Override
-    public String[] getTypeHierarchy() {
-        return new String[]{"text", "java"};
-    }
-
-    @Override
-    public boolean canRead(Path input) {
-        return Files.exists(input) && Files.isRegularFile(input) && "java".equalsIgnoreCase(com.google.common.io.Files.getFileExtension(input.toString()));
-
+    static {
+        prioritizedPatterns.put(Integer.MAX_VALUE, new String[]{"**.java"});
     }
 
     @Override

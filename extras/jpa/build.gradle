@@ -1,0 +1,25 @@
+
+ecco.set("storage", true)
+
+dependencies {
+	compile 'org.hibernate:hibernate-core:5.0.7.Final'
+	compile 'org.hibernate:hibernate-entitymanager:5.0.7.Final'
+	//compile 'org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final'
+	//compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
+
+	//compile 'com.esotericsoftware.kryo:kryo:2.24.0'
+
+	compile 'org.apache.derby:derby:10.12.1.1'
+
+	compile project(':at.jku.isse.ecco.base')
+	compile project(':at.jku.isse.ecco.service')
+
+	testCompile project(':at.jku.isse.ecco.file')
+}
+
+ospackage {
+	summary 'JPA database backend for ECCO.'
+	packageDescription 'This package provides a data backend module for ECCO which uses Hibernate (JPA) together with JavaDB/Derby.'
+
+	requires('at.jku.isse.ecco.base', version, EQUAL)
+}

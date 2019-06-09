@@ -1,0 +1,46 @@
+        if (edge == null) {
+            throw new IllegalArgumentException("A model edge must be supplied");
+        }
+        FigEdge newEdge = null;
+        if (Model.getFacade().isAAssociationClass(edge)) {
+            newEdge = new FigAssociationClass();
+        } else if (Model.getFacade().isAAssociationEnd(edge)) {
+            newEdge = new FigAssociationEnd();
+        } else if (Model.getFacade().isAAssociation(edge)) {
+            newEdge = new FigAssociation();
+        } else if (Model.getFacade().isALink(edge)) {
+            newEdge = new FigLink();
+        } else if (Model.getFacade().isAGeneralization(edge)) {
+            newEdge = new FigGeneralization();
+        } else if (Model.getFacade().isAPackageImport(edge)) {
+            newEdge = new FigPermission();
+        } else if (Model.getFacade().isAUsage(edge)) {
+            newEdge = new FigUsage();
+        } else if (Model.getFacade().isADependency(edge)) {
+            if (Model.getExtensionMechanismsHelper().hasStereotype(edge, 
+                    CoreFactory.REALIZE_STEREOTYPE)) {
+                newEdge = new FigAbstraction();
+            } else {
+                newEdge = new FigDependency();
+            }
+        } else if (edge instanceof CommentEdge) {
+            newEdge = null;
+        
+        } else if (Model.getFacade().isAAssociationRole(edge)) {
+            newEdge = new FigAssociationRole();
+        
+        
+       
+        } else if (Model.getFacade().isAExtend(edge)) {
+            newEdge = new FigExtend();
+        } else if (Model.getFacade().isAInclude(edge)) {
+            newEdge = new FigInclude();
+        
+        }
+
+        if (newEdge == null) {
+            throw new IllegalArgumentException(
+                    "Failed to construct a FigEdge for " + edge);
+        }
+
+        return newEdge;

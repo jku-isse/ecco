@@ -7,7 +7,6 @@ import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -71,15 +70,13 @@ public class CommitsView extends BorderPane implements EccoListener {
 		commitsTable.setTableMenuButtonVisible(true);
 		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<Commit, Integer> idCommitterCol = new TableColumn<>("Id");
-		TableColumn<Commit, String> committerCol = new TableColumn<>("Committer");
+		TableColumn<Commit, String> idCol = new TableColumn<>("Id");
 		TableColumn<Commit, String> commitsCol = new TableColumn<>("Commits");
 
-		commitsCol.getColumns().addAll(idCommitterCol, committerCol);
+		commitsCol.getColumns().addAll(idCol);
 		commitsTable.getColumns().setAll(commitsCol);
 
-		idCommitterCol.setCellValueFactory((TableColumn.CellDataFeatures<Commit, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getId()));
-		committerCol.setCellValueFactory((TableColumn.CellDataFeatures<Commit, String> param) -> new ReadOnlyStringWrapper(param.getValue().getCommiter()));
+		idCol.setCellValueFactory((TableColumn.CellDataFeatures<Commit, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getId()));
 
 		commitsTable.setItems(this.commitsData);
 

@@ -2,26 +2,21 @@ package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.dao.Persistable;
 
-import java.util.List;
+import java.util.Collection;
 
 /**
- * Contains id, name and description of a feature.
- *
- * @author JKU, ISSE
- * @version 1.0
+ * Contains id, name and description of a feature as well as a collection of all revisions of this feature.
  */
 public interface Feature extends Persistable {
 
-	public List<? extends FeatureVersion> getVersions();
+	public Collection<? extends FeatureRevision> getRevisions();
 
-	public FeatureVersion addVersion(String id);
+	public FeatureRevision addRevision(String id);
 
-	public FeatureVersion getVersion(String id);
+	public FeatureRevision getRevision(String id);
 
 
-	public FeatureVersion getLatestVersion();
-
-	public FeatureVersion createNewVersion();
+	public FeatureRevision getLatestRevision();
 
 
 	/**
@@ -65,5 +60,18 @@ public interface Feature extends Persistable {
 
 	@Override
 	public boolean equals(Object object);
+
+
+	public default String getFeatureString() {
+		return this.getName();
+	}
+
+	/**
+	 * Should call {@link #getFeatureString}.
+	 *
+	 * @return The feature string representing this feature.
+	 */
+	@Override
+	public String toString();
 
 }

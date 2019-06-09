@@ -1,19 +1,19 @@
 package at.jku.isse.ecco.adapter.text;
 
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -33,21 +33,33 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return TextPlugin.class.getName();
 	}
 
-	private static final String[] typeHierarchy = new String[]{"text"};
+	private static Map<Integer, String[]> prioritizedPatterns;
 
-	@Override
-	public String[] getTypeHierarchy() {
-		return typeHierarchy;
+	static {
+		prioritizedPatterns = new HashMap<>();
+		prioritizedPatterns.put(1, new String[]{"**.txt", "**.md", "**.xml", "**.html", "**.css", "**.js", "**.java", "**.c", "**.h", "**.cpp", "**.hpp"});
 	}
 
 	@Override
-	public boolean canRead(Path path) {
-		// TODO: actually check contents of file to see if it is a text file
-		if (!Files.isDirectory(path) && Files.isRegularFile(path) && path.getFileName().toString().toLowerCase().endsWith(".txt"))
-			return true;
-		else
-			return false;
+	public Map<Integer, String[]> getPrioritizedPatterns() {
+		return Collections.unmodifiableMap(prioritizedPatterns);
 	}
+
+//	private static final String[] typeHierarchy = new String[]{"text"};
+//
+//	@Override
+//	public String[] getTypeHierarchy() {
+//		return typeHierarchy;
+//	}
+//
+//	@Override
+//	public boolean canRead(Path path) {
+//		// TODO: actually check contents of file to see if it is a text file
+//		if (!Files.isDirectory(path) && Files.isRegularFile(path) && path.getFileName().toString().toLowerCase().endsWith(".txt"))
+//			return true;
+//		else
+//			return false;
+//	}
 
 	@Override
 	public Set<Node.Op> read(Path[] input) {
@@ -63,12 +75,16 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 			Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
 			nodes.add(pluginNode);
 
-			try (Stream<String> lines = Files.lines(resolvedPath)) {
-				Iterator<String> it = lines.iterator();
-				while (it.hasNext()) {
-					String line = it.next();
+			try (BufferedReader br = new BufferedReader(new FileReader(resolvedPath.toFile()))) {
+				String line;
+				int i = 0;
+				while ((line = br.readLine()) != null) {
+					i++;
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
-					pluginNode.addChild(this.entityFactory.createNode(lineArtifact));
+					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+					lineNode.putProperty("LINE_START", i);
+					lineNode.putProperty("LINE_END", i);
+					pluginNode.addChild(lineNode);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -79,7 +95,7 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
-	private Collection<ReadListener> listeners = new ArrayList<ReadListener>();
+	private Collection<ReadListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(ReadListener listener) {

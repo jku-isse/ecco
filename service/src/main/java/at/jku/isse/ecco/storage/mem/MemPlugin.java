@@ -19,12 +19,12 @@ public class MemPlugin extends StoragePlugin {
 
 	@Override
 	public String getName() {
-		return "PerstPlugin";
+		return "MemPlugin";
 	}
 
 	@Override
 	public String getDescription() {
-		return "Perst Plugin";
+		return "Memory Plugin";
 	}
 
 }

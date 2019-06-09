@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML" xmi:id="_Rk8TsCdgEeaUAta_23hdpg" name="RootElement">
+  <packagedElement xmi:type="uml:Class" xmi:id="_UcrV0CdgEeaUAta_23hdpg" name="Canvas">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_j22k0ydgEeaUAta_23hdpg" name="lines" type="_VupUACdgEeaUAta_23hdpg" association="_j22k0CdgEeaUAta_23hdpg">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_utW0UCdgEeaUAta_23hdpg"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_utW0USdgEeaUAta_23hdpg" value="*"/>
+    </ownedAttribute>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_NAeYECdiEeaUAta_23hdpg" name="wipe"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_VupUACdgEeaUAta_23hdpg" name="Line">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_ANitkCdhEeaUAta_23hdpg" name="start" type="_o2huYCdhEeaUAta_23hdpg"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_vhzTkCdhEeaUAta_23hdpg" name="end" type="_o2huYCdhEeaUAta_23hdpg"/>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_zfkJoCdhEeaUAta_23hdpg" name="setEndPoint">
+      <ownedParameter xmi:type="uml:Parameter" xmi:id="_6BovgCdhEeaUAta_23hdpg" name="end" type="_o2huYCdhEeaUAta_23hdpg"/>
+    </ownedOperation>
+    <ownedOperation xmi:type="uml:Operation" xmi:id="_TiJVUCdiEeaUAta_23hdpg" name="Line">
+      <ownedParameter xmi:type="uml:Parameter" xmi:id="_WkKU0CdiEeaUAta_23hdpg" name="start" type="_o2huYCdhEeaUAta_23hdpg"/>
+    </ownedOperation>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_f0zEoCdgEeaUAta_23hdpg" name="Main">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_qsbDkydiEeaUAta_23hdpg" name="canvas" type="_UcrV0CdgEeaUAta_23hdpg" association="_qsbDkCdiEeaUAta_23hdpg"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_x2OX0CdiEeaUAta_23hdpg" name="lineButton"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_0cP-4CdiEeaUAta_23hdpg" name="wipeButton"/>
+  </packagedElement>
+
+  <packagedElement xmi:type="uml:Association" xmi:id="_j22k0CdgEeaUAta_23hdpg" memberEnd="_j22k0ydgEeaUAta_23hdpg _j22k1CdgEeaUAta_23hdpg">
+    <eAnnotations xmi:type="ecore:EAnnotation" xmi:id="_j22k0SdgEeaUAta_23hdpg" source="org.eclipse.papyrus">
+      <details xmi:type="ecore:EStringToStringMapEntry" xmi:id="_j22k0idgEeaUAta_23hdpg" key="nature" value="UML_Nature"/>
+    </eAnnotations>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_j22k1CdgEeaUAta_23hdpg" name="canvas" type="_UcrV0CdgEeaUAta_23hdpg" association="_j22k0CdgEeaUAta_23hdpg">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_qYoPwCdgEeaUAta_23hdpg" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_qYxZsCdgEeaUAta_23hdpg" value="1"/>
+    </ownedEnd>
+  </packagedElement>
+
+  <packagedElement xmi:type="uml:Class" xmi:id="_o2huYCdhEeaUAta_23hdpg" name="Point">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="__6NscCdhEeaUAta_23hdpg" name="x">
+      <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#Integer"/>
+    </ownedAttribute>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_EVjPUCdiEeaUAta_23hdpg" name="y">
+      <type xmi:type="uml:PrimitiveType" href="pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml#Integer"/>
+    </ownedAttribute>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Association" xmi:id="_qsbDkCdiEeaUAta_23hdpg" memberEnd="_qsbDkydiEeaUAta_23hdpg _qsbDlCdiEeaUAta_23hdpg">
+    <eAnnotations xmi:type="ecore:EAnnotation" xmi:id="_qsbDkSdiEeaUAta_23hdpg" source="org.eclipse.papyrus">
+      <details xmi:type="ecore:EStringToStringMapEntry" xmi:id="_qsbDkidiEeaUAta_23hdpg" key="nature" value="UML_Nature"/>
+    </eAnnotations>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_qsbDlCdiEeaUAta_23hdpg" name="main" type="_f0zEoCdgEeaUAta_23hdpg" association="_qsbDkCdiEeaUAta_23hdpg"/>
+  </packagedElement>
+</uml:Model>

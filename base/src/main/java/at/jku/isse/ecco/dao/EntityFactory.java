@@ -5,29 +5,19 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureVersion;
-import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.module.ModuleFeature;
-import at.jku.isse.ecco.module.PresenceCondition;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
-import java.util.Collection;
 import java.util.Set;
 
 /**
  * Creates entities depending on the used data implementation.
- *
- * @author JKU, ISSE
- * @version 1.0
  */
 public interface EntityFactory {
-
-	public Repository.Op createRepository();
 
 	/**
 	 * Creates a remote with given name, address and type.
@@ -40,62 +30,33 @@ public interface EntityFactory {
 	public Remote createRemote(String name, String address, Remote.Type type);
 
 	/**
-	 * Creates an empty configuration.
-	 *
-	 * @return
-	 */
-	public Configuration createConfiguration();
-
-	/**
-	 * Creates an empty variant without a name.
-	 *
-	 * @return
-	 */
-	public Variant createVariant();
-
-	/**
 	 * Creates an empty commit.
 	 *
-	 * @return
+	 * @return The commit object.
 	 */
 	public Commit createCommit();
 
 	/**
-	 * Creates an empty presence condition.
+	 * Creates a configuration containing the given feature revisions.
 	 *
-	 * @return
+	 * @param featureRevisions An array of feature revisions.
+	 * @return A configuration containing the given feature revisions.
 	 */
-	public PresenceCondition createPresenceCondition();
+	public Configuration createConfiguration(FeatureRevision[] featureRevisions);
 
-	/**
-	 * Creates a presence condition that is initialized with the given configuration.
-	 *
-	 * @param configuration The configuration to compute the presence condition from.
-	 * @return
-	 */
-	public PresenceCondition createPresenceCondition(Configuration configuration, int maxOrder);
-
-	/**
-	 * Creates a clone/copy of the given presence condition.
-	 *
-	 * @param pc The presence condition that is to be cloned.
-	 * @return
-	 */
-	public PresenceCondition createPresenceCondition(PresenceCondition pc);
-
-
-	// # ARTIFACTS ################################################################
 
 	/**
 	 * Creates an artifact containing the given data.
 	 *
 	 * @param data The artifact data.
-	 * @return
+	 * @param <T>  The type of the artifact data object to be stored in the artifact.
+	 * @return An artifact containing the given data object.
 	 */
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data);
 
 
-	// # ASSOCIATIONS ################################################################
+	public Repository.Op createRepository();
+
 
 	/**
 	 * Creates a new empty instance of an association with all fields being initialized to the standard value.
@@ -105,50 +66,37 @@ public interface EntityFactory {
 	public Association.Op createAssociation();
 
 	/**
-	 * Creates an association initialized with the given condition and artifact nodes.
+	 * Creates an association initialized with the given artifact nodes.
 	 *
-	 * @param presenceCondition
-	 * @param nodes
-	 * @return
+	 * @param nodes A set of artifact nodes.
+	 * @return An association containing the given nodes.
 	 */
-	public Association.Op createAssociation(PresenceCondition presenceCondition, Set<Node.Op> nodes);
+	public Association.Op createAssociation(Set<Node.Op> nodes);
 
-
-	// # FEATURES ################################################################
 
 	/**
 	 * Creates a new instance of a {@link Feature} with the given name and description.
 	 *
-	 * @param id          of the feature
-	 * @param name        of the feature
-	 * @param description of the feature
+	 * @param id   of the feature
+	 * @param name of the feature
 	 * @return A new initialized instance of feature.
 	 */
-	public Feature createFeature(final String id, final String name, final String description);
+	public Feature createFeature(final String id, final String name);
 
-//	public FeatureInstance createFeatureInstance(Feature feature, FeatureVersion featureVersion, final boolean sign);
 
 	/**
-	 * Creates a new module.
+	 * Creates a new empty root node.
 	 *
-	 * @return Returns a new initialized module.
+	 * @return A new empty root node.
 	 */
-	public Module createModule();
-
-//	public ModuleFeature createModuleFeature(ModuleFeature moduleFeature);
-
-	public ModuleFeature createModuleFeature(Feature feature, boolean sign);
-
-	public ModuleFeature createModuleFeature(Feature feature, Collection<FeatureVersion> featureVersions, boolean sign);
-
-
-	// # NODES ################################################################
+	public RootNode.Op createRootNode();
 
 	/**
 	 * Creates a new empty node.
 	 *
 	 * @return A new empty node.
 	 */
+	@Deprecated
 	public Node.Op createNode();
 
 	/**
@@ -166,13 +114,6 @@ public interface EntityFactory {
 	 * @return The new node.
 	 */
 	public Node.Op createNode(final ArtifactData artifactData);
-
-	/**
-	 * Creates a new empty root node.
-	 *
-	 * @return A new empty root node.
-	 */
-	public RootNode.Op createRootNode();
 
 	public Node.Op createOrderedNode(final Artifact.Op<?> artifact);
 

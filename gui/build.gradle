@@ -3,7 +3,9 @@ apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.gui.EccoGui"
 applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
 
-run {
+task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
+	main = "at.jku.isse.ecco.gui.EccoGui"
+	jvmArgs += ["-ea", "-Xss1024m", "-Xmx8g"]
 	classpath = sourceSets.test.runtimeClasspath
 }
 
@@ -15,12 +17,10 @@ dependencies {
 	compile project(':ecco-base')
 	compile project(':ecco-service')
 
-	testCompile project(':ecco-storage-perst')
-
 	testRuntime project(':ecco-adapter-file')
 	testRuntime project(':ecco-adapter-text')
 	testRuntime project(':ecco-adapter-image')
-	testRuntime project(':ecco-adapter-java')
+	testRuntime project(':ecco-adapter-challenge')
 }
 
 ospackage {

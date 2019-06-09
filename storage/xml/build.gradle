@@ -1,0 +1,20 @@
+
+ecco.set("storage", true)
+
+dependencies {
+    compile fileTree(dir: 'lib', include: '*.jar')
+
+    compile project(':ecco-base')
+    compile project(':ecco-service')
+
+    // https://mvnrepository.com/artifact/com.thoughtworks.xstream/xstream
+    compile group: 'com.thoughtworks.xstream', name: 'xstream', version: '1.4.10'
+
+}
+
+ospackage {
+    summary 'JSON database backend for ECCO.'
+    packageDescription 'This package provides a data backend module for ECCO which uses JSON.'
+
+    requires('ecco-base', version, EQUAL)
+}

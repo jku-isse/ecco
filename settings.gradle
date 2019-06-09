@@ -25,13 +25,13 @@ include 'cli'
 include 'gui'
 include 'web'
 
-include 'storage-perst'
+include 'storage-xml'
 
 include 'adapter-file'
 include 'adapter-text'
 include 'adapter-image'
 include 'adapter-java'
-//include 'adapter-java-8'
+include 'adapter-challenge'
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
@@ -39,13 +39,12 @@ project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
 
-project(':storage-perst').projectDir = file('storage/perst')
+//project(':storage-xml').projectDir = file('storage/xml')
 
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
-//project(':adapter-java').projectDir = file('adapter/java')
-//project(':adapter-java-8').projectDir = file('adapter/java8')
-project(':adapter-java').projectDir = file('adapter/java8')
+project(':adapter-java').projectDir = file('adapter/java')
+project(':adapter-challenge').projectDir = file('adapter/challenge')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }

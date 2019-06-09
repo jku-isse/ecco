@@ -18,7 +18,6 @@ public class AssociationDetailView extends BorderPane {
 	final ObservableList<ModuleInfo> modulesData = FXCollections.observableArrayList();
 
 	private TextField associationId;
-	private TextField associationName;
 	private SplitPane splitPane;
 	private ToolBar toolBar;
 	private TextField associationPC;
@@ -55,7 +54,6 @@ public class AssociationDetailView extends BorderPane {
 
 		this.associationId = new TextField();
 		this.associationId.setEditable(false);
-		this.associationName = new TextField();
 		this.associationPC = new TextField();
 
 		Button updateButton = new Button("Update");
@@ -66,8 +64,6 @@ public class AssociationDetailView extends BorderPane {
 		associationDetails.add(this.associationId, 1, row, 1, 1);
 		row++;
 		associationDetails.add(new Label("Name: "), 1, row, 1, 1);
-		row++;
-		associationDetails.add(this.associationName, 1, row, 1, 1);
 		row++;
 		associationDetails.add(new Label("Presence Condition: "), 1, row, 1, 1);
 		row++;
@@ -130,7 +126,7 @@ public class AssociationDetailView extends BorderPane {
 
 
 		// list of modules
-		TableView<ModuleInfo> modulesTable = new TableView<ModuleInfo>();
+		TableView<ModuleInfo> modulesTable = new TableView<>();
 		modulesTable.setEditable(false);
 		modulesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -161,8 +157,7 @@ public class AssociationDetailView extends BorderPane {
 
 			// show details
 			this.associationId.setText(String.valueOf(association.getId()));
-			this.associationName.setText(association.getName());
-			this.associationPC.setText(association.getPresenceCondition().toString());
+			this.associationPC.setText(association.computeCondition().toString());
 
 			// show containment table
 			// TODO
@@ -174,7 +169,6 @@ public class AssociationDetailView extends BorderPane {
 			this.toolBar.setDisable(true);
 
 			this.associationId.setText("");
-			this.associationName.setText("");
 			this.associationPC.setText("");
 		}
 	}

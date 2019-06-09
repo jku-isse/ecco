@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.gui.view.graph.SequenceGraphView;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import javafx.geometry.Orientation;
@@ -27,13 +27,13 @@ public class ArtifactDetailView extends BorderPane {
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
 
-	private SequenceGraphView sequenceGraphView;
+	private PartialOrderGraphView partialOrderGraphView;
 
 
 	public ArtifactDetailView(EccoService service) {
 		this.service = service;
 
-		this.sequenceGraphView = new SequenceGraphView();
+		this.partialOrderGraphView = new PartialOrderGraphView();
 	}
 
 
@@ -52,8 +52,8 @@ public class ArtifactDetailView extends BorderPane {
 
 		// if node is an ordered node display its sequence graph
 		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
-			detailsSplitPane.getItems().add(this.sequenceGraphView);
-			this.sequenceGraphView.showGraph(node.getArtifact().getSequenceGraph());
+			detailsSplitPane.getItems().add(this.partialOrderGraphView);
+			this.partialOrderGraphView.showGraph(node.getArtifact().getSequenceGraph());
 		}
 
 

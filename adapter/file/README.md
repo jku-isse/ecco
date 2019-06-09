@@ -1,5 +1,5 @@
 
 # ECCO File Adapter
 
-Artifact plugin for ECCO that provides reader, writer and viewer for binary files.
+Artifact adapter plugin for ECCO that provides reader, writer and viewer for binary files.
 
