@@ -54,7 +54,7 @@ subprojects {
 			}
 			resources {
 				srcDir file('src/integrationTest/resources')
-				exclude '**/*.java'
+				//exclude '**/*.java'
 			}
 		}
 	}

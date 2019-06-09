@@ -1,0 +1,50 @@
+{
+Set<String> names = new HashSet<String>();
+// Returns nothing
+for (Object element : modelImpl.getModelPackage().getDataType().refAllOfClass()) {
+String name = ((javax.jmi.model.DataType) element).getName();
+//#if defined(LOGGING)
+//@#$LPS-LOGGING:Localization:NestedStatement
+//@#$LPS-LOGGING:GranularityType:Statement
+if (names.add(name)) {                
+LOG.debug(" DataType " + name);
+} else {
+LOG.error("Found duplicate datatype " + name + " in metamodel");
+}
+//#else
+names.add(name);
+//#endif
+}
+// ScopeKind, VisibilityKind, PseudostateKind, etc
+// Doesn't include Boolean though, despite what UML 1.4 spec says
+for (Object element : modelImpl.getModelPackage().getEnumerationType().refAllOfClass()) {
+String name = ((javax.jmi.model.EnumerationType) element).getName();
+//#if defined(LOGGING)
+//@#$LPS-LOGGING:GranularityType:Statement
+//@#$LPS-LOGGING:Localization:NestedStatement
+if (names.add(name)) {
+LOG.debug(" EnumerationType " + name);
+} else {
+LOG.error("Found duplicate EnumerationType " + name + " in metamodel");
+}
+//#else
+names.add(name);
+//#endif
+}
+// Boolean, String, Integer, Long, Float, Double, etc
+for (Object element : modelImpl.getModelPackage().getPrimitiveType().refAllOfClass()) {
+String name = ((javax.jmi.model.PrimitiveType) element).getName();
+//#if defined(LOGGING)
+//@#$LPS-LOGGING:GranularityType:Statement
+//@#$LPS-LOGGING:Localization:NestedStatement
+if (names.add(name)) {
+LOG.debug(" PrimitiveType " + name);
+} else {
+LOG.error("Found duplicate primitive type " + name + " in metamodel");
+}
+//#else
+names.add(name);
+//#endif            
+}
+return names;
+}

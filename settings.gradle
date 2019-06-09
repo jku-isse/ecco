@@ -39,7 +39,7 @@ project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
 
-project(':storage-xml').projectDir = file('storage/xml')
+//project(':storage-xml').projectDir = file('storage/xml')
 
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')

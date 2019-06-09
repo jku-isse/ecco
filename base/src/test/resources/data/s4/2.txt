@@ -1,0 +1,221 @@
+    /** Action key for new project */
+    public static final String ACTION_NEW_PROJECT = "newProject";
+
+    /** Action key for open project */
+    public static final String ACTION_OPEN_PROJECT = "openProject";
+
+    /** Action key for save project */
+    public static final String ACTION_SAVE_PROJECT = "saveProject";
+
+    /** Action key for save project as */
+    public static final String ACTION_SAVE_PROJECT_AS = "saveProjectAs";
+
+    /** Action key for print */
+    public static final String ACTION_PRINT = "print";
+
+    /** Action key for selectAll */
+    public static final String ACTION_SELECT_ALL = "selectAll";
+
+    /** Action key for undo */
+    public static final String ACTION_UNDO = "undo";
+
+    /** Action key for redo */
+    public static final String ACTION_REDO = "redo";
+
+    /** Action key for remove from diagram */
+    public static final String ACTION_REMOVE_FROM_DIAGRAM = "removeFromDiagram";
+
+    /** Action key for delete model elements */
+    public static final String ACTION_DELETE_MODEL_ELEMENTS =
+        "deleteModelElements";
+
+    /** Action key for zoom out */
+    public static final String ACTION_ZOOM_OUT = "zoomOut";
+
+    /** Action key for zoom in */
+    public static final String ACTION_ZOOM_IN = "zoomIn";
+
+    /** Action key for find */
+    public static final String ACTION_FIND = "find";
+
+    /** Action key for generate all classes */
+    public static final String ACTION_GENERATE_ALL_CLASSES =
+        "generateAllClasses";
+
+    /** Action key for align rights */
+    public static final String ACTION_ALIGN_RIGHTS = "alignRights";
+
+    /** Action key for align lefts */
+    public static final String ACTION_ALIGN_LEFTS = "alignLefts";
+
+    /** Action key for revert to saved */
+    public static final String ACTION_REVERT_TO_SAVED = "revertToSaved";
+
+    /** Action key for import xmi */
+    public static final String ACTION_IMPORT_XMI = "importXmi";
+
+    /** Action key for export xmi */
+    public static final String ACTION_EXPORT_XMI = "exportXmi";
+
+    /** Action key for import from sources */
+    public static final String ACTION_IMPORT_FROM_SOURCES = "importFromSources";
+
+    /** Action key for project settings */
+    public static final String ACTION_PROJECT_SETTINGS = "projectSettings";
+
+    /** Action key for page setup */
+    public static final String ACTION_PAGE_SETUP = "pageSetup";
+
+    /** Action key for save graphics */
+    public static final String ACTION_SAVE_GRAPHICS = "saveGraphics";
+
+    /** Action key for save all graphics */
+    public static final String ACTION_SAVE_ALL_GRAPHICS = "saveAllGraphics";
+
+    /** Action key for navigate forward */
+    public static final String ACTION_NAVIGATE_FORWARD =
+        "navigateTargetForward";
+
+    /** Action key for navigate back */
+    public static final String ACTION_NAVIGATE_BACK = "navigateTargetBack";
+
+    /** Action key for select invert */
+    public static final String ACTION_SELECT_INVERT = "selectInvert";
+
+    /** Action key for perspective info */
+    public static final String ACTION_PERSPECTIVE_CONFIG = "perspectiveConfig";
+
+    /** Action key for settings */
+    public static final String ACTION_SETTINGS = "settings";
+
+    /** Action key for notation */
+    public static final String ACTION_NOTATION = "notation";
+
+    /** Action key for go to diagram */
+    public static final String ACTION_GO_TO_DIAGRAM = "goToDiagram";
+
+    /** Action key for zoom reset */
+    public static final String ACTION_ZOOM_RESET = "zoomReset";
+
+    /** Action key for adjust grid */
+    public static final String ACTION_ADJUST_GRID = "adjustGrid";
+
+    /** Action key for adjust guide */
+    public static final String ACTION_ADJUST_GUIDE = "adjustGuide";
+
+    /** Action key for adjust page breaks */
+    public static final String ACTION_ADJUST_PAGE_BREAKS = "adjustPageBreaks";
+
+    /** Action key for show xml dump */
+    public static final String ACTION_SHOW_XML_DUMP = "showXmlDump";
+
+    
+    /** Action key for use case diagram */
+    public static final String ACTION_USE_CASE_DIAGRAM = "useCaseDiagrams";
+    
+    /** Action key for class diagram */
+    public static final String ACTION_CLASS_DIAGRAM = "classDiagrams";
+
+    
+    /** Action key for sequence diagram */
+    public static final String ACTION_SEQUENCE_DIAGRAM = "sequenceDiagrams";
+    
+    
+    
+    /** Action key for state diagram */
+    public static final String ACTION_STATE_DIAGRAM = "stateDiagrams";
+    
+    
+    /** Action key for activity diagram */
+    public static final String ACTION_ACTIVITY_DIAGRAM = "activityDiagrams";
+    
+    
+    /** Action key for generate one */
+    public static final String ACTION_GENERATE_ONE = "generateOne";
+
+    /** Action key for generate project code */
+    public static final String ACTION_GENERATE_PROJECT_CODE =
+        "generateProjectCode";
+
+    /** Action key for generation settings */
+    public static final String ACTION_GENERATION_SETTINGS =
+        "generationSettings";
+
+    /** Action key for preferred size */
+    public static final String ACTION_PREFERRED_SIZE = "preferredSize";
+
+    /** Action key for auto critique */
+    public static final String ACTION_AUTO_CRITIQUE = "autoCritique";
+
+    /** Action key for open decisions */
+    public static final String ACTION_OPEN_DECISIONS = "openDecisions";
+
+    /** Action key for open goals */
+    public static final String ACTION_OPEN_GOALS = "openGoals";
+    
+    /** Action key for open critics */
+    public static final String ACTION_OPEN_CRITICS = "openCritics";
+    
+    /** Action key for help */
+    public static final String ACTION_HELP = "help";
+
+    /** Action key for system info */
+    public static final String ACTION_SYSTEM_INFORMATION = "systemInfo";
+
+    /** Action key for about ArgoUML */
+    public static final String ACTION_ABOUT_ARGOUML = "aboutArgoUml";
+
+    /** Action key for align tops */
+    public static final String ACTION_ALIGN_TOPS = "alignTops";
+
+    /** Action key for align bottoms */
+    public static final String ACTION_ALIGN_BOTTOMS = "alignBottoms";
+
+    /** Action key for align h centers */
+    public static final String ACTION_ALIGN_H_CENTERS = "alignHCenters";
+
+    /** Action key for align v centers */
+    public static final String ACTION_ALIGN_V_CENTERS = "alignVCenters";
+
+    /** Action key for align to grid */
+    public static final String ACTION_ALIGN_TO_GRID = "alignToGrid";
+
+    /** Action key for distribute h spacing */
+    public static final String ACTION_DISTRIBUTE_H_SPACING =
+        "distributeHSpacing";
+
+    /** Action key for distribute h centers */
+    public static final String ACTION_DISTRIBUTE_H_CENTERS =
+        "distributeHCenters";
+
+    /** Action key for distribute v spacing */
+    public static final String ACTION_DISTRIBUTE_V_SPACING =
+        "distributeVSpacing";
+
+    /** Action key for distribute v centers */
+    public static final String ACTION_DISTRIBUTE_V_CENTERS =
+        "distributeVCenters";
+
+    /** Action key for reorder forward */
+    public static final String ACTION_REORDER_FORWARD = "reorderForward";
+
+    /** Action key for reorder backward */
+    public static final String ACTION_REORDER_BACKWARD = "reorderBackward";
+
+    /** Action key for reorder to front */
+    public static final String ACTION_REORDER_TO_FRONT = "reorderToFront";
+
+    /** Action key for reorder to back */
+    public static final String ACTION_REORDER_TO_BACK = "reorderToBack";
+    
+    private static final int DEFAULT_MASK = Toolkit.getDefaultToolkit()
+            .getMenuShortcutKeyMask();
+
+    private static final int SHIFTED_DEFAULT_MASK = Toolkit.getDefaultToolkit()
+            .getMenuShortcutKeyMask() | KeyEvent.SHIFT_DOWN_MASK;
+
+    private static HashMap<String, ActionWrapper> shortcutHash =
+        new HashMap<String, ActionWrapper>(90);
+
+    private static HashMap<KeyStroke, KeyStroke> duplicate =
+        new HashMap<KeyStroke, KeyStroke>(10);

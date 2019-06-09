@@ -12,7 +12,9 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
@@ -22,7 +24,17 @@ import java.util.stream.Collectors;
 
 public class PartialOrderGraphTest {
 
-	// TODO: at some point move all the test data into the repository after it is cleaned up properly!
+	private static final Path DATA_DIR;
+
+	static {
+		Path dataPath = null;
+		try {
+			dataPath = Paths.get(PartialOrderGraphTest.class.getClassLoader().getResource("data").toURI());
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
+		DATA_DIR = dataPath;
+	}
 
 
 	@Test(groups = {"unit", "base", "pog"})
@@ -52,9 +64,9 @@ public class PartialOrderGraphTest {
 
 	@Test(groups = {"unit", "base", "pog"})
 	public void SequenceTest4() throws IOException {
-		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s4simple\\1.txt"));
-		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s4simple\\2.txt"));
-		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s4simple\\3.txt"));
+		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s4simple\\1.txt"));
+		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s4simple\\2.txt"));
+		List<String> lines3 = Files.readAllLines(DATA_DIR.resolve("s4simple\\3.txt"));
 
 		List<Artifact.Op<?>> artifacts1 = lines1.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
 		List<Artifact.Op<?>> artifacts2 = lines2.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
@@ -132,10 +144,10 @@ public class PartialOrderGraphTest {
 
 	@Test(groups = {"unit", "base", "pog"})
 	public void SequenceTest3() throws IOException {
-		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\1.txt"));
-		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\2.txt"));
-		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\3.txt"));
-		List<String> lines4 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s3\\4.txt"));
+		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s3\\1.txt"));
+		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s3\\2.txt"));
+		List<String> lines3 = Files.readAllLines(DATA_DIR.resolve("s3\\3.txt"));
+		List<String> lines4 = Files.readAllLines(DATA_DIR.resolve("s3\\4.txt"));
 
 		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line)).collect(Collectors.toList());
 		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line)).collect(Collectors.toList());
@@ -289,9 +301,9 @@ public class PartialOrderGraphTest {
 
 	@Test(groups = {"unit", "base", "pog"})
 	public void YetAnotherTest3() throws IOException {
-		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s2\\1.txt"));
-		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s2\\2.txt"));
-		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\s2\\3.txt"));
+		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s2\\1.txt"));
+		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s2\\2.txt"));
+		List<String> lines3 = Files.readAllLines(DATA_DIR.resolve("s2\\3.txt"));
 
 		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line.trim())).collect(Collectors.toList());
 		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line.trim())).collect(Collectors.toList());
@@ -316,9 +328,9 @@ public class PartialOrderGraphTest {
 
 	@Test(groups = {"unit", "base", "pog"})
 	public void YetAnotherTest2() throws IOException {
-		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\yetanothersequence\\1.txt"));
-		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\yetanothersequence\\2.txt"));
-		List<String> lines3 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\yetanothersequence\\3.txt"));
+		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("yetanothersequence\\1.txt"));
+		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("yetanothersequence\\2.txt"));
+		List<String> lines3 = Files.readAllLines(DATA_DIR.resolve("yetanothersequence\\3.txt"));
 
 		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line.trim())).collect(Collectors.toList());
 		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line.trim())).collect(Collectors.toList());
@@ -356,8 +368,8 @@ public class PartialOrderGraphTest {
 
 	@Test(groups = {"unit", "base", "pog"})
 	public void YetAnotherTest() throws IOException {
-		List<String> lines1 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\othersequence\\1.java"));
-		List<String> lines2 = Files.readAllLines(Paths.get("C:\\Users\\user\\Desktop\\eccotest\\othersequence\\2.java"));
+		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("othersequence\\1.java"));
+		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("othersequence\\2.java"));
 
 		List<Artifact.Op<?>> artifacts1 = lines1.stream().map(line -> A(line.trim())).collect(Collectors.toList());
 		List<Artifact.Op<?>> artifacts2 = lines2.stream().map(line -> A(line.trim())).collect(Collectors.toList());
@@ -645,8 +657,8 @@ public class PartialOrderGraphTest {
 	/**
 	 * Convenience method for creating artifacts.
 	 *
-	 * @param id
-	 * @return
+	 * @param id The identifier of the artifact.
+	 * @return The created artifact.
 	 */
 	private Artifact.Op<?> A(String id) {
 		return new MemArtifact<>(new TestArtifactData(id));
