@@ -25,7 +25,7 @@ include 'cli'
 include 'gui'
 include 'web'
 
-include 'storage-xml'
+//include 'storage-xml'
 
 include 'adapter-file'
 include 'adapter-text'
