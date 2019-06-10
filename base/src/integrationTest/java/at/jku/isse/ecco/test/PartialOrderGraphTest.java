@@ -1,12 +1,16 @@
 package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraph;
 import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraphNode;
-import javafx.scene.Scene;
+import org.graphstream.graph.Graph;
+import org.graphstream.graph.Node;
+import org.graphstream.graph.implementations.SingleGraph;
+import org.graphstream.ui.layout.Layout;
+import org.graphstream.ui.layout.springbox.implementations.SpringBox;
+import org.graphstream.ui.view.Viewer;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -16,10 +20,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class PartialOrderGraphTest {
@@ -639,18 +640,61 @@ public class PartialOrderGraphTest {
 
 
 	private void displayPOG(PartialOrderGraph pog) {
-		Utility.launchApp((app, stage) -> {
-			PartialOrderGraphView partialOrderGraphView = new PartialOrderGraphView();
-			partialOrderGraphView.showGraph(pog);
+//		Utility.launchApp((app, stage) -> {
+//			PartialOrderGraphView partialOrderGraphView = new PartialOrderGraphView();
+//			partialOrderGraphView.showGraph(pog);
+//
+//			stage.setWidth(300);
+//			stage.setHeight(300);
+//
+//			Scene scene = new Scene(partialOrderGraphView);
+//			stage.setScene(scene);
+//
+//			stage.show();
+//		});
 
-			stage.setWidth(300);
-			stage.setHeight(300);
 
-			Scene scene = new Scene(partialOrderGraphView);
-			stage.setScene(scene);
+		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
-			stage.show();
-		});
+		Graph graph = new SingleGraph("PartialOrderGraph");
+
+		graph.setStrict(false);
+
+		graph.addAttribute("ui.quality");
+		graph.addAttribute("ui.antialias");
+		graph.addAttribute("ui.stylesheet", " node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
+
+		this.traversePartialOrderGraph(graph, pog.getHead(), null, new HashMap<>());
+
+		Layout layout = new SpringBox(false);
+		graph.addSink(layout);
+		layout.addAttributeSink(graph);
+
+		Viewer viewer = graph.display();
+	}
+
+	private void traversePartialOrderGraph(Graph graph, PartialOrderGraph.Node pogNode, org.graphstream.graph.Node gsParent, Map<PartialOrderGraph.Node, Node> nodeMap) {
+		org.graphstream.graph.Node gsNode = nodeMap.get(pogNode);
+		if (gsNode == null) {
+			gsNode = graph.addNode("N" + nodeMap.size() + 1);
+			gsNode.setAttribute("label", pogNode.getArtifact() + " [" + (pogNode.getArtifact() != null ? pogNode.getArtifact().getSequenceNumber() : "-") + "]");
+
+			if (pogNode.getPrevious().isEmpty()) {
+				gsNode.setAttribute("ui.class", "start");
+			}
+
+			if (pogNode.getNext().isEmpty()) {
+				gsNode.setAttribute("ui.class", "end");
+			}
+
+			nodeMap.put(pogNode, gsNode);
+		}
+		if (gsParent != null) {
+			graph.addEdge("E" + gsParent.getId() + "-" + gsNode.getId(), gsParent, gsNode, true);
+		}
+		for (PartialOrderGraph.Node pogChild : pogNode.getNext()) {
+			this.traversePartialOrderGraph(graph, pogChild, gsNode, nodeMap);
+		}
 	}
 
 

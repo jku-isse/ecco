@@ -1,14 +1,12 @@
 plugins {
-	id "nebula.ospackage" version "4.5.1"
+	id 'nebula.ospackage' version '6.2.1'
 }
 
 allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
 	group = 'at.jku.isse.ecco'
-	//version = '0.1.7'
 	version = '0.1.8-' + new java.text.SimpleDateFormat("YYYY-MM-dd", Locale.ENGLISH).format(new Date())
-	//version = new java.text.SimpleDateFormat("YYYY.M.d", Locale.ENGLISH).format(new Date())
 }
 
 subprojects {
@@ -19,23 +17,19 @@ subprojects {
 		}
 	}
 
-	apply plugin: 'nebula.ospackage'
 	apply plugin: 'java'
 	apply plugin: 'maven-publish'
+	apply plugin: 'nebula.ospackage'
 
-	sourceCompatibility = 1.8
-	targetCompatibility = 1.8
-
-	compileJava {
-		//options.compilerArgs << '-Xlint:unchecked'
-	}
+	sourceCompatibility = JavaVersion.VERSION_12
+	targetCompatibility = JavaVersion.VERSION_12
 
 	repositories {
 		mavenCentral()
 	}
 
 	dependencies {
-		compile 'com.google.guava:guava:18.0'
+		compile 'com.google.guava:guava:27.1-jre'
 		testCompile 'org.testng:testng:6.9.6'
 	}
 
@@ -54,7 +48,6 @@ subprojects {
 			}
 			resources {
 				srcDir file('src/integrationTest/resources')
-				//exclude '**/*.java'
 			}
 		}
 	}
@@ -68,7 +61,6 @@ subprojects {
 		useTestNG() {
 			suites 'src/test/resources/testng.xml'
 		}
-		workingDir = 'src/test/'
 		outputs.upToDateWhen { false }
 	}
 	test.onlyIf {
@@ -79,7 +71,6 @@ subprojects {
 		useTestNG() {
 			suites 'src/integrationTest/resources/testng.xml'
 		}
-		workingDir = 'build/'
 		classpath = sourceSets.integrationTest.runtimeClasspath
 		outputs.upToDateWhen { false }
 	}
@@ -106,6 +97,16 @@ subprojects {
 			downloadJavadoc = true
 			downloadSources = true
 		}
+	}
+
+	task sourcesJar(type: Jar, group: 'packaging') {
+		archiveClassifier = 'sources'
+		from sourceSets.main.allSource
+	}
+
+	task javadocJar(type: Jar, group: 'packaging', dependsOn: javadoc) {
+		archiveClassifier = 'javadoc'
+		from javadoc.destinationDir
 	}
 
 	publishing {
@@ -188,39 +189,24 @@ subprojects {
 	task deb(type: Deb, group: 'packaging') {
 	}
 
-	task sourcesJar(type: Jar, group: 'packaging') {
-		classifier = 'sources'
-		from sourceSets.main.allSource
-	}
-
-	task javadocJar(type: Jar, group: 'packaging', dependsOn: javadoc) {
-		classifier = 'javadoc'
-		from javadoc.destinationDir
-	}
-
-	artifacts {
-		archives sourcesJar
-		archives javadocJar
+	task sourcesZip(type: Zip, group: 'packaging') {
+		//compression = Compression.GZIP
+		archiveClassifier = 'src'
+		from projectDir
+		include 'src/**/*'
+		include 'build.gradle'
 	}
 
 	task linuxZip(type: Zip, group: 'packaging') {
-		classifier = 'linux'
+		archiveClassifier = 'linux'
 		into(archiveName - ('.' + extension)) {
 			from project.jar
 			from project.configurations.runtime
 		}
 	}
 
-	task sourcesZip(type: Zip, group: 'packaging') {
-		//compression = Compression.GZIP
-		classifier = 'src'
-		from projectDir
-		include 'src/**/*'
-		include 'build.gradle'
-	}
-
 	task windowsZip(type: Zip, group: 'packaging') {
-		classifier = 'windows'
+		archiveClassifier = 'windows'
 		into(archiveName - ('.' + extension)) {
 			from project.jar
 			from project.configurations.runtime
@@ -271,14 +257,14 @@ task combineddeb(type: Copy, group: 'packaging') {
 
 task combinedLinuxZip(type: Zip, group: 'packaging') {
 	into project.name
-	classifier = 'linux'
+	archiveClassifier = 'linux'
 	from { subprojects.linuxZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 task combinedWindowsZip(type: Zip, group: 'packaging') {
 	into project.name
-	classifier = 'windows'
+	archiveClassifier = 'windows'
 	//from { subprojects.jar }
 	//from { subprojects.configurations.runtime }
 	from { subprojects.windowsZip.source }
@@ -291,12 +277,12 @@ task html(type: Copy, dependsOn: [combinedrpm, combineddeb, combinedLinuxZip, co
 	into "$buildDir"
 	include "index.html.template"
 	rename { file -> 'downloads.html' }
-	expand(project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
+	expand(project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.deb').files.name }.flatten())
 }
 
 
 task page_static(type: Copy) {
-	from ("page") {
+	from("page") {
 		include "**/*"
 		exclude "*.html"
 	}
@@ -310,21 +296,9 @@ def _include = { String filename, binding ->
 }
 
 task page(type: Copy, dependsOn: [page_static, combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
-	from ("page") {
+	from("page") {
 		include "**/index.html"
 	}
 	into "$buildDir/page"
-	expand(include: _include, baseUrl: "/ecco/", project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir ->  fileTree(dir: dir, include: '*.deb').files.name }.flatten())
-}
-
-
-idea {
-	project {
-		languageLevel = '1.8'
-	}
-}
-
-
-task wrapper(type: Wrapper) {
-	gradleVersion = '4.4'
+	expand(include: _include, baseUrl: "/ecco/", project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.deb').files.name }.flatten())
 }

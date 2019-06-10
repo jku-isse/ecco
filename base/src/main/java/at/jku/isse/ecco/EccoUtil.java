@@ -9,9 +9,9 @@ import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 
-import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -146,8 +146,8 @@ public class EccoUtil {
 					}
 				}
 			}
-
-			return new HexBinaryAdapter().marshal(complete.digest());
+			BigInteger bi = new BigInteger(1, complete.digest());
+			return bi.toString(16);
 		} catch (IOException | NoSuchAlgorithmException e) {
 			throw new EccoException("Could not compute hash for " + path, e);
 		}
