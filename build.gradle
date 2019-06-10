@@ -7,7 +7,7 @@ allprojects {
 	apply plugin: 'eclipse'
 	group = 'at.jku.isse.ecco'
 	//version = '0.1.7'
-	version = '0.1.7-' + new java.text.SimpleDateFormat("YYYY-MM-dd", Locale.ENGLISH).format(new Date())
+	version = '0.1.8-' + new java.text.SimpleDateFormat("YYYY-MM-dd", Locale.ENGLISH).format(new Date())
 	//version = new java.text.SimpleDateFormat("YYYY.M.d", Locale.ENGLISH).format(new Date())
 }
 

@@ -3,7 +3,6 @@ package at.jku.isse.ecco.adapter.challenge.test;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.adapter.challenge.data.*;
-import at.jku.isse.ecco.adapter.java.data.*;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Condition;
@@ -23,8 +22,10 @@ import java.util.stream.Collectors;
 
 public class ChallengeTest {
 
-	private static final Path SCENARIO_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
+	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");
+	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioTraditionalVariants");
 	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\output\\traditional");
+
 	private static final Path REPO_DIR = OUTPUT_DIR.resolve("repo\\.ecco");
 	private static final Path RESULTS_DIR = OUTPUT_DIR.resolve("results");
 	private static final Path TIME_FILE = OUTPUT_DIR.resolve("time.txt");
@@ -294,8 +295,8 @@ public class ChallengeTest {
 
 	@Test(groups = {"integration", "challenge"})
 	public void Analyze_Differences() throws IOException {
-		Path GT_PATH = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\groundTruth");
-		Path MY_PATH = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\yourResults");
+		Path GT_PATH = BENCHMARK_DIR.resolve("groundTruth");
+		Path MY_PATH = BENCHMARK_DIR.resolve("yourResults");
 
 		Set<Path> myFiles = Files.list(MY_PATH).map(path -> path.getFileName()).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
 		Set<Path> groundTruthFiles = Files.list(GT_PATH).map(path -> path.getFileName()).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
