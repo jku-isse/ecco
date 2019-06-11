@@ -1,8 +1,7 @@
 ecco.adapter = true
 
 dependencies {
-	compile project(':ecco-base')
-	compile project(':ecco-service')
+	implementation project(':ecco-service')
 }
 
 ospackage {

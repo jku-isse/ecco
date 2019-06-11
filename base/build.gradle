@@ -1,13 +1,15 @@
-dependencies {
-	compile 'org.eclipse.collections:eclipse-collections-api:9.1.0'
-	compile 'org.eclipse.collections:eclipse-collections:9.1.0'
+apply plugin: 'java-library'
 
-	//compile 'com.koloboke:koloboke-api-jdk8:1.0.0'
+dependencies {
+	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
+
+	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
 
-	testCompile project(':ecco-service')
+	testImplementation 'org.graphstream:gs-core:1.3'
+	testImplementation 'org.graphstream:gs-algo:1.3'
+	testImplementation 'org.graphstream:gs-ui:1.3'
 
-	testCompile project(':ecco-adapter-file')
-	testCompile project(':ecco-adapter-text')
-	testCompile project(':ecco-adapter-image')
+	testImplementation project(':ecco-service')
 }

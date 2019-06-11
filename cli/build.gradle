@@ -1,25 +1,22 @@
-
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.cli.Main"
-applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
+applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 
 task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 	main = "at.jku.isse.ecco.cli.Main"
-	jvmArgs += ["-ea", "-Xss1024m", "-Xmx8g"]
+	jvmArgs += ["-Xss1024m", "-Xmx8g"]
 	classpath = sourceSets.test.runtimeClasspath
 }
 
 dependencies {
 	//compile 'net.sf.jopt-simple:jopt-simple:4.9'
-	compile 'net.sourceforge.argparse4j:argparse4j:0.7.0'
+	implementation 'net.sourceforge.argparse4j:argparse4j:0.7.0'
 
-	compile project(':ecco-base')
-	compile project(':ecco-service')
+	implementation project(':ecco-service')
 
-	testCompile project(':ecco-adapter-file')
-	testCompile project(':ecco-adapter-text')
-	testCompile project(':ecco-adapter-image')
-	testCompile project(':ecco-adapter-java')
+	testRuntime project(':ecco-adapter-file')
+	testRuntime project(':ecco-adapter-text')
+	testRuntime project(':ecco-adapter-image')
 }
 
 ospackage {
