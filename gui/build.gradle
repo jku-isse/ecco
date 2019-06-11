@@ -1,19 +1,28 @@
 plugins {
 	id 'application'
-	id 'org.openjfx.javafxplugin' version '0.0.7'
+//	id 'org.openjfx.javafxplugin' version '0.0.7'
 }
 
 mainClassName = "at.jku.isse.ecco.gui.EccoGui"
 applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 
-run {
-	doFirst {
-		jvmArgs = [
-				'--module-path', classpath.asPath,
-				'--add-modules="javafx.controls,javafx.swing"'
-		]
-	}
-}
+//run {
+//	doFirst {
+//		jvmArgs = [
+//				'--module-path', classpath.asPath,
+//				'--add-modules="javafx.controls,javafx.swing"'
+//		]
+//	}
+//}
+
+//compileJava {
+//	doFirst {
+//		options.compilerArgs = [
+//				'--module-path', classpath.asPath,
+//				'--add-modules', 'javafx.controls,javafx.swing'
+//		]
+//	}
+//}
 
 task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 	main = "at.jku.isse.ecco.gui.EccoGui"
@@ -21,15 +30,18 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 	classpath = sourceSets.test.runtimeClasspath
 }
 
-javafx {
-	version = "12.0.1"
-	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics', 'javafx.fxml', 'javafx.web', 'javafx.media', 'javafx.swing']
-}
+//javafx {
+//	version = "12.0.1"
+//	modules = ['javafx.controls', 'javafx.swing']
+//}
 
 dependencies {
 	compile 'org.graphstream:gs-core:1.3'
 	compile 'org.graphstream:gs-algo:1.3'
 	compile 'org.graphstream:gs-ui:1.3'
+
+//	compile group: 'org.openjfx', name: 'javafx-controls', version: '12.0.1'
+//	compile group: 'org.openjfx', name: 'javafx-swing', version: '12.0.1'
 
 	compile project(':ecco-base')
 	compile project(':ecco-service')

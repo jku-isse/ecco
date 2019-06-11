@@ -298,7 +298,8 @@ public interface PartialOrderGraph extends Persistable {
 //		}
 
 
-		private void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
+		//private
+		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
 			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
 			Map<Pair, Cell> matrix = Maps.mutable.empty();
 
@@ -318,7 +319,8 @@ public interface PartialOrderGraph extends Persistable {
 		//private
 		static final Cell ZERO_CELL = new Cell();
 
-		private Cell alignMemoizedBacktrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
+		//private
+		default Cell alignMemoizedBacktrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
 			// check if value is already memoized
 			Pair pair = new Pair(leftState, rightState);
 			Cell value = matrix.get(pair);
@@ -402,7 +404,8 @@ public interface PartialOrderGraph extends Persistable {
 			return value;
 		}
 
-		private MutableIntObjectMap<Node.Op> backtrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
+		//private
+		default MutableIntObjectMap<Node.Op> backtrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
 			if (leftState.isEnd() || rightState.isEnd()) {
 				// if we reached the head of either of the two pogs: do nothing
 				return IntObjectMaps.mutable.empty();
@@ -514,7 +517,8 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
-		private CellExtended alignMemoizedBacktrackingSwitchesRec(State leftState, State rightState, Map<Pair, CellExtended> matrix) {
+		//private
+		default CellExtended alignMemoizedBacktrackingSwitchesRec(State leftState, State rightState, Map<Pair, CellExtended> matrix) {
 			// check if value is already memoized
 			Pair pair = new Pair(leftState, rightState);
 			CellExtended value = matrix.get(pair);
@@ -774,7 +778,8 @@ public interface PartialOrderGraph extends Persistable {
 			this.checkConsistency();
 		}
 
-		private void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared, Set<Node.Op> leftVisited, Map<Node.Op, Node.Op> addedFromRight) {
+		//private
+		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared, Set<Node.Op> leftVisited, Map<Node.Op, Node.Op> addedFromRight) {
 			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
 			leftVisited.add(left);
 
@@ -904,7 +909,8 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		private void trimRec(Node.Op node) {
+		//private
+		default void trimRec(Node.Op node) {
 			// trim transitives, i.e. remove direct children that can be reached indirectly via any of the other children
 
 			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
@@ -945,7 +951,8 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
-		private void mergeRecNew(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
+		//private
+		default void mergeRecNew(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
 			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
 
 			// left and right are equal
@@ -1028,7 +1035,8 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param artifact The artifact to look for.
 		 * @return True if artifact could be reached from node, false otherwise.
 		 */
-		private static boolean canReach(Node node, Artifact<?> artifact) {
+		//private
+		static boolean canReach(Node node, Artifact<?> artifact) {
 //			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
 			Stack<Node> stack = new Stack<>();
 			stack.add(node);
@@ -1109,7 +1117,8 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param other  The other partial order graph.
 		 * @param shared A mapping of sequence numbers to nodes in this partial order graph that are shared with the other partial order graph.
 		 */
-		private void checkAlignment(PartialOrderGraph.Op other, Map<Integer, Node.Op> shared) {
+		//private
+		default void checkAlignment(PartialOrderGraph.Op other, Map<Integer, Node.Op> shared) {
 			// try to traverse other pog until the very end. if this is not possible the alignments are not compatible.
 			// NOTE: use NOT_MATCHED_SEQUENCE_NUMBER instead of shared. anything in other that is not NOT_MATCHED_SEQUENCE_NUMBER is shared.
 
@@ -1172,7 +1181,8 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param artifacts Sequence of artifacts from which to create a partial order graph.
 		 * @return The created partial order graph containing the provided artifacts.
 		 */
-		private PartialOrderGraph.Op fromList(List<? extends Artifact.Op<?>> artifacts) {
+		//private
+		default PartialOrderGraph.Op fromList(List<? extends Artifact.Op<?>> artifacts) {
 			PartialOrderGraph.Op other = this.createPartialOrderGraph(); // create new partial order graph
 			Node.Op current = other.getHead(); // start at head
 			for (Artifact.Op<?> artifact : artifacts) {
@@ -1257,7 +1267,8 @@ public interface PartialOrderGraph extends Persistable {
 			return this.computeAllOrdersRec(nodes);
 		}
 
-		private Collection<List<Node.Op>> computeAllOrdersRec(Map<Node.Op, Integer> nodes) {
+		//private
+		default Collection<List<Node.Op>> computeAllOrdersRec(Map<Node.Op, Integer> nodes) {
 			Collection<List<Node.Op>> orders = new ArrayList<>();
 			// for every node in current match state
 			for (Node.Op node : nodes.keySet()) {
