@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.smile.SmileFactory;
+import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
@@ -36,7 +37,7 @@ public class JacksonTransactionStrategy implements TransactionStrategy {
 
 	private static final String ID_FILENAME = "id";
 	private static final String WRITELOCK_FILENAME = "write";
-	private static final String DB_FILE_SUFFIX = ".ser.zip";
+	private static final String DB_FILE_SUFFIX = ".json.zip";
 
 	// repository directory
 	private final Path repositoryDir;
@@ -59,6 +60,8 @@ public class JacksonTransactionStrategy implements TransactionStrategy {
 	private FileChannel writeFileChannel;
 	// write file lock
 	private FileLock writeFileLock;
+	// jackson object mapper
+	private ObjectMapper objectMapper;
 
 
 	@Inject
@@ -67,6 +70,13 @@ public class JacksonTransactionStrategy implements TransactionStrategy {
 		this.repositoryDir = repositoryDir;
 		this.idFile = repositoryDir.resolve(ID_FILENAME);
 		this.writeLockFile = repositoryDir.resolve(WRITELOCK_FILENAME);
+
+		this.objectMapper = new ObjectMapper(new SmileFactory());
+		//this.objectMapper = new ObjectMapper(new CBORFactory());
+		this.objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+		this.objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+		this.objectMapper.registerModule(new AfterburnerModule());
+
 		this.reset();
 	}
 
@@ -181,10 +191,11 @@ public class JacksonTransactionStrategy implements TransactionStrategy {
 
 		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(newDbFile, StandardOpenOption.CREATE))) {
 			zos.putNextEntry(new ZipEntry("ecco.json"));
-			ObjectMapper objectMapper = new ObjectMapper(new SmileFactory());
-			objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
-			objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
-			objectMapper.writeValue(zos, this.database);
+//			ObjectMapper objectMapper = new ObjectMapper(new SmileFactory());
+//			objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+//			objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+//			objectMapper.writeValue(zos, this.database);
+			this.objectMapper.writeValue(zos, this.database);
 		}
 
 		// obtain exclusive lock on id file, write new id, update current id and db file, release lock
@@ -259,8 +270,9 @@ public class JacksonTransactionStrategy implements TransactionStrategy {
 					ZipEntry e;
 					while ((e = zis.getNextEntry()) != null) {
 						if (e.getName().equals("ecco.json")) {
-							ObjectMapper objectMapper = new ObjectMapper(new SmileFactory());
-							this.database = objectMapper.readValue(zis, Database.class);
+//							ObjectMapper objectMapper = new ObjectMapper(new SmileFactory());
+//							this.database = objectMapper.readValue(zis, Database.class);
+							this.database = this.objectMapper.readValue(zis, Database.class);
 							break;
 						}
 					}
