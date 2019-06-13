@@ -1,11 +1,11 @@
 package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingNode;
@@ -15,7 +15,6 @@ import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
-import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;

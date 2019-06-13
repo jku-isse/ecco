@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.web.rest.resource;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.web.rest.EccoApplication;

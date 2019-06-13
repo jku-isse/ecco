@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter;
 
-import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.service.listener.ReadListener;
 
 import java.util.Map;
 

@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;

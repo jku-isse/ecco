@@ -1,4 +1,4 @@
-package at.jku.isse.ecco;
+package at.jku.isse.ecco.service;
 
 import java.io.FilterInputStream;
 import java.io.IOException;

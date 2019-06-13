@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import javafx.beans.property.IntegerProperty;

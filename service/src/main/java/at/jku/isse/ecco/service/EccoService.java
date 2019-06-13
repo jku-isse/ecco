@@ -1,5 +1,7 @@
-package at.jku.isse.ecco;
+package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -15,17 +17,16 @@ import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.listener.EccoListener;
-import at.jku.isse.ecco.listener.ReadListener;
-import at.jku.isse.ecco.listener.ServerListener;
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.service.listener.ReadListener;
+import at.jku.isse.ecco.service.listener.ServerListener;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.StoragePlugin;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
-import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import org.slf4j.Logger;
@@ -697,7 +698,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configurationString The configuration string to parse.
 	 * @return The configuration object.
 	 */
-	// TODO: this method creates temporary feature objects, but it does not create temporary feature revision objects! instead if adds new revisions directly to the repository!
 	public Configuration parseConfigurationString(String configurationString) {
 		checkNotNull(configurationString);
 
@@ -709,7 +709,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 
 		try {
-			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE); // TODO: this should be changed to READ_ONLY
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 			Repository.Op repository = this.repositoryDao.load();
 
@@ -731,6 +731,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
 							// create temporary feature object
 							feature = this.entityFactory.createFeature(featureName, featureName);
+						} else {
+							feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
 						}
 					} else { // feature name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
@@ -740,6 +742,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
+							feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
 						} else {
 							throw new EccoException("Feature name is not unique. Use feature id instead.");
 						}
@@ -761,6 +764,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
 							// create temporary feature object
 							feature = this.entityFactory.createFeature(featureName, featureName);
+						} else {
+							feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
 						}
 					} else { // feature name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
@@ -768,6 +773,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							//feature = this.addFeature(UUID.randomUUID().toString(), featureName);
 							// create temporary feature object
 							feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
+							feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
 						} else {
@@ -787,6 +793,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
 							// create temporary feature object
 							feature = this.entityFactory.createFeature(featureName, featureName);
+						} else {
+							feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
 						}
 					} else { // feature name
 						Collection<Feature> features = repository.getFeaturesByName(featureName);
@@ -796,6 +804,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 							feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
 						} else if (features.size() == 1) {
 							feature = features.iterator().next();
+							feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
 						} else {
 							throw new EccoException("Feature name is not unique. Use feature id instead.");
 						}
@@ -814,7 +823,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
 
-			this.repositoryDao.store(repository);
+			//this.repositoryDao.store(repository);
 
 			this.transactionStrategy.end();
 

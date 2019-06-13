@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.gui.view.graph;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.module.Condition;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;

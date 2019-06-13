@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.web.rest;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.web.server.CorsFilter;
 import org.glassfish.jersey.server.ResourceConfig;
 

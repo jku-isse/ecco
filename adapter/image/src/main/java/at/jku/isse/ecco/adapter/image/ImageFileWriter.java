@@ -3,7 +3,7 @@ package at.jku.isse.ecco.adapter.image;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import javax.imageio.ImageIO;

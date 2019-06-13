@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Group;

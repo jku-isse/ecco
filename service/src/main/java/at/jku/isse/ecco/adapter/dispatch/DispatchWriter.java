@@ -1,12 +1,12 @@
 package at.jku.isse.ecco.adapter.dispatch;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;

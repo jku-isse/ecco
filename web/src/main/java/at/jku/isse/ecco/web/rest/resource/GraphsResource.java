@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.web.rest.resource;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;

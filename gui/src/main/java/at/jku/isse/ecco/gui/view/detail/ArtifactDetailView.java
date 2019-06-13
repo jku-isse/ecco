@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;

@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.challenge.test;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.challenge.data.*;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;

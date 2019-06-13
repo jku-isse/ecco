@@ -2,7 +2,7 @@ package at.jku.isse.ecco.plugin.emf;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactWriter;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.plugin.emf.data.EmfResourceData;

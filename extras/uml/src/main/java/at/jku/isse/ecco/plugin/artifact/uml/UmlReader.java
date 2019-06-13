@@ -2,7 +2,7 @@ package at.jku.isse.ecco.plugin.artifact.uml;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;
 import at.jku.isse.ecco.tree.Node;

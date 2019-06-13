@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.challenge;
 
 import at.jku.isse.ecco.adapter.ArtifactWriter;
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.nio.file.Path;

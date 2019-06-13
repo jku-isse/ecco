@@ -1,10 +1,9 @@
 package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.feature.Feature;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;

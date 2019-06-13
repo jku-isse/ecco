@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter.text;
 
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.tree.Node;
 

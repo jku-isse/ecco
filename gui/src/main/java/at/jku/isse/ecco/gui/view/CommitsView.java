@@ -1,10 +1,10 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
