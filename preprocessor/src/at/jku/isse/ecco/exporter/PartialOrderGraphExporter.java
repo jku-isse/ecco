@@ -52,7 +52,7 @@ public class PartialOrderGraphExporter {
 								if (oldCondition != null)
 									bufferedWriter.write("#endif\n");
 								bufferedWriter
-										.write("#if " + condition.getSimpleModuleRevisionConditionString() + "\n");
+										.write("#if " + condition.getPreprocessorConditionString() + "\n");
 								bufferedWriter.write(node.getArtifact().toString() + "\n");
 								oldCondition = condition;
 							} else

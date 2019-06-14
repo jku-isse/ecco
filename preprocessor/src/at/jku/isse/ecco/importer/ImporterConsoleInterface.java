@@ -27,6 +27,7 @@ public class ImporterConsoleInterface {
 				service.open();
 			else service.init();
 			TraceImporter.importTrace(service.getRepository(), fromPath);
+			service.close();
 		} catch (EccoException e) {
 			e.printStackTrace();
 		}

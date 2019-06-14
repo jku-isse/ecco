@@ -185,9 +185,9 @@ public interface Module extends Persistable {
 	}
 	
 	public default String getPreprocessorModuleString() { //TODO "&& " instead of ", "?
-		String moduleString = Arrays.stream(this.getPos()).map(Feature::toString).collect(Collectors.joining("&& "));
+		String moduleString = Arrays.stream(this.getPos()).map(Feature::toString).collect(Collectors.joining(" && "));
 		if (this.getNeg().length > 0)
-			moduleString += "&& " + Arrays.stream(this.getNeg()).map(feature -> "!" + feature.toString()).collect(Collectors.joining("&& "));
+			moduleString += " && " + Arrays.stream(this.getNeg()).map(feature -> "!" + feature.toString()).collect(Collectors.joining(" && "));
 
 		return "(" + moduleString + ")";
 	}
