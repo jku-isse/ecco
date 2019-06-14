@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.text;
 
-import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.ArrayList;
@@ -23,14 +23,11 @@ public class TextStringWriter implements ArtifactWriter<Set<Node>, String> {
 
 	@Override
 	public String[] write(Set<Node> input) {
-		/*
-		 * Every node in the input is a text file. The children of files are lines. The children of lines are characters.
-		 */
+		List<String> output = new ArrayList<>();
 
-		List<String> output = new ArrayList<String>();
-
+		// Every node in the input is a text file. The children of files are lines. The children of lines are characters.
 		for (Node fileNode : input) {
-			StringBuffer sb = new StringBuffer();
+			StringBuilder sb = new StringBuilder();
 			for (Node lineNode : fileNode.getChildren()) {
 				LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
 
@@ -40,11 +37,11 @@ public class TextStringWriter implements ArtifactWriter<Set<Node>, String> {
 			output.add(sb.toString());
 		}
 
-		return output.toArray(new String[output.size()]);
+		return output.toArray(new String[0]);
 	}
 
 
-	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();
+	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(WriteListener listener) {

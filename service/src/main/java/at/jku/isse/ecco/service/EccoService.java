@@ -17,12 +17,12 @@ import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.service.listener.ServerListener;
 import at.jku.isse.ecco.service.listener.WriteListener;
-import at.jku.isse.ecco.module.ModuleRevision;
-import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.StoragePlugin;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -698,7 +698,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configurationString The configuration string to parse.
 	 * @return The configuration object.
 	 */
-	public Configuration parseConfigurationString(String configurationString) {
+	private Configuration parseConfigurationString(String configurationString) {
 		checkNotNull(configurationString);
 
 		if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
@@ -820,10 +820,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			}
 
 			Configuration configuration = this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
-
-			this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
-
-			//this.repositoryDao.store(repository);
 
 			this.transactionStrategy.end();
 

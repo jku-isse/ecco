@@ -32,14 +32,9 @@ public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 
 	@Override
 	public Path[] write(Path base, Set<Node> input) {
-		/*
-		 * Every node in the input is a text file. The children of files are lines. The children of lines are characters.
-		 */
-
-		System.out.println("BASE: " + base);
-
 		List<Path> output = new ArrayList<>();
 
+		// Every node in the input is a text file. The children of files are lines. The children of lines are characters.
 		for (Node fileNode : input) {
 			Artifact<?> fileArtifact = fileNode.getArtifact();
 			ArtifactData artifactData = fileArtifact.getData();
@@ -65,7 +60,7 @@ public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 	}
 
 
-	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();
+	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(WriteListener listener) {

@@ -11,6 +11,7 @@ dependencies {
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
 
+	implementation 'com.google.guava:guava:27.1-jre'
 	api 'com.google.inject:guice:4.2.2'
 	api 'com.google.inject.extensions:guice-multibindings:4.2.2'
 

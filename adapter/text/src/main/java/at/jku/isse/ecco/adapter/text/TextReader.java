@@ -19,6 +19,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 
+	public static final String PROPERTY_LINE_START = "LINE_START";
+	public static final String PROPERTY_LINE_END = "LINE_END";
+
 	private final EntityFactory entityFactory;
 
 	@Inject
@@ -45,22 +48,6 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return Collections.unmodifiableMap(prioritizedPatterns);
 	}
 
-//	private static final String[] typeHierarchy = new String[]{"text"};
-//
-//	@Override
-//	public String[] getTypeHierarchy() {
-//		return typeHierarchy;
-//	}
-//
-//	@Override
-//	public boolean canRead(Path path) {
-//		// TODO: actually check contents of file to see if it is a text file
-//		if (!Files.isDirectory(path) && Files.isRegularFile(path) && path.getFileName().toString().toLowerCase().endsWith(".txt"))
-//			return true;
-//		else
-//			return false;
-//	}
-
 	@Override
 	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
@@ -82,8 +69,8 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 					i++;
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
 					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-					lineNode.putProperty("LINE_START", i);
-					lineNode.putProperty("LINE_END", i);
+					lineNode.putProperty(PROPERTY_LINE_START, i);
+					lineNode.putProperty(PROPERTY_LINE_END, i);
 					pluginNode.addChild(lineNode);
 				}
 			} catch (IOException e) {
