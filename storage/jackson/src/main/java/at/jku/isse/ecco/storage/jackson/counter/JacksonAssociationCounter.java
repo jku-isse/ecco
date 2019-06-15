@@ -26,7 +26,7 @@ public class JacksonAssociationCounter implements AssociationCounter {
 	@JsonBackReference
 	private Association association;
 	private int count;
-	private Map<Module, JacksonModuleCounter> children;
+	private Map<JacksonModule, JacksonModuleCounter> children;
 
 
 	public JacksonAssociationCounter(Association association) {

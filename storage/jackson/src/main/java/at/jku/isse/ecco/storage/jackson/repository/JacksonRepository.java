@@ -1,10 +1,12 @@
 package at.jku.isse.ecco.storage.jackson.repository;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.jackson.core.JacksonAssociation;
 import at.jku.isse.ecco.storage.jackson.dao.JacksonEntityFactory;
 import at.jku.isse.ecco.storage.jackson.feature.JacksonFeature;
 import at.jku.isse.ecco.storage.jackson.module.JacksonModule;
@@ -24,10 +26,10 @@ public final class JacksonRepository implements Repository, Repository.Op {
 	public static final long serialVersionUID = 1L;
 
 
-	private Map<String, Feature> features;
+	private Map<String, JacksonFeature> features;
 	@JsonManagedReference
-	private Collection<Association.Op> associations;
-	private List<Map<Module, Module>> modules;
+	private Collection<JacksonAssociation> associations;
+	private List<Map<JacksonModule, JacksonModule>> modules;
 
 	private int maxOrder;
 
@@ -74,7 +76,9 @@ public final class JacksonRepository implements Repository, Repository.Op {
 
 	@Override
 	public void addAssociation(Association.Op association) {
-		this.associations.add(association);
+		if (!(association instanceof JacksonAssociation))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.associations.add((JacksonAssociation) association);
 	}
 
 	@Override

@@ -3,7 +3,9 @@ package at.jku.isse.ecco.storage.jackson.tree;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.storage.jackson.artifact.JacksonArtifact;
 import at.jku.isse.ecco.tree.Node;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
@@ -23,13 +25,14 @@ public class JacksonNode implements Node, Node.Op {
 
 	private boolean unique = true;
 
-	@JsonManagedReference
-	private final List<Op> children = new ArrayList<>();
+	@JsonManagedReference(value = "children")
+	private final List<JacksonNode> children = new ArrayList<>();
 
 	@JsonManagedReference
-	private Artifact.Op<?> artifact = null;
+	private JacksonArtifact<?> artifact = null;
 
-	private Op parent = null;
+	@JsonBackReference(value = "children")
+	private JacksonNode parent = null;
 
 
 	@Deprecated
@@ -37,7 +40,9 @@ public class JacksonNode implements Node, Node.Op {
 	}
 
 	public JacksonNode(Artifact.Op<?> artifact) {
-		this.artifact = artifact;
+		if (!(artifact instanceof JacksonArtifact))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.artifact = (JacksonArtifact) artifact;
 	}
 
 
@@ -72,7 +77,9 @@ public class JacksonNode implements Node, Node.Op {
 
 	@Override
 	public void setArtifact(Artifact.Op<?> artifact) {
-		this.artifact = artifact;
+		if (!(artifact instanceof JacksonArtifact))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.artifact = (JacksonArtifact) artifact;
 	}
 
 	@Override
@@ -82,7 +89,9 @@ public class JacksonNode implements Node, Node.Op {
 
 	@Override
 	public void setParent(Op parent) {
-		this.parent = parent;
+		if (!(parent instanceof JacksonNode))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.parent = (JacksonNode) parent;
 	}
 
 	@Override
@@ -100,10 +109,13 @@ public class JacksonNode implements Node, Node.Op {
 	public void addChild(Op child) {
 		checkNotNull(child);
 
+		if (!(child instanceof JacksonNode))
+			throw new EccoException("Only Jackson storage types can be used.");
+
 		if (this.getArtifact() != null && !this.getArtifact().isOrdered() && this.children.contains(child))
 			throw new EccoException("An equivalent child is already contained. If multiple equivalent children are allowed use an ordered node.");
 
-		this.children.add(child);
+		this.children.add((JacksonNode) child);
 		child.setParent(this);
 	}
 
@@ -125,7 +137,7 @@ public class JacksonNode implements Node, Node.Op {
 
 
 	@Override
-	public List<Op> getChildren() {
+	public List<? extends Op> getChildren() {
 		return this.children;
 	}
 

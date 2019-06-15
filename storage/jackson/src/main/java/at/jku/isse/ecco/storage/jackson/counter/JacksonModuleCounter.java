@@ -3,7 +3,6 @@ package at.jku.isse.ecco.storage.jackson.counter;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
-import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.storage.jackson.module.JacksonModule;
 import at.jku.isse.ecco.storage.jackson.module.JacksonModuleRevision;
@@ -81,13 +80,13 @@ public class JacksonModuleCounter implements ModuleCounter {
 	}
 
 	@Override
-	public Collection<ModuleRevisionCounter> getChildren() {
+	public Collection<JacksonModuleRevisionCounter> getChildren() {
 		return Collections.unmodifiableCollection(this.children);
 	}
 
 
 	@Override
-	public Module getObject() {
+	public JacksonModule getObject() {
 		return this.module;
 	}
 

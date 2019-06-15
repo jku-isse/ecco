@@ -16,7 +16,7 @@ public class Database implements Serializable {
 	public static final long serialVersionUID = 1L;
 
 
-	private final Repository.Op repository;
+	private final JacksonRepository repository;
 
 	private final Map<String, JacksonCommit> commitIndex;
 	private final Map<String, JacksonVariant> variantIndex;

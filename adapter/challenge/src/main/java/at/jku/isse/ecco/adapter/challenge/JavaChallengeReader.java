@@ -3,6 +3,7 @@ package at.jku.isse.ecco.adapter.challenge;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.challenge.data.*;
+import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -20,10 +21,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
+
+	protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
 
 	private final EntityFactory entityFactory;
 
@@ -56,10 +60,11 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return this.read(Paths.get("."), input);
 	}
 
-
 	@Override
 	public Set<Node.Op> read(Path base, Path[] input) {
 		Set<Node.Op> nodes = new HashSet<>();
+
+		long totalJavaParserTime = 0;
 
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
@@ -83,7 +88,9 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			}
 
 			try {
+				long localStartTime = System.currentTimeMillis();
 				CompilationUnit cu = JavaParser.parse(resolvedPath);
+				totalJavaParserTime += (System.currentTimeMillis() - localStartTime);
 
 				// package name
 				String packageName = "";
@@ -119,10 +126,13 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			}
 
 		}
+
+		LOGGER.info("JavaParser.parse(): " + totalJavaParserTime + "ms");
+
 		return nodes;
 	}
 
-	public void addClassChildren(TypeDeclaration<?> typeDeclaration, Node.Op classNode, ArrayList<String> lines) {
+	private void addClassChildren(TypeDeclaration<?> typeDeclaration, Node.Op classNode, ArrayList<String> lines) {
 		// create methods artifact/node
 		Artifact.Op<AbstractArtifactData> methodsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("METHODS"));
 		Node.Op methodsGroupNode = this.entityFactory.createNode(methodsGroupArtifact);
@@ -237,7 +247,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 	}
 
-	public void addMethodChildren(MethodDeclaration methodDeclaration, Node.Op methodNode, ArrayList<String> lines) {
+	private void addMethodChildren(MethodDeclaration methodDeclaration, Node.Op methodNode, ArrayList<String> lines) {
 		// lines inside method
 		if (methodDeclaration.getBody().isPresent()) {
 			int beginLine = methodDeclaration.getBody().get().getRange().get().begin.line;

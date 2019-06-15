@@ -1,11 +1,14 @@
 package at.jku.isse.ecco.storage.jackson.core;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.jackson.counter.JacksonAssociationCounter;
 import at.jku.isse.ecco.storage.jackson.module.JacksonCondition;
+import at.jku.isse.ecco.storage.jackson.repository.JacksonRepository;
+import at.jku.isse.ecco.storage.jackson.tree.JacksonRootNode;
 import at.jku.isse.ecco.tree.RootNode;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -23,11 +26,11 @@ public class JacksonAssociation implements Association, Association.Op {
 
 	private String id;
 	@JsonManagedReference
-	private RootNode.Op artifactTreeRoot;
+	private JacksonRootNode artifactTreeRoot;
 	@JsonManagedReference
-	private AssociationCounter associationCounter;
+	private JacksonAssociationCounter associationCounter;
 	@JsonBackReference
-	private Repository.Op containingRepository;
+	private JacksonRepository containingRepository;
 
 
 	public JacksonAssociation() {
@@ -55,7 +58,9 @@ public class JacksonAssociation implements Association, Association.Op {
 
 	@Override
 	public void setRootNode(final RootNode.Op root) {
-		this.artifactTreeRoot = root;
+		if (!(root instanceof JacksonRootNode))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.artifactTreeRoot = (JacksonRootNode) root;
 		root.setContainingAssociation(this);
 	}
 

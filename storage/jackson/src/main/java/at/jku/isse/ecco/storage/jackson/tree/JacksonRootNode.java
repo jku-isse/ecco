@@ -1,7 +1,9 @@
 package at.jku.isse.ecco.storage.jackson.tree;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.storage.jackson.core.JacksonAssociation;
 import at.jku.isse.ecco.tree.RootNode;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -11,7 +13,7 @@ public class JacksonRootNode extends JacksonNode implements RootNode, RootNode.O
 
 
 	@JsonBackReference
-	private Association.Op containingAssociation;
+	private JacksonAssociation containingAssociation;
 
 
 	public JacksonRootNode() {
@@ -39,7 +41,9 @@ public class JacksonRootNode extends JacksonNode implements RootNode, RootNode.O
 
 	@Override
 	public void setContainingAssociation(Association.Op containingAssociation) {
-		this.containingAssociation = containingAssociation;
+		if (!(containingAssociation instanceof JacksonAssociation))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.containingAssociation = (JacksonAssociation) containingAssociation;
 	}
 
 	@Override

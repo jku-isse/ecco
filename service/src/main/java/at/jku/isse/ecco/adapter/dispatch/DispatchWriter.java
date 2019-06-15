@@ -81,9 +81,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
 			try {
-				if (Files.list(base).filter(path -> {
-					return !path.equals(this.repositoryDir);
-				}).findAny().isPresent()) {
+				if (Files.list(base).anyMatch(path -> !path.equals(this.repositoryDir))) {
 					throw new EccoException("Current base directory must be empty for checkout operation.");
 				}
 			} catch (IOException e) {
@@ -114,7 +112,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			this.fireWriteEvent(hashesFile, this);
 		}
 
-		return output.toArray(new Path[output.size()]);
+		return output.toArray(new Path[0]);
 	}
 
 	private void writeRec(Path base, Node node, List<Path> output, Properties hashes) {

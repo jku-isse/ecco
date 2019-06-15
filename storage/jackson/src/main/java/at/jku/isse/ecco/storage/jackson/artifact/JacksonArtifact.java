@@ -1,10 +1,12 @@
 package at.jku.isse.ecco.storage.jackson.artifact;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.jackson.pog.JacksonPartialOrderGraph;
+import at.jku.isse.ecco.storage.jackson.tree.JacksonNode;
 import at.jku.isse.ecco.tree.Node;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -199,7 +201,7 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 	// CONTAINING NODE
 
 	@JsonBackReference
-	private Node.Op containingNode;
+	private JacksonNode containingNode;
 
 	@Override
 	public Node.Op getContainingNode() {
@@ -208,7 +210,9 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 
 	@Override
 	public void setContainingNode(final Node.Op node) {
-		this.containingNode = node;
+		if (!(node instanceof JacksonNode))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.containingNode = (JacksonNode) node;
 	}
 
 

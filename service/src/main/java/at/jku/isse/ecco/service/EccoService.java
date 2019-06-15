@@ -1573,7 +1573,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			Set<Node.Op> nodes = readFiles();
 			Repository.Op repository = this.repositoryDao.load();
+
+			long startTime = System.currentTimeMillis();
 			Commit commit = repository.extract(configuration, nodes);
+			LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
+
 			this.repositoryDao.store(repository);
 
 			this.transactionStrategy.end();

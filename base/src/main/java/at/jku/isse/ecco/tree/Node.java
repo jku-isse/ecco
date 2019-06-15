@@ -242,7 +242,7 @@ public interface Node extends Persistable {
 		public void setParent(Node.Op parent);
 
 		@Override
-		public List<Op> getChildren();
+		public List<? extends Op> getChildren();
 
 		/**
 		 * Adds a new child node to this node.

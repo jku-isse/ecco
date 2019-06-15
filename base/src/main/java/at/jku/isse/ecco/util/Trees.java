@@ -109,7 +109,7 @@ public class Trees {
 //		}
 
 
-		Iterator<Node.Op> leftChildrenIterator = left.getChildren().iterator();
+		Iterator<? extends Node.Op> leftChildrenIterator = left.getChildren().iterator();
 		while (leftChildrenIterator.hasNext()) {
 			Node.Op leftChild = leftChildrenIterator.next();
 
@@ -206,7 +206,7 @@ public class Trees {
 		}
 
 		// deal with children
-		Iterator<Node.Op> iterator = right.getChildren().iterator();
+		Iterator<? extends Node.Op> iterator = right.getChildren().iterator();
 		while (iterator.hasNext()) {
 			Node.Op rightChild = iterator.next();
 			int li = left.getChildren().indexOf(rightChild);
@@ -321,7 +321,7 @@ public class Trees {
 		Node.Op right = left.createNode(left.getArtifact());
 
 		// process children
-		Iterator<Node.Op> iterator = left.getChildren().iterator();
+		Iterator<? extends Node.Op> iterator = left.getChildren().iterator();
 		while (iterator.hasNext()) {
 			Node.Op leftChild = iterator.next();
 			Node.Op rightChild = extractMarkedRec(leftChild);
@@ -372,7 +372,7 @@ public class Trees {
 			left.setUnique(false);
 
 		// deal with children
-		Iterator<Node.Op> iterator = left.getChildren().iterator();
+		Iterator<? extends Node.Op> iterator = left.getChildren().iterator();
 		while (iterator.hasNext()) {
 			Node.Op leftChild = iterator.next();
 			int ri = right.getChildren().indexOf(leftChild);
