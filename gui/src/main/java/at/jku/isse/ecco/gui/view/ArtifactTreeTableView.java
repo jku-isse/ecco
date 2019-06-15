@@ -50,8 +50,8 @@ public class ArtifactTreeTableView extends TreeTableView<Node> {
 				}
 		);
 
-		TreeTableColumn<Node, Boolean> isMarkedNodeCol = new TreeTableColumn<>("Marked");
-		isMarkedNodeCol.setCellValueFactory(
+		TreeTableColumn<Node, Boolean> isSelectedNodeCol = new TreeTableColumn<>("Selected");
+		isSelectedNodeCol.setCellValueFactory(
 				(TreeTableColumn.CellDataFeatures<Node, Boolean> param) ->
 				{
 					Artifact<?> artifact = param.getValue().getValue().getArtifact();
@@ -80,12 +80,12 @@ public class ArtifactTreeTableView extends TreeTableView<Node> {
 					}
 				}
 		);
-		isMarkedNodeCol.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(isMarkedNodeCol));
-		isMarkedNodeCol.setEditable(true);
+		isSelectedNodeCol.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(isSelectedNodeCol));
+		isSelectedNodeCol.setEditable(true);
 
 
 		TreeTableColumn<Node, String> artifactTreeCol = new TreeTableColumn<>("Artifact Tree");
-		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol, isMarkedNodeCol);
+		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol, isSelectedNodeCol);
 
 
 		uniqueNodeCol.setCellFactory(new Callback<TreeTableColumn<Node, Boolean>, TreeTableCell<Node, Boolean>>() {
@@ -132,7 +132,6 @@ public class ArtifactTreeTableView extends TreeTableView<Node> {
 	}
 
 	public void markSelected() {
-		// TODO: mark selected
 		for (TreeItem<Node> item : this.getSelectionModel().getSelectedItems()) {
 			Artifact<?> artifact = item.getValue().getArtifact();
 			if (artifact != null) {

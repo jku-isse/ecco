@@ -1,17 +1,15 @@
 package at.jku.isse.ecco.adapter.dispatch;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -20,10 +18,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path> {
 
-	protected static final Logger LOGGER = LoggerFactory.getLogger(DispatchWriter.class);
+	protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
 
 
 	@Override

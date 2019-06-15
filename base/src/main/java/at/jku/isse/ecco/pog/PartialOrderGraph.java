@@ -1239,8 +1239,8 @@ public interface PartialOrderGraph extends Persistable {
 			while (!stack.isEmpty()) {
 				Node.Op node = stack.pop();
 
-				if (node.getArtifact() != null && node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-					Artifact.Op<?> replacing = node.getArtifact().<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+				if (node.getArtifact() != null && node.getArtifact().hasReplacingArtifact()) {
+					Artifact.Op<?> replacing = node.getArtifact().getReplacingArtifact();
 					replacing.setSequenceNumber(node.getArtifact().getSequenceNumber());
 					node.setArtifact(replacing);
 				}

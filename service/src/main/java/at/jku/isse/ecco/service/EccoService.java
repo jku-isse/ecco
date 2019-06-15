@@ -29,8 +29,6 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import com.google.inject.*;
 import com.google.inject.name.Names;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -44,6 +42,10 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -54,7 +56,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(EccoService.class);
+	private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
 
 	public enum Operation {
 		OPEN, INIT, FORK, CLOSE, COMMIT, CHECKOUT, FETCH, PULL, PUSH, SERVER, OTHER
@@ -148,18 +150,28 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.baseDir = baseDir;
 		this.repositoryDir = repositoryDir;
 
+		// get the global logger and configure it
+		Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+		logger.setLevel(Level.ALL);
+		ConsoleHandler handler = new ConsoleHandler();
+		handler.setLevel(Level.ALL);
+		handler.setFormatter(new SimpleFormatter());
+		logger.addHandler(handler);
+
+		LOGGER.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
+
 		// load properties file
 		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES_FILE);
 		if (inputStream != null) {
 			try {
 				this.properties.load(inputStream);
 			} catch (IOException e) {
-				LOGGER.error("Could not load properties from file '" + ECCO_PROPERTIES_FILE + "'.", e);
+				throw new EccoException("Could not load properties from file '" + ECCO_PROPERTIES_FILE + "'.", e);
 			}
 		} else {
 			throw new EccoException("Property file '" + ECCO_PROPERTIES_FILE + "' not found in the classpath.");
 		}
-		LOGGER.debug("PROPERTIES: " + this.properties);
+		LOGGER.config("PROPERTIES: " + this.properties);
 	}
 
 
@@ -412,11 +424,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 	protected Collection<Module> initializeService() {
 		if (this.isInitialized()) {
-			LOGGER.error("Repository is already open.");
 			throw new EccoException("Repository is already open.");
 		}
 
-		LOGGER.debug("PROPERTIES: " + this.properties);
+		LOGGER.config("PROPERTIES: " + this.properties);
 		if (this.properties.getProperty(ECCO_PROPERTIES_STORAGE) == null) {
 			throw new EccoException("No data plugin specified.");
 		}
@@ -437,8 +448,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 //			}
 			allArtifactModules.add(artifactPlugin.getModule());
 		}
-		LOGGER.debug("ARTIFACT PLUGINS: " + artifactModules.toString());
-		LOGGER.debug("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
+		LOGGER.config("ARTIFACT PLUGINS: " + artifactModules.toString());
+		LOGGER.config("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
 		if (artifactModules.isEmpty())
 			throw new EccoException("At least one artifact plugin must be configured.");
 
@@ -453,8 +464,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			}
 			allStorageModules.add(dataPlugin.getModule());
 		}
-		LOGGER.debug("STORAGE PLUGINS: " + storageModules.toString());
-		LOGGER.debug("ALL STORAGE PLUGINS: " + allStorageModules.toString());
+		LOGGER.config("STORAGE PLUGINS: " + storageModules.toString());
+		LOGGER.config("ALL STORAGE PLUGINS: " + allStorageModules.toString());
 		if (storageModules.size() != 1)
 			throw new EccoException("Exactly one storage plugin must be configured.");
 
@@ -471,15 +482,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * Initializes the service.
 	 */
 	public synchronized void open() {
-		LOGGER.debug("OPEN()");
+		LOGGER.info("OPEN()");
 
 		if (!this.repositoryDirectoryExists()) {
-			LOGGER.error("Repository does not exist.");
 			throw new EccoException("Repository does not exist.");
 		}
 
-		LOGGER.debug("BASE_DIR: " + this.baseDir);
-		LOGGER.debug("REPOSITORY_DIR: " + this.repositoryDir);
+		LOGGER.config("BASE_DIR: " + this.baseDir);
+		LOGGER.config("REPOSITORY_DIR: " + this.repositoryDir);
 
 		Collection<Module> modules = this.initializeService();
 
@@ -526,7 +536,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		this.fireStatusChangedEvent();
 
-		LOGGER.debug("Repository opened.");
+		LOGGER.info("Repository opened.");
 	}
 
 	/**
@@ -534,7 +544,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 */
 	@Override
 	public synchronized void close() {
-		LOGGER.debug("CLOSE()");
+		LOGGER.info("CLOSE()");
 
 		if (!this.initialized)
 			return;
@@ -552,7 +562,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		this.fireStatusChangedEvent();
 
-		LOGGER.debug("Repository closed.");
+		LOGGER.info("Repository closed.");
 	}
 
 
@@ -925,7 +935,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			ssChannel.configureBlocking(true);
 			ssChannel.socket().bind(new InetSocketAddress(port));
 
-			LOGGER.debug("Server started on port " + port + ".");
+			LOGGER.info("Server started on port " + port + ".");
 			this.fireServerEvent("Server started on port " + port + ".");
 			this.fireServerStartedEvent(port);
 
@@ -937,7 +947,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 					// determine if it is a push (receive data) or a pull (send data)
 					String command = (String) ois.readObject();
-					LOGGER.debug("COMMAND: " + command);
+					LOGGER.info("COMMAND: " + command);
 					this.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
 
 					switch (command) {
@@ -1018,12 +1028,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					// server shut down
 					//e.printStackTrace();
 				} catch (SocketException | ClosedChannelException e) {
-					LOGGER.warn("Error receiving request.");
+					LOGGER.warning("Error receiving request.");
 					this.fireServerEvent("Error receiving request: " + e.getMessage());
 					e.printStackTrace();
 				} catch (Exception e) {
 					//throw new EccoException("Error receiving request.", e);
-					LOGGER.warn("Error receiving request.");
+					LOGGER.warning("Error receiving request.");
 					this.fireServerEvent("Error receiving request: " + e.getMessage());
 					e.printStackTrace();
 				}
@@ -1035,7 +1045,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.serverLock.unlock();
 		}
 
-		LOGGER.debug("Server stopped.");
+		LOGGER.info("Server stopped.");
 		this.fireServerEvent("Server stopped.");
 		this.fireServerStoppedEvent();
 	}
@@ -1053,7 +1063,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			if (this.ssChannel != null) {
 				this.ssChannel.close();
 
-				LOGGER.debug("Server stopped.");
+				LOGGER.info("Server stopped.");
 			}
 		} catch (IOException e) {
 			throw new EccoException("Error stopping server.", e);
@@ -1479,7 +1489,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return True if the repository was created, false otherwise.
 	 */
 	public synchronized boolean init() {
-		LOGGER.debug("INIT()");
+		LOGGER.info("INIT()");
 
 		if (this.isInitialized())
 			throw new EccoException("Service must not be initialized for init operation.");

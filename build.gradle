@@ -201,7 +201,7 @@ subprojects {
 		archiveClassifier = 'linux'
 		into(archiveName - ('.' + extension)) {
 			from project.jar
-			from project.configurations.runtime
+			from project.configurations.runtimeClasspath
 		}
 	}
 
@@ -209,7 +209,7 @@ subprojects {
 		archiveClassifier = 'windows'
 		into(archiveName - ('.' + extension)) {
 			from project.jar
-			from project.configurations.runtime
+			from project.configurations.runtimeClasspath
 		}
 	}
 

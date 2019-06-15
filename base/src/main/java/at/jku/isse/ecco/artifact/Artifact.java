@@ -24,10 +24,10 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	 */
 	public static final String PROPERTY_UNMODIFIED = "unmodified";
 
-	/**
-	 * This property is set by some tree operations (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)} and then subsequently used by other tree operations (see for example {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}.
-	 */
-	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
+//	/**
+//	 * This property is set by some tree operations (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)} and then subsequently used by other tree operations (see for example {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}.
+//	 */
+//	public static final String PROPERTY_REPLACING_ARTIFACT = "replacingArtifact";
 
 	/**
 	 * Artifacts can be marked by setting this property. Other operations can then use this property (see for example {@link at.jku.isse.ecco.util.Trees#extractMarked(Node.Op)}).
@@ -272,20 +272,12 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 		}
 
 		public default boolean hasReplacingArtifact() {
-			return this.<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent();
+			return this.getReplacingArtifact() != null;
 		}
 
-		public default Artifact.Op<?> getReplacingArtifact() {
-			if (this.hasReplacingArtifact())
-				return this.<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
-			else
-				return null;
-		}
+		public Artifact.Op<?> getReplacingArtifact();
 
-		public default void setReplacingArtifact(Artifact.Op<?> replacingArtifact) {
-			checkNotNull(replacingArtifact);
-			this.putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, replacingArtifact);
-		}
+		public void setReplacingArtifact(Artifact.Op<?> replacingArtifact);
 
 		public default void updateArtifactReferences() {
 			// update "uses" artifact references

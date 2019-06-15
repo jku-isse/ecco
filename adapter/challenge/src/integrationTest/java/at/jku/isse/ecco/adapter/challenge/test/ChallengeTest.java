@@ -1,13 +1,13 @@
 package at.jku.isse.ecco.adapter.challenge.test;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.challenge.data.*;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 import org.testng.annotations.Test;

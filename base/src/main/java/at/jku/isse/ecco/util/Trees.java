@@ -71,7 +71,7 @@ public class Trees {
 				Trees.matchAtomicArtifacts(left, right);
 				return left;
 			} else if (left.getArtifact() != right.getArtifact()) {
-				right.getArtifact().putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, left.getArtifact());
+				right.getArtifact().setReplacingArtifact(left.getArtifact());
 
 				// merge artifact references
 				for (ArtifactReference.Op ar : right.getArtifact().getUses()) {
@@ -249,7 +249,7 @@ public class Trees {
 	 */
 	public static void updateArtifactReferences(Node.Op node) throws EccoException {
 		if (node.getArtifact() != null) {
-			if (node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+			if (node.getArtifact().hasReplacingArtifact()) {
 				if (!node.isUnique())
 					node.setArtifact(node.getArtifact().getReplacingArtifact());
 				else
@@ -613,9 +613,9 @@ public class Trees {
 		}
 	}
 
-	private static void checkUses(Node node) {
+	private static void checkUses(Node.Op node) {
 		if (node.getArtifact() != null) {
-			for (ArtifactReference ref : node.getArtifact().getUses()) {
+			for (ArtifactReference.Op ref : node.getArtifact().getUses()) {
 				referenceHasNoReplacingArtifact(ref);
 
 				Node targetParent = ref.getTarget().getContainingNode();
@@ -632,8 +632,8 @@ public class Trees {
 		}
 	}
 
-	private static void hasNoReplacingArtifact(Node node) {
-		if (!(node instanceof RootNode) && node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+	private static void hasNoReplacingArtifact(Node.Op node) {
+		if (!(node instanceof RootNode) && node.getArtifact().hasReplacingArtifact()) {
 			throw new IllegalStateException("Expected that there are no artifacts to be replaced.");
 		}
 	}
@@ -680,8 +680,8 @@ public class Trees {
 		}
 	}
 
-	private static void referenceHasNoReplacingArtifact(ArtifactReference reference) {
-		if (reference.getTarget().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
+	private static void referenceHasNoReplacingArtifact(ArtifactReference.Op reference) {
+		if (reference.getTarget().hasReplacingArtifact()) {
 			throw new IllegalStateException("Expected that the referenced target has no replacing artifact.");
 		}
 	}

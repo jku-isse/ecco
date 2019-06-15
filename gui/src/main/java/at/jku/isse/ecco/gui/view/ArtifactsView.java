@@ -1,11 +1,10 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.binding.When;
@@ -36,8 +35,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 	public ArtifactsView(final EccoService service) {
 		this.service = service;
 
-		final ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
-
 
 		// toolbar
 		ToolBar toolBar = new ToolBar();
@@ -57,10 +54,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		CheckBox showBelowAtomicCheckBox = new CheckBox("Show Artifacts Below Atomic"); // TODO
 		CheckBox showBelowFilesCheckBox = new CheckBox("Show Artifacts Below File Level"); // TODO
 
-		Button markSelectedButton = new Button("Mark Selected");
-		Button splitMarkedButton = new Button("Split Marked");
-
-		toolBar.getItems().addAll(refreshButton, new Separator(), selectAllButton, unselectAllButton, checkoutSelectedButton, composeSelectedButton, new Separator(), showEmptyAssociationsCheckBox, new Separator(), useSimplifiedLabelsCheckBox, new Separator(), showBelowAtomicCheckBox, new Separator(), showBelowFilesCheckBox, new Separator(), markSelectedButton, splitMarkedButton, new Separator());
+		toolBar.getItems().addAll(refreshButton, new Separator(), selectAllButton, unselectAllButton, checkoutSelectedButton, composeSelectedButton, new Separator(), showEmptyAssociationsCheckBox, new Separator(), useSimplifiedLabelsCheckBox, new Separator(), showBelowAtomicCheckBox, new Separator(), showBelowFilesCheckBox, new Separator());
 
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
@@ -103,23 +97,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		associationsTable.setItems(sortedData);
 
 
-		ArtifactTreeTableView artifactTreeView = new ArtifactTreeTableView();
-
-		artifactTreeView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
-			if (newValue != null) {
-				artifactDetailView.showTree(newValue.getValue());
-			}
-		});
+		ArtifactTreeView artifactTreeView = new ArtifactTreeView(service);
 
 
 		// split panes
-		SplitPane artifactsSplitPane = new SplitPane();
-		artifactsSplitPane.setOrientation(Orientation.HORIZONTAL);
-		artifactsSplitPane.getItems().addAll(artifactTreeView, artifactDetailView);
-
 		SplitPane horizontalSplitPane = new SplitPane();
 		horizontalSplitPane.setOrientation(Orientation.VERTICAL);
-		horizontalSplitPane.getItems().addAll(associationsTable, artifactsSplitPane);
+		horizontalSplitPane.getItems().addAll(associationsTable, artifactTreeView);
 
 		this.setCenter(horizontalSplitPane);
 
@@ -268,69 +252,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 				toolBar.setDisable(false);
 			}
 		});
-
-		markSelectedButton.setOnAction(e -> {
-			toolBar.setDisable(true);
-
-			artifactTreeView.markSelected();
-
-			toolBar.setDisable(false);
-		});
-
-//		splitMarkedButton.setOnAction(new EventHandler<ActionEvent>() {
-//			@Override
-//			public void handle(ActionEvent e) {
-//				toolBar.setDisable(true);
-//
-//				Task extractTask = new Task<Void>() {
-//					@Override
-//					public Void call() throws EccoException {
-//						service.split();
-//
-//						Platform.runLater(() -> {
-//							ArtifactsView.this.refresh();
-//						});
-//						return null;
-//					}
-//
-//					public void finished() {
-//						toolBar.setDisable(false);
-//					}
-//
-//					@Override
-//					public void succeeded() {
-//						super.succeeded();
-//						this.finished();
-//
-//						Alert alert = new Alert(Alert.AlertType.INFORMATION);
-//						alert.setTitle("Extraction Successful");
-//						alert.setHeaderText("Extraction Successful");
-//						alert.setContentText("Extraction Successful!");
-//
-//						alert.showAndWait();
-//					}
-//
-//					@Override
-//					public void cancelled() {
-//						super.cancelled();
-//					}
-//
-//					@Override
-//					public void failed() {
-//						super.failed();
-//						this.finished();
-//
-//						ExceptionAlert alert = new ExceptionAlert(this.getException());
-//						alert.setTitle("Extraction Error");
-//						alert.setHeaderText("Extraction Error");
-//
-//						alert.showAndWait();
-//					}
-//				};
-//
-//				new Thread(extractTask).start();
-//			}
-//		});
 
 
 		showEmptyAssociationsCheckBox.setSelected(false);

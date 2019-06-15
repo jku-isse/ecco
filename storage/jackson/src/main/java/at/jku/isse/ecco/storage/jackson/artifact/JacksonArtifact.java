@@ -39,6 +39,8 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 
 	private boolean useReferencesInEquals;
 
+	private transient Artifact.Op replacingArtifact;
+
 
 	public JacksonArtifact(DataType data) {
 		this(data, false);
@@ -50,6 +52,7 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 		this.ordered = ordered;
 		this.sequenceNumber = PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
 		this.useReferencesInEquals = false;
+		this.replacingArtifact = null;
 	}
 
 
@@ -169,6 +172,16 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 	@Override
 	public void setSequenceNumber(int sequenceNumber) {
 		this.sequenceNumber = sequenceNumber;
+	}
+
+	@Override
+	public Op<?> getReplacingArtifact() {
+		return this.replacingArtifact;
+	}
+
+	@Override
+	public void setReplacingArtifact(Op<?> replacingArtifact) {
+		this.replacingArtifact = replacingArtifact;
 	}
 
 	@Override
