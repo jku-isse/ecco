@@ -26,7 +26,7 @@ public class JacksonAssociationCounter implements AssociationCounter {
 	@JsonBackReference
 	private Association association;
 	private int count;
-	private Map<JacksonModule, JacksonModuleCounter> children;
+	private Map<String, JacksonModuleCounter> children;
 
 
 	public JacksonAssociationCounter(Association association) {
@@ -42,16 +42,16 @@ public class JacksonAssociationCounter implements AssociationCounter {
 		if (!(child instanceof JacksonModule))
 			throw new EccoException("Only MemModule can be added as a child to MemAssociationCounter!");
 		JacksonModule memChild = (JacksonModule) child;
-		if (this.children.containsKey(memChild))
+		if (this.children.containsKey(memChild.toString()))
 			return null;
 		JacksonModuleCounter moduleCounter = new JacksonModuleCounter(memChild);
-		this.children.put(moduleCounter.getObject(), moduleCounter);
+		this.children.put(moduleCounter.getObject().toString(), moduleCounter);
 		return moduleCounter;
 	}
 
 	@Override
 	public ModuleCounter getChild(Module child) {
-		return this.children.get(child);
+		return this.children.get(child.toString());
 	}
 
 	@Override

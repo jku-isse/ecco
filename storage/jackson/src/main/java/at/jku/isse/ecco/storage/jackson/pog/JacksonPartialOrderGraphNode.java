@@ -18,9 +18,9 @@ public class JacksonPartialOrderGraphNode implements PartialOrderGraph.Node, Par
 	public static final long serialVersionUID = 1L;
 
 	@JsonBackReference
-	private Collection<Op> previous;
+	private Collection<JacksonPartialOrderGraphNode> previous;
 	@JsonManagedReference
-	private Collection<Op> next;
+	private Collection<JacksonPartialOrderGraphNode> next;
 
 	private Artifact.Op<?> artifact;
 
@@ -32,12 +32,12 @@ public class JacksonPartialOrderGraphNode implements PartialOrderGraph.Node, Par
 	}
 
 	@Override
-	public Collection<Op> getPrevious() {
+	public Collection<? extends Op> getPrevious() {
 		return this.previous;
 	}
 
 	@Override
-	public Collection<Op> getNext() {
+	public Collection<? extends Op> getNext() {
 		return this.next;
 	}
 
@@ -56,7 +56,7 @@ public class JacksonPartialOrderGraphNode implements PartialOrderGraph.Node, Par
 	public Op addChild(Op child) {
 		if (child.getClass() != this.getClass())
 			throw new EccoException("Incompatible storage types.");
-		this.next.add(child);
+		this.next.add((JacksonPartialOrderGraphNode) child);
 		((JacksonPartialOrderGraphNode) child).previous.add(this);
 		return child;
 	}

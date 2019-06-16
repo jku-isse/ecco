@@ -7,8 +7,8 @@ public class JacksonPartialOrderGraph implements PartialOrderGraph, PartialOrder
 
 	public static final long serialVersionUID = 1L;
 
-	private Node.Op head;
-	private Node.Op tail;
+	private JacksonPartialOrderGraphNode head;
+	private JacksonPartialOrderGraphNode tail;
 	private int maxIdentifier = INITIAL_SEQUENCE_NUMBER;
 
 	public JacksonPartialOrderGraph() {

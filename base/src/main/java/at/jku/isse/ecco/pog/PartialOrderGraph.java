@@ -811,7 +811,7 @@ public interface PartialOrderGraph extends Persistable {
 			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
 				// find shared symbols that are in left and not in right. REMOVE those that can be reached from right node because that means that the right graph is more restrictive.
 				{
-					Iterator<Node.Op> it = left.getNext().iterator();
+					Iterator<? extends Node.Op> it = left.getNext().iterator();
 					while (it.hasNext()) {
 						Node.Op childLeft = it.next();
 						// check if left symbol is shared
@@ -921,7 +921,7 @@ public interface PartialOrderGraph extends Persistable {
 				Node.Op current = stack.pop();
 
 				// process node
-				Iterator<Node.Op> it = current.getNext().iterator();
+				Iterator<? extends Node.Op> it = current.getNext().iterator();
 				while (it.hasNext()) {
 					Node.Op child = it.next();
 
@@ -1344,9 +1344,9 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		public interface Op extends Node {
-			public Collection<Node.Op> getPrevious();
+			public Collection<? extends Node.Op> getPrevious();
 
-			public Collection<Node.Op> getNext();
+			public Collection<? extends Node.Op> getNext();
 
 			@Override
 			public Artifact.Op<?> getArtifact();

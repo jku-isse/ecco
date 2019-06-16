@@ -29,7 +29,7 @@ public final class JacksonRepository implements Repository, Repository.Op {
 	private Map<String, JacksonFeature> features;
 	@JsonManagedReference
 	private Collection<JacksonAssociation> associations;
-	private List<Map<JacksonModule, JacksonModule>> modules;
+	private List<Map<String, JacksonModule>> modules;
 
 	private int maxOrder;
 
@@ -111,15 +111,15 @@ public final class JacksonRepository implements Repository, Repository.Op {
 	@Override
 	public Module getModule(Feature[] pos, Feature[] neg) {
 		JacksonModule queryModule = new JacksonModule(pos, neg);
-		return this.modules.get(queryModule.getOrder()).get(queryModule);
+		return this.modules.get(queryModule.getOrder()).get(queryModule.toString());
 	}
 
 	@Override
 	public Module addModule(Feature[] pos, Feature[] neg) {
 		JacksonModule module = new JacksonModule(pos, neg);
-		if (this.modules.get(module.getOrder()).containsKey(module))
+		if (this.modules.get(module.getOrder()).containsKey(module.toString()))
 			return null;
-		this.modules.get(module.getOrder()).put(module, module);
+		this.modules.get(module.getOrder()).put(module.toString(), module);
 		return module;
 	}
 

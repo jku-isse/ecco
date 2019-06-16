@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import org.eclipse.collections.impl.factory.Maps;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,13 +30,15 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 	public static final long serialVersionUID = 1L;
 
 
-	private DataType data;
+	private transient DataType data;
+
+	private byte[] buffer = null;
 
 	private boolean atomic;
 
 	private boolean ordered;
 
-	private PartialOrderGraph.Op sequenceGraph;
+	private JacksonPartialOrderGraph sequenceGraph;
 
 	private int sequenceNumber;
 
@@ -44,13 +47,17 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 	private transient Artifact.Op replacingArtifact;
 
 
+	public JacksonArtifact() {
+
+	}
+
 	public JacksonArtifact(DataType data) {
 		this(data, false);
 	}
 
 	public JacksonArtifact(DataType data, boolean ordered) {
 		checkNotNull(data);
-		this.data = data;
+		this.setData(data);
 		this.ordered = ordered;
 		this.sequenceNumber = PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
 		this.useReferencesInEquals = false;
@@ -60,7 +67,7 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 
 	@Override
 	public int hashCode() {
-		int result = this.data.hashCode();
+		int result = this.getData().hashCode();
 		result = 31 * result + (this.ordered ? 1 : 0);
 		return result;
 	}
@@ -126,13 +133,41 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 
 	@Override
 	public String toString() {
-		return this.data.toString();
+		return this.getData().toString();
 	}
 
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public DataType getData() {
+		if (this.data == null) {
+			if (this.buffer == null)
+				return null;
+			else {
+				try (ByteArrayInputStream bis = new ByteArrayInputStream(this.buffer)) {
+					try (ObjectInput in = new ObjectInputStream(bis)) {
+						this.data = (DataType) in.readObject();
+					}
+				} catch (IOException | ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
 		return this.data;
+	}
+
+	private void setData(DataType data) {
+		this.data = data;
+
+		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+			try (ObjectOutput out = new ObjectOutputStream(bos)) {
+				out.writeObject(this.data);
+				this.buffer = bos.toByteArray();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 
@@ -163,7 +198,9 @@ public class JacksonArtifact<DataType extends ArtifactData> implements Artifact<
 
 	@Override
 	public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph) {
-		this.sequenceGraph = sequenceGraph;
+		if (!(sequenceGraph instanceof JacksonPartialOrderGraph))
+			throw new EccoException("Only Jackson storage types can be used.");
+		this.sequenceGraph = (JacksonPartialOrderGraph) sequenceGraph;
 	}
 
 	@Override

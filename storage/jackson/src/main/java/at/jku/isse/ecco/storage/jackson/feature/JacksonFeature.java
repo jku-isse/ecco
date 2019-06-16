@@ -16,7 +16,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Memory implementation of {@link Feature}.
  */
-@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+@JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class, property = "@id")
 public class JacksonFeature implements Feature {
 
 	public static final long serialVersionUID = 1L;
@@ -29,6 +29,10 @@ public class JacksonFeature implements Feature {
 	private Collection<JacksonFeatureRevision> revisions;
 	private JacksonFeatureRevision latest;
 
+
+	public JacksonFeature() {
+
+	}
 
 	public JacksonFeature(String id, String name) {
 		checkNotNull(id);

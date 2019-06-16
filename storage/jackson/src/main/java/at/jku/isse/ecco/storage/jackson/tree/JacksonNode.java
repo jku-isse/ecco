@@ -89,8 +89,8 @@ public class JacksonNode implements Node, Node.Op {
 
 	@Override
 	public void setParent(Op parent) {
-		if (!(parent instanceof JacksonNode))
-			throw new EccoException("Only Jackson storage types can be used.");
+		if (parent != null && !(parent instanceof JacksonNode))
+			throw new EccoException("Only Jackson storage types can be used. Instead: " + parent.getClass());
 		this.parent = (JacksonNode) parent;
 	}
 
