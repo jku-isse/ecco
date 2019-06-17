@@ -26,7 +26,7 @@ public class ImporterConsoleInterface {
 			if(service.repositoryDirectoryExists())
 				service.open();
 			else service.init();
-			TraceImporter.importTrace(service.getRepository(), fromPath);
+			TraceImporter.importFolder(service.getRepository(), fromPath, ".txt");
 			service.close();
 		} catch (EccoException e) {
 			e.printStackTrace();

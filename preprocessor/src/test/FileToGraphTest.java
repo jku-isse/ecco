@@ -10,6 +10,6 @@ public class FileToGraphTest {
 	
 	@Test
 	public void AnotherTest() {
-		TraceImporter.importTrace(new MemRepository(), Paths.get("../../RepCopy/"));
+		TraceImporter.importTrace(new MemRepository(), Paths.get("../../RepCopy/"), ".txt");
 	}
 }
