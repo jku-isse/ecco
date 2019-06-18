@@ -5,6 +5,7 @@ import java.nio.file.Paths;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.txt.TextFileLineImporter;
 
 public class ImporterConsoleInterface {
 
@@ -26,7 +27,7 @@ public class ImporterConsoleInterface {
 			if(service.repositoryDirectoryExists())
 				service.open();
 			else service.init();
-			TraceImporter.importFolder(service.getRepository(), fromPath, ".txt");
+			TraceImporter.importFolder(service.getRepository(), fromPath, ".txt", new TextFileLineImporter());
 			service.close();
 		} catch (EccoException e) {
 			e.printStackTrace();

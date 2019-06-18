@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.UUID;
 
-import org.omg.PortableServer.ImplicitActivationPolicyOperations;
-
 import com.bpodgursky.jbool_expressions.Expression;
 import com.bpodgursky.jbool_expressions.parsers.ExprParser;
 import com.bpodgursky.jbool_expressions.rules.RuleSet;
@@ -31,7 +29,6 @@ import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.core.MemAssociation;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
-import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraph;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
@@ -40,60 +37,59 @@ public class TraceImporter {
 	private static Map<String, MemAssociation> map = new HashMap<>();
 	private static Stack<Association> actualAssociations = new Stack<>();
 	private static MemNode actualPluginNode;
-	private static List<MemArtifact<PluginArtifactData>> pluginsPerFile;
 
-	public static void importFolder(Repository.Op repository, Path fromPath, String fileExtension) {
+	public static void importFolder(Repository.Op repository, Path fromPath, String fileExtension,
+			LineImporter lineImporter) {
 		try {
 			Files.walk(fromPath)
 					.filter(file -> file.toString().endsWith(fileExtension))
 					.forEach(file -> {
-						importFile(repository, file);
+						importFile(repository, file, lineImporter);
 					});
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		map.forEach((key, value) -> repository.addAssociation(value));	System.out.println("start");
+		map.forEach((key, value) -> repository.addAssociation(value));
 		map.forEach((key, value) -> System.out.println(value.computeCondition().getPreprocessorConditionString()));
 		System.out.println("end");
 	}
 
-	public static void importFile(Op repository, Path file) {
-		pluginsPerFile = new ArrayList<>();
-		List<MemArtifact<LineArtifactData>> lines = new ArrayList<>();
-		startNewBlock("(base)", file, repository);
+	public static void importFile(Op repository, Path file, LineImporter lineImporter) {
+		MemArtifact<PluginArtifactData> fileArtifact = new MemArtifact<PluginArtifactData>(
+				new PluginArtifactData(UUID.randomUUID().toString(), file), true);
+		PartialOrderGraph.Op pog = fileArtifact.createSequenceGraph();
+		fileArtifact.setSequenceGraph(pog);
+		startNewBlock("(base)", file, repository); 
+		Stack<String> actualCondition = new Stack<>();
 
 		try {
 			Files.lines(file)
 					.forEach(line -> {
-						if (line.matches("^((\\s)*(#if (.)*|#endif))")) {
 							if (line.matches("^((\\s)*#if (.)*)")) {
-								String dnfCondition = parseCondition(line);
-								//System.out.println(dnfCondition);
+								actualCondition.push(line.replaceFirst("(\\s)*#if ", ""));
+								String dnfCondition = parseCondition(actualCondition.peek());
 								startNewBlock(dnfCondition, file, repository);
-							} else {
+							} else if (line.matches("^((\\s)*#else)")) {
 								endBlock(file);
-							}
-						} else {
-							MemArtifact<LineArtifactData> lineArtifact = fillBlock(line, file);
-							lines.add(lineArtifact);
+								String dnfCondition = parseCondition("!(" + actualCondition.peek() + ")");
+								startNewBlock(dnfCondition, file, repository);
+							} else if (line.matches("^((\\s)*#endif)")) {
+								actualCondition.pop();
+								endBlock(file);
+							} else {
+							lineImporter.importLine(line, actualPluginNode, pog); //TODO POG
 						}
 					});
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		endBlock(file);
-
-		PartialOrderGraph.Op sequenceGraph = new MemPartialOrderGraph();
-		sequenceGraph.merge(lines);
-		for (MemArtifact<PluginArtifactData> artifact : pluginsPerFile) {
-			artifact.setSequenceGraph(sequenceGraph);
-		}
 	}
 
-	private static String parseCondition(String line) { //TODO add nested condition
-		String condition = line.replaceFirst("(\\s)*#if ", "");
+	private static String parseCondition(String condition) {
 		if (!actualAssociations.isEmpty())
-			condition = "(" + condition + ")&&" + actualAssociations.peek().computeCondition().getPreprocessorConditionString();
+			condition = "(" + condition + ")&&"
+					+ actualAssociations.peek().computeCondition().getPreprocessorConditionString();
 		condition = condition.replace("||", "|");
 		condition = condition.replace("&&", "&");
 		Expression<String> expr = ExprParser.parse(condition);
@@ -120,7 +116,6 @@ public class TraceImporter {
 		return featureLists;
 	}
 
-	@SuppressWarnings("unchecked")
 	private static void startNewBlock(String condition, Path file, Op repository) {
 		map.putIfAbsent(condition, new MemAssociation());
 		MemAssociation association = map.get(condition);
@@ -146,12 +141,12 @@ public class TraceImporter {
 		MemNode pluginNode = getPluginNode(file, association);
 		if (pluginNode == null) {
 			pluginNode = new MemNode(
-					new MemArtifact<PluginArtifactData>(new PluginArtifactData(UUID.randomUUID().toString(), file)));
+					new MemArtifact<PluginArtifactData>(new PluginArtifactData(UUID.randomUUID().toString(), file),
+							true));
 			dirNode.addChild(pluginNode);
 		}
 
 		actualPluginNode = pluginNode;
-		pluginsPerFile.add((MemArtifact<PluginArtifactData>) pluginNode.getArtifact()); // safe cast
 		actualAssociations.push(association);
 	}
 
@@ -175,18 +170,12 @@ public class TraceImporter {
 		}
 	}
 
-	private static MemArtifact<LineArtifactData> fillBlock(String line, Path file) {
-		MemArtifact<LineArtifactData> lineArtifact = new MemArtifact<LineArtifactData>(
-				new LineArtifactData(line));
-		lineArtifact.setAtomic(true); // TODO set ordered
-		actualPluginNode.addChild(new MemNode(lineArtifact)); // TODO set unique
-		return lineArtifact;
-	}
-
 	private static void endBlock(Path file) {
 		actualAssociations.pop();
-		if(actualAssociations.isEmpty()) actualPluginNode = null;
-		else actualPluginNode = getPluginNode(file, actualAssociations.peek());
+		if (actualAssociations.isEmpty())
+			actualPluginNode = null;
+		else
+			actualPluginNode = getPluginNode(file, actualAssociations.peek());
 	}
 
 	private static MemNode getPluginNode(Path file, Association association) { // TODO muss nicht in Ebene 2 sein
