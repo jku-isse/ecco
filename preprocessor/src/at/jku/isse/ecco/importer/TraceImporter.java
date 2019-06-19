@@ -18,7 +18,7 @@ import com.bpodgursky.jbool_expressions.rules.RuleSet;
 
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.text.LineArtifactData;
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -59,25 +59,25 @@ public class TraceImporter {
 				new PluginArtifactData(UUID.randomUUID().toString(), file), true);
 		PartialOrderGraph.Op pog = fileArtifact.createSequenceGraph();
 		fileArtifact.setSequenceGraph(pog);
-		startNewBlock("(base)", file, repository); 
+		startNewBlock("(base)", file, repository);
 		Stack<String> actualCondition = new Stack<>();
 
 		try {
 			Files.lines(file)
 					.forEach(line -> {
-							if (line.matches("^((\\s)*#if (.)*)")) {
-								actualCondition.push(line.replaceFirst("(\\s)*#if ", ""));
-								String dnfCondition = parseCondition(actualCondition.peek());
-								startNewBlock(dnfCondition, file, repository);
-							} else if (line.matches("^((\\s)*#else)")) {
-								endBlock(file);
-								String dnfCondition = parseCondition("!(" + actualCondition.peek() + ")");
-								startNewBlock(dnfCondition, file, repository);
-							} else if (line.matches("^((\\s)*#endif)")) {
-								actualCondition.pop();
-								endBlock(file);
-							} else {
-							lineImporter.importLine(line, actualPluginNode, pog); //TODO POG
+						if (line.matches("^((\\s)*#if (.)*)")) {
+							actualCondition.push(line.replaceFirst("(\\s)*#if ", ""));
+							String dnfCondition = parseCondition(actualCondition.peek());
+							startNewBlock(dnfCondition, file, repository);
+						} else if (line.matches("^((\\s)*#else)")) {
+							endBlock(file);
+							String dnfCondition = parseCondition("!(" + actualCondition.peek() + ")");
+							startNewBlock(dnfCondition, file, repository);
+						} else if (line.matches("^((\\s)*#endif)")) {
+							actualCondition.pop();
+							endBlock(file);
+						} else {
+							lineImporter.importLine(line, actualPluginNode, pog);
 						}
 					});
 		} catch (IOException e) {
@@ -117,13 +117,25 @@ public class TraceImporter {
 	}
 
 	private static void startNewBlock(String condition, Path file, Op repository) {
+		Association baseAssociation = null;
+		if (!actualAssociations.isEmpty())
+			baseAssociation = actualAssociations.firstElement();
+
 		map.putIfAbsent(condition, new MemAssociation());
 		MemAssociation association = map.get(condition);
 		Node.Op dirNode;
 		if (association.getRootNode() == null) {
 			MemRootNode rootNode = new MemRootNode();
 			association.setRootNode(rootNode);
-			dirNode = new MemNode(new MemArtifact<DirectoryArtifactData>(new DirectoryArtifactData(Paths.get(""))));
+
+			if (baseAssociation == null) {
+				dirNode = new MemNode(new MemArtifact<DirectoryArtifactData>(new DirectoryArtifactData(Paths.get(""))));
+				dirNode.setUnique(true);
+			} else {
+				dirNode = new MemNode(
+						(Artifact.Op<?>) baseAssociation.getRootNode().getChildren().get(0).getArtifact());
+				dirNode.setUnique(false);
+			}
 			rootNode.setContainingAssociation(association);
 			rootNode.addChild(dirNode);
 			//set condition
@@ -140,9 +152,16 @@ public class TraceImporter {
 		// }
 		MemNode pluginNode = getPluginNode(file, association);
 		if (pluginNode == null) {
-			pluginNode = new MemNode(
-					new MemArtifact<PluginArtifactData>(new PluginArtifactData(UUID.randomUUID().toString(), file),
-							true));
+			//hier
+			if (baseAssociation == null) {
+				pluginNode = new MemNode(new MemArtifact<PluginArtifactData>(
+						new PluginArtifactData(UUID.randomUUID().toString(), file), true));
+				pluginNode.setUnique(true);
+			} else {
+				pluginNode = new MemNode(getPluginNode(file, baseAssociation).getArtifact());
+				pluginNode.setUnique(false);
+			}
+
 			dirNode.addChild(pluginNode);
 		}
 
