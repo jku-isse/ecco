@@ -22,25 +22,62 @@ import java.util.stream.Collectors;
 
 public class ChallengeTest {
 
+	// set this path to where the argouml challenge benchmark is located
 	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");
+	// set this path to where the results should be stored
+	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\results");
+
+	/**
+	 * Creates repository and computes results and stores them in OUTPUT_DIR for every scenario in BENCHMARK_DIR.
+	 */
+	@Test(groups = {"integration", "challenge"})
+	public void Do_All_Scenarios() throws IOException {
+		// collect all scenario folders
+		List<Path> scenarioDirs = Files.list(BENCHMARK_DIR.resolve("scenarios")).filter(path -> Files.isDirectory(path)).collect(Collectors.toList());
+
+		for (Path scenarioDir : scenarioDirs) {
+			Path scenarioOutputDir = OUTPUT_DIR.resolve(scenarioDir.getFileName());
+			Files.createDirectory(scenarioOutputDir);
+			// create the repository for the scenario
+			this.createRepo(scenarioDir, scenarioOutputDir);
+			// compute the results for the scenario
+			this.computeResults(scenarioOutputDir);
+		}
+	}
+
+
+	// set this path to a concrete scenario if you only want to run a specific one
 	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioTraditionalVariants");
-	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\output\\traditional");
+	// set this path to where the results for a specific scenario should go
+	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("traditional");
 
-	private static final Path REPO_DIR = OUTPUT_DIR.resolve("repo\\.ecco");
-	private static final Path RESULTS_DIR = OUTPUT_DIR.resolve("results");
-	private static final Path TIME_FILE = OUTPUT_DIR.resolve("time.txt");
-
+	/**
+	 * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.
+	 */
 	@Test(groups = {"integration", "challenge"})
 	public void Create_Repo() throws IOException {
+		this.createRepo(SCENARIO_DIR, SCENARIO_OUTPUT_DIR);
+	}
+
+	/**
+	 * Computes results from repository stored in SCENARIO_OUTPUT_DIR and stores them in SCENARIO_OUTPUT_DIR.
+	 */
+	@Test(groups = {"integration", "challenge"})
+	public void Compute_Results() throws IOException {
+		this.computeResults(SCENARIO_OUTPUT_DIR);
+	}
+
+
+	private void createRepo(Path scenarioDir, Path scenarioOutputDir) throws IOException {
 		// create new repository
 		EccoService service = new EccoService();
-		service.setRepositoryDir(REPO_DIR);
+		service.setRepositoryDir(scenarioOutputDir.resolve("repo"));
 		service.init();
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
-		Path variantsDir = SCENARIO_DIR.resolve("variants");
-		Path configsDir = SCENARIO_DIR.resolve("configs");
+		Path variantsDir = scenarioDir.resolve("variants");
+		Path configsDir = scenarioDir.resolve("configs");
 
 		List<Long> runtimes = new ArrayList<>();
 		int counter = 0;
@@ -75,7 +112,7 @@ public class ChallengeTest {
 		service.close();
 		System.out.println("Repository closed.");
 
-		Files.write(TIME_FILE, runtimes.stream().map(Object::toString).collect(Collectors.toList()));
+		Files.write(scenarioOutputDir.resolve("time.txt"), runtimes.stream().map(Object::toString).collect(Collectors.toList()));
 	}
 
 
@@ -83,15 +120,16 @@ public class ChallengeTest {
 	private static final boolean USE_ONLY_MIN_ORDER = true;
 	private static final int MAX_ORDER = 1;
 
-	@Test(groups = {"integration", "challenge"})
-	public void Compute_Results() throws IOException {
+	private void computeResults(Path scenarioOutputDir) throws IOException {
 		// open repository
 		EccoService service = new EccoService();
-		service.setRepositoryDir(REPO_DIR);
+		service.setRepositoryDir(scenarioOutputDir.resolve("repo"));
 		service.open();
 		System.out.println("Repository opened.");
 
 		Map<String, Map<String, Boolean>> results = new HashMap<>();
+
+		Path resultsDir = scenarioOutputDir.resolve("results");
 
 		// for every association create results file with name of minimal to string
 		Repository repository = service.getRepository();
@@ -162,10 +200,10 @@ public class ChallengeTest {
 				}).collect(Collectors.joining("_and_"));
 
 				// write to file (per association)
-				Path resultsDir = RESULTS_DIR.resolve("A" + assocCounter);
-				if (!Files.exists(resultsDir))
-					Files.createDirectory(resultsDir);
-				Files.write(resultsDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				Path traceDir = resultsDir.resolve("A" + assocCounter);
+				if (!Files.exists(traceDir))
+					Files.createDirectory(traceDir);
+				Files.write(traceDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
 				// add lines to results
 				results.computeIfAbsent(filename, s -> new HashMap<>());
@@ -184,9 +222,9 @@ public class ChallengeTest {
 		}
 
 		// write to file (for all)
-		Path resultsAllDir = RESULTS_DIR.resolve("ALL");
-		if (!Files.exists(resultsAllDir))
-			Files.createDirectory(resultsAllDir);
+		Path allTracesDir = resultsDir.resolve("ALL");
+		if (!Files.exists(allTracesDir))
+			Files.createDirectory(allTracesDir);
 		for (Map.Entry<String, Map<String, Boolean>> entry : results.entrySet()) {
 			List<String> resultLines = new ArrayList<>();
 			entry.getValue().forEach((k, v) -> {
@@ -195,7 +233,7 @@ public class ChallengeTest {
 				else
 					resultLines.add(k + " Refinement");
 			});
-			Files.write(resultsAllDir.resolve(entry.getKey() + ".txt"), resultLines, StandardOpenOption.CREATE);
+			Files.write(allTracesDir.resolve(entry.getKey() + ".txt"), resultLines, StandardOpenOption.CREATE);
 		}
 
 		// close repository
@@ -298,8 +336,8 @@ public class ChallengeTest {
 		Path GT_PATH = BENCHMARK_DIR.resolve("groundTruth");
 		Path MY_PATH = BENCHMARK_DIR.resolve("yourResults");
 
-		Set<Path> myFiles = Files.list(MY_PATH).map(path -> path.getFileName()).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
-		Set<Path> groundTruthFiles = Files.list(GT_PATH).map(path -> path.getFileName()).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
+		Set<Path> myFiles = Files.list(MY_PATH).map(Path::getFileName).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
+		Set<Path> groundTruthFiles = Files.list(GT_PATH).map(Path::getFileName).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
 
 		Set<Path> commonFiles = new HashSet<>(groundTruthFiles);
 		commonFiles.retainAll(myFiles);
@@ -309,9 +347,9 @@ public class ChallengeTest {
 		onlyGTFiles.removeAll(myFiles);
 
 		System.out.println("ONLY MY FILES:");
-		onlyMyFiles.forEach(path -> System.out.println(path));
+		onlyMyFiles.forEach(System.out::println);
 		System.out.println("ONLY GT FILES:");
-		onlyGTFiles.forEach(path -> System.out.println(path));
+		onlyGTFiles.forEach(System.out::println);
 
 		for (Path commonFile : commonFiles) {
 			System.out.println("----------------------------------------");
@@ -333,9 +371,9 @@ public class ChallengeTest {
 			onlyGTEntries.removeAll(MyEntries);
 
 			System.out.println("ENTRIES ONLY IN MY FILE:");
-			onlyMyEntries.forEach(s -> System.out.println(s));
+			onlyMyEntries.forEach(System.out::println);
 			System.out.println("ENTRIES ONLY IN GT FILE:");
-			onlyGTEntries.forEach(s -> System.out.println(s));
+			onlyGTEntries.forEach(System.out::println);
 		}
 	}
 

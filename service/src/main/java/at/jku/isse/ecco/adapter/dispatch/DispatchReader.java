@@ -237,7 +237,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					throw new EccoException("No reader found for file " + path);
 				long localStartTime = System.currentTimeMillis();
 				Set<Node.Op> nodes = reader.read(base, new Path[]{path});
-				LOGGER.info(reader.getPluginId() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
+				LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 				if (!nodes.isEmpty()) {
 					for (Node.Op node : nodes) {
 						parentNode.addChild(node);
@@ -250,7 +250,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Set<Node.Op> nodes = new HashSet<>();
 		nodes.add(directoryNodes.get(Paths.get("")));
 
-		LOGGER.info(this.getPluginId() + ".readSpecificFiles(): " + (System.currentTimeMillis() - startTime) + "ms");
+		LOGGER.info(this.getClass() + ".readSpecificFiles(): " + (System.currentTimeMillis() - startTime) + "ms");
 
 		return nodes;
 	}
@@ -333,7 +333,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 					long localStartTime = System.currentTimeMillis();
 					Set<Node.Op> pluginNodes = reader.read(base, pluginInput);
-					LOGGER.info(reader.getPluginId() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
+					LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 					for (Node.Op pluginNode : pluginNodes) {
 						if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData))
 							throw new EccoException("Plugin must return valid plugin nodes as root nodes in order for it to be compatible with dispatchers.");
@@ -376,7 +376,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		}
 
-		LOGGER.info(this.getPluginId() + ".read(): " + (System.currentTimeMillis() - startTime) + "ms");
+		LOGGER.info(this.getClass() + ".read(): " + (System.currentTimeMillis() - startTime) + "ms");
 
 		// return produced nodes
 		return nodes;

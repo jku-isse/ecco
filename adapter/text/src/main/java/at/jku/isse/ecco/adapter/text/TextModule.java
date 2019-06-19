@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.text;
 
+import at.jku.isse.ecco.adapter.ArtifactExporter;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -34,6 +35,11 @@ public class TextModule extends AbstractModule {
 				new TypeLiteral<ArtifactViewer>() {
 				});
 		viewerMultibinder.addBinding().to(TextViewer.class);
+
+		final Multibinder<ArtifactExporter<Set<Node>, Path>> exporterMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<ArtifactExporter<Set<Node>, Path>>() {
+				});
+		exporterMultibinder.addBinding().to(TextExporter.class);
 	}
 
 }

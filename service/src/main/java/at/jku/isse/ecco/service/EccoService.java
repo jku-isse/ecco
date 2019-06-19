@@ -151,12 +151,19 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.repositoryDir = repositoryDir;
 
 		// get the global logger and configure it
-		Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+//		Logger globalLogger = Logger.getGlobal();
+//		globalLogger.setLevel(Level.ALL);
+//		ConsoleHandler handler = new ConsoleHandler();
+//		handler.setLevel(Level.ALL);
+//		handler.setFormatter(new SimpleFormatter());
+//		globalLogger.addHandler(handler);
+		Logger logger = Logger.getLogger("at.jku.isse.ecco");
 		logger.setLevel(Level.ALL);
 		ConsoleHandler handler = new ConsoleHandler();
 		handler.setLevel(Level.ALL);
 		handler.setFormatter(new SimpleFormatter());
 		logger.addHandler(handler);
+		logger.setUseParentHandlers(false);
 
 		LOGGER.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
 

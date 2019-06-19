@@ -127,7 +127,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		}
 
-		LOGGER.info("JavaParser.parse(): " + totalJavaParserTime + "ms");
+		LOGGER.fine(JavaParser.class + ".parse(): " + totalJavaParserTime + "ms");
 
 		return nodes;
 	}

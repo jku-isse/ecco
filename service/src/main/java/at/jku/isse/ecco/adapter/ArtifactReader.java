@@ -15,11 +15,6 @@ public interface ArtifactReader<I, O> {
 	public String getPluginId();
 
 
-//	public String[] getTypeHierarchy(); // this should be abstract static which java unfortunately does not support...
-//
-//	public boolean canRead(I input);
-
-
 	public Map<Integer, String[]> getPrioritizedPatterns();
 
 
