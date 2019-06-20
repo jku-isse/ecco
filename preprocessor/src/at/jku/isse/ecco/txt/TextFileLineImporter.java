@@ -19,6 +19,7 @@ public class TextFileLineImporter implements LineImporter {
 		list.add(lineArtifact);
 		MemNode node = new MemNode(lineArtifact);
 		node.setUnique(true);
+		lineArtifact.setContainingNode(node);
 		actualPluginNode.addChild(node);
 		
 		pog.merge(list);

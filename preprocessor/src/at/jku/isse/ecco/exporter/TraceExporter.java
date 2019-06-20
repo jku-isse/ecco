@@ -56,10 +56,7 @@ public class TraceExporter {
 							if (processedFiles.add(pad.getPath())) {
 								if (artifact.isSequenced())
 									PartialOrderGraphExporter.export(artifact.getSequenceGraph(), toPath.resolve(pad.getFileName()));
-								else
-									; // TODO ist das möglich? wenn ja wie wird
-										// das
-										// behandelt
+								//ignore else
 							}
 						}
 					}

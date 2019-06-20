@@ -18,6 +18,7 @@ import com.bpodgursky.jbool_expressions.rules.RuleSet;
 
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.adapter.text.TextPlugin;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
@@ -55,11 +56,7 @@ public class TraceImporter {
 	}
 
 	public static void importFile(Op repository, Path file, LineImporter lineImporter) {
-		MemArtifact<PluginArtifactData> fileArtifact = new MemArtifact<PluginArtifactData>(
-				new PluginArtifactData(UUID.randomUUID().toString(), file), true);
-		PartialOrderGraph.Op pog = fileArtifact.createSequenceGraph();
-		fileArtifact.setSequenceGraph(pog);
-		startNewBlock("(base)", file, repository);
+		PartialOrderGraph.Op pog = startNewBlock("(base)", file, repository);
 		Stack<String> actualCondition = new Stack<>();
 
 		try {
@@ -116,13 +113,14 @@ public class TraceImporter {
 		return featureLists;
 	}
 
-	private static void startNewBlock(String condition, Path file, Op repository) {
+	private static PartialOrderGraph.Op startNewBlock(String condition, Path file, Op repository) {
 		Association baseAssociation = null;
 		if (!actualAssociations.isEmpty())
 			baseAssociation = actualAssociations.firstElement();
 
 		map.putIfAbsent(condition, new MemAssociation());
 		MemAssociation association = map.get(condition);
+		association.setId(UUID.randomUUID().toString());
 		Node.Op dirNode;
 		if (association.getRootNode() == null) {
 			MemRootNode rootNode = new MemRootNode();
@@ -131,6 +129,7 @@ public class TraceImporter {
 			if (baseAssociation == null) {
 				dirNode = new MemNode(new MemArtifact<DirectoryArtifactData>(new DirectoryArtifactData(Paths.get(""))));
 				dirNode.setUnique(true);
+				dirNode.getArtifact().setContainingNode(dirNode);
 			} else {
 				dirNode = new MemNode(
 						(Artifact.Op<?>) baseAssociation.getRootNode().getChildren().get(0).getArtifact());
@@ -154,19 +153,22 @@ public class TraceImporter {
 		if (pluginNode == null) {
 			//hier
 			if (baseAssociation == null) {
-				pluginNode = new MemNode(new MemArtifact<PluginArtifactData>(
-						new PluginArtifactData(UUID.randomUUID().toString(), file), true));
+				MemArtifact<PluginArtifactData> pluginArtifact = new MemArtifact<PluginArtifactData>(
+						new PluginArtifactData(TextPlugin.class.getName(), file.toAbsolutePath()), true);
+				pluginNode = new MemNode(pluginArtifact);
 				pluginNode.setUnique(true);
+				pluginArtifact.setContainingNode(pluginNode);
+				pluginArtifact.setSequenceGraph(pluginArtifact.createSequenceGraph());
 			} else {
-				pluginNode = new MemNode(getPluginNode(file, baseAssociation).getArtifact());
+				pluginNode = new MemNode(getPluginNode(file.toAbsolutePath(), baseAssociation).getArtifact());
 				pluginNode.setUnique(false);
 			}
-
 			dirNode.addChild(pluginNode);
 		}
 
 		actualPluginNode = pluginNode;
 		actualAssociations.push(association);
+		return pluginNode.getArtifact().getSequenceGraph();
 	}
 
 	private static void setCondition(String condition, Repository.Op repository, MemAssociation association) {
@@ -194,7 +196,7 @@ public class TraceImporter {
 		if (actualAssociations.isEmpty())
 			actualPluginNode = null;
 		else
-			actualPluginNode = getPluginNode(file, actualAssociations.peek());
+			actualPluginNode = getPluginNode(file.toAbsolutePath(), actualAssociations.peek());
 	}
 
 	private static MemNode getPluginNode(Path file, Association association) { // TODO muss nicht in Ebene 2 sein
