@@ -5,6 +5,8 @@ import java.nio.file.Paths;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.dao.TransactionStrategy.TRANSACTION;
+import at.jku.isse.ecco.repository.Repository.Op;
 import at.jku.isse.ecco.txt.TextFileLineImporter;
 
 public class ImporterConsoleInterface {
@@ -27,7 +29,11 @@ public class ImporterConsoleInterface {
 			if(service.repositoryDirectoryExists())
 				service.open();
 			else service.init();
-			TraceImporter.importFolder(service.getRepository(), fromPath, ".txt", new TextFileLineImporter());
+			service.transactionStrategy.begin(TRANSACTION.READ_WRITE);
+			Op repository = service.getRepository();
+			TraceImporter.importFolder(repository, fromPath, ".txt", new TextFileLineImporter());
+			service.repositoryDao.store(repository);
+			service.transactionStrategy.end();
 			service.close();
 		} catch (EccoException e) {
 			e.printStackTrace();

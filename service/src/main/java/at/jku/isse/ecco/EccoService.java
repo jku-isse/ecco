@@ -193,11 +193,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	private EntityFactory entityFactory;
 
 	@Inject
-	private TransactionStrategy transactionStrategy;
+	public TransactionStrategy transactionStrategy;
 
 	// DAOs
 	@Inject
-	private RepositoryDao repositoryDao;
+	public RepositoryDao repositoryDao;
 	@Inject
 	private RemoteDao remoteDao;
 	@Inject
@@ -1554,14 +1554,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		checkNotNull(configuration);
 
 		try {
-			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);//
 
 			Set<Node.Op> nodes = readFiles();
 			Repository.Op repository = this.repositoryDao.load();
 			Commit commit = repository.extract(configuration, nodes);
-			this.repositoryDao.store(repository);
+			this.repositoryDao.store(repository);//
 
-			this.transactionStrategy.end();
+			this.transactionStrategy.end();//
 
 			return commit;
 		} catch (Exception e) {
