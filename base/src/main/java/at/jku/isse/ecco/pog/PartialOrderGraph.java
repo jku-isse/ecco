@@ -2,6 +2,7 @@ package at.jku.isse.ecco.pog;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
 import org.eclipse.collections.api.map.primitive.IntObjectMap;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
@@ -347,7 +348,10 @@ public interface PartialOrderGraph extends Persistable {
 							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
 								Node.Op leftNode = leftEntry.getKey();
 								if (leftEntry.getValue() == leftNode.getNext().size()) {
-									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+									Artifact.Op leftArtifact = leftNode.getArtifact();
+									Artifact.Op rightArtifact = rightNode.getArtifact();
+									Association.Op leftAssociation = null;//leftArtifact.getContainingNode().getContainingAssociation();
+									if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 										State newLeftState = new State(leftState);
 										newLeftState.advance(leftNode);
 										State newRightState = new State(rightState);
@@ -426,7 +430,10 @@ public interface PartialOrderGraph extends Persistable {
 						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
 							Node.Op leftNode = leftEntry.getKey();
 							if (leftEntry.getValue() == leftNode.getNext().size()) {
-								if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+								Artifact.Op leftArtifact = leftNode.getArtifact();
+								Artifact.Op rightArtifact = rightNode.getArtifact();
+								Association.Op leftAssociation = null;//leftArtifact.getContainingNode().getContainingAssociation();
+								if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 									State newLeftState = new State(leftState);
 									newLeftState.advance(leftNode);
 									State newRightState = new State(rightState);
@@ -490,148 +497,148 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		//private
-		class CellExtended extends Cell {
-			//public int stateBreadthDifference;
-			public int switches;
-			public SKIP last_skip;
-
-			enum SKIP {LEFT, RIGHT, BOTH}
-
-			public CellExtended() {
-				super();
-				//this.stateBreadthDifference = 0;
-				this.switches = 0;
-				this.last_skip = null;
-			}
-
-			public CellExtended(CellExtended other) {
-				super(other);
-				//this.stateBreadthDifference = other.stateBreadthDifference;
-				this.switches = other.switches;
-				this.last_skip = other.last_skip;
-			}
-
-			public boolean isBetterThan(CellExtended other) {
-				return super.isBetterThan(other) || this.score == other.score && this.switches < other.switches;
-			}
-		}
-
-		//private
-		default CellExtended alignMemoizedBacktrackingSwitchesRec(State leftState, State rightState, Map<Pair, CellExtended> matrix) {
-			// check if value is already memoized
-			Pair pair = new Pair(leftState, rightState);
-			CellExtended value = matrix.get(pair);
-			if (value == null) {
-				// compute value
-				if (leftState.isEnd() || rightState.isEnd()) {
-					// if we reached the head of either of the two pogs
-					value = new CellExtended();
-					if (!leftState.isEnd()) {
-						value.switches++;
-						value.last_skip = CellExtended.SKIP.LEFT;
-					}
-					if (!rightState.isEnd()) {
-						value.switches++;
-						value.last_skip = CellExtended.SKIP.RIGHT;
-					}
-				} else if (leftState.isStart() && rightState.isStart()) {
-					// if we are at the tail of both of the two pogs
-					State newLeftState = new State(leftState);
-					for (Node.Op node : leftState.counters.keySet())
-						newLeftState.advance(node);
-					State newRightState = new State(rightState);
-					for (Node.Op node : rightState.counters.keySet())
-						newRightState.advance(node);
-					value = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, newRightState, matrix);
-				} else {
-					// find matches
-					boolean matchFound = false;
-					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-						Node.Op rightNode = rightEntry.getKey();
-						if (rightEntry.getValue() == rightNode.getNext().size()) {
-							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-								Node.Op leftNode = leftEntry.getKey();
-								if (leftEntry.getValue() == leftNode.getNext().size()) {
-									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
-										State newLeftState = new State(leftState);
-										newLeftState.advance(leftNode);
-										State newRightState = new State(rightState);
-										newRightState.advance(rightNode);
-
-										CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, newRightState, matrix);
-										value = new CellExtended(previousValue);
-										value.score += 1;
-										value.last_skip = CellExtended.SKIP.BOTH;
-										if (previousValue.last_skip != null && previousValue.last_skip != CellExtended.SKIP.BOTH)
-											value.switches++;
-
-										matchFound = true;
-										break;
-									}
-								}
-							}
-						}
-						if (matchFound)
-							break;
-					}
-
-					// if there is not a single match recurse previous of all left and right nodes
-					//if (!matchFound) {
-					CellExtended localBest = null;
-					for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-						Node.Op leftNode = leftEntry.getKey();
-						if (leftEntry.getValue() == leftNode.getNext().size()) {
-							State newLeftState = new State(leftState);
-							newLeftState.advance(leftNode);
-
-							CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, rightState, matrix);
-
-							CellExtended localValue;
-							if (previousValue.last_skip != CellExtended.SKIP.LEFT) {
-								localValue = new CellExtended(previousValue);
-								localValue.last_skip = CellExtended.SKIP.LEFT;
-								if (previousValue.last_skip != null)
-									localValue.switches++;
-							} else {
-								localValue = previousValue;
-							}
-
-							if (localBest == null || localValue.isBetterThan(localBest)) {
-								localBest = localValue;
-							}
-						}
-					}
-					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-						Node.Op rightNode = rightEntry.getKey();
-						if (rightEntry.getValue() == rightNode.getNext().size()) {
-							State newRightState = new State(rightState);
-							newRightState.advance(rightNode);
-
-							CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(leftState, newRightState, matrix);
-
-							CellExtended localValue;
-							if (previousValue.last_skip != CellExtended.SKIP.RIGHT) {
-								localValue = new CellExtended(previousValue);
-								localValue.last_skip = CellExtended.SKIP.RIGHT;
-								if (previousValue.last_skip != null)
-									localValue.switches++;
-							} else {
-								localValue = previousValue;
-							}
-
-							if (localBest == null || localValue.isBetterThan(localBest)) {
-								localBest = localValue;
-							}
-						}
-					}
-					value = localBest;
-					//}
-				}
-				matrix.put(pair, value);
-			}
-			return value;
-		}
+//		//private
+//		class CellExtended extends Cell {
+//			//public int stateBreadthDifference;
+//			public int switches;
+//			public SKIP last_skip;
+//
+//			enum SKIP {LEFT, RIGHT, BOTH}
+//
+//			public CellExtended() {
+//				super();
+//				//this.stateBreadthDifference = 0;
+//				this.switches = 0;
+//				this.last_skip = null;
+//			}
+//
+//			public CellExtended(CellExtended other) {
+//				super(other);
+//				//this.stateBreadthDifference = other.stateBreadthDifference;
+//				this.switches = other.switches;
+//				this.last_skip = other.last_skip;
+//			}
+//
+//			public boolean isBetterThan(CellExtended other) {
+//				return super.isBetterThan(other) || this.score == other.score && this.switches < other.switches;
+//			}
+//		}
+//
+//		//private
+//		default CellExtended alignMemoizedBacktrackingSwitchesRec(State leftState, State rightState, Map<Pair, CellExtended> matrix) {
+//			// check if value is already memoized
+//			Pair pair = new Pair(leftState, rightState);
+//			CellExtended value = matrix.get(pair);
+//			if (value == null) {
+//				// compute value
+//				if (leftState.isEnd() || rightState.isEnd()) {
+//					// if we reached the head of either of the two pogs
+//					value = new CellExtended();
+//					if (!leftState.isEnd()) {
+//						value.switches++;
+//						value.last_skip = CellExtended.SKIP.LEFT;
+//					}
+//					if (!rightState.isEnd()) {
+//						value.switches++;
+//						value.last_skip = CellExtended.SKIP.RIGHT;
+//					}
+//				} else if (leftState.isStart() && rightState.isStart()) {
+//					// if we are at the tail of both of the two pogs
+//					State newLeftState = new State(leftState);
+//					for (Node.Op node : leftState.counters.keySet())
+//						newLeftState.advance(node);
+//					State newRightState = new State(rightState);
+//					for (Node.Op node : rightState.counters.keySet())
+//						newRightState.advance(node);
+//					value = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, newRightState, matrix);
+//				} else {
+//					// find matches
+//					boolean matchFound = false;
+//					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//						Node.Op rightNode = rightEntry.getKey();
+//						if (rightEntry.getValue() == rightNode.getNext().size()) {
+//							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//								Node.Op leftNode = leftEntry.getKey();
+//								if (leftEntry.getValue() == leftNode.getNext().size()) {
+//									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+//										State newLeftState = new State(leftState);
+//										newLeftState.advance(leftNode);
+//										State newRightState = new State(rightState);
+//										newRightState.advance(rightNode);
+//
+//										CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, newRightState, matrix);
+//										value = new CellExtended(previousValue);
+//										value.score += 1;
+//										value.last_skip = CellExtended.SKIP.BOTH;
+//										if (previousValue.last_skip != null && previousValue.last_skip != CellExtended.SKIP.BOTH)
+//											value.switches++;
+//
+//										matchFound = true;
+//										break;
+//									}
+//								}
+//							}
+//						}
+//						if (matchFound)
+//							break;
+//					}
+//
+//					// if there is not a single match recurse previous of all left and right nodes
+//					//if (!matchFound) {
+//					CellExtended localBest = null;
+//					for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//						Node.Op leftNode = leftEntry.getKey();
+//						if (leftEntry.getValue() == leftNode.getNext().size()) {
+//							State newLeftState = new State(leftState);
+//							newLeftState.advance(leftNode);
+//
+//							CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, rightState, matrix);
+//
+//							CellExtended localValue;
+//							if (previousValue.last_skip != CellExtended.SKIP.LEFT) {
+//								localValue = new CellExtended(previousValue);
+//								localValue.last_skip = CellExtended.SKIP.LEFT;
+//								if (previousValue.last_skip != null)
+//									localValue.switches++;
+//							} else {
+//								localValue = previousValue;
+//							}
+//
+//							if (localBest == null || localValue.isBetterThan(localBest)) {
+//								localBest = localValue;
+//							}
+//						}
+//					}
+//					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//						Node.Op rightNode = rightEntry.getKey();
+//						if (rightEntry.getValue() == rightNode.getNext().size()) {
+//							State newRightState = new State(rightState);
+//							newRightState.advance(rightNode);
+//
+//							CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(leftState, newRightState, matrix);
+//
+//							CellExtended localValue;
+//							if (previousValue.last_skip != CellExtended.SKIP.RIGHT) {
+//								localValue = new CellExtended(previousValue);
+//								localValue.last_skip = CellExtended.SKIP.RIGHT;
+//								if (previousValue.last_skip != null)
+//									localValue.switches++;
+//							} else {
+//								localValue = previousValue;
+//							}
+//
+//							if (localBest == null || localValue.isBetterThan(localBest)) {
+//								localBest = localValue;
+//							}
+//						}
+//					}
+//					value = localBest;
+//					//}
+//				}
+//				matrix.put(pair, value);
+//			}
+//			return value;
+//		}
 
 
 //		//private

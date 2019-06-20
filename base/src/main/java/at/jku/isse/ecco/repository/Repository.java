@@ -382,6 +382,12 @@ public interface Repository extends Persistable {
 			// create configuration with repo feature revisions
 			Configuration repoConfiguration = this.getEntityFactory().createConfiguration(repoFeatureRevisions.toArray(new FeatureRevision[0]));
 
+			// set visibility of associations in repository
+			for (Association.Op association : this.getAssociations()) {
+				//association.setVisible(association.computeCondition().holds(repoConfiguration));
+				association.setVisible(true);
+			}
+
 			// add configuration modules and module revisions
 			Collection<ModuleRevision> moduleRevisions = this.addConfigurationModules(repoConfiguration);
 

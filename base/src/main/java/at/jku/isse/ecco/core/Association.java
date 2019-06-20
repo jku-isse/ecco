@@ -81,10 +81,25 @@ public interface Association extends Persistable {
 		public Condition createCondition();
 
 
+		public boolean isVisible();
+
+		public void setVisible(boolean visible);
+
+
 		public default Condition computeCondition() {
+			Condition moduleCondition = this.computeLikelyCondition();
+
+			// if the module condition is empty
+			if (moduleCondition.getModules().isEmpty()) {
+				moduleCondition = this.computeCertainCondition();
+			}
+
+			return moduleCondition;
+		}
+
+		public default Condition computeLikelyCondition() {
 			Condition moduleCondition = this.createCondition();
 			AssociationCounter associationCounter = this.getCounter();
-
 			// for every module check if it traces uniquely
 			moduleCondition.setType(Condition.TYPE.AND);
 			for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
@@ -99,24 +114,25 @@ public interface Association extends Persistable {
 					}
 				}
 			}
+			return moduleCondition;
+		}
 
-			// if the module condition is empty
-			if (moduleCondition.getModules().isEmpty()) {
-				// for every module check if it traces disjunctively
-				moduleCondition.setType(Condition.TYPE.OR);
-				for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
-					// 1) M was present at least once when A was present
-					if (moduleCounter.getCount() > 0) { // it is in ALL
-						for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
-							// 2) A was always present when M_r was present
-							if (moduleRevisionCounter.getCount() > 0 && moduleRevisionCounter.getCount() == moduleRevisionCounter.getObject().getCount()) { // it is in ALL AND it is not in NOT
-								moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
-							}
+		public default Condition computeCertainCondition() {
+			Condition moduleCondition = this.createCondition();
+			AssociationCounter associationCounter = this.getCounter();
+			// for every module check if it traces disjunctively
+			moduleCondition.setType(Condition.TYPE.OR);
+			for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
+				// 1) M was present at least once when A was present
+				if (moduleCounter.getCount() > 0) { // it is in ALL
+					for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
+						// 2) A was always present when M_r was present
+						if (moduleRevisionCounter.getCount() > 0 && moduleRevisionCounter.getCount() == moduleRevisionCounter.getObject().getCount()) { // it is in ALL AND it is not in NOT
+							moduleCondition.addModuleRevision(moduleRevisionCounter.getObject());
 						}
 					}
 				}
 			}
-
 			return moduleCondition;
 		}
 

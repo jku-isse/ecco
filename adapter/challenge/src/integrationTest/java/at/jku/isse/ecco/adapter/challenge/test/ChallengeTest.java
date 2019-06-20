@@ -129,8 +129,6 @@ public class ChallengeTest {
 
 		Map<String, Map<String, Boolean>> results = new HashMap<>();
 
-		Path resultsDir = scenarioOutputDir.resolve("results");
-
 		// for every association create results file with name of minimal to string
 		Repository repository = service.getRepository();
 		System.out.println("Max Order: " + ((Repository.Op) repository).getMaxOrder());
@@ -199,11 +197,17 @@ public class ChallengeTest {
 					else return "";
 				}).collect(Collectors.joining("_and_"));
 
-				// write to file (per association)
-				Path traceDir = resultsDir.resolve("A" + assocCounter);
-				if (!Files.exists(traceDir))
-					Files.createDirectory(traceDir);
-				Files.write(traceDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				if (filename.isEmpty())
+					continue;
+
+				// write to file (per association/trace)
+				Path resultsSplitDir = scenarioOutputDir.resolve("results_split");
+				if (!Files.exists(resultsSplitDir))
+					Files.createDirectory(resultsSplitDir);
+				Path associationDir = resultsSplitDir.resolve("A" + assocCounter);
+				if (!Files.exists(associationDir))
+					Files.createDirectory(associationDir);
+				Files.write(associationDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
 				// add lines to results
 				results.computeIfAbsent(filename, s -> new HashMap<>());
@@ -221,10 +225,10 @@ public class ChallengeTest {
 			System.out.println("---------");
 		}
 
-		// write to file (for all)
-		Path allTracesDir = resultsDir.resolve("ALL");
-		if (!Files.exists(allTracesDir))
-			Files.createDirectory(allTracesDir);
+		// write to file (for all associations/traces)
+		Path resultsDir = scenarioOutputDir.resolve("results");
+		if (!Files.exists(resultsDir))
+			Files.createDirectory(resultsDir);
 		for (Map.Entry<String, Map<String, Boolean>> entry : results.entrySet()) {
 			List<String> resultLines = new ArrayList<>();
 			entry.getValue().forEach((k, v) -> {
@@ -233,7 +237,7 @@ public class ChallengeTest {
 				else
 					resultLines.add(k + " Refinement");
 			});
-			Files.write(allTracesDir.resolve(entry.getKey() + ".txt"), resultLines, StandardOpenOption.CREATE);
+			Files.write(resultsDir.resolve(entry.getKey() + ".txt"), resultLines, StandardOpenOption.CREATE);
 		}
 
 		// close repository

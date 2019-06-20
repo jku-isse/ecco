@@ -31,6 +31,7 @@ public class JacksonAssociation implements Association, Association.Op {
 	private JacksonAssociationCounter associationCounter;
 	@JsonBackReference
 	private JacksonRepository containingRepository;
+	private transient boolean visible;
 
 
 	public JacksonAssociation() {
@@ -38,6 +39,7 @@ public class JacksonAssociation implements Association, Association.Op {
 		this.artifactTreeRoot = null;
 		this.associationCounter = new JacksonAssociationCounter(this);
 		this.containingRepository = null;
+		this.visible = true;
 	}
 
 
@@ -77,6 +79,16 @@ public class JacksonAssociation implements Association, Association.Op {
 	@Override
 	public Condition createCondition() {
 		return new JacksonCondition();
+	}
+
+	@Override
+	public boolean isVisible() {
+		return this.visible;
+	}
+
+	@Override
+	public void setVisible(boolean visible) {
+		this.visible = visible;
 	}
 
 
