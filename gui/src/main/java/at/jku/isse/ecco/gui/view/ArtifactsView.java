@@ -4,8 +4,6 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.exporter.PartialOrderGraphExporter;
-import at.jku.isse.ecco.exporter.TraceExporter;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.listener.EccoListener;
