@@ -350,7 +350,7 @@ public interface PartialOrderGraph extends Persistable {
 								if (leftEntry.getValue() == leftNode.getNext().size()) {
 									Artifact.Op leftArtifact = leftNode.getArtifact();
 									Artifact.Op rightArtifact = rightNode.getArtifact();
-									Association.Op leftAssociation = null;//leftArtifact.getContainingNode().getContainingAssociation();
+									Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
 									if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 										State newLeftState = new State(leftState);
 										newLeftState.advance(leftNode);
@@ -432,7 +432,7 @@ public interface PartialOrderGraph extends Persistable {
 							if (leftEntry.getValue() == leftNode.getNext().size()) {
 								Artifact.Op leftArtifact = leftNode.getArtifact();
 								Artifact.Op rightArtifact = rightNode.getArtifact();
-								Association.Op leftAssociation = null;//leftArtifact.getContainingNode().getContainingAssociation();
+								Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
 								if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 									State newLeftState = new State(leftState);
 									newLeftState.advance(leftNode);

@@ -235,9 +235,9 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				ArtifactReader<Path, Set<Node.Op>> reader = this.getReaderForFile(base, path);
 				if (reader == null)
 					throw new EccoException("No reader found for file " + path);
-				long localStartTime = System.currentTimeMillis();
+				//long localStartTime = System.currentTimeMillis();
 				Set<Node.Op> nodes = reader.read(base, new Path[]{path});
-				LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
+				//LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 				if (!nodes.isEmpty()) {
 					for (Node.Op node : nodes) {
 						parentNode.addChild(node);

@@ -42,6 +42,8 @@ public class ChallengeTest {
 			this.createRepo(scenarioDir, scenarioOutputDir);
 			// compute the results for the scenario
 			this.computeResults(scenarioOutputDir);
+			// compute the metrics from the results
+			MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), scenarioOutputDir);
 		}
 	}
 
@@ -65,6 +67,11 @@ public class ChallengeTest {
 	@Test(groups = {"integration", "challenge"})
 	public void Compute_Results() throws IOException {
 		this.computeResults(SCENARIO_OUTPUT_DIR);
+	}
+
+	@Test(groups = {"integration", "challenge"})
+	public void Compute_Metrics() {
+		MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), SCENARIO_OUTPUT_DIR);
 	}
 
 
@@ -267,7 +274,6 @@ public class ChallengeTest {
 
 	private void computeString(Node node, StringBuilder sb, Map<String, Boolean> lines, String currentClassName) {
 		if (node.getArtifact() != null && node.getArtifact().getData() != null) {
-			// if file (i.e. class)
 			if (node.getArtifact().getData() instanceof ClassArtifactData) {
 //				if (currentClassName != null)
 //					throw new EccoException("Encounter class within class!");
@@ -284,9 +290,7 @@ public class ChallengeTest {
 					sb.append(currentClassName + " Refinement\n");
 					lines.put(currentClassName, false);
 				}
-			}
-			// if method
-			else if (node.getArtifact().getData() instanceof MethodArtifactData) {
+			} else if (node.getArtifact().getData() instanceof MethodArtifactData) {
 //				String fullMethodString = ((MethodArtifactData) node.getArtifact().getData()).getSignature().replaceAll(" ", "");
 //				// get method name
 //                String part1 = fullMethodString.substring(0, fullMethodString.indexOf("("));
@@ -338,7 +342,8 @@ public class ChallengeTest {
 	@Test(groups = {"integration", "challenge"})
 	public void Analyze_Differences() throws IOException {
 		Path GT_PATH = BENCHMARK_DIR.resolve("groundTruth");
-		Path MY_PATH = BENCHMARK_DIR.resolve("yourResults");
+		//Path MY_PATH = BENCHMARK_DIR.resolve("yourResults");
+		Path MY_PATH = SCENARIO_OUTPUT_DIR.resolve("results");
 
 		Set<Path> myFiles = Files.list(MY_PATH).map(Path::getFileName).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
 		Set<Path> groundTruthFiles = Files.list(GT_PATH).map(Path::getFileName).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
