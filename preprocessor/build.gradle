@@ -1,0 +1,14 @@
+
+dependencies {
+	
+	compile group: 'commons-io', name: 'commons-io', version: '2.5'
+	// https://mvnrepository.com/artifact/com.bpodgursky/jbool_expressions
+	compile group: 'com.bpodgursky', name: 'jbool_expressions', version: '1.22'
+
+	compile project(':ecco-base')
+
+	testCompile project(':ecco-adapter-file')
+	testCompile project(':ecco-adapter-text')
+	testCompile project(':ecco-adapter-image')
+	testCompile project(':ecco-adapter-java')
+}
