@@ -1,9 +1,13 @@
 package at.jku.isse.ecco.exporter;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.apache.commons.io.FileUtils;
 
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -17,11 +21,13 @@ import at.jku.isse.ecco.tree.Node.NodeVisitor;
  *
  */
 public class TraceExporter {
-	
+
 	/**
 	 * 
-	 * @param collection The list of associations to be exported.
-	 * @param toPath The directory where the annotated files should be written to.
+	 * @param collection
+	 *            The list of associations to be exported.
+	 * @param toPath
+	 *            The directory where the annotated files should be written to.
 	 */
 	public static void exportAssociations(Collection<? extends Association> collection, Path toPath) {
 		if (collection == null || toPath == null)
@@ -34,8 +40,10 @@ public class TraceExporter {
 
 	/**
 	 * 
-	 * @param association The association to be exported. 
-	 * @param toPath The directory where the annotated files should be written to. 
+	 * @param association
+	 *            The association to be exported.
+	 * @param toPath
+	 *            The directory where the annotated files should be written to.
 	 * @param processedFiles
 	 *            Use an empty list if there are no already processed files or
 	 *            if you want to reprocess them.
@@ -54,14 +62,19 @@ public class TraceExporter {
 						PluginArtifactData pad = (PluginArtifactData) artifact.getData();
 						if (pad.getFileName().toString().endsWith(".txt")) { //TODO support other file types
 							if (processedFiles.add(pad.getPath())) {
-								if (artifact.isSequenced())
-									PartialOrderGraphExporter.export(artifact.getSequenceGraph(), toPath.resolve(pad.getFileName()));
+								if (artifact.isSequenced()) {
+									Path file = toPath.resolve(pad.getPath());
+									FileUtils.forceMkdirParent(new File(file.toString()));
+									PartialOrderGraphExporter.export(artifact.getSequenceGraph(), file);
+								}
 								//ignore else
 							}
 						}
 					}
 				} catch (ClassCastException e) {
 					// ignore all other artifacts
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 
 			}
