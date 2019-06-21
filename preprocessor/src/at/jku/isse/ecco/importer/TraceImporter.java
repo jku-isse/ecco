@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.importer;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +34,7 @@ import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.Node.NodeVisitor;
 
 public class TraceImporter {
 	private static Map<String, MemAssociation> map = new HashMap<>();
@@ -45,7 +47,7 @@ public class TraceImporter {
 			Files.walk(fromPath)
 					.filter(file -> file.toString().endsWith(fileExtension))
 					.forEach(file -> {
-						importFile(repository, file, lineImporter);
+						importFile(repository, file, fromPath, lineImporter);
 					});
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -55,24 +57,25 @@ public class TraceImporter {
 		System.out.println("end");
 	}
 
-	public static void importFile(Op repository, Path file, LineImporter lineImporter) {
-		PartialOrderGraph.Op pog = startNewBlock("(base)", file, repository);
-		Stack<String> actualCondition = new Stack<>();
+	public static void importFile(Repository.Op repository, Path file, Path fromPath, LineImporter lineImporter) {
+		Path relPath = fromPath.relativize(file);
+		PartialOrderGraph.Op pog = startNewBlock("(base)", relPath, repository);
+		Stack<String> actualCondition = new Stack<>();		
 
-		try {
+		try {//(BufferedWriter bufferedWriter = Files.newBufferedWriter(repository)){			
 			Files.lines(file)
 					.forEach(line -> {
 						if (line.matches("^((\\s)*#if (.)*)")) {
 							actualCondition.push(line.replaceFirst("(\\s)*#if ", ""));
 							String dnfCondition = parseCondition(actualCondition.peek());
-							startNewBlock(dnfCondition, file, repository);
+							startNewBlock(dnfCondition, relPath, repository);
 						} else if (line.matches("^((\\s)*#else)")) {
-							endBlock(file);
+							endBlock(relPath);
 							String dnfCondition = parseCondition("!(" + actualCondition.peek() + ")");
-							startNewBlock(dnfCondition, file, repository);
+							startNewBlock(dnfCondition, relPath, repository);
 						} else if (line.matches("^((\\s)*#endif)")) {
 							actualCondition.pop();
-							endBlock(file);
+							endBlock(relPath);
 						} else {
 							lineImporter.importLine(line, actualPluginNode, pog);
 						}
@@ -80,7 +83,7 @@ public class TraceImporter {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		endBlock(file);
+		endBlock(relPath);
 	}
 
 	private static String parseCondition(String condition) {
@@ -141,6 +144,7 @@ public class TraceImporter {
 			setCondition(condition, repository, association);
 		} else
 			dirNode = association.getRootNode().getChildren().get(0);
+		System.out.println(file);
 		// while() { //TODO set for every folder own Node
 		// Path relativePath = fromPath.relativize(file);
 		// MemNode child = new MemNode(new
@@ -154,13 +158,13 @@ public class TraceImporter {
 			//hier
 			if (baseAssociation == null) {
 				MemArtifact<PluginArtifactData> pluginArtifact = new MemArtifact<PluginArtifactData>(
-						new PluginArtifactData(TextPlugin.class.getName(), file.toAbsolutePath()), true);
+						new PluginArtifactData(TextPlugin.class.getName(), file), true);
 				pluginNode = new MemNode(pluginArtifact);
 				pluginNode.setUnique(true);
 				pluginArtifact.setContainingNode(pluginNode);
 				pluginArtifact.setSequenceGraph(pluginArtifact.createSequenceGraph());
 			} else {
-				pluginNode = new MemNode(getPluginNode(file.toAbsolutePath(), baseAssociation).getArtifact());
+				pluginNode = new MemNode(getPluginNode(file, baseAssociation).getArtifact());
 				pluginNode.setUnique(false);
 			}
 			dirNode.addChild(pluginNode);
@@ -196,16 +200,26 @@ public class TraceImporter {
 		if (actualAssociations.isEmpty())
 			actualPluginNode = null;
 		else
-			actualPluginNode = getPluginNode(file.toAbsolutePath(), actualAssociations.peek());
+			actualPluginNode = getPluginNode(file, actualAssociations.peek());
 	}
 
-	private static MemNode getPluginNode(Path file, Association association) { // TODO muss nicht in Ebene 2 sein
-		for (Node node : association.getRootNode().getChildren().get(0).getChildren()) {
-			PluginArtifactData data = (PluginArtifactData) node.getArtifact().getData();
-			if (data.getPath().equals(file)) {
-				return (MemNode) node;
+	private static MemNode getPluginNode(Path file, Association association) {
+		List<MemNode> result = new ArrayList<>(1);
+		association.getRootNode().traverse(new NodeVisitor() {
+			@Override
+			public void visit(Node node) {
+				try {
+					if (node.getArtifact() != null) {
+						PluginArtifactData data = (PluginArtifactData) node.getArtifact().getData();
+						if (data.getPath().equals(file)) {
+							result.add((MemNode) node);
+						}
+					}
+				} catch (ClassCastException e) {
+					// ignor
+				}
 			}
-		}
-		return null;
+		});
+		return (result.isEmpty()) ? null : result.get(0);
 	}
 }
