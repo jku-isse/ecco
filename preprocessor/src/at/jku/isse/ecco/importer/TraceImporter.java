@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.importer;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -60,7 +59,7 @@ public class TraceImporter {
 	public static void importFile(Repository.Op repository, Path file, Path fromPath, LineImporter lineImporter) {
 		Path relPath = fromPath.relativize(file);
 		PartialOrderGraph.Op pog = startNewBlock("(base)", relPath, repository);
-		Stack<String> actualCondition = new Stack<>();		
+		Stack<String> actualCondition = new Stack<>();
 
 		try {//(BufferedWriter bufferedWriter = Files.newBufferedWriter(repository)){			
 			Files.lines(file)
@@ -130,7 +129,7 @@ public class TraceImporter {
 			association.setRootNode(rootNode);
 
 			if (baseAssociation == null) {
-				dirNode = new MemNode(new MemArtifact<DirectoryArtifactData>(new DirectoryArtifactData(Paths.get(""))));
+				dirNode = new MemNode(new MemArtifact<>(new DirectoryArtifactData(Paths.get(""))));
 				dirNode.setUnique(true);
 				dirNode.getArtifact().setContainingNode(dirNode);
 			} else {
@@ -144,20 +143,33 @@ public class TraceImporter {
 			setCondition(condition, repository, association);
 		} else
 			dirNode = association.getRootNode().getChildren().get(0);
-		System.out.println(file);
-		// while() { //TODO set for every folder own Node
-		// Path relativePath = fromPath.relativize(file);
-		// MemNode child = new MemNode(new
-		// MemArtifact<DirectoryArtifactData>(new
-		// DirectoryArtifactData(relativePath)));
-		// dirNode.addChild(child);
-		// dirNode = child;
-		// }
+		//set folder artifact
+		if (file.getParent() != null) {
+			Path resolvedPath = Paths.get("");
+			for (Path path : file.getParent()) {
+				resolvedPath = resolvedPath.resolve(path);
+				MemNode newDirNode = getDirNode(resolvedPath, association);
+				if (newDirNode == null) {
+					if (baseAssociation == null) {
+						MemArtifact<DirectoryArtifactData> dirArtifact = new MemArtifact<>(
+								new DirectoryArtifactData(resolvedPath));
+						newDirNode = new MemNode(dirArtifact);
+						newDirNode.setUnique(true);
+						dirArtifact.setContainingNode(newDirNode);
+					} else {
+						newDirNode = new MemNode(getDirNode(resolvedPath, baseAssociation).getArtifact());
+						newDirNode.setUnique(false);
+					}
+					dirNode.addChild(newDirNode);
+				}
+				dirNode = newDirNode;
+			}
+		}
+		//set plug-in artifact
 		MemNode pluginNode = getPluginNode(file, association);
 		if (pluginNode == null) {
-			//hier
 			if (baseAssociation == null) {
-				MemArtifact<PluginArtifactData> pluginArtifact = new MemArtifact<PluginArtifactData>(
+				MemArtifact<PluginArtifactData> pluginArtifact = new MemArtifact<>(
 						new PluginArtifactData(TextPlugin.class.getName(), file), true);
 				pluginNode = new MemNode(pluginArtifact);
 				pluginNode.setUnique(true);
@@ -202,7 +214,10 @@ public class TraceImporter {
 		else
 			actualPluginNode = getPluginNode(file, actualAssociations.peek());
 	}
-
+	
+	/**
+	 * Searches plug-in node in given association witch matches the given path.  
+	 */
 	private static MemNode getPluginNode(Path file, Association association) {
 		List<MemNode> result = new ArrayList<>(1);
 		association.getRootNode().traverse(new NodeVisitor() {
@@ -212,6 +227,29 @@ public class TraceImporter {
 					if (node.getArtifact() != null) {
 						PluginArtifactData data = (PluginArtifactData) node.getArtifact().getData();
 						if (data.getPath().equals(file)) {
+							result.add((MemNode) node);
+						}
+					}
+				} catch (ClassCastException e) {
+					// ignor
+				}
+			}
+		});
+		return (result.isEmpty()) ? null : result.get(0);
+	}
+
+	/**
+	 * Searches directory node in given association witch matches the given path.  
+	 */
+	private static MemNode getDirNode(Path path, Association association) {
+		List<MemNode> result = new ArrayList<>(1);
+		association.getRootNode().traverse(new NodeVisitor() {
+			@Override
+			public void visit(Node node) {
+				try {
+					if (node.getArtifact() != null) {
+						DirectoryArtifactData data = (DirectoryArtifactData) node.getArtifact().getData();
+						if (data.getPath().equals(path)) {
 							result.add((MemNode) node);
 						}
 					}
