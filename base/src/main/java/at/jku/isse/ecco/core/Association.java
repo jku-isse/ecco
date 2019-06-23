@@ -98,10 +98,10 @@ public interface Association extends Persistable {
 		}
 
 		public default Condition computeLikelyCondition() {
-			Condition moduleCondition = this.createCondition();
 			AssociationCounter associationCounter = this.getCounter();
-			// for every module check if it traces uniquely
+			Condition moduleCondition = this.createCondition();
 			moduleCondition.setType(Condition.TYPE.AND);
+			// for every module check if it traces uniquely
 			for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
 				// a module M traces uniquely to artifacts in association A iff
 				// 1) M was always present when A was present
@@ -118,10 +118,10 @@ public interface Association extends Persistable {
 		}
 
 		public default Condition computeCertainCondition() {
-			Condition moduleCondition = this.createCondition();
 			AssociationCounter associationCounter = this.getCounter();
-			// for every module check if it traces disjunctively
+			Condition moduleCondition = this.createCondition();
 			moduleCondition.setType(Condition.TYPE.OR);
+			// for every module check if it traces disjunctively
 			for (ModuleCounter moduleCounter : associationCounter.getChildren()) {
 				// 1) M was present at least once when A was present
 				if (moduleCounter.getCount() > 0) { // it is in ALL

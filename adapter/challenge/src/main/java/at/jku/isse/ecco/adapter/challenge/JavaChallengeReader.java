@@ -66,7 +66,6 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Set<Node.Op> nodes = new HashSet<>();
 
 		long totalJavaParserTime = 0;
-		long totalTime = 0;
 
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
@@ -78,9 +77,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			try {
 				// read raw file contents
-				long startTime = System.nanoTime();
 				String fileContent = new String(Files.readAllBytes(resolvedPath), StandardCharsets.UTF_8);
-				totalTime += (System.nanoTime() - startTime);
 				String[] lines = fileContent.split("\\r?\\n");
 //				List<String> lines = new ArrayList<>();
 //				try (BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(resolvedPath), StandardCharsets.UTF_8))) {
@@ -128,7 +125,6 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 
 		LOGGER.fine(JavaParser.class + ".parse(): " + totalJavaParserTime + "ms");
-		LOGGER.fine(this.getClass() + ".parse(): " + totalTime + "ms");
 
 		return nodes;
 	}

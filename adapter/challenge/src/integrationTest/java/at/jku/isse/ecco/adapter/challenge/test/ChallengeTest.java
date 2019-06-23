@@ -24,8 +24,11 @@ public class ChallengeTest {
 
 	// set this path to where the argouml challenge benchmark is located
 	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");
+	//private static final Path BENCHMARK_DIR = Paths.get("D:\\ArgoUMLSPLBenchmark");
+
 	// set this path to where the results should be stored
 	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\results");
+	//private static final Path OUTPUT_DIR = Paths.get("D:\\results");
 
 	/**
 	 * Creates repository and computes results and stores them in OUTPUT_DIR for every scenario in BENCHMARK_DIR.
@@ -51,7 +54,7 @@ public class ChallengeTest {
 	// set this path to a concrete scenario if you only want to run a specific one
 	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioTraditionalVariants");
 	// set this path to where the results for a specific scenario should go
-	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("traditional");
+	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("ScenarioTraditionalVariants");
 
 	/**
 	 * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.
@@ -90,6 +93,13 @@ public class ChallengeTest {
 		int counter = 0;
 		Collection<Path> variantsDirs = Files.list(variantsDir).collect(Collectors.toList());
 		for (Path variantDir : variantsDirs) {
+//			// this is to avoid overheating of my laptop for large scenarios
+//			try {
+//				Thread.sleep(20000);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+
 			long before = System.currentTimeMillis();
 
 			System.out.println("COUNT: " + counter);
