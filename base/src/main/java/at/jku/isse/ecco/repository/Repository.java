@@ -384,8 +384,8 @@ public interface Repository extends Persistable {
 
 			// set visibility of associations in repository
 			for (Association.Op association : this.getAssociations()) {
-				//association.setVisible(association.computeCertainCondition().holds(repoConfiguration));
-				association.setVisible(true);
+				association.setVisible(association.computeCertainCondition().holds(repoConfiguration));
+				//association.setVisible(true);
 			}
 
 			// add configuration modules and module revisions

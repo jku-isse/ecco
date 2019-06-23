@@ -2,6 +2,7 @@ package at.jku.isse.ecco.pog;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
 import org.eclipse.collections.api.map.primitive.IntObjectMap;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
@@ -358,20 +359,20 @@ public interface PartialOrderGraph extends Persistable {
 										Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
 										value = new Cell(previousValue);
 
-										value.score += 1;
-										matchFound = true;
-										break;
+//										value.score += 1;
+//										matchFound = true;
+//										break;
 
-//										Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
-//										if (leftAssociation == null || leftAssociation.isVisible()) {
-//											// if left association was visible we increase the score by 2 and do not explore skips
-//											value.score += 2;
-//											matchFound = true;
-//											break;
-//										} else {
-//											// if left association was not visible we increase the score only by 1 and also explore skips
-//											value.score += 1;
-//										}
+										Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
+										if (leftAssociation == null || leftAssociation.isVisible()) {
+											// if left association was visible we increase the score by 2 and do not explore skips
+											value.score += 2;
+											matchFound = true;
+											break;
+										} else {
+											// if left association was not visible we increase the score only by 1 and also explore skips
+											value.score += 1;
+										}
 									}
 								}
 							}
