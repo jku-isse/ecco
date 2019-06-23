@@ -157,7 +157,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				int i = beginLine - 1;
 				while (i <= endLine) {
 					String trimmedLine = lines[i].trim();
-					if (!trimmedLine.isEmpty()) {// && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 						enumsGroupNode.addChild(lineNode);
@@ -173,7 +173,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				int i = beginLine - 1;
 				while (i < endLine) {
 					String trimmedLine = lines[i].trim();
-					if (!trimmedLine.isEmpty()) {// && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 						fieldsGroupNode.addChild(lineNode);
@@ -196,7 +196,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					int i = beginLine;
 					while (i < endLine - 1) {
 						String trimmedLine = lines[i].trim();
-						if (!trimmedLine.isEmpty()) {// && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+						if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 							Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 							methodNode.addChild(lineNode);
@@ -242,7 +242,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			int i = beginLine;
 			while (i < endLine - 1) {
 				String trimmedLine = lines[i].trim();
-				if (!trimmedLine.isEmpty()) {// && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+				if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 					methodNode.addChild(lineNode);

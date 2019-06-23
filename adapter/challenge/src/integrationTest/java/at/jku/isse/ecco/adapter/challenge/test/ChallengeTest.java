@@ -26,11 +26,11 @@ import java.util.stream.Collectors;
 public class ChallengeTest {
 
 	// set this path to where the argouml challenge benchmark is located
-	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");
+	private static final Path BENCHMARK_DIR = Paths.get("/run/media/user/Extreme SSD/ArgoUMLSPLBenchmark");
 	//private static final Path BENCHMARK_DIR = Paths.get("D:\\ArgoUMLSPLBenchmark");
 
 	// set this path to where the results should be stored
-	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\results");
+	private static final Path OUTPUT_DIR = Paths.get("/home/user/Desktop/results");
 	//private static final Path OUTPUT_DIR = Paths.get("D:\\results");
 
 	/**
