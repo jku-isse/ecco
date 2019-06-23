@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class ChallengeTest {
 
 	// set this path to where the argouml challenge benchmark is located
-	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");
+	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\ArgoUMLSPLBenchmark");
 	//private static final Path BENCHMARK_DIR = Paths.get("D:\\ArgoUMLSPLBenchmark");
 
 	// set this path to where the results should be stored
@@ -52,9 +52,9 @@ public class ChallengeTest {
 
 
 	// set this path to a concrete scenario if you only want to run a specific one
-	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioTraditionalVariants");
+	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioAllVariants");
 	// set this path to where the results for a specific scenario should go
-	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("ScenarioTraditionalVariants");
+	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("ScenarioAllVariants");
 
 	/**
 	 * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.

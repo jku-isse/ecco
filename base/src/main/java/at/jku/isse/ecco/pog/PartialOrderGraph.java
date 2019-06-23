@@ -2,7 +2,6 @@ package at.jku.isse.ecco.pog;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
 import org.eclipse.collections.api.map.primitive.IntObjectMap;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
@@ -359,16 +358,20 @@ public interface PartialOrderGraph extends Persistable {
 										Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
 										value = new Cell(previousValue);
 
-										Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
-										if (leftAssociation == null || leftAssociation.isVisible()) {
-											// if left association was visible we increase the score by 2 and do not explore skips
-											value.score += 2;
-											matchFound = true;
-											break;
-										} else {
-											// if left association was not visible we increase the score only by 1 and also explore skips
-											value.score += 1;
-										}
+										value.score += 1;
+										matchFound = true;
+										break;
+
+//										Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
+//										if (leftAssociation == null || leftAssociation.isVisible()) {
+//											// if left association was visible we increase the score by 2 and do not explore skips
+//											value.score += 2;
+//											matchFound = true;
+//											break;
+//										} else {
+//											// if left association was not visible we increase the score only by 1 and also explore skips
+//											value.score += 1;
+//										}
 									}
 								}
 							}
@@ -438,8 +441,9 @@ public interface PartialOrderGraph extends Persistable {
 							if (leftEntry.getValue() == leftNode.getNext().size()) {
 								Artifact.Op leftArtifact = leftNode.getArtifact();
 								Artifact.Op rightArtifact = rightNode.getArtifact();
-								Association.Op leftAssociation = null;//leftArtifact.getContainingNode().getContainingAssociation();
-								if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
+//								Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
+//								if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
+								if (leftArtifact != null && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 									State newLeftState = new State(leftState);
 									newLeftState.advance(leftNode);
 									State newRightState = new State(rightState);
