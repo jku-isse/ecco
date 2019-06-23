@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.importer;
 
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.UUID;
+
+import org.apache.commons.io.FileUtils;
 
 import com.bpodgursky.jbool_expressions.Expression;
 import com.bpodgursky.jbool_expressions.parsers.ExprParser;
@@ -40,13 +44,13 @@ public class TraceImporter {
 	private static Stack<Association> actualAssociations = new Stack<>();
 	private static MemNode actualPluginNode;
 
-	public static void importFolder(Repository.Op repository, Path fromPath, String fileExtension,
+	public static void importFolder(Repository.Op repository, Path fromPath, Path repPath, String fileExtension,
 			LineImporter lineImporter) {
 		try {
 			Files.walk(fromPath)
 					.filter(file -> file.toString().endsWith(fileExtension))
 					.forEach(file -> {
-						importFile(repository, file, fromPath, lineImporter);
+						importFile(repository, file, fromPath, repPath, lineImporter);
 					});
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -56,12 +60,13 @@ public class TraceImporter {
 		System.out.println("end");
 	}
 
-	public static void importFile(Repository.Op repository, Path file, Path fromPath, LineImporter lineImporter) {
+	public static void importFile(Repository.Op repository, Path file, Path fromPath, Path repPath,
+			LineImporter lineImporter) {
 		Path relPath = fromPath.relativize(file);
 		PartialOrderGraph.Op pog = startNewBlock("(base)", relPath, repository);
 		Stack<String> actualCondition = new Stack<>();
 
-		try {//(BufferedWriter bufferedWriter = Files.newBufferedWriter(repository)){			
+		try {		
 			Files.lines(file)
 					.forEach(line -> {
 						if (line.matches("^((\\s)*#if (.)*)")) {
@@ -83,6 +88,7 @@ public class TraceImporter {
 			e.printStackTrace();
 		}
 		endBlock(relPath);
+		exportPOG(pog, repPath, relPath);
 	}
 
 	private static String parseCondition(String condition) {
@@ -214,9 +220,34 @@ public class TraceImporter {
 		else
 			actualPluginNode = getPluginNode(file, actualAssociations.peek());
 	}
+
+	private static void exportPOG(PartialOrderGraph pog, Path repPath, Path relPath) {
+		Path file = repPath.resolve(relPath);
+		try {
+			FileUtils.forceMkdirParent(new File(file.toString()));
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		try(BufferedWriter bufferedWriter = Files.newBufferedWriter(file)){	
+			pog.getHead().traverse(new PartialOrderGraph.Node.NodeVisitor() {				
+				@Override
+				public void visit(PartialOrderGraph.Node node) {
+					try {
+						if(node.getArtifact() != null)
+							bufferedWriter.write(node.getArtifact().toString() + "\n");
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					
+				}
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 	/**
-	 * Searches plug-in node in given association witch matches the given path.  
+	 * Searches plug-in node in given association witch matches the given path.
 	 */
 	private static MemNode getPluginNode(Path file, Association association) {
 		List<MemNode> result = new ArrayList<>(1);
@@ -239,7 +270,8 @@ public class TraceImporter {
 	}
 
 	/**
-	 * Searches directory node in given association witch matches the given path.  
+	 * Searches directory node in given association witch matches the given
+	 * path.
 	 */
 	private static MemNode getDirNode(Path path, Association association) {
 		List<MemNode> result = new ArrayList<>(1);
