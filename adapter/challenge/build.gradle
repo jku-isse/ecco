@@ -5,6 +5,4 @@ dependencies {
 	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.5.15'
 
 	implementation project(':ecco-service')
-
-	testRuntime project(':ecco-storage-jackson')
 }

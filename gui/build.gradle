@@ -45,8 +45,6 @@ dependencies {
 
 	implementation project(':ecco-service')
 
-	testRuntime project(':ecco-storage-jackson')
-
 	testRuntime project(':ecco-adapter-file')
 	testRuntime project(':ecco-adapter-text')
 	testRuntime project(':ecco-adapter-image')

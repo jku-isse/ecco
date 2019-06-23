@@ -10,6 +10,8 @@ import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.logging.*;
 import java.util.stream.Collectors;
 
 public class ChallengeTest {
@@ -75,6 +78,29 @@ public class ChallengeTest {
 	@Test(groups = {"integration", "challenge"})
 	public void Compute_Metrics() {
 		MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), SCENARIO_OUTPUT_DIR);
+	}
+
+
+	@BeforeTest(alwaysRun = true)
+	public void beforeTest() {
+		System.out.println("BEFORE");
+
+		// configure logger
+		Logger logger = Logger.getLogger("at.jku.isse.ecco");
+		logger.setLevel(Level.ALL);
+		for (Handler handler : logger.getHandlers())
+			logger.removeHandler(handler);
+		ConsoleHandler handler = new ConsoleHandler();
+		handler.setLevel(Level.ALL);
+		handler.setFormatter(new SimpleFormatter());
+		logger.addHandler(handler);
+		logger.setUseParentHandlers(false);
+		logger.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
+	}
+
+	@AfterTest(alwaysRun = true)
+	public void afterTest() {
+		System.out.println("AFTER");
 	}
 
 

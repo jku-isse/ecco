@@ -42,10 +42,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -150,22 +147,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.baseDir = baseDir;
 		this.repositoryDir = repositoryDir;
 
-		// get the global logger and configure it
-//		Logger globalLogger = Logger.getGlobal();
-//		globalLogger.setLevel(Level.ALL);
-//		ConsoleHandler handler = new ConsoleHandler();
-//		handler.setLevel(Level.ALL);
-//		handler.setFormatter(new SimpleFormatter());
-//		globalLogger.addHandler(handler);
-		Logger logger = Logger.getLogger("at.jku.isse.ecco");
-		logger.setLevel(Level.ALL);
-		ConsoleHandler handler = new ConsoleHandler();
-		handler.setLevel(Level.ALL);
-		handler.setFormatter(new SimpleFormatter());
-		logger.addHandler(handler);
-		logger.setUseParentHandlers(false);
-
-		LOGGER.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
+		LOGGER.info("Logging to: " + Arrays.stream(LOGGER.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
 
 		// load properties file
 		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(ECCO_PROPERTIES_FILE);
