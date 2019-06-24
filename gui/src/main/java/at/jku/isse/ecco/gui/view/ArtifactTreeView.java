@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.geometry.Orientation;
 import javafx.scene.control.Button;
@@ -11,7 +10,7 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 
-public class ArtifactTreeView extends BorderPane implements EccoListener {
+public class ArtifactTreeView extends BorderPane {
 
 	private final EccoService service;
 
@@ -115,13 +114,6 @@ public class ArtifactTreeView extends BorderPane implements EccoListener {
 //				new Thread(extractTask).start();
 //			}
 //		});
-
-
-		// ecco service
-		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
 	}
 
 	public void setRootNode(RootNode rootNode) {
