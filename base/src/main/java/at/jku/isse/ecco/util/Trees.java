@@ -3,7 +3,6 @@ package at.jku.isse.ecco.util;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -417,8 +416,11 @@ public class Trees {
 
 
 	/**
-	 * Maps artifacts in tree rooted at right to artifacts in tree rooted at left. Does not merge or update artifact references. The left tree is not modified.
-	 * Mapped artifacts can be found in the property {@link Artifact#PROPERTY_MAPPED_ARTIFACT} of the right artifacts.
+	 * Maps artifacts in tree rooted at right to artifacts in tree rooted at left.
+	 * Does not merge or update artifact references. The left tree is not modified.
+	 * Artifacts in the right tree have sequence graphs, sequence numbers and replacing artifacts assigned.
+	 * <p>
+	 * Mapped artifacts are set as replacing artifact (see {@link Artifact.Op#getReplacingArtifact()}) and can be found in the property {@link Artifact#PROPERTY_MAPPED_ARTIFACT} of the right artifacts.
 	 *
 	 * @param left  Root node of the first tree.
 	 * @param right Root node of the second tree.
@@ -432,7 +434,11 @@ public class Trees {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getSequenceGraph() != right.getArtifact().getSequenceGraph()) {
 					throw new EccoException("Sequence Graphs did not match!");
-				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
+				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
+					throw new EccoException("Left node was not sequenced but right node was!");
+				}
+
+				if (!left.getArtifact().isSequenced()) {
 					left.getArtifact().setSequenceGraph(left.getArtifact().createSequenceGraph());
 					left.getArtifact().getSequenceGraph().merge(left.getChildrenArtifacts());
 				}
@@ -440,16 +446,18 @@ public class Trees {
 				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
 					List<Artifact.Op<?>> rightArtifacts = right.getChildren().stream().map(Node.Op::getArtifact).collect(Collectors.toList());
 					left.getArtifact().getSequenceGraph().align(rightArtifacts);
-				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
-					throw new EccoException("Left node was not sequenced but right node was!");
+					right.getArtifact().setSequenceGraph(left.getArtifact().getSequenceGraph());
 				}
 			}
 
-
-			if (left.getArtifact().isAtomic()) {
-				Trees.mapAtomicArtifacts(left, right);
-			} else if (left.getArtifact() != right.getArtifact()) {
-				right.getArtifact().putProperty(Artifact.PROPERTY_MAPPED_ARTIFACT, left.getArtifact());
+			if (left.isUnique()) {
+				if (left.getArtifact().isAtomic()) {
+					Trees.mapAtomicArtifacts(left, right);
+				} else if (left.getArtifact() != right.getArtifact() && right.getArtifact().getReplacingArtifact() != left.getArtifact()) {
+					right.getArtifact().putProperty(Artifact.PROPERTY_MAPPED_ARTIFACT, left.getArtifact());
+					right.getArtifact().setReplacingArtifact(left.getArtifact());
+					//right.setArtifact(left.getArtifact());
+				}
 			}
 		}
 
@@ -465,29 +473,31 @@ public class Trees {
 		}
 
 
-		if (left.getArtifact() != null && right.getArtifact() != null) {
-			if (left.getArtifact().isOrdered()) {
-				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
-					right.getChildren().forEach((Node.Op n) -> n.getArtifact().setSequenceNumber(PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER));
-				}
-			}
-		}
+//		if (left.getArtifact() != null && right.getArtifact() != null) {
+//			if (left.getArtifact().isOrdered()) {
+//				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
+//					right.getChildren().forEach((Node.Op n) -> n.getArtifact().setSequenceNumber(PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER));
+//				}
+//			}
+//		}
 	}
 
-	private static void mapAtomicArtifacts(Node left, Node right) {
+	private static void mapAtomicArtifacts(Node.Op left, Node.Op right) {
 		right.getArtifact().putProperty(Artifact.PROPERTY_MAPPED_ARTIFACT, left.getArtifact());
+		right.getArtifact().setReplacingArtifact(left.getArtifact());
+		//right.setArtifact(left.getArtifact());
 
 		if (left.getChildren().size() != right.getChildren().size()) {
 			throw new EccoException("Equal atomic nodes must have identical children!");
 		}
 
-		for (Node leftChild : left.getChildren()) {
+		for (Node.Op leftChild : left.getChildren()) {
 			int ri = right.getChildren().indexOf(leftChild);
 			if (ri == -1) {
 				throw new EccoException("Equal atomic nodes must have identical children!");
 			}
 
-			Node rightChild = right.getChildren().get(ri);
+			Node.Op rightChild = right.getChildren().get(ri);
 
 			Trees.mapAtomicArtifacts(leftChild, rightChild);
 		}

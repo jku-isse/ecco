@@ -10,11 +10,15 @@ import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
+import org.graphstream.ui.swingViewer.ViewPanel;
 import org.graphstream.ui.view.Viewer;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -35,6 +39,35 @@ public class PartialOrderGraphTest {
 			e.printStackTrace();
 		}
 		DATA_DIR = dataPath;
+	}
+
+
+	@Test(groups = {"unit", "base", "pog"})
+	public void SequenceTest5() throws IOException {
+		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s5\\1.txt"));
+		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s5\\2.txt"));
+		List<String> lines3 = Files.readAllLines(DATA_DIR.resolve("s5\\3.txt"));
+		List<String> lines4 = Files.readAllLines(DATA_DIR.resolve("s5\\4.txt"));
+		List<String> lines5 = Files.readAllLines(DATA_DIR.resolve("s5\\5.txt"));
+		List<String> lines6 = Files.readAllLines(DATA_DIR.resolve("s5\\6.txt"));
+
+		List<Artifact.Op<?>> artifacts1 = lines1.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts2 = lines2.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts3 = lines3.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts4 = lines4.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts5 = lines5.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+		List<Artifact.Op<?>> artifacts6 = lines6.stream().filter(s -> !s.trim().isEmpty()).map(line -> A(line)).collect(Collectors.toList());
+
+		PartialOrderGraph.Op pog1 = new MemPartialOrderGraph();
+
+		pog1.merge(artifacts1);
+		pog1.merge(artifacts2);
+		pog1.merge(artifacts3);
+		pog1.merge(artifacts4);
+//		pog1.merge(artifacts5);
+//		pog1.merge(artifacts6);
+
+		displayPOG(pog1);
 	}
 
 
@@ -670,7 +703,42 @@ public class PartialOrderGraphTest {
 		graph.addSink(layout);
 		layout.addAttributeSink(graph);
 
-		Viewer viewer = graph.display();
+		//Viewer viewer = graph.display();
+		Viewer viewer = new Viewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+		//viewer.setCloseFramePolicy(Viewer.CloseFramePolicy.CLOSE_VIEWER);
+		viewer.enableAutoLayout();
+
+		ViewPanel view = viewer.addDefaultView(false); // false indicates "no JFrame"
+
+		Object lock = new Object();
+		JFrame frame = new JFrame();
+		frame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent arg0) {
+				synchronized (lock) {
+					frame.setVisible(false);
+					lock.notify();
+				}
+			}
+		});
+		frame.add(view);
+		frame.setSize(300, 300);
+		frame.setVisible(true);
+
+		synchronized (lock) {
+			while (frame.isVisible())
+				try {
+					lock.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+		}
+
+//		try {
+//			Thread.sleep(Long.MAX_VALUE);
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
 	}
 
 	private void traversePartialOrderGraph(Graph graph, PartialOrderGraph.Node pogNode, org.graphstream.graph.Node gsParent, Map<PartialOrderGraph.Node, Node> nodeMap) {

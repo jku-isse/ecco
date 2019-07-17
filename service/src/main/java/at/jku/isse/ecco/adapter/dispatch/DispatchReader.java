@@ -221,13 +221,13 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				throw new EccoException("Path must be relative to base directory.");
 
 			// recursively check if its parents are already contained in the directory map, if not add them and link them
-			Node.Op parentNode = this.createParents(base, base.resolve(path).getParent(), directoryNodes);
+			Node.Op parentNode = this.createParents(base, path.getParent(), directoryNodes);
 
 			// create node for file itself
 			if (Files.isDirectory(base.resolve(path))) {
 				//Path relative = base.relativize(path);
 				Path relative = path;
-				Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative));
+				Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative.getFileName()));
 				Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 				directoryNodes.put(relative, directoryNode);
 				parentNode.addChild(directoryNode);
@@ -257,18 +257,18 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private Node.Op createParents(Path base, Path path, Map<Path, Node.Op> directoryNodes) {
 		// make sure that path is a directory
-		if (!Files.isDirectory(path))
+		if (!Files.isDirectory(base.resolve(path)))
 			throw new EccoException("Expected a directory: " + path);
 
 		// check if path is already contained in directory nodes
-		Path relative = base.relativize(path);
+		Path relative = path;
 		Node.Op node = directoryNodes.get(relative);
 		if (node != null) { // if it is we are done
 			return node;
 		}
 
 		// if it is not we create and add it
-		Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative));
+		Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative.getFileName()));
 		Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 		directoryNodes.put(relative, directoryNode);
 
@@ -388,7 +388,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		try {
 			if (Files.isDirectory(current)) { // deal with directories
 				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
-					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
+					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent.getFileName()));
 					Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 					directoryNodes.put(relativeCurrent, directoryNode);
 

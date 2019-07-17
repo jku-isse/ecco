@@ -446,11 +446,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		String storagePluginId = this.properties.getProperty(ECCO_PROPERTIES_STORAGE);
 		List<Module> storageModules = new ArrayList<>();
 		List<Module> allStorageModules = new ArrayList<>();
+		this.dataPlugins = new ArrayList<>();
 		for (StoragePlugin dataPlugin : StoragePlugin.getDataPlugins()) {
 			if (dataPlugin.getPluginId().equals(storagePluginId)) {
 				storageModules.add(dataPlugin.getModule());
 				this.dataPlugin = dataPlugin;
 			}
+			this.dataPlugins.add(dataPlugin);
 			allStorageModules.add(dataPlugin.getModule());
 		}
 		LOGGER.config("STORAGE PLUGINS: " + storageModules.toString());
@@ -1653,7 +1655,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 						current = current.getParent();
 					}
 					pathList.add(a.toString());
-					sb.append("ORDER: ").append(pathList.stream().collect(Collectors.joining())).append(System.lineSeparator());
+					sb.append("ORDER: ").append(String.join("", pathList)).append(System.lineSeparator());
 				}
 				for (Association association : checkout.getUnresolvedAssociations()) {
 					sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());
@@ -1678,6 +1680,20 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.writer.write(this.baseDir, nodes);
 
 		return checkout;
+	}
+
+
+	public Node compose(String configurationString) {
+		this.checkInitialized();
+
+		checkNotNull(configurationString);
+
+		Configuration configuration = this.parseConfigurationString(configurationString);
+
+		Repository.Op repository = this.repositoryDao.load();
+		Checkout checkout = repository.compose(configuration);
+
+		return checkout.getNode();
 	}
 
 

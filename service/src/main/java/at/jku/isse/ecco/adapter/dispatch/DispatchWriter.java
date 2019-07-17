@@ -96,7 +96,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 
 		Properties hashes = new Properties();
 		for (Node node : input) {
-			this.writeRec(base, node, output, hashes);
+			this.writeRec(base, base, node, output, hashes);
 		}
 
 		// write hashes file into base directory
@@ -115,18 +115,18 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 		return output.toArray(new Path[0]);
 	}
 
-	private void writeRec(Path base, Node node, List<Path> output, Properties hashes) {
+	private void writeRec(Path base, Path parent, Node node, List<Path> output, Properties hashes) {
 		Artifact artifact = node.getArtifact();
 		if (artifact.getData() instanceof DirectoryArtifactData) {
 			DirectoryArtifactData directoryArtifactData = (DirectoryArtifactData) artifact.getData();
-			Path path = base.resolve(directoryArtifactData.getPath());
+			Path path = parent.resolve(directoryArtifactData.getPath());
 			try {
-				if (!path.equals(base))
+				if (!path.equals(parent))
 					Files.createDirectory(path);
 				output.add(path);
 				this.fireWriteEvent(path, this);
 				for (Node child : node.getChildren()) {
-					this.writeRec(base, child, output, hashes);
+					this.writeRec(base, path, child, output, hashes);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
