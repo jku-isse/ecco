@@ -4,3 +4,11 @@
     -fx-background: #eeeeee;
     -fx-background-color: #eeeeee;
 }
+
+.nonuniquerow {
+    -fx-text-fill: gray;
+}
+
+.uniquerow {
+    -fx-text-fill: black;
+}

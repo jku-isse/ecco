@@ -17,10 +17,15 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.paint.Color;
+import javafx.util.Callback;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,9 +81,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		TableColumn<AssociationInfo, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
 
+		TableColumn<AssociationInfo, Color> highlightedAssocationCol = new TableColumn<>("Highlighted");
+
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
+		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol, highlightedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
@@ -91,6 +98,74 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		selectedAssocationCol.setEditable(true);
 
 
+		class ColorPickerTableCell<Inputs> extends TableCell<Inputs, Color> {
+			private ColorPicker cp;
+
+			public ColorPickerTableCell(TableColumn<Inputs, Color> column) {
+				this.getStyleClass().add("color-picker-table-cell");
+
+				this.cp = new ColorPicker();
+
+				this.cp.editableProperty().bind(column.editableProperty());
+				this.cp.disableProperty().bind(column.editableProperty().not());
+
+				this.cp.setOnShowing(event -> {
+					getTableView().edit(getTableRow().getIndex(), column);
+				});
+
+				this.cp.valueProperty().addListener((observable, oldValue, newValue) -> {
+					if (isEditing()) {
+						commitEdit(newValue);
+					}
+				});
+//				this.cp.setOnAction(event -> {
+//					if (isEditing()) {
+//						commitEdit(this.cp.getValue());
+//					}
+//				});
+//				this.cp.setOnHiding(event -> {
+//					if (isEditing()) {
+//						commitEdit(this.cp.getValue());
+//					}
+//				});
+
+				this.cp.setValue(getItem());
+
+				this.setGraphic(this.cp);
+				this.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+				this.setEditable(true);
+				this.setAlignment(Pos.CENTER);
+			}
+
+			@Override
+			protected void updateItem(Color item, boolean empty) {
+				super.updateItem(item, empty);
+//				this.cp.setVisible(!empty);
+//				this.cp.setValue(item);
+
+				setText(null);
+				if (empty) {
+					setGraphic(null);
+				} else {
+					this.cp.setValue(item);
+					this.setGraphic(this.cp);
+				}
+
+				this.setBackground(new Background(new BackgroundFill(item, null, null)));
+				//this.backgroundProperty().bind(Bindings.createObjectBinding(() -> new Background(new BackgroundFill(this.cp.getValue(), null, null)), this.cp.valueProperty()));
+			}
+		}
+
+		highlightedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("color"));
+		highlightedAssocationCol.setCellFactory(new Callback<TableColumn<AssociationInfo, Color>, TableCell<AssociationInfo, Color>>() {
+			@Override
+			public TableCell<AssociationInfo, Color> call(TableColumn<AssociationInfo, Color> param) {
+				return new ColorPickerTableCell<>(highlightedAssocationCol);
+			}
+		});
+		highlightedAssocationCol.setEditable(true);
+
+
 		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
 		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
@@ -98,7 +173,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 
 		ArtifactTreeView artifactTreeView = new ArtifactTreeView(service);
-
+		artifactTreeView.setAssociationInfo(this.associationsData);
 
 		// split panes
 		SplitPane horizontalSplitPane = new SplitPane();
@@ -284,12 +359,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		private BooleanProperty selected;
 
+		private ObjectProperty<Color> color;
+
 		private IntegerProperty numArtifacts;
 
 		public AssociationInfo(Association association) {
 			this.association = association;
 			this.selected = new SimpleBooleanProperty(false);
 			this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
+			this.color = new SimpleObjectProperty<Color>(Color.TRANSPARENT);
 		}
 
 		public Association getAssociation() {
@@ -306,6 +384,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		public BooleanProperty selectedProperty() {
 			return this.selected;
+		}
+
+		public ObjectProperty<Color> colorProperty() {
+			return this.color;
 		}
 
 		public int getNumArtifacts() {

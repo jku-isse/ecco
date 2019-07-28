@@ -10,11 +10,13 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 
+import java.util.Collection;
+
 public class ArtifactTreeView extends BorderPane {
 
 	private final EccoService service;
 
-	private final ArtifactTreeTableView artifactTreeView;
+	private final ArtifactTreeTableView artifactTreeTableView;
 
 	public ArtifactTreeView(final EccoService service) {
 		this.service = service;
@@ -34,9 +36,9 @@ public class ArtifactTreeView extends BorderPane {
 
 
 		// artifact tree table view
-		this.artifactTreeView = new ArtifactTreeTableView();
+		this.artifactTreeTableView = new ArtifactTreeTableView();
 
-		this.artifactTreeView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
+		this.artifactTreeTableView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
 			if (newValue != null) {
 				artifactDetailView.showTree(newValue.getValue());
 			}
@@ -46,7 +48,7 @@ public class ArtifactTreeView extends BorderPane {
 		// split panes
 		SplitPane artifactsSplitPane = new SplitPane();
 		artifactsSplitPane.setOrientation(Orientation.HORIZONTAL);
-		artifactsSplitPane.getItems().addAll(this.artifactTreeView, artifactDetailView);
+		artifactsSplitPane.getItems().addAll(this.artifactTreeTableView, artifactDetailView);
 
 
 		this.setCenter(artifactsSplitPane);
@@ -55,7 +57,7 @@ public class ArtifactTreeView extends BorderPane {
 		markSelectedButton.setOnAction(e -> {
 			toolBar.setDisable(true);
 
-			this.artifactTreeView.markSelected();
+			this.artifactTreeTableView.markSelected();
 
 			toolBar.setDisable(false);
 		});
@@ -117,7 +119,11 @@ public class ArtifactTreeView extends BorderPane {
 	}
 
 	public void setRootNode(RootNode rootNode) {
-		this.artifactTreeView.setRootNode(rootNode);
+		this.artifactTreeTableView.setRootNode(rootNode);
+	}
+
+	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfo> associationInfos) {
+		this.artifactTreeTableView.setAssociationInfo(associationInfos);
 	}
 
 }
