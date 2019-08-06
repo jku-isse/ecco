@@ -550,7 +550,7 @@ public interface Repository extends Persistable {
 			return checkout;
 		}
 
-		public default Checkout compose(Collection<Association.Op> selectedAssociations, boolean lazy) {
+		public default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {
 			Node compRootNode;
 			Collection<Artifact<?>> orderWarnings;
 			if (lazy) {

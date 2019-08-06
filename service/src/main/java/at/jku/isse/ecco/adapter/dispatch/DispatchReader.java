@@ -221,7 +221,10 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				throw new EccoException("Path must be relative to base directory.");
 
 			// recursively check if its parents are already contained in the directory map, if not add them and link them
-			Node.Op parentNode = this.createParents(base, path.getParent(), directoryNodes);
+			Path parent = path.getParent();
+			if (parent == null)
+				parent = Paths.get("");
+			Node.Op parentNode = this.createParents(base, parent, directoryNodes);
 
 			// create node for file itself
 			if (Files.isDirectory(base.resolve(path))) {
