@@ -39,6 +39,11 @@ import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.Node.NodeVisitor;
 
+import static at.jku.isse.ecco.PreprocessorSyntax.IF;
+import static at.jku.isse.ecco.PreprocessorSyntax.ELSE;
+import static at.jku.isse.ecco.PreprocessorSyntax.ENDIF;
+
+
 public class TraceImporter {
 	private static Map<String, MemAssociation> map = new HashMap<>();
 	private static Stack<Association> actualAssociations = new Stack<>();
@@ -56,7 +61,7 @@ public class TraceImporter {
 			e.printStackTrace();
 		}
 		map.forEach((key, value) -> repository.addAssociation(value));
-		map.forEach((key, value) -> System.out.println(value.computeCondition().getPreprocessorConditionString()));
+		map.forEach((key, value) -> System.out.println(value.computeCondition().getPreprocessorConditionString())); //TODO remove
 		System.out.println("end");
 	}
 
@@ -69,15 +74,15 @@ public class TraceImporter {
 		try {		
 			Files.lines(file)
 					.forEach(line -> {
-						if (line.matches("^((\\s)*#if (.)*)")) {
-							actualCondition.push(line.replaceFirst("(\\s)*#if ", ""));
+						if (line.matches("^((\\s)*" + IF + " (.)*)")) {
+							actualCondition.push(line.replaceFirst("(\\s)*" + IF + " ", ""));
 							String dnfCondition = parseCondition(actualCondition.peek());
 							startNewBlock(dnfCondition, relPath, repository);
-						} else if (line.matches("^((\\s)*#else)")) {
+						} else if (line.matches("^((\\s)*" + ELSE + ")")) {
 							endBlock(relPath);
 							String dnfCondition = parseCondition("!(" + actualCondition.peek() + ")");
 							startNewBlock(dnfCondition, relPath, repository);
-						} else if (line.matches("^((\\s)*#endif)")) {
+						} else if (line.matches("^((\\s)*" + ENDIF + ")")) {
 							actualCondition.pop();
 							endBlock(relPath);
 						} else {

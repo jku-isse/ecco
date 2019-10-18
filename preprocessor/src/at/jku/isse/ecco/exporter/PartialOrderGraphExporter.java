@@ -12,6 +12,11 @@ import at.jku.isse.ecco.pog.PartialOrderGraph.Node;
 import at.jku.isse.ecco.pog.PartialOrderGraph.Node.NodeVisitor;
 import at.jku.isse.ecco.tree.RootNode;
 
+import static at.jku.isse.ecco.PreprocessorSyntax.IF;
+import static at.jku.isse.ecco.PreprocessorSyntax.CONDITION_BEGIN;
+import static at.jku.isse.ecco.PreprocessorSyntax.CONDITION_END;
+import static at.jku.isse.ecco.PreprocessorSyntax.ENDIF;
+
 /**
  * 
  * @author Simon Eilmsteiner
@@ -50,9 +55,9 @@ public class PartialOrderGraphExporter {
 							}
 							if (condition != null && !condition.equals(oldCondition)) {
 								if (oldCondition != null)
-									bufferedWriter.write("#endif\n");
-								bufferedWriter
-										.write("#if " + condition.getPreprocessorConditionString() + "\n");
+									bufferedWriter.write(ENDIF + "\n");
+								bufferedWriter.write(IF + " " + CONDITION_BEGIN
+										+ condition.getPreprocessorConditionString() + CONDITION_END + "\n");
 								bufferedWriter.write(node.getArtifact().toString() + "\n");
 								oldCondition = condition;
 							} else
@@ -63,7 +68,7 @@ public class PartialOrderGraphExporter {
 					}
 				}
 			});
-			bufferedWriter.write("#endif");
+			bufferedWriter.write(ENDIF);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
