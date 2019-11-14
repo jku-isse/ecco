@@ -70,6 +70,9 @@ public class EccoUtil {
 			boolean firstMatch = false;
 			if (artifact.hasReplacingArtifact()) {
 				artifact2 = artifact.getReplacingArtifact();
+				while (artifact2.hasReplacingArtifact()) {
+					artifact2 = artifact2.getReplacingArtifact();
+				}
 			} else {
 				artifact2 = entityFactory.createArtifact(artifact.getData());
 				artifact.setReplacingArtifact(artifact2);

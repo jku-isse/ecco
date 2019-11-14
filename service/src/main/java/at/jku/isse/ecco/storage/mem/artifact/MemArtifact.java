@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.mem.artifact;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
@@ -177,6 +178,11 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void setReplacingArtifact(Op<?> replacingArtifact) {
+
+		if (replacingArtifact.hasReplacingArtifact()) {
+			throw new EccoException("Replacing artifact should not have a replacing artifact itself!");
+		}
+
 		this.replacingArtifact = replacingArtifact;
 	}
 
@@ -249,7 +255,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		if (this.uses(target))
 			return;
 
-		ArtifactReference.Op artifactReference = new MemArtifactReference();
+		ArtifactReference.Op artifactReference = new MemArtifactReference(type);
 		artifactReference.setSource(this);
 		artifactReference.setTarget(target);
 		this.addUses(artifactReference);

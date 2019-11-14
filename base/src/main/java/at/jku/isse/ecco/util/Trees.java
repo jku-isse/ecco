@@ -72,6 +72,10 @@ public class Trees {
 			} else if (left.getArtifact() != right.getArtifact()) {
 				right.getArtifact().setReplacingArtifact(left.getArtifact());
 
+				if (left.getArtifact().hasReplacingArtifact()) {
+					throw new EccoException("Replacing artifact should not have a replacing artifact itself!");
+				}
+
 				// merge artifact references
 				for (ArtifactReference.Op ar : right.getArtifact().getUses()) {
 					if (!left.getArtifact().getUses().contains(ar)) {
@@ -151,6 +155,10 @@ public class Trees {
 	private static void matchAtomicArtifacts(Node.Op left, Node.Op right) {
 		//right.getArtifact().putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, left.getArtifact());
 		right.getArtifact().setReplacingArtifact(left.getArtifact());
+
+		if (left.getArtifact().hasReplacingArtifact()) {
+			throw new EccoException("Replacing artifact should not have a replacing artifact itself!");
+		}
 
 		// merge artifact references
 		for (ArtifactReference.Op ar : right.getArtifact().getUses()) {

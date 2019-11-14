@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.test;
 
-import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -34,7 +33,7 @@ public class TreesTest {
 
 		Trees.map(root1, root2);
 
-		Node.Op copy1 = EccoUtil.deepCopyTree(root1, ef);
+		//Node.Op copy1 = EccoUtil.deepCopyTree(root1, ef);
 
 		Node.Op root3 = Trees.slice(root1, root2);
 

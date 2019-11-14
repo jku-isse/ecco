@@ -25,7 +25,7 @@ public class MemArtifactReference implements ArtifactReference, ArtifactReferenc
 	 * Constructs a new artifact reference with the type initiliazed to an empty string.
 	 */
 	public MemArtifactReference() {
-		this(null);
+		this("");
 	}
 
 	/**

@@ -1343,6 +1343,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 					parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
 					Repository.Op parentRepository = parentService.repositoryDao.load();
+//					Repository.Op parentRepository = (Repository.Op) parentService.getRepository();
 					subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), parentRepository.getMaxOrder(), this.entityFactory);
 
 					parentService.transactionStrategy.end();
