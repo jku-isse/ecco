@@ -8,22 +8,21 @@ import java.util.Map;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.text.LineArtifactData;
 import at.jku.isse.ecco.importer.LineImporter;
-import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
+import at.jku.isse.ecco.tree.Node;
 
 public class TextFileLineImporter implements LineImporter {
 	
 	private Map<MemArtifact<PluginArtifactData>, List<MemArtifact<LineArtifactData>>> map = new HashMap<>();
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public void importLine(String line, MemNode actualPluginNode, PartialOrderGraph.Op pog) {
+	public void importLine(String line, Node.Op actualPluginNode) {
 		MemArtifact<LineArtifactData> lineArtifact = new MemArtifact<LineArtifactData>(new LineArtifactData(line));
 		List<MemArtifact<LineArtifactData>> list = map.get(actualPluginNode.getArtifact());
 		if(list == null) {
 			list = new ArrayList<>();
-			map.put((MemArtifact<PluginArtifactData>) actualPluginNode.getArtifact(), list);
+			map.put((MemArtifact<PluginArtifactData>) actualPluginNode.getArtifact(), list); //safe cast
 		}		
 		list.add(lineArtifact);
 		MemNode node = new MemNode(lineArtifact);
@@ -31,7 +30,7 @@ public class TextFileLineImporter implements LineImporter {
 		lineArtifact.setContainingNode(node);
 		actualPluginNode.addChild(node);
 		
-		pog.merge(list);
+		actualPluginNode.getArtifact().getSequenceGraph().merge(list);
 	}
 	
 	

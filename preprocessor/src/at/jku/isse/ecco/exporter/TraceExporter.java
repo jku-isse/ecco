@@ -60,7 +60,7 @@ public class TraceExporter {
 					Artifact<?> artifact = node.getArtifact();
 					if (artifact != null) {
 						PluginArtifactData pad = (PluginArtifactData) artifact.getData();
-						if (pad.getFileName().toString().endsWith(".txt")) { //TODO support other file types
+						if (pad.getFileName().toString().endsWith(".txt")) {
 							if (processedFiles.add(pad.getPath())) {
 								if (artifact.isSequenced()) {
 									Path file = toPath.resolve(pad.getPath());

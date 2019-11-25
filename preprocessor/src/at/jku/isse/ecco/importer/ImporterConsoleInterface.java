@@ -31,7 +31,8 @@ public class ImporterConsoleInterface {
 			else service.init();
 			service.transactionStrategy.begin(TRANSACTION.READ_WRITE);
 			Op repository = service.getRepository();
-			TraceImporter.importFolder(repository, fromPath, repPath, ".txt", new TextFileLineImporter());
+			new TraceImporterV2(repository, fromPath, repPath, ".txt", new TextFileLineImporter()).importFolder();
+			//TraceImporter.importFolder(repository, fromPath, repPath, ".txt", new TextFileLineImporter());
 			service.repositoryDao.store(repository);
 			service.transactionStrategy.end();
 			service.commit();

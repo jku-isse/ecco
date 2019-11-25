@@ -1,8 +1,7 @@
 package at.jku.isse.ecco.importer;
 
-import at.jku.isse.ecco.pog.PartialOrderGraph;
-import at.jku.isse.ecco.storage.mem.tree.MemNode;
+import at.jku.isse.ecco.tree.Node;
 
 public interface LineImporter {
-	public void importLine(String line, MemNode actualPluginNode, PartialOrderGraph.Op pog);
+	public void importLine(String line, Node.Op actualPluginNode);
 }
