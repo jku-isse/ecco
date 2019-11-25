@@ -13,7 +13,7 @@ public class ImporterConsoleInterface {
 
 	public static void main(String[] args) {
 		if (args.length == 1 && args[0].equals("-h")) {
-			System.out.println("Help"); //TODO Help message
+			System.out.println("Please enter the path of the repository as first parameter and the directory which should be imported as second parameter.");
 			return;
 		}
 		if (args.length != 2) {
