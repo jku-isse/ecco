@@ -9,8 +9,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
 
@@ -70,6 +72,7 @@ public class TraceImporter {
 		Path relPath = fromPath.relativize(file);
 		PartialOrderGraph.Op pog = startNewBlock("(base)", relPath, repository);
 		Stack<String> actualCondition = new Stack<>();
+		int[] elseIfCounter = {0};
 
 		try {		
 			Files.lines(file)
@@ -77,16 +80,24 @@ public class TraceImporter {
 						if (line.matches("^((\\s)*" + IF + " (.)*)")) {
 							actualCondition.push(line.replaceFirst("(\\s)*" + IF + " ", ""));
 							String dnfCondition = parseCondition(actualCondition.peek());
+							System.out.println(dnfCondition);
 							startNewBlock(dnfCondition, relPath, repository);
 						} else if (line.matches("^((\\s)*" + ELSE + ")")) {
 							endBlock(relPath);
 							String dnfCondition = parseCondition("!(" + actualCondition.peek() + ")");
 							startNewBlock(dnfCondition, relPath, repository);
 						} else if (line.matches("^((\\s)*" + ENDIF + ")")) {
-							actualCondition.pop();
-							endBlock(relPath);
+							if(elseIfCounter[0] > 0) {
+								lineImporter.importLine(line, actualPluginNode);
+							} else {
+								actualCondition.pop();
+								endBlock(relPath);
+							}
 						} else {
-							lineImporter.importLine(line, actualPluginNode, pog);
+							if(line.matches("^((\\s)*#ifdef (.)*)") || line.matches("^((\\s)*#ifndef (.)*)")) {
+								elseIfCounter[0]++; 
+							}
+							lineImporter.importLine(line, actualPluginNode);
 						}
 					});
 		} catch (IOException e) {
@@ -97,20 +108,32 @@ public class TraceImporter {
 	}
 
 	private static String parseCondition(String condition) {
+//		StringBuilder sb = new StringBuilder();
+//		for(String andPart : condition.split("&&")) {
+//			for(String orPart : andPart.split("||")) {
+//				sb.append("\"");
+//				sb.append(orPart);
+//				sb.append("\"");
+//				sb.append("||");
+//			}
+//			sb.append("&&");
+//		}
+//		condition = "\"" + condition + "\""; // TODO split 
 		if (!actualAssociations.isEmpty())
 			condition = "(" + condition + ")&&"
 					+ actualAssociations.peek().computeCondition().getPreprocessorConditionString();
 		condition = condition.replace("||", "|");
 		condition = condition.replace("&&", "&");
+		System.out.println(condition);
 		Expression<String> expr = ExprParser.parse(condition);
 		expr = RuleSet.toDNF(expr);
 		return expr.toString();
 	}
 
-	private static List<List<Feature>> addNewFeatures(String condition, Op repository) {
-		List<List<Feature>> featureLists = new ArrayList<>(2);
-		featureLists.add(new ArrayList<>());
-		featureLists.add(new ArrayList<>());
+	private static List<Set<Feature>> addNewFeatures(String condition, Op repository) {
+		List<Set<Feature>> featureLists = new ArrayList<>(2);
+		featureLists.add(new HashSet<>());
+		featureLists.add(new HashSet<>());
 		String[] features = condition.split("&");
 		Arrays.stream(features).filter(f -> f.length() > 0).forEach(f -> {
 			f = f.replaceAll("\\(|\\)| ", "");
@@ -179,17 +202,22 @@ public class TraceImporter {
 		//set plug-in artifact
 		MemNode pluginNode = getPluginNode(file, association);
 		if (pluginNode == null) {
-			if (baseAssociation == null) {
+			MemNode basePluginNode = null;
+			if(baseAssociation != null) {
+				basePluginNode = getPluginNode(file, baseAssociation);
+				if(basePluginNode != null) {
+					pluginNode = new MemNode(basePluginNode.getArtifact());
+					pluginNode.setUnique(false);
+				}
+			}
+			if (basePluginNode == null) {
 				MemArtifact<PluginArtifactData> pluginArtifact = new MemArtifact<>(
 						new PluginArtifactData(TextPlugin.class.getName(), file), true);
 				pluginNode = new MemNode(pluginArtifact);
 				pluginNode.setUnique(true);
 				pluginArtifact.setContainingNode(pluginNode);
 				pluginArtifact.setSequenceGraph(pluginArtifact.createSequenceGraph());
-			} else {
-				pluginNode = new MemNode(getPluginNode(file, baseAssociation).getArtifact());
-				pluginNode.setUnique(false);
-			}
+			} 
 			dirNode.addChild(pluginNode);
 		}
 
@@ -202,7 +230,7 @@ public class TraceImporter {
 		condition = condition.substring(1, condition.length() - 1);
 		String[] conjunctions = condition.split("\\|");
 		for (String conjunction : conjunctions) {
-			List<List<Feature>> featureLists = addNewFeatures(conjunction, repository);
+			List<Set<Feature>> featureLists = addNewFeatures(conjunction, repository);
 			MemModule module = new MemModule(featureLists.get(0).stream().toArray(Feature[]::new),
 					featureLists.get(1).stream().toArray(Feature[]::new));
 			FeatureRevision[] posFeatureRevisions = featureLists.get(0).stream().map(feature -> {

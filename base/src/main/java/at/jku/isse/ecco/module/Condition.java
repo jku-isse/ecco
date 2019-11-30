@@ -125,7 +125,7 @@ public interface Condition extends Persistable {
 	
 	public default String getPreprocessorConditionString() {
 		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
-		return modules.keySet().stream().map(Module::getPreprocessorModuleString).collect(Collectors.joining((this.getType() == TYPE.AND?" && ":" || ")));
+		return modules.keySet().stream().map(Module::getPreprocessorModuleString).collect(Collectors.joining((this.getType() == TYPE.AND ? " && " : " || ")));
 	}
 
 }

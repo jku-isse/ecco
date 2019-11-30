@@ -7,35 +7,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
-
-import com.bpodgursky.jbool_expressions.Expression;
-import com.bpodgursky.jbool_expressions.parsers.ExprParser;
-import com.bpodgursky.jbool_expressions.rules.RuleSet;
 
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.text.TextPlugin;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.repository.Repository.Op;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.core.MemAssociation;
-import at.jku.isse.ecco.storage.mem.module.MemModule;
-import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
@@ -47,7 +36,7 @@ import static at.jku.isse.ecco.PreprocessorSyntax.ENDIF;
 
 
 public class TraceImporterV2 {
-	private final Map<String, Association.Op> map = new HashMap<>();
+	private final Map<Condition, Association.Op> map = new HashMap<>();
 	private final Stack<Association> actualAssociations = new Stack<>();
 	
 	private final Repository.Op repository;
@@ -67,14 +56,17 @@ public class TraceImporterV2 {
 	}
 
 	public void importFolder() {
+		System.out.println("Start ...");
+		System.out.println("Read directory");
 		Map<Path, List<Node.Op>> fileList = createBaseAssociation();
 		fileList.forEach((file, nodeList) -> {
+			System.out.println("Import " + file);
 			importFile(file, nodeList);
 		});
 		
 		map.forEach((key, value) -> repository.addAssociation(value));
-		// map.forEach((key, value) -> System.out.println(value.computeCondition().getPreprocessorConditionString())); //TODO remove
-		System.out.println("end");
+		System.out.println(fileList.size() + " files were imported.");
+		System.out.println("End");
 	}
 
 	private Map<Path, List<Node.Op>> createBaseAssociation() {
@@ -86,8 +78,7 @@ public class TraceImporterV2 {
 		rootDirNode.setUnique(true);
 		rootDirNode.getArtifact().setContainingNode(rootDirNode);		
 		rootNode.addChild(rootDirNode);
-		setCondition("base", baseAssociation);
-		map.put("base", baseAssociation);
+		map.put(new Condition("base"), baseAssociation);
 		
 		Map<Path, List<Node.Op>> fileList = new HashMap<>();
 		try {
@@ -132,7 +123,7 @@ public class TraceImporterV2 {
 
 	private void importFile(Path file, List<Node.Op> nodeList) {
 		PartialOrderGraph.Op pog = nodeList.get(nodeList.size() - 1).getArtifact().getSequenceGraph();
-		Stack<String> actualCondition = new Stack<>();
+		Stack<Condition> actualCondition = new Stack<>();
 		Stack<Boolean> elseIfCounter = new Stack<>();
 		Node.Op[] actualPluginNode = new MemNode[1];
 		actualPluginNode[0] = nodeList.get((nodeList.size() - 1));
@@ -143,14 +134,12 @@ public class TraceImporterV2 {
 					.forEach(line -> {
 						if (line.matches("^((\\s)*" + IF + " (.)*)")) {
 							elseIfCounter.push(false);
-							actualCondition.push(line.replaceFirst("(\\s)*" + IF + " ", ""));
-							String dnfCondition = parseCondition(actualCondition.peek());
-							//System.out.println(dnfCondition);
-							actualPluginNode[0] = startNewBlock(dnfCondition, relPath, repository, nodeList);
+							actualCondition.push(new Condition(line.replaceFirst("(\\s)*" + IF + " ", ""), 
+									actualAssociations.isEmpty() ? baseAssociation : (Association) actualAssociations.peek()));
+							actualPluginNode[0] = startNewBlock(actualCondition.peek(), relPath, repository, nodeList);
 						} else if (line.matches("^((\\s)*" + ELSE + ")")) {
 							actualPluginNode[0] = endBlock(relPath);
-							String dnfCondition = parseCondition("!(" + actualCondition.peek() + ")");
-							actualPluginNode[0] = startNewBlock(dnfCondition, relPath, repository, nodeList);
+							actualPluginNode[0] = startNewBlock(actualCondition.peek().negate(), relPath, repository, nodeList);
 						} else if (line.matches("^((\\s)*" + ENDIF + ")")) {
 							if(elseIfCounter.pop()) {
 								lineImporter.importLine(line, actualPluginNode[0]);
@@ -163,7 +152,7 @@ public class TraceImporterV2 {
 								elseIfCounter.push(true); 
 							}
 							lineImporter.importLine(line, actualPluginNode[0]);
-							System.out.println(actualPluginNode[0].getContainingAssociation().computeCondition().getPreprocessorConditionString());
+							//System.out.println(actualPluginNode[0].getContainingAssociation().computeCondition().getPreprocessorConditionString());
 						}
 					});
 		} catch (IOException e) {
@@ -172,49 +161,7 @@ public class TraceImporterV2 {
 		exportPOG(pog, repPath, relPath);
 	}
 
-	private String parseCondition(String condition) {
-//		StringBuilder sb = new StringBuilder();
-//		for(String andPart : condition.split("&&")) {
-//			for(String orPart : andPart.split("||")) {
-//				sb.append("\"");
-//				sb.append(orPart);
-//				sb.append("\"");
-//				sb.append("||");
-//			}
-//			sb.append("&&");
-//		}
-//		condition = "\"" + condition + "\""; // TODO split 
-		if (!actualAssociations.isEmpty())
-			condition = "(" + condition + ")&&"
-					+ actualAssociations.peek().computeCondition().getPreprocessorConditionString();
-		else condition = "(" + condition + ")&& base"; 
-		condition = condition.replace("||", "|");
-		condition = condition.replace("&&", "&");
-		Expression<String> expr = ExprParser.parse(condition);
-		expr = RuleSet.toDNF(expr);
-		return expr.toString();
-	}
-
-	private List<Set<Feature>> addNewFeatures(String condition) {
-		List<Set<Feature>> featureLists = new ArrayList<>(2);
-		featureLists.add(new HashSet<>());
-		featureLists.add(new HashSet<>());
-		String[] features = condition.split("&");
-		Arrays.stream(features).filter(f -> f.length() > 0).forEach(f -> {
-			f = f.replaceAll("\\(|\\)| ", "");
-			if (f.startsWith("!")) {
-				f = f.substring(1);
-				Feature feature = repository.addFeature("" + f.hashCode(), f);
-				featureLists.get(1).add((feature == null ? repository.getFeature("" + f.hashCode()) : feature));
-			} else {
-				Feature feature = repository.addFeature("" + f.hashCode(), f);
-				featureLists.get(0).add((feature == null ? repository.getFeature("" + f.hashCode()) : feature));
-			}
-		});
-		return featureLists;
-	}
-
-	private Node.Op startNewBlock(String condition, Path file, Op repository, List<Node.Op> nodeList) {
+	private Node.Op startNewBlock(Condition condition, Path file, Op repository, List<Node.Op> nodeList) {
 		Association.Op association = map.get(condition);
 		Node.Op lastNode, actualNode;
 		if(association == null) {
@@ -229,7 +176,7 @@ public class TraceImporterV2 {
 			rootNode.addChild(lastNode);
 			map.put(condition, association);
 			//set condition
-			setCondition(condition, association);
+			condition.set(association, repository);
 		} else lastNode = association.getRootNode().getChildren().get(0);
 		
 		for(Node.Op node: nodeList) {
@@ -247,26 +194,6 @@ public class TraceImporterV2 {
 
 		actualAssociations.push(association);
 		return lastNode;
-	}
-
-	private void setCondition(String condition, Association.Op association) {
-		//condition = condition.substring(1, condition.length() - 1);
-		String[] conjunctions = condition.split("\\|");
-		for (String conjunction : conjunctions) {
-			List<Set<Feature>> featureLists = addNewFeatures(conjunction);
-			MemModule module = new MemModule(featureLists.get(0).stream().toArray(Feature[]::new),
-					featureLists.get(1).stream().toArray(Feature[]::new));
-			FeatureRevision[] posFeatureRevisions = featureLists.get(0).stream().map(feature -> {
-				return feature.getLatestRevision() != null ? feature.getLatestRevision()
-						: feature.addRevision(UUID.randomUUID().toString());
-			}).toArray(FeatureRevision[]::new);
-
-			module.incCount();
-			MemModuleRevision moduleRevision = module.addRevision(posFeatureRevisions,
-					featureLists.get(1).stream().toArray(Feature[]::new));
-			moduleRevision.incCount();
-			association.addObservation(moduleRevision);
-		}
 	}
 
 	private Node.Op endBlock(Path file) {
