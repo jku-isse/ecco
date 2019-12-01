@@ -10,6 +10,6 @@ public interface PreprocessorSyntax {
 	 * Use this if IF uses brackets after the condition. Empty -> no brackets.
 	 */
 	public final static String CONDITION_END = "";
-	public final static String ELSE = "#lse";
+	public final static String ELSE = "#else";
 	public final static String ENDIF = "#endif";
 }

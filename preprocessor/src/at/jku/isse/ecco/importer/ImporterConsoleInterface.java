@@ -29,12 +29,7 @@ public class ImporterConsoleInterface {
 			if(service.repositoryDirectoryExists())
 				service.open();
 			else service.init();
-			service.transactionStrategy.begin(TRANSACTION.READ_WRITE);
-			Op repository = service.getRepository();
-			new TraceImporterV2(repository, fromPath, repPath, ".txt", new TextFileLineImporter()).importFolder();
-			//TraceImporter.importFolder(repository, fromPath, repPath, ".txt", new TextFileLineImporter());
-			service.repositoryDao.store(repository);
-			service.transactionStrategy.end();
+			new TraceImporterV2(service, fromPath, repPath, ".txt", new TextFileLineImporter()).importFolder();
 			service.commit();
 			service.close();
 		} catch (EccoException e) {

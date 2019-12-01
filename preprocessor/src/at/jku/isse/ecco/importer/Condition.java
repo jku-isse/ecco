@@ -2,10 +2,8 @@ package at.jku.isse.ecco.importer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -22,40 +20,40 @@ import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
 
 public class Condition {
 	private final String conditionString;
-	private final Map<String, String> map = new HashMap<>();
+	private String origConditionString;
 
 	public Condition(String conditionString) {
 		boolean start = false;
 		int counter = 0;
-		StringBuilder var = new StringBuilder();
 		for (int i = 0; i < conditionString.length(); i++) {
 			char actual = conditionString.charAt(i);	
-			if (!start && Character.isJavaIdentifierStart(actual)) 
+			if (!start && Character.isLetterOrDigit(actual)) {
 				start = true;
+				conditionString = conditionString.substring(0, i) + "\"" + conditionString.substring(i);
+				i++;
+			}
 			else if (start && actual == '(') counter++;
 			else if (start && actual == ')') counter--;
 			
-			if (start && (counter < 0 || !Character.isJavaIdentifierPart(actual))) {
+			if (start && (counter < 0 || actual == '&' || actual == '|')) {
 				counter = 0;
 				start = false;
-				map.put(UUID.randomUUID().toString(), var.toString());
-				var = new StringBuilder();
+				conditionString = conditionString.substring(0, i) + "\"" + conditionString.substring(i);
+				i++;
 			}
-			if(start) var.append(actual);
 		}
-		String[] cS = {conditionString};
-		map.forEach((key, value) -> cS[0] = cS[0].replace(value, key));
 		
-		cS[0] = cS[0].replace("||", "|");
-		cS[0] = cS[0].replace("&&", "&");
-		System.out.println(cS[0]);
-		Expression<String> expr = ExprParser.parse(cS[0]);
+		conditionString = conditionString.replace("||", "|");
+		conditionString = conditionString.replace("&&", "&");
+		Expression<String> expr = ExprParser.parse(conditionString);
+		expr = RuleSet.simplify(expr);
 		expr = RuleSet.toDNF(expr);
 		this.conditionString = expr.toString();
 	}
 	
 	public Condition(String conditionString, Association association) {
-		this("(\"" + conditionString + "\")" + "&&(" + association.computeCondition().getPreprocessorConditionString()+")");
+		this("(" + conditionString + ")" + "&&(" + association.computeCondition().getPreprocessorConditionString()+")");
+		this.origConditionString = conditionString;
 	}
 
 	@Override
@@ -68,6 +66,7 @@ public class Condition {
 
 	@Override
 	public boolean equals(Object obj) {
+		
 		if (this == obj)
 			return true;
 		if (obj == null)
@@ -83,9 +82,8 @@ public class Condition {
 		return true;
 	}
 
-	public Condition negate() {
-		// TODO Auto-generated method stub
-		return new Condition("base");
+	public Condition negate(Association association) {
+		return new Condition("!(" + origConditionString + ")&&(" + association.computeCondition().getPreprocessorConditionString() + ")");
 	}
 	
 
@@ -113,17 +111,24 @@ public class Condition {
 		featureLists.add(new HashSet<>());
 		featureLists.add(new HashSet<>());
 		String[] features = condition.split("&");
-		Arrays.stream(features).map((f) -> map.get(f.replace(" ", ""))).filter(f -> f.length() > 0).forEach(f -> {
-			f = f.replaceAll("\\(|\\)| ", "");
-			if (f.startsWith("!")) {
-				f = f.substring(1);
-				Feature feature = repository.addFeature("" + f.hashCode(), f);
-				featureLists.get(1).add((feature == null ? repository.getFeature("" + f.hashCode()) : feature));
-			} else {
-				Feature feature = repository.addFeature("" + f.hashCode(), f);
-				featureLists.get(0).add((feature == null ? repository.getFeature("" + f.hashCode()) : feature));
-			}
-		});
+		Arrays.stream(features)
+		      .filter(f -> f.length() > 0)
+		      .forEach(f -> {
+		    	  	f = f.replaceAll("\\(|\\)| |\"", "");
+		    	  	if (f.startsWith("!")) {
+		    	  		f = f.substring(1);
+		    	  		Feature feature = repository.addFeature("" + f.hashCode(), f);
+		    	  		featureLists.get(1).add((feature == null ? repository.getFeature("" + f.hashCode()) : feature));
+		    	  	} else {
+		    	  		Feature feature = repository.addFeature("" + f.hashCode(), f);
+		    	  		featureLists.get(0).add((feature == null ? repository.getFeature("" + f.hashCode()) : feature));
+		    	  	}
+		      });
 		return featureLists;
+	}
+	
+	@Override
+	public String toString() {
+		return this.conditionString;
 	}
 }

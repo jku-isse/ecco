@@ -17,10 +17,8 @@ import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.text.LineArtifactData;
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.dao.TransactionStrategy.TRANSACTION;
 import at.jku.isse.ecco.exporter.TraceExporter;
 import at.jku.isse.ecco.importer.TraceImporterV2;
-import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.tree.Node;
@@ -48,6 +46,10 @@ public class PreprocessorBigTest {
 			if(service1.repositoryDirectoryExists())
 				service1.open();
 			else service1.init();
+			service2 = new EccoService(Paths.get(REPO2_PATH));
+			if(service2.repositoryDirectoryExists())
+				service2.open();
+			else service2.init();
 			importFiles(service1, IMPORT_FROM, REPO1_PATH);
 			TraceExporter.exportAssociations(service1.getRepository().getAssociations(), Paths.get(EXPORT_TO));
 			importFiles(service2, EXPORT_TO, REPO2_PATH);
@@ -71,15 +73,10 @@ public class PreprocessorBigTest {
 	}
 
 	@Test
-	public static void compairTest() {
+	public void compairTest() {
 		Collection<? extends Association.Op> associations1 = service1.getRepository().getAssociations();
 		Collection<? extends Association.Op> associations2 = service2.getRepository().getAssociations();
 		assertEquals(associations1.size(), associations2.size());
-		for (Association.Op association1 : associations1) {
-			assertTrue(associations2
-					.stream()
-					.anyMatch((association2) -> matchesCondition(association1.computeCondition(), association2.computeCondition())));
-		}
 		
 		for (Association.Op association1 : associations1) {
 			assertTrue(associations2
@@ -89,15 +86,13 @@ public class PreprocessorBigTest {
 	}	
 	
 	public static void importFiles(EccoService service, String importFrom, String repoPath) {
-		service.transactionStrategy.begin(TRANSACTION.READ_WRITE);
 		new TraceImporterV2(
-				service.getRepository(), 
+				service, 
 				Paths.get(importFrom), 
 				Paths.get(repoPath), 
-				".h", 
+				".txt", 
 				new TextFileLineImporter())
 		.importFolder();
-		service.transactionStrategy.end();
 		service.commit();
 	}
 	
@@ -106,15 +101,6 @@ public class PreprocessorBigTest {
 			   (a.getArtifact() == b.getArtifact() || a.getArtifact().equalsIgnoreSequenceNumber(b.getArtifact())) &&
 			   a.getChildren().size() == b.getChildren().size() &&
 			   a.getChildren().stream().allMatch((nodeA) -> b.getChildren().stream().anyMatch((nodeB) -> matchesNodes(nodeA, nodeB)));
-	}
-
-	private static boolean matchesCondition(Condition a, Condition b) {
-		if (a.getPreprocessorConditionString().equals(b.getPreprocessorConditionString()))
-			return true;
-		else {
-			// TODO better test
-			return false;
-		}
 	}
 	
 	@Test

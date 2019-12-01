@@ -14,7 +14,7 @@ import java.util.Stack;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
-
+import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.text.TextPlugin;
@@ -39,32 +39,39 @@ public class TraceImporterV2 {
 	private final Map<Condition, Association.Op> map = new HashMap<>();
 	private final Stack<Association> actualAssociations = new Stack<>();
 	
-	private final Repository.Op repository;
+	private final EccoService service;
 	private final Path fromPath;
 	private final Path repPath;
 	private final String fileExtensionRegex;
 	private final LineImporter lineImporter;
 	private Association.Op baseAssociation;
+	private final Repository.Op repository;
 	
-	public TraceImporterV2(Repository.Op repository, Path fromPath, Path repPath, String fileExtensionRegex,
+	public TraceImporterV2(EccoService service, Path fromPath, Path repPath, String fileExtensionRegex,
 			LineImporter lineImporter) {
-		this.repository = repository;
+		this.service = service;
 		this.fromPath = fromPath;
 		this.repPath = repPath;
 		this.fileExtensionRegex = fileExtensionRegex;
 		this.lineImporter = lineImporter;
+		this.repository = service.getRepository();
 	}
 
 	public void importFolder() {
 		System.out.println("Start ...");
 		System.out.println("Read directory");
 		Map<Path, List<Node.Op>> fileList = createBaseAssociation();
-		fileList.forEach((file, nodeList) -> {
-			System.out.println("Import " + file);
-			importFile(file, nodeList);
+		fileList.entrySet()
+		        .forEach((entry) -> {
+		        	System.out.println("Import " + entry.getKey());
+		        	importFile(entry.getKey(), entry.getValue());
 		});
-		
-		map.forEach((key, value) -> repository.addAssociation(value));
+		repository.addAssociation(baseAssociation);
+		service.commit();
+		map.forEach((key, value) ->  {
+			repository.addAssociation(value);
+			service.commit();
+		});
 		System.out.println(fileList.size() + " files were imported.");
 		System.out.println("End");
 	}
@@ -78,7 +85,9 @@ public class TraceImporterV2 {
 		rootDirNode.setUnique(true);
 		rootDirNode.getArtifact().setContainingNode(rootDirNode);		
 		rootNode.addChild(rootDirNode);
-		map.put(new Condition("base"), baseAssociation);
+		Condition baseCondition = new Condition("(base)");
+		baseCondition.set(baseAssociation, repository);
+		map.put(baseCondition, baseAssociation);
 		
 		Map<Path, List<Node.Op>> fileList = new HashMap<>();
 		try {
@@ -139,7 +148,7 @@ public class TraceImporterV2 {
 							actualPluginNode[0] = startNewBlock(actualCondition.peek(), relPath, repository, nodeList);
 						} else if (line.matches("^((\\s)*" + ELSE + ")")) {
 							actualPluginNode[0] = endBlock(relPath);
-							actualPluginNode[0] = startNewBlock(actualCondition.peek().negate(), relPath, repository, nodeList);
+							actualPluginNode[0] = startNewBlock(actualCondition.peek().negate(actualAssociations.peek()), relPath, repository, nodeList);
 						} else if (line.matches("^((\\s)*" + ENDIF + ")")) {
 							if(elseIfCounter.pop()) {
 								lineImporter.importLine(line, actualPluginNode[0]);
@@ -152,19 +161,19 @@ public class TraceImporterV2 {
 								elseIfCounter.push(true); 
 							}
 							lineImporter.importLine(line, actualPluginNode[0]);
-							//System.out.println(actualPluginNode[0].getContainingAssociation().computeCondition().getPreprocessorConditionString());
 						}
 					});
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		actualAssociations.clear();
 		exportPOG(pog, repPath, relPath);
 	}
 
 	private Node.Op startNewBlock(Condition condition, Path file, Op repository, List<Node.Op> nodeList) {
-		Association.Op association = map.get(condition);
+		Association.Op association;
 		Node.Op lastNode, actualNode;
-		if(association == null) {
+		if(!map.containsKey(condition)) {
 			association = new MemAssociation();
 			association.setId(UUID.randomUUID().toString());
 			MemRootNode rootNode = new MemRootNode();
@@ -177,7 +186,10 @@ public class TraceImporterV2 {
 			map.put(condition, association);
 			//set condition
 			condition.set(association, repository);
-		} else lastNode = association.getRootNode().getChildren().get(0);
+		} else {
+			association = map.get(condition);
+			lastNode = association.getRootNode().getChildren().get(0);		
+		}
 		
 		for(Node.Op node: nodeList) {
 			actualNode = lastNode.getChildren().stream()
@@ -187,8 +199,8 @@ public class TraceImporterV2 {
 			if(actualNode == null) {
 				actualNode = new MemNode(node.getArtifact());
 				actualNode.setUnique(false);
+				lastNode.addChild(actualNode);
 			}
-			lastNode.addChild(actualNode);
 			lastNode = actualNode;
 		}
 
