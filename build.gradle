@@ -1,5 +1,5 @@
 plugins {
-	id 'nebula.ospackage' version '6.2.1'
+	id 'nebula.ospackage' version '8.0.3'
 }
 
 allprojects {
@@ -21,8 +21,8 @@ subprojects {
 	apply plugin: 'maven-publish'
 	apply plugin: 'nebula.ospackage'
 
-	sourceCompatibility = JavaVersion.VERSION_1_8
-	targetCompatibility = JavaVersion.VERSION_1_8
+	sourceCompatibility = JavaVersion.VERSION_13
+	targetCompatibility = JavaVersion.VERSION_13
 
 	repositories {
 		mavenCentral()
@@ -199,7 +199,7 @@ subprojects {
 
 	task linuxZip(type: Zip, group: 'packaging') {
 		archiveClassifier = 'linux'
-		into(archiveName - ('.' + extension)) {
+		into(archiveName - ('.' + archiveExtension)) {
 			from project.jar
 			from project.configurations.runtimeClasspath
 		}
@@ -207,7 +207,7 @@ subprojects {
 
 	task windowsZip(type: Zip, group: 'packaging') {
 		archiveClassifier = 'windows'
-		into(archiveName - ('.' + extension)) {
+		into(archiveName - ('.' + archiveExtension)) {
 			from project.jar
 			from project.configurations.runtimeClasspath
 		}

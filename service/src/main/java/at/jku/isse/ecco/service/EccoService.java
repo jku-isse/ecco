@@ -27,6 +27,7 @@ import at.jku.isse.ecco.storage.StoragePlugin;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
+import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 

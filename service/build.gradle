@@ -13,7 +13,7 @@ dependencies {
 
 	api project(':ecco-base')
 
-	testRuntime project(':ecco-adapter-file')
-	testRuntime project(':ecco-adapter-text')
-	testRuntime project(':ecco-adapter-image')
+	testRuntimeOnly project(':ecco-adapter-file')
+	testRuntimeOnly project(':ecco-adapter-text')
+	testRuntimeOnly project(':ecco-adapter-image')
 }

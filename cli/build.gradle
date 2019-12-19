@@ -14,9 +14,9 @@ dependencies {
 
 	implementation project(':ecco-service')
 
-	testRuntime project(':ecco-adapter-file')
-	testRuntime project(':ecco-adapter-text')
-	testRuntime project(':ecco-adapter-image')
+	testRuntimeOnly project(':ecco-adapter-file')
+	testRuntimeOnly project(':ecco-adapter-text')
+	testRuntimeOnly project(':ecco-adapter-image')
 }
 
 ospackage {
@@ -37,7 +37,7 @@ ospackage {
 }
 
 linuxZip {
-	into(archiveName - ('.' + extension)) {
+	into(archiveName - ('.' + archiveExtension)) {
 		from 'ecco'
 	}
 }
@@ -48,7 +48,7 @@ sourcesZip {
 }
 
 windowsZip {
-	into(archiveName - ('.' + extension)) {
+	into(archiveName - ('.' + archiveExtension)) {
 		from 'ecco.bat'
 	}
 }
