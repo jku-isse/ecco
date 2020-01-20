@@ -786,7 +786,7 @@ public interface Repository extends Persistable {
 								}
 
 								// add module revision as observations to new association
-								newModuleRevisions.add(moduleRevision);
+								newModuleRevisions.add(newModuleRevision);
 							}
 						}
 					}
