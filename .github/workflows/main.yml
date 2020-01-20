@@ -23,5 +23,4 @@ jobs:
           GITHUB_TOKEN: ${{github.token}}
           GITHUB_PACKAGES_URL: https://maven.pkg.github.com/${{github.repository}}
         run: |
-          ./gradlew publishEccoMavenPublicationToGitHubPackagesRepository
-
+          ./gradlew -Pversion=${{github.ref}} publishEccoMavenPublicationToGitHubPackagesRepository
