@@ -13,9 +13,9 @@ jobs:
         with:
           java-version: 13
       - run: |
-        ./gradlew build
-        ./gradlew combinedjavadoc
-        ./gradlew combinedWindowsZip
-        ./gradlew combinedLinuxZip
-        ./gradlew combinedrpm
-        ./gradlew combineddeb
+          ./gradlew build
+          ./gradlew combinedjavadoc
+          ./gradlew combinedWindowsZip
+          ./gradlew combinedLinuxZip
+          ./gradlew combinedrpm
+          ./gradlew combineddeb
