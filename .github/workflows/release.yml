@@ -1,6 +1,6 @@
 name: main
 
-on: [push, release]
+on: [release]
 
 jobs:
   build:
@@ -40,3 +40,11 @@ jobs:
         with:
           name: deb
           path: build/distributions/deb
+      - uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{github.token}}
+        with:
+          upload_url: ${{github.event.upload_url}}
+          asset_path: build/docs/javadoc
+          asset_name: javadoc.zip
+          asset_content_type: application/zip
