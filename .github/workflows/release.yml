@@ -43,6 +43,8 @@ jobs:
         with:
           name: deb
           path: build/distributions/deb
+      - run: |
+          zip -r javadoc.zip build/docs/javadoc
       - uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{github.token}}
