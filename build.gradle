@@ -124,16 +124,6 @@ subprojects {
 		}
 		repositories {
 			maven {
-				name 'ECCO'
-				description 'ECCO Maven repository.'
-				url "$buildDir/maven2"
-			}
-			maven {
-				name 'RootECCO'
-				description 'Root ECCO Maven repository.'
-				url "$rootProject.buildDir/maven2"
-			}
-			maven {
 				name = "GitHubPackages"
 				url = System.getenv("GITHUB_PACKAGES_URL")
 				credentials {
@@ -249,14 +239,14 @@ task combinedjavadoc(type: Javadoc, group: "documentation") {
 
 task combinedrpm(type: Copy, group: 'packaging') {
 	dependsOn subprojects.rpm
-	into "$buildDir/distributions/rpm"
+	into "$project.distsDir/rpm"
 	//from project.subprojects.collect { it.rpm.archivePath }
 	from subprojects.rpm.archivePath
 }
 
 task combineddeb(type: Copy, group: 'packaging') {
 	dependsOn subprojects.deb
-	into "$buildDir/distributions/deb"
+	into "$project.distsDir/deb"
 	//from project.subprojects.collect { it.deb.archivePath }
 	from subprojects.deb.archivePath
 }
@@ -264,6 +254,7 @@ task combineddeb(type: Copy, group: 'packaging') {
 task combinedLinuxZip(type: Zip, group: 'packaging') {
 	into project.name
 	archiveClassifier = 'linux'
+	destinationDirectory = file("$project.distsDir/zip")
 	from { subprojects.linuxZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
@@ -271,8 +262,7 @@ task combinedLinuxZip(type: Zip, group: 'packaging') {
 task combinedWindowsZip(type: Zip, group: 'packaging') {
 	into project.name
 	archiveClassifier = 'windows'
-	//from { subprojects.jar }
-	//from { subprojects.configurations.runtime }
+	destinationDirectory = file("$project.distsDir/zip")
 	from { subprojects.windowsZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
