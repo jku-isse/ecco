@@ -47,7 +47,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{github.token}}
         with:
-          upload_url: ${{github.event.upload_url}}
+          upload_url: ${{github.event.release.upload_url}}
           asset_path: build/docs/javadoc
           asset_name: javadoc.zip
           asset_content_type: application/zip
