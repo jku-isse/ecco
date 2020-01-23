@@ -266,35 +266,3 @@ task combinedWindowsZip(type: Zip, group: 'packaging') {
 	from { subprojects.windowsZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
-
-
-task html(type: Copy, dependsOn: [combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
-	from "."
-	into "$buildDir"
-	include "index.html.template"
-	rename { file -> 'downloads.html' }
-	expand(project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.deb').files.name }.flatten())
-}
-
-
-task page_static(type: Copy) {
-	from("page") {
-		include "**/*"
-		exclude "*.html"
-	}
-	into "$buildDir/page"
-}
-
-def _include = { String filename, binding ->
-	def engine = new groovy.text.SimpleTemplateEngine()
-	def template = engine.createTemplate(new File("page", filename).getText())
-	return template.make(binding).toString();
-}
-
-task page(type: Copy, dependsOn: [page_static, combinedrpm, combineddeb, combinedLinuxZip, combinedWindowsZip]) {
-	from("page") {
-		include "**/index.html"
-	}
-	into "$buildDir/page"
-	expand(include: _include, baseUrl: "/ecco/", project: project, windowsZip: combinedWindowsZip.outputs.files[0].name, linuxZip: combinedLinuxZip.outputs.files[0].name, rpms: combinedrpm.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.rpm').files.name }.flatten(), debs: combineddeb.outputs.files.filter { file -> file.isDirectory() }.collect { dir -> fileTree(dir: dir, include: '*.deb').files.name }.flatten())
-}
