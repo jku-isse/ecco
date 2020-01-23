@@ -2,13 +2,13 @@ docs_list_title: ECCO
 docs:
 
 - title: About
-  url: index.html
+  url: /
 
 - title: Publications
-  url: publications/index.html
+  url: /publications/
 
 - title: Showcase
-  url: showcase/index.html
+  url: /showcase/
 
 - title: Tool
-  url: tool/index.html
+  url: /tool/

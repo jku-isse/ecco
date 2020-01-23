@@ -47,7 +47,7 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     {% for item in site.data.pages.docs %}
-                    <li class="{% if item.url == page.url %}active{% endif %}"><a href="{{ item.url }}">{{ item.title }}</a></li>
+                    <li class="{% if item.url == page.url %}active{% endif %}"><a href="{{site.baseurl}}{{ item.url }}">{{ item.title }}</a></li>
                     {% endfor %}
                     <!--<li class="{% if page.active == 'news' %}active{% endif %}"><a href="{{site.baseurl}}">News</a></li>
                     <li class="{% if page.active == 'about' %}active{% endif %}"><a href="{{site.baseurl}}">About</a></li>
