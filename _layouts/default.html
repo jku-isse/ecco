@@ -41,16 +41,19 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="{{site.baseurl}}">ECCO</a>
+                <a class="navbar-brand" href="{{site.baseurl}}">{{ site.data.samplelist.docs_list_title }}</a>
             </div>
 
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
-                    <!--<li class="{% if page.active == 'news' %}active{% endif %}"><a href="{{site.baseurl}}">News</a></li>-->
+                    {% for item in site.data.samplelist.docs %}
+                    <li class="{% if item.url == page.url %}active{% endif %}"><a href="{{ item.url }}">{{ item.title }}</a></li>
+                    {% endfor %}
+                    <!--<li class="{% if page.active == 'news' %}active{% endif %}"><a href="{{site.baseurl}}">News</a></li>
                     <li class="{% if page.active == 'about' %}active{% endif %}"><a href="{{site.baseurl}}">About</a></li>
                     <li class="{% if page.active == 'publications' %}active{% endif %}"><a href="{{site.baseurl}}publications">Publications</a></li>
                     <li class="{% if page.active == 'showcase' %}active{% endif %}"><a href="{{site.baseurl}}showcase">Showcase</a></li>
-                    <li class="{% if page.active == 'tool' %}active{% endif %}"><a href="{{site.baseurl}}tool">Tool</a></li>
+                    <li class="{% if page.active == 'tool' %}active{% endif %}"><a href="{{site.baseurl}}tool">Tool</a></li>-->
                 </ul>
             </div>
 

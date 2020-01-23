@@ -1,28 +1,32 @@
 ---
 layout: default
-title: News
-permalink: /news/
-active: news
+title: About
+permalink: /
+active: about
 ---
 
 
 
-<div id="news" class="container">
+<div class="container">
 
-	<!--<h1>News</h1>-->
+	<!--<h1>About</h1>-->
+	<h3>About</h3>
 
-	{% for post in site.posts %}
-	<h3>{{ post.title }}</h3>
-	<p>{{ post.content }}</p>
-	<div>
-		<span class="badge">{{ post.date }}</span>
-		<div class="pull-right">
-			{% for tag in post.tags %}
-			<span class="label label-default">{{ tag }}</span>
-			{% endfor %}
-		</div>
-	</div>
-	<hr>
-	{% endfor %}
+	<p>
+	ECCO is a feature-oriented and distributed configuration management and version control system. It makes features, artifacts, traces and variants to first class citizens.
+	</p>
+
+	<p>Slides: <a href="{{site.baseurl}}ecco_slides.pdf">ecco_slides.pdf</a></p>
+	
+	<p>
+	ECCO has many use cases:
+
+	<ul>
+	<li>Consolidating a set of individual variants into a common platform representation. For example, reverse engineering a set of individual variants into a Software Product Line (SPL) <a href="{{site.baseurl}}publications#splc13">[SPLC'13]</a><a href="{{site.baseurl}}publications#sosym16">[SoSyM'16]</a>.</li>
+	<li>Supporting ad hoc development of variants (clone and own) as well as their subsequent maintenance <a href="{{site.baseurl}}publications#icsme14_2">[ICSME'14]</a>.</li>
+	<li>Supporting the evolution of a set of variants and their individual features <a href="{{site.baseurl}}publications#sst15">[SST'15]</a>.</li>
+	<li>Replacing existing revision control systems (SVN, Git, etc.) <a href="{{site.baseurl}}publications#icse16">[ICSE'16]</a>.</li>
+	</ul>
+	</p>
 
 </div>

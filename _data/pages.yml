@@ -1,0 +1,14 @@
+docs_list_title: ECCO
+docs:
+
+- title: About
+  url: index.html
+
+- title: Publications
+  url: publications/index.html
+
+- title: Showcase
+  url: showcase/index.html
+
+- title: Tool
+  url: tool/index.html
