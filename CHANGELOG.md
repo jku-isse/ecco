@@ -2,6 +2,15 @@
 # ECCO CHANGELOG
 
 
+## 0.1.9
+  * upgrade to Java 13
+  * upgrade to Gradle 6
+  * added GitHub workflows
+
+
+## 0.1.8
+
+
 ## 0.1.7
   * major refactoring and cleanup
   * reimplementation of presence condition computation
