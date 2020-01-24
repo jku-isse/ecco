@@ -1,10 +1,8 @@
-
 ecco.adapter = true
 
 dependencies {
-	//compile 'com.github.javaparser:javaparser-core:3.14.1'
-	compile 'com.github.javaparser:javaparser-symbol-solver-core:3.5.15'
+	//implementation 'com.github.javaparser:javaparser-core:3.14.1'
+	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.5.15'
 
-	compile project(':ecco-base')
-	compile project(':ecco-service')
+	implementation project(':ecco-service')
 }

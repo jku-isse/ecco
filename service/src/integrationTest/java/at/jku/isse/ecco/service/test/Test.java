@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy;
 import at.jku.isse.ecco.tree.RootNode;

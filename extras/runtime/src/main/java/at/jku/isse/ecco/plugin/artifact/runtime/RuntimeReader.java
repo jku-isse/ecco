@@ -3,7 +3,7 @@ package at.jku.isse.ecco.plugin.artifact.runtime;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.DispatchReader;

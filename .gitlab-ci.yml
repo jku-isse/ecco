@@ -37,6 +37,8 @@ build:fedora:
     - ./gradlew combineddeb
     - ./gradlew html
     - ./gradlew page
+    - mkdir $ZIP_DIR/
+    - cp $DISTRIBUTION_DIR/*.zip $ZIP_DIR/
     - createrepo_c $RPM_DIR
     - ls -la $RPM_DIR/.
   only:
@@ -46,7 +48,12 @@ build:fedora:
   allow_failure: false
   artifacts:
     paths:
+      - $JAVADOC_DIR
+      - $MAVEN_DIR
+      - $ZIP_DIR
       - $RPM_DIR
+      - $PAGE_DIR
+      - $BUILD_DIR/downloads.html
 
 
 build:ubuntu:
@@ -71,15 +78,10 @@ build:ubuntu:
     - master
     - develop
   when: on_success
-  allow_failure: false
+  allow_failure: true
   artifacts:
     paths:
-      - $JAVADOC_DIR
-      - $MAVEN_DIR
-      - $ZIP_DIR
       - $DEB_DIR
-      - $PAGE_DIR
-      - $BUILD_DIR/downloads.html
 
 
 pages:
@@ -95,7 +97,7 @@ pages:
     - cp -r $MAVEN_DIR/. public/maven2/
     - cp -r $JAVADOC_DIR/. public/doc/
     - cp -r $RPM_DIR/. public/rpm/
-    - cp -r $DEB_DIR/. public/deb/
+#    - cp -r $DEB_DIR/. public/deb/
     - cp -r $ZIP_DIR/. public/
     - cp -r $PAGE_DIR/. public/
     - cp $BUILD_DIR/downloads.html public/
@@ -109,7 +111,7 @@ pages:
   allow_failure: false
   dependencies:
     - build:fedora
-    - build:ubuntu
+#    - build:ubuntu
   artifacts:
     paths:
       - public/

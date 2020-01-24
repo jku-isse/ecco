@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.cli;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
@@ -9,7 +9,7 @@ import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.util.Trees;
 
 import java.nio.file.InvalidPathException;

@@ -1,13 +1,13 @@
 package at.jku.isse.ecco.gui.view.graph;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.listener.EccoListener;
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;
 import javafx.scene.control.*;

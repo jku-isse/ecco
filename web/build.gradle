@@ -1,11 +1,10 @@
-
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.web.server.EccoWebServer"
-applicationDefaultJvmArgs = ["-ea", "-Xss1024m", "-Xmx8g"]
+applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 
 task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 	main = "at.jku.isse.ecco.web.server.EccoWebServer"
-	jvmArgs += ["-ea", "-Xss1024m", "-Xmx8g"]
+	jvmArgs += ["-Xss1024m", "-Xmx8g"]
 	classpath = sourceSets.test.runtimeClasspath
 }
 
@@ -15,27 +14,25 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 //apply plugin: 'jetty'
 
 dependencies {
-	compile 'org.slf4j:slf4j-api:1.7.25'
+	implementation 'org.slf4j:slf4j-api:1.7.25'
 
-	compile 'org.glassfish.grizzly:grizzly-framework:2.3.24'
-	compile 'org.glassfish.grizzly:grizzly-http:2.3.24'
-	compile 'org.glassfish.grizzly:grizzly-http-servlet:2.3.24'
-	compile 'org.glassfish.grizzly:grizzly-http-server:2.3.24'
+	implementation 'org.glassfish.grizzly:grizzly-framework:2.3.24'
+	implementation 'org.glassfish.grizzly:grizzly-http:2.3.24'
+	implementation 'org.glassfish.grizzly:grizzly-http-servlet:2.3.24'
+	implementation 'org.glassfish.grizzly:grizzly-http-server:2.3.24'
 
-	compile 'org.glassfish.jersey.core:jersey-server:2.22.2'
-	compile 'org.glassfish.jersey.containers:jersey-container-servlet:2.22.2'
-	compile 'org.glassfish.jersey.containers:jersey-container-grizzly2-http:2.22.2'
-	compile 'org.glassfish.jersey.media:jersey-media-json-jackson:2.22.2'
+	implementation 'org.glassfish.jersey.core:jersey-server:2.22.2'
+	implementation 'org.glassfish.jersey.containers:jersey-container-servlet:2.22.2'
+	implementation 'org.glassfish.jersey.containers:jersey-container-grizzly2-http:2.22.2'
+	implementation 'org.glassfish.jersey.media:jersey-media-json-jackson:2.22.2'
 
-	compile 'javax.servlet:javax.servlet-api:3.1.0'
+	implementation 'javax.servlet:javax.servlet-api:3.1.0'
 
-	compile project(':ecco-base')
-	compile project(':ecco-service')
+	implementation project(':ecco-service')
 
-	testRuntime project(':ecco-adapter-file')
-	testRuntime project(':ecco-adapter-text')
-	testRuntime project(':ecco-adapter-image')
-	testRuntime project(':ecco-adapter-java')
+	testRuntimeOnly project(':ecco-adapter-file')
+	testRuntimeOnly project(':ecco-adapter-text')
+	testRuntimeOnly project(':ecco-adapter-image')
 }
 
 //sourceSets {

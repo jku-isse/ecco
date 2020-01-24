@@ -12,7 +12,7 @@ import at.jku.isse.ecco.genericAdapter.grammarInferencer.facade.ParameterSetting
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.main.GrammarInferencerMain;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.parserGenerator.AntlrParserWrapperServiceImpl;
 import at.jku.isse.ecco.genericAdapter.grammarInferencer.tokenization.AmbiguousTokenDefinitionsException;
-import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.plugin.artifact.ArtifactReader;
 import at.jku.isse.ecco.plugin.artifact.GenericAdapterPlugin;
 import at.jku.isse.ecco.plugin.artifact.PluginArtifactData;

@@ -4,10 +4,10 @@
 Get the code: `git clone` or download zip file into `<working_dir>`.
 
 Requires:
-* JDK 8
+* JDK 13
 * [Gradle](http://gradle.org/ "Gradle") as build system.
 
-Run `gradle tasks` in `<working_dir>` for a list of tasks to execute.
+Run `gradle tasks` in `<working_dir>` for a list of supported tasks.
 
 Examples:
 * `gradle eclipse` builds eclipse projects.

@@ -382,6 +382,12 @@ public interface Repository extends Persistable {
 			// create configuration with repo feature revisions
 			Configuration repoConfiguration = this.getEntityFactory().createConfiguration(repoFeatureRevisions.toArray(new FeatureRevision[0]));
 
+			// set visibility of associations in repository
+			for (Association.Op association : this.getAssociations()) {
+				association.setVisible(association.computeCertainCondition().holds(repoConfiguration));
+				//association.setVisible(true);
+			}
+
 			// add configuration modules and module revisions
 			Collection<ModuleRevision> moduleRevisions = this.addConfigurationModules(repoConfiguration);
 
@@ -544,7 +550,7 @@ public interface Repository extends Persistable {
 			return checkout;
 		}
 
-		public default Checkout compose(Collection<Association.Op> selectedAssociations, boolean lazy) {
+		public default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {
 			Node compRootNode;
 			Collection<Artifact<?>> orderWarnings;
 			if (lazy) {
@@ -780,7 +786,7 @@ public interface Repository extends Persistable {
 								}
 
 								// add module revision as observations to new association
-								newModuleRevisions.add(moduleRevision);
+								newModuleRevisions.add(newModuleRevision);
 							}
 						}
 					}

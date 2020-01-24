@@ -1,12 +1,11 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
-import at.jku.isse.ecco.listener.EccoListener;
+import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.beans.binding.When;
 import javafx.beans.property.*;
@@ -18,10 +17,15 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.paint.Color;
+import javafx.util.Callback;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,8 +39,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 	public ArtifactsView(final EccoService service) {
 		this.service = service;
-
-		final ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
 
 
 		// toolbar
@@ -57,10 +59,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		CheckBox showBelowAtomicCheckBox = new CheckBox("Show Artifacts Below Atomic"); // TODO
 		CheckBox showBelowFilesCheckBox = new CheckBox("Show Artifacts Below File Level"); // TODO
 
-		Button markSelectedButton = new Button("Mark Selected");
-		Button splitMarkedButton = new Button("Split Marked");
-
-		toolBar.getItems().addAll(refreshButton, new Separator(), selectAllButton, unselectAllButton, checkoutSelectedButton, composeSelectedButton, new Separator(), showEmptyAssociationsCheckBox, new Separator(), useSimplifiedLabelsCheckBox, new Separator(), showBelowAtomicCheckBox, new Separator(), showBelowFilesCheckBox, new Separator(), markSelectedButton, splitMarkedButton, new Separator());
+		toolBar.getItems().addAll(refreshButton, new Separator(), selectAllButton, unselectAllButton, checkoutSelectedButton, composeSelectedButton, new Separator(), showEmptyAssociationsCheckBox, new Separator(), useSimplifiedLabelsCheckBox, new Separator(), showBelowAtomicCheckBox, new Separator(), showBelowFilesCheckBox, new Separator());
 
 
 		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
@@ -82,9 +81,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		TableColumn<AssociationInfo, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
 
+		TableColumn<AssociationInfo, Color> highlightedAssocationCol = new TableColumn<>("Highlighted");
+
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol);
+		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol, highlightedAssocationCol);
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
@@ -97,29 +98,87 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 		selectedAssocationCol.setEditable(true);
 
 
+		class ColorPickerTableCell<Inputs> extends TableCell<Inputs, Color> {
+			private ColorPicker cp;
+
+			public ColorPickerTableCell(TableColumn<Inputs, Color> column) {
+				this.getStyleClass().add("color-picker-table-cell");
+
+				this.cp = new ColorPicker();
+
+				this.cp.editableProperty().bind(column.editableProperty());
+				this.cp.disableProperty().bind(column.editableProperty().not());
+
+				this.cp.setOnShowing(event -> {
+					getTableView().edit(getTableRow().getIndex(), column);
+				});
+
+				this.cp.valueProperty().addListener((observable, oldValue, newValue) -> {
+					if (isEditing()) {
+						commitEdit(newValue);
+					}
+				});
+//				this.cp.setOnAction(event -> {
+//					if (isEditing()) {
+//						commitEdit(this.cp.getValue());
+//					}
+//				});
+//				this.cp.setOnHiding(event -> {
+//					if (isEditing()) {
+//						commitEdit(this.cp.getValue());
+//					}
+//				});
+
+				this.cp.setValue(getItem());
+
+				this.setGraphic(this.cp);
+				this.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+				this.setEditable(true);
+				this.setAlignment(Pos.CENTER);
+			}
+
+			@Override
+			protected void updateItem(Color item, boolean empty) {
+				super.updateItem(item, empty);
+//				this.cp.setVisible(!empty);
+//				this.cp.setValue(item);
+
+				setText(null);
+				if (empty) {
+					setGraphic(null);
+				} else {
+					this.cp.setValue(item);
+					this.setGraphic(this.cp);
+				}
+
+				this.setBackground(new Background(new BackgroundFill(item, null, null)));
+				//this.backgroundProperty().bind(Bindings.createObjectBinding(() -> new Background(new BackgroundFill(this.cp.getValue(), null, null)), this.cp.valueProperty()));
+			}
+		}
+
+		highlightedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("color"));
+		highlightedAssocationCol.setCellFactory(new Callback<TableColumn<AssociationInfo, Color>, TableCell<AssociationInfo, Color>>() {
+			@Override
+			public TableCell<AssociationInfo, Color> call(TableColumn<AssociationInfo, Color> param) {
+				return new ColorPickerTableCell<>(highlightedAssocationCol);
+			}
+		});
+		highlightedAssocationCol.setEditable(true);
+
+
 		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
 		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
 		associationsTable.setItems(sortedData);
 
 
-		ArtifactTreeTableView artifactTreeView = new ArtifactTreeTableView();
-
-		artifactTreeView.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
-			if (newValue != null) {
-				artifactDetailView.showTree(newValue.getValue());
-			}
-		});
-
+		ArtifactTreeView artifactTreeView = new ArtifactTreeView(service);
+		artifactTreeView.setAssociationInfo(this.associationsData);
 
 		// split panes
-		SplitPane artifactsSplitPane = new SplitPane();
-		artifactsSplitPane.setOrientation(Orientation.HORIZONTAL);
-		artifactsSplitPane.getItems().addAll(artifactTreeView, artifactDetailView);
-
 		SplitPane horizontalSplitPane = new SplitPane();
 		horizontalSplitPane.setOrientation(Orientation.VERTICAL);
-		horizontalSplitPane.getItems().addAll(associationsTable, artifactsSplitPane);
+		horizontalSplitPane.getItems().addAll(associationsTable, artifactTreeView);
 
 		this.setCenter(horizontalSplitPane);
 
@@ -269,69 +328,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 			}
 		});
 
-		markSelectedButton.setOnAction(e -> {
-			toolBar.setDisable(true);
-
-			artifactTreeView.markSelected();
-
-			toolBar.setDisable(false);
-		});
-
-//		splitMarkedButton.setOnAction(new EventHandler<ActionEvent>() {
-//			@Override
-//			public void handle(ActionEvent e) {
-//				toolBar.setDisable(true);
-//
-//				Task extractTask = new Task<Void>() {
-//					@Override
-//					public Void call() throws EccoException {
-//						service.split();
-//
-//						Platform.runLater(() -> {
-//							ArtifactsView.this.refresh();
-//						});
-//						return null;
-//					}
-//
-//					public void finished() {
-//						toolBar.setDisable(false);
-//					}
-//
-//					@Override
-//					public void succeeded() {
-//						super.succeeded();
-//						this.finished();
-//
-//						Alert alert = new Alert(Alert.AlertType.INFORMATION);
-//						alert.setTitle("Extraction Successful");
-//						alert.setHeaderText("Extraction Successful");
-//						alert.setContentText("Extraction Successful!");
-//
-//						alert.showAndWait();
-//					}
-//
-//					@Override
-//					public void cancelled() {
-//						super.cancelled();
-//					}
-//
-//					@Override
-//					public void failed() {
-//						super.failed();
-//						this.finished();
-//
-//						ExceptionAlert alert = new ExceptionAlert(this.getException());
-//						alert.setTitle("Extraction Error");
-//						alert.setHeaderText("Extraction Error");
-//
-//						alert.showAndWait();
-//					}
-//				};
-//
-//				new Thread(extractTask).start();
-//			}
-//		});
-
 
 		showEmptyAssociationsCheckBox.setSelected(false);
 		useSimplifiedLabelsCheckBox.setSelected(true);
@@ -363,12 +359,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		private BooleanProperty selected;
 
+		private ObjectProperty<Color> color;
+
 		private IntegerProperty numArtifacts;
 
 		public AssociationInfo(Association association) {
 			this.association = association;
 			this.selected = new SimpleBooleanProperty(false);
 			this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
+			this.color = new SimpleObjectProperty<Color>(Color.TRANSPARENT);
 		}
 
 		public Association getAssociation() {
@@ -385,6 +384,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 		public BooleanProperty selectedProperty() {
 			return this.selected;
+		}
+
+		public ObjectProperty<Color> colorProperty() {
+			return this.color;
 		}
 
 		public int getNumArtifacts() {

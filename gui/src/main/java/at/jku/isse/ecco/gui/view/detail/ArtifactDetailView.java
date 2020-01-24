@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import javafx.geometry.Orientation;
@@ -39,6 +39,7 @@ public class ArtifactDetailView extends BorderPane {
 
 	public void showTree(Node node) {
 		SplitPane splitPane = new SplitPane();
+		splitPane.setOrientation(Orientation.HORIZONTAL);
 		this.setCenter(splitPane);
 
 

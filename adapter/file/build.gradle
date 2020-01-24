@@ -1,9 +1,16 @@
+plugins {
+	id 'org.openjfx.javafxplugin' version '0.0.8'
+}
 
 ecco.adapter = true
 
+javafx {
+	version = "13.0.1"
+	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics', 'javafx.swing']
+}
+
 dependencies {
-	compile project(':ecco-base')
-	compile project(':ecco-service')
+	implementation project(':ecco-service')
 }
 
 ospackage {

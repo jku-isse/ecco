@@ -1,17 +1,15 @@
 package at.jku.isse.ecco.adapter.dispatch;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -20,10 +18,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path> {
 
-	protected static final Logger LOGGER = LoggerFactory.getLogger(DispatchWriter.class);
+	protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
 
 
 	@Override
@@ -82,9 +81,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
 			try {
-				if (Files.list(base).filter(path -> {
-					return !path.equals(this.repositoryDir);
-				}).findAny().isPresent()) {
+				if (Files.list(base).anyMatch(path -> !path.equals(this.repositoryDir))) {
 					throw new EccoException("Current base directory must be empty for checkout operation.");
 				}
 			} catch (IOException e) {
@@ -99,7 +96,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 
 		Properties hashes = new Properties();
 		for (Node node : input) {
-			this.writeRec(base, node, output, hashes);
+			this.writeRec(base, base, node, output, hashes);
 		}
 
 		// write hashes file into base directory
@@ -115,21 +112,21 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			this.fireWriteEvent(hashesFile, this);
 		}
 
-		return output.toArray(new Path[output.size()]);
+		return output.toArray(new Path[0]);
 	}
 
-	private void writeRec(Path base, Node node, List<Path> output, Properties hashes) {
+	private void writeRec(Path base, Path parent, Node node, List<Path> output, Properties hashes) {
 		Artifact artifact = node.getArtifact();
 		if (artifact.getData() instanceof DirectoryArtifactData) {
 			DirectoryArtifactData directoryArtifactData = (DirectoryArtifactData) artifact.getData();
-			Path path = base.resolve(directoryArtifactData.getPath());
+			Path path = parent.resolve(directoryArtifactData.getPath());
 			try {
-				if (!path.equals(base))
+				if (!path.equals(parent))
 					Files.createDirectory(path);
 				output.add(path);
 				this.fireWriteEvent(path, this);
 				for (Node child : node.getChildren()) {
-					this.writeRec(base, child, output, hashes);
+					this.writeRec(base, path, child, output, hashes);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();

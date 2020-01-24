@@ -11,8 +11,8 @@ import java.nio.file.Paths;
 public class PluginArtifactData implements ArtifactData {
 
 	private String pluginId;
-	private transient Path path = null;
-	private String pathString = null;
+	private transient Path path;
+	private String pathString;
 
 	protected PluginArtifactData() {
 		this.pluginId = null;
@@ -43,7 +43,7 @@ public class PluginArtifactData implements ArtifactData {
 
 	@Override
 	public String toString() {
-		return this.pluginId + "(" + this.getPath().toString() + ")";
+		return this.getPath().toString() + " [" + this.pluginId + "]";
 	}
 
 	@Override

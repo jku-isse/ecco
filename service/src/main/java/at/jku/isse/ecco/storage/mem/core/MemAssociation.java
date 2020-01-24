@@ -21,12 +21,16 @@ public class MemAssociation implements Association, Association.Op {
 	private AssociationCounter associationCounter;
 	private Repository.Op containingRepository;
 
+	private transient boolean visible;
+
 
 	public MemAssociation() {
 		this.id = "";
 		this.artifactTreeRoot = null;
 		this.associationCounter = new MemAssociationCounter(this);
 		this.containingRepository = null;
+
+		this.visible = true;
 	}
 
 
@@ -64,6 +68,16 @@ public class MemAssociation implements Association, Association.Op {
 	@Override
 	public Condition createCondition() {
 		return new MemCondition();
+	}
+
+	@Override
+	public boolean isVisible() {
+		return this.visible;
+	}
+
+	@Override
+	public void setVisible(boolean visible) {
+		this.visible = visible;
 	}
 
 

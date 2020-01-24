@@ -1,16 +1,17 @@
 package at.jku.isse.ecco.adapter.challenge.test;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.adapter.challenge.data.*;
-import at.jku.isse.ecco.adapter.java.data.*;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -19,32 +20,112 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.logging.*;
 import java.util.stream.Collectors;
 
 public class ChallengeTest {
 
-	private static final Path SCENARIO_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\scenarios\\ScenarioTraditionalVariants");
-	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\output\\traditional");
-	private static final Path REPO_DIR = OUTPUT_DIR.resolve("repo\\.ecco");
-	private static final Path RESULTS_DIR = OUTPUT_DIR.resolve("results");
-	private static final Path TIME_FILE = OUTPUT_DIR.resolve("time.txt");
+	// set this path to where the argouml challenge benchmark is located
+	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");
+	//private static final Path BENCHMARK_DIR = Paths.get("D:\\ArgoUMLSPLBenchmark");
 
+	// set this path to where the results should be stored
+	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\results");
+	//private static final Path OUTPUT_DIR = Paths.get("D:\\results");
+
+	/**
+	 * Creates repository and computes results and stores them in OUTPUT_DIR for every scenario in BENCHMARK_DIR.
+	 */
+	@Test(groups = {"integration", "challenge"})
+	public void Do_All_Scenarios() throws IOException {
+		// collect all scenario folders
+		List<Path> scenarioDirs = Files.list(BENCHMARK_DIR.resolve("scenarios")).filter(path -> Files.isDirectory(path)).collect(Collectors.toList());
+
+		for (Path scenarioDir : scenarioDirs) {
+			Path scenarioOutputDir = OUTPUT_DIR.resolve(scenarioDir.getFileName());
+			Files.createDirectory(scenarioOutputDir);
+			// create the repository for the scenario
+			this.createRepo(scenarioDir, scenarioOutputDir);
+			// compute the results for the scenario
+			this.computeResults(scenarioOutputDir);
+			// compute the metrics from the results
+			MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), scenarioOutputDir);
+		}
+	}
+
+
+	// set this path to a concrete scenario if you only want to run a specific one
+	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioAllVariants");
+	// set this path to where the results for a specific scenario should go
+	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("ScenarioAllVariants");
+
+	/**
+	 * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.
+	 */
 	@Test(groups = {"integration", "challenge"})
 	public void Create_Repo() throws IOException {
+		this.createRepo(SCENARIO_DIR, SCENARIO_OUTPUT_DIR);
+	}
+
+	/**
+	 * Computes results from repository stored in SCENARIO_OUTPUT_DIR and stores them in SCENARIO_OUTPUT_DIR.
+	 */
+	@Test(groups = {"integration", "challenge"})
+	public void Compute_Results() throws IOException {
+		this.computeResults(SCENARIO_OUTPUT_DIR);
+	}
+
+	@Test(groups = {"integration", "challenge"})
+	public void Compute_Metrics() {
+		MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), SCENARIO_OUTPUT_DIR);
+	}
+
+
+	@BeforeTest(alwaysRun = true)
+	public void beforeTest() {
+		System.out.println("BEFORE");
+
+		// configure logger
+		Logger logger = Logger.getLogger("at.jku.isse.ecco");
+		logger.setLevel(Level.ALL);
+		for (Handler handler : logger.getHandlers())
+			logger.removeHandler(handler);
+		ConsoleHandler handler = new ConsoleHandler();
+		handler.setLevel(Level.ALL);
+		handler.setFormatter(new SimpleFormatter());
+		logger.addHandler(handler);
+		logger.setUseParentHandlers(false);
+		logger.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
+	}
+
+	@AfterTest(alwaysRun = true)
+	public void afterTest() {
+		System.out.println("AFTER");
+	}
+
+
+	private void createRepo(Path scenarioDir, Path scenarioOutputDir) throws IOException {
 		// create new repository
 		EccoService service = new EccoService();
-		service.setRepositoryDir(REPO_DIR);
+		service.setRepositoryDir(scenarioOutputDir.resolve("repo"));
 		service.init();
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
-		Path variantsDir = SCENARIO_DIR.resolve("variants");
-		Path configsDir = SCENARIO_DIR.resolve("configs");
+		Path variantsDir = scenarioDir.resolve("variants");
+		Path configsDir = scenarioDir.resolve("configs");
 
 		List<Long> runtimes = new ArrayList<>();
 		int counter = 0;
 		Collection<Path> variantsDirs = Files.list(variantsDir).collect(Collectors.toList());
 		for (Path variantDir : variantsDirs) {
+//			// this is to avoid overheating of my laptop for large scenarios
+//			try {
+//				Thread.sleep(20000);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+
 			long before = System.currentTimeMillis();
 
 			System.out.println("COUNT: " + counter);
@@ -74,7 +155,7 @@ public class ChallengeTest {
 		service.close();
 		System.out.println("Repository closed.");
 
-		Files.write(TIME_FILE, runtimes.stream().map(Object::toString).collect(Collectors.toList()));
+		Files.write(scenarioOutputDir.resolve("time.txt"), runtimes.stream().map(Object::toString).collect(Collectors.toList()));
 	}
 
 
@@ -82,11 +163,10 @@ public class ChallengeTest {
 	private static final boolean USE_ONLY_MIN_ORDER = true;
 	private static final int MAX_ORDER = 1;
 
-	@Test(groups = {"integration", "challenge"})
-	public void Compute_Results() throws IOException {
+	private void computeResults(Path scenarioOutputDir) throws IOException {
 		// open repository
 		EccoService service = new EccoService();
-		service.setRepositoryDir(REPO_DIR);
+		service.setRepositoryDir(scenarioOutputDir.resolve("repo"));
 		service.open();
 		System.out.println("Repository opened.");
 
@@ -160,11 +240,17 @@ public class ChallengeTest {
 					else return "";
 				}).collect(Collectors.joining("_and_"));
 
-				// write to file (per association)
-				Path resultsDir = RESULTS_DIR.resolve("A" + assocCounter);
-				if (!Files.exists(resultsDir))
-					Files.createDirectory(resultsDir);
-				Files.write(resultsDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				if (filename.isEmpty())
+					continue;
+
+				// write to file (per association/trace)
+				Path resultsSplitDir = scenarioOutputDir.resolve("results_split");
+				if (!Files.exists(resultsSplitDir))
+					Files.createDirectory(resultsSplitDir);
+				Path associationDir = resultsSplitDir.resolve("A" + assocCounter);
+				if (!Files.exists(associationDir))
+					Files.createDirectory(associationDir);
+				Files.write(associationDir.resolve(filename + ".txt"), sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
 				// add lines to results
 				results.computeIfAbsent(filename, s -> new HashMap<>());
@@ -182,10 +268,10 @@ public class ChallengeTest {
 			System.out.println("---------");
 		}
 
-		// write to file (for all)
-		Path resultsAllDir = RESULTS_DIR.resolve("ALL");
-		if (!Files.exists(resultsAllDir))
-			Files.createDirectory(resultsAllDir);
+		// write to file (for all associations/traces)
+		Path resultsDir = scenarioOutputDir.resolve("results");
+		if (!Files.exists(resultsDir))
+			Files.createDirectory(resultsDir);
 		for (Map.Entry<String, Map<String, Boolean>> entry : results.entrySet()) {
 			List<String> resultLines = new ArrayList<>();
 			entry.getValue().forEach((k, v) -> {
@@ -194,7 +280,7 @@ public class ChallengeTest {
 				else
 					resultLines.add(k + " Refinement");
 			});
-			Files.write(resultsAllDir.resolve(entry.getKey() + ".txt"), resultLines, StandardOpenOption.CREATE);
+			Files.write(resultsDir.resolve(entry.getKey() + ".txt"), resultLines, StandardOpenOption.CREATE);
 		}
 
 		// close repository
@@ -224,7 +310,6 @@ public class ChallengeTest {
 
 	private void computeString(Node node, StringBuilder sb, Map<String, Boolean> lines, String currentClassName) {
 		if (node.getArtifact() != null && node.getArtifact().getData() != null) {
-			// if file (i.e. class)
 			if (node.getArtifact().getData() instanceof ClassArtifactData) {
 //				if (currentClassName != null)
 //					throw new EccoException("Encounter class within class!");
@@ -241,9 +326,7 @@ public class ChallengeTest {
 					sb.append(currentClassName + " Refinement\n");
 					lines.put(currentClassName, false);
 				}
-			}
-			// if method
-			else if (node.getArtifact().getData() instanceof MethodArtifactData) {
+			} else if (node.getArtifact().getData() instanceof MethodArtifactData) {
 //				String fullMethodString = ((MethodArtifactData) node.getArtifact().getData()).getSignature().replaceAll(" ", "");
 //				// get method name
 //                String part1 = fullMethodString.substring(0, fullMethodString.indexOf("("));
@@ -294,11 +377,12 @@ public class ChallengeTest {
 
 	@Test(groups = {"integration", "challenge"})
 	public void Analyze_Differences() throws IOException {
-		Path GT_PATH = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\groundTruth");
-		Path MY_PATH = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark\\yourResults");
+		Path GT_PATH = BENCHMARK_DIR.resolve("groundTruth");
+		//Path MY_PATH = BENCHMARK_DIR.resolve("yourResults");
+		Path MY_PATH = SCENARIO_OUTPUT_DIR.resolve("results");
 
-		Set<Path> myFiles = Files.list(MY_PATH).map(path -> path.getFileName()).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
-		Set<Path> groundTruthFiles = Files.list(GT_PATH).map(path -> path.getFileName()).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
+		Set<Path> myFiles = Files.list(MY_PATH).map(Path::getFileName).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
+		Set<Path> groundTruthFiles = Files.list(GT_PATH).map(Path::getFileName).filter(path -> path.toString().endsWith(".txt")).collect(Collectors.toSet());
 
 		Set<Path> commonFiles = new HashSet<>(groundTruthFiles);
 		commonFiles.retainAll(myFiles);
@@ -308,9 +392,9 @@ public class ChallengeTest {
 		onlyGTFiles.removeAll(myFiles);
 
 		System.out.println("ONLY MY FILES:");
-		onlyMyFiles.forEach(path -> System.out.println(path));
+		onlyMyFiles.forEach(System.out::println);
 		System.out.println("ONLY GT FILES:");
-		onlyGTFiles.forEach(path -> System.out.println(path));
+		onlyGTFiles.forEach(System.out::println);
 
 		for (Path commonFile : commonFiles) {
 			System.out.println("----------------------------------------");
@@ -332,9 +416,9 @@ public class ChallengeTest {
 			onlyGTEntries.removeAll(MyEntries);
 
 			System.out.println("ENTRIES ONLY IN MY FILE:");
-			onlyMyEntries.forEach(s -> System.out.println(s));
+			onlyMyEntries.forEach(System.out::println);
 			System.out.println("ENTRIES ONLY IN GT FILE:");
-			onlyGTEntries.forEach(s -> System.out.println(s));
+			onlyGTEntries.forEach(System.out::println);
 		}
 	}
 

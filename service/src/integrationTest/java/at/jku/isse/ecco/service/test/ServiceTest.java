@@ -1,10 +1,9 @@
 package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.feature.Feature;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -17,9 +16,9 @@ import java.util.*;
 
 public class ServiceTest {
 
-	private Path outputDir = Paths.get("reports/integrationTest/output");
+	private Path outputDir = Paths.get("C:\\Users\\user\\Desktop\\transfer\\output");
 	private Path repositoryDir = outputDir.resolve("repository");
-	private Path inputDir = Paths.get("resources/integrationTest/input");
+	private Path inputDir = Paths.get("C:\\Users\\user\\Desktop\\transfer\\input");
 
 
 	@Test(groups = {"integration", "base", "service", "init"})
@@ -108,6 +107,10 @@ public class ServiceTest {
 		//service.init();
 		//service.addRemote("origin", outputDir.resolve(Paths.get("parent_repo/.ecco")).toString());
 		//service.pull("origin");
+		System.out.println("OUTPUT0:");
+		for (Association a : service.getRepository().getAssociations()) {
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
+		}
 		service.close();
 
 		System.out.println("---");
@@ -135,6 +138,7 @@ public class ServiceTest {
 		System.out.println("OUTPUT2:");
 		for (Association a : service.getRepository().getAssociations()) {
 			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
+			a.getRootNode().print();
 		}
 		service.close();
 	}

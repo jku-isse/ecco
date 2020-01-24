@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.service.test;
 
-import at.jku.isse.ecco.EccoService;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.feature.Feature;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;

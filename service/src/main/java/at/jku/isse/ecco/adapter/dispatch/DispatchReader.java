@@ -1,12 +1,12 @@
 package at.jku.isse.ecco.adapter.dispatch;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
@@ -15,12 +15,15 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
+
+	protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
 
 	public static final Path IGNORES_FILE_NAME = Paths.get(".ignores");
 	public static final Path ADAPTERS_FILE_NAME = Paths.get(".adapters");
@@ -37,22 +40,6 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	public Map<Integer, String[]> getPrioritizedPatterns() {
 		return Collections.unmodifiableMap(this.prioritizedPatterns);
 	}
-
-//	private static final String[] typeHierarchy = new String[]{};
-//
-//	@Override
-//	public String[] getTypeHierarchy() {
-//		return typeHierarchy;
-//	}
-//
-//	@Override
-//	public boolean canRead(Path file) {
-//		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
-//			if (reader.canRead(file))
-//				return true;
-//		}
-//		return false;
-//	}
 
 
 	private final EntityFactory entityFactory;
@@ -221,6 +208,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 	public Set<Node.Op> readSpecificFiles(Path base, Path[] input) {
+		long startTime = System.currentTimeMillis();
+
 		// for every file in paths add all parent directories and parse the file using the appropriate plugin
 
 		// map of directories
@@ -232,13 +221,16 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				throw new EccoException("Path must be relative to base directory.");
 
 			// recursively check if its parents are already contained in the directory map, if not add them and link them
-			Node.Op parentNode = this.createParents(base, base.resolve(path).getParent(), directoryNodes);
+			Path parent = path.getParent();
+			if (parent == null)
+				parent = Paths.get("");
+			Node.Op parentNode = this.createParents(base, parent, directoryNodes);
 
 			// create node for file itself
 			if (Files.isDirectory(base.resolve(path))) {
 				//Path relative = base.relativize(path);
 				Path relative = path;
-				Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative));
+				Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative.getFileName()));
 				Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 				directoryNodes.put(relative, directoryNode);
 				parentNode.addChild(directoryNode);
@@ -246,7 +238,9 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				ArtifactReader<Path, Set<Node.Op>> reader = this.getReaderForFile(base, path);
 				if (reader == null)
 					throw new EccoException("No reader found for file " + path);
+				//long localStartTime = System.currentTimeMillis();
 				Set<Node.Op> nodes = reader.read(base, new Path[]{path});
+				//LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 				if (!nodes.isEmpty()) {
 					for (Node.Op node : nodes) {
 						parentNode.addChild(node);
@@ -258,23 +252,26 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		// return set of nodes containing only the node representing the base directory
 		Set<Node.Op> nodes = new HashSet<>();
 		nodes.add(directoryNodes.get(Paths.get("")));
+
+		LOGGER.info(this.getClass() + ".readSpecificFiles(): " + (System.currentTimeMillis() - startTime) + "ms");
+
 		return nodes;
 	}
 
 	private Node.Op createParents(Path base, Path path, Map<Path, Node.Op> directoryNodes) {
 		// make sure that path is a directory
-		if (!Files.isDirectory(path))
+		if (!Files.isDirectory(base.resolve(path)))
 			throw new EccoException("Expected a directory: " + path);
 
 		// check if path is already contained in directory nodes
-		Path relative = base.relativize(path);
+		Path relative = path;
 		Node.Op node = directoryNodes.get(relative);
 		if (node != null) { // if it is we are done
 			return node;
 		}
 
 		// if it is not we create and add it
-		Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative));
+		Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relative.getFileName()));
 		Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 		directoryNodes.put(relative, directoryNode);
 
@@ -303,6 +300,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 			throw new EccoException("Current base directory is not a directory but a file.");
 		}
 
+		long startTime = System.currentTimeMillis();
 
 		Set<Node.Op> nodes = new HashSet<>();
 
@@ -336,7 +334,9 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				if (filesList != null) {
 					Path[] pluginInput = filesList.toArray(new Path[0]);
 
+					long localStartTime = System.currentTimeMillis();
 					Set<Node.Op> pluginNodes = reader.read(base, pluginInput);
+					LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 					for (Node.Op pluginNode : pluginNodes) {
 						if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData))
 							throw new EccoException("Plugin must return valid plugin nodes as root nodes in order for it to be compatible with dispatchers.");
@@ -379,6 +379,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		}
 
+		LOGGER.info(this.getClass() + ".read(): " + (System.currentTimeMillis() - startTime) + "ms");
+
 		// return produced nodes
 		return nodes;
 	}
@@ -389,7 +391,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		try {
 			if (Files.isDirectory(current)) { // deal with directories
 				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
-					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent));
+					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent.getFileName()));
 					Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
 					directoryNodes.put(relativeCurrent, directoryNode);
 
@@ -430,6 +432,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 							fileList = new ArrayList<>();
 						fileList.add(relativeCurrent);
 						filesMap.put(reader, fileList);
+
 						this.fireReadEvent(relativeCurrent, reader);
 
 //						// add artifact plugin node

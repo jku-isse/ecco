@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter;
 
-import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.service.listener.ReadListener;
 
 import java.util.Map;
 
@@ -13,11 +13,6 @@ import java.util.Map;
 public interface ArtifactReader<I, O> {
 
 	public String getPluginId();
-
-
-//	public String[] getTypeHierarchy(); // this should be abstract static which java unfortunately does not support...
-//
-//	public boolean canRead(I input);
 
 
 	public Map<Integer, String[]> getPrioritizedPatterns();

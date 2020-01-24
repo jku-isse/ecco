@@ -3,11 +3,11 @@ package at.jku.isse.ecco.adapter.challenge;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.challenge.data.*;
+import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.java.data.*;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.listener.ReadListener;
+import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -15,16 +15,20 @@ import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
 import com.google.inject.Inject;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
+
+	protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
 
 	private final EntityFactory entityFactory;
 
@@ -57,10 +61,11 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return this.read(Paths.get("."), input);
 	}
 
-
 	@Override
 	public Set<Node.Op> read(Path base, Path[] input) {
 		Set<Node.Op> nodes = new HashSet<>();
+
+		long totalJavaParserTime = 0;
 
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
@@ -70,30 +75,29 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
 			nodes.add(pluginNode);
 
-			// read raw file contents
-			ArrayList<String> lines = new ArrayList<>();
-			try (BufferedReader br = new BufferedReader(new FileReader(resolvedPath.toFile()))) {
-				String line;
-				int i = 0;
-				while ((line = br.readLine()) != null) {
-					lines.add(line);
-					i++;
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-
 			try {
-				CompilationUnit cu = JavaParser.parse(resolvedPath);
+				// read raw file contents
+				String fileContent = new String(Files.readAllBytes(resolvedPath), StandardCharsets.UTF_8);
+				String[] lines = fileContent.split("\\r?\\n");
+//				List<String> lines = new ArrayList<>();
+//				try (BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(resolvedPath), StandardCharsets.UTF_8))) {
+//					String line;
+//					while ((line = br.readLine()) != null) {
+//						lines.add(line);
+//					}
+//				}
+
+				long localStartTime = System.currentTimeMillis();
+				//CompilationUnit cu = JavaParser.parse(resolvedPath);
+				CompilationUnit cu = JavaParser.parse(fileContent);
+				totalJavaParserTime += (System.currentTimeMillis() - localStartTime);
 
 				// package name
 				String packageName = "";
 				if (cu.getPackageDeclaration().isPresent())
 					packageName = cu.getPackageDeclaration().get().getName().toString();
 
-
 				for (TypeDeclaration<?> typeDeclaration : cu.getTypes()) {
-
 					// create class artifact/node
 					String className = typeDeclaration.getName().toString();
 					Artifact.Op<ClassArtifactData> classArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className));
@@ -113,17 +117,19 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 					this.addClassChildren(typeDeclaration, classNode, lines);
 				}
-
 			} catch (IOException e) {
 				e.printStackTrace();
 				throw new EccoException("Error parsing java file.", e);
 			}
 
 		}
+
+		LOGGER.fine(JavaParser.class + ".parse(): " + totalJavaParserTime + "ms");
+
 		return nodes;
 	}
 
-	public void addClassChildren(TypeDeclaration<?> typeDeclaration, Node.Op classNode, ArrayList<String> lines) {
+	private void addClassChildren(TypeDeclaration<?> typeDeclaration, Node.Op classNode, String[] lines) {
 		// create methods artifact/node
 		Artifact.Op<AbstractArtifactData> methodsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("METHODS"));
 		Node.Op methodsGroupNode = this.entityFactory.createNode(methodsGroupArtifact);
@@ -144,15 +150,15 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				classNode.addChild(nestedClassNode);
 				addClassChildren((ClassOrInterfaceDeclaration) node, nestedClassNode, lines);
 			}
-			// nested enumerations
+			// enumerations
 			else if (node instanceof EnumDeclaration) {
 				int beginLine = node.getRange().get().begin.line;
 				int endLine = node.getRange().get().end.line;
 				int i = beginLine - 1;
 				while (i <= endLine) {
-					String trimmedLine = lines.get(i).trim();
-					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}")) {
-						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+					String trimmedLine = lines[i].trim();
+					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 						enumsGroupNode.addChild(lineNode);
 					}
@@ -166,9 +172,9 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				String line;
 				int i = beginLine - 1;
 				while (i < endLine) {
-					String trimmedLine = lines.get(i).trim();
-					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}")) {
-						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+					String trimmedLine = lines[i].trim();
+					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 						fieldsGroupNode.addChild(lineNode);
 					}
@@ -178,14 +184,9 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			}
 			// constructors
 			else if (node instanceof ConstructorDeclaration) {
-				String methodSignature = ((ConstructorDeclaration) node).getName().toString() + "(";
-				for (int j = 0; j < ((ConstructorDeclaration) node).getParameters().size(); j++) {
-					if (j < ((ConstructorDeclaration) node).getParameters().size() - 1)
-						methodSignature += ((ConstructorDeclaration) node).getParameters().get(j).getType().toString() + ",";
-					else
-						methodSignature += ((ConstructorDeclaration) node).getParameters().get(j).getType().toString();
-				}
-				methodSignature += ")";
+				String methodSignature = ((ConstructorDeclaration) node).getName().toString() + "(" +
+						((ConstructorDeclaration) node).getParameters().stream().map(parameter -> parameter.getType().toString()).collect(Collectors.joining(",")) +
+						")";
 				Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
 				Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
 				methodsGroupNode.addChild(methodNode);
@@ -194,9 +195,9 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					int endLine = node.getRange().get().end.line;
 					int i = beginLine;
 					while (i < endLine - 1) {
-						String trimmedLine = lines.get(i).trim();
-						if (!trimmedLine.isEmpty() && !trimmedLine.equals("}")) {
-							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+						String trimmedLine = lines[i].trim();
+						if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 							Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 							methodNode.addChild(lineNode);
 						}
@@ -223,14 +224,9 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		// methods
 		for (MethodDeclaration methodDeclaration : typeDeclaration.getMethods()) {
-			String methodSignature = methodDeclaration.getName().toString() + "(";
-			for (int j = 0; j < methodDeclaration.getParameters().size(); j++) {
-				if (j < methodDeclaration.getParameters().size() - 1)
-					methodSignature += methodDeclaration.getParameters().get(j).getType().toString() + ",";
-				else
-					methodSignature += methodDeclaration.getParameters().get(j).getType().toString();
-			}
-			methodSignature += ")";
+			String methodSignature = methodDeclaration.getName().toString() + "(" +
+					methodDeclaration.getParameters().stream().map(parameter -> parameter.getType().toString()).collect(Collectors.joining(",")) +
+					")";
 			Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
 			Node.Op methodNode = this.entityFactory.createOrderedNode(methodArtifact);
 			methodsGroupNode.addChild(methodNode);
@@ -238,16 +234,16 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 	}
 
-	public void addMethodChildren(MethodDeclaration methodDeclaration, Node.Op methodNode, ArrayList<String> lines) {
+	private void addMethodChildren(MethodDeclaration methodDeclaration, Node.Op methodNode, String[] lines) {
 		// lines inside method
 		if (methodDeclaration.getBody().isPresent()) {
 			int beginLine = methodDeclaration.getBody().get().getRange().get().begin.line;
 			int endLine = methodDeclaration.getBody().get().getRange().get().end.line;
 			int i = beginLine;
 			while (i < endLine - 1) {
-				String trimmedLine = lines.get(i).trim();
-				if (!trimmedLine.isEmpty() && !trimmedLine.equals("}")) {
-					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines.get(i)));
+				String trimmedLine = lines[i].trim();
+				if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
 					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
 					methodNode.addChild(lineNode);
 				}

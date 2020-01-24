@@ -8,10 +8,6 @@ public class LineArtifactData implements ArtifactData {
 
 	private String line;
 
-	protected LineArtifactData() {
-		this.line = null;
-	}
-
 	public LineArtifactData(String line) {
 		this.line = line;
 	}

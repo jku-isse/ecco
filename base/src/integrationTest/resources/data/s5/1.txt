@@ -1,0 +1,17 @@
+            Object statemachine = it.next();
+            Object namespace = facade.getNamespace(statemachine);
+            if (namespace == null) {
+                namespace = facade.getContext(statemachine);
+                Model.getCoreHelper().setNamespace(statemachine, namespace);
+            ArgoDiagram diagram = null;
+            if (facade.isAActivityGraph(statemachine)) {
+                diagram = diagramFactory.createDiagram(
+                        DiagramType.Activity,
+                	namespace,
+                	statemachine);
+            } else {
+            }
+            if (diagram != null) {
+                project.addMember(diagram);
+        // ISSUE 3516 : Make sure there is at least one diagram because
+        // ArgoUML requires it for correct operation

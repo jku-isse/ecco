@@ -2,9 +2,9 @@ package at.jku.isse.ecco.adapter.file;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
-import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,7 +43,7 @@ public class FileArtifactData implements ArtifactData {
 //			hex.append(HEXES.charAt((b & 0xF0) >> 4)).append(HEXES.charAt((b & 0x0F)));
 //		}
 //		return hex.toString();
-		return new HexBinaryAdapter().marshal(raw);
+		return new BigInteger(1, raw).toString(16);
 	}
 
 	private static byte[] getData(Path path) throws IOException {

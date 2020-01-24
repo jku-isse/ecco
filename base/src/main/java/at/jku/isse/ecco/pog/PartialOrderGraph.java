@@ -74,9 +74,9 @@ public interface PartialOrderGraph extends Persistable {
 		// #############################################################################################################
 
 		/**
-		 * Creates a new partial order graph (see {@link #fromList(List)}) reflecting the given list of artifacts and aligns it to this partial order graph (see {@link #align(Op)}).
+		 * Creates a new partial order graph (see {@link #fromList(List)}) reflecting the given list of artifacts and aligns it to this partial order graph (see {@link #align(PartialOrderGraph.Op)}).
 		 *
-		 * @param artifacts
+		 * @param artifacts Sequence of artifacts to be aligned to this partial order graph.
 		 */
 		public default void align(List<? extends Artifact.Op<?>> artifacts) {
 			this.align(this.fromList(artifacts));
@@ -89,7 +89,7 @@ public interface PartialOrderGraph extends Persistable {
 		 * Matching a node costs nothing.
 		 * Skipping a node in RIGHT (other) costs 1.
 		 *
-		 * @param other
+		 * @param other Other partial order graph to be aligned to this partial order graph.
 		 */
 		public default void align(PartialOrderGraph.Op other) {
 			this.alignMemoizedBacktracking(other);
@@ -174,28 +174,17 @@ public interface PartialOrderGraph extends Persistable {
 		//private
 		class Cell {
 			public int score;
-			//public int stateBreadthDifference;
-			//public int switches;
-			//public SKIP last_skip;
-
-			//enum SKIP {LEFT, RIGHT, BOTH}
 
 			public Cell() {
 				this.score = 0;
-				//this.stateBreadthDifference = 0;
-				//this.switches = 0;
-				//this.last_skip = null;
 			}
 
 			public Cell(Cell other) {
 				this.score = other.score;
-				//this.stateBreadthDifference = other.stateBreadthDifference;
-				//this.switches = other.switches;
-				//this.last_skip = other.last_skip;
 			}
 
 			public boolean isBetterThan(Cell other) {
-				return this.score > other.score;// || this.score == other.score && this.switches < other.switches;
+				return this.score > other.score;
 			}
 		}
 
@@ -309,124 +298,6 @@ public interface PartialOrderGraph extends Persistable {
 //		}
 
 
-//		//private
-//		default Cell alignMemoizedBacktrackingSwitchesRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
-//			// check if value is already memoized
-//			Pair pair = new Pair(leftState, rightState);
-//			Cell value = matrix.get(pair);
-//			if (value == null) {
-//				// compute value
-//				if (leftState.isEnd() || rightState.isEnd()) {
-//					// if we reached the head of either of the two pogs
-//					//value = this.ZERO_CELL;
-//					value = new Cell();
-//					if (!leftState.isEnd()) {
-//						value.switches++;
-//						value.last_skip = Cell.SKIP.LEFT;
-//					}
-//					if (!rightState.isEnd()) {
-//						value.switches++;
-//						value.last_skip = Cell.SKIP.RIGHT;
-//					}
-//				} else if (leftState.isStart() && rightState.isStart()) {
-//					// if we are at the tail of both of the two pogs
-//					State newLeftState = new State(leftState);
-//					for (Node.Op node : leftState.counters.keySet())
-//						newLeftState.advance(node);
-//					State newRightState = new State(rightState);
-//					for (Node.Op node : rightState.counters.keySet())
-//						newRightState.advance(node);
-//					value = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
-//				} else {
-//					// find matches
-//					boolean matchFound = false;
-//					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-//						Node.Op rightNode = rightEntry.getKey();
-//						if (rightEntry.getValue() == rightNode.getNext().size()) {
-//							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-//								Node.Op leftNode = leftEntry.getKey();
-//								if (leftEntry.getValue() == leftNode.getNext().size()) {
-//									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
-//										State newLeftState = new State(leftState);
-//										newLeftState.advance(leftNode);
-//										State newRightState = new State(rightState);
-//										newRightState.advance(rightNode);
-//
-//										Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
-//										value = new Cell(previousValue);
-//										value.score += 1;
-//										value.last_skip = Cell.SKIP.BOTH;
-//										if (previousValue.last_skip != null && previousValue.last_skip != Cell.SKIP.BOTH)
-//											value.switches++;
-//
-//										matchFound = true;
-//										break;
-//									}
-//								}
-//							}
-//						}
-//						if (matchFound)
-//							break;
-//					}
-//
-//					// if there is not a single match recurse previous of all left and right nodes
-//					if (!matchFound) {
-//						Cell localBest = null;
-//						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-//							Node.Op leftNode = leftEntry.getKey();
-//							if (leftEntry.getValue() == leftNode.getNext().size()) {
-//								State newLeftState = new State(leftState);
-//								newLeftState.advance(leftNode);
-//
-//								Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, rightState, matrix);
-//
-//								Cell localValue;
-//								if (previousValue.last_skip != Cell.SKIP.LEFT) {
-//									localValue = new Cell(previousValue);
-//									localValue.last_skip = Cell.SKIP.LEFT;
-//									if (previousValue.last_skip != null)
-//										localValue.switches++;
-//								} else {
-//									localValue = previousValue;
-//								}
-//
-//								if (localBest == null || localValue.isBetterThan(localBest)) {
-//									localBest = localValue;
-//								}
-//							}
-//						}
-//						for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-//							Node.Op rightNode = rightEntry.getKey();
-//							if (rightEntry.getValue() == rightNode.getNext().size()) {
-//								State newRightState = new State(rightState);
-//								newRightState.advance(rightNode);
-//
-//								Cell previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
-//
-//								Cell localValue;
-//								if (previousValue.last_skip != Cell.SKIP.RIGHT) {
-//									localValue = new Cell(previousValue);
-//									localValue.last_skip = Cell.SKIP.RIGHT;
-//									if (previousValue.last_skip != null)
-//										localValue.switches++;
-//								} else {
-//									localValue = previousValue;
-//								}
-//
-//								if (localBest == null || localValue.isBetterThan(localBest)) {
-//									localBest = localValue;
-//								}
-//							}
-//						}
-//						value = localBest;
-//					}
-//				}
-//				matrix.put(pair, value);
-//			}
-//			return value;
-//		}
-
-
 		//private
 		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
 			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
@@ -476,7 +347,11 @@ public interface PartialOrderGraph extends Persistable {
 							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
 								Node.Op leftNode = leftEntry.getKey();
 								if (leftEntry.getValue() == leftNode.getNext().size()) {
-									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+									Artifact.Op leftArtifact = leftNode.getArtifact();
+									Artifact.Op rightArtifact = rightNode.getArtifact();
+//									Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
+//									if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
+									if (leftArtifact != null && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 										State newLeftState = new State(leftState);
 										newLeftState.advance(leftNode);
 										State newRightState = new State(rightState);
@@ -484,10 +359,23 @@ public interface PartialOrderGraph extends Persistable {
 
 										Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
 										value = new Cell(previousValue);
-										value.score += 1;
 
+										value.score += 1;
 										matchFound = true;
 										break;
+
+//										Association.Op leftAssociation = null;
+//										if (leftArtifact.getContainingNode() != null)
+//											leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
+//										if (leftAssociation == null || leftAssociation.isVisible()) {
+//											// if left association was visible we increase the score by 2 and do not explore skips
+//											value.score += 2;
+//											matchFound = true;
+//											break;
+//										} else {
+//											// if left association was not visible we increase the score only by 1 and also explore skips
+//											value.score += 1;
+//										}
 									}
 								}
 							}
@@ -525,7 +413,8 @@ public interface PartialOrderGraph extends Persistable {
 								}
 							}
 						}
-						value = localBest;
+						if (value == null || localBest != null && !value.isBetterThan(localBest))
+							value = localBest;
 					}
 				}
 				matrix.put(pair, value);
@@ -555,7 +444,11 @@ public interface PartialOrderGraph extends Persistable {
 						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
 							Node.Op leftNode = leftEntry.getKey();
 							if (leftEntry.getValue() == leftNode.getNext().size()) {
-								if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+								Artifact.Op leftArtifact = leftNode.getArtifact();
+								Artifact.Op rightArtifact = rightNode.getArtifact();
+//								Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
+//								if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
+								if (leftArtifact != null && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 									State newLeftState = new State(leftState);
 									newLeftState.advance(leftNode);
 									State newRightState = new State(rightState);
@@ -617,6 +510,150 @@ public interface PartialOrderGraph extends Persistable {
 				return this.backtrackingRec(bestLeftState, bestRightState, matrix);
 			}
 		}
+
+
+//		//private
+//		class CellExtended extends Cell {
+//			//public int stateBreadthDifference;
+//			public int switches;
+//			public SKIP last_skip;
+//
+//			enum SKIP {LEFT, RIGHT, BOTH}
+//
+//			public CellExtended() {
+//				super();
+//				//this.stateBreadthDifference = 0;
+//				this.switches = 0;
+//				this.last_skip = null;
+//			}
+//
+//			public CellExtended(CellExtended other) {
+//				super(other);
+//				//this.stateBreadthDifference = other.stateBreadthDifference;
+//				this.switches = other.switches;
+//				this.last_skip = other.last_skip;
+//			}
+//
+//			public boolean isBetterThan(CellExtended other) {
+//				return super.isBetterThan(other) || this.score == other.score && this.switches < other.switches;
+//			}
+//		}
+//
+//		//private
+//		default CellExtended alignMemoizedBacktrackingSwitchesRec(State leftState, State rightState, Map<Pair, CellExtended> matrix) {
+//			// check if value is already memoized
+//			Pair pair = new Pair(leftState, rightState);
+//			CellExtended value = matrix.get(pair);
+//			if (value == null) {
+//				// compute value
+//				if (leftState.isEnd() || rightState.isEnd()) {
+//					// if we reached the head of either of the two pogs
+//					value = new CellExtended();
+//					if (!leftState.isEnd()) {
+//						value.switches++;
+//						value.last_skip = CellExtended.SKIP.LEFT;
+//					}
+//					if (!rightState.isEnd()) {
+//						value.switches++;
+//						value.last_skip = CellExtended.SKIP.RIGHT;
+//					}
+//				} else if (leftState.isStart() && rightState.isStart()) {
+//					// if we are at the tail of both of the two pogs
+//					State newLeftState = new State(leftState);
+//					for (Node.Op node : leftState.counters.keySet())
+//						newLeftState.advance(node);
+//					State newRightState = new State(rightState);
+//					for (Node.Op node : rightState.counters.keySet())
+//						newRightState.advance(node);
+//					value = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, newRightState, matrix);
+//				} else {
+//					// find matches
+//					boolean matchFound = false;
+//					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//						Node.Op rightNode = rightEntry.getKey();
+//						if (rightEntry.getValue() == rightNode.getNext().size()) {
+//							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//								Node.Op leftNode = leftEntry.getKey();
+//								if (leftEntry.getValue() == leftNode.getNext().size()) {
+//									if (leftNode.getArtifact() != null && leftNode.getArtifact().getData() != null && rightNode.getArtifact() != null && leftNode.getArtifact().getData().equals(rightNode.getArtifact().getData())) {
+//										State newLeftState = new State(leftState);
+//										newLeftState.advance(leftNode);
+//										State newRightState = new State(rightState);
+//										newRightState.advance(rightNode);
+//
+//										CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, newRightState, matrix);
+//										value = new CellExtended(previousValue);
+//										value.score += 1;
+//										value.last_skip = CellExtended.SKIP.BOTH;
+//										if (previousValue.last_skip != null && previousValue.last_skip != CellExtended.SKIP.BOTH)
+//											value.switches++;
+//
+//										matchFound = true;
+//										break;
+//									}
+//								}
+//							}
+//						}
+//						if (matchFound)
+//							break;
+//					}
+//
+//					// if there is not a single match recurse previous of all left and right nodes
+//					//if (!matchFound) {
+//					CellExtended localBest = null;
+//					for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
+//						Node.Op leftNode = leftEntry.getKey();
+//						if (leftEntry.getValue() == leftNode.getNext().size()) {
+//							State newLeftState = new State(leftState);
+//							newLeftState.advance(leftNode);
+//
+//							CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(newLeftState, rightState, matrix);
+//
+//							CellExtended localValue;
+//							if (previousValue.last_skip != CellExtended.SKIP.LEFT) {
+//								localValue = new CellExtended(previousValue);
+//								localValue.last_skip = CellExtended.SKIP.LEFT;
+//								if (previousValue.last_skip != null)
+//									localValue.switches++;
+//							} else {
+//								localValue = previousValue;
+//							}
+//
+//							if (localBest == null || localValue.isBetterThan(localBest)) {
+//								localBest = localValue;
+//							}
+//						}
+//					}
+//					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
+//						Node.Op rightNode = rightEntry.getKey();
+//						if (rightEntry.getValue() == rightNode.getNext().size()) {
+//							State newRightState = new State(rightState);
+//							newRightState.advance(rightNode);
+//
+//							CellExtended previousValue = this.alignMemoizedBacktrackingSwitchesRec(leftState, newRightState, matrix);
+//
+//							CellExtended localValue;
+//							if (previousValue.last_skip != CellExtended.SKIP.RIGHT) {
+//								localValue = new CellExtended(previousValue);
+//								localValue.last_skip = CellExtended.SKIP.RIGHT;
+//								if (previousValue.last_skip != null)
+//									localValue.switches++;
+//							} else {
+//								localValue = previousValue;
+//							}
+//
+//							if (localBest == null || localValue.isBetterThan(localBest)) {
+//								localBest = localValue;
+//							}
+//						}
+//					}
+//					value = localBest;
+//					//}
+//				}
+//				matrix.put(pair, value);
+//			}
+//			return value;
+//		}
 
 
 //		//private
@@ -728,14 +765,14 @@ public interface PartialOrderGraph extends Persistable {
 		/**
 		 * Creates a new partial order graph reflecting the given list of artifacts and merges it into this partial order graph.
 		 *
-		 * @param artifacts
+		 * @param artifacts Sequence of artifacts to be merged into this partial order graph.
 		 */
 		public default void merge(List<? extends Artifact.Op<?>> artifacts) {
 			this.merge(this.fromList(artifacts));
 		}
 
 		/**
-		 * @param other
+		 * @param other Other partial order graph to be merged into this partial order graph.
 		 */
 		public default void merge(PartialOrderGraph.Op other) {
 			// align other graph to this graph
@@ -796,7 +833,7 @@ public interface PartialOrderGraph extends Persistable {
 			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
 				// find shared symbols that are in left and not in right. REMOVE those that can be reached from right node because that means that the right graph is more restrictive.
 				{
-					Iterator<Node.Op> it = left.getNext().iterator();
+					Iterator<? extends Node.Op> it = left.getNext().iterator();
 					while (it.hasNext()) {
 						Node.Op childLeft = it.next();
 						// check if left symbol is shared
@@ -906,7 +943,7 @@ public interface PartialOrderGraph extends Persistable {
 				Node.Op current = stack.pop();
 
 				// process node
-				Iterator<Node.Op> it = current.getNext().iterator();
+				Iterator<? extends Node.Op> it = current.getNext().iterator();
 				while (it.hasNext()) {
 					Node.Op child = it.next();
 
@@ -1018,7 +1055,7 @@ public interface PartialOrderGraph extends Persistable {
 		 *
 		 * @param node     The node to start from.
 		 * @param artifact The artifact to look for.
-		 * @return
+		 * @return True if artifact could be reached from node, false otherwise.
 		 */
 		//private
 		static boolean canReach(Node node, Artifact<?> artifact) {
@@ -1097,12 +1134,15 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		/**
-		 * checks if the alignments of this pog and the other pog are compatible
+		 * Checks if the alignments of this pog and the other pog are compatible.
+		 *
+		 * @param other  The other partial order graph.
+		 * @param shared A mapping of sequence numbers to nodes in this partial order graph that are shared with the other partial order graph.
 		 */
+		//private
 		default void checkAlignment(PartialOrderGraph.Op other, Map<Integer, Node.Op> shared) {
-			// TODO: try to traverse other pog until the very end. if this is not possible the alignments are not compatible.
+			// try to traverse other pog until the very end. if this is not possible the alignments are not compatible.
 			// NOTE: use NOT_MATCHED_SEQUENCE_NUMBER instead of shared. anything in other that is not NOT_MATCHED_SEQUENCE_NUMBER is shared.
-
 
 		}
 
@@ -1160,10 +1200,10 @@ public interface PartialOrderGraph extends Persistable {
 		/**
 		 * Creates a (temporary) partial order graph from a given list of artifacts.
 		 *
-		 * @param artifacts
-		 * @return
+		 * @param artifacts Sequence of artifacts from which to create a partial order graph.
+		 * @return The created partial order graph containing the provided artifacts.
 		 */
-		// private
+		//private
 		default PartialOrderGraph.Op fromList(List<? extends Artifact.Op<?>> artifacts) {
 			PartialOrderGraph.Op other = this.createPartialOrderGraph(); // create new partial order graph
 			Node.Op current = other.getHead(); // start at head
@@ -1221,8 +1261,8 @@ public interface PartialOrderGraph extends Persistable {
 			while (!stack.isEmpty()) {
 				Node.Op node = stack.pop();
 
-				if (node.getArtifact() != null && node.getArtifact().getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-					Artifact.Op<?> replacing = node.getArtifact().<Artifact.Op<?>>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
+				if (node.getArtifact() != null && node.getArtifact().hasReplacingArtifact()) {
+					Artifact.Op<?> replacing = node.getArtifact().getReplacingArtifact();
 					replacing.setSequenceNumber(node.getArtifact().getSequenceNumber());
 					node.setArtifact(replacing);
 				}
@@ -1326,9 +1366,9 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		public interface Op extends Node {
-			public Collection<Node.Op> getPrevious();
+			public Collection<? extends Node.Op> getPrevious();
 
-			public Collection<Node.Op> getNext();
+			public Collection<? extends Node.Op> getNext();
 
 			@Override
 			public Artifact.Op<?> getArtifact();

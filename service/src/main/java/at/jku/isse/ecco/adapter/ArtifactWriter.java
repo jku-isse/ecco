@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter;
 
-import at.jku.isse.ecco.listener.WriteListener;
+import at.jku.isse.ecco.service.listener.WriteListener;
 
 public interface ArtifactWriter<I, O> {
 

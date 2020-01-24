@@ -1,0 +1,44 @@
+            Object statemachine = it.next();
+            Object namespace = facade.getNamespace(statemachine);
+            if (namespace == null) {
+                namespace = facade.getContext(statemachine);
+                Model.getCoreHelper().setNamespace(statemachine, namespace);
+            ArgoDiagram diagram = null;
+            //#if defined(ACTIVITYDIAGRAM)
+            //@#$LPS-ACTIVITYDIAGRAM:GranularityType:Statement
+            //@#$LPS-ACTIVITYDIAGRAM:Localization:NestedStatement
+            if (facade.isAActivityGraph(statemachine)) {
+                //#if defined(LOGGING)
+                //@#$LPS-LOGGING:GranularityType:Statement
+                //@#$LPS-LOGGING:Localization:NestedStatement
+                LOG.info("Creating activity diagram for "
+                        + facade.getUMLClassName(statemachine)
+                        + "<<" + facade.getName(statemachine) + ">>");
+                //#endif
+                diagram = diagramFactory.createDiagram(
+                        DiagramType.Activity,
+                	namespace,
+                	statemachine);
+            } else {
+            //#endif
+                //#if defined(STATEDIAGRAM)
+                    //#if defined(LOGGING)
+                    //@#$LPS-LOGGING:GranularityType:Statement
+                    //@#$LPS-LOGGING:Localization:NestedStatement
+                LOG.info("Creating state diagram for "
+                        + facade.getUMLClassName(statemachine)
+                        + "<<" + facade.getName(statemachine) + ">>");
+                    //#endif
+                //@#$LPS-STATEDIAGRAM:GranularityType:Statement
+                diagram = diagramFactory.createDiagram(
+                        DiagramType.State,
+                	namespace,
+                	statemachine);
+                //#endif
+            //#if defined(ACTIVITYDIAGRAM)
+            }
+            //#endif
+            if (diagram != null) {
+                project.addMember(diagram);
+        // ISSUE 3516 : Make sure there is at least one diagram because
+        // ArgoUML requires it for correct operation
