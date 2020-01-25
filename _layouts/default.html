@@ -6,15 +6,15 @@
     <meta charset="utf-8" />
     <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.name }}</title>
 
-    <link rel="stylesheet" href="{{site.baseurl}}css/styles.css">
+    <link rel="stylesheet" href="{{ "css/styles.css" | relative_url }}">
 
-    <link rel="stylesheet" href="{{site.baseurl}}css/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="{{site.baseurl}}css/bootstrap/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="{{ "css/bootstrap/bootstrap.min.css" | relative_url }}">
+    <link rel="stylesheet" href="{{ "css/bootstrap/bootstrap-theme.min.css" | relative_url }}">
 <!--
-    <link rel="stylesheet" href="{{site.baseurl}}css/bootstrap.darkly.min.css">
+    <link rel="stylesheet" href="{{ "css/bootstrap.darkly.min.css" | relative_url }}">
 -->
-    <script src="{{site.baseurl}}js/jquery-2.2.2.min.js"></script>
-    <script src="{{site.baseurl}}js/bootstrap/bootstrap.min.js"></script>
+    <script src="{{ "js/jquery-2.2.2.min.js" | relative_url }}"></script>
+    <script src="{{ "js/bootstrap/bootstrap.min.js" | relative_url }}"></script>
 
 <!--
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
@@ -47,13 +47,8 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     {% for item in site.data.pages.docs %}
-                    <li class="{% if item.url == page.url %}active{% endif %}"><a href="{{site.baseurl}}{{item.url}}">{{item.title}}</a></li>
+                    <li class="{% if item.url == page.url %}active{% endif %}"><a href="{{ item.url | relative_url }}">{{item.title}}</a></li>
                     {% endfor %}
-                    <!--<li class="{% if page.active == 'news' %}active{% endif %}"><a href="{{site.baseurl}}">News</a></li>
-                    <li class="{% if page.active == 'about' %}active{% endif %}"><a href="{{site.baseurl}}">About</a></li>
-                    <li class="{% if page.active == 'publications' %}active{% endif %}"><a href="{{site.baseurl}}publications">Publications</a></li>
-                    <li class="{% if page.active == 'showcase' %}active{% endif %}"><a href="{{site.baseurl}}showcase">Showcase</a></li>
-                    <li class="{% if page.active == 'tool' %}active{% endif %}"><a href="{{site.baseurl}}tool">Tool</a></li>-->
                 </ul>
             </div>
 
