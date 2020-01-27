@@ -1,22 +1,3 @@
-//include 'base',
-//		'service',
-//		'cli',
-//		'gui',
-//		'web',
-//		'storage:perst',
-//		'adapter:file',
-//		'adapter:text',
-//		'adapter:image',
-//		'adapter:java'
-//
-//rootProject.name = 'ecco'
-//
-//prefixProjectName(rootProject)
-//
-//def prefixProjectName(project) {
-//	project.children.each { it.name = project.name + '-' + it.name; prefixProjectName(it); }
-//}
-
 rootProject.name = 'ecco'
 
 include 'base'
@@ -24,8 +5,6 @@ include 'service'
 include 'cli'
 include 'gui'
 include 'web'
-
-include 'storage-jackson'
 
 include 'adapter-file'
 include 'adapter-text'
@@ -38,8 +17,6 @@ project(':service').projectDir = file('service')
 project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
-
-project(':storage-jackson').projectDir = file('storage/jackson')
 
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
