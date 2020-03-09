@@ -11,7 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
+public class JavaWriter implements ArtifactWriter<Set<Node.Op>, Path> {
 
 	@Override
 	public String getPluginId() {
@@ -19,12 +19,12 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 	}
 
 	@Override
-	public Path[] write(Set<Node> input) {
+	public Path[] write(Set<Node.Op> input) {
 		return this.write(Paths.get("."), input);
 	}
 
 	@Override
-	public Path[] write(Path base, Set<Node> input) {
+	public Path[] write(Path base, Set<Node.Op> input) {
 		List<Path> output = new ArrayList<>();
 
 		// TODO: implement!

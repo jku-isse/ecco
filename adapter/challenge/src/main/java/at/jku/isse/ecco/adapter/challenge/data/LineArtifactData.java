@@ -32,13 +32,15 @@ public class LineArtifactData implements ArtifactData {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		LineArtifactData other = (LineArtifactData) obj;
+		//if (getClass() != obj.getClass())
+		//	return false;
+		//LineArtifactData other = (LineArtifactData) obj;
 		if (line == null) {
-			if (other.line != null)
+			//if (other.line != null)
+			if (obj.toString() != null)
 				return false;
-		} else if (!line.equals(other.line))
+		//} else if (!line.equals(other.line))
+		} else if (!line.equals(obj.toString().replace("at.jku.isse.ecco.adapter.runtime.data","at.jku.isse.ecco.adapter.challenge.data")))
 			return false;
 		return true;
 	}

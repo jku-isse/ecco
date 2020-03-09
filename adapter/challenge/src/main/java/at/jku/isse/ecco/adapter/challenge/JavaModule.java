@@ -22,7 +22,7 @@ public class JavaModule extends AbstractModule {
 		final Multibinder<ArtifactWriter<Set<Node>, Path>> writerMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {
 				});
-		writerMultibinder.addBinding().to(JavaWriter.class);
+		//writerMultibinder.addBinding().to(JavaWriter.class);
 	}
 
 }

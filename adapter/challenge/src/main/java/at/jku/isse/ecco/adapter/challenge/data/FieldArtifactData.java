@@ -36,13 +36,15 @@ public class FieldArtifactData implements ArtifactData {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		FieldArtifactData other = (FieldArtifactData) obj;
+		//if (getClass() != obj.getClass())
+		//	return false;
+		//FieldArtifactData other = (FieldArtifactData) obj;
 		if (field == null) {
-			if (other.field != null)
-				return false;
-		} else if (!field.equals(other.field))
+			//if (other.field != null)
+			if (obj.toString() != null)
+			return false;
+		//} else if (!field.equals(other.field))
+		} else if (!field.equals(obj.toString().replace("at.jku.isse.ecco.adapter.runtime.data","at.jku.isse.ecco.adapter.challenge.data")))
 			return false;
 		return true;
 	}

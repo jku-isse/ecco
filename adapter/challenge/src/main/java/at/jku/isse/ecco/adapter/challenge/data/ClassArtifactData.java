@@ -36,13 +36,13 @@ public class ClassArtifactData implements ArtifactData {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		ClassArtifactData other = (ClassArtifactData) obj;
+		//if (getClass() != obj.getClass())
+		//	return false;
+		//ClassArtifactData other = (ClassArtifactData) obj;
 		if (name == null) {
-			if (other.name != null)
+			if (obj.toString() != null)
 				return false;
-		} else if (!name.equals(other.name))
+		} else if (!name.equals(obj.toString().replace("at.jku.isse.ecco.adapter.runtime.data","at.jku.isse.ecco.adapter.challenge.data")))
 			return false;
 		return true;
 	}

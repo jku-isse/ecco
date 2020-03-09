@@ -36,13 +36,15 @@ public class ImportArtifactData implements ArtifactData {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		ImportArtifactData other = (ImportArtifactData) obj;
+		//if (getClass() != obj.getClass())
+		//	return false;
+		//ImportArtifactData other = (ImportArtifactData) obj;
 		if (importName == null) {
-			if (other.importName != null)
+			//if (other.importName != null)
+			if (obj.toString() != null)
 				return false;
-		} else if (!importName.equals(other.importName))
+		} else if (!importName.equals(obj.toString().replace("at.jku.isse.ecco.adapter.runtime.data","at.jku.isse.ecco.adapter.challenge.data")))
+		//} else if (!importName.equals(other.importName))
 			return false;
 		return true;
 	}

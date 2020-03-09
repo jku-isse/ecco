@@ -36,13 +36,15 @@ public class MethodArtifactData implements ArtifactData {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		MethodArtifactData other = (MethodArtifactData) obj;
+		//if (getClass() != obj.getClass())
+		//	return false;
+		//MethodArtifactData other = (MethodArtifactData) obj;
 		if (signature == null) {
-			if (other.signature != null)
+			//if (other.signature != null)
+			if (obj.toString() != null)
 				return false;
-		} else if (!signature.equals(other.signature))
+		//} else if (!signature.equals(other.signature))
+		} else if (!signature.equals(obj.toString().replace("at.jku.isse.ecco.adapter.runtime.data","at.jku.isse.ecco.adapter.challenge.data")))
 			return false;
 		return true;
 	}

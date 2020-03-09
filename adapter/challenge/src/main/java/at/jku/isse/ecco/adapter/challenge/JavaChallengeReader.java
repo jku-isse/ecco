@@ -41,7 +41,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	@Override
 	public String getPluginId() {
-		return JavaPlugin.class.getName();
+		return "plugin";//JavaPlugin.class.getName();
 	}
 
 	private static Map<Integer, String[]> prioritizedPatterns;
@@ -60,6 +60,8 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
 	}
+
+	int count = 0;
 
 	@Override
 	public Set<Node.Op> read(Path base, Path[] input) {
@@ -89,6 +91,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 				long localStartTime = System.currentTimeMillis();
 				//CompilationUnit cu = JavaParser.parse(resolvedPath);
+				//JavaParser.getStaticConfiguration().setAttributeComments(false);
 				CompilationUnit cu = JavaParser.parse(fileContent);
 				totalJavaParserTime += (System.currentTimeMillis() - localStartTime);
 
@@ -125,8 +128,27 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 
 		LOGGER.fine(JavaParser.class + ".parse(): " + totalJavaParserTime + "ms");
+		for (Node nodeaux : nodes) {
+			//System.out.println(nodeaux);
+			//count++;
 
+			getChild(nodeaux);
+		}
+		//System.out.println(count);
 		return nodes;
+	}
+
+	public void getChild(Node node) {
+		for (Node nodeaux : node.getChildren()) {
+			if(nodeaux.toString().equals("IMPORTS") || nodeaux.toString().equals("METHODS") || nodeaux.toString().equals("ENUMS"))
+			{
+				//System.out.println(nodeaux);
+			}else {
+				count++;
+			}
+			//System.out.println(nodeaux);
+			getChild(nodeaux);
+		}
 	}
 
 	private void addClassChildren(TypeDeclaration<?> typeDeclaration, Node.Op classNode, String[] lines) {
@@ -157,9 +179,9 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				int i = beginLine - 1;
 				while (i <= endLine) {
 					String trimmedLine = lines[i].trim();
-					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{") && !trimmedLine.startsWith("*") && !trimmedLine.startsWith("/*") && !trimmedLine.startsWith("*/") && !trimmedLine.startsWith("//")) {
 						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+						Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
 						enumsGroupNode.addChild(lineNode);
 					}
 					i++;
@@ -173,9 +195,9 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				int i = beginLine - 1;
 				while (i < endLine) {
 					String trimmedLine = lines[i].trim();
-					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{") && !trimmedLine.startsWith("*") && !trimmedLine.startsWith("/*") && !trimmedLine.startsWith("*/") && !trimmedLine.startsWith("//")) {
 						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-						Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+						Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
 						fieldsGroupNode.addChild(lineNode);
 					}
 					i++;
@@ -193,12 +215,12 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				if (((ConstructorDeclaration) node).getBody().getStatements().isNonEmpty()) {
 					int beginLine = node.getRange().get().begin.line;
 					int endLine = node.getRange().get().end.line;
-					int i = beginLine;
-					while (i < endLine - 1) {
+					int i = beginLine; //because first line has the constructor declaration
+					while (i <= endLine - 1) {
 						String trimmedLine = lines[i].trim();
-						if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+						if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{") && !trimmedLine.startsWith("*") && !trimmedLine.startsWith("/*") && !trimmedLine.startsWith("*/") && !trimmedLine.startsWith("//")) {
 							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-							Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+							Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
 							methodNode.addChild(lineNode);
 						}
 						i++;
@@ -237,14 +259,15 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private void addMethodChildren(MethodDeclaration methodDeclaration, Node.Op methodNode, String[] lines) {
 		// lines inside method
 		if (methodDeclaration.getBody().isPresent()) {
+
 			int beginLine = methodDeclaration.getBody().get().getRange().get().begin.line;
 			int endLine = methodDeclaration.getBody().get().getRange().get().end.line;
 			int i = beginLine;
 			while (i < endLine - 1) {
 				String trimmedLine = lines[i].trim();
-				if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
+				if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{") && !trimmedLine.startsWith("*") && !trimmedLine.startsWith("/*") && !trimmedLine.startsWith("*/") && !trimmedLine.startsWith("//")) {
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+					Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
 					methodNode.addChild(lineNode);
 				}
 				i++;

@@ -40,13 +40,15 @@ public class BlockArtifactData implements ArtifactData {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		BlockArtifactData other = (BlockArtifactData) obj;
+		//if (getClass() != obj.getClass())
+		//	return false;
+		//BlockArtifactData other = (BlockArtifactData) obj;
 		if (block == null) {
-			if (other.block != null)
+			//if (other.block != null)
+			if (obj.toString() != null)
 				return false;
-		} else if (!block.equals(other.block))
+		//} else if (!block.equals(other.block))
+		} else if (!block.equals(obj.toString().replace("at.jku.isse.ecco.adapter.runtime.data","at.jku.isse.ecco.adapter.challenge.data")))
 			return false;
 		return true;
 	}
