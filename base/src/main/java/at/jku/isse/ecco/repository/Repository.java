@@ -919,11 +919,22 @@ public interface Repository extends Persistable {
 				}
 			}
 
+			// add features in this repository that are not in other repository negatively to other repository
+			Set<Feature> negFeaturesWithoutRevisions = new HashSet<>();
+			for (Feature feature : this.getFeatures()) {
+				if (otherRepository.getFeature(feature.getId()) == null) {
+					Feature otherFeature = otherRepository.addFeature(feature.getId(), feature.getName());
+					otherFeature.setDescription(feature.getDescription());
+					otherRepository.addNegativeFeatureModules(otherFeature);
+					negFeaturesWithoutRevisions.add(otherFeature);
+				}
+			}
+
 			// add modules and module revisions (i.e. add new ones and increase the counters of existing ones)
 			for (int order = 0; order <= this.getMaxOrder(); order++) {
 				for (final Module otherModule : otherRepository.getModules(order)) {
 					// check if module contains any negative features without any revisions
-					if (Arrays.stream(otherModule.getNeg()).noneMatch(feature -> feature.getRevisions().isEmpty())) {
+					if (Arrays.stream(otherModule.getNeg()).noneMatch(feature -> feature.getRevisions().isEmpty() && !negFeaturesWithoutRevisions.contains(feature))) {
 						// add module to this repository and increase its counter
 						Module repoModule = this.getModule(otherModule.getPos(), otherModule.getNeg());
 						if (repoModule == null) {
@@ -938,15 +949,6 @@ public interface Repository extends Persistable {
 							repoModuleRevision.incCount(otherModuleRevision.getCount());
 						}
 					}
-				}
-			}
-
-			// add features in this repository that are not in other repository negatively to other repository
-			for (Feature feature : this.getFeatures()) {
-				if (otherRepository.getFeature(feature.getId()) == null) {
-					Feature otherFeature = otherRepository.addFeature(feature.getId(), feature.getName());
-					otherFeature.setDescription(feature.getDescription());
-					otherRepository.addNegativeFeatureModules(otherFeature);
 				}
 			}
 
@@ -973,6 +975,10 @@ public interface Repository extends Persistable {
 					// set module counter
 					Module otherModule = otherModuleCounter.getObject();
 					Module module = this.getModule(otherModule.getPos(), otherModule.getNeg());
+
+					if (module == null)
+						throw new EccoException("Association to be merged into this repository contains module " + module + " which is not part of this repository.");
+
 					ModuleCounter moduleCounter = association.getCounter().addChild(module);
 					moduleCounter.setCount(otherModuleCounter.getCount());
 
