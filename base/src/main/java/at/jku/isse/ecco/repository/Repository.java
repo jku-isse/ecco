@@ -805,6 +805,7 @@ public interface Repository extends Persistable {
 						if (newAssociation == null) {
 							newAssoc = true;
 							newAssociation = this.getEntityFactory().createAssociation();
+							newAssociation.setId(UUID.randomUUID().toString());
 							andConditionAssociationMap.put(newModuleRevisions, newAssociation);
 							newAssociation.getCounter().setCount(1);
 						}
@@ -815,6 +816,7 @@ public interface Repository extends Persistable {
 						if (newAssociation == null) {
 							newAssoc = true;
 							newAssociation = this.getEntityFactory().createAssociation();
+							newAssociation.setId(UUID.randomUUID().toString());
 							orConditionAssociationMap.put(newModuleRevisions, newAssociation);
 							newAssociation.getCounter().setCount(2);
 						}
@@ -956,6 +958,7 @@ public interface Repository extends Persistable {
 			for (Association.Op otherAssociation : otherRepository.getAssociations()) {
 				// prepare new associations for commit
 				Association.Op association = this.getEntityFactory().createAssociation();
+				association.setId(UUID.randomUUID().toString());
 
 				// copy artifact tree
 				RootNode.Op copiedRootNode = this.getEntityFactory().createRootNode();
