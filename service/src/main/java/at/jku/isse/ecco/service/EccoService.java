@@ -728,6 +728,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 					Feature feature;
 					if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
+						featureName = featureName.substring(1, featureName.length() - 1);
 						feature = repository.getFeature(featureName);
 						if (feature == null) {
 							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
@@ -761,6 +762,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 					Feature feature;
 					if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
+						featureName = featureName.substring(1, featureName.length() - 1);
 						feature = repository.getFeature(featureName);
 						if (feature == null) {
 							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
@@ -790,6 +792,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 					Feature feature;
 					if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
+						featureName = featureName.substring(1, featureName.length() - 1);
 						feature = repository.getFeature(featureName);
 						if (feature == null) {
 							//throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
