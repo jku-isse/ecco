@@ -1227,12 +1227,11 @@ public interface PartialOrderGraph extends Persistable {
 			while (!stack.isEmpty()) {
 				Node.Op current = stack.pop();
 
-				// check if it is contained in symbols
+				// if it is not contained in symbols remove node and connect all its parents to all its children
 				if (current.getArtifact() != null && !symbols.contains(current.getArtifact())) {
-					// if not remove node and connect all its parents to all its children
 
 					// connect every parent
-					for (Node.Op parent : current.getPrevious()) {
+					for (Node.Op parent : new ArrayList<>(current.getPrevious())) {
 						// to every child
 						for (Node.Op child : current.getNext()) {
 							parent.addChild(child);
@@ -1240,14 +1239,15 @@ public interface PartialOrderGraph extends Persistable {
 						// and remove it as child from parent
 						parent.removeChild(current);
 					}
-					// remove all children from current node (and subsequently the current node as parent of its children)
+					// remove all children from current node (and subsequently the current node as parent of its children) and push children onto stack
 					for (Node.Op child : current.getNext()) {
 						current.removeChild(child);
+						stack.push(child);
 					}
-				}
-
-				for (Node.Op child : current.getNext()) {
-					stack.push(child);
+				} else {
+					for (Node.Op child : current.getNext()) {
+						stack.push(child);
+					}
 				}
 			}
 		}
