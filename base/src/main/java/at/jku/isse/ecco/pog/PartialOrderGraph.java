@@ -1240,7 +1240,7 @@ public interface PartialOrderGraph extends Persistable {
 						parent.removeChild(current);
 					}
 					// remove all children from current node (and subsequently the current node as parent of its children) and push children onto stack
-					for (Node.Op child : current.getNext()) {
+					for (Node.Op child : new ArrayList<>(current.getNext())) {
 						current.removeChild(child);
 						stack.push(child);
 					}
