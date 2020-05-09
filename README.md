@@ -2,25 +2,55 @@
 # ECCO
 
 
+## Content
+
+* [About](#about)
+    * [Local Operations](#local-operations)
+    * [Distributed Operations](#distributed-operations)
+    * [Artifact Types](#artifact-types)
+    * [Use Cases](#use-cases)
+* [Quick Start](#quick-start)
+* [IDEs](#ides)
+    * [IntelliJ](#intellij)
+    * [Eclipse](#eclipse)
+* [Project Structure](#project-structure)
+    * [Core Projects](#core-projects)
+    * [Application Projects](#application-projects)
+    * [Plugin Projects](#plugin-projects)
+    * [Examples](#examples)
+* [Publications](#publications)
+    * [Peer-Reviewed Journals](#peer-reviewed-journals)
+    * [Peer-Reviewed Conferences](#peer-reviewed-conferences)
+    * [Peer-Reviewed Workshops](#peer-reviewed-workshops)
+
+
 ## About
 
 *ECCO* is a *feature-oriented and distributed configuration management and version control system*.
 
-It supports variability in (i.e., the configuration of) any type of artifact (e.g., text, images, code) for which an [adapter](adapter) is available.
+It supports variability in (i.e., the configuration of) any type of artifact (e.g., text, images, code) for which an [adapter][adapter] is available.
 
 A *repository* contains *features*, *revisions*, *artifacts*, and *traces* (i.e., mappings between features, revisions, and artifacts).
 
 It supports *local operations* as well as *distributed operations*.
 
-### Local Ooperations
+### Local Operations
 * `init`
 * `commit <full configuration>`
 * `checkout <full configuration>`
+
+![Local Operations](docs/local_operations.png "Local Operations")
 
 ### Distributed Operations
 * `clone <partial configuration>`
 * `push <partial configuration>`
 * `pull <partial configuration>`
+
+![Distributed Operations](docs/distributed_operations.png "Distributed Operations")
+
+### Artifact Types
+
+![Artifact Adapters](docs/artifact_adapters.png "Artifact Adapters")
 
 ### Use Cases
 * *Extractive Product Line Engineering*: Consolidating a set of individual variants into a common platform representation. In other words, reverse engineering a set of individual variants into a Software Product Line (SPL) [[SPLC'13]][SPLC13][SoSyM'16][SoSyM16].
@@ -50,7 +80,9 @@ Examples:
 
 IntelliJ supports Gradle out of the box. Just open the project using `File > Open`.
 
-### Eclipse (this information might be outdated)
+### Eclipse
+
+*This information might be outdated!*
 
 Eclipse does not support Gradle by default. There is a Gradle plugin for Eclipse, but I do not recommend it! Instead follow these steps:
 
@@ -72,7 +104,7 @@ The root-project `ecco` consists of a number of sub-projects.
 
 ### Core Projects
 * [`base`](base) contains the core data structures and algorithms.
-* [`service`](service) contains the ECCO API and the plugin infrastructure for [artifact adapters](adapter) and [storage backends](storage).
+* [`service`](service) contains the ECCO API and the plugin infrastructure for [artifact adapters][adapter] and [storage backends][storage].
 
 ### Application Projects
 * [`cli`](cli) contains the CLI (Command Line Interface).
@@ -80,8 +112,14 @@ The root-project `ecco` consists of a number of sub-projects.
 * [`web`](web) contains the REST API.
 
 ### Plugin Projects
-* [`adapter`](adapter) contains artifact adapter projects such as `file` (for binary or unknown files), `text`, `image`, or `java`.
-* [`storage`](storage) contains storage backend projects.
+* [`adapter`][adapter] contains artifact adapter projects such as `file` (for binary or unknown files), `text`, `image`, or `java`.
+* [`storage`][storage] contains storage backend projects.
+
+[adapter]: adapter
+[storage]: storage
+
+### Examples
+* [`examples`](examples) contains various illustrative examples to use as input to ECCO.
 
 
 ## Publications
@@ -93,6 +131,10 @@ The root-project `ecco` consists of a number of sub-projects.
 [SoSyM16]: http://dx.doi.org/10.1007/s10270-015-0512-y
 
 ### Peer-Reviewed Conferences
+
+[Gabriela Karoline Michelon, Lukas Linsbauer, Wesley K. G. Assunção, Alexander Egyed: Comparison-Based Feature Location in ArgoUML Variants. Systems and Software Product Line Conference (SPLC) Challenge Solutions, 2019, 93–97][SPLC19]
+
+[SPLC19]: https://doi.org/10.1145/3336294.3342360
 
 [Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed: A Variability Aware Configuration Management and Revision Control Platform. International Conference on Software Engineering (ICSE) Doctoral Symposium, 2016, 803-806][ICSE16ds]
 
