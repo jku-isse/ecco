@@ -127,35 +127,35 @@ The root-project `ecco` consists of a number of sub-projects.
 
 ### Peer-Reviewed Journals
 
-[Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed: Variability Extraction and Modeling for Product Variants. Software and Systems Modeling (SoSyM), 2016, 1-21][SoSyM16]
+[*Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed*: **Variability Extraction and Modeling for Product Variants**. Software and Systems Modeling (SoSyM), 2016, 1-21][SoSyM16]
 
 [SoSyM16]: http://dx.doi.org/10.1007/s10270-015-0512-y
 
 ### Peer-Reviewed Conferences
 
-[Gabriela Karoline Michelon, Lukas Linsbauer, Wesley K. G. Assunção, Alexander Egyed: Comparison-Based Feature Location in ArgoUML Variants. Systems and Software Product Line Conference (SPLC) Challenge Solutions, 2019, 93–97][SPLC19]
+[*Gabriela Karoline Michelon, Lukas Linsbauer, Wesley K. G. Assunção, Alexander Egyed*: **Comparison-Based Feature Location in ArgoUML Variants**. Systems and Software Product Line Conference (SPLC) Challenge Solutions, 2019, 93–97][SPLC19]
 
 [SPLC19]: https://doi.org/10.1145/3336294.3342360
 
-[Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed: A Variability Aware Configuration Management and Revision Control Platform. International Conference on Software Engineering (ICSE) Doctoral Symposium, 2016, 803-806][ICSE16ds]
+[*Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed*: **A Variability Aware Configuration Management and Revision Control Platform**. International Conference on Software Engineering (ICSE) Doctoral Symposium, 2016, 803-806][ICSE16ds]
 
 [ICSE16ds]: http://doi.acm.org/10.1145/2889160.2889262
 
-[Stefan Fischer, Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed: Enhancing Clone-and-Own with Systematic Reuse for Developing Software Variants. International Conference on Software Maintenance and Evolution (ICSME), 2014, 391-400][ICSME14]
+[*Stefan Fischer, Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed*: **Enhancing Clone-and-Own with Systematic Reuse for Developing Software Variants**. International Conference on Software Maintenance and Evolution (ICSME), 2014, 391-400][ICSME14]
 
 [ICSME14]: http://dx.doi.org/10.1109/ICSME.2014.61
 
-[Lukas Linsbauer, Florian Angerer, Paul Grünbacher, Daniela Lettner, Herbert Prähofer, Roberto E. Lopez-Herrejon, Alexander Egyed: Recovering Feature-to-Code Mappings in Mixed-Variability Software Systems. International Conference on Software Maintenance and Evolution (ICSME), 2014, 426-430][ICSME14short]
+[*Lukas Linsbauer, Florian Angerer, Paul Grünbacher, Daniela Lettner, Herbert Prähofer, Roberto Erick Lopez-Herrejon, Alexander Egyed*: **Recovering Feature-to-Code Mappings in Mixed-Variability Software Systems**. International Conference on Software Maintenance and Evolution (ICSME), 2014, 426-430][ICSME14short]
 
 [ICSME14short]: http://dx.doi.org/10.1109/ICSME.2014.67
 
-[Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed: Recovering Traceability between Features and Code in Product Variants. Software Product Line Conference (SPLC), 2013, 131-140][SPLC13]
+[*Lukas Linsbauer, Roberto Erick Lopez-Herrejon, Alexander Egyed*: **Recovering Traceability between Features and Code in Product Variants**. Software Product Line Conference (SPLC), 2013, 131-140][SPLC13]
 
 [SPLC13]: http://doi.acm.org/10.1145/2491627.2491630
 
 ### Peer-Reviewed Workshops
 
-[Lukas Linsbauer, Stefan Fischer, Roberto Erick Lopez-Herrejon, Alexander Egyed: Using Traceability for Incremental Construction and Evolution of Software Product Portfolios. Software and Systems Traceability (SST), 2015, 57-60][SST15]
+[*Lukas Linsbauer, Stefan Fischer, Roberto Erick Lopez-Herrejon, Alexander Egyed*: **Using Traceability for Incremental Construction and Evolution of Software Product Portfolios**. Software and Systems Traceability (SST), 2015, 57-60][SST15]
 
 [SST15]: http://dx.doi.org/10.1109/SST.2015.16
 
