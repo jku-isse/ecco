@@ -5,10 +5,15 @@
 ## Content
 
 * [About](#about)
+* [Data Structures](#data-structures)
+* [Operations](#operations)
     * [Local Operations](#local-operations)
     * [Distributed Operations](#distributed-operations)
-    * [Artifact Types](#artifact-types)
-    * [Use Cases](#use-cases)
+* [Directories and Files](#directories-and-files)
+    * [Repository Directory](#repository-directory)
+    * [Base Directory](#base-directory)
+* [Artifact Types](#artifact-types)
+* [Use Cases](#use-cases)
 * [Quick Start](#quick-start)
 * [IDEs](#ides)
     * [IntelliJ](#intellij)
@@ -30,29 +35,61 @@
 
 It supports variability in (i.e., the configuration of) any type of artifact (e.g., text, images, code) for which an [adapter][adapter] is available.
 
+Originally, the name *ECCO* stood for *Extraction and Composition for Clone-and-Own*.
+
+
+## Data Structures
+
 A *repository* contains *features*, *revisions*, *artifacts*, and *traces* (i.e., mappings between features, revisions, and artifacts).
 
-It supports *local operations* as well as *distributed operations*.
+
+## Operations
+
+ECCO supports *local operations* as well as *distributed operations*.
 
 ### Local Operations
 * `init`
 * `commit <full configuration>`
 * `checkout <full configuration>`
 
-![Local Operations](docs/local_operations.png "Local Operations")
+![Local Operations](doc/local_operations.png "Local Operations")
 
 ### Distributed Operations
 * `clone <partial configuration>`
 * `push <partial configuration>`
 * `pull <partial configuration>`
 
-![Distributed Operations](docs/distributed_operations.png "Distributed Operations")
+![Distributed Operations](doc/distributed_operations.png "Distributed Operations")
 
-### Artifact Types
 
-![Artifact Adapters](docs/artifact_adapters.png "Artifact Adapters")
+## Directories and Files
 
-### Use Cases
+### Repository Directory
+
+The directory in which the repository contents are stored. By default named `.ecco`.
+It contains files used by the storage backend to persist the repository contents.
+Its contents depend on the used storage backend and should not be modified manually, except the following two files which are not specific to the used storage backend, are created by the `init` operation and can be modified manually.
+
+* `.ignores` contains glob file patterns of files that should be ignored by the `commit` operation.
+* `.adapters` contains pairs of glob file patterns and identifiers of artifact adapter that should be used for the matched files. The initial contents of the file are created based on the default patterns of each installed artifact adapter during the `init` operation.
+
+### Base Directory
+
+The directory in which the raw implementation artifacts (files) of a variant reside. Also sometimes called *working directory*.
+The contents of this directory are processed by the *readers* of the respective *artifact adapters* during a `commit` and created by the *writers* of the respective *artifact adapters* during a `checkout`.
+The contents in this directory are created by the user and can be arbitrarily modified during development, except the following three files which are created by the `checkout` and `commit` operations.
+
+* `.config` contains the *configuration* of the variant contained in the directory. This file is created during the `checkout` operation. It can also be created manually in which case it is used by the `commit` operation instead of having to pass the configuration as a parameter. If it exists its contents should always be updated to reflect the performed changes, specifically, the modified features should be marked as such.
+* `.warnings` contains a list of feature interaction and uncertain ordering warnings or hints. This file is created by the `checkout` operation.
+* `.hashes` contains the hashes of files that were created during the `checkout` operation. They are used by the `commit` operation to identify files that have not been modified.
+
+
+## Artifact Types
+
+![Artifact Adapters](doc/artifact_adapters.png "Artifact Adapters")
+
+
+## Use Cases
 * *Feature Location*: Locating the implementation of features (i.e., computing traces) given a set of variants for each of which the configuration (i.e., features it provides) and implementation is known [[SPLC'19']][SPLC19].
 * *Extractive Product Line Engineering*: Consolidating a set of individual variants into a common platform representation. In other words, reverse engineering a set of individual variants into a Software Product Line (SPL) [[SPLC'13]][SPLC13][[SoSyM'16]][SoSyM16].
 * *Automated Reuse for Clone and Own*: Supporting ad hoc development of variants (clone and own) as well as their subsequent maintenance [[ICSME'14]][ICSME14].
@@ -85,7 +122,7 @@ IntelliJ supports Gradle out of the box. Just open the project using `File > Ope
 
 *This information might be outdated!*
 
-Eclipse does not support Gradle by default. There is a Gradle plugin for Eclipse, but I do not recommend it! Instead follow these steps:
+Eclipse does not support Gradle by default. There is a Gradle plugin for Eclipse, but I do not recommend it! Instead, follow these steps:
 
 Create Eclipse projects from Gradle projects: `gradle eclipse`. This creates the `.project` and `.classpath` files Eclipse needs for every project.
 
@@ -100,6 +137,8 @@ Disable errors for cyclic dependencies in Eclipse: `Window > Preferences > Java 
 
 
 ## Project Structure
+
+![Project Structure](doc/project_structure.png "Project Structure")
 
 The root-project `ecco` consists of a number of sub-projects.
 
