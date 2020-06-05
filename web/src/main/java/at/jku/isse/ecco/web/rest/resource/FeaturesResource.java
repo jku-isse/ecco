@@ -16,10 +16,11 @@ import javax.ws.rs.core.Configuration;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import java.util.ArrayList;
+import java.util.Collection;
 
 // TODO: implement feature search/filtering in the feature dao (using db mechanisms) and expose it via the ecco service for better performance!
 
-@Path("/feature")
+@Path("feature")
 public class FeaturesResource extends EccoResource {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FeaturesResource.class);
@@ -36,30 +37,44 @@ public class FeaturesResource extends EccoResource {
 			throw new RuntimeException("No or wrong application object injected.");
 
 		EccoService eccoService = ((EccoApplication) this.application).getEccoService();
-
+		LOGGER.info("Retrieving Service successfull...");
 		return eccoService;
+	}
+
+	@GET
+	@Path("featuretest")
+	@Produces(MediaType.TEXT_PLAIN)
+	public String testFeatureResource() {
+		return "feature-Resource sucessfully loaded....";
 	}
 
 
 	@GET
-	//@Path("/")
-	@Produces(MediaType.APPLICATION_JSON)
-	public FeatureDTO[] getFeatures(@QueryParam("filter") String filter) {
+	@Produces(MediaType.TEXT_PLAIN)
+	public String getFeatures(
+//			@QueryParam("filter") String filter
+	) {
 		EccoService eccoService = this.getService();
-
-		LOGGER.info("getFeatures(filter: " + filter + ")");
-
-		ArrayList<FeatureDTO> features = new ArrayList<>();
-		for (Feature feature : eccoService.getRepository().getFeatures()) {
-			if (filter == null || feature.getName().contains(filter) || feature.getDescription().contains(filter)) {
-				FeatureDTO featureDTO = new FeatureDTO();
-				featureDTO.setName(feature.getName());
-				featureDTO.setDescription(feature.getDescription());
-				features.add(featureDTO);
-			}
+//
+////		LOGGER.info("getFeatures(filter: " + filter + ")");
+//
+		Collection<? extends Feature> featureList = eccoService.getRepository().getFeatures();
+		if (featureList.isEmpty()) {
+			return "Featurelist is Empty....";
+		} else {
+			return "Featurelist contains some Items to handle with Angular/Vue/React...";
 		}
 
-		return features.toArray(new FeatureDTO[features.size()]);
+//		for (Feature feature : eccoService.getRepository().getFeatures()) {
+//			if (filter == null || feature.getName().contains(filter) || feature.getDescription().contains(filter)) {
+//				FeatureDTO featureDTO = new FeatureDTO();
+//				featureDTO.setName(feature.getName());
+//				featureDTO.setDescription(feature.getDescription());
+//				features.add(featureDTO);
+//			}
+//		}
+//
+//		return features.toArray(new FeatureDTO[features.size()]);
 	}
 
 	@GET

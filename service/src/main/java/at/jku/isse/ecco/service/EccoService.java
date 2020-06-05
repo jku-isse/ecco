@@ -480,8 +480,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			throw new EccoException("Repository does not exist.");
 		}
 
-		LOGGER.config("BASE_DIR: " + this.baseDir);
-		LOGGER.config("REPOSITORY_DIR: " + this.repositoryDir);
+		LOGGER.info("BASE_DIR: " + this.baseDir);
+		LOGGER.info("REPOSITORY_DIR: " + this.repositoryDir);
 
 		Collection<Module> modules = this.initializeService();
 
