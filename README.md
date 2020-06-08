@@ -35,7 +35,7 @@
 
 It supports variability in (i.e., the configuration of) any type of artifact (e.g., text, images, code) for which an [adapter][adapter] is available.
 
-Originally, the name *ECCO* stood for *Extraction and Composition for Clone-and-Own*.
+Originally, the name *ECCO* was an acronym for *Extraction and Composition for Clone-and-Own*.
 
 
 ## Data Structures
