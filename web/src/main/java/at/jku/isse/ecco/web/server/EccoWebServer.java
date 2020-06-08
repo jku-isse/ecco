@@ -16,7 +16,10 @@ public class EccoWebServer {
 
 	public static void main(String[] args) throws IOException, InterruptedException {
 		// TODO: cli parameters for path to repo and port (e.g. "ecco-web --port=8080 --repo=/home/user/repo" or "ecco-web -p 8080 -r /home/user/repo")
-		String repositoryDir = "/media/marc/UbuntuData/EccoRepoTest/.ecco";
+//		String repositoryDir = "<url>";
+		String repositoryDir = "/home/marc/TestRepoForEcco/Repo2/.ecco";
+
+//		String repositoryDirHomeRechner = "/media/marc/UbuntuData/EccoRepoTest/.ecco";
 
 		// create a resource config that scans for JAX-RS resources and providers in at.jku.isse.ecco.web package
 		final EccoApplication eccoApplication = new EccoApplication();

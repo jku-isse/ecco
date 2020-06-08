@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.web.rest.resource;
 
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -54,16 +55,26 @@ public class FeaturesResource extends EccoResource {
 	public String getFeatures(
 //			@QueryParam("filter") String filter
 	) {
-		EccoService eccoService = this.getService();
+		try {
+			EccoService eccoService = this.getService();
+			Collection<? extends Feature> featureList = eccoService.getRepository().getFeatures();
+			if (featureList.isEmpty()) {
+				return "Featurelist is Empty....";
+			} else {
+				return "Featurelist contains some Items to handle with Angular/Vue/React...";
+			}
+		} catch (Exception e) {
+			LOGGER.info(e.getMessage());
+			e.printStackTrace();
+		}
+
+//		return "test";
+
 //
 ////		LOGGER.info("getFeatures(filter: " + filter + ")");
 //
-		Collection<? extends Feature> featureList = eccoService.getRepository().getFeatures();
-		if (featureList.isEmpty()) {
-			return "Featurelist is Empty....";
-		} else {
-			return "Featurelist contains some Items to handle with Angular/Vue/React...";
-		}
+
+//
 
 //		for (Feature feature : eccoService.getRepository().getFeatures()) {
 //			if (filter == null || feature.getName().contains(filter) || feature.getDescription().contains(filter)) {
@@ -75,6 +86,7 @@ public class FeaturesResource extends EccoResource {
 //		}
 //
 //		return features.toArray(new FeatureDTO[features.size()]);
+		return "getService sucessful!";
 	}
 
 	@GET
