@@ -16,6 +16,8 @@ public class EccoApplication extends ResourceConfig {
 
 	private EccoService eccoService = new EccoService();
 
+	private String repositoryDirectory = "";
+
 	public EccoApplication() {
 		packages(true, "at.jku.isse.ecco.web");
 		register(new RepositoryProvider());
@@ -25,14 +27,15 @@ public class EccoApplication extends ResourceConfig {
 		return this.eccoService;
 	}
 
-	public void init(String repositoryDir) {
-		System.out.println(String.format("Repository Direction set to: %s", Paths.get(repositoryDir)));
-
-		this.eccoService.setRepositoryDir(Paths.get(repositoryDir));
+	public void open() {
 		this.eccoService.open();
 	}
 
-	public void destroy() {
+	public void init(String repositoryDir) {
+		this.eccoService.setRepositoryDir(Paths.get(repositoryDir));
+	}
+
+	public void close() {
 		this.eccoService.close();
 	}
 

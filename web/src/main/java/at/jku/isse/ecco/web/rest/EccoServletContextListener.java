@@ -33,7 +33,7 @@ public class EccoServletContextListener implements ServletContextListener {
 		if (!(this.application instanceof EccoApplication))
 			throw new RuntimeException("No or wrong application object injected.");
 
-		((EccoApplication) this.application).destroy();
+		((EccoApplication) this.application).close();
 	}
 
 }

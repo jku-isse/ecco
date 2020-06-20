@@ -1,13 +1,11 @@
 package at.jku.isse.ecco.web.server;
 
 import at.jku.isse.ecco.web.rest.EccoApplication;
-import org.glassfish.grizzly.http.server.CLStaticHttpHandler;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Optional;
 
 public class EccoWebServer {
 
@@ -19,7 +17,7 @@ public class EccoWebServer {
 //		String repositoryDir = "<url>";
 //		String repositoryDir = "/home/marc/TestRepoForEcco/Repo2/.ecco";
 
-		String repositoryDir = "/media/marc/UbuntuData/EccoRepoTest/.ecco";
+//		String repositoryDir = "/media/marc/UbuntuData/EccoRepoTest/.ecco";
 
 		// create a resource config that scans for JAX-RS resources and providers in at.jku.isse.ecco.web package
 		final EccoApplication eccoApplication = new EccoApplication();
@@ -42,7 +40,7 @@ public class EccoWebServer {
 			}
 		}));
 
-		eccoApplication.init(repositoryDir);
+//		eccoApplication.init(repositoryDir);
 
 		httpServer.start();
 
@@ -50,7 +48,7 @@ public class EccoWebServer {
 
 		Thread.currentThread().join();
 
-		eccoApplication.destroy();
+		eccoApplication.close();
 	}
 
 }
