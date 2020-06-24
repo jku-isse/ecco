@@ -19,8 +19,6 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.slf4j/slf4j-api
 	implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
 
-
-
 	implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.1.1'
 	// https://mvnrepository.com/artifact/org.glassfish.grizzly/grizzly-http-server
 //    compile group: 'org.glassfish.grizzly', name: 'grizzly-http-server', version: '2.4.4'
