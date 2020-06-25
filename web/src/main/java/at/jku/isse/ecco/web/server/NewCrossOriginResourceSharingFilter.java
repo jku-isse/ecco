@@ -16,14 +16,22 @@ public class NewCrossOriginResourceSharingFilter implements ContainerResponseFil
 
     @Override
     public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) throws IOException {
-        responseContext.getHeaders().add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization, crossdomain");
-        responseContext.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD");
-        responseContext.getHeaders().add("Access-Control-Allow-Credentials", "true");
-        responseContext.getHeaders().add("Access-Control-Allow-Origin", "*");
+        try {
+            LOGGER.info("NEW REQUEST IN NEWCROSSORIGINFILTER INCOMING!!!");
+            LOGGER.info(requestContext.getHeaders().toString());
 
-        LOGGER.info("NEW REQUEST IN NEWCROSSORIGINFILTER INCOMING!!!");
-        LOGGER.info(requestContext.getHeaders().toString());
-        LOGGER.info("NEW RESPONSE IN NEWCROSSORIGINFILTER INCOMING!!!");
-        LOGGER.info(responseContext.getHeaders().toString());
+            responseContext.getHeaders().add("Access-Control-Allow-Headers", "origin, content-type, accept, authorization, crossdomain");
+            responseContext.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD");
+            responseContext.getHeaders().add("Access-Control-Allow-Credentials", "true");
+            responseContext.getHeaders().add("Access-Control-Allow-Origin", "*");
+
+
+            LOGGER.info("NEW RESPONSE IN NEWCROSSORIGINFILTER INCOMING!!!");
+            LOGGER.info(responseContext.getHeaders().toString());
+        } catch (Exception e) {
+            LOGGER.info(e.getMessage());
+            e.printStackTrace();
+        }
+
     }
 }

@@ -1,10 +1,8 @@
 package at.jku.isse.ecco.web.controller;
 
-import at.jku.isse.ecco.web.domain.model.ApplicationInitialization;
-import at.jku.isse.ecco.web.domain.model.FeatureModel;
+import at.jku.isse.ecco.web.domain.model.*;
 import at.jku.isse.ecco.web.domain.repository.AbstractRepository;
 import at.jku.isse.ecco.web.domain.repository.ApplicationRepository;
-import at.jku.isse.ecco.web.domain.repository.FeatureRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +14,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Providers;
 
-@Path("/")
+@Path("/repository")
 public class ApplicationController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationController.class);
@@ -27,20 +25,31 @@ public class ApplicationController {
     @Context
     private Providers providers;
 
-    @POST
-    @Consumes( {MediaType.APPLICATION_JSON} )
-    @Produces( {MediaType.APPLICATION_JSON} )
-    public Response initializeRepository(ApplicationInitialization applicationContainer) {
-        ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
-        ApplicationRepository applicationRepository = (ApplicationRepository) featureRepositoryContextResolver.getContext(ApplicationRepository.class);
-        if (applicationRepository.initializeRepository(applicationContainer.getRepositoryDirectory())) {
-            return Response.status(Response.Status.OK).build();
-        } else {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
+    /**
+     * Create new Repo with a given
+     * @param operation
+     * @return
+     */
+    @PUT
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    public Response createRepository(OperationContainer operation) {
+        return Response.status(Response.Status.OK).build();
     }
 
-    @GET
+    @POST
+    @Path("/open")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    public OperationResponse doOpenCloseRepository(OperationContainer operationOnDirectory) {
+        ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
+        ApplicationRepository applicationRepository = (ApplicationRepository) featureRepositoryContextResolver.getContext(ApplicationRepository.class);
+        return applicationRepository.doOpenCloseOperationOnRepository(
+                operationOnDirectory.getRepositoryDirectory(),
+                operationOnDirectory.getRepositoryOperation());
+    }
+
+    @POST
     @Path("/corstest")
     @Produces( {MediaType.APPLICATION_JSON} )
     public FeatureModel[] init() {

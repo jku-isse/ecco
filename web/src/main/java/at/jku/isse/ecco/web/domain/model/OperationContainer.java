@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.web.domain.model;
 
-public class ApplicationInitialization {
+public class OperationContainer {
 
-    private String repositoryDirectory;
     private String repositoryOperation;
+    private String repositoryDirectory;
 
     public String getRepositoryDirectory() {
         return repositoryDirectory;
@@ -15,7 +15,7 @@ public class ApplicationInitialization {
 
     @Override
     public String toString() {
-        return "ApplicationInitialization.repositoryDirectory: (" + this.repositoryDirectory + ");";
+        return "ApplicationContainer.repositoryDirectory: (" + this.repositoryDirectory + ");";
     }
 
     public String getRepositoryOperation() {

@@ -1,9 +1,11 @@
 package at.jku.isse.ecco.web.rest;
 
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.web.domain.repository.FeatureRepository;
 import at.jku.isse.ecco.web.provider.RepositoryProvider;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.file.Paths;
 
 /*
@@ -14,9 +16,9 @@ Issue ist bisher auch nicht closed hat auch keinen Workaround...
 //@ApplicationPath("ecco")
 public class EccoApplication extends ResourceConfig {
 
-	private EccoService eccoService = new EccoService();
+	private static final Logger LOGGER = LoggerFactory.getLogger(EccoApplication.class);
 
-	private String repositoryDirectory = "";
+	private final EccoService eccoService = new EccoService();
 
 	public EccoApplication() {
 		packages(true, "at.jku.isse.ecco.web");
@@ -27,13 +29,14 @@ public class EccoApplication extends ResourceConfig {
 		return this.eccoService;
 	}
 
-	public void open() {
+	public void open(String repositoryDir) {
+		this.eccoService.setRepositoryDir(Paths.get(repositoryDir));
 		this.eccoService.open();
 	}
 
 	public void init(String repositoryDir) {
 		this.eccoService.setRepositoryDir(Paths.get(repositoryDir));
-		this.eccoService.open();
+		this.eccoService.init();
 	}
 
 	public void close() {
