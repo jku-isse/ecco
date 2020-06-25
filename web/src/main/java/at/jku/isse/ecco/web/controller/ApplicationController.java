@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.web.controller;
 
 import at.jku.isse.ecco.web.domain.model.ApplicationInitialization;
+import at.jku.isse.ecco.web.domain.model.FeatureModel;
 import at.jku.isse.ecco.web.domain.repository.AbstractRepository;
 import at.jku.isse.ecco.web.domain.repository.ApplicationRepository;
 import at.jku.isse.ecco.web.domain.repository.FeatureRepository;
@@ -42,7 +43,10 @@ public class ApplicationController {
     @GET
     @Path("/corstest")
     @Produces( {MediaType.APPLICATION_JSON} )
-    public Response init() {
-        return Response.status(Response.Status.OK).build();
+    public FeatureModel[] init() {
+        return new FeatureModel[]{
+                new FeatureModel("dpl1", "Das ist ein geile Beschreibung!!!!!"),
+                new FeatureModel("dpl2", "Das ist ein eher nicht so geile Beschreibung!!!!!")
+        };
     }
 }
