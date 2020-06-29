@@ -23,6 +23,26 @@ public class FeatureRepository extends AbstractRepository {
         this.application = application;
     }
 
+
+    public FeatureModel[] updateFeatures(FeatureModel[] featureModels) {
+        for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
+            for (FeatureModel changedFeature : featureModels) {
+                if (feature.getName().equals(changedFeature.getName())) {
+                    if (!feature.getDescription().equals(changedFeature.getDescription())) {
+                        feature.setDescription(changedFeature.getDescription());
+                    }
+                }
+            }
+        }
+
+        ArrayList<FeatureModel> features = new ArrayList<>();
+        for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
+            features.add(new FeatureModel(feature.getName(), feature.getDescription()));
+            LOGGER.info("FEATURE DESCRIPTION:" + feature.getDescription());
+        }
+        return features.toArray(new FeatureModel[0]);
+    }
+
     /**
      *
      * @return FeatureModel[]

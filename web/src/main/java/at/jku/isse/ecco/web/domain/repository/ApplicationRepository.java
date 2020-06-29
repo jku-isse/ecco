@@ -59,7 +59,6 @@ public class ApplicationRepository extends AbstractRepository {
                         plugins.add(new ReducedArtifactPlugin(plugin.getPluginId(), plugin.getName(), plugin.getDescription()));
                     }
                     openOperationResponse.setArtifactPlugins(plugins.toArray(new ReducedArtifactPlugin[0]));
-                    openOperationResponse.setOperationSuccessful(true);
                     return openOperationResponse;
                 } catch (EccoException e) {
                     LOGGER.info(e.getMessage());
@@ -71,7 +70,6 @@ public class ApplicationRepository extends AbstractRepository {
                     this.eccoApplication.close();
                     CloseOperationResponse closeOperationResponse = new CloseOperationResponse();
                     closeOperationResponse.setEccoServiceIsInitialized(this.eccoApplication.getEccoService().isInitialized());
-                    closeOperationResponse.setOperationSuccessful(true);
                     return closeOperationResponse;
                 } catch (EccoException e) {
                     LOGGER.info(e.getMessage());

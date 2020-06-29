@@ -38,7 +38,6 @@ public class ApplicationController {
     }
 
     @POST
-    @Path("/open")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public OperationResponse doOpenCloseRepository(OperationContainer operationOnDirectory) {

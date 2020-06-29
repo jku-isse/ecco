@@ -1,12 +1,10 @@
 package at.jku.isse.ecco.web.controller;
 
 
-import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.web.domain.model.FeatureModel;
 import at.jku.isse.ecco.web.domain.model.FeatureVersionModel;
 import at.jku.isse.ecco.web.domain.repository.AbstractRepository;
 import at.jku.isse.ecco.web.domain.repository.FeatureRepository;
-import at.jku.isse.ecco.web.rest.EccoApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +27,16 @@ public class FeatureController {
     @Context
     private Providers providers;
 
-    /***
+    @POST
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    public FeatureModel[] updateFeatures(FeatureModel[] featureModels) {
+        ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
+        FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
+        return featureRepository.updateFeatures(featureModels);
+    }
+
+    /**
      *
      * @return String
      */

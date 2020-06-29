@@ -6,8 +6,7 @@ public class CloseOperationResponse extends OperationResponse {
 
     }
 
-    public CloseOperationResponse(boolean operationSuccessful, boolean eccoServiceIsInitialized) {
+    public CloseOperationResponse(boolean eccoServiceIsInitialized) {
         this.setEccoServiceIsInitialized(eccoServiceIsInitialized);
-        this.setOperationSuccessful(operationSuccessful);
     }
 }

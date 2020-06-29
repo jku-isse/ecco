@@ -6,19 +6,15 @@ public class OpenOperationResponse extends OperationResponse {
 
     public OpenOperationResponse (
             boolean eccoServiceIsInitialized,
-            boolean operationWasSuccessful,
             ReducedArtifactPlugin[] artifactplugins
     ) {
         this.setEccoServiceIsInitialized(eccoServiceIsInitialized);
-        this.setOperationSuccessful(operationWasSuccessful);
         this.setArtifactPlugins(artifactplugins);
     }
 
     public OpenOperationResponse () {
 
     }
-
-
     public ReducedArtifactPlugin[] getArtifactPlugins() {
         return artifactPlugins;
     }
