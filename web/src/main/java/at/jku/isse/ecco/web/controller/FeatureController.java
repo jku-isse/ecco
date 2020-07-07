@@ -30,10 +30,10 @@ public class FeatureController {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    public FeatureModel[] updateFeatures(FeatureModel[] featureModels) {
+    public FeatureModel[] updateFeature(FeatureModel featureModels) {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
         FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
-        return featureRepository.updateFeatures(featureModels);
+        return featureRepository.updateFeature(featureModels);
     }
 
     /**
@@ -42,40 +42,29 @@ public class FeatureController {
      */
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    public Response getFeatures() {
+    public FeatureModel[] getFeatures() {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
         FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
-        FeatureModel[] featureModels = featureRepository.getFeatures();
-        return Response.status(Response.Status.OK).entity(featureModels).build();
-    }
-
-    @GET
-    @Path("/{featureName}")
-    @Produces({ MediaType.APPLICATION_JSON })
-    public Response getFeature(@PathParam("featureName") String featureName) {
-        ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
-        FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
-        FeatureModel searchedFeatureModel = featureRepository.getFeature(featureName);
-        return Response.status(Response.Status.OK).entity(searchedFeatureModel).build();
+        return featureRepository.getFeatures();
     }
 
     @GET
     @Path("/{featureName}/version")
     @Produces({ MediaType.APPLICATION_JSON })
-    public Response getFeatureversionsFromFeature(@PathParam("featureName") String featureName) {
+    public FeatureVersionModel[] getFeatureversionsFromFeature(@PathParam("featureName") String featureName) {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
         FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
-        FeatureVersionModel[] featureVersionModels = featureRepository.getFeatureVersionsFromFeature(featureName);
-        return Response.status(Response.Status.OK).entity(featureVersionModels).build();
+        return featureRepository.getFeatureVersionsFromFeature(featureName);
     }
 
-    @GET
-    @Path("/{featureName}/version/{featureversionName}")
+    @POST
+    @Path("/{featureName}/version")
     @Produces({ MediaType.APPLICATION_JSON })
-    public Response getFeatureversionFromFeatureAndVersionname(@PathParam("featureName") String featureName, @PathParam("featureversionName") String versionName) {
+    @Consumes({ MediaType.APPLICATION_JSON })
+    public Response updateFeatureversionFromFeature(@PathParam("featureName") String featureName, FeatureVersionModel featureVersionModel) {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
         FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
-        FeatureVersionModel featureVersionModel = featureRepository.getFeatureVersionFromFeatureAndFeatureVersion(featureName, versionName);
-        return Response.status(Response.Status.OK).entity(featureVersionModel).build();
+        featureRepository.updateFeatureVersionFromFeature(featureName, featureVersionModel);
+        return Response.status(Response.Status.OK).allow("POST, GET, OPTIONS, PUT, DELETE").build();
     }
 }

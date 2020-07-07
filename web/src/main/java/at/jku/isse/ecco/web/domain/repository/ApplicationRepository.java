@@ -23,7 +23,6 @@ public class ApplicationRepository extends AbstractRepository {
     private EccoApplication eccoApplication;
 
     public ApplicationRepository() {
-
     }
 
     public ApplicationRepository(EccoApplication eccoApplication) {

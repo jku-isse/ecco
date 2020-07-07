@@ -24,13 +24,11 @@ public class FeatureRepository extends AbstractRepository {
     }
 
 
-    public FeatureModel[] updateFeatures(FeatureModel[] featureModels) {
+    public FeatureModel[] updateFeature(FeatureModel featureModels) {
         for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
-            for (FeatureModel changedFeature : featureModels) {
-                if (feature.getName().equals(changedFeature.getName())) {
-                    if (!feature.getDescription().equals(changedFeature.getDescription())) {
-                        feature.setDescription(changedFeature.getDescription());
-                    }
+            if (feature.getName().equals(featureModels.getName())) {
+                if (!feature.getDescription().equals(featureModels.getDescription())) {
+                    feature.setDescription(featureModels.getDescription());
                 }
             }
         }
@@ -92,18 +90,26 @@ public class FeatureRepository extends AbstractRepository {
         return featureVersionModelsForOneFeature.toArray(new FeatureVersionModel[0]);
     }
 
-    public FeatureVersionModel getFeatureVersionFromFeatureAndFeatureVersion(String featureName, String featureVersion) {
-        EccoService eccoService = this.application.getEccoService();
-        Collection<? extends Feature> featureCollection = eccoService.getRepository().getFeatures();
-        for (Feature feature : featureCollection) {
+    public void updateFeatureVersionFromFeature(String featureName, FeatureVersionModel featureVersionModel) {
+        //Update der Features solange das Repo nicht geschlossen wird...
+        for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
             if (feature.getName().equals(featureName)) {
                 for (FeatureRevision featureRevision : feature.getRevisions()) {
-                    if (featureRevision.getId().equals(featureVersion)) {
-                        return new FeatureVersionModel(featureRevision.getId(), featureRevision.getDescription());
+                    if (featureRevision.getId().equals(featureVersionModel.getVersion())) {
+                        featureRevision.setDescription(featureVersionModel.getDescription());
                     }
                 }
             }
         }
-        return null;
+        //Neues abschicken der Liste mit geupdateten Beschreibungen
+//        ArrayList<FeatureVersionModel> featureVersionModelsForOneFeature = new ArrayList<>();
+//        for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
+//            if (feature.getName().equals(featureName)) {
+//                for (FeatureRevision featureRevision : feature.getRevisions()) {
+//                    featureVersionModelsForOneFeature.add(new FeatureVersionModel(featureRevision.getId(), featureRevision.getDescription()));
+//                }
+//            }
+//        }
+//        return featureVersionModelsForOneFeature.toArray(new FeatureVersionModel[0]);
     }
 }
