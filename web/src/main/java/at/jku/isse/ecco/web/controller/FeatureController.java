@@ -3,6 +3,7 @@ package at.jku.isse.ecco.web.controller;
 
 import at.jku.isse.ecco.web.domain.model.FeatureModel;
 import at.jku.isse.ecco.web.domain.model.FeatureVersionModel;
+import at.jku.isse.ecco.web.domain.model.NumberRevisionsPerFeature;
 import at.jku.isse.ecco.web.domain.repository.AbstractRepository;
 import at.jku.isse.ecco.web.domain.repository.FeatureRepository;
 import org.slf4j.Logger;
@@ -66,5 +67,14 @@ public class FeatureController {
         FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
         featureRepository.updateFeatureVersionFromFeature(featureName, featureVersionModel);
         return Response.status(Response.Status.OK).allow("POST, GET, OPTIONS, PUT, DELETE").build();
+    }
+
+    @GET
+    @Path("/numberofrevisions")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public NumberRevisionsPerFeature[] getNumberRevisionsPerFeature() {
+        ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
+        FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
+        return featureRepository.getNumberRevisionsPerFeature();
     }
 }

@@ -6,6 +6,7 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.web.domain.model.FeatureModel;
 import at.jku.isse.ecco.web.domain.model.FeatureVersionModel;
+import at.jku.isse.ecco.web.domain.model.NumberRevisionsPerFeature;
 import at.jku.isse.ecco.web.rest.EccoApplication;
 
 import java.util.ArrayList;
@@ -111,5 +112,18 @@ public class FeatureRepository extends AbstractRepository {
 //            }
 //        }
 //        return featureVersionModelsForOneFeature.toArray(new FeatureVersionModel[0]);
+    }
+
+    public NumberRevisionsPerFeature[] getNumberRevisionsPerFeature() {
+        EccoService eccoService = this.application.getEccoService();
+        Collection<? extends Feature> featureCollection = eccoService.getRepository().getFeatures();
+        ArrayList<NumberRevisionsPerFeature> listOfNumberOfRevivionsPerFeature = new ArrayList<>();
+        for (Feature feature : featureCollection) {
+            int numRevisions = feature.getRevisions().size();
+            if (numRevisions > 0) {
+                listOfNumberOfRevivionsPerFeature.add(new NumberRevisionsPerFeature(numRevisions, feature.getName()));
+            }
+        }
+        return listOfNumberOfRevivionsPerFeature.toArray(new NumberRevisionsPerFeature[0]);
     }
 }
