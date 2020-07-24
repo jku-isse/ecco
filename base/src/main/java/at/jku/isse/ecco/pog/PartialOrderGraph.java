@@ -803,7 +803,12 @@ public interface PartialOrderGraph extends Persistable {
 		//private
 		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared, Set<Node.Op> leftVisited, Map<Node.Op, Node.Op> addedFromRight) {
 			//System.out.println("MERGE: LEFT: " + left + " / RIGHT: " + right);
-			leftVisited.add(left);
+
+			// only mark left as visited if it is equal to right (or unshared?)
+			//if (left.getArtifact() != null && !shared.containsKey(left.getArtifact().getSequenceNumber()) || left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
+			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
+				leftVisited.add(left);
+			}
 
 			// left and right are equal
 			if (left.getArtifact() == null && right.getArtifact() == null || left.getArtifact() != null && left.getArtifact().equals(right.getArtifact())) {
