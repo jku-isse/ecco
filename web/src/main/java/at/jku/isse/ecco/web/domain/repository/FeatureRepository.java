@@ -59,22 +59,6 @@ public class FeatureRepository extends AbstractRepository {
     /**
      *
      * @param featureName String
-     * @return FeatureModel
-     */
-    public FeatureModel getFeature(String featureName) {
-        EccoService eccoService = this.application.getEccoService();
-        Collection<? extends Feature> featureCollection = eccoService.getRepository().getFeatures();
-        for (Feature feature : featureCollection) {
-            if (feature.getName().equals(featureName)) {
-                return new FeatureModel(feature.getName(), feature.getDescription());
-            }
-        }
-        return null;
-    }
-
-    /**
-     *
-     * @param featureName String
      * @return FeatureVersionModel[]
      */
     public FeatureVersionModel[] getFeatureVersionsFromFeature(String featureName) {
@@ -91,7 +75,7 @@ public class FeatureRepository extends AbstractRepository {
         return featureVersionModelsForOneFeature.toArray(new FeatureVersionModel[0]);
     }
 
-    public void updateFeatureVersionFromFeature(String featureName, FeatureVersionModel featureVersionModel) {
+    public FeatureVersionModel[] updateFeatureVersionFromFeature(String featureName, FeatureVersionModel featureVersionModel) {
         //Update der Features solange das Repo nicht geschlossen wird...
         for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
             if (feature.getName().equals(featureName)) {
@@ -103,15 +87,15 @@ public class FeatureRepository extends AbstractRepository {
             }
         }
         //Neues abschicken der Liste mit geupdateten Beschreibungen
-//        ArrayList<FeatureVersionModel> featureVersionModelsForOneFeature = new ArrayList<>();
-//        for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
-//            if (feature.getName().equals(featureName)) {
-//                for (FeatureRevision featureRevision : feature.getRevisions()) {
-//                    featureVersionModelsForOneFeature.add(new FeatureVersionModel(featureRevision.getId(), featureRevision.getDescription()));
-//                }
-//            }
-//        }
-//        return featureVersionModelsForOneFeature.toArray(new FeatureVersionModel[0]);
+        ArrayList<FeatureVersionModel> featureVersionModelsForOneFeature = new ArrayList<>();
+        for (Feature feature : this.application.getEccoService().getRepository().getFeatures()) {
+            if (feature.getName().equals(featureName)) {
+                for (FeatureRevision featureRevision : feature.getRevisions()) {
+                    featureVersionModelsForOneFeature.add(new FeatureVersionModel(featureRevision.getId(), featureRevision.getDescription()));
+                }
+            }
+        }
+        return featureVersionModelsForOneFeature.toArray(new FeatureVersionModel[0]);
     }
 
     public NumberRevisionsPerFeature[] getNumberRevisionsPerFeature() {

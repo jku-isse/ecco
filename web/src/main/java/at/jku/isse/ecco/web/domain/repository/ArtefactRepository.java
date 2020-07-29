@@ -31,10 +31,6 @@ public class ArtefactRepository extends AbstractRepository {
         this.application = eccoApplication;
     }
 
-
-    private ArrayList<String> usedNodeUUIDList = new ArrayList<>();
-    private ArrayList<String> usedEdgeUUIDList = new ArrayList<>();
-
     public ArtefactTreeModel getArtifactsByAssociation(AssociationModel[] givenAssociations) {
         EccoService eccoService = this.application.getEccoService();
         Collection<? extends Association> associationCollection = eccoService.getRepository().getAssociations();
@@ -98,7 +94,6 @@ public class ArtefactRepository extends AbstractRepository {
             artefactNode.setName(givenRootOrChildNode.getArtifact().getData().toString());
         }
 
-        usedNodeUUIDList.add(nodeUUid);
         nodeList.add(artefactNode);
 
         if (parentNodeToGivenRootOrChildNode != null) {

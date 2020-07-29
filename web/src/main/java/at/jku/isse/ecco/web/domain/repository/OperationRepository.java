@@ -16,16 +16,16 @@ import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class ApplicationRepository extends AbstractRepository {
+public class OperationRepository extends AbstractRepository {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationRepository.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OperationRepository.class);
 
     private EccoApplication eccoApplication;
 
-    public ApplicationRepository() {
+    public OperationRepository() {
     }
 
-    public ApplicationRepository(EccoApplication eccoApplication) {
+    public OperationRepository(EccoApplication eccoApplication) {
         this.eccoApplication = eccoApplication;
     }
 

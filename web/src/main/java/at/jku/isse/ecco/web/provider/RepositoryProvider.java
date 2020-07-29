@@ -10,18 +10,12 @@ import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 
 @Provider
 public class RepositoryProvider implements ContextResolver<AbstractRepository> {
-
     @Context
     private EccoApplication application;
-
-    private ArrayList<AbstractRepository> abstractRepositories = new ArrayList<>();
-
     private static final Logger LOGGER = LoggerFactory.getLogger(RepositoryProvider.class);
-
     @Override
     public AbstractRepository getContext(Class<?> type) {
         Object object = null;
@@ -32,12 +26,7 @@ public class RepositoryProvider implements ContextResolver<AbstractRepository> {
         } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             e.printStackTrace();
         }
-        if (!abstractRepositories.contains(object)) {
-            abstractRepositories.add((AbstractRepository) object);
-            return (AbstractRepository) object;
-        } else {
-            return abstractRepositories.get(abstractRepositories.indexOf(object));
-        }
+        return (AbstractRepository) object;
     }
 }
 

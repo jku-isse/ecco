@@ -13,7 +13,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Configuration;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Providers;
 
@@ -37,10 +36,6 @@ public class FeatureController {
         return featureRepository.updateFeature(featureModels);
     }
 
-    /**
-     *
-     * @return String
-     */
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
     public FeatureModel[] getFeatures() {
@@ -62,11 +57,10 @@ public class FeatureController {
     @Path("/{featureName}/version")
     @Produces({ MediaType.APPLICATION_JSON })
     @Consumes({ MediaType.APPLICATION_JSON })
-    public Response updateFeatureversionFromFeature(@PathParam("featureName") String featureName, FeatureVersionModel featureVersionModel) {
+    public FeatureVersionModel[] updateFeatureversionFromFeature(@PathParam("featureName") String featureName, FeatureVersionModel featureVersionModel) {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
         FeatureRepository featureRepository = (FeatureRepository) featureRepositoryContextResolver.getContext(FeatureRepository.class);
-        featureRepository.updateFeatureVersionFromFeature(featureName, featureVersionModel);
-        return Response.status(Response.Status.OK).allow("POST, GET, OPTIONS, PUT, DELETE").build();
+        return featureRepository.updateFeatureVersionFromFeature(featureName, featureVersionModel);
     }
 
     @GET

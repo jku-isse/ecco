@@ -2,7 +2,7 @@ package at.jku.isse.ecco.web.controller;
 
 import at.jku.isse.ecco.web.domain.model.*;
 import at.jku.isse.ecco.web.domain.repository.AbstractRepository;
-import at.jku.isse.ecco.web.domain.repository.ApplicationRepository;
+import at.jku.isse.ecco.web.domain.repository.OperationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,9 +15,9 @@ import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Providers;
 
 @Path("/repository")
-public class ApplicationController {
+public class OperationController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OperationController.class);
 
     @Context
     private Configuration configuration;
@@ -42,8 +42,8 @@ public class ApplicationController {
     @Produces({ MediaType.APPLICATION_JSON })
     public OperationResponse doOpenCloseRepository(OperationContainer operationOnDirectory) {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
-        ApplicationRepository applicationRepository = (ApplicationRepository) featureRepositoryContextResolver.getContext(ApplicationRepository.class);
-        return applicationRepository.doOpenCloseOperationOnRepository(
+        OperationRepository operationRepository = (OperationRepository) featureRepositoryContextResolver.getContext(OperationRepository.class);
+        return operationRepository.doOpenCloseOperationOnRepository(
                 operationOnDirectory.getRepositoryDirectory(),
                 operationOnDirectory.getRepositoryOperation());
     }
