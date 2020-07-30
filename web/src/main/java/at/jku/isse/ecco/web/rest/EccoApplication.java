@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.web.rest;
 
 import at.jku.isse.ecco.service.EccoService;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,21 +17,25 @@ Issue ist bisher auch nicht closed hat auch keinen Workaround...
 public class EccoApplication extends ResourceConfig {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(EccoApplication.class);
+	private static final String ECCO_REPOSITORY_DIRECTORY = "/.ecco";
 
 	private final EccoService eccoService = new EccoService();
 	public EccoApplication() {
 		packages(true, "at.jku.isse.ecco.web");
+		register(MultiPartFeature.class);
 	}
 
 	public EccoService getEccoService() {
 		return this.eccoService;
 	}
-	public void open(String repositoryDir) {
-		this.eccoService.setRepositoryDir(Paths.get(repositoryDir));
+	public void open(String baseDirectory) {
+		this.eccoService.setBaseDir(Paths.get(baseDirectory));
+		this.eccoService.setRepositoryDir(Paths.get(baseDirectory + ECCO_REPOSITORY_DIRECTORY));
 		this.eccoService.open();
 	}
-	public void init(String repositoryDir) {
-		this.eccoService.setRepositoryDir(Paths.get(repositoryDir));
+	public void init(String baseDirectory) {
+		this.eccoService.setBaseDir(Paths.get(baseDirectory));
+		this.eccoService.setRepositoryDir(Paths.get(baseDirectory + ECCO_REPOSITORY_DIRECTORY));
 		this.eccoService.init();
 	}
 	public void close() {

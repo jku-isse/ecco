@@ -1,8 +1,12 @@
 package at.jku.isse.ecco.web.controller;
 
-import at.jku.isse.ecco.web.domain.model.*;
+import at.jku.isse.ecco.web.domain.model.FeatureModel;
+import at.jku.isse.ecco.web.domain.model.OperationContainer;
+import at.jku.isse.ecco.web.domain.model.OperationResponse;
 import at.jku.isse.ecco.web.domain.repository.AbstractRepository;
 import at.jku.isse.ecco.web.domain.repository.OperationRepository;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +17,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Providers;
+import java.io.InputStream;
 
 @Path("/repository")
 public class OperationController {
@@ -44,7 +49,7 @@ public class OperationController {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
         OperationRepository operationRepository = (OperationRepository) featureRepositoryContextResolver.getContext(OperationRepository.class);
         return operationRepository.doOpenCloseOperationOnRepository(
-                operationOnDirectory.getRepositoryDirectory(),
+                operationOnDirectory.getBaseDirectory(),
                 operationOnDirectory.getRepositoryOperation());
     }
 
@@ -56,5 +61,19 @@ public class OperationController {
                 new FeatureModel("dpl1", "Das ist ein geile Beschreibung!!!!!"),
                 new FeatureModel("dpl2", "Das ist ein eher nicht so geile Beschreibung!!!!!")
         };
+    }
+    @POST
+    @Path("/commit")
+    @Consumes({ MediaType.MULTIPART_FORM_DATA })
+    @Produces({ MediaType.APPLICATION_JSON })
+    public Response commitFilesInsideArchive(
+            @FormDataParam("file") InputStream uploadedFileStream,
+            @FormDataParam("file") FormDataContentDisposition fileDetail
+    ) {
+        ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
+        OperationRepository operationRepository = (OperationRepository) featureRepositoryContextResolver.getContext(OperationRepository.class);
+        String savedPathOfZIPFile = operationRepository.saveZIPFileOnPath(uploadedFileStream, fileDetail);
+        operationRepository.commitFilesInsideSavedRepositoryOnPath(savedPathOfZIPFile, fileDetail.getFileName());
+        return Response.ok().build();
     }
 }
