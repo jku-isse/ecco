@@ -16,11 +16,10 @@ import javax.ws.rs.NotAllowedException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 public class OperationRepository extends AbstractRepository {
 
@@ -131,28 +130,8 @@ public class OperationRepository extends AbstractRepository {
      * @param zipFileName
      */
     public void commitFilesInsideSavedRepositoryOnPath(String pathToZIPFile, String zipFileName) {
-        Map<String, String> env = new HashMap<>();
-        env.put("create", "true");
-        Path locationOfZIPFile = Paths.get(pathToZIPFile + "/" + zipFileName);
-        Path virtualFileSystemZIPFilePath =  Paths.get(pathToZIPFile + "/" + zipFileName);
-        try  {
-            FileSystem zipFS = FileSystems.newFileSystem(locationOfZIPFile, env, null);
-            zipFS.getRootDirectories().forEach((Path rootPath) -> {
-                LOGGER.info("Root-Filesystem...");
-                LOGGER.info(rootPath.toString());
-                rootPath.toAbsolutePath();
-                this.eccoApplication.getEccoService().setBaseDir(rootPath.toAbsolutePath());
-                try {
-                    this.eccoApplication.getEccoService().commit();
-                } catch (EccoException e) {
-                    LOGGER.info(e.getMessage());
-                    e.getStackTrace();
-                }
-            });
-        } catch (IOException e) {
-            LOGGER.info(e.getMessage());
-            e.printStackTrace();
-        }
-        LOGGER.info(pathToZIPFile);
+        LOGGER.info("Committing files in the Repository of...");
+        LOGGER.info(this.eccoApplication.getEccoService().getBaseDir().toString());
+        LOGGER.info("Path to File is" + pathToZIPFile + "/" + zipFileName);
     }
 }
