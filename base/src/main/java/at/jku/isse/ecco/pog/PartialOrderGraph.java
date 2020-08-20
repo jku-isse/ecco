@@ -778,27 +778,167 @@ public interface PartialOrderGraph extends Persistable {
 			// align other graph to this graph
 			this.align(other);
 
-			// collect shared symbols
-			Map<Integer, Node.Op> shared = new HashMap<>();
+//			// collect shared symbols
+//			Map<Integer, Node.Op> shared = new HashMap<>();
+//			Collection<Node.Op> thisNodes = this.collectNodes();
+//			Collection<Node.Op> otherNodes = other.collectNodes();
+//			for (Node.Op otherNode : otherNodes) {
+//				if (otherNode.getArtifact() != null && otherNode.getArtifact().getSequenceNumber() != PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
+//					shared.put(otherNode.getArtifact().getSequenceNumber(), thisNodes.stream().filter(thisNode -> thisNode.getArtifact() != null && thisNode.getArtifact().getSequenceNumber() == otherNode.getArtifact().getSequenceNumber()).findFirst().get());
+//				}
+//			}
+
+			// CONSISTENCY: check if alignment is valid
+			// TODO
+			this.checkAlignment(other);
+
+			// CONSISTENCY: count number of nodes before merge
 			Collection<Node.Op> thisNodes = this.collectNodes();
 			Collection<Node.Op> otherNodes = other.collectNodes();
+			int numNodesBefore = thisNodes.size();
+			int numMatchedNodes = (int) otherNodes.stream().filter(otherNode -> otherNode.getArtifact() != null && otherNode.getArtifact().getSequenceNumber() != PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER).count() + 2; // +2 because of head and tail
+			int numUnmatchedNodes = otherNodes.size() - numMatchedNodes;
+
+			// merge other partial order graph into this partial order graph
+			//this.mergeRec(this.getHead(), other.getHead(), shared, new HashSet<>(), new HashMap<>());
+			this.mergeRefactored(other);
+			this.removeTransitives(this.getHead());
+
+			// CONSISTENCY: count number of nodes afters merge
+			int numNodesAfter = this.collectNodes().size();
+			if (numNodesAfter != numNodesBefore + numUnmatchedNodes)
+				throw new EccoException("POG node count mismatch! BEFORE: " + numNodesBefore + ", MATCHED: " + numMatchedNodes + ", UNMATCHED: " + numUnmatchedNodes + ", AFTER: " + numNodesAfter);
+
+			// CONSISTENCY: check cycles: for every node: can it reach itself?
+			for (Node.Op thisNode : this.collectNodes())
+				if (thisNode.getArtifact() != null)
+					for (Node.Op nextNode : thisNode.getNext())
+						if (canReach(nextNode, thisNode.getArtifact()))
+							throw new EccoException("There is a cycle in the POG!");
+
+			// CONSISTENCY: check for redundant connections: can any node be reached from any of the other nodes?
+			for (Node.Op thisNode : this.collectNodes())
+				for (Node.Op nextNode : thisNode.getNext())
+					for (Node.Op nextNode2 : thisNode.getNext())
+						if (nextNode != nextNode2 && nextNode.getArtifact() != null && canReach(nextNode2, nextNode.getArtifact()))
+							throw new EccoException("There is a redundant transitive connection in the POG!");
+
+			// CONSISTENCY: check if graph has cycles and throw exception if it does
+			this.checkConsistency();
+		}
+
+
+		//private
+		default void mergeRefactored(PartialOrderGraph.Op other) {
+			Collection<Node.Op> thisNodes = this.collectNodes();
+			Collection<Node.Op> otherNodes = other.collectNodes();
+
+			Map<Node.Op, Node.Op> nodeMap = new HashMap<>();
+			nodeMap.put(other.getHead(), this.getHead());
+			nodeMap.put(other.getTail(), this.getTail());
+
 			for (Node.Op otherNode : otherNodes) {
-				if (otherNode.getArtifact() != null && otherNode.getArtifact().getSequenceNumber() != PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
-					shared.put(otherNode.getArtifact().getSequenceNumber(), thisNodes.stream().filter(thisNode -> thisNode.getArtifact() != null && thisNode.getArtifact().getSequenceNumber() == otherNode.getArtifact().getSequenceNumber()).findFirst().get());
+				if (otherNode.getArtifact() == null) {
+					// nothing to do
+				} else if (otherNode.getArtifact().getSequenceNumber() == PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
+					otherNode.getArtifact().setSequenceNumber(this.getMaxIdentifier());
+					this.incMaxIdentifier();
+				} else {
+					for (Node.Op thisNode : thisNodes) {
+						if (thisNode.getArtifact() != null && thisNode.getArtifact().getSequenceNumber() == otherNode.getArtifact().getSequenceNumber()) {
+							nodeMap.put(otherNode, thisNode);
+							break;
+						}
+					}
 				}
 			}
 
-			// check if alignment is valid
-			this.checkAlignment(other, shared);
-
-			// merge other partial order graph into this partial order graph
-			this.mergeRec(this.getHead(), other.getHead(), shared, new HashSet<>(), new HashMap<>());
-			//this.mergeRecNew(this.getHead(), other.getHead(), shared);
-			this.trimRec(this.getHead());
-
-			// check if graph has cycles and throw exception if it does
-			this.checkConsistency();
+			for (Node.Op otherNode : otherNodes) {
+//				Node.Op thisNode;
+//				if (otherNode == other.getHead()) {
+//					thisNode = this.getHead();
+//				} else {
+//					thisNode = nodeMap.get(otherNode.getArtifact().getSequenceNumber());
+//					if (thisNode == null) {
+//						thisNode = this.createNode(otherNode.getArtifact());
+//						nodeMap.put(thisNode.getArtifact().getSequenceNumber(), thisNode);
+//					}
+//				}
+				Node.Op thisNode = nodeMap.get(otherNode);
+				if (thisNode == null) {
+					thisNode = this.createNode(otherNode.getArtifact());
+					nodeMap.put(otherNode, thisNode);
+				}
+				// add all next nodes that do not already exist
+				for (Node.Op otherNextNode : otherNode.getNext()) {
+					Node.Op thisNextNode = nodeMap.get(otherNextNode);
+					if (thisNextNode == null) {
+						thisNextNode = this.createNode(otherNextNode.getArtifact());
+						nodeMap.put(otherNextNode, thisNextNode);
+					}
+					if (!thisNode.getNext().contains(thisNextNode)) {
+						thisNode.addChild(thisNextNode);
+					}
+//					if (!thisNode.getNext().contains(otherNextNode)) {
+//						Node.Op thisNextNode;
+//						if (otherNextNode == other.getTail()) {
+//							thisNextNode = this.getTail();
+//						} else {
+//							thisNextNode = nodeMap.get(otherNextNode.getArtifact().getSequenceNumber());
+//							if (thisNextNode == null) {
+//								thisNextNode = this.createNode(otherNextNode.getArtifact());
+//								nodeMap.put(thisNextNode.getArtifact().getSequenceNumber(), thisNextNode);
+//							}
+//						}
+//						thisNode.addChild(thisNextNode);
+//					}
+				}
+			}
 		}
+
+
+		//private
+		default void removeTransitives(Node.Op node) {
+			// trim transitives, i.e. remove direct children that can be reached indirectly via any of the other children
+
+			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
+			stack.push(node);
+
+			while (!stack.isEmpty()) {
+				Node.Op current = stack.pop();
+
+				// process node
+				Iterator<? extends Node.Op> it = current.getNext().iterator();
+				while (it.hasNext()) {
+					Node.Op child = it.next();
+
+					for (Node.Op otherChild : current.getNext()) {
+						if (otherChild != child && canReach(otherChild, child.getArtifact())) {
+							// we do not need connection -> delete it
+							it.remove();
+							child.getPrevious().remove(current);
+							//System.out.println("Removed node " + child + " as child from node " + current);
+							break;
+						}
+					}
+				}
+
+				// add children of current node
+				for (Node.Op child : current.getNext()) {
+					counters.putIfAbsent(child, 0);
+					int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+					// check if all parents of the node have been processed
+					if (counter >= child.getPrevious().size()) {
+						// remove node from counters
+						counters.remove(child);
+						// push node onto stack
+						stack.push(child);
+					}
+				}
+			}
+		}
+
 
 		//private
 		default void mergeRec(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared, Set<Node.Op> leftVisited, Map<Node.Op, Node.Op> addedFromRight) {
@@ -935,48 +1075,6 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
-
-		//private
-		default void trimRec(Node.Op node) {
-			// trim transitives, i.e. remove direct children that can be reached indirectly via any of the other children
-
-			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
-			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
-			stack.push(node);
-
-			while (!stack.isEmpty()) {
-				Node.Op current = stack.pop();
-
-				// process node
-				Iterator<? extends Node.Op> it = current.getNext().iterator();
-				while (it.hasNext()) {
-					Node.Op child = it.next();
-
-					for (Node.Op otherChild : current.getNext()) {
-						if (otherChild != child && canReach(otherChild, child.getArtifact())) {
-							// we do not need connection -> delete it
-							it.remove();
-							child.getPrevious().remove(current);
-							System.out.println("Removed node " + child + " as child from node " + current);
-							break;
-						}
-					}
-				}
-
-				// add children of current node
-				for (Node.Op child : current.getNext()) {
-					counters.putIfAbsent(child, 0);
-					int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
-					// check if all parents of the node have been processed
-					if (counter >= child.getPrevious().size()) {
-						// remove node from counters
-						counters.remove(child);
-						// push node onto stack
-						stack.push(child);
-					}
-				}
-			}
-		}
 
 		//private
 		default void mergeRecNew(Node.Op left, Node.Op right, Map<Integer, Node.Op> shared) {
@@ -1140,12 +1238,9 @@ public interface PartialOrderGraph extends Persistable {
 
 		/**
 		 * Checks if the alignments of this pog and the other pog are compatible.
-		 *
-		 * @param other  The other partial order graph.
-		 * @param shared A mapping of sequence numbers to nodes in this partial order graph that are shared with the other partial order graph.
 		 */
 		//private
-		default void checkAlignment(PartialOrderGraph.Op other, Map<Integer, Node.Op> shared) {
+		default void checkAlignment(PartialOrderGraph.Op other) {
 			// try to traverse other pog until the very end. if this is not possible the alignments are not compatible.
 			// NOTE: use NOT_MATCHED_SEQUENCE_NUMBER instead of shared. anything in other that is not NOT_MATCHED_SEQUENCE_NUMBER is shared.
 
