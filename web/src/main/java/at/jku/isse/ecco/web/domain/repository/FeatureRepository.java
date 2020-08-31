@@ -4,6 +4,7 @@ import at.jku.isse.ecco.feature.Feature;
 
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.web.domain.model.ArtefactGraphModel;
 import at.jku.isse.ecco.web.domain.model.FeatureModel;
 import at.jku.isse.ecco.web.domain.model.FeatureVersionModel;
 import at.jku.isse.ecco.web.domain.model.NumberRevisionsPerFeature;
@@ -16,9 +17,7 @@ public class FeatureRepository extends AbstractRepository {
 
     private EccoApplication application;
 
-    public FeatureRepository() {
-
-    }
+    public FeatureRepository() {}
 
     public FeatureRepository(EccoApplication application) {
         this.application = application;
@@ -47,6 +46,12 @@ public class FeatureRepository extends AbstractRepository {
      * @return FeatureModel[]
      */
     public FeatureModel[] getFeatures() {
+        ArtefactGraphModel backendGraph = this.application.getBackendGraph();
+        if (backendGraph == null) {
+            LOGGER.info("Backendgraph aus Application null...");
+        } else {
+            LOGGER.info("Backendgraph aus Application nicht null...!!!");
+        }
         EccoService eccoService = this.application.getEccoService();
         Collection<? extends Feature> featureCollection = eccoService.getRepository().getFeatures();
         ArrayList<FeatureModel> features = new ArrayList<>();

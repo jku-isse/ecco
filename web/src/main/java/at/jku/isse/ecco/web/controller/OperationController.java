@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.web.controller;
 
+import at.jku.isse.ecco.web.domain.model.CloseOperationResponse;
 import at.jku.isse.ecco.web.domain.model.FeatureModel;
 import at.jku.isse.ecco.web.domain.model.OperationContainer;
 import at.jku.isse.ecco.web.domain.model.OperationResponse;
@@ -32,14 +33,15 @@ public class OperationController {
 
     /**
      * Create new Repo with a given
-     * @param operation
+     * @param operationOnDirectory
      * @return
      */
     @PUT
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    public Response createRepository(OperationContainer operation) {
-        return Response.status(Response.Status.OK).build();
+    public OperationResponse createRepository(OperationContainer operationOnDirectory) {
+        //TODO: Create eines Repos einmal hierein packen...
+        return new CloseOperationResponse();
     }
 
     @POST
@@ -48,7 +50,7 @@ public class OperationController {
     public OperationResponse doOpenCloseRepository(OperationContainer operationOnDirectory) {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
         OperationRepository operationRepository = (OperationRepository) featureRepositoryContextResolver.getContext(OperationRepository.class);
-        return operationRepository.doOpenCloseOperationOnRepository(
+        return operationRepository.doOpenCloseCreateOperationOnRepository(
                 operationOnDirectory.getBaseDirectory(),
                 operationOnDirectory.getRepositoryOperation());
     }
@@ -74,6 +76,16 @@ public class OperationController {
         OperationRepository operationRepository = (OperationRepository) featureRepositoryContextResolver.getContext(OperationRepository.class);
         String savedPathOfZIPFile = operationRepository.saveZIPFileOnPath(uploadedFileStream, fileDetail);
         operationRepository.commitFilesInsideSavedRepositoryOnPath(savedPathOfZIPFile, fileDetail.getFileName());
+        return Response.ok().build();
+    }
+
+    @POST
+    @Path("/checkout")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_OCTET_STREAM })
+    public Response checkoutFilesWithZIPArchive(
+
+    ) {
         return Response.ok().build();
     }
 }

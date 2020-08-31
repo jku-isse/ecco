@@ -52,7 +52,7 @@ public class OperationRepository extends AbstractRepository {
      *                            bspw. Open oder Initialize
      * @return boolean
      */
-    public OperationResponse doOpenCloseOperationOnRepository(String baseDirectory, String repositoryOperation) {
+    public OperationResponse doOpenCloseCreateOperationOnRepository(String baseDirectory, String repositoryOperation) {
         switch (repositoryOperation) {
             case "CREATE":
                 try {
