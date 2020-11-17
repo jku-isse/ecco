@@ -1,0 +1,13 @@
+ecco.set("storage", true)
+
+dependencies {
+	implementation project(':ecco-service')
+
+	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
+
+	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.9'
+	implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-smile', version: '2.9.9'
+	//implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-cbor', version: '2.9.9'
+	implementation group: 'com.fasterxml.jackson.module', name: 'jackson-module-afterburner', version: '2.9.9'
+}

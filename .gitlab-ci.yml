@@ -1,0 +1,121 @@
+variables:
+  GIT_DEPTH: "3"
+
+  BUILD_DIR: "build"
+  JAVADOC_DIR: "$BUILD_DIR/docs/javadoc"
+  MAVEN_DIR: "$BUILD_DIR/maven2"
+  PAGE_DIR: "$BUILD_DIR/page"
+  DISTRIBUTION_DIR: "$BUILD_DIR/distributions"
+  ZIP_DIR: "$BUILD_DIR/distributions/zip"
+  #RPM_DIR: "$DISTRIBUTION_DIR/rpm"
+  #DEB_DIR: "$DISTRIBUTION_DIR/deb"
+  RPM_DIR: "$BUILD_DIR/distributions/rpm"
+  DEB_DIR: "$BUILD_DIR/distributions/deb"
+
+  RPM_REPO_DIR: "$RPM_DIR/repo"
+  DEB_REPO_DIR: "$DEB_DIR/repo"
+
+
+stages:
+  - build
+  - test
+  - deploy
+
+
+build:fedora:
+  stage: build
+  image: $CI_REGISTRY_IMAGE/build:fedora
+  script:
+    - cd $CI_PROJECT_DIR
+    - chmod +x ./gradlew
+    - ./gradlew build
+    - ./gradlew combinedjavadoc
+    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
+    - ./gradlew combinedWindowsZip
+    - ./gradlew combinedLinuxZip
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
+    - ./gradlew html
+    - ./gradlew page
+    - mkdir $ZIP_DIR/
+    - cp $DISTRIBUTION_DIR/*.zip $ZIP_DIR/
+    - createrepo_c $RPM_DIR
+    - ls -la $RPM_DIR/.
+  only:
+    - master
+    - develop
+  when: on_success
+  allow_failure: false
+  artifacts:
+    paths:
+      - $JAVADOC_DIR
+      - $MAVEN_DIR
+      - $ZIP_DIR
+      - $RPM_DIR
+      - $PAGE_DIR
+      - $BUILD_DIR/downloads.html
+
+
+build:ubuntu:
+  stage: build
+  image: $CI_REGISTRY_IMAGE/build:ubuntu
+  script:
+    - cd $CI_PROJECT_DIR
+    - chmod +x ./gradlew
+    - ./gradlew build
+    - ./gradlew combinedjavadoc
+    - ./gradlew publishEccoMavenPublicationToRootEccoRepository
+    - ./gradlew combinedWindowsZip
+    - ./gradlew combinedLinuxZip
+    - ./gradlew combinedrpm
+    - ./gradlew combineddeb
+    - ./gradlew html
+    - ./gradlew page
+    - mkdir $ZIP_DIR/
+    - cp $DISTRIBUTION_DIR/*.zip $ZIP_DIR/
+    - ls -la $DEB_DIR/.
+  only:
+    - master
+    - develop
+  when: on_success
+  allow_failure: true
+  artifacts:
+    paths:
+      - $DEB_DIR
+
+
+pages:
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  image: alpine:latest
+  script:
+    - cd $CI_PROJECT_DIR
+    - pwd
+    - ls -la
+    - mkdir public/
+    - cp -r $MAVEN_DIR/. public/maven2/
+    - cp -r $JAVADOC_DIR/. public/doc/
+    - cp -r $RPM_DIR/. public/rpm/
+#    - cp -r $DEB_DIR/. public/deb/
+    - cp -r $ZIP_DIR/. public/
+    - cp -r $PAGE_DIR/. public/
+    - cp $BUILD_DIR/downloads.html public/
+    - cd public
+    - pwd
+    - ls -la
+  only:
+    - master
+    - develop
+  when: on_success
+  allow_failure: false
+  dependencies:
+    - build:fedora
+#    - build:ubuntu
+  artifacts:
+    paths:
+      - public/
+  environment:
+    name: gitlab
+    url: https://llinsbauer.gitlab.io/ecco/
+

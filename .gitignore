@@ -1,0 +1,15 @@
+.gradle
+.idea
+*.iml
+.classpath
+.project
+.settings
+build
+out
+bin
+*.iws
+*.ipr
+*.db
+u
+ui
+test-output

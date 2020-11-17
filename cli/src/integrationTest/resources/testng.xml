@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<suite name="CLI Integration Tests" verbose="1">
+	<test name="CLI">
+		<groups>
+			<run>
+				<include name="integration"/>
+			</run>
+		</groups>
+		<packages>
+			<package name="at.jku.isse.ecco.cli.test"/>
+		</packages>
+	</test>
+</suite>

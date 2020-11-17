@@ -1,0 +1,268 @@
+plugins {
+	id 'nebula.ospackage' version '8.0.3'
+}
+
+allprojects {
+	apply plugin: 'idea'
+	apply plugin: 'eclipse'
+}
+
+subprojects {
+	ext {
+		ecco = {
+			adapter = false
+			set("storage", false)
+		}
+	}
+
+	apply plugin: 'java'
+	apply plugin: 'maven-publish'
+	apply plugin: 'nebula.ospackage'
+
+	sourceCompatibility = JavaVersion.VERSION_13
+	targetCompatibility = JavaVersion.VERSION_13
+
+	repositories {
+		mavenCentral()
+	}
+
+	dependencies {
+		testImplementation 'org.testng:testng:6.14.3'
+	}
+
+	jar {
+		manifest {
+			attributes("Implementation-Title": project.name, "Implementation-Version": project.version, "Implementation-Vendor": project.group)
+		}
+	}
+
+	sourceSets {
+		integrationTest {
+			java {
+				compileClasspath += main.output + test.output
+				runtimeClasspath += main.output + test.output
+				srcDir file('src/integrationTest/java')
+			}
+			resources {
+				srcDir file('src/integrationTest/resources')
+			}
+		}
+	}
+
+	configurations {
+		integrationTestCompile.extendsFrom testCompile
+		integrationTestImplementation.extendsFrom testImplementation
+		integrationTestRuntime.extendsFrom testRuntime
+	}
+
+	test {
+		useTestNG() {
+			suites 'src/test/resources/testng.xml'
+		}
+		outputs.upToDateWhen { false }
+	}
+	test.onlyIf {
+		new File(getProjectDir(), 'src/test/resources/testng.xml').exists()
+	}
+
+	task integrationTest(type: Test, group: 'verification', description: 'Runs the integration tests.') {
+		useTestNG() {
+			suites 'src/integrationTest/resources/testng.xml'
+		}
+		classpath = sourceSets.integrationTest.runtimeClasspath
+		outputs.upToDateWhen { false }
+	}
+	integrationTest.onlyIf {
+		new File(getProjectDir(), 'src/integrationTest/resources/testng.xml').exists()
+	}
+	check.dependsOn -= integrationTest
+
+	tasks.withType(Test) {
+		reports.html.destination = file("${reporting.baseDir}/${name}")
+	}
+
+	idea {
+		module {
+			testSourceDirs += file('src/integrationTest/java')
+			scopes.TEST.plus += [configurations.integrationTestCompile]
+			downloadJavadoc = true
+			downloadSources = true
+		}
+	}
+
+	eclipse {
+		classpath {
+			downloadJavadoc = true
+			downloadSources = true
+		}
+	}
+
+	task sourcesJar(type: Jar, group: 'packaging') {
+		archiveClassifier = 'sources'
+		from sourceSets.main.allSource
+	}
+
+	task javadocJar(type: Jar, group: 'packaging', dependsOn: javadoc) {
+		archiveClassifier = 'javadoc'
+		from javadoc.destinationDir
+	}
+
+	publishing {
+		publications {
+			eccoMaven(MavenPublication) {
+				groupId project.group
+				artifactId project.name
+				version project.version
+
+				from project.components.java
+
+				artifact javadocJar {
+				}
+				artifact sourcesJar {
+				}
+			}
+		}
+		repositories {
+			maven {
+				name = "GitHubPackages"
+				url = System.getenv("GITHUB_PACKAGES_URL")
+				credentials {
+					username = System.getenv("GITHUB_ACTOR")
+					password = System.getenv("GITHUB_TOKEN")
+				}
+			}
+		}
+	}
+
+	// # PACKAGING
+	ospackage {
+		packageName = project.name
+		version = project.version
+		release = 1
+		arch = NOARCH
+		os = LINUX
+
+		prefix '/usr/'
+
+		directory('/usr/share/java/ecco')
+		directory('/usr/share/java/ecco/lib')
+
+		into('/usr/share/java/') {
+			from(project.jar) {
+				addParentDirs false
+				into 'ecco/'
+			}
+
+			from({
+				def temp = project.configurations.runtime;
+				project.configurations.findAll { it.name.equals("runtime") }.collectMany {
+					it.allDependencies
+				}.findAll { it instanceof ProjectDependency }.collect {
+					it.dependencyProject.configurations.runtime
+				}.each { temp = temp - it };
+				project.configurations.findAll { it.name.equals("runtime") }.collectMany {
+					it.allDependencies
+				}.findAll { it instanceof ProjectDependency }.collect { it.dependencyProject.jar.outputs.files }.each {
+					temp = temp - it;
+				};
+				return temp;
+			}) {
+				addParentDirs false
+				into 'ecco/lib/'
+			}
+		}
+	}
+
+	buildRpm {
+	}
+
+	buildDeb {
+	}
+
+	task rpm(type: Rpm, group: 'packaging') {
+	}
+
+	task deb(type: Deb, group: 'packaging') {
+	}
+
+	task sourcesZip(type: Zip, group: 'packaging') {
+		//compression = Compression.GZIP
+		archiveClassifier = 'src'
+		from projectDir
+		include 'src/**/*'
+		include 'build.gradle'
+	}
+
+	task linuxZip(type: Zip, group: 'packaging') {
+		archiveClassifier = 'linux'
+		into(archiveName - ('.' + archiveExtension)) {
+			from project.jar
+			from project.configurations.runtimeClasspath
+		}
+	}
+
+	task windowsZip(type: Zip, group: 'packaging') {
+		archiveClassifier = 'windows'
+		into(archiveName - ('.' + archiveExtension)) {
+			from project.jar
+			from project.configurations.runtimeClasspath
+		}
+	}
+
+	// # BUNDLING
+	task copyJars(type: Copy, dependsOn: project.build) {
+		from(project.jar)
+		into project.file('build/bundle/')
+	}
+	task copyDependencies(type: Copy) {
+		from(project.configurations.runtime)
+		into project.file('build/bundle/lib/')
+	}
+	task bundle(dependsOn: [copyJars, copyDependencies])
+
+	task depTest {
+		def temp = project.configurations.runtime
+		project.configurations.findAll { it.name.equals("runtime"); }.collectMany { it.allDependencies }.findAll {
+			it instanceof ProjectDependency
+		}.collect { it.dependencyProject.jar.outputs.files }.each { println it };
+	}
+}
+
+task combinedjavadoc(type: Javadoc, group: "documentation") {
+	description = 'Generates a global javadoc from all the modules.'
+	source project.subprojects.collect { it.sourceSets.main.allJava }
+	classpath = files(project.subprojects.collect { it.sourceSets.main.compileClasspath })
+	options.memberLevel = JavadocMemberLevel.PRIVATE
+	options.links = ['https://docs.oracle.com/en/java/javase/13/docs/api/']
+	destinationDir = file("${buildDir}/docs/javadoc")
+}
+
+task combinedrpm(type: Copy, group: 'packaging') {
+	dependsOn subprojects.rpm
+	into "$project.distsDir/rpm"
+	//from project.subprojects.collect { it.rpm.archivePath }
+	from subprojects.rpm.archivePath
+}
+
+task combineddeb(type: Copy, group: 'packaging') {
+	dependsOn subprojects.deb
+	into "$project.distsDir/deb"
+	//from project.subprojects.collect { it.deb.archivePath }
+	from subprojects.deb.archivePath
+}
+
+task combinedLinuxZip(type: Zip, group: 'packaging') {
+	into project.name
+	archiveClassifier = 'linux'
+	destinationDirectory = file("$project.distsDir/zip")
+	from { subprojects.linuxZip.source }
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task combinedWindowsZip(type: Zip, group: 'packaging') {
+	into project.name
+	archiveClassifier = 'windows'
+	destinationDirectory = file("$project.distsDir/zip")
+	from { subprojects.windowsZip.source }
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

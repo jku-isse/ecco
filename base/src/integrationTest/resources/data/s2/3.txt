@@ -1,0 +1,20 @@
+{
+Set<String> names = new HashSet<String>();
+// Returns nothing
+for (Object element : modelImpl.getModelPackage().getDataType().refAllOfClass()) {
+String name = ((javax.jmi.model.DataType) element).getName();
+names.add(name);
+}
+// ScopeKind, VisibilityKind, PseudostateKind, etc
+// Doesn't include Boolean though, despite what UML 1.4 spec says
+for (Object element : modelImpl.getModelPackage().getEnumerationType().refAllOfClass()) {
+String name = ((javax.jmi.model.EnumerationType) element).getName();
+names.add(name);
+}
+// Boolean, String, Integer, Long, Float, Double, etc
+for (Object element : modelImpl.getModelPackage().getPrimitiveType().refAllOfClass()) {
+String name = ((javax.jmi.model.PrimitiveType) element).getName();
+names.add(name);          
+}
+return names;
+}

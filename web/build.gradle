@@ -1,0 +1,95 @@
+apply plugin: 'application'
+mainClassName = "at.jku.isse.ecco.web.server.EccoWebServer"
+applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
+
+task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
+	main = "at.jku.isse.ecco.web.server.EccoWebServer"
+	jvmArgs += ["-Xss1024m", "-Xmx8g"]
+	classpath = sourceSets.test.runtimeClasspath
+}
+
+//apply plugin: 'base'
+//apply plugin: 'java'
+//apply plugin: 'war'
+//apply plugin: 'jetty'
+
+dependencies {
+	implementation 'org.slf4j:slf4j-api:1.7.25'
+
+	implementation 'org.glassfish.grizzly:grizzly-framework:2.3.24'
+	implementation 'org.glassfish.grizzly:grizzly-http:2.3.24'
+	implementation 'org.glassfish.grizzly:grizzly-http-servlet:2.3.24'
+	implementation 'org.glassfish.grizzly:grizzly-http-server:2.3.24'
+
+	implementation 'org.glassfish.jersey.core:jersey-server:2.22.2'
+	implementation 'org.glassfish.jersey.containers:jersey-container-servlet:2.22.2'
+	implementation 'org.glassfish.jersey.containers:jersey-container-grizzly2-http:2.22.2'
+	implementation 'org.glassfish.jersey.media:jersey-media-json-jackson:2.22.2'
+
+	implementation 'javax.servlet:javax.servlet-api:3.1.0'
+
+	implementation project(':ecco-service')
+
+	// the following should be "testRuntimeOnly". however, for some reason these dependencies do not work at the moment.
+	testImplementation project(':ecco-adapter-file')
+	testImplementation project(':ecco-adapter-text')
+	testImplementation project(':ecco-adapter-image')
+}
+
+//sourceSets {
+//	main {
+//		resources {
+//			srcDir 'src/main/webapp'
+//			exclude 'WEB-INF'
+//		}
+//	}
+//}
+
+//public class TsCompileTask extends DefaultTask {
+//
+//	@InputFiles
+//	Set<File> source = [] as Set;
+//
+//	@OutputDirectory
+//	File outputDir;
+//
+//	@TaskAction
+//	void compile() {
+//		println "Compiling TypeScript files..."
+//		project.exec {
+//			executable = "tsc"
+//			List<File> files = source.collect { File source ->
+//				if (!source.isDirectory())
+//					return source
+//				return project.fileTree(source) {
+//					include "**/*.ts"
+//				}.files
+//			}.flatten()
+//
+//			args "--outDir"
+//			args outputDir.toString()
+//			args files
+//		}
+//	}
+//}
+//
+//task tsCompile(type: TsCompileTask) {
+//	source += file("src/main/ts")
+//	outputDir = file("$buildDir/ts")
+//}
+//
+//war {
+////	into("ts") {
+////		from tsCompile.outputs
+////	}
+//}
+//
+//jar {
+////	into("web") {
+////		from "src/main/webapp"
+////		exclude 'WEB-INF'
+////	}
+////	into("web/ts") {
+////		from tsCompile.outputs
+////	}
+//}

@@ -1,0 +1,9 @@
+
+ecco.adapter = true
+
+dependencies {
+	 // https://mvnrepository.com/artifact/org.eclipse.jdt/org.eclipse.jdt.core
+    compile group: 'org.eclipse.jdt', name: 'org.eclipse.jdt.core', version: '3.13.50'
+
+	compile project(':ecco-service')
+}

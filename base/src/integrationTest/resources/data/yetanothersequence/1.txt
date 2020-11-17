@@ -1,0 +1,13 @@
+{
+if (filename == null) /* || model == null */
+{
+LOG.error("Got badly formed user defined profile entry " + e);
+}
+profile = getMatchingUserDefinedProfile(filename, ProfileFacade.getManager());
+if (profile == null) {
+unresolvedFilenames.add(filename);
+} else {
+profiles.add(profile);
+LOG.debug("Loaded user defined profile - filename = " + filename);
+}
+}

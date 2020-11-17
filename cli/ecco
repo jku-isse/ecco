@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -e
+ulimit -n $(ulimit -H -n)
+
+. /usr/share/java-utils/java-functions
+set_jvm
+set_javacmd
+
+#set_classpath gradle/gradle-launcher gradle/gradle-core gradle/gradle-base-services
+# todo: get this classpath right!
+set_classpath ecco ecco/lib
+
+# Split up the JVM_OPTS And GRADLE_OPTS values into an array, following the shell quoting and substitution rules
+function splitJvmOpts() {
+    JVM_OPTS=("$@")
+}
+eval splitJvmOpts $JAVA_OPTS
+
+scriptDir=`dirname $0`
+
+exec "$JAVACMD" "${JVM_OPTS[@]}" -classpath "$scriptDir/*:$CLASSPATH" at.jku.isse.ecco.cli.Main "$@"
+#exec "$JAVACMD" "${JVM_OPTS[@]}" -classpath "./*:./at.jku.isse.ecco.cli-0.1.3.jar" at.jku.isse.ecco.cli.Main "$@"
+#exec "$JAVACMD" "${JVM_OPTS[@]}" -classpath "./*" at.jku.isse.ecco.cli.Main "$@"

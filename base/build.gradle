@@ -1,0 +1,17 @@
+apply plugin: 'java-library'
+
+dependencies {
+	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
+
+	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
+	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
+
+	implementation 'com.google.guava:guava:27.1-jre'
+
+	testImplementation 'org.graphstream:gs-core:1.3'
+	testImplementation 'org.graphstream:gs-algo:1.3'
+	testImplementation 'org.graphstream:gs-ui:1.3'
+
+	testImplementation project(':ecco-service')
+}

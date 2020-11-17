@@ -1,0 +1,60 @@
+apply plugin: 'application'
+mainClassName = "at.jku.isse.ecco.cli.Main"
+applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
+
+task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
+	main = "at.jku.isse.ecco.cli.Main"
+	jvmArgs += ["-Xss1024m", "-Xmx8g"]
+	classpath = sourceSets.test.runtimeClasspath
+}
+
+dependencies {
+	//compile 'net.sf.jopt-simple:jopt-simple:4.9'
+	implementation 'net.sourceforge.argparse4j:argparse4j:0.7.0'
+
+	implementation project(':ecco-service')
+
+	testRuntimeOnly project(':ecco-adapter-file')
+	testRuntimeOnly project(':ecco-adapter-text')
+	testRuntimeOnly project(':ecco-adapter-image')
+}
+
+ospackage {
+	summary 'CLI (Command Line Interface) for ECCO.'
+	packageDescription 'This package provides a CLI (Command Line Interface) for ECCO.'
+
+	requires('ecco-base', version, EQUAL)
+	requires('ecco-service', version, EQUAL)
+
+	requires('javapackages-tools')
+
+	into('/usr/bin/') {
+		from(project.file('ecco')) {
+			addParentDirs false
+			into ''
+		}
+	}
+}
+
+linuxZip {
+	into(archiveName - ('.' + archiveExtension)) {
+		from 'ecco'
+	}
+}
+
+sourcesZip {
+	include 'ecco'
+	include 'ecco.bat'
+}
+
+windowsZip {
+	into(archiveName - ('.' + archiveExtension)) {
+		from 'ecco.bat'
+	}
+}
+
+task copyScripts(type: Copy) {
+	from 'ecco', 'ecco.bat'
+	into project.file('build/bundle/')
+}
+bundle.dependsOn += copyScripts

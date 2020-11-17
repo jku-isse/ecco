@@ -1,0 +1,43 @@
+<persistence xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			 xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+			 version="2.0" xmlns="http://java.sun.com/xml/ns/persistence">
+
+	<persistence-unit name="ecco" transaction-type="RESOURCE_LOCAL">
+
+		<class>at.jku.isse.ecco.artifact.JpaArtifact</class>
+		<class>at.jku.isse.ecco.artifact.JpaArtifactReference</class>
+
+		<class>at.jku.isse.ecco.core.JpaAssociation</class>
+		<class>at.jku.isse.ecco.core.JpaCommit</class>
+		<class>at.jku.isse.ecco.core.JpaVariant</class>
+
+		<class>at.jku.isse.ecco.feature.JpaFeature</class>
+		<class>at.jku.isse.ecco.feature.JpaFeatureVersion</class>
+		<class>at.jku.isse.ecco.feature.JpaFeatureInstance</class>
+		<class>at.jku.isse.ecco.feature.JpaConfiguration</class>
+
+		<class>at.jku.isse.ecco.module.JpaModule</class>
+		<class>at.jku.isse.ecco.module.JpaModuleFeature</class>
+		<class>at.jku.isse.ecco.module.JpaPresenceCondition</class>
+
+		<class>at.jku.isse.ecco.sg.JpaSequenceGraph</class>
+		<class>at.jku.isse.ecco.sg.JpaSequenceGraphNode</class>
+
+		<class>at.jku.isse.ecco.tree.JpaNode</class>
+		<class>at.jku.isse.ecco.tree.JpaRootNode</class>
+
+		<properties>
+			<property name="javax.persistence.jdbc.driver" value="org.apache.derby.jdbc.EmbeddedDriver"/>
+			<property name="javax.persistence.jdbc.url" value="jdbc:derby:/home/test/databases/simpleDb;create=true"/>
+			<property name="javax.persistence.jdbc.user" value="username"/>
+			<property name="javax.persistence.jdbc.password" value="password"/>
+
+			<property name="show_sql" value="true"/>
+
+			<property name="hibernate.hbm2ddl.auto" value="update"/>
+			<!--<property name="hibernate.temp.use_jdbc_metadata_defaults" value="false"/>-->
+			<!--<property name="hibernate.dialect" value="org.hibernate.dialect.DerbyDialect"/>-->
+		</properties>
+	</persistence-unit>
+
+</persistence>
