@@ -25,7 +25,7 @@ public class AdapterTest {
     private static final Path[] FILES = new Path[]{Paths.get("urlglob.c")};
 
     @Test(groups = {"integration", "java"})
-    public void Java_Adapter_Test() {
+    public void CPP_Adapter_Test() {
         CppReader reader = new CppReader(new MemEntityFactory());
 
         System.out.println("READ");Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);
