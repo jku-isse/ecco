@@ -95,12 +95,12 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
         } else if (childNode.getArtifact().toString().equals("FIELDS")) {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
-					fields[0] += node.getArtifact().getData() + "\n";
-					if (node.getChildren().size() > 0) {
+                    fields[0] += node.getArtifact().getData() + "\n";
+					/*if (node.getChildren().size() > 0) {
 						for (Node childfield : node.getChildren()) {
 							fields[0] += childfield.getArtifact().getData() + "\n";
 						}
-					}
+					}*/
                 }
             }
         } else if (childNode.getArtifact().toString().equals("DEFINES")) {

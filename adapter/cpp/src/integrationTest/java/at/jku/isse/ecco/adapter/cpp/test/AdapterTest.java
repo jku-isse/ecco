@@ -22,13 +22,14 @@ public class AdapterTest {
 
 
     private static final Path BASE_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter");
-    private static final Path[] FILES = new Path[]{Paths.get("urlglob.c")};
+    private static final Path[] FILES = new Path[]{Paths.get("lempar.c")};
 
     @Test(groups = {"integration", "java"})
     public void CPP_Adapter_Test() {
         CppReader reader = new CppReader(new MemEntityFactory());
 
-        System.out.println("READ");Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);
+        System.out.println("READ");
+        Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);
 
         System.out.println(nodes);
     }
