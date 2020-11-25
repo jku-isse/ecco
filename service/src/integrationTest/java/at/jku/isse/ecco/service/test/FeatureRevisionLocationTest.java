@@ -17,11 +17,11 @@ import difflib.Patch;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\test";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\test\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\configurations.csv";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\test\\configurations.csv";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\Marlin";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -108,8 +108,10 @@ public class FeatureRevisionLocationTest {
         File variantsrc = new File(resultsCSVs_path, "ecco");
         File checkoutfile = new File(resultMetrics_path, "checkout");
         try {
-            for (File path : variantsrc.listFiles()) {
-                compareVariant(path, new File(checkoutfile + File.separator + path.getName()));
+            for (File path : checkoutfile.listFiles()) {
+                compareVariant(new File(variantsrc + File.separator + path.getName()), path);
+                //for (File path : variantsrc.listFiles()) {
+            //    compareVariant(path, new File(checkoutfile + File.separator + path.getName()));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -696,6 +698,7 @@ public class FeatureRevisionLocationTest {
         service.setRepositoryDir(OUTPUT_DIR.resolve("repo"));
         //initializing repo
         service.init();
+        //service.open();
         System.out.println("Repository initialized.");
         //commit
         List<String> runtimes = new ArrayList<>();
