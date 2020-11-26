@@ -96,11 +96,6 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     fields[0] += node.getArtifact().getData() + "\n";
-					/*if (node.getChildren().size() > 0) {
-						for (Node childfield : node.getChildren()) {
-							fields[0] += childfield.getArtifact().getData() + "\n";
-						}
-					}*/
                 }
             }
         } else if (childNode.getArtifact().toString().equals("DEFINES")) {
@@ -126,8 +121,57 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
                     visitingNodes(node);
                 }
             }
-        } else if ((childNode.getArtifact().getData() instanceof LineArtifactData)) {
-            code[0] += "\n" + childNode.getArtifact().getData() + "\n";
+        } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
+            code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock()+ "\n";
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
+            code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock()+ "\n";
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node);
+                }
+            }
+        }else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
+            code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock()+ "\n";
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node);
+                }
+            }
+        }else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
+            code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock()+ "\n";
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node);
+                }
+            }
+        }else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
+            code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock()+ "\n";
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node);
+                }
+            }
+        }else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
+            code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock()+ "\n";
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node);
+                }
+            }
+        }else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
+            code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock()+ "\n";
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node);
+                }
+            }
+        }else {
+            System.out.println("*************** Forgot to treat an artificat data type");
         }
     }
 
