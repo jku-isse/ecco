@@ -599,7 +599,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             Node.Op lineNodeChild = this.entityFactory.createOrderedNode(lineArtifact);
             parentNode.addChild(lineNodeChild);
         } else if (node instanceof CPPASTProblemStatement) {
-            if (!node.getRawSignature().equals(")")) {
+            if (!node.getRawSignature().equals(")") && node.getRawSignature().length() > 1) {
                 Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(node.getRawSignature()));
                 Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
                 parentNode.addChild(lineNode);
