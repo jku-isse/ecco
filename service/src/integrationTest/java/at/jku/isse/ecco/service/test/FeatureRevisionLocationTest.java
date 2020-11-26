@@ -362,7 +362,7 @@ public class FeatureRevisionLocationTest {
                                     ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
-                                        if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
+                                        if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*") && !line.equals("}")) {
                                             matchFiles = false;
                                             falsepositiveLines++;
                                             insert = line;
@@ -448,6 +448,7 @@ public class FeatureRevisionLocationTest {
 
 
                         ArrayList<String> diffDeleted = new ArrayList<>();
+                        ArrayList<String> diffinserted = new ArrayList<>();
                         Boolean found = false;
                         for (String line : deletedLines) {
                             for (String insertLine : insertedLines) {
@@ -457,16 +458,39 @@ public class FeatureRevisionLocationTest {
                                     if (falsenegativeLines > 0)
                                         falsenegativeLines--;
                                     found = true;
+                                }
+                                if(found) {
+                                    diffinserted.add(insertLine);
                                     break;
                                 }
                             }
                             if (!found) {
                                 diffDeleted.add(line);
                             } else {
-                                insertedLines.remove(line);
                                 found = false;
                             }
                         }
+                        insertedLines.removeAll(diffinserted);
+                        diffinserted = new ArrayList<>();
+                        found = false;
+                        for (String line : insertedLines) {
+                            found = false;
+                            for (String deletedLine : diffDeleted) {
+                                if (deletedLine.equals(line) || deletedLine.contains(line)) {
+                                    if (falsepositiveLines > 0)
+                                        falsepositiveLines--;
+                                    if (falsenegativeLines > 0)
+                                        falsenegativeLines--;
+                                    found = true;
+                                }
+                                if (found){
+                                    diffDeleted.remove(deletedLine);
+                                    diffinserted.add(line);
+                                    break;
+                                }
+                            }
+                        }
+                        insertedLines.removeAll(diffinserted);
 
                         for (String line : changedLinesOriginal) {
                             for (String insertedLine : insertedLines) {
