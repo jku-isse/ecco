@@ -39,7 +39,7 @@ public class FeatureRevisionLocationTest {
         ArrayList<String> configsToCommit = new ArrayList<>();
         File configuration = new File(configuration_path);
         Path OUTPUT_DIR = Paths.get(resultMetrics_path);
-        File eccoFolder = new File(resultsCSVs_path+File.separator+"Input_variants"+File.separator);
+        File eccoFolder = new File(resultsCSVs_path + File.separator + "Input_variants" + File.separator);
         BufferedReader csvReader = null;
         try {
             csvReader = new BufferedReader(new FileReader(configuration));
@@ -72,7 +72,7 @@ public class FeatureRevisionLocationTest {
     public void TestEccoCheckout() throws IOException {
         ArrayList<String> configsToCheckout = new ArrayList<>();
         File configuration = new File(configuration_path);
-        Path OUTPUT_DIR = Paths.get(resultMetrics_path+File.separator);
+        Path OUTPUT_DIR = Paths.get(resultMetrics_path + File.separator);
         //File eccoFolder = new File(resultsCSVs_path+File.separator+"Input_variants"+File.separator);
         //File checkoutFolder = new File(resultMetrics_path+File.separator+"checkout"+File.separator);
         BufferedReader csvReader = null;
@@ -111,7 +111,7 @@ public class FeatureRevisionLocationTest {
             for (File path : checkoutfile.listFiles()) {
                 compareVariant(new File(variantsrc + File.separator + path.getName()), path);
                 //for (File path : variantsrc.listFiles()) {
-            //    compareVariant(path, new File(checkoutfile + File.separator + path.getName()));
+                //    compareVariant(path, new File(checkoutfile + File.separator + path.getName()));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -128,11 +128,11 @@ public class FeatureRevisionLocationTest {
                 new File(sqliteFolder)};
         //write metrics in a csv file
         String filemetrics = "RandomMetricsEachAndTogether-no-inserted-lines.csv";
-        FileWriter csvWriter = new FileWriter( metricsResultFolder + File.separator + filemetrics);
+        FileWriter csvWriter = new FileWriter(metricsResultFolder + File.separator + filemetrics);
 
         Float totalmeanRunEccoCommit = Float.valueOf(0), totalmeanRunEccoCheckout = Float.valueOf(0), totalmeanRunPPCheckoutCleanVersion = Float.valueOf(0), totalmeanRunPPCheckoutGenerateVariant = Float.valueOf(0), totalmeanRunGitCommit = Float.valueOf(0), totalmeanRunGitCheckout = Float.valueOf(0);
         Float totaltotalnumberFiles = Float.valueOf(0), totalmatchesFiles = Float.valueOf(0), totaleccototalLines = Float.valueOf(0), totaloriginaltotalLines = Float.valueOf(0), totalmissingFiles = Float.valueOf(0), totalremainingFiles = Float.valueOf(0), totaltotalVariantsMatch = Float.valueOf(0), totaltruepositiveLines = Float.valueOf(0), totalfalsepositiveLines = Float.valueOf(0), totalfalsenegativeLines = Float.valueOf(0),
-                totaltruepositiveLinesEachFile = Float.valueOf(0), totalfalsepositiveLinesEachFile = Float.valueOf(0), totalfalsenegativeLinesEachFile = Float.valueOf(0), totalnumberTotalFilesEachVariant = Float.valueOf(0), totalmatchFilesEachVariant = Float.valueOf(0), totaleccototalLinesEachFile = Float.valueOf(0), totaloriginaltotalLinesEachFile = Float.valueOf(0),  totalnumberCSV = Float.valueOf(0);
+                totaltruepositiveLinesEachFile = Float.valueOf(0), totalfalsepositiveLinesEachFile = Float.valueOf(0), totalfalsenegativeLinesEachFile = Float.valueOf(0), totalnumberTotalFilesEachVariant = Float.valueOf(0), totalmatchFilesEachVariant = Float.valueOf(0), totaleccototalLinesEachFile = Float.valueOf(0), totaloriginaltotalLinesEachFile = Float.valueOf(0), totalnumberCSV = Float.valueOf(0);
         for (int j = 0; j < folder.length; j++) {
             File[] lista = folder[j].listFiles();
             Float meanRunEccoCommit = Float.valueOf(0), meanRunEccoCheckout = Float.valueOf(0), meanRunPPCheckoutCleanVersion = Float.valueOf(0), meanRunPPCheckoutGenerateVariant = Float.valueOf(0), meanRunGitCommit = Float.valueOf(0), meanRunGitCheckout = Float.valueOf(0);
@@ -153,8 +153,12 @@ public class FeatureRevisionLocationTest {
                                 meanRunEccoCommit += Float.valueOf(runtimes[2]);
                             }
                         }
-                        totalmeanRunEccoCommit+=meanRunEccoCommit; totalmeanRunEccoCheckout+=meanRunEccoCheckout; totalmeanRunGitCommit+=meanRunGitCommit; totalmeanRunGitCheckout+=meanRunGitCheckout;
-                        totalmeanRunPPCheckoutCleanVersion+=meanRunPPCheckoutCleanVersion; totalmeanRunPPCheckoutGenerateVariant+=meanRunPPCheckoutGenerateVariant;
+                        totalmeanRunEccoCommit += meanRunEccoCommit;
+                        totalmeanRunEccoCheckout += meanRunEccoCheckout;
+                        totalmeanRunGitCommit += meanRunGitCommit;
+                        totalmeanRunGitCheckout += meanRunGitCheckout;
+                        totalmeanRunPPCheckoutCleanVersion += meanRunPPCheckoutCleanVersion;
+                        totalmeanRunPPCheckoutGenerateVariant += meanRunPPCheckoutGenerateVariant;
                     } else {
                         for (int i = 1; i < matchesVariants.size(); i++) {
 
@@ -170,16 +174,16 @@ public class FeatureRevisionLocationTest {
                             originaltotalLinesEachFile = Float.valueOf(Integer.valueOf(line[5]));
                             eccototalLinesEachFile = Float.valueOf(Integer.valueOf(line[6]));
 
-                            totaltruepositiveLines+=truepositiveLines;
-                            totalfalsepositiveLines+=falsepositiveLines;
-                            totalfalsenegativeLines+=falsenegativeLines;
-                            totaltruepositiveLinesEachFile+=totaltruepositiveLinesEachFile;
-                            totalfalsepositiveLinesEachFile+=falsepositiveLinesEachFile;
-                            totalfalsenegativeLinesEachFile+=falsenegativeLinesEachFile;
-                            totaloriginaltotalLines+=originaltotalLines;
-                            totaleccototalLines+=eccototalLines;
-                            totaloriginaltotalLinesEachFile+=originaltotalLinesEachFile;
-                            totaleccototalLinesEachFile+=eccototalLinesEachFile;
+                            totaltruepositiveLines += truepositiveLines;
+                            totalfalsepositiveLines += falsepositiveLines;
+                            totalfalsenegativeLines += falsenegativeLines;
+                            totaltruepositiveLinesEachFile += totaltruepositiveLinesEachFile;
+                            totalfalsepositiveLinesEachFile += falsepositiveLinesEachFile;
+                            totalfalsenegativeLinesEachFile += falsenegativeLinesEachFile;
+                            totaloriginaltotalLines += originaltotalLines;
+                            totaleccototalLines += eccototalLines;
+                            totaloriginaltotalLinesEachFile += originaltotalLinesEachFile;
+                            totaleccototalLinesEachFile += eccototalLinesEachFile;
 
                             if (line[1].equals("true")) {
                                 if (Float.compare(originaltotalLinesEachFile, eccototalLinesEachFile) == 0 && Float.compare(truepositiveLinesEachFile, originaltotalLinesEachFile) == 0) {
@@ -327,7 +331,8 @@ public class FeatureRevisionLocationTest {
                 while ((sCurrentLine = br.readLine()) != null) {
                     sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
                     if (!sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
-                        original.add(sCurrentLine);
+                        if (!sCurrentLine.endsWith("*/"))
+                            original.add(sCurrentLine);
                     }
                 }
                 br.close();
@@ -339,7 +344,8 @@ public class FeatureRevisionLocationTest {
                         while ((sCurrentLine = br.readLine()) != null) {
                             sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
                             if (!sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
-                                revised.add(sCurrentLine);
+                                if (!sCurrentLine.endsWith("*/"))
+                                    revised.add(sCurrentLine);
                             }
                         }
                         br.close();
@@ -459,7 +465,7 @@ public class FeatureRevisionLocationTest {
                                         falsenegativeLines--;
                                     found = true;
                                 }
-                                if(found) {
+                                if (found) {
                                     diffinserted.add(insertLine);
                                     break;
                                 }
@@ -483,7 +489,7 @@ public class FeatureRevisionLocationTest {
                                         falsenegativeLines--;
                                     found = true;
                                 }
-                                if (found){
+                                if (found) {
                                     diffDeleted.remove(deletedLine);
                                     diffinserted.add(line);
                                     break;
@@ -492,22 +498,25 @@ public class FeatureRevisionLocationTest {
                         }
                         insertedLines.removeAll(diffinserted);
 
+                        ArrayList<String> diffChanged = new ArrayList<>();
+                        found = false;
                         for (String line : changedLinesOriginal) {
                             for (String insertedLine : insertedLines) {
-                                if (insertedLine.equals(line)) {
+                                if (insertedLine.equals(line) || line.contains(insertedLine)) {
                                     if (falsepositiveLines > 0)
                                         falsepositiveLines--;
                                     if (falsenegativeLines > 0)
                                         falsenegativeLines--;
                                     found = true;
+                                }
+                                if (found) {
+                                    found = false;
+                                    diffChanged.add(insertedLine);
                                     break;
                                 }
                             }
-                            if (found) {
-                                insertedLines.remove(line);
-                                found = false;
-                            }
                         }
+                        insertedLines.removeAll(diffChanged);
 
                         if (falsepositiveLines == 0 && falsenegativeLines == 0)
                             matchFiles = true;
@@ -527,11 +536,11 @@ public class FeatureRevisionLocationTest {
                         eccototalLines = (revised.size() - 1);
                         originaltotalLines = original.size() - 1;
                         truepositiveLines = eccototalLines - (falsepositiveLines);
-                        if(originaltotalLines == -1)
+                        if (originaltotalLines == -1)
                             originaltotalLines = 0;
-                        if(eccototalLines == -1)
+                        if (eccototalLines == -1)
                             eccototalLines = 0;
-                        if(truepositiveLines == -1)
+                        if (truepositiveLines == -1)
                             truepositiveLines = 0;
                         List<List<String>> resultRows = Arrays.asList(
                                 Arrays.asList(f.toPath().toString().substring(f.toPath().toString().indexOf("ecco\\") + 5).replace(",", "and"), matchFiles.toString(), truepositiveLines.toString(), falsepositiveLines.toString(), falsenegativeLines.toString(), originaltotalLines.toString(), eccototalLines.toString())
@@ -551,9 +560,9 @@ public class FeatureRevisionLocationTest {
                             originaltotalLines++;
                         }
                     }
-                    if(originaltotalLines == -1)
+                    if (originaltotalLines == -1)
                         originaltotalLines = 0;
-                    if(eccototalLines == -1)
+                    if (eccototalLines == -1)
                         eccototalLines = 0;
                     List<List<String>> resultRows = Arrays.asList(
                             Arrays.asList(f.toPath().toString().substring(f.toPath().toString().indexOf("ecco\\") + 5).replace(",", "and"), "not", "0", "0", originaltotalLines.toString(), originaltotalLines.toString(), eccototalLines.toString())
@@ -602,11 +611,11 @@ public class FeatureRevisionLocationTest {
                     falsenegativeLines = 0;
                     originaltotalLines = 0;
                     truepositiveLines = eccototalLines - (falsepositiveLines);
-                    if(originaltotalLines == -1)
+                    if (originaltotalLines == -1)
                         originaltotalLines = 0;
-                    if(eccototalLines == -1)
+                    if (eccototalLines == -1)
                         eccototalLines = 0;
-                    if(truepositiveLines == -1)
+                    if (truepositiveLines == -1)
                         truepositiveLines = 0;
                     List<List<String>> resultRows = Arrays.asList(
                             Arrays.asList(fEcco.toPath().toString().substring(fEcco.toPath().toString().indexOf("checkout\\") + 9).replace(",", "and"), "justOnRetrieved", truepositiveLines.toString(), falsepositiveLines.toString(), falsenegativeLines.toString(), originaltotalLines.toString(), eccototalLines.toString())
@@ -660,7 +669,7 @@ public class FeatureRevisionLocationTest {
             timeBefore = System.currentTimeMillis();
             System.out.println("config: " + config);
             service.checkout(config);
-            System.out.println("checked out!"+ config);
+            System.out.println("checked out!" + config);
             timeAfter = System.currentTimeMillis();
             runtimeEccoCheckout = timeAfter - timeBefore;
             runtimes.add("config: " + config + "  " + Long.toString(runtimeEccoCheckout));
