@@ -331,8 +331,7 @@ public class FeatureRevisionLocationTest {
                 while ((sCurrentLine = br.readLine()) != null) {
                     sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
                     if (!sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
-                        if (!sCurrentLine.endsWith("*/"))
-                            original.add(sCurrentLine);
+                        original.add(sCurrentLine);
                     }
                 }
                 br.close();
@@ -344,8 +343,7 @@ public class FeatureRevisionLocationTest {
                         while ((sCurrentLine = br.readLine()) != null) {
                             sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
                             if (!sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
-                                if (!sCurrentLine.endsWith("*/"))
-                                    revised.add(sCurrentLine);
+                                revised.add(sCurrentLine);
                             }
                         }
                         br.close();
@@ -420,9 +418,11 @@ public class FeatureRevisionLocationTest {
                                         aux = changedrevised;
                                         break;
                                     }
-                                } else if (changedLine.equals(changedrevised)) {
+                                } else if (changedLine.equals(changedrevised) || changedLine.contains(changedrevised)) {
                                     found = true;
                                     aux = changedrevised;
+                                    if (falsenegativeLines > 0)
+                                        falsenegativeLines--;
                                     break;
                                 } else {
                                     if (changedrevised.contains(changedLine)) {
@@ -517,12 +517,20 @@ public class FeatureRevisionLocationTest {
                             }
                         }
                         insertedLines.removeAll(diffChanged);
-
+                        deletedLines = new ArrayList<>();
+                        for (String del : diffDeleted) {
+                            if (!del.equals("}") && !del.equals("{") && !del.equals(";") && !del.endsWith("*/")) {
+                                deletedLines.add(del);
+                                if (falsenegativeLines > 0)
+                                    falsenegativeLines--;
+                            }
+                        }
+                        falsenegativeLines = deletedLines.size();
                         if (falsepositiveLines == 0 && falsenegativeLines == 0)
                             matchFiles = true;
                         else {
-                            if (diffDeleted.size() > 0) {
-                                for (String line : diffDeleted) {
+                            if (deletedLines.size() > 0) {
+                                for (String line : deletedLines) {
                                     System.out.println("file: " + fEcco.getAbsolutePath() + " TYPE: DELETE delta: " + line);
                                 }
                             }
@@ -532,7 +540,6 @@ public class FeatureRevisionLocationTest {
                                 }
                             }
                         }
-
                         eccototalLines = (revised.size() - 1);
                         originaltotalLines = original.size() - 1;
                         truepositiveLines = eccototalLines - (falsepositiveLines);
