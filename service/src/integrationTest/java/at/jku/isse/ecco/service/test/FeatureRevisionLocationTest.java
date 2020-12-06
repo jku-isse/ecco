@@ -17,11 +17,11 @@ import difflib.Patch;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\test";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\test\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\test\\configurations.csv";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\configurations.csv";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\Marlin";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -328,10 +328,15 @@ public class FeatureRevisionLocationTest {
                 File filenew = new File(String.valueOf(f.toPath()));
                 BufferedReader br = new BufferedReader(new FileReader(filenew.getAbsoluteFile()));
                 String sCurrentLine;
+                Boolean linecomment = false;
                 while ((sCurrentLine = br.readLine()) != null) {
                     sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
-                    if (!sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
+                    if (!linecomment && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                         original.add(sCurrentLine);
+                    }else if(sCurrentLine.startsWith("/*")&& !sCurrentLine.contains("*/")) {
+                        linecomment = true;
+                    }else if(sCurrentLine.contains("*/")&& linecomment){
+                        linecomment=false;
                     }
                 }
                 br.close();
@@ -340,10 +345,15 @@ public class FeatureRevisionLocationTest {
                     if (f.toPath().toString().substring(f.toPath().toString().indexOf("ecco\\") + 5).equals(fEcco.toPath().toString().substring(fEcco.toPath().toString().indexOf("checkout\\") + 9))) {
                         filenew = new File(String.valueOf(fEcco.toPath()));
                         br = new BufferedReader(new FileReader(filenew.getAbsoluteFile()));
+                        linecomment=false;
                         while ((sCurrentLine = br.readLine()) != null) {
                             sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
-                            if (!sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
+                            if (!linecomment && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                                 revised.add(sCurrentLine);
+                            }else if(sCurrentLine.startsWith("/*")&& !sCurrentLine.contains("*/")) {
+                                linecomment = true;
+                            }else if(sCurrentLine.contains("*/") && linecomment){
+                                linecomment=false;
                             }
                         }
                         br.close();
