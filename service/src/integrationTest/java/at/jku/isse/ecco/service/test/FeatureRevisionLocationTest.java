@@ -17,11 +17,12 @@ import difflib.Patch;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\configurations.csv";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\Marlin";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -29,7 +30,7 @@ public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of SQLite target systyem
     public final String sqliteFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\SQLite";
     //directory where you want to store the result file containing the metrics computed for all target systems
-    public final String metricsResultFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master";
+    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
     private List<String> fileTypes = new LinkedList<String>();
 
 
@@ -123,9 +124,9 @@ public class FeatureRevisionLocationTest {
     @org.testng.annotations.Test
     public void GetCSVInformationTotalTest() throws IOException {
         //set into this list of File the folders with csv files resulted from the comparison of variants of each target project
-        File[] folder = {new File(marlinFolder),
-                new File(libsshFolder),
-                new File(sqliteFolder)};
+        File[] folder = {new File(csvcomparison_path)};//,
+               // new File(libsshFolder),
+                //new File(sqliteFolder)};
         //write metrics in a csv file
         String filemetrics = "RandomMetricsEachAndTogether-no-inserted-lines.csv";
         FileWriter csvWriter = new FileWriter(metricsResultFolder + File.separator + filemetrics);
@@ -184,9 +185,8 @@ public class FeatureRevisionLocationTest {
                             totaleccototalLines += eccototalLines;
                             totaloriginaltotalLinesEachFile += originaltotalLinesEachFile;
                             totaleccototalLinesEachFile += eccototalLinesEachFile;
-
-                            if (line[1].equals("true")) {
-                                if (Float.compare(originaltotalLinesEachFile, eccototalLinesEachFile) == 0 && Float.compare(truepositiveLinesEachFile, originaltotalLinesEachFile) == 0) {
+                            if (line[1].toUpperCase().equals("TRUE")) {
+                                if (Float.compare(totalfalsepositiveLines, 0) == 0 && Float.compare(totalfalsenegativeLines, 0) == 0) {
                                     matchFilesEachVariant++;
                                     totalmatchFilesEachVariant++;
                                     matchesFiles++;
@@ -303,7 +303,11 @@ public class FeatureRevisionLocationTest {
         getFilesToProcess(srcOriginal, filesVariant);
         filesVariant.remove(srcOriginal);
         String outputCSV = srcOriginal.getParentFile().getParentFile().getAbsolutePath();
-        String fileStr = outputCSV + File.separator + srcOriginal.getName() + ".csv";
+        File folder = new File (outputCSV, "ResultsCompareVariants");
+        if (!folder.exists()) {
+            folder.mkdir();
+        }
+        String fileStr = folder + File.separator + srcOriginal.getName() + ".csv";
         File fWriter = new File(fileStr);
         FileWriter csvWriter = new FileWriter(fWriter);
 
@@ -331,7 +335,7 @@ public class FeatureRevisionLocationTest {
                 Boolean linecomment = false;
                 while ((sCurrentLine = br.readLine()) != null) {
                     sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
-                    if (!linecomment && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
+                    if (!linecomment && !sCurrentLine.equals("%%") && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                         original.add(sCurrentLine);
                     }else if(sCurrentLine.startsWith("/*")&& !sCurrentLine.contains("*/")) {
                         linecomment = true;
@@ -348,7 +352,7 @@ public class FeatureRevisionLocationTest {
                         linecomment=false;
                         while ((sCurrentLine = br.readLine()) != null) {
                             sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
-                            if (!linecomment && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
+                            if (!linecomment && !sCurrentLine.equals("%%") && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                                 revised.add(sCurrentLine);
                             }else if(sCurrentLine.startsWith("/*")&& !sCurrentLine.contains("*/")) {
                                 linecomment = true;
@@ -617,7 +621,7 @@ public class FeatureRevisionLocationTest {
                     String sCurrentLine;
                     while ((sCurrentLine = br.readLine()) != null) {
                         sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
-                        if (!sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
+                        if (!sCurrentLine.equals("")  && !sCurrentLine.equals("%%") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                             original.add(sCurrentLine);
                         }
                     }
