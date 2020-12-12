@@ -170,6 +170,24 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
                     visitingNodes(node);
                 }
             }
+        }else if(childNode.getArtifact().getData() instanceof CaseBlockArtifactData){
+            if(((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
+                code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                       code[0] += node.getArtifact().getData();
+                    }
+                }
+                code[0] += "\n";
+            }else{
+                code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock()+ "\n";
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                        visitingNodes(node);
+                    }
+                }
+            }
+
         }else {
             System.out.println("*************** Forgot to treat an artificat data type");
         }

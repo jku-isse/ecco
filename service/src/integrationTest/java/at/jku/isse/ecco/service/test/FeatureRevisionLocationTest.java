@@ -17,12 +17,12 @@ import difflib.Patch;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\Marlin";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -420,9 +420,35 @@ public class FeatureRevisionLocationTest {
                                 }
                             }
                         }
+
+                        ArrayList<String> diffDeleted = new ArrayList<>();
+                        ArrayList<String> diffinserted = new ArrayList<>();
+                        Boolean found = false;
+                        for (String line : deletedLines) {
+                            for (String insertLine : insertedLines) {
+                                if (insertLine.equals(line)) {
+                                    if (falsepositiveLines > 0)
+                                        falsepositiveLines--;
+                                    if (falsenegativeLines > 0)
+                                        falsenegativeLines--;
+                                    found = true;
+                                }
+                                if (found) {
+                                    diffinserted.add(insertLine);
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                diffDeleted.add(line);
+                            } else {
+                                found = false;
+                            }
+                        }
+                        insertedLines.removeAll(diffinserted);
+
                         String trimmingDiffLinesalingmentOr = "";
                         for (String changedLine : changedLinesOriginal) {
-                            boolean found = false;
+                            found = false;
                             String aux = "";
                             for (String changedrevised : changedLinesRevised) {
                                 if (changedrevised.contains("//#")) {
@@ -467,30 +493,7 @@ public class FeatureRevisionLocationTest {
                         }
 
 
-                        ArrayList<String> diffDeleted = new ArrayList<>();
-                        ArrayList<String> diffinserted = new ArrayList<>();
-                        Boolean found = false;
-                        for (String line : deletedLines) {
-                            for (String insertLine : insertedLines) {
-                                if (insertLine.equals(line) || insertLine.contains(line)) {
-                                    if (falsepositiveLines > 0)
-                                        falsepositiveLines--;
-                                    if (falsenegativeLines > 0)
-                                        falsenegativeLines--;
-                                    found = true;
-                                }
-                                if (found) {
-                                    diffinserted.add(insertLine);
-                                    break;
-                                }
-                            }
-                            if (!found) {
-                                diffDeleted.add(line);
-                            } else {
-                                found = false;
-                            }
-                        }
-                        insertedLines.removeAll(diffinserted);
+
                         diffinserted = new ArrayList<>();
                         found = false;
                         for (String line : insertedLines) {
@@ -516,7 +519,7 @@ public class FeatureRevisionLocationTest {
                         found = false;
                         for (String line : changedLinesOriginal) {
                             for (String insertedLine : insertedLines) {
-                                if (insertedLine.equals(line) || line.contains(insertedLine)) {
+                                if (insertedLine.equals(line) || line.contains(insertedLine) || insertedLine.contains(line)) {
                                     if (falsepositiveLines > 0)
                                         falsepositiveLines--;
                                     if (falsenegativeLines > 0)
@@ -822,5 +825,41 @@ public class FeatureRevisionLocationTest {
         service.close();
         Files.write(OUTPUT_DIR.resolve("timeCommitIndividual.txt"), runtimes.stream().map(Object::toString).collect(Collectors.toList()));
     }
+
+    //count SLOC
+    @org.testng.annotations.Test
+    public void countLinesOfCode() throws IOException {
+        List<String> fileTypes = new LinkedList<String>();
+        File gitFolder = new File("C:\\Users\\gabil\\Desktop\\PHD\\Mining\\CaseStudies\\Irssi\\clean");
+        fileTypes.add("c");
+        fileTypes.add("cpp");
+        fileTypes.add("h");
+        fileTypes.add("hpp");
+        LinkedList<File> files = new LinkedList<>();
+        getFilesToProcess(gitFolder, files);
+        int countLines = 0;
+        //files that are in ecco and variant
+        for (File f : files) {
+            List<String> original = new ArrayList<>();
+            String extension = f.getName().substring(f.getName().lastIndexOf('.') + 1);
+            if (fileTypes.contains(extension) && !f.isDirectory()) {
+                try {
+                    original = Files.readAllLines(f.toPath());
+                } catch (IOException e) {
+                    File filenew = new File(String.valueOf(f.toPath()));
+                    BufferedReader br = null;
+                    br = new BufferedReader(new FileReader(filenew.getAbsoluteFile()));
+                    String sCurrentLine;
+                    while ((sCurrentLine = br.readLine()) != null) {
+                        original.add(sCurrentLine);
+                    }
+                    br.close();
+                }
+            }
+            countLines+=original.size();
+        }
+        System.out.println("Size: "+countLines);
+    }
+
 
 }

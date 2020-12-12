@@ -61,7 +61,7 @@ public interface Configuration extends Persistable {
                                 FeatureRevision[] featmodule = existingModuleRevision.getPos();
                                 for (FeatureRevision featm:featmodule ) {
                                    if(Arrays.stream(featuresRevisions).anyMatch(featureRevision -> featureRevision.equals(featm))){
-                                       System.out.println(featm);
+                                       //System.out.println(featm);
                                        desiredModules.add(existingModuleRevision);
                                    }
                                 }
