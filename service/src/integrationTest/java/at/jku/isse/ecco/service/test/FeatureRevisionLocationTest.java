@@ -15,14 +15,16 @@ import difflib.Delta;
 import difflib.DiffUtils;
 import difflib.Patch;
 
+import javax.swing.text.StyledEditorKit;
+
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Bison";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Bison\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Bison\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Bison\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\Marlin";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -421,31 +423,7 @@ public class FeatureRevisionLocationTest {
                             }
                         }
 
-                        ArrayList<String> diffDeleted = new ArrayList<>();
-                        ArrayList<String> diffinserted = new ArrayList<>();
-                        Boolean found = false;
-                        for (String line : deletedLines) {
-                            for (String insertLine : insertedLines) {
-                                if (insertLine.equals(line)) {
-                                    if (falsepositiveLines > 0)
-                                        falsepositiveLines--;
-                                    if (falsenegativeLines > 0)
-                                        falsenegativeLines--;
-                                    found = true;
-                                }
-                                if (found) {
-                                    diffinserted.add(insertLine);
-                                    break;
-                                }
-                            }
-                            if (!found) {
-                                diffDeleted.add(line);
-                            } else {
-                                found = false;
-                            }
-                        }
-                        insertedLines.removeAll(diffinserted);
-
+                        Boolean found;
                         String trimmingDiffLinesalingmentOr = "";
                         for (String changedLine : changedLinesOriginal) {
                             found = false;
@@ -492,6 +470,31 @@ public class FeatureRevisionLocationTest {
                             }
                         }
 
+                        ArrayList<String> diffDeleted = new ArrayList<>();
+                        ArrayList<String> diffinserted = new ArrayList<>();
+                        found = false;
+                        for (String line : deletedLines) {
+                            for (String insertLine : insertedLines) {
+                                if (insertLine.equals(line)) {
+                                    if (falsepositiveLines > 0)
+                                        falsepositiveLines--;
+                                    if (falsenegativeLines > 0)
+                                        falsenegativeLines--;
+                                    found = true;
+                                }
+                                if (found) {
+                                    diffinserted.add(insertLine);
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                diffDeleted.add(line);
+                            } else {
+                                found = false;
+                            }
+                        }
+                        insertedLines.removeAll(diffinserted);
+                        deletedLines.removeAll(diffDeleted);
 
 
                         diffinserted = new ArrayList<>();

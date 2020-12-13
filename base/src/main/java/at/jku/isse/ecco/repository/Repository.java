@@ -515,7 +515,7 @@ public interface Repository extends Persistable {
 			// TODO: compute set of desired modules from configuration!
 			Set<ModuleRevision> desiredModules = configuration.computeModules(this.getMaxOrder(), this, configuration);
 			//Set<ModuleRevision> desiredModules = new HashSet<>();
-			Set<ModuleRevision> missingModules = new HashSet<>();
+			Set<ModuleRevision> missingModules = configuration.computeModulesMissing(this.getMaxOrder(), this, configuration);
 			Set<ModuleRevision> surplusModules = new HashSet<>();
 
 			// compute missing

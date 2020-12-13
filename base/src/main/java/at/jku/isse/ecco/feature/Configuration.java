@@ -53,17 +53,17 @@ public interface Configuration extends Persistable {
                     if (entry.getValue() != null) {
                         for (ModuleRevision existingModuleRevision : entry.getValue()) {
                             Boolean addmodule = true;
-                            for (Feature negfeat:existingModuleRevision.getNeg()) {
-                                if(features.contains(negfeat))
+                            for (Feature negfeat : existingModuleRevision.getNeg()) {
+                                if (features.contains(negfeat))
                                     addmodule = false;
                             }
                             if (addmodule) {
                                 FeatureRevision[] featmodule = existingModuleRevision.getPos();
-                                for (FeatureRevision featm:featmodule ) {
-                                   if(Arrays.stream(featuresRevisions).anyMatch(featureRevision -> featureRevision.equals(featm))){
-                                       //System.out.println(featm);
-                                       desiredModules.add(existingModuleRevision);
-                                   }
+                                for (FeatureRevision featm : featmodule) {
+                                    if (Arrays.stream(featuresRevisions).anyMatch(featureRevision -> featureRevision.equals(featm))) {
+                                        //System.out.println(featm);
+                                        desiredModules.add(existingModuleRevision);
+                                    }
                                 }
                             }
                         }
@@ -73,6 +73,41 @@ public interface Configuration extends Persistable {
         }
 
         return desiredModules;
+    }
+
+    public default Set<ModuleRevision> computeModulesMissing(int maxOrder, Repository.Op repository, Configuration configuration) {
+        Set<ModuleRevision> missinModules = new HashSet<>();
+        FeatureRevision[] featuresRevisions = configuration.getFeatureRevisions();
+        List<FeatureRevision> featrev =Arrays.asList(configuration.getFeatureRevisions());
+        ArrayList<Feature> features = new ArrayList<>();
+        for (FeatureRevision featurerevision : featuresRevisions) {
+            features.add(featurerevision.getFeature());
+        }
+        for (Association association : repository.getAssociations()) {
+            Condition moduleCondition = association.computeCondition();
+            Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
+            for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
+                if (entry.getValue() != null) {
+                    for (ModuleRevision existingModuleRevision : entry.getValue()) {
+                        Boolean addmodule = false;
+                        for (FeatureRevision posfeat : existingModuleRevision.getPos()) {
+                            if (featrev.contains(posfeat))
+                                addmodule = true;
+                        }
+                        if (addmodule) {
+                            Feature[] negfeatmodule = existingModuleRevision.getNeg();
+                            for (Feature feat : negfeatmodule) {
+                                if (!features.contains(feat))
+                                    //System.out.println(featm);
+                                    missinModules.add(existingModuleRevision);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return missinModules;
     }
 
     public default boolean contains(Module module) {

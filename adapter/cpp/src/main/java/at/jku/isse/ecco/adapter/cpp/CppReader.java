@@ -250,8 +250,17 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             }*/
         } else if (node instanceof IASTProblemDeclaration) {
             //System.out.println(((IASTProblemDeclaration) node).getProblem().copy());
-            if (!node.getRawSignature().equals(")")) {
-                Artifact.Op<ProblemBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new ProblemBlockArtifactData(node.getRawSignature()));
+            if (!node.getRawSignature().equals(")") && node.getRawSignature().length() > 1) {
+                int init = node.getFileLocation().getStartingLineNumber() - 1;
+                int end = node.getFileLocation().getEndingLineNumber() - 1;
+                String line = "";
+                for (int i = init; i <= end; i++) {
+                    if (!lineNumbersSwitchCase.contains(i + 1)) {
+                        line += lines[i] + "\n";
+                        lineNumbersSwitchCase.add(i + 1);
+                    }
+                }
+                Artifact.Op<ProblemBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new ProblemBlockArtifactData(line));
                 Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
                 fieldsNode.addChild(blockNode);
                 lineNumbers.add(node.getFileLocation().getStartingLineNumber());
@@ -324,14 +333,20 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                 int end = node.getFileLocation().getEndingLineNumber() - 1;
                 String field = "";
                 for (int i = init; i <= end; i++) {
-                    field += lines[i] + "\n";
+                    if (!lineNumbersSwitchCase.contains(i + 1)) {
+                        field += lines[i] + "\n";
+                        lineNumbersSwitchCase.add(i + 1);
+                    }
                 }
-                //Artifact.Op<FieldArtifactData> fieldArtifact = this.entityFactory.createArtifact(new FieldArtifactData(lines[node.getFileLocation().getStartingLineNumber()-1]));
-                Artifact.Op<FieldArtifactData> fieldArtifact = this.entityFactory.createArtifact(new FieldArtifactData(field));
-                Node.Op fieldNode = this.entityFactory.createOrderedNode(fieldArtifact);
-                fieldsNode.addChild(fieldNode);
+                if (!field.equals("")) {
+                    //Artifact.Op<FieldArtifactData> fieldArtifact = this.entityFactory.createArtifact(new FieldArtifactData(lines[node.getFileLocation().getStartingLineNumber()-1]));
+                    Artifact.Op<FieldArtifactData> fieldArtifact = this.entityFactory.createArtifact(new FieldArtifactData(field));
+                    Node.Op fieldNode = this.entityFactory.createOrderedNode(fieldArtifact);
+                    fieldsNode.addChild(fieldNode);
+                }
                 lineNumbers.add(node.getFileLocation().getStartingLineNumber());
                 lineNumbers.add(node.getFileLocation().getEndingLineNumber());
+
                 /*if (node.getFileLocation().getStartingLineNumber() != node.getFileLocation().getEndingLineNumber()) {
                     for (int i = node.getFileLocation().getStartingLineNumber(); i <= node.getFileLocation().getEndingLineNumber() - 1; i++) {
                         Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
@@ -637,7 +652,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                         if (((ICPPASTIfStatement) node).getElseClause().getFileLocation().getStartingLineNumber() != ((ICPPASTIfStatement) node).getElseClause().getFileLocation().getEndingLineNumber()) {
                             for (int i = ((ICPPASTIfStatement) node).getElseClause().getFileLocation().getStartingLineNumber() - 1; i <= ((ICPPASTIfStatement) node).getElseClause().getFileLocation().getEndingLineNumber() - 1; i++) {
                                 String elsestring = "";
-                                if (!lines[i].contains("else") && blockNode.getArtifact().getData().toString().contains("{") && i == ((ICPPASTIfStatement) node).getElseClause().getFileLocation().getStartingLineNumber() - 1) {
+                                if (!lines[i].contains("else") && blockNode.getArtifact().getData().toString().contains("{") && i == ((ICPPASTIfStatement) node).getElseClause().getFileLocation().getStartingLineNumber() - 1 && lines[((ICPPASTIfStatement) node).getElseClause().getFileLocation().getStartingLineNumber() - 1].contains("}")) {
                                     elsestring += "}else" + "\n";
                                 } else if (!lines[i].contains("else") && i == ((ICPPASTIfStatement) node).getElseClause().getFileLocation().getStartingLineNumber() - 1) {
                                     elsestring += "else" + "\n";
@@ -706,8 +721,14 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                     Artifact.Op<WhileBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new WhileBlockArtifactData("while( " + ((IASTWhileStatement) node).getCondition().getRawSignature() + " ) " + whileaux));
                     Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
                     parentNode.addChild(blockNode);
+
                     for (IASTNode child : ((ICPPASTWhileStatement) node).getBody().getChildren()) {
-                        addChildFunction(child, blockNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
+                        if (((IASTWhileStatement) node).getBody() instanceof CPPASTIfStatement) {
+                            addChildFunction(((ICPPASTWhileStatement) node).getBody(), blockNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
+                            break;
+                        }else {
+                            addChildFunction(child, blockNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
+                        }
                     }
                     if (whileaux.contains("{")) {
                         Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(("}")));
@@ -743,6 +764,8 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                 if (((IASTForStatement) node).getInitializerStatement() != null) {
                     init = ((IASTForStatement) node).getInitializerStatement().getRawSignature();
                 }
+                if(init.equals(";") && !node.getRawSignature().substring(node.getRawSignature().indexOf("(")+1, node.getRawSignature().indexOf(";")).equals(";") && !node.getRawSignature().substring(node.getRawSignature().indexOf("(")+1, node.getRawSignature().indexOf(";")).equals(""))
+                   init = node.getRawSignature().substring(node.getRawSignature().indexOf("(")+1, node.getRawSignature().indexOf(";")+1);
                 String condition = "";
                 if (((IASTForStatement) node).getConditionExpression() != null) {
                     condition = ((IASTForStatement) node).getConditionExpression().getRawSignature();
@@ -754,18 +777,27 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                     iteration = ((IASTForStatement) node).getIterationExpression().getRawSignature();
                 }
                 String foraux = "";
+                int i=0;
                 if (((IASTForStatement) node).getIterationExpression() != null) {
+                    i=((IASTForStatement) node).getIterationExpression().getFileLocation().getStartingLineNumber();
                     foraux = lines[((IASTForStatement) node).getIterationExpression().getFileLocation().getStartingLineNumber() - 1].substring(lines[((IASTForStatement) node).getIterationExpression().getFileLocation().getStartingLineNumber() - 1].lastIndexOf(")") + 1);
                 } else if (((IASTForStatement) node).getConditionExpression() != null) {
+                    i=((IASTForStatement) node).getConditionExpression().getFileLocation().getStartingLineNumber();
                     foraux = lines[((IASTForStatement) node).getConditionExpression().getFileLocation().getStartingLineNumber() - 1].substring(lines[((IASTForStatement) node).getConditionExpression().getFileLocation().getStartingLineNumber() - 1].lastIndexOf(")") + 1);
                 } else if (node instanceof ICPPASTForStatement && ((ICPPASTForStatement) node).getConditionDeclaration() != null) {
+                    i=((ICPPASTForStatement) node).getConditionDeclaration().getFileLocation().getStartingLineNumber();
                     foraux = lines[((ICPPASTForStatement) node).getConditionDeclaration().getFileLocation().getStartingLineNumber() - 1].substring(lines[((ICPPASTForStatement) node).getConditionDeclaration().getFileLocation().getStartingLineNumber() - 1].lastIndexOf(")") + 1);
                 }
+                if(foraux.equals("") && lines[i].trim().equals("{"))
+                    foraux = "\n{";
                 Artifact.Op<ForBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new ForBlockArtifactData("for(" + init + " " + condition + "; " + iteration + ")" + foraux));
                 Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
                 parentNode.addChild(blockNode);
-
                 for (IASTNode child : ((IASTForStatement) node).getBody().getChildren()) {
+                    if(((IASTForStatement) node).getBody() != null && ((IASTForStatement) node).getBody() instanceof CPPASTIfStatement || ((IASTForStatement) node).getBody() instanceof CPPASTForStatement) {
+                        addChildFunction(((IASTForStatement) node).getBody(), blockNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
+                        break;
+                    }
                     if (child instanceof CPPASTArraySubscriptExpression)
                         addChildFunction(child.getParent(), blockNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
                     else
@@ -783,7 +815,12 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             }
         } else if (node instanceof IASTSwitchStatement || node instanceof CPPASTSwitchStatement) {
             if (((IASTSwitchStatement) node).getControllerExpression() != null) {
-                Artifact.Op<SwitchBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new SwitchBlockArtifactData("switch(" + ((IASTSwitchStatement) node).getControllerExpression().getRawSignature() + "){"));
+                String switchline="switch(" + ((IASTSwitchStatement) node).getControllerExpression().getRawSignature() + ")";
+                if(lines[((IASTSwitchStatement) node).getControllerExpression().getFileLocation().getEndingLineNumber()].trim().equals("{"))
+                    switchline+="\n{";
+                else
+                    switchline+="{";
+                    Artifact.Op<SwitchBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new SwitchBlockArtifactData(switchline));
                 Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
                 parentNode.addChild(blockNode);
                 Node.Op blockChildNode = blockNode;
@@ -924,10 +961,11 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                 for (IASTNode child : node.getChildren()) {
                     addChildFunction(child, blockNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
                 }
-            } else {
+            } else if (!lineNumbersSwitchCase.contains(node.getFileLocation().getStartingLineNumber()-1)){
                 Artifact.Op<DoBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new DoBlockArtifactData(lines[node.getFileLocation().getStartingLineNumber() - 1]));
                 Node.Op blocknode = this.entityFactory.createOrderedNode(blockArtifact);
                 parentNode.addChild(blocknode);
+                lineNumbersSwitchCase.add(node.getFileLocation().getStartingLineNumber()-1);
             }
             //Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData("} while( " + ((IASTDoStatement) node).getCondition().getRawSignature() + ")"));
             //Node.Op lineNodeChild = this.entityFactory.createOrderedNode(lineArtifact);
@@ -963,14 +1001,14 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             }
         } else if (node instanceof CPPASTProblemStatement) {
             if (!node.getRawSignature().equals(")") && node.getRawSignature().length() > 1) {
-                if (!lineNumbersSwitchCase.contains(node.getFileLocation().getStartingLineNumber() - 1) && node.getFileLocation().getStartingLineNumber()  == node.getFileLocation().getEndingLineNumber()) {
+                if (!lineNumbersSwitchCase.contains(node.getFileLocation().getStartingLineNumber() - 1) && node.getFileLocation().getStartingLineNumber() == node.getFileLocation().getEndingLineNumber()) {
                     Artifact.Op<ProblemBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new ProblemBlockArtifactData(lines[node.getFileLocation().getStartingLineNumber() - 1]));
                     lineNumbersSwitchCase.add(node.getFileLocation().getStartingLineNumber() - 1);
                     Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
                     parentNode.addChild(blockNode);
                 } else if (node.getFileLocation().getStartingLineNumber() != node.getFileLocation().getEndingLineNumber()) {
                     String line = "";
-                    for (int i = node.getFileLocation().getStartingLineNumber()-1; i <= node.getFileLocation().getEndingLineNumber() - 1; i++) {
+                    for (int i = node.getFileLocation().getStartingLineNumber() - 1; i <= node.getFileLocation().getEndingLineNumber() - 1; i++) {
                         line += lines[i] + "\n";
                         lineNumbersSwitchCase.add(i);
                     }
