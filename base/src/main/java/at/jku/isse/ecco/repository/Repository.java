@@ -74,6 +74,8 @@ public interface Repository extends Persistable {
 		 */
 		public Feature getFeature(String id);
 
+		public Feature getOrphanedFeature(String id, String name);
+
 		public Feature addFeature(String id, String name);
 
 
@@ -98,6 +100,8 @@ public interface Repository extends Persistable {
 		 * @return The module or null if it does not exist.
 		 */
 		public Module getModule(Feature[] pos, Feature[] neg);
+
+		public Module getOrphanedModule(Feature[] pos, Feature[] neg);
 
 		/**
 		 * Checks if the given module already exists and throws an exception if it does.
@@ -490,6 +494,101 @@ public interface Repository extends Persistable {
 
 
 		/**
+		 * Returns modules contained in the given configuration. Features, Modules, Revisions are taken from the repository if they exist, otherwise they are created as temporary orphaned objets. For example, a feature revision that is not actually added to the feature.
+		 *
+		 * @param configuration
+		 * @return
+		 */
+		//private
+		default Collection<ModuleRevision> getOrphanedConfigurationModules(Configuration configuration) {
+			checkNotNull(configuration);
+
+			// collect positive feature revisions
+			Collection<FeatureRevision> pos = new ArrayList<>();
+			for (FeatureRevision featureRevision : configuration.getFeatureRevisions()) {
+				// get feature from repository
+				Feature repoFeature = this.getOrphanedFeature(featureRevision.getFeature().getId(), featureRevision.getFeature().getName());
+				// get feature revision from repository
+				FeatureRevision repoFeatureRevision = repoFeature.getOrphanedRevision(featureRevision.getId());
+				pos.add(repoFeatureRevision);
+			}
+
+			// collect negative features
+			Collection<Feature> neg = new ArrayList<>();
+			for (Feature repoFeature : this.getFeatures()) {
+				if (pos.stream().noneMatch(featureRevision -> featureRevision.getFeature().equals(repoFeature))) {
+					neg.add(repoFeature);
+				}
+			}
+
+			// collection of modules
+			Collection<ModuleRevision> moduleRevisions = new ArrayList<>();
+			Collection<ModuleRevision> finalModuleRevisions = new ArrayList<>();
+
+			// add empty module initially
+			Module emptyModule = new EmptyModule();
+			ModuleRevision emptyModuleRevision = emptyModule.getRevision(new FeatureRevision[0], new Feature[0]);
+			moduleRevisions.add(emptyModuleRevision); // add empty module revision to power set
+
+			// compute powerset
+			for (final FeatureRevision featureRevision : pos) {
+				final Collection<ModuleRevision> toAdd = new ArrayList<>();
+
+				for (final ModuleRevision moduleRevision : moduleRevisions) {
+					if (moduleRevision.getOrder() < this.getMaxOrder()) {
+						FeatureRevision[] posFeatureRevisions = Arrays.copyOf(moduleRevision.getPos(), moduleRevision.getPos().length + 1);
+						posFeatureRevisions[posFeatureRevisions.length - 1] = featureRevision;
+						Feature[] posFeatures = Arrays.stream(posFeatureRevisions).map(FeatureRevision::getFeature).toArray(Feature[]::new);
+
+						// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
+						Module newModule = this.getOrphanedModule(posFeatures, moduleRevision.getNeg());
+						ModuleRevision newModuleRevision = newModule.getOrphanedRevision(posFeatureRevisions, moduleRevision.getNeg());
+
+						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
+							finalModuleRevisions.add(newModuleRevision); // TODO: ???
+						} else {
+							toAdd.add(newModuleRevision);
+						}
+					}
+				}
+
+				moduleRevisions.addAll(toAdd);
+			}
+
+			// remove the empty module again
+			moduleRevisions.remove(emptyModuleRevision);
+
+			for (final Feature feature : neg) {
+				final Collection<ModuleRevision> toAdd = new ArrayList<>();
+
+				for (final ModuleRevision moduleRevision : moduleRevisions) {
+					if (moduleRevision.getOrder() < this.getMaxOrder() && moduleRevision.getPos().length > 0) {
+						Feature[] negFeatures = Arrays.copyOf(moduleRevision.getNeg(), moduleRevision.getNeg().length + 1);
+						negFeatures[negFeatures.length - 1] = feature;
+						Feature[] posFeatures = Arrays.stream(moduleRevision.getPos()).map(FeatureRevision::getFeature).toArray(Feature[]::new);
+
+						// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
+						Module newModule = this.getOrphanedModule(posFeatures, negFeatures);
+						ModuleRevision newModuleRevision = newModule.getOrphanedRevision(moduleRevision.getPos(), negFeatures);
+
+						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
+							finalModuleRevisions.add(newModuleRevision); // TODO: ???
+						} else {
+							toAdd.add(newModuleRevision);
+						}
+					}
+				}
+
+				moduleRevisions.addAll(toAdd);
+			}
+
+			finalModuleRevisions.addAll(moduleRevisions);
+
+			return finalModuleRevisions;
+		}
+
+
+		/**
 		 * Composes an artifact tree from the associations stored in this repository that implements the given configuration.
 		 *
 		 * @param configuration The configuration for which the implementing artifact tree shall be retrieved.
@@ -512,9 +611,8 @@ public interface Repository extends Persistable {
 			Checkout checkout = this.compose(selectedAssociations, lazy);
 			checkout.setConfiguration(configuration);
 
-			// TODO: compute set of desired modules from configuration!
 			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
-			Set<ModuleRevision> desiredModules = new HashSet<>();
+			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
 			Set<ModuleRevision> missingModules = new HashSet<>();
 			Set<ModuleRevision> surplusModules = new HashSet<>();
 
@@ -526,6 +624,12 @@ public interface Repository extends Persistable {
 					missingModules.add(desiredModuleRevision);
 				}
 			}
+
+			/**
+			 * TODO: trim set of missing modules to only leave modules that are LIKELY missing:
+			 * - exclude missing modules that we know from previous revisions and that did not contain artifacts there.
+			 * - exclude missing higher order modules that are covered entirely by combinations of missing lower order modules (e.g., (A,B,C) can be ignored if (A,B), (A,C), and (B,C) are also missing).
+			 */
 
 			// compute surplus
 			for (Association association : selectedAssociations) {

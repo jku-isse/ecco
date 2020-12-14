@@ -3,6 +3,7 @@ package at.jku.isse.ecco.storage.mem.module;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleRevision;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,6 +92,16 @@ public class MemModule implements Module {
 				return moduleRevision;
 		return null;
 	}
+
+	@Override
+	public ModuleRevision getOrphanedRevision(FeatureRevision[] pos, Feature[] neg) {
+		MemModuleRevision moduleRevision = this.getRevision(pos, neg);
+		if (moduleRevision == null) {
+			moduleRevision = new MemModuleRevision(this, pos, neg);
+		}
+		return moduleRevision;
+	}
+
 
 
 	@Override

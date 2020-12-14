@@ -1,10 +1,17 @@
 plugins {
 	id 'nebula.ospackage' version '8.0.3'
+	id 'pmd'
+	//id 'checkstyle'
 }
 
 allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
+	apply plugin: 'pmd'
+
+	pmd {
+		ignoreFailures = true
+	}
 }
 
 subprojects {
@@ -18,6 +25,7 @@ subprojects {
 	apply plugin: 'java'
 	apply plugin: 'maven-publish'
 	apply plugin: 'nebula.ospackage'
+	//apply plugin: 'checkstyle'
 
 	sourceCompatibility = JavaVersion.VERSION_13
 	targetCompatibility = JavaVersion.VERSION_13
