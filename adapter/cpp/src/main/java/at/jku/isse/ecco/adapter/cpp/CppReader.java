@@ -419,8 +419,6 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                 parameters += para.getDeclSpecifier().getRawSignature();
                 first = false;
             }
-            //TODO insert parameter types into string
-            // return name + "(" + parameters + ")";
         } else if (node instanceof IASTFunctionDeclarator) {
             String name = ((IASTFunctionDeclarator) node).getName().getRawSignature();
             String parameters = "";
@@ -439,14 +437,12 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                     }
                 }
             }
-            //TODO insert parameter types into string
             for (IASTNode nodechild : node.getChildren()) {
                 addChildFunction(nodechild, functionNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
             }
             Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData("}"));
             Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
             functionNode.addChild(lineNode);
-            //return name + "(" + parameters + ")";
         } else if (node instanceof ICPPASTLinkageSpecification) {
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(lines[node.getFileLocation().getStartingLineNumber() - 1]));
             Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
@@ -460,8 +456,6 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             }
             lineNumbers.add(node.getFileLocation().getStartingLineNumber());
             lineNumbers.add(node.getFileLocation().getEndingLineNumber());
-            //TODO could be more extern "C" -> not a unique identifier
-            //return "extern " + ((ICPPASTLinkageSpecification) node).getLiteral() + "";
         } else if (node instanceof CPPASTProblemDeclaration) {
             if (!node.getRawSignature().equals(")")) {
                 Artifact.Op<ProblemBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new ProblemBlockArtifactData(node.getRawSignature()));
@@ -470,10 +464,39 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                 lineNumbers.add(node.getFileLocation().getStartingLineNumber());
                 lineNumbers.add(node.getFileLocation().getEndingLineNumber());
             }
-        } else {
+        } else if (node instanceof CPPASTTemplateDeclaration) {
+            String name = lines[node.getFileLocation().getStartingLineNumber()-1];
+            if(!name.contains("{"))
+                name += "\n{";
+            String parameters = "";
+            Artifact.Op<FunctionArtifactData> functionsArtifact = this.entityFactory.createArtifact(new FunctionArtifactData(name));
+            Node.Op functionNode = this.entityFactory.createOrderedNode(functionsArtifact);
+            functionsNode.addChild(functionNode);
+            lineNumbers.add(node.getFileLocation().getStartingLineNumber());
+            lineNumbers.add(node.getFileLocation().getEndingLineNumber());
+            if (node.getTranslationUnit().getMacroDefinitions().length > 0) {
+                for (IASTPreprocessorMacroDefinition macro : node.getTranslationUnit().getMacroDefinitions()) {
+                    if (macro.getFileLocation().equals(node.getFileLocation()) && macro.getFileLocation().getStartingLineNumber() > node.getFileLocation().getStartingLineNumber() && macro.getFileLocation().getStartingLineNumber() < node.getFileLocation().getEndingLineNumber()) {
+                        Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(macro.getRawSignature()));
+                        Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+                        functionNode.addChild(lineNode);
+                    }
+                }
+            }
+            for (IASTNode nodechild : ((CPPASTTemplateDeclaration) node).getDeclaration().getChildren()) {
+                if(nodechild instanceof CPPASTCompoundStatement){
+                    for (IASTNode nodechild2 : nodechild.getChildren()) {
+                        addChildFunction(nodechild2, functionNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
+                    }
+                }
+            }
+            Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData("}"));
+            Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+            functionNode.addChild(lineNode);
+        }else {
             System.out.println("+++++++++++++++++++++ corner case +++++++++++ " + node.getRawSignature() + " " + node.getFileLocation().getFileName() + " " + node.getFileLocation().getStartingLineNumber());
         }
-        //return node.getRawSignature();
+
     }
 
     public void addChildFunction(IASTNode node, Node.Op parentNode, Node.Op functionsNode, Node.Op fieldsNode, String[] lines, ArrayList<Integer> lineNumbers, ArrayList<Integer> lineNumbersSwitchCase) {
