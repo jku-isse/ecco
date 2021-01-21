@@ -543,7 +543,10 @@ public interface Repository extends Persistable {
 					}
 				}
 			}
-
+			for (ModuleRevision moduleRevision:desiredModules) {
+				if(missingModules.contains(moduleRevision))
+					missingModules.remove(moduleRevision);
+			}
 			checkout.getSurplus().addAll(surplusModules);
 			checkout.getMissing().addAll(missingModules);
 

@@ -1005,9 +1005,16 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                     addChildFunction(child, blockNode, functionsNode, fieldsNode, lines, lineNumbers, lineNumbersSwitchCase);
                 }
             } else if (!lineNumbersSwitchCase.contains(node.getFileLocation().getStartingLineNumber()-1)){
-                Artifact.Op<DoBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new DoBlockArtifactData(lines[node.getFileLocation().getStartingLineNumber() - 1]));
+                Artifact.Op<DoBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new DoBlockArtifactData("do"));
+                //Artifact.Op<DoBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new DoBlockArtifactData(lines[node.getFileLocation().getStartingLineNumber() - 1]));
                 Node.Op blocknode = this.entityFactory.createOrderedNode(blockArtifact);
                 parentNode.addChild(blocknode);
+                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(((IASTDoStatement) node).getBody().getRawSignature()));
+                Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+                blocknode.addChild(lineNode);
+                lineArtifact = this.entityFactory.createArtifact(new LineArtifactData("while("+((IASTDoStatement) node).getCondition().getRawSignature()+");"));
+                lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+                blocknode.addChild(lineNode);
                 lineNumbersSwitchCase.add(node.getFileLocation().getStartingLineNumber()-1);
             }
             //Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData("} while( " + ((IASTDoStatement) node).getCondition().getRawSignature() + ")"));
