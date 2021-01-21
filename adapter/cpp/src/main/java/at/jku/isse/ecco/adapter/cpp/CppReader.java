@@ -253,16 +253,36 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             if (!node.getRawSignature().equals(")") && node.getRawSignature().length() > 1) {
                 int init = node.getFileLocation().getStartingLineNumber() - 1;
                 int end = node.getFileLocation().getEndingLineNumber() - 1;
-                String line = "";
-                for (int i = init; i <= end; i++) {
-                    if (!lineNumbersSwitchCase.contains(i + 1)) {
-                        line += lines[i] + "\n";
-                        lineNumbersSwitchCase.add(i + 1);
+                if(end-init<2) {
+                    String line = "";
+                    for (int i = init; i <= end; i++) {
+                        if (!lineNumbersSwitchCase.contains(i + 1)) {
+                            line += lines[i] + "\n";
+                            lineNumbersSwitchCase.add(i + 1);
+                        }
+                    }
+                    Artifact.Op<ProblemBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new ProblemBlockArtifactData(line));
+                    Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
+                    fieldsNode.addChild(blockNode);
+                }else{
+                    Artifact.Op<ProblemBlockArtifactData> blockArtifact=null;
+                    Node.Op blockNode = null;
+                    for (int i = init; i <= end; i++) {
+                        if (!lineNumbersSwitchCase.contains(i + 1)) {
+                            String line = lines[i] + "\n";
+                            lineNumbersSwitchCase.add(i + 1);
+                            if(i == init) {
+                                blockArtifact = this.entityFactory.createArtifact(new ProblemBlockArtifactData(line));
+                                blockNode = this.entityFactory.createOrderedNode(blockArtifact);
+                                functionsNode.addChild(blockNode);
+                            }else{
+                                Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
+                                Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
+                                blockNode.addChild(lineNode);
+                            }
+                        }
                     }
                 }
-                Artifact.Op<ProblemBlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new ProblemBlockArtifactData(line));
-                Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
-                fieldsNode.addChild(blockNode);
                 lineNumbers.add(node.getFileLocation().getStartingLineNumber());
                 lineNumbers.add(node.getFileLocation().getEndingLineNumber());
             }
