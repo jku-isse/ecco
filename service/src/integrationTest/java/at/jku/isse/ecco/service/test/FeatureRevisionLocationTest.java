@@ -19,18 +19,24 @@ import javax.swing.text.StyledEditorKit;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
-    public final String marlinFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\Marlin";
+    public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of LibSSH target systyem
-    public final String libsshFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\LibSSH";
+    public final String libsshFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of SQLite target systyem
-    public final String sqliteFolder = "C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master\\SQLite";
+    public final String sqliteFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\ResultsCompareVariantsRandom";
+    //directory where you have the folder with the artifacts of Bison target systyem
+    public final String bisonFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Bison\\ResultsCompareVariantsRandom";
+    //directory where you have the folder with the artifacts of Irssi target systyem
+    public final String irssiFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Irssi\\ResultsCompareVariantsRandom";
+    //directory where you have the folder with the artifacts of Curl target systyem
+    public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariantsRandom";
     //directory where you want to store the result file containing the metrics computed for all target systems
     public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
     private List<String> fileTypes = new LinkedList<String>();
@@ -126,9 +132,13 @@ public class FeatureRevisionLocationTest {
     @org.testng.annotations.Test
     public void GetCSVInformationTotalTest() throws IOException {
         //set into this list of File the folders with csv files resulted from the comparison of variants of each target project
-        File[] folder = {new File(csvcomparison_path)};//,
-               // new File(libsshFolder),
-                //new File(sqliteFolder)};
+        File[] folder = {//new File(csvcomparison_path)
+                new File(marlinFolder),
+                new File(libsshFolder),
+                new File(sqliteFolder),
+                new File(bisonFolder),
+                new File(irssiFolder),
+                new File(curlFolder)};
         //write metrics in a csv file
         String filemetrics = "RandomMetricsEachAndTogether-no-inserted-lines.csv";
         FileWriter csvWriter = new FileWriter(metricsResultFolder + File.separator + filemetrics);
@@ -187,17 +197,13 @@ public class FeatureRevisionLocationTest {
                             totaleccototalLines += eccototalLines;
                             totaloriginaltotalLinesEachFile += originaltotalLinesEachFile;
                             totaleccototalLinesEachFile += eccototalLinesEachFile;
+
                             if (line[1].toUpperCase().equals("TRUE")) {
-                                if (Float.compare(totalfalsepositiveLines, 0) == 0 && Float.compare(totalfalsenegativeLines, 0) == 0) {
-                                    matchFilesEachVariant++;
-                                    totalmatchFilesEachVariant++;
-                                    matchesFiles++;
-                                    totalmatchesFiles++;
-                                } else {
-                                    missingFiles++;
-                                    totalmissingFiles++;
-                                    variantMatch = false;
-                                }
+
+                                matchFilesEachVariant++;
+                                totalmatchFilesEachVariant++;
+                                matchesFiles++;
+                                totalmatchesFiles++;
                                 numberTotalFilesEachVariant += 1;
                                 totalnumberTotalFilesEachVariant++;
                             } else if (line[1].equals("not")) {
@@ -305,7 +311,7 @@ public class FeatureRevisionLocationTest {
         getFilesToProcess(srcOriginal, filesVariant);
         filesVariant.remove(srcOriginal);
         String outputCSV = srcOriginal.getParentFile().getParentFile().getAbsolutePath();
-        File folder = new File (outputCSV, "ResultsCompareVariants");
+        File folder = new File(outputCSV, "ResultsCompareVariants");
         if (!folder.exists()) {
             folder.mkdir();
         }
@@ -339,10 +345,10 @@ public class FeatureRevisionLocationTest {
                     sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
                     if (!linecomment && !sCurrentLine.equals("%%") && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                         original.add(sCurrentLine);
-                    }else if(sCurrentLine.startsWith("/*")&& !sCurrentLine.contains("*/")) {
+                    } else if (sCurrentLine.startsWith("/*") && !sCurrentLine.contains("*/")) {
                         linecomment = true;
-                    }else if(sCurrentLine.contains("*/")&& linecomment){
-                        linecomment=false;
+                    } else if (sCurrentLine.contains("*/") && linecomment) {
+                        linecomment = false;
                     }
                 }
                 br.close();
@@ -351,15 +357,15 @@ public class FeatureRevisionLocationTest {
                     if (f.toPath().toString().substring(f.toPath().toString().indexOf("ecco\\") + 5).equals(fEcco.toPath().toString().substring(fEcco.toPath().toString().indexOf("checkout\\") + 9))) {
                         filenew = new File(String.valueOf(fEcco.toPath()));
                         br = new BufferedReader(new FileReader(filenew.getAbsoluteFile()));
-                        linecomment=false;
+                        linecomment = false;
                         while ((sCurrentLine = br.readLine()) != null) {
                             sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
                             if (!linecomment && !sCurrentLine.equals("%%") && !sCurrentLine.equals("") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                                 revised.add(sCurrentLine);
-                            }else if(sCurrentLine.startsWith("/*")&& !sCurrentLine.contains("*/")) {
+                            } else if (sCurrentLine.startsWith("/*") && !sCurrentLine.contains("*/")) {
                                 linecomment = true;
-                            }else if(sCurrentLine.contains("*/") && linecomment){
-                                linecomment=false;
+                            } else if (sCurrentLine.contains("*/") && linecomment) {
+                                linecomment = false;
                             }
                         }
                         br.close();
@@ -627,7 +633,7 @@ public class FeatureRevisionLocationTest {
                     String sCurrentLine;
                     while ((sCurrentLine = br.readLine()) != null) {
                         sCurrentLine = sCurrentLine.trim().replaceAll("\t", "").replaceAll("\r", "").replaceAll(" ", "");
-                        if (!sCurrentLine.equals("")  && !sCurrentLine.equals("%%") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
+                        if (!sCurrentLine.equals("") && !sCurrentLine.equals("%%") && !sCurrentLine.startsWith("//") && !sCurrentLine.startsWith("/*") && !sCurrentLine.startsWith("*/") && !sCurrentLine.startsWith("*") && !sCurrentLine.startsWith("import")) {
                             original.add(sCurrentLine);
                         }
                     }
@@ -833,7 +839,7 @@ public class FeatureRevisionLocationTest {
     @org.testng.annotations.Test
     public void countLinesOfCode() throws IOException {
         List<String> fileTypes = new LinkedList<String>();
-        File gitFolder = new File("C:\\Users\\gabil\\Desktop\\PHD\\Mining\\CaseStudies\\Irssi\\clean");
+        File gitFolder = new File("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\clean");
         fileTypes.add("c");
         fileTypes.add("cpp");
         fileTypes.add("h");
@@ -859,10 +865,121 @@ public class FeatureRevisionLocationTest {
                     br.close();
                 }
             }
-            countLines+=original.size();
+            countLines += original.size();
         }
-        System.out.println("Size: "+countLines);
+        System.out.println("Size: " + countLines);
     }
 
+    @org.testng.annotations.Test
+    public void getCSVInformation2() throws IOException {
+        File folder = new File(csvcomparison_path);
+        File[] lista = folder.listFiles();
+        Float meanRunEccoCommit = Float.valueOf(0), meanRunEccoCheckout = Float.valueOf(0), meanRunPPCheckoutCleanVersion = Float.valueOf(0), meanRunPPCheckoutGenerateVariant = Float.valueOf(0), meanRunGitCommit = Float.valueOf(0), meanRunGitCheckout = Float.valueOf(0);
+        Float totalnumberFiles = Float.valueOf(0), matchesFiles = Float.valueOf(0), eccototalLines = Float.valueOf(0), originaltotalLines = Float.valueOf(0), missingFiles = Float.valueOf(0), remainingFiles = Float.valueOf(0), totalVariantsMatch = Float.valueOf(0), truepositiveLines = Float.valueOf(0), falsepositiveLines = Float.valueOf(0), falsenegativeLines = Float.valueOf(0),
+                truepositiveLinesEachFile = Float.valueOf(0), falsepositiveLinesEachFile = Float.valueOf(0), falsenegativeLinesEachFile = Float.valueOf(0), numberTotalFilesEachVariant = Float.valueOf(0), matchFilesEachVariant = Float.valueOf(0), eccototalLinesEachFile = Float.valueOf(0), originaltotalLinesEachFile = Float.valueOf(0);
+        Boolean variantMatch = true;
+        Float numberCSV = Float.valueOf(0);
+        for (File file : lista) {
+            if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
+                Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
+                CSVReader csvReader = new CSVReaderBuilder(reader).build();
+                List<String[]> matchesVariants = csvReader.readAll();
+
+                if (file.getName().contains("runtime")) {
+                    for (int i = 0; i < matchesVariants.size(); i++) {
+                        if (i != 0) {
+                            String[] runtimes = matchesVariants.get(i);
+                            meanRunEccoCommit += Float.valueOf(runtimes[2]);
+                            meanRunEccoCheckout += Float.valueOf(runtimes[3]);
+                            meanRunPPCheckoutCleanVersion += Float.valueOf(runtimes[4]);
+                            meanRunPPCheckoutGenerateVariant += Float.valueOf(runtimes[5]);
+                            meanRunGitCommit += Float.valueOf(runtimes[6]);
+                            meanRunGitCheckout += Float.valueOf(runtimes[7]);
+                        }
+                    }
+                } else {
+                    Float qtdLines = Float.valueOf(matchesVariants.size() - 4);
+                    //totalnumberFiles += qtdLines;
+                    for (int i = 1; i < matchesVariants.size(); i++) {
+
+                        String[] line = matchesVariants.get(i);
+                        truepositiveLines += Integer.valueOf(line[2]);
+                        falsepositiveLines += Integer.valueOf(line[3]);
+                        falsenegativeLines += Integer.valueOf(line[4]);
+                        truepositiveLinesEachFile = Float.valueOf(Integer.valueOf(line[2]));
+                        falsepositiveLinesEachFile = Float.valueOf(Integer.valueOf(line[3]));
+                        falsenegativeLinesEachFile = Float.valueOf(Integer.valueOf(line[4]));
+                        originaltotalLines += Integer.valueOf(line[5]);
+                        eccototalLines += Integer.valueOf(line[6]);
+                        originaltotalLinesEachFile = Float.valueOf(Integer.valueOf(line[5]));
+                        eccototalLinesEachFile = Float.valueOf(Integer.valueOf(line[6]));
+                        if (line[1].toUpperCase().equals("TRUE")) {
+                            matchFilesEachVariant++;
+                            matchesFiles++;
+                            numberTotalFilesEachVariant += 1;
+                        } else if (line[1].equals("not")) {
+                            variantMatch = false;
+                            missingFiles++;
+                            numberTotalFilesEachVariant += 1;
+                        } else if (line[1].equals("justOnRetrieved")) {
+                            variantMatch = false;
+                            remainingFiles++;
+                        } else {
+                            variantMatch = false;
+                            missingFiles++;
+                        }
+                    }
+                }
+                numberCSV++;
+                if (variantMatch && Float.compare(matchFilesEachVariant, numberTotalFilesEachVariant) == 0)
+                    totalVariantsMatch++;
+            }
+            numberTotalFilesEachVariant = Float.valueOf(0);
+            matchFilesEachVariant = Float.valueOf(0);
+            variantMatch = true;
+        }
+        meanRunEccoCommit = (meanRunEccoCommit / numberCSV) / 1000;
+        meanRunEccoCheckout = (meanRunEccoCheckout / numberCSV) / 1000;
+        meanRunPPCheckoutCleanVersion = (meanRunPPCheckoutCleanVersion / numberCSV) / 1000;
+        meanRunPPCheckoutGenerateVariant = (meanRunPPCheckoutGenerateVariant / numberCSV) / 1000;
+        meanRunGitCommit = (meanRunGitCommit / numberCSV) / 1000;
+        meanRunGitCheckout = (meanRunGitCheckout / numberCSV) / 1000;
+        Float totalVariantsNotMatch = (numberCSV - totalVariantsMatch);
+        Float precisionVariants = totalVariantsMatch / (totalVariantsMatch + totalVariantsNotMatch);
+        Float recallVariants = totalVariantsMatch / (numberCSV);
+        Float f1scoreVariants = 2 * ((precisionVariants * recallVariants) / (precisionVariants + recallVariants));
+        if (f1scoreVariants.toString().equals("NaN")) {
+            f1scoreVariants = Float.valueOf(0);
+        }
+        Float precisionLines = Float.valueOf(truepositiveLines / (truepositiveLines + falsepositiveLines));
+        Float recallLines = Float.valueOf(truepositiveLines / (truepositiveLines + falsenegativeLines));
+        Float f1scorelines = 2 * ((precisionLines * recallLines) / (precisionLines + recallLines));
+        Float precisionFiles = Float.valueOf(matchesFiles / (matchesFiles + remainingFiles));
+        Float recallFiles = Float.valueOf(matchesFiles / (matchesFiles + missingFiles));
+        Float f1scoreFiles = 2 * ((precisionFiles * recallFiles) / (precisionFiles + recallFiles));
+
+        //write metrics in a csv file
+        String filemetrics = "metrics_justdeleted.csv";
+        //csv to report new features and features changed per git commit of the project
+        try {
+            FileWriter csvWriter = new FileWriter(resultMetrics_path + File.separator + filemetrics);
+            List<List<String>> headerRows = Arrays.asList(
+                    Arrays.asList("PrecisionVariant", "RecallVariant", "F1ScoreVariant", "PrecisionFiles", "RecallFiles", "F1ScoreFiles", "PrecisionLines", "RecalLines", "F1ScoreLines"),
+                    Arrays.asList(precisionVariants.toString(), recallVariants.toString(), f1scoreVariants.toString(), precisionFiles.toString(), recallFiles.toString(), f1scoreFiles.toString(), precisionLines.toString(), recallLines.toString(), f1scorelines.toString()),
+                    Arrays.asList("MeanRuntimeEccoCommit", "MeanRuntimeEccoCheckout", "MeanRuntimeGitCommit", "MeanRuntimeGitCheckout"),
+                    Arrays.asList(meanRunEccoCommit.toString(), meanRunEccoCheckout.toString(), meanRunGitCommit.toString(), meanRunGitCheckout.toString())
+            );
+            for (List<String> rowData : headerRows) {
+                csvWriter.append(String.join(",", rowData));
+                csvWriter.append("\n");
+            }
+            csvWriter.flush();
+            csvWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println(eccototalLines);
+        System.out.println("Total lines inserted: " + falsepositiveLines + "\nTotal lines deleted: " + falsenegativeLines);
+    }
 
 }
