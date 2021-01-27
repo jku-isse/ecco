@@ -19,12 +19,12 @@ import javax.swing.text.StyledEditorKit;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of LibSSH target systyem

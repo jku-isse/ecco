@@ -59,6 +59,11 @@ public class EmptyModule implements Module {
 	}
 
 	@Override
+	public ModuleRevision getOrphanedRevision(FeatureRevision[] pos, Feature[] neg) {
+		return null;
+	}
+
+	@Override
 	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg) {
 		return null;
 	}
