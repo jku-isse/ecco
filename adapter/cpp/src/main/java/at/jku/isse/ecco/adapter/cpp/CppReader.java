@@ -180,15 +180,17 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                 }
                 for (IASTPreprocessorStatement preprocessorstatement : ppAllStatements) {
                     if (preprocessorstatement instanceof IASTPreprocessorUndefStatement) {
-                        Boolean add = true;
-                        for (int i = 0; i < lineNumbers.size() - 1; i += 2) {
-                            if (preprocessorstatement.getFileLocation().getStartingLineNumber() >= lineNumbers.get(i) && preprocessorstatement.getFileLocation().getStartingLineNumber() <= lineNumbers.get(i + 1)) {
-                                add = false;
-                                break;
+                        if(preprocessorstatement.getContainingFilename().equals(translationUnit.getContainingFilename())) {
+                            Boolean add = true;
+                            for (int i = 0; i < lineNumbers.size() - 1; i += 2) {
+                                if (preprocessorstatement.getFileLocation().getStartingLineNumber() >= lineNumbers.get(i) && preprocessorstatement.getFileLocation().getStartingLineNumber() <= lineNumbers.get(i + 1)) {
+                                    add = false;
+                                    break;
+                                }
                             }
+                            if (add)
+                                definesPosition.put(preprocessorstatement.getRawSignature(), preprocessorstatement.getFileLocation().getStartingLineNumber());
                         }
-                        if (add)
-                            definesPosition.put(preprocessorstatement.getRawSignature(), preprocessorstatement.getFileLocation().getStartingLineNumber());
                     }
                 }
                 List<Map.Entry<String, Integer>> list = new ArrayList<>(definesPosition.entrySet());

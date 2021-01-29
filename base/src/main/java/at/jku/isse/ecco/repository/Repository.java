@@ -5,6 +5,7 @@ import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -520,7 +521,7 @@ public interface Repository extends Persistable {
 			Set<ModuleRevision> desiredModules =  new HashSet<>(this.getOrphanedConfigurationModules(configuration));//configuration.computeModules(this.getMaxOrder(), this, configuration);
 			//Set<ModuleRevision> desiredModules = new HashSet<>();
 			Set<ModuleRevision> missingModules = new HashSet<>();//configuration.computeModulesMissing(this.getMaxOrder(), this, configuration);
-			Set<ModuleRevision> surplusModules = new HashSet<>();
+			Map<ModuleRevision,String> surplusModules = new HashMap<>();
 
 			// compute missing
 			for (ModuleRevision desiredModuleRevision : desiredModules) {
@@ -531,6 +532,7 @@ public interface Repository extends Persistable {
 				}
 			}
 
+
 			// compute surplus
 			for (Association association : selectedAssociations) {
 				Condition moduleCondition = association.computeCondition();
@@ -540,18 +542,20 @@ public interface Repository extends Persistable {
 						if (entry.getValue() != null) {
 							for (ModuleRevision existingModuleRevision : entry.getValue()) {
 								if (!desiredModules.contains(existingModuleRevision)) {
-									surplusModules.add(existingModuleRevision);
+									surplusModules.put(existingModuleRevision,association.getId());
 								}
 							}
 						}
 					}
 				}
+				//Node nodeteste = association.getRootNode().getChildren().get(0);
+				//System.out.println(association.getRootNode().getChildren().get(0).getChildren().get(0));
 			}
 			for (ModuleRevision moduleRevision:desiredModules) {
 				if(missingModules.contains(moduleRevision))
 					missingModules.remove(moduleRevision);
 			}
-			checkout.getSurplus().addAll(surplusModules);
+			checkout.setSurplusModules(surplusModules);
 			checkout.getMissing().addAll(missingModules);
 
 			return checkout;

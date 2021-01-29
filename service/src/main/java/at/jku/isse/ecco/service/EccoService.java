@@ -1618,6 +1618,27 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		return this.checkout(this.parseConfigurationString(configurationString));
 	}
 
+	public synchronized Set<Node> compareArtifacts(String configurationString) {
+		return this.compareArtifacts(this.parseConfigurationString(configurationString));
+	}
+
+	public synchronized Set<Node> compareArtifacts(Configuration configuration) {
+		this.checkInitialized();
+
+		checkNotNull(configuration);
+
+		Repository.Op repository = this.repositoryDao.load();
+		Checkout checkout = repository.compose(configuration);
+
+		for (Association selectedAssociation : checkout.getSelectedAssociations()) {
+			this.fireAssociationSelectedEvent(selectedAssociation);
+		}
+
+		// write artifacts to files
+		Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
+		return nodes;
+	}
+
 	/**
 	 * Checks out the implementation of the given configuration into the base directory.
 	 *
@@ -1663,8 +1684,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				for (ModuleRevision mr : checkout.getMissing()) {
 					sb.append("MISSING: ").append(mr).append(System.lineSeparator());
 				}
-				for (ModuleRevision mr : checkout.getSurplus()) {
-					sb.append("SURPLUS: ").append(mr).append(System.lineSeparator());
+				for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
+					sb.append("SURPLUS: ").append(mr.getKey()+" trace id: "+mr.getValue()).append(System.lineSeparator());
 				}
 				for (Artifact a : checkout.getOrderWarnings()) {
 					List<String> pathList = new LinkedList<>();

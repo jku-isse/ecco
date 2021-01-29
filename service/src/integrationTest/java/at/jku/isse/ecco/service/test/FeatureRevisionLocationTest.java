@@ -8,7 +8,11 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import at.jku.isse.ecco.adapter.cpp.data.*;
+import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.tree.Node;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import difflib.Delta;
@@ -17,11 +21,14 @@ import difflib.Patch;
 
 import javax.swing.text.StyledEditorKit;
 
+import static at.jku.isse.ecco.util.Trees.computeDepth;
+import static at.jku.isse.ecco.util.Trees.slice;
+
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
     public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
     public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\configurations.csv";
     public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
@@ -38,7 +45,7 @@ public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of Curl target systyem
     public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariantsRandom";
     //directory where you want to store the result file containing the metrics computed for all target systems
-    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";
+    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
     private List<String> fileTypes = new LinkedList<String>();
 
 
@@ -124,6 +131,287 @@ public class FeatureRevisionLocationTest {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    @org.testng.annotations.Test
+    public void TestWarnings() throws IOException {
+        File checkoutfile = new File(resultMetrics_path, "checkout");
+        for (File path : checkoutfile.listFiles()) {
+            String pathName = path.getName();
+            File pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "ResultsCompareVariants\\" + pathName + ".csv");
+            File inputVariant = new File(checkoutfile.getParentFile().getParentFile(), "Input_variants\\" + pathName);
+            Map<String, String> filenames = new HashMap<>();
+            BufferedReader csvReader = new BufferedReader(new FileReader(pathCompareVariants));
+            String row = "";
+            Boolean enter = false;
+            while ((row = csvReader.readLine()) != null) {
+                if (enter) {
+                    String[] data = row.split(",");
+                    // do something with the data
+                    if (!data[1].toUpperCase().equals("TRUE")) {
+                        filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\")));
+                    }
+                } else {
+                    enter = true;
+                }
+            }
+            csvReader.close();
+            File[] files = path.listFiles((d, name) -> name.endsWith(".warnings"));
+            File warningsFile = files[0];
+            FileReader fr = new FileReader(warningsFile);   //reads the file
+            BufferedReader br = new BufferedReader(fr);  //creates a buffering character input stream
+            StringBuffer sb = new StringBuffer();    //constructs a string buffer with no characters
+            String line;
+            String[] feats = path.getName().split(",");
+            ArrayList<String> features = new ArrayList<>();
+            ArrayList<String> featureswsurplus = new ArrayList<>();
+            ArrayList<String> featureswmissing = new ArrayList<>();
+            ArrayList<String> associations = new ArrayList<>();
+            for (String f : feats) {
+                features.add(f);
+            }
+            int countsurplus = 0;
+            int countmissing = 0;
+            while ((line = br.readLine()) != null) {
+                sb.append(line);      //appends line to string buffer
+                sb.append("\n");     //line feed
+                if (line.contains("SURPLUS")) {
+                    if (!line.contains(",")) {
+                        String aux = line.substring(line.indexOf("(") + 1, line.indexOf(")"));
+                        if (!featureswsurplus.contains(aux))
+                            featureswsurplus.add(aux.trim());
+                    } else {
+                        String[] featsw = line.split(",");
+                        for (String f : featsw) {
+                            String aux = f;
+                            if (f.contains("("))
+                                aux = f.substring(f.indexOf("(") + 1);
+                            else if (f.contains(")"))
+                                aux = f.substring(0, f.indexOf(")"));
+                            if (!featureswsurplus.contains(aux.trim()))
+                                featureswsurplus.add(aux.trim());
+                        }
+                    }
+                    String association = line.substring(line.indexOf("id: ") + 4);
+                    if (!associations.contains(association))
+                        associations.add(association);
+                } else if (line.contains("MISSING")) {
+                    if (!line.contains(",")) {
+                        String aux = line.substring(line.indexOf("(") + 1, line.indexOf(")"));
+                        if (!featureswmissing.contains(aux))
+                            featureswmissing.add(aux.trim());
+                    } else {
+                        String[] featsw = line.split(",");
+                        for (String f : featsw) {
+                            String aux = f;
+                            if (f.contains("("))
+                                aux = f.substring(f.indexOf("(") + 1);
+                            else if (f.contains(")"))
+                                aux = f.substring(0, f.indexOf(")"));
+                            if (!featureswmissing.contains(aux.trim()))
+                                featureswmissing.add(aux.trim());
+                        }
+                    }
+                }
+            }
+            for (String f : featureswsurplus) {
+                if (!features.contains(f)) {
+                    countsurplus++;
+                }
+            }
+            for (String f : featureswmissing) {
+                if (!features.contains(f)) {
+                    countmissing++;
+                }
+            }
+            fr.close();    //closes the stream and release the resources
+            //System.out.println("\nContents of File: " + path.getName());
+            //System.out.println(sb.toString());   //returns a string that textually represents the object
+            System.out.println("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
+
+            if (associations.size() > 0) {
+                EccoService service = new EccoService();
+                Path repo = Paths.get(resultMetrics_path);
+                service.setRepositoryDir(repo.resolve("repo"));
+                service.open();
+                Collection<? extends Association> assocrepo = service.getRepository().getAssociations();
+                for (Association assoc : assocrepo) {
+                    if (associations.contains(assoc.getId()) && filenames.size() > 0) {
+                        ArrayList<String> lines = new ArrayList<>();
+                        ArrayList<String> linesInputVariant = new ArrayList<>();
+                        ArrayList<String> filenamesAssociation = new ArrayList<>();
+                        ArrayList<String> linesSurplus = new ArrayList<>();
+                        System.out.println("Artifacts: " + assoc.getRootNode().countArtifacts() + " " + assoc.getId());
+                        computeString((Node.Op) assoc.getRootNode(), filenames, lines, filenamesAssociation);
+                        for (String fa : filenamesAssociation) {
+                            if (filenames.get(fa) != null) {
+                                fr = new FileReader(inputVariant + filenames.get(fa));   //reads the file
+                                br = new BufferedReader(fr);  //creates a buffering character input stream
+                                while ((row = br.readLine()) != null) {
+                                    linesInputVariant.add(row);
+                                }
+                                br.close();
+                                for (String l : lines) {
+                                    if (!linesInputVariant.contains(l.replaceAll("\n", ""))) {
+                                        linesSurplus.add(l);
+                                    }
+                                }
+                            }
+                            else{
+                                System.out.println("NULL");
+                            }
+                        }
+                        for (String lsurplus : linesSurplus) {
+                            System.out.println("Lines Surplus: " + lsurplus);
+                        }
+                    }else{
+                        System.out.println("FILE MATCH");
+                    }
+                }
+            }
+
+        }
+    }
+
+
+    private void computeString(Node.Op node, Map<String, String> filenames, ArrayList<String> lines, ArrayList<String> filenamesAssociation) {
+        if (node.getArtifact() != null && node.getArtifact().getData() != null) {
+            if (node.getArtifact().getData() instanceof PluginArtifactData) {
+                System.out.println("SOURCE FILE: " + ((PluginArtifactData) node.getArtifact().getData()).getPath());
+                filenamesAssociation.add(((PluginArtifactData) node.getArtifact().getData()).getPath().toString());
+                if (filenames.containsKey(((PluginArtifactData) node.getArtifact().getData()).getPath().toString())) {
+                    System.out.println("ENTROU " + node.getArtifact().getData());
+                    for (Node.Op childNode : node.getChildren()) {
+                        System.out.println(childNode.getArtifact().getData());
+                        visitingNodes(childNode, lines);
+                    }
+                }
+            }
+        }
+        for (Node.Op childNode : node.getChildren()) {
+            computeString(childNode, filenames, lines, filenamesAssociation);
+        }
+    }
+
+    private void visitingNodes(Node childNode, ArrayList<String> lines) {
+        if (childNode.getArtifact().toString().equals("INCLUDES") || childNode.getArtifact().toString().equals("FUNCTIONS")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if (childNode.getArtifact().toString().equals("FIELDS")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    //fields[0] += node.getArtifact().getData() + "\n";
+                    lines.add(node.getArtifact().getData().toString());
+                }
+            }
+        } else if (childNode.getArtifact().toString().equals("DEFINES")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    lines.add(node.getArtifact().getData().toString());
+                    // defines[0] += node.getArtifact().getData() + "\n";
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof IncludeArtifactData)) {
+            final IncludeArtifactData artifactData = (IncludeArtifactData) childNode.getArtifact().getData();
+            lines.add(artifactData.toString());
+            //includes[0] += artifactData.toString() + "\n";
+        } else if ((childNode.getArtifact().getData() instanceof LineArtifactData)) {
+            // code[0] += ((LineArtifactData) childNode.getArtifact().getData()).getLine() + "\n";
+            lines.add(((LineArtifactData) childNode.getArtifact().getData()).getLine());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof FunctionArtifactData)) {
+            //code[0] += "\n" + ((FunctionArtifactData) childNode.getArtifact().getData()).getSignature() + "\n";//artifactData.toString() + "{\n";
+            lines.add(((FunctionArtifactData) childNode.getArtifact().getData()).getSignature());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
+            // code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock()+ "\n";
+            lines.add(((BlockArtifactData) childNode.getArtifact().getData()).getBlock());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
+            //code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock()+ "\n";
+            lines.add(((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
+            //code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock()+ "\n";
+            lines.add(((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
+            //code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock()+ "\n";
+            lines.add(((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
+            //code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock()+ "\n";
+            lines.add(((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
+            //code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock()+ "\n";
+            lines.add(((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
+            //code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock()+ "\n";
+            lines.add(((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock());
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, lines);
+                }
+            }
+        } else if (childNode.getArtifact().getData() instanceof CaseBlockArtifactData) {
+            if (((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
+                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
+                lines.add(((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock());
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                        lines.add(node.getArtifact().getData().toString());
+                        //code[0] += node.getArtifact().getData();
+                    }
+                }
+                // code[0] += "\n";
+            } else {
+                lines.add(((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock());
+                // code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock()+ "\n";
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                        visitingNodes(node, lines);
+                    }
+                }
+            }
+
         }
     }
 
