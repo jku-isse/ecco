@@ -26,12 +26,12 @@ import static at.jku.isse.ecco.util.Trees.slice;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
+    public final String resultsCSVs_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter\\variant_results";
+    public final String resultMetrics_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
+    public final String configuration_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\configurations.csv";
+    public final String csvcomparison_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -45,7 +45,7 @@ public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of Curl target systyem
     public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariantsRandom";
     //directory where you want to store the result file containing the metrics computed for all target systems
-    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
+    public final String metricsResultFolder = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin";
     private List<String> fileTypes = new LinkedList<String>();
 
 
@@ -137,6 +137,10 @@ public class FeatureRevisionLocationTest {
     @org.testng.annotations.Test
     public void TestWarnings() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkout");
+        EccoService service = new EccoService();
+        Path repo = Paths.get(resultMetrics_path);
+        service.setRepositoryDir(repo.resolve("repo"));
+        service.open();
         for (File path : checkoutfile.listFiles()) {
             String pathName = path.getName();
             File pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "ResultsCompareVariants\\" + pathName + ".csv");
@@ -150,7 +154,7 @@ public class FeatureRevisionLocationTest {
                     String[] data = row.split(",");
                     // do something with the data
                     if (!data[1].toUpperCase().equals("TRUE")) {
-                        filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\")));
+                        filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\")+1));
                     }
                 } else {
                     enter = true;
@@ -230,23 +234,22 @@ public class FeatureRevisionLocationTest {
             //System.out.println(sb.toString());   //returns a string that textually represents the object
             System.out.println("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
 
+            for (Map.Entry<String, String> f : filenames.entrySet()){
+                System.out.printf("file key: "+f.getKey()+ "file value: "+f.getValue());
+            }
             if (associations.size() > 0) {
-                EccoService service = new EccoService();
-                Path repo = Paths.get(resultMetrics_path);
-                service.setRepositoryDir(repo.resolve("repo"));
-                service.open();
-                Collection<? extends Association> assocrepo = service.getRepository().getAssociations();
-                for (Association assoc : assocrepo) {
-                    if (associations.contains(assoc.getId()) && filenames.size() > 0) {
+                for (String assocId : associations) {
+                    Association assocrepo = service.getRepository().getAssociation(assocId);
+                    if (filenames.size() > 0) {
                         ArrayList<String> lines = new ArrayList<>();
                         ArrayList<String> linesInputVariant = new ArrayList<>();
                         ArrayList<String> filenamesAssociation = new ArrayList<>();
                         ArrayList<String> linesSurplus = new ArrayList<>();
-                        System.out.println("Artifacts: " + assoc.getRootNode().countArtifacts() + " " + assoc.getId());
-                        computeString((Node.Op) assoc.getRootNode(), filenames, lines, filenamesAssociation);
+                        System.out.println("Artifacts: " + assocrepo.getRootNode().countArtifacts() + " " + assocrepo.getId());
+                        computeString((Node.Op) assocrepo.getRootNode(), filenames, lines, filenamesAssociation);
                         for (String fa : filenamesAssociation) {
                             if (filenames.get(fa) != null) {
-                                fr = new FileReader(inputVariant + filenames.get(fa));   //reads the file
+                                fr = new FileReader(inputVariant + "\\"+filenames.get(fa));   //reads the file
                                 br = new BufferedReader(fr);  //creates a buffering character input stream
                                 while ((row = br.readLine()) != null) {
                                     linesInputVariant.add(row);
@@ -257,15 +260,14 @@ public class FeatureRevisionLocationTest {
                                         linesSurplus.add(l);
                                     }
                                 }
-                            }
-                            else{
+                            } else {
                                 System.out.println("NULL");
                             }
                         }
                         for (String lsurplus : linesSurplus) {
                             System.out.println("Lines Surplus: " + lsurplus);
                         }
-                    }else{
+                    } else {
                         System.out.println("FILE MATCH");
                     }
                 }

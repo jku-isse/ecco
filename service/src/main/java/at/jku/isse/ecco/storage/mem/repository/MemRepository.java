@@ -47,6 +47,18 @@ public final class MemRepository implements Repository, Repository.Op {
 	}
 
 	@Override
+	public Association getAssociation(String id) {
+		Association assoc = null;
+		for (Association.Op association : this.getAssociations()) {
+			if (association.getId().equals(id)) {
+				assoc = association;
+			}
+		}
+		return assoc;
+	}
+
+
+	@Override
 	public Collection<? extends Module> getModules(int order) {
 		return Collections.unmodifiableCollection(this.modules.get(order).values());
 	}
