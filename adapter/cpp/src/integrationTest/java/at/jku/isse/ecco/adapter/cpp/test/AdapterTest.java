@@ -2,11 +2,17 @@ package at.jku.isse.ecco.adapter.cpp.test;
 
 
 import at.jku.isse.ecco.adapter.cpp.CppReader;
+import at.jku.isse.ecco.adapter.cpp.data.*;
+import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
+import org.glassfish.grizzly.http.server.accesslog.FileAppender;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -126,6 +132,252 @@ public class AdapterTest {
             this.computeString(childNode, root1, union);
         }
     }
+
+    Path repo = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results");
+
+    @Test(groups = {"integration", "java"})
+    public void FeatureRevisionCharacteristicTest() throws IOException {
+        File file = new File(String.valueOf(Paths.get(repo.toUri())), "featureCharacteristics");
+        if (!file.exists())
+            file.mkdir();
+        File featureCSV = new File(file, "featurerevision.csv");
+        if (!featureCSV.exists()) {
+            try {
+                FileWriter csvWriter = new FileWriter(featureCSV);
+                List<List<String>> headerRows = Arrays.asList(
+                        Arrays.asList("Feature", "includes", "defines", "functions", "fields", "blocks", "if", "for","switch", "while", "do", "case", "problem"));
+                for (List<String> rowData : headerRows) {
+                    csvWriter.append(String.join(",", rowData));
+                    csvWriter.append("\n");
+                }
+                csvWriter.flush();
+                csvWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        EccoService service = new EccoService();
+        service.setRepositoryDir(repo.resolve("repo"));
+        service.open();
+        ArrayList<Feature> features = service.getRepository().getFeature();
+        for (Feature feat : features) {
+            Set<Node> nodes;
+            for (FeatureRevision revision : feat.getRevisions()) {
+                System.out.println(revision.getFeatureRevisionString());
+                nodes = service.checkout2(revision.getFeatureRevisionString());
+                for (Node node : nodes) {
+                    composeNodes(node, revision.getFeatureRevisionString(), featureCSV);
+                }
+            }
+        }
+    }
+
+    public void composeNodes(Node node, String featurerevision, File file) throws IOException {
+        Artifact artifact = node.getArtifact();
+        if (artifact.getData() instanceof DirectoryArtifactData) {
+            DirectoryArtifactData directoryArtifactData = (DirectoryArtifactData) artifact.getData();
+            for (Node child : node.getChildren()) {
+                composeNodes(child, featurerevision, file);
+            }
+        } else if (artifact.getData() instanceof PluginArtifactData) {
+            PluginArtifactData pluginArtifactData = (PluginArtifactData) node.getArtifact().getData();
+
+            Set<Node> pluginInput = new HashSet<>();
+            pluginInput.add(node);
+
+            Map<String, Integer> output = new HashMap<>();
+            output.put("includes", 0);
+            output.put("defines", 0);
+            output.put("functions", 0);
+            output.put("fields", 0);
+            output.put("blocks", 0);
+            output.put("if", 0);
+            output.put("for", 0);
+            output.put("switch", 0);
+            output.put("while", 0);
+            output.put("do", 0);
+            output.put("case", 0);
+            output.put("problem", 0);
+            for (Node no : pluginInput) {
+                Map<String, Integer> outputno = processNode(no);
+                for (Map.Entry<String, Integer> out : outputno.entrySet()) {
+                    output.computeIfAbsent(out.getKey(), (v) -> 1);
+                    output.computeIfPresent(out.getKey(), (k, v) -> v + 1);
+                }
+            }
+
+            for (Map.Entry<String, Integer> characteristics : output.entrySet()) {
+                System.out.println(characteristics.getKey() + " " + characteristics.getValue());
+            }
+            //appending to the csv
+            try {
+
+                FileAppender csvWriter = new FileAppender(file);
+                String values = featurerevision;
+                values += "," + (String.valueOf(output.get("includes")))+"," + (String.valueOf(output.get("defines")))+"," + (String.valueOf(output.get("functions")))+"," + (String.valueOf(output.get("fields")))+ "," +
+                    (String.valueOf(output.get("blocks")))+"," + (String.valueOf(output.get("if")))+"," + (String.valueOf(output.get("for")))+"," + (String.valueOf(output.get("switch")))+"," + (String.valueOf(output.get("while")))+
+                        "," + (String.valueOf(output.get("do")))+"," + (String.valueOf(output.get("case")))+"," + (String.valueOf(output.get("problem")));
+                csvWriter.append(String.join(",", values));
+                csvWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+
+    private Map<String, Integer> processNode(Node n) {
+        if (!(n.getArtifact().getData() instanceof PluginArtifactData)) return null;
+        PluginArtifactData rootData = (PluginArtifactData) n.getArtifact().getData();
+        final List<? extends Node> children = n.getChildren();
+        if (children.size() < 1)
+            return null;
+
+        Map<String, Integer> featCharc = new HashMap<>();
+        if (n.getChildren().size() > 0) {
+            for (Node node : n.getChildren()) {
+                visitingNodes(node, featCharc);
+            }
+        }
+
+        return featCharc;
+    }
+
+
+    public void visitingNodes(Node childNode, Map<String, Integer> featCharc) {
+        if (childNode.getArtifact().toString().equals("INCLUDES") || childNode.getArtifact().toString().equals("FUNCTIONS")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if (childNode.getArtifact().toString().equals("FIELDS")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    //fields[0] += node.getArtifact().getData() + "\n";
+                    featCharc.computeIfPresent("fields", (k, v) -> v + 1);
+                    featCharc.computeIfAbsent("fields", v -> 1);
+                }
+            }
+        } else if (childNode.getArtifact().toString().equals("DEFINES")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    //defines[0] += node.getArtifact().getData() + "\n";
+                    featCharc.computeIfPresent("defines", (k, v) -> v + 1);
+                    featCharc.computeIfAbsent("defines", v -> 1);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof IncludeArtifactData)) {
+            final IncludeArtifactData artifactData = (IncludeArtifactData) childNode.getArtifact().getData();
+            //includes[0] += artifactData.toString() + "\n";
+            featCharc.computeIfPresent("includes", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("includes", v -> 1);
+        } else if ((childNode.getArtifact().getData() instanceof LineArtifactData)) {
+            //code[0] += ((LineArtifactData) childNode.getArtifact().getData()).getLine() + "\n";+
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof FunctionArtifactData)) {
+            //code[0] += "\n" + ((FunctionArtifactData) childNode.getArtifact().getData()).getSignature() + "\n";//artifactData.toString() + "{\n";
+            featCharc.computeIfPresent("functions", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("functions", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
+            //code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock() + "\n";
+            featCharc.computeIfPresent("blocks", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("blocks", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
+            //code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock() + "\n";
+            featCharc.computeIfPresent("do", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("do", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
+            //code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock() + "\n";
+            featCharc.computeIfPresent("for", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("for", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
+            //code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock() + "\n";
+            featCharc.computeIfPresent("if", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("if", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
+            //code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock() + "\n";
+            featCharc.computeIfPresent("problem", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("problem", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
+            //code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock() + "\n";
+            featCharc.computeIfPresent("switch", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("switch", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
+            //code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock() + "\n";
+            featCharc.computeIfPresent("while", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("while", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if (childNode.getArtifact().getData() instanceof CaseBlockArtifactData) {
+            featCharc.computeIfPresent("case", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("case", v -> 1);
+            if (((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
+                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                        //code[0] += node.getArtifact().getData();
+                    }
+                }
+                //code[0] += "\n";
+            } else {
+                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock() + "\n";
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                        visitingNodes(node, featCharc);
+                    }
+                }
+            }
+
+        } else {
+            System.out.println("*************** Forgot to treat an artificat data type");
+        }
+    }
+
 
     // set this path to a concrete scenario if you only want to run a specific one
     //private static final Path SCENARIO_DIR = Paths.get("C:\\OriginalVariant");

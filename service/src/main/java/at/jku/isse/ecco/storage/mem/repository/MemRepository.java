@@ -57,6 +57,15 @@ public final class MemRepository implements Repository, Repository.Op {
 		return assoc;
 	}
 
+	@Override
+	public ArrayList<Feature> getFeature() {
+		ArrayList<Feature> features =  new ArrayList<>();
+		for (Feature feature : this.getFeatures()) {
+				features.add(feature);
+		}
+		return features;
+	}
+
 
 	@Override
 	public Collection<? extends Module> getModules(int order) {

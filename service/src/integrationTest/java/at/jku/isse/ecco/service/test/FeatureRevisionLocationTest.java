@@ -26,12 +26,12 @@ import static at.jku.isse.ecco.util.Trees.slice;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\configurations.csv";
-    public final String csvcomparison_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -135,6 +135,32 @@ public class FeatureRevisionLocationTest {
     }
 
     @org.testng.annotations.Test
+    public void TestNrModulesWarnings() throws IOException {
+        File checkoutfile = new File(resultMetrics_path, "checkout");
+        for (File path : checkoutfile.listFiles()) {
+            File[] files = path.listFiles((d, name) -> name.endsWith(".warnings"));
+            File warningsFile = files[0];
+            FileReader fr = new FileReader(warningsFile);   //reads the file
+            BufferedReader br = new BufferedReader(fr);  //creates a buffering character input stream
+            StringBuffer sb = new StringBuffer();    //constructs a string buffer with no characters
+            String line;
+            int countsurplus = 0;
+            int countmissing = 0;
+            while ((line = br.readLine()) != null) {
+                sb.append(line);      //appends line to string buffer
+                sb.append("\n");     //line feed
+                if (line.contains("SURPLUS")) {
+                    countsurplus++;
+                } else if (line.contains("MISSING")) {
+                    countmissing++;
+                }
+            }
+            fr.close();    //closes the stream and release the resources
+            System.out.println("Number of modules surplus: " + countsurplus + " Number of modules missing: " + countmissing);
+        }
+    }
+
+    @org.testng.annotations.Test
     public void TestWarnings() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkout");
         EccoService service = new EccoService();
@@ -154,7 +180,7 @@ public class FeatureRevisionLocationTest {
                     String[] data = row.split(",");
                     // do something with the data
                     if (!data[1].toUpperCase().equals("TRUE")) {
-                        filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\")+1));
+                        filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\") + 1));
                     }
                 } else {
                     enter = true;
@@ -234,8 +260,8 @@ public class FeatureRevisionLocationTest {
             //System.out.println(sb.toString());   //returns a string that textually represents the object
             System.out.println("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
 
-            for (Map.Entry<String, String> f : filenames.entrySet()){
-                System.out.printf("file key: "+f.getKey()+ "file value: "+f.getValue());
+            for (Map.Entry<String, String> f : filenames.entrySet()) {
+                System.out.printf("file key: " + f.getKey() + "file value: " + f.getValue());
             }
             if (associations.size() > 0) {
                 for (String assocId : associations) {
@@ -249,7 +275,7 @@ public class FeatureRevisionLocationTest {
                         computeString((Node.Op) assocrepo.getRootNode(), filenames, lines, filenamesAssociation);
                         for (String fa : filenamesAssociation) {
                             if (filenames.get(fa) != null) {
-                                fr = new FileReader(inputVariant + "\\"+filenames.get(fa));   //reads the file
+                                fr = new FileReader(inputVariant + "\\" + filenames.get(fa));   //reads the file
                                 br = new BufferedReader(fr);  //creates a buffering character input stream
                                 while ((row = br.readLine()) != null) {
                                     linesInputVariant.add(row);

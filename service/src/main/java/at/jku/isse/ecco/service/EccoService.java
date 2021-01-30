@@ -9,6 +9,7 @@ import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
 import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
@@ -1636,6 +1637,29 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		// write artifacts to files
 		Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
+
+		return nodes;
+	}
+
+	public synchronized Set<Node> checkout2(String configurationString) {
+		return this.checkout2(this.parseConfigurationString(configurationString));
+	}
+
+	public synchronized Set<Node> checkout2(Configuration configuration) {
+		this.checkInitialized();
+
+		checkNotNull(configuration);
+
+		Repository.Op repository = this.repositoryDao.load();
+		Checkout checkout = repository.compose(configuration);
+
+		for (Association selectedAssociation : checkout.getSelectedAssociations()) {
+			this.fireAssociationSelectedEvent(selectedAssociation);
+		}
+
+		// write artifacts to files
+		Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
+
 		return nodes;
 	}
 

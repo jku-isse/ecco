@@ -39,6 +39,8 @@ public interface Repository extends Persistable {
 
 	public Association getAssociation(String id);
 
+	public ArrayList<Feature> getFeature();
+
 	/**
 	 * Private repository interface.
 	 */
