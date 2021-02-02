@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.adapter.cpp.test;
 
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.cpp.CppReader;
 import at.jku.isse.ecco.adapter.cpp.data.*;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
@@ -9,6 +10,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -44,49 +46,76 @@ public class AdapterTest {
         System.out.println(nodes);
     }
 
-    Node.Op union = null;
-    Node.Op root1 = null;
 
     @Test(groups = {"integration", "java"})
-    public void ComparisonTreesTest() {
+    public void ComparisonTreesTest() throws IOException {
         CppReader reader = new CppReader(new MemEntityFactory());
-
+        File repo = new File("D:\\Gabriela\\FRL-ecco\\CaseStudies\\SQLite\\variant_results");
         System.out.println("READ");
-        /*Path BASE_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\Input_variants\\CS11.1,CS10.1,TCCR1.1,BASE.52\\Marlin");
-        Path[] FILES = new Path[]{Paths.get("EEPROMwrite.h")};
-        Path CHECKOUT_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\variant_results\\checkoutOriginal\\CS11.1,CS10.1,TCCR1.1,BASE.52\\Marlin");
-        Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);
-        Set<Node.Op> nodesCheckout = reader.read(CHECKOUT_DIR, FILES);
-        Node.Op union = null;
-        Node teste = nodes.iterator().next();
-        Node.Op root1 = nodes.iterator().next();
-        Node.Op root2 = nodesCheckout.iterator().next();
-        union = slice(root1, root2);
-        System.out.println("Total Artifacts in common: "+union.countArtifacts());
-        System.out.println("Total Artifacts in input tree: "+root1.countArtifacts());
-        System.out.println("Total Artifacts in checkout tree: "+root2.countArtifacts());
-        int total = union.countArtifacts()+root1.countArtifacts()+root2.countArtifacts();
-        System.out.println("Total Artifacts: "+total);
-        */
-        EccoService service = new EccoService();
-        Path repo = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results");
-        service.setRepositoryDir(repo.resolve("repo"));
-        service.open();
-        Path BASE_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\Input_variants\\BASE.1");
-        Path[] FILES = new Path[]{Paths.get("connect.c")};
-        reader = new CppReader(new MemEntityFactory());
-        Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);
-        root1 = nodes.iterator().next();
-        Collection<? extends Association> associations = service.getRepository().getAssociations();
-        for (Association assoc : associations) {
-            if (assoc.getId().equals("802f2436-9c75-4ba1-abec-147bf09a5946"))
-                System.out.println("Artifacts: " + assoc.getRootNode().countArtifacts() + " " + assoc.getId());
-            computeString((Node.Op) assoc.getRootNode(), root1, union);
+        File f = new File(repo,"featureCharacteristics");
+        if (!f.exists())
+            f.mkdir();
+        File featureCSV = new File(f, "featurerevision.csv");
+        if (!featureCSV.exists()) {
+            try {
+                FileWriter csvWriter = new FileWriter(featureCSV);
+                List<List<String>> headerRows = Arrays.asList(
+                        Arrays.asList("Feature", "includes", "defines", "functions", "fields", "blocks", "if", "for", "switch", "while", "do", "case", "problem"));
+                for (List<String> rowData : headerRows) {
+                    csvWriter.append(String.join(",", rowData));
+                    csvWriter.append("\n");
+                }
+                csvWriter.flush();
+                csvWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        //Set<Node> node= service.compareArtifacts("HAVE_SELECT.1,BASE.1");
-        //root2 = node.iterator().next();
-        //union = slice(root1, root2);
 
+        EccoService service = new EccoService();
+        service.setRepositoryDir(Paths.get(String.valueOf(repo)).resolve("repo"));
+        service.open();
+        Path variantsDir = Paths.get(String.valueOf(repo)).resolve("checkout");
+        Collection<Path> variantsDirs = Files.list(variantsDir).collect(Collectors.toList());
+        for (Path variantDir : variantsDirs) {
+            Path BASE_DIR = variantDir;
+            service.setBaseDir(BASE_DIR);
+            Set<Node.Op> nodes =  service.readFiles();
+            Map<String, Integer> output = new HashMap<>();
+            output.put("includes", 0);
+            output.put("defines", 0);
+            output.put("functions", 0);
+            output.put("fields", 0);
+            output.put("blocks", 0);
+            output.put("if", 0);
+            output.put("for", 0);
+            output.put("switch", 0);
+            output.put("while", 0);
+            output.put("do", 0);
+            output.put("case", 0);
+            output.put("problem", 0);
+            for (Node n : nodes){
+                try {
+                    composeNodes(n,variantDir.getFileName().toString(),featureCSV,output);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            //appending to the csv
+            try {
+
+                FileAppender csvWriter = new FileAppender(featureCSV);
+                String values = variantDir.getFileName().toString();
+                values += "," + (String.valueOf(output.get("includes"))) + "," + (String.valueOf(output.get("defines"))) + "," + (String.valueOf(output.get("functions"))) + "," + (String.valueOf(output.get("fields"))) + "," +
+                        (String.valueOf(output.get("blocks"))) + "," + (String.valueOf(output.get("if"))) + "," + (String.valueOf(output.get("for"))) + "," + (String.valueOf(output.get("switch"))) + "," + (String.valueOf(output.get("while"))) +
+                        "," + (String.valueOf(output.get("do"))) + "," + (String.valueOf(output.get("case"))) + "," + (String.valueOf(output.get("problem")));
+                csvWriter.append(String.join(",", values));
+                csvWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 
@@ -133,7 +162,7 @@ public class AdapterTest {
         }
     }
 
-    Path repo = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results");
+    Path repo = Paths.get("D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\variant_results");
 
     @Test(groups = {"integration", "java"})
     public void FeatureRevisionCharacteristicTest() throws IOException {
@@ -145,7 +174,7 @@ public class AdapterTest {
             try {
                 FileWriter csvWriter = new FileWriter(featureCSV);
                 List<List<String>> headerRows = Arrays.asList(
-                        Arrays.asList("Feature", "includes", "defines", "functions", "fields", "blocks", "if", "for","switch", "while", "do", "case", "problem"));
+                        Arrays.asList("Feature", "includes", "defines", "functions", "fields", "blocks", "if", "for", "switch", "while", "do", "case", "problem"));
                 for (List<String> rowData : headerRows) {
                     csvWriter.append(String.join(",", rowData));
                     csvWriter.append("\n");
@@ -160,7 +189,16 @@ public class AdapterTest {
         EccoService service = new EccoService();
         service.setRepositoryDir(repo.resolve("repo"));
         service.open();
-        ArrayList<Feature> features = service.getRepository().getFeature();
+        System.out.println(" **** Repo opened!");
+        Collection<? extends Feature> featureRevisions = service.getRepository().getFeatures();
+
+        //for (Feature feature : featureRevisions) {
+        //    FeaturesView.this.featuresData.add(feature);
+        //}
+        System.out.println("DEU CERTO");
+
+        /*Repository repository = service.getRepository();
+        ArrayList<Feature> features = repository.getFeature();
         for (Feature feat : features) {
             Set<Node> nodes;
             for (FeatureRevision revision : feat.getRevisions()) {
@@ -170,15 +208,15 @@ public class AdapterTest {
                     composeNodes(node, revision.getFeatureRevisionString(), featureCSV);
                 }
             }
-        }
+        }*/
     }
 
-    public void composeNodes(Node node, String featurerevision, File file) throws IOException {
+    public void composeNodes(Node node, String featurerevision, File file,Map<String,Integer> output) throws IOException {
         Artifact artifact = node.getArtifact();
         if (artifact.getData() instanceof DirectoryArtifactData) {
             DirectoryArtifactData directoryArtifactData = (DirectoryArtifactData) artifact.getData();
             for (Node child : node.getChildren()) {
-                composeNodes(child, featurerevision, file);
+                composeNodes(child, featurerevision, file,output);
             }
         } else if (artifact.getData() instanceof PluginArtifactData) {
             PluginArtifactData pluginArtifactData = (PluginArtifactData) node.getArtifact().getData();
@@ -186,63 +224,26 @@ public class AdapterTest {
             Set<Node> pluginInput = new HashSet<>();
             pluginInput.add(node);
 
-            Map<String, Integer> output = new HashMap<>();
-            output.put("includes", 0);
-            output.put("defines", 0);
-            output.put("functions", 0);
-            output.put("fields", 0);
-            output.put("blocks", 0);
-            output.put("if", 0);
-            output.put("for", 0);
-            output.put("switch", 0);
-            output.put("while", 0);
-            output.put("do", 0);
-            output.put("case", 0);
-            output.put("problem", 0);
             for (Node no : pluginInput) {
-                Map<String, Integer> outputno = processNode(no);
-                for (Map.Entry<String, Integer> out : outputno.entrySet()) {
-                    output.computeIfAbsent(out.getKey(), (v) -> 1);
-                    output.computeIfPresent(out.getKey(), (k, v) -> v + 1);
-                }
+                processNode(no,output);
             }
-
-            for (Map.Entry<String, Integer> characteristics : output.entrySet()) {
-                System.out.println(characteristics.getKey() + " " + characteristics.getValue());
-            }
-            //appending to the csv
-            try {
-
-                FileAppender csvWriter = new FileAppender(file);
-                String values = featurerevision;
-                values += "," + (String.valueOf(output.get("includes")))+"," + (String.valueOf(output.get("defines")))+"," + (String.valueOf(output.get("functions")))+"," + (String.valueOf(output.get("fields")))+ "," +
-                    (String.valueOf(output.get("blocks")))+"," + (String.valueOf(output.get("if")))+"," + (String.valueOf(output.get("for")))+"," + (String.valueOf(output.get("switch")))+"," + (String.valueOf(output.get("while")))+
-                        "," + (String.valueOf(output.get("do")))+"," + (String.valueOf(output.get("case")))+"," + (String.valueOf(output.get("problem")));
-                csvWriter.append(String.join(",", values));
-                csvWriter.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
         }
     }
 
 
-    private Map<String, Integer> processNode(Node n) {
-        if (!(n.getArtifact().getData() instanceof PluginArtifactData)) return null;
-        PluginArtifactData rootData = (PluginArtifactData) n.getArtifact().getData();
-        final List<? extends Node> children = n.getChildren();
-        if (children.size() < 1)
-            return null;
+    private void processNode(Node n, Map<String,Integer> output) {
+        if ((n.getArtifact().getData() instanceof PluginArtifactData)) {
+            PluginArtifactData rootData = (PluginArtifactData) n.getArtifact().getData();
+            final List<? extends Node> children = n.getChildren();
+            if (children.size() >= 1) {
 
-        Map<String, Integer> featCharc = new HashMap<>();
-        if (n.getChildren().size() > 0) {
-            for (Node node : n.getChildren()) {
-                visitingNodes(node, featCharc);
+                if (n.getChildren().size() > 0) {
+                    for (Node node : n.getChildren()) {
+                        visitingNodes(node, output);
+                    }
+                }
             }
         }
-
-        return featCharc;
     }
 
 

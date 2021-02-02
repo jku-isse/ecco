@@ -289,7 +289,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                             } else {
                                 Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
                                 Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
-                                blockNode.addChild(lineNode);
+                                functionsNode.addChild(lineNode);
                             }
                         }
                     }
@@ -676,10 +676,12 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                 Node.Op blockNode = null;
                 String ifexpression = "";
                 if (node.getFileLocation().getStartingLineNumber() == node.getFileLocation().getEndingLineNumber()) {
-                    blockArtifact = this.entityFactory.createArtifact(new IfBlockArtifactData(lines[node.getFileLocation().getStartingLineNumber() - 1]));
-                    blockNode = this.entityFactory.createOrderedNode(blockArtifact);
-                    parentNode.addChild(blockNode);
-                    lineNumbersSwitchCase.add(node.getFileLocation().getStartingLineNumber() - 1);
+                    if (!lineNumbersSwitchCase.contains(node.getFileLocation().getStartingLineNumber() - 1)) {
+                        blockArtifact = this.entityFactory.createArtifact(new IfBlockArtifactData(lines[node.getFileLocation().getStartingLineNumber() - 1]));
+                        blockNode = this.entityFactory.createOrderedNode(blockArtifact);
+                        parentNode.addChild(blockNode);
+                        lineNumbersSwitchCase.add(node.getFileLocation().getStartingLineNumber() - 1);
+                    }
                 } else {
                     /*for (IASTNode child : ((ICPPASTIfStatement) node).getThenClause().getChildren()) {
                         if ((child instanceof CPPASTReturnStatement || child instanceof CPPASTGotoStatement || ((ICPPASTIfStatement) node).getThenClause().getChildren().length == 1) && first) {

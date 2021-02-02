@@ -5,12 +5,17 @@ import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import at.jku.isse.ecco.adapter.cpp.data.*;
+import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import com.opencsv.CSVReader;
@@ -18,6 +23,8 @@ import com.opencsv.CSVReaderBuilder;
 import difflib.Delta;
 import difflib.DiffUtils;
 import difflib.Patch;
+import org.glassfish.grizzly.http.server.accesslog.FileAppender;
+import org.testng.annotations.Test;
 
 import javax.swing.text.StyledEditorKit;
 
@@ -28,7 +35,7 @@ public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
     public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results";
+    public final String resultMetrics_path = "D:\\Gabriela\\FRL-ecco\\CaseStudies\\SQLite\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
     public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\configurations.csv";
     public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
@@ -136,7 +143,7 @@ public class FeatureRevisionLocationTest {
 
     @org.testng.annotations.Test
     public void TestNrModulesWarnings() throws IOException {
-        File checkoutfile = new File(resultMetrics_path, "checkout");
+        File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
         for (File path : checkoutfile.listFiles()) {
             File[] files = path.listFiles((d, name) -> name.endsWith(".warnings"));
             File warningsFile = files[0];
@@ -156,21 +163,149 @@ public class FeatureRevisionLocationTest {
                 }
             }
             fr.close();    //closes the stream and release the resources
-            System.out.println("Number of modules surplus: " + countsurplus + " Number of modules missing: " + countmissing);
+            if (countmissing != 0)
+                System.out.println("Number of modules surplus: " + countsurplus + " Number of modules missing: " + countmissing);
         }
+    }
+
+
+    @Test(groups = {"integration", "java"})
+    public void FeatureRevisionCharacteristicTest() throws IOException {
+        Path repo = Paths.get("D:\\Gabriela\\FRL-ecco\\CaseStudies\\SQLite\\variant_results");
+        File file = new File(String.valueOf(Paths.get(repo.toUri())), "featureCharacteristics");
+        if (!file.exists())
+            file.mkdir();
+        File featureCSV = new File(file, "featurerevision.csv");
+        if (!featureCSV.exists()) {
+            try {
+                FileWriter csvWriter = new FileWriter(featureCSV);
+                List<List<String>> headerRows = Arrays.asList(
+                        Arrays.asList("Feature", "includes", "defines", "functions", "fields", "blocks", "if", "for", "switch", "while", "do", "case", "problem"));
+                for (List<String> rowData : headerRows) {
+                    csvWriter.append(String.join(",", rowData));
+                    csvWriter.append("\n");
+                }
+                csvWriter.flush();
+                csvWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        EccoService service = new EccoService();
+        service.setRepositoryDir(repo.resolve("repo"));
+        service.open();
+        System.out.println(" **** Repo opened!");
+        Collection<? extends Feature> featureRevisions = service.getRepository().getFeatures();
+
+        for (Feature feature : featureRevisions) {
+            //Set<Node> nodes;
+            for (FeatureRevision revision : feature.getRevisions()) {
+                System.out.println(revision.getFeatureRevisionString());
+                //nodes =
+                File checkoutfile = new File(repo.resolve("checkout") + File.separator + revision.getFeatureRevisionString());
+                Path variant_dir = Paths.get(String.valueOf(checkoutfile));
+                checkoutfile.mkdir();
+                service.setBaseDir(variant_dir);
+                service.checkout2(revision.getFeatureRevisionString());
+                //for (Node node : nodes) {
+                //    composeNodes(node, revision.getFeatureRevisionString(), featureCSV);
+                //}
+            }
+        }
+
+    }
+
+    public void composeNodes(Node node, String featurerevision, File file) throws IOException {
+        Artifact artifact = node.getArtifact();
+        if (artifact.getData() instanceof DirectoryArtifactData) {
+            DirectoryArtifactData directoryArtifactData = (DirectoryArtifactData) artifact.getData();
+            for (Node child : node.getChildren()) {
+                composeNodes(child, featurerevision, file);
+            }
+        } else if (artifact.getData() instanceof PluginArtifactData) {
+            PluginArtifactData pluginArtifactData = (PluginArtifactData) node.getArtifact().getData();
+
+            Set<Node> pluginInput = new HashSet<>();
+            pluginInput.add(node);
+
+            Map<String, Integer> output = new HashMap<>();
+            output.put("includes", 0);
+            output.put("defines", 0);
+            output.put("functions", 0);
+            output.put("fields", 0);
+            output.put("blocks", 0);
+            output.put("if", 0);
+            output.put("for", 0);
+            output.put("switch", 0);
+            output.put("while", 0);
+            output.put("do", 0);
+            output.put("case", 0);
+            output.put("problem", 0);
+            for (Node no : pluginInput) {
+                Map<String, Integer> outputno = processNode(no);
+                for (Map.Entry<String, Integer> out : outputno.entrySet()) {
+                    output.computeIfAbsent(out.getKey(), (v) -> 1);
+                    output.computeIfPresent(out.getKey(), (k, v) -> v + 1);
+                }
+            }
+
+            for (Map.Entry<String, Integer> characteristics : output.entrySet()) {
+                System.out.println(characteristics.getKey() + " " + characteristics.getValue());
+            }
+            //appending to the csv
+            try {
+
+                FileAppender csvWriter = new FileAppender(file);
+                String values = featurerevision;
+                values += "," + (String.valueOf(output.get("includes"))) + "," + (String.valueOf(output.get("defines"))) + "," + (String.valueOf(output.get("functions"))) + "," + (String.valueOf(output.get("fields"))) + "," +
+                        (String.valueOf(output.get("blocks"))) + "," + (String.valueOf(output.get("if"))) + "," + (String.valueOf(output.get("for"))) + "," + (String.valueOf(output.get("switch"))) + "," + (String.valueOf(output.get("while"))) +
+                        "," + (String.valueOf(output.get("do"))) + "," + (String.valueOf(output.get("case"))) + "," + (String.valueOf(output.get("problem")));
+                csvWriter.append(String.join(",", values));
+                csvWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    private Map<String, Integer> processNode(Node n) {
+        if (!(n.getArtifact().getData() instanceof PluginArtifactData)) return null;
+        PluginArtifactData rootData = (PluginArtifactData) n.getArtifact().getData();
+        final List<? extends Node> children = n.getChildren();
+        if (children.size() < 1)
+            return null;
+
+        Map<String, Integer> featCharc = new HashMap<>();
+        if (n.getChildren().size() > 0) {
+            for (Node node : n.getChildren()) {
+                visitingNodes(node, featCharc);
+            }
+        }
+
+        return featCharc;
     }
 
     @org.testng.annotations.Test
     public void TestWarnings() throws IOException {
-        File checkoutfile = new File(resultMetrics_path, "checkout");
+        File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
         EccoService service = new EccoService();
         Path repo = Paths.get(resultMetrics_path);
         service.setRepositoryDir(repo.resolve("repo"));
         service.open();
+        List<String> warnings = new ArrayList<>();
         for (File path : checkoutfile.listFiles()) {
             String pathName = path.getName();
-            File pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "ResultsCompareVariants\\" + pathName + ".csv");
-            File inputVariant = new File(checkoutfile.getParentFile().getParentFile(), "Input_variants\\" + pathName);
+            warnings.add("VARIANT: " + path.getName());
+            System.out.println("VARIANT: " + path.getName());
+
+            File pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\" + pathName + ".csv");
+            if (pathName.contains("HAVE_LIBOPENNET.1,BASE.20,HAVE_NETINET_IN_H.1,DEBUG.1,HAVE_LIBWSOCK32.1,__MINGW32__.1,__WIN32__.1,HAVE_FCNTL_H.1,HAVE_CONFIG_H.1,HAVE_SYS_SOCKET_H.1,HAVE_OPENNET_H.1"))
+                pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\big.csv");
+            if(pathName.contains("HAVE_LIBOPENNET.2,BASE.53,HAVE_ARPA_INET_H.2,HAVE_NETINET_IN_H.2,HAVE_OPENNET_H.2,DEBUG.2,HAVE_CONFIG_H.2,HAVE_ERRNO_H.2,HAVE_NETDB_H.2,__MINGW32__.2"))
+                pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\big2.csv");
+            File inputVariant = new File(checkoutfile.getParentFile().getParentFile(), "Input_variants_Random\\" + pathName);
             Map<String, String> filenames = new HashMap<>();
             BufferedReader csvReader = new BufferedReader(new FileReader(pathCompareVariants));
             String row = "";
@@ -258,6 +393,7 @@ public class FeatureRevisionLocationTest {
             fr.close();    //closes the stream and release the resources
             //System.out.println("\nContents of File: " + path.getName());
             //System.out.println(sb.toString());   //returns a string that textually represents the object
+            warnings.add("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
             System.out.println("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
 
             for (Map.Entry<String, String> f : filenames.entrySet()) {
@@ -271,6 +407,7 @@ public class FeatureRevisionLocationTest {
                         ArrayList<String> linesInputVariant = new ArrayList<>();
                         ArrayList<String> filenamesAssociation = new ArrayList<>();
                         ArrayList<String> linesSurplus = new ArrayList<>();
+                        warnings.add("Assoc id: " + assocId + "Nr. Artifacts: " + assocrepo.getRootNode().countArtifacts());
                         System.out.println("Artifacts: " + assocrepo.getRootNode().countArtifacts() + " " + assocrepo.getId());
                         computeString((Node.Op) assocrepo.getRootNode(), filenames, lines, filenamesAssociation);
                         for (String fa : filenamesAssociation) {
@@ -286,20 +423,23 @@ public class FeatureRevisionLocationTest {
                                         linesSurplus.add(l);
                                     }
                                 }
-                            } else {
-                                System.out.println("NULL");
-                            }
+                            } //else {
+                            //  System.out.println("NULL");
+                            //}
                         }
                         for (String lsurplus : linesSurplus) {
+                            warnings.add("Lines Surplus: " + lsurplus);
                             System.out.println("Lines Surplus: " + lsurplus);
                         }
                     } else {
-                        System.out.println("FILE MATCH");
+                        warnings.add("ALL FILES MATCH");
+                        System.out.println("ALL FILES MATCH");
                     }
                 }
             }
 
         }
+        Files.write(repo.resolve("TestWarningsResults.txt"), warnings.stream().map(Object::toString).collect(Collectors.toList()));
     }
 
 
@@ -319,6 +459,138 @@ public class FeatureRevisionLocationTest {
         }
         for (Node.Op childNode : node.getChildren()) {
             computeString(childNode, filenames, lines, filenamesAssociation);
+        }
+    }
+
+    public void visitingNodes(Node childNode, Map<String, Integer> featCharc) {
+        if (childNode.getArtifact().toString().equals("INCLUDES") || childNode.getArtifact().toString().equals("FUNCTIONS")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if (childNode.getArtifact().toString().equals("FIELDS")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    //fields[0] += node.getArtifact().getData() + "\n";
+                    featCharc.computeIfPresent("fields", (k, v) -> v + 1);
+                    featCharc.computeIfAbsent("fields", v -> 1);
+                }
+            }
+        } else if (childNode.getArtifact().toString().equals("DEFINES")) {
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    //defines[0] += node.getArtifact().getData() + "\n";
+                    featCharc.computeIfPresent("defines", (k, v) -> v + 1);
+                    featCharc.computeIfAbsent("defines", v -> 1);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof IncludeArtifactData)) {
+            final IncludeArtifactData artifactData = (IncludeArtifactData) childNode.getArtifact().getData();
+            //includes[0] += artifactData.toString() + "\n";
+            featCharc.computeIfPresent("includes", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("includes", v -> 1);
+        } else if ((childNode.getArtifact().getData() instanceof LineArtifactData)) {
+            //code[0] += ((LineArtifactData) childNode.getArtifact().getData()).getLine() + "\n";+
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof FunctionArtifactData)) {
+            //code[0] += "\n" + ((FunctionArtifactData) childNode.getArtifact().getData()).getSignature() + "\n";//artifactData.toString() + "{\n";
+            featCharc.computeIfPresent("functions", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("functions", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
+            //code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock() + "\n";
+            featCharc.computeIfPresent("blocks", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("blocks", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
+            //code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock() + "\n";
+            featCharc.computeIfPresent("do", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("do", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
+            //code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock() + "\n";
+            featCharc.computeIfPresent("for", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("for", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
+            //code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock() + "\n";
+            featCharc.computeIfPresent("if", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("if", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
+            //code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock() + "\n";
+            featCharc.computeIfPresent("problem", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("problem", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
+            //code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock() + "\n";
+            featCharc.computeIfPresent("switch", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("switch", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
+            //code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock() + "\n";
+            featCharc.computeIfPresent("while", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("while", v -> 1);
+            if (childNode.getChildren().size() > 0) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNodes(node, featCharc);
+                }
+            }
+        } else if (childNode.getArtifact().getData() instanceof CaseBlockArtifactData) {
+            featCharc.computeIfPresent("case", (k, v) -> v + 1);
+            featCharc.computeIfAbsent("case", v -> 1);
+            if (((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
+                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                        //code[0] += node.getArtifact().getData();
+                    }
+                }
+                //code[0] += "\n";
+            } else {
+                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock() + "\n";
+                if (childNode.getChildren().size() > 0) {
+                    for (Node node : childNode.getChildren()) {
+                        visitingNodes(node, featCharc);
+                    }
+                }
+            }
+
+        } else {
+            System.out.println("*************** Forgot to treat an artificat data type");
         }
     }
 

@@ -5,8 +5,10 @@ import at.jku.isse.ecco.adapter.cpp.data.*;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
+import org.glassfish.grizzly.http.server.accesslog.FileAppender;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -49,6 +51,24 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
             throw new IllegalStateException("Not all files could be written!");
         return toreturn;
     }
+
+
+    public Path[] write2(Path base, Set<Node> input, String feature) {
+        Path[] toreturn = input.parallelStream().map(node -> {
+            try {
+                includes[0] = "";
+                //dir = "C:\\Users\\gabil\\Desktop\\teste\\ActualECCO\\Method_comparison\\results\\"+ base.getFileName().toString()+".txt";
+                return processNode(node, base);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }).filter(Objects::nonNull).toArray(Path[]::new);
+        if (toreturn.length != input.size())
+            throw new IllegalStateException("Not all files could be written!");
+        return toreturn;
+    }
+
 
     /**
      * @param baseNode The base node which should be processed
