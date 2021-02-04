@@ -520,10 +520,10 @@ public interface Repository extends Persistable {
 			Checkout checkout = this.compose(selectedAssociations, lazy);
 			checkout.setConfiguration(configuration);
 
-			// TODO: compute set of desired modules from configuration!
-			Set<ModuleRevision> desiredModules =  new HashSet<>(this.getOrphanedConfigurationModules(configuration));//configuration.computeModules(this.getMaxOrder(), this, configuration);
-			//Set<ModuleRevision> desiredModules = new HashSet<>();
-			Set<ModuleRevision> missingModules = new HashSet<>();//configuration.computeModulesMissing(this.getMaxOrder(), this, configuration);
+			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
+			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
+			Set<ModuleRevision> missingModules = new HashSet<>();
+			//Set<ModuleRevision> surplusModules = new HashSet<>();
 			Map<ModuleRevision,String> surplusModules = new HashMap<>();
 
 			// compute missing
@@ -535,6 +535,11 @@ public interface Repository extends Persistable {
 				}
 			}
 
+			/**
+			 * TODO: trim set of missing modules to only leave modules that are LIKELY missing:
+			 * - exclude missing modules that we know from previous revisions and that did not contain artifacts there.
+			 * - exclude missing higher order modules that are covered entirely by combinations of missing lower order modules (e.g., (A,B,C) can be ignored if (A,B), (A,C), and (B,C) are also missing).
+			 */
 
 			// compute surplus
 			for (Association association : selectedAssociations) {
@@ -551,13 +556,8 @@ public interface Repository extends Persistable {
 						}
 					}
 				}
-				//Node nodeteste = association.getRootNode().getChildren().get(0);
-				//System.out.println(association.getRootNode().getChildren().get(0).getChildren().get(0));
 			}
-			for (ModuleRevision moduleRevision:desiredModules) {
-				if(missingModules.contains(moduleRevision))
-					missingModules.remove(moduleRevision);
-			}
+
 			checkout.setSurplusModules(surplusModules);
 			checkout.getMissing().addAll(missingModules);
 

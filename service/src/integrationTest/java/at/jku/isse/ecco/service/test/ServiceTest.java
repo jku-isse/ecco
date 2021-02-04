@@ -18,9 +18,9 @@ import java.util.*;
 
 public class ServiceTest {
 
-    private Path outputDir = Paths.get("C:\\Users\\user\\Desktop\\transfer\\output");
+    private Path outputDir = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\warningstest\\output");
     private Path repositoryDir = outputDir.resolve("repository");
-    private Path inputDir = Paths.get("C:\\Users\\user\\Desktop\\transfer\\input");
+    private Path inputDir = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\warningstest\\input");
 
 
     @Test(groups = {"integration", "base", "service", "init"})
@@ -262,6 +262,7 @@ public class ServiceTest {
     public void afterTest() {
         System.out.println("AFTER");
     }
+
 
     @Test(groups = {"integration", "base", "service", "checkout"})
     public void Checkout_Test() throws EccoException, IOException {
