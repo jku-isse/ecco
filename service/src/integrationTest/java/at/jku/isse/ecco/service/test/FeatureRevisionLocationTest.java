@@ -33,12 +33,12 @@ import static at.jku.isse.ecco.util.Trees.slice;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\LibSSH2";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\test\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\test\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -52,7 +52,7 @@ public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of Curl target systyem
     public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariantsRandom";
     //directory where you want to store the result file containing the metrics computed for all target systems
-    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl";
+    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
     private List<String> fileTypes = new LinkedList<String>();
 
 
@@ -303,7 +303,7 @@ public class FeatureRevisionLocationTest {
             File pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\" + pathName + ".csv");
             if (pathName.contains("HAVE_LIBOPENNET.1,BASE.20,HAVE_NETINET_IN_H.1,DEBUG.1,HAVE_LIBWSOCK32.1,__MINGW32__.1,__WIN32__.1,HAVE_FCNTL_H.1,HAVE_CONFIG_H.1,HAVE_SYS_SOCKET_H.1,HAVE_OPENNET_H.1"))
                 pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\big.csv");
-            if(pathName.contains("HAVE_LIBOPENNET.2,BASE.53,HAVE_ARPA_INET_H.2,HAVE_NETINET_IN_H.2,HAVE_OPENNET_H.2,DEBUG.2,HAVE_CONFIG_H.2,HAVE_ERRNO_H.2,HAVE_NETDB_H.2,__MINGW32__.2"))
+            if (pathName.contains("HAVE_LIBOPENNET.2,BASE.53,HAVE_ARPA_INET_H.2,HAVE_NETINET_IN_H.2,HAVE_OPENNET_H.2,DEBUG.2,HAVE_CONFIG_H.2,HAVE_ERRNO_H.2,HAVE_NETDB_H.2,__MINGW32__.2"))
                 pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\big2.csv");
             File inputVariant = new File(checkoutfile.getParentFile().getParentFile(), "Input_variants_Random\\" + pathName);
             Map<String, String> filenames = new HashMap<>();
@@ -378,6 +378,9 @@ public class FeatureRevisionLocationTest {
                                 featureswmissing.add(aux.trim());
                         }
                     }
+                }else if (line.contains("ORDER")){
+                    System.out.println("Contains ORDER!!");
+                    warnings.add("Contains ORDER!! " + line);
                 }
             }
             for (String f : featureswsurplus) {
@@ -402,6 +405,7 @@ public class FeatureRevisionLocationTest {
             if (associations.size() > 0) {
                 for (String assocId : associations) {
                     Association assocrepo = service.getRepository().getAssociation(assocId);
+                    Integer nrLineSurplus = 0;
                     if (filenames.size() > 0) {
                         ArrayList<String> lines = new ArrayList<>();
                         ArrayList<String> linesInputVariant = new ArrayList<>();
@@ -428,13 +432,18 @@ public class FeatureRevisionLocationTest {
                             //}
                         }
                         for (String lsurplus : linesSurplus) {
-                            warnings.add("Lines Surplus: " + lsurplus);
-                            System.out.println("Lines Surplus: " + lsurplus);
+                            if (!warnings.contains(lsurplus)) {
+                                warnings.add("Lines Surplus: " + lsurplus);
+                                System.out.println("Lines Surplus: " + lsurplus);
+                                nrLineSurplus++;
+                            }
                         }
                     } else {
                         warnings.add("ALL FILES MATCH");
                         System.out.println("ALL FILES MATCH");
                     }
+                    if (nrLineSurplus > 0)
+                        warnings.add("Number lines surplus: " + nrLineSurplus);
                 }
             }
 
