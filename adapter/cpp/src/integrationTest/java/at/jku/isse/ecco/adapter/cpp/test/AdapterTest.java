@@ -34,7 +34,7 @@ public class AdapterTest {
 
 
     private static final Path BASE_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter");
-    private static final Path[] FILES = new Path[]{Paths.get("output.c")};
+    private static final Path[] FILES = new Path[]{Paths.get("network.c")};
 
     @Test(groups = {"integration", "java"})
     public void CPP_Adapter_Test() {

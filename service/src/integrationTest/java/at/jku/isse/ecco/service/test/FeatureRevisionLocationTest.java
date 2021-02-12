@@ -33,12 +33,12 @@ import static at.jku.isse.ecco.util.Trees.slice;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\LibSSH2";
+        public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Bison2";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\test\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Bison2\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\test\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Bison2\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Bison2\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -52,7 +52,7 @@ public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of Curl target systyem
     public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariantsRandom";
     //directory where you want to store the result file containing the metrics computed for all target systems
-    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample";
+    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Bison2";
     private List<String> fileTypes = new LinkedList<String>();
 
 
