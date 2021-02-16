@@ -33,12 +33,12 @@ import static at.jku.isse.ecco.util.Trees.slice;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-        public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
-    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter\\variant_results";
+    public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
     public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
     //directory where you have the folder with the artifacts of LibSSH target systyem
@@ -52,7 +52,7 @@ public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of Curl target systyem
     public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariantsRandom";
     //directory where you want to store the result file containing the metrics computed for all target systems
-    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter";
+    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2";
     private List<String> fileTypes = new LinkedList<String>();
 
 
@@ -289,12 +289,14 @@ public class FeatureRevisionLocationTest {
 
     @org.testng.annotations.Test
     public void TestWarnings() throws IOException {
-        File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
+        File checkoutfile = new File(resultMetrics_path, "checkout");
         EccoService service = new EccoService();
         Path repo = Paths.get(resultMetrics_path);
         service.setRepositoryDir(repo.resolve("repo"));
         service.open();
         List<String> warnings = new ArrayList<>();
+        int eccototalLines = 0;
+        int totallinesurplus = 0;
         for (File path : checkoutfile.listFiles()) {
             String pathName = path.getName();
             warnings.add("VARIANT: " + path.getName());
@@ -307,150 +309,247 @@ public class FeatureRevisionLocationTest {
                 pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\big2.csv");
             File inputVariant = new File(checkoutfile.getParentFile().getParentFile(), "Input_variants_Random\\" + pathName);
             Map<String, String> filenames = new HashMap<>();
-            BufferedReader csvReader = new BufferedReader(new FileReader(pathCompareVariants));
-            String row = "";
-            Boolean enter = false;
-            while ((row = csvReader.readLine()) != null) {
-                if (enter) {
-                    String[] data = row.split(",");
-                    // do something with the data
-                    if (!data[1].toUpperCase().equals("TRUE")) {
-                        filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\") + 1));
-                    }
-                } else {
-                    enter = true;
-                }
-            }
-            csvReader.close();
-            File[] files = path.listFiles((d, name) -> name.endsWith(".warnings"));
-            File warningsFile = files[0];
-            FileReader fr = new FileReader(warningsFile);   //reads the file
-            BufferedReader br = new BufferedReader(fr);  //creates a buffering character input stream
-            StringBuffer sb = new StringBuffer();    //constructs a string buffer with no characters
-            String line;
-            String[] feats = path.getName().split(",");
-            ArrayList<String> features = new ArrayList<>();
-            ArrayList<String> featureswsurplus = new ArrayList<>();
-            ArrayList<String> featureswmissing = new ArrayList<>();
-            ArrayList<String> associations = new ArrayList<>();
-            for (String f : feats) {
-                features.add(f);
-            }
-            int countsurplus = 0;
-            int countmissing = 0;
-            while ((line = br.readLine()) != null) {
-                sb.append(line);      //appends line to string buffer
-                sb.append("\n");     //line feed
-                if (line.contains("SURPLUS")) {
-                    if (!line.contains(",")) {
-                        String aux = line.substring(line.indexOf("(") + 1, line.indexOf(")"));
-                        if (!featureswsurplus.contains(aux))
-                            featureswsurplus.add(aux.trim());
+            try {
+                BufferedReader csvReader = new BufferedReader(new FileReader(pathCompareVariants));
+                Reader reader = Files.newBufferedReader(Paths.get(pathCompareVariants.getAbsolutePath()));
+                CSVReader csvReaderAux = new CSVReaderBuilder(reader).build();
+                List<String[]> matchesVariants = csvReaderAux.readAll();
+                String row = "";
+                Boolean enter = false;
+                while ((row = csvReader.readLine()) != null) {
+                    if (enter) {
+                        String[] data = row.split(",");
+                        // do something with the data
+                        if (!data[1].toUpperCase().equals("TRUE")) {
+                            filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\") + 1));
+                        }
+                        for (int i = 1; i < matchesVariants.size(); i++) {
+                            String[] lineaux = matchesVariants.get(i);
+                            eccototalLines += Integer.valueOf(lineaux[6]);
+                        }
                     } else {
-                        String[] featsw = line.split(",");
-                        for (String f : featsw) {
-                            String aux = f;
-                            if (f.contains("("))
-                                aux = f.substring(f.indexOf("(") + 1);
-                            else if (f.contains(")"))
-                                aux = f.substring(0, f.indexOf(")"));
-                            if (!featureswsurplus.contains(aux.trim()))
+                        enter = true;
+                    }
+                }
+                csvReader.close();
+                File[] files = path.listFiles((d, name) -> name.endsWith(".warnings"));
+                File warningsFile = files[0];
+                FileReader fr = new FileReader(warningsFile);   //reads the file
+                BufferedReader br = new BufferedReader(fr);  //creates a buffering character input stream
+                StringBuffer sb = new StringBuffer();    //constructs a string buffer with no characters
+                String line;
+                String[] feats = path.getName().split(",");
+                ArrayList<String> features = new ArrayList<>();
+                ArrayList<String> featureswsurplus = new ArrayList<>();
+                ArrayList<String> featureswmissing = new ArrayList<>();
+                ArrayList<String> associations = new ArrayList<>();
+                for (String f : feats) {
+                    features.add(f);
+                }
+                int countsurplus = 0;
+                int countmissing = 0;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);      //appends line to string buffer
+                    sb.append("\n");     //line feed
+                    if (line.contains("SURPLUS")) {
+                        if (!line.contains(",")) {
+                            String aux = line.substring(line.indexOf("(") + 1, line.indexOf(")"));
+                            if (!featureswsurplus.contains(aux))
                                 featureswsurplus.add(aux.trim());
-                        }
-                    }
-                    String association = line.substring(line.indexOf("id: ") + 4);
-                    if (!associations.contains(association))
-                        associations.add(association);
-                } else if (line.contains("MISSING")) {
-                    if (!line.contains(",")) {
-                        String aux = line.substring(line.indexOf("(") + 1, line.indexOf(")"));
-                        if (!featureswmissing.contains(aux))
-                            featureswmissing.add(aux.trim());
-                    } else {
-                        String[] featsw = line.split(",");
-                        for (String f : featsw) {
-                            String aux = f;
-                            if (f.contains("("))
-                                aux = f.substring(f.indexOf("(") + 1);
-                            else if (f.contains(")"))
-                                aux = f.substring(0, f.indexOf(")"));
-                            if (!featureswmissing.contains(aux.trim()))
-                                featureswmissing.add(aux.trim());
-                        }
-                    }
-                }else if (line.contains("ORDER")){
-                    System.out.println("Contains ORDER!!");
-                    warnings.add("Contains ORDER!! " + line);
-                }
-            }
-            for (String f : featureswsurplus) {
-                if (!features.contains(f)) {
-                    countsurplus++;
-                }
-            }
-            for (String f : featureswmissing) {
-                if (!features.contains(f)) {
-                    countmissing++;
-                }
-            }
-            fr.close();    //closes the stream and release the resources
-            //System.out.println("\nContents of File: " + path.getName());
-            //System.out.println(sb.toString());   //returns a string that textually represents the object
-            warnings.add("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
-            System.out.println("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
-
-            for (Map.Entry<String, String> f : filenames.entrySet()) {
-                System.out.printf("file key: " + f.getKey() + "file value: " + f.getValue());
-            }
-            if (associations.size() > 0) {
-                for (String assocId : associations) {
-                    Association assocrepo = service.getRepository().getAssociation(assocId);
-                    Integer nrLineSurplus = 0;
-                    if (filenames.size() > 0) {
-                        ArrayList<String> lines = new ArrayList<>();
-                        ArrayList<String> linesInputVariant = new ArrayList<>();
-                        ArrayList<String> filenamesAssociation = new ArrayList<>();
-                        ArrayList<String> linesSurplus = new ArrayList<>();
-                        warnings.add("Assoc id: " + assocId + "Nr. Artifacts: " + assocrepo.getRootNode().countArtifacts());
-                        System.out.println("Artifacts: " + assocrepo.getRootNode().countArtifacts() + " " + assocrepo.getId());
-                        computeString((Node.Op) assocrepo.getRootNode(), filenames, lines, filenamesAssociation);
-                        for (String fa : filenamesAssociation) {
-                            if (filenames.get(fa) != null) {
-                                fr = new FileReader(inputVariant + "\\" + filenames.get(fa));   //reads the file
-                                br = new BufferedReader(fr);  //creates a buffering character input stream
-                                while ((row = br.readLine()) != null) {
-                                    linesInputVariant.add(row);
-                                }
-                                br.close();
-                                for (String l : lines) {
-                                    if (!linesInputVariant.contains(l.replaceAll("\n", ""))) {
-                                        linesSurplus.add(l);
-                                    }
-                                }
-                            } //else {
-                            //  System.out.println("NULL");
-                            //}
-                        }
-                        for (String lsurplus : linesSurplus) {
-                            if (!warnings.contains(lsurplus)) {
-                                warnings.add("Lines Surplus: " + lsurplus);
-                                System.out.println("Lines Surplus: " + lsurplus);
-                                nrLineSurplus++;
+                        } else {
+                            String[] featsw = line.split(",");
+                            for (String f : featsw) {
+                                String aux = f;
+                                if (f.contains("("))
+                                    aux = f.substring(f.indexOf("(") + 1);
+                                else if (f.contains(")"))
+                                    aux = f.substring(0, f.indexOf(")"));
+                                if (!featureswsurplus.contains(aux.trim()))
+                                    featureswsurplus.add(aux.trim());
                             }
                         }
-                    } else {
-                        warnings.add("ALL FILES MATCH");
-                        System.out.println("ALL FILES MATCH");
+                        String association = line.substring(line.indexOf("id: ") + 4);
+                        if (!associations.contains(association))
+                            associations.add(association);
+                    } else if (line.contains("MISSING")) {
+                        if (!line.contains(",")) {
+                            String aux = line.substring(line.indexOf("(") + 1, line.indexOf(")"));
+                            if (!featureswmissing.contains(aux))
+                                featureswmissing.add(aux.trim());
+                        } else {
+                            String[] featsw = line.split(",");
+                            for (String f : featsw) {
+                                String aux = f;
+                                if (f.contains("("))
+                                    aux = f.substring(f.indexOf("(") + 1);
+                                else if (f.contains(")"))
+                                    aux = f.substring(0, f.indexOf(")"));
+                                if (!featureswmissing.contains(aux.trim()))
+                                    featureswmissing.add(aux.trim());
+                            }
+                        }
+                    } else if (line.contains("ORDER")) {
+                        System.out.println("Contains ORDER!!");
+                        warnings.add("Contains ORDER!! " + line);
                     }
-                    if (nrLineSurplus > 0)
-                        warnings.add("Number lines surplus: " + nrLineSurplus);
                 }
-            }
+                for (String f : featureswsurplus) {
+                    if (!features.contains(f)) {
+                        countsurplus++;
+                    }
+                }
+                for (String f : featureswmissing) {
+                    if (!features.contains(f)) {
+                        countmissing++;
+                    }
+                }
+                fr.close();    //closes the stream and release the resources
+                //System.out.println("\nContents of File: " + path.getName());
+                //System.out.println(sb.toString());   //returns a string that textually represents the object
+                warnings.add("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
+                //System.out.println("Number of features surplus: " + countsurplus + " Number of features missing: " + countmissing);
 
+                for (Map.Entry<String, String> f : filenames.entrySet()) {
+                    //System.out.printf("file key: " + f.getKey() + "file value: " + f.getValue());
+                }
+
+                if (associations.size() > 0) {
+                    for (String assocId : associations) {
+                        Association assocrepo = service.getRepository().getAssociation(assocId);
+                        Integer nrLineSurplus = 0;
+                        if (filenames.size() > 0) {
+                            ArrayList<String> lines = new ArrayList<>();
+                            ArrayList<String> linesInputVariant = new ArrayList<>();
+                            ArrayList<String> filenamesAssociation = new ArrayList<>();
+                            ArrayList<String> linesSurplus = new ArrayList<>();
+                            warnings.add("Assoc id: " + assocId + "Nr. Artifacts: " + assocrepo.getRootNode().countArtifacts());
+                            //System.out.println("Artifacts: " + assocrepo.getRootNode().countArtifacts() + " " + assocrepo.getId());
+                            computeString((Node.Op) assocrepo.getRootNode(), filenames, lines, filenamesAssociation);
+                            for (String fa : filenamesAssociation) {
+                                if (filenames.get(fa) != null) {
+                                    fr = new FileReader(inputVariant + "\\" + filenames.get(fa));   //reads the file
+                                    br = new BufferedReader(fr);  //creates a buffering character input stream
+                                    while ((row = br.readLine()) != null) {
+                                        String r = row.replace(" ", "").replace("\n", "").replaceAll("\t", "").replaceAll("\r", "");
+                                        linesInputVariant.add(r);
+                                    }
+                                    br.close();
+
+                                    for (String l : lines) {
+                                        String r = l.replace(" ", "").replace("\n", "").replaceAll("\t", "").replaceAll("\r", "");
+                                        if (!linesInputVariant.contains(r)) {
+                                            linesSurplus.add(l);
+                                        }
+                                    }
+                                } //else {
+                                //  System.out.println("NULL");
+                                //}
+                            }
+                            for (String lsurplus : linesSurplus) {
+                                if (!warnings.contains(lsurplus)) {
+                                    warnings.add("Lines Surplus: " + lsurplus);
+                                    //System.out.println("Lines Surplus: " + lsurplus);
+                                    nrLineSurplus++;
+                                }
+                            }
+                        } else {
+                            warnings.add("ALL FILES MATCH");
+                            //System.out.println("ALL FILES MATCH");
+                        }
+                        if (nrLineSurplus > 0)
+                            warnings.add("Number lines surplus: " + nrLineSurplus);
+                        totallinesurplus += nrLineSurplus;
+                    }
+                }
+            } catch (FileNotFoundException fe) {
+                System.out.println("file not found!");
+            }
         }
+        System.out.println("SurplusArtifacts: ********* "+(totallinesurplus*100)/eccototalLines + " total lines surplus: "+ totallinesurplus + " Total lines variants composed: " + eccototalLines);
         Files.write(repo.resolve("TestWarningsResults.txt"), warnings.stream().map(Object::toString).collect(Collectors.toList()));
     }
 
+
+    @org.testng.annotations.Test
+    public void TestWarningsUsefulness() throws IOException {
+        File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
+        int totalvariants = 0;
+        int usefullwarnings = 0;
+        int missingtraces = 0;
+        int variantswithwarnings = 0;
+        int variantswithwarningsmissing = 0;
+
+        List<String> warnings = new ArrayList<>();
+        for (File path : checkoutfile.listFiles()) {
+            totalvariants++;
+            String pathName = path.getName();
+            warnings.add("VARIANT: " + path.getName());
+            System.out.println("VARIANT: " + path.getName());
+
+            File pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "ResultsCompareVariants\\" + pathName + ".csv");
+            if (pathName.contains("HAVE_LIBOPENNET.1,BASE.20,HAVE_NETINET_IN_H.1,DEBUG.1,HAVE_LIBWSOCK32.1,__MINGW32__.1,__WIN32__.1,HAVE_FCNTL_H.1,HAVE_CONFIG_H.1,HAVE_SYS_SOCKET_H.1,HAVE_OPENNET_H.1"))
+                pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\big.csv");
+            if (pathName.contains("HAVE_LIBOPENNET.2,BASE.53,HAVE_ARPA_INET_H.2,HAVE_NETINET_IN_H.2,HAVE_OPENNET_H.2,DEBUG.2,HAVE_CONFIG_H.2,HAVE_ERRNO_H.2,HAVE_NETDB_H.2,__MINGW32__.2"))
+                pathCompareVariants = new File(checkoutfile.getParentFile().getParentFile(), "Results\\big2.csv");
+            Map<String, String> filenames = new HashMap<>();
+            try {
+                BufferedReader csvReader = new BufferedReader(new FileReader(pathCompareVariants));
+                String row = "";
+                Boolean enter = false;
+                while ((row = csvReader.readLine()) != null) {
+                    if (enter) {
+                        String[] data = row.split(",");
+                        // do something with the data
+                        if (!data[1].toUpperCase().equals("TRUE")) {
+                            filenames.put(data[0].substring(data[0].lastIndexOf("\\") + 1), data[0].substring(data[0].indexOf("\\") + 1));
+                        }
+                    } else {
+                        enter = true;
+                    }
+                }
+                csvReader.close();
+                File[] files = path.listFiles((d, name) -> name.endsWith(".warnings"));
+                File warningsFile = files[0];
+                FileReader fr = new FileReader(warningsFile);   //reads the file
+                BufferedReader br = new BufferedReader(fr);  //creates a buffering character input stream
+                StringBuffer sb = new StringBuffer();    //constructs a string buffer with no characters
+                String line;
+                int countsurplus = 0;
+                int countmissing = 0;
+                int countorder = 0;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);      //appends line to string buffer
+                    sb.append("\n");     //line feed
+                    if (line.contains("SURPLUS")) {
+                        countsurplus++;
+                    } else if (line.contains("MISSING")) {
+                        countmissing++;
+                    } else if (line.contains("ORDER")) {
+                        countorder++;
+                        System.out.println("Contains ORDER!!");
+                        warnings.add("Contains ORDER!! " + line);
+                    }
+                }
+                if ((countsurplus > 0 && filenames.size() > 0) || (countmissing > 0 && filenames.size() > 0)) {
+                    usefullwarnings++;
+                }
+                if (countmissing > 0 || countsurplus > 0) {
+                    variantswithwarnings++;
+                }
+                if (countmissing > 0 && filenames.size() > 0) {
+                    missingtraces++;
+                }
+                if (countmissing > 0)
+                    variantswithwarningsmissing++;
+                fr.close();    //closes the stream and release the resources
+
+            } catch (FileNotFoundException fe) {
+                System.out.println("file not found!");
+            }
+        }
+        System.out.println("Warnings usefulness: " + (usefullwarnings * 100) / variantswithwarnings + " usefullwarnings: " + usefullwarnings + " total variants with warnings: " + variantswithwarnings);
+        System.out.println("Missing Traces: " + (missingtraces * 100) / variantswithwarningsmissing + " missingtraces: " + missingtraces + " total variants with warnings: " + variantswithwarningsmissing);
+    }
 
     private void computeString(Node.Op node, Map<String, String> filenames, ArrayList<String> lines, ArrayList<String> filenamesAssociation) {
         if (node.getArtifact() != null && node.getArtifact().getData() != null) {
