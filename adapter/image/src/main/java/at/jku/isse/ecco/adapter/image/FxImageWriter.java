@@ -43,6 +43,11 @@ public class FxImageWriter implements ArtifactWriter<Set<Node>, Image> {
 		return output.toArray(new Image[output.size()]);
 	}
 
+	@Override
+	public Image[] write2(Image base, Set<Node> input, String f) {
+		return new Image[0];
+	}
+
 
 	private Collection<WriteListener> listeners = new ArrayList<>();
 

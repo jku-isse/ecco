@@ -9,6 +9,7 @@ import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
 import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
@@ -111,6 +112,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		}
 	}
 
+	public EntityFactory getEntityFactory() {
+		return entityFactory;
+	}
+
+	public void setEntityFactory(EntityFactory entityFactory) {
+		this.entityFactory = entityFactory;
+	}
+
+	public DispatchReader getReader() {
+		return reader;
+	}
+
+	public void setReader(DispatchReader reader) {
+		this.reader = reader;
+	}
 
 	// TODO: set current operation. update progress during operations (instead of just relaying the progress from input and output streams) and notify listeners.
 	private Operation currentOperation;
@@ -529,6 +545,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.fireStatusChangedEvent();
 
 		LOGGER.info("Repository opened.");
+
 	}
 
 	/**
@@ -1603,6 +1620,98 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		return this.checkout(this.parseConfigurationString(configurationString));
 	}
 
+	public synchronized Set<Node> compareArtifacts(String configurationString) {
+		return this.compareArtifacts(this.parseConfigurationString(configurationString));
+	}
+
+	public synchronized Set<Node> compareArtifacts(Configuration configuration) {
+		this.checkInitialized();
+
+		checkNotNull(configuration);
+
+		Repository.Op repository = this.repositoryDao.load();
+		Checkout checkout = repository.compose(configuration);
+
+		for (Association selectedAssociation : checkout.getSelectedAssociations()) {
+			this.fireAssociationSelectedEvent(selectedAssociation);
+		}
+
+		// write artifacts to files
+		Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
+
+		return nodes;
+	}
+
+	public synchronized Checkout checkout2(String configurationString) {
+		return this.checkout2(this.parseConfigurationString(configurationString));
+	}
+
+	public synchronized Checkout checkout2(Configuration configuration) {
+		this.checkInitialized();
+
+		checkNotNull(configuration);
+
+		Repository.Op repository = this.repositoryDao.load();
+		Checkout checkout = repository.compose(configuration);
+
+		for (Association selectedAssociation : checkout.getSelectedAssociations()) {
+			this.fireAssociationSelectedEvent(selectedAssociation);
+		}
+
+		// write artifacts to files
+		Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
+		this.writer.write2(this.baseDir, nodes, configuration.getConfigurationString());
+
+		// write config file into base directory
+		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
+		if (Files.exists(configFile)) {
+			throw new EccoException("Configuration file already exists in base directory.");
+		} else {
+			try {
+				Files.write(configFile, configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+			} catch (IOException e) {
+				throw new EccoException("Could not create configuration file.", e);
+			}
+			this.fireWriteEvent(configFile, this.writer);
+		}
+
+		// write warnings file into base directory
+		Path warningsFile = this.baseDir.resolve(WARNINGS_FILE_NAME);
+		if (Files.exists(warningsFile)) {
+			throw new EccoException("Warnings file already exists in base directory.");
+		} else {
+			try {
+				StringBuilder sb = new StringBuilder();
+				for (ModuleRevision mr : checkout.getMissing()) {
+					sb.append("MISSING: ").append(mr).append(System.lineSeparator());
+				}
+				for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
+					sb.append("SURPLUS: ").append(mr.getKey()+" trace id: "+mr.getValue()).append(System.lineSeparator());
+				}
+				for (Artifact a : checkout.getOrderWarnings()) {
+					List<String> pathList = new LinkedList<>();
+					Node current = a.getContainingNode().getParent();
+					while (current != null) {
+						if (current.getArtifact() != null)
+							pathList.add(0, current.getArtifact().toString() + " > ");
+						current = current.getParent();
+					}
+					pathList.add(a.toString());
+					sb.append("ORDER: ").append(String.join("", pathList)).append(System.lineSeparator());
+				}
+				for (Association association : checkout.getUnresolvedAssociations()) {
+					sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());
+				}
+				Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+			} catch (IOException e) {
+				throw new EccoException("Could not create warnings file.", e);
+			}
+			this.fireWriteEvent(warningsFile, this.writer);
+		}
+
+		return checkout;
+	}
+
 	/**
 	 * Checks out the implementation of the given configuration into the base directory.
 	 *
@@ -1648,8 +1757,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 				for (ModuleRevision mr : checkout.getMissing()) {
 					sb.append("MISSING: ").append(mr).append(System.lineSeparator());
 				}
-				for (ModuleRevision mr : checkout.getSurplus()) {
-					sb.append("SURPLUS: ").append(mr).append(System.lineSeparator());
+				for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
+					sb.append("SURPLUS: ").append(mr.getKey()+" trace id: "+mr.getValue()).append(System.lineSeparator());
 				}
 				for (Artifact a : checkout.getOrderWarnings()) {
 					List<String> pathList = new LinkedList<>();
@@ -1685,20 +1794,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.writer.write(this.baseDir, nodes);
 
 		return checkout;
-	}
-
-
-	public Node compose(String configurationString) {
-		this.checkInitialized();
-
-		checkNotNull(configurationString);
-
-		Configuration configuration = this.parseConfigurationString(configurationString);
-
-		Repository.Op repository = this.repositoryDao.load();
-		Checkout checkout = repository.compose(configuration);
-
-		return checkout.getNode();
 	}
 
 

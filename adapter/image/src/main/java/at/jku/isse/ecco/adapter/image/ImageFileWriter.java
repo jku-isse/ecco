@@ -64,6 +64,12 @@ public class ImageFileWriter implements ArtifactWriter<Set<Node>, Path> {
 	}
 
 
+	@Override
+	public Path[] write2(Path base, Set<Node> input, String f) {
+		return new Path[0];
+	}
+
+
 	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override

@@ -44,6 +44,12 @@ public class AwtImageWriter implements ArtifactWriter<Set<Node>, BufferedImage> 
 	}
 
 
+	@Override
+	public BufferedImage[] write2(BufferedImage base, Set<Node> input, String f) {
+		return new BufferedImage[0];
+	}
+
+
 	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override
