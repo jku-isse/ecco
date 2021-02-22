@@ -40,7 +40,6 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
         Path[] toreturn = input.parallelStream().map(node -> {
             try {
                 includes[0] = "";
-                //dir = "C:\\Users\\gabil\\Desktop\\teste\\ActualECCO\\Method_comparison\\results\\"+ base.getFileName().toString()+".txt";
                 return processNode(node, base);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -57,7 +56,6 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
         Path[] toreturn = input.parallelStream().map(node -> {
             try {
                 includes[0] = "";
-                //dir = "C:\\Users\\gabil\\Desktop\\teste\\ActualECCO\\Method_comparison\\results\\"+ base.getFileName().toString()+".txt";
                 return processNode(node, base);
             } catch (IOException e) {
                 e.printStackTrace();

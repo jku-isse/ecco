@@ -33,26 +33,26 @@ import static at.jku.isse.ecco.util.Trees.slice;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
-    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2";
+    public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Curl2";
     //directory with the folder "variant_results" inside the folder with the artifacts of the target systyem
     public final String resultMetrics_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\RunningExample\\variant_results";
     //directory with the file "configurations.csv" inside the folder with the artifacts of the target systyem
-    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2\\configurations.csv";
-    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2\\ResultsCompareVariants";
+    public final String configuration_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Curl2\\configurations.csv";
+    public final String csvcomparison_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Curl2\\ResultsCompareVariants";
     //directory where you have the folder with the artifacts of Marlin target systyem
-    public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Marlin\\ResultsCompareVariantsRandom";
+    public final String marlinFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Marlin2\\ResultsCompareVariantsOriginal";
     //directory where you have the folder with the artifacts of LibSSH target systyem
-    public final String libsshFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\LibSSH\\ResultsCompareVariantsRandom";
+    public final String libsshFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\LibSSH2\\ResultsCompareVariantsOriginal";
     //directory where you have the folder with the artifacts of SQLite target systyem
-    public final String sqliteFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite\\ResultsCompareVariantsRandom";
+    public final String sqliteFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2\\ResultsCompareVariantsOriginal";
     //directory where you have the folder with the artifacts of Bison target systyem
-    public final String bisonFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Bison\\ResultsCompareVariantsRandom";
+    public final String bisonFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Bison2\\ResultsCompareVariantsOriginal";
     //directory where you have the folder with the artifacts of Irssi target systyem
-    public final String irssiFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Irssi\\ResultsCompareVariantsRandom";
+    public final String irssiFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Irssi2\\ResultsCompareVariantsOriginal";
     //directory where you have the folder with the artifacts of Curl target systyem
-    public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\Curl\\ResultsCompareVariantsRandom";
+    public final String curlFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Curl2\\ResultsCompareVariantsOriginal";
     //directory where you want to store the result file containing the metrics computed for all target systems
-    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\SQLite2";
+    public final String metricsResultFolder = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Curl2";
     private List<String> fileTypes = new LinkedList<String>();
 
 
@@ -289,7 +289,7 @@ public class FeatureRevisionLocationTest {
 
     @org.testng.annotations.Test
     public void TestWarnings() throws IOException {
-        File checkoutfile = new File(resultMetrics_path, "checkout");
+        File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
         EccoService service = new EccoService();
         Path repo = Paths.get(resultMetrics_path);
         service.setRepositoryDir(repo.resolve("repo"));
@@ -441,9 +441,7 @@ public class FeatureRevisionLocationTest {
                                             linesSurplus.add(l);
                                         }
                                     }
-                                } //else {
-                                //  System.out.println("NULL");
-                                //}
+                                }
                             }
                             for (String lsurplus : linesSurplus) {
                                 if (!warnings.contains(lsurplus)) {
@@ -465,15 +463,14 @@ public class FeatureRevisionLocationTest {
                 System.out.println("file not found!");
             }
         }
-        System.out.println("SurplusArtifacts: ********* "+(totallinesurplus*100)/eccototalLines + " total lines surplus: "+ totallinesurplus + " Total lines variants composed: " + eccototalLines);
+        System.out.println("SurplusArtifacts: "+(totallinesurplus*100)/eccototalLines + " Total lines surplus: "+ totallinesurplus + " Total lines variants composed: " + eccototalLines);
         Files.write(repo.resolve("TestWarningsResults.txt"), warnings.stream().map(Object::toString).collect(Collectors.toList()));
     }
 
 
     @org.testng.annotations.Test
     public void TestWarningsUsefulness() throws IOException {
-        File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
-        int totalvariants = 0;
+        File checkoutfile = new File(resultMetrics_path, "checkout");
         int usefullwarnings = 0;
         int missingtraces = 0;
         int variantswithwarnings = 0;
@@ -481,7 +478,6 @@ public class FeatureRevisionLocationTest {
 
         List<String> warnings = new ArrayList<>();
         for (File path : checkoutfile.listFiles()) {
-            totalvariants++;
             String pathName = path.getName();
             warnings.add("VARIANT: " + path.getName());
             System.out.println("VARIANT: " + path.getName());
@@ -557,7 +553,6 @@ public class FeatureRevisionLocationTest {
                 System.out.println("SOURCE FILE: " + ((PluginArtifactData) node.getArtifact().getData()).getPath());
                 filenamesAssociation.add(((PluginArtifactData) node.getArtifact().getData()).getPath().toString());
                 if (filenames.containsKey(((PluginArtifactData) node.getArtifact().getData()).getPath().toString())) {
-                    System.out.println("ENTROU " + node.getArtifact().getData());
                     for (Node.Op childNode : node.getChildren()) {
                         System.out.println(childNode.getArtifact().getData());
                         visitingNodes(childNode, lines);
@@ -580,7 +575,6 @@ public class FeatureRevisionLocationTest {
         } else if (childNode.getArtifact().toString().equals("FIELDS")) {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
-                    //fields[0] += node.getArtifact().getData() + "\n";
                     featCharc.computeIfPresent("fields", (k, v) -> v + 1);
                     featCharc.computeIfAbsent("fields", v -> 1);
                 }
@@ -588,25 +582,21 @@ public class FeatureRevisionLocationTest {
         } else if (childNode.getArtifact().toString().equals("DEFINES")) {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
-                    //defines[0] += node.getArtifact().getData() + "\n";
                     featCharc.computeIfPresent("defines", (k, v) -> v + 1);
                     featCharc.computeIfAbsent("defines", v -> 1);
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof IncludeArtifactData)) {
             final IncludeArtifactData artifactData = (IncludeArtifactData) childNode.getArtifact().getData();
-            //includes[0] += artifactData.toString() + "\n";
             featCharc.computeIfPresent("includes", (k, v) -> v + 1);
             featCharc.computeIfAbsent("includes", v -> 1);
         } else if ((childNode.getArtifact().getData() instanceof LineArtifactData)) {
-            //code[0] += ((LineArtifactData) childNode.getArtifact().getData()).getLine() + "\n";+
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node, featCharc);
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof FunctionArtifactData)) {
-            //code[0] += "\n" + ((FunctionArtifactData) childNode.getArtifact().getData()).getSignature() + "\n";//artifactData.toString() + "{\n";
             featCharc.computeIfPresent("functions", (k, v) -> v + 1);
             featCharc.computeIfAbsent("functions", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -615,7 +605,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
-            //code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock() + "\n";
             featCharc.computeIfPresent("blocks", (k, v) -> v + 1);
             featCharc.computeIfAbsent("blocks", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -624,7 +613,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
-            //code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock() + "\n";
             featCharc.computeIfPresent("do", (k, v) -> v + 1);
             featCharc.computeIfAbsent("do", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -633,7 +621,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
-            //code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock() + "\n";
             featCharc.computeIfPresent("for", (k, v) -> v + 1);
             featCharc.computeIfAbsent("for", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -642,7 +629,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
-            //code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock() + "\n";
             featCharc.computeIfPresent("if", (k, v) -> v + 1);
             featCharc.computeIfAbsent("if", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -651,7 +637,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
-            //code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock() + "\n";
             featCharc.computeIfPresent("problem", (k, v) -> v + 1);
             featCharc.computeIfAbsent("problem", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -660,7 +645,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
-            //code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock() + "\n";
             featCharc.computeIfPresent("switch", (k, v) -> v + 1);
             featCharc.computeIfAbsent("switch", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -669,7 +653,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
-            //code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock() + "\n";
             featCharc.computeIfPresent("while", (k, v) -> v + 1);
             featCharc.computeIfAbsent("while", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -681,15 +664,11 @@ public class FeatureRevisionLocationTest {
             featCharc.computeIfPresent("case", (k, v) -> v + 1);
             featCharc.computeIfAbsent("case", v -> 1);
             if (((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
-                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
-                        //code[0] += node.getArtifact().getData();
                     }
                 }
-                //code[0] += "\n";
             } else {
-                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock() + "\n";
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
                         visitingNodes(node, featCharc);
@@ -712,7 +691,6 @@ public class FeatureRevisionLocationTest {
         } else if (childNode.getArtifact().toString().equals("FIELDS")) {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
-                    //fields[0] += node.getArtifact().getData() + "\n";
                     lines.add(node.getArtifact().getData().toString());
                 }
             }
@@ -720,15 +698,12 @@ public class FeatureRevisionLocationTest {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     lines.add(node.getArtifact().getData().toString());
-                    // defines[0] += node.getArtifact().getData() + "\n";
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof IncludeArtifactData)) {
             final IncludeArtifactData artifactData = (IncludeArtifactData) childNode.getArtifact().getData();
             lines.add(artifactData.toString());
-            //includes[0] += artifactData.toString() + "\n";
         } else if ((childNode.getArtifact().getData() instanceof LineArtifactData)) {
-            // code[0] += ((LineArtifactData) childNode.getArtifact().getData()).getLine() + "\n";
             lines.add(((LineArtifactData) childNode.getArtifact().getData()).getLine());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -736,7 +711,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof FunctionArtifactData)) {
-            //code[0] += "\n" + ((FunctionArtifactData) childNode.getArtifact().getData()).getSignature() + "\n";//artifactData.toString() + "{\n";
             lines.add(((FunctionArtifactData) childNode.getArtifact().getData()).getSignature());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -744,7 +718,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
-            // code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock()+ "\n";
             lines.add(((BlockArtifactData) childNode.getArtifact().getData()).getBlock());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -752,7 +725,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
-            //code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock()+ "\n";
             lines.add(((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -760,7 +732,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
-            //code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock()+ "\n";
             lines.add(((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -768,7 +739,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
-            //code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock()+ "\n";
             lines.add(((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -776,7 +746,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
-            //code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock()+ "\n";
             lines.add(((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -784,7 +753,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
-            //code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock()+ "\n";
             lines.add(((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -792,7 +760,6 @@ public class FeatureRevisionLocationTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
-            //code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock()+ "\n";
             lines.add(((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock());
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
@@ -801,18 +768,14 @@ public class FeatureRevisionLocationTest {
             }
         } else if (childNode.getArtifact().getData() instanceof CaseBlockArtifactData) {
             if (((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
-                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
                 lines.add(((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock());
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
                         lines.add(node.getArtifact().getData().toString());
-                        //code[0] += node.getArtifact().getData();
                     }
                 }
-                // code[0] += "\n";
             } else {
                 lines.add(((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock());
-                // code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock()+ "\n";
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
                         visitingNodes(node, lines);
@@ -1478,54 +1441,7 @@ public class FeatureRevisionLocationTest {
             runtimeEccoCommit = timeAfter - timeBefore;
             runtimes.add("config: " + config + "  " + Long.toString(runtimeEccoCommit));
             //end ecco commit
-            /*String outputCSV = eccoFolder.getParentFile().getAbsolutePath();
-            String fileStr = outputCSV + File.separator + "runtime.csv";
-            BufferedReader csvReader = null;
-            try {
-                csvReader = new BufferedReader(new FileReader(fileStr));
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-            String row = null;
-            ArrayList<String> listHeader = new ArrayList<>();
-            ArrayList<String> listRuntimeData = new ArrayList<>();
-            List<List<String>> rows = new ArrayList<>();
-
-            Boolean header = true;
-            while ((row = csvReader.readLine()) != null) {
-                String[] data = row.split(",");
-                ArrayList<String> dataAux = new ArrayList<>();
-                if (header) {
-                    for (int i = 0; i < data.length; i++) {
-                        listHeader.add(data[i]);
-                    }
-                    header = false;
-                } else {
-                    for (int i = 0; i < data.length; i++) {
-                        if ((data[1].equals(config.replace(",", "AND"))) && (i == 2)) {
-                            data[i] = (String.valueOf(runtimeEccoCommit));
-                        }
-                        dataAux.add(data[i]);
-                    }
-                    rows.add(dataAux);
-                }
-
-            }
-            csvReader.close();
-            File fwriter = new File(fileStr);
-            FileWriter csvWriter = new FileWriter(fwriter);
-
-            csvWriter.write(String.join(",", listHeader));
-            csvWriter.write("\n");
-            for (List<String> line : rows) {
-                csvWriter.write(String.join(",", line));
-                csvWriter.write("\n");
-            }
-            csvWriter.flush();
-            csvWriter.close();*/
         }
-        //end commit
-
         //close ecco repository
         service.close();
         Files.write(OUTPUT_DIR.resolve("timeCommitIndividual.txt"), runtimes.stream().map(Object::toString).collect(Collectors.toList()));

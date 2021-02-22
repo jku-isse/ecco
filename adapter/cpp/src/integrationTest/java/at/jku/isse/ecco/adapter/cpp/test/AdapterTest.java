@@ -35,6 +35,7 @@ public class AdapterTest {
 
     private static final Path BASE_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\testadapter");
     private static final Path[] FILES = new Path[]{Paths.get("temperature.cpp")};
+    private static final Path repo = Paths.get("D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\variant_results");
 
     @Test(groups = {"integration", "java"})
     public void CPP_Adapter_Test() {
@@ -162,7 +163,6 @@ public class AdapterTest {
         }
     }
 
-    Path repo = Paths.get("D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\variant_results");
 
     @Test(groups = {"integration", "java"})
     public void FeatureRevisionCharacteristicTest() throws IOException {
@@ -195,7 +195,6 @@ public class AdapterTest {
         //for (Feature feature : featureRevisions) {
         //    FeaturesView.this.featuresData.add(feature);
         //}
-        System.out.println("DEU CERTO");
 
         /*Repository repository = service.getRepository();
         ArrayList<Feature> features = repository.getFeature();
@@ -257,7 +256,6 @@ public class AdapterTest {
         } else if (childNode.getArtifact().toString().equals("FIELDS")) {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
-                    //fields[0] += node.getArtifact().getData() + "\n";
                     featCharc.computeIfPresent("fields", (k, v) -> v + 1);
                     featCharc.computeIfAbsent("fields", v -> 1);
                 }
@@ -265,25 +263,21 @@ public class AdapterTest {
         } else if (childNode.getArtifact().toString().equals("DEFINES")) {
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
-                    //defines[0] += node.getArtifact().getData() + "\n";
                     featCharc.computeIfPresent("defines", (k, v) -> v + 1);
                     featCharc.computeIfAbsent("defines", v -> 1);
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof IncludeArtifactData)) {
             final IncludeArtifactData artifactData = (IncludeArtifactData) childNode.getArtifact().getData();
-            //includes[0] += artifactData.toString() + "\n";
             featCharc.computeIfPresent("includes", (k, v) -> v + 1);
             featCharc.computeIfAbsent("includes", v -> 1);
         } else if ((childNode.getArtifact().getData() instanceof LineArtifactData)) {
-            //code[0] += ((LineArtifactData) childNode.getArtifact().getData()).getLine() + "\n";+
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node, featCharc);
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof FunctionArtifactData)) {
-            //code[0] += "\n" + ((FunctionArtifactData) childNode.getArtifact().getData()).getSignature() + "\n";//artifactData.toString() + "{\n";
             featCharc.computeIfPresent("functions", (k, v) -> v + 1);
             featCharc.computeIfAbsent("functions", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -292,7 +286,6 @@ public class AdapterTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
-            //code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock() + "\n";
             featCharc.computeIfPresent("blocks", (k, v) -> v + 1);
             featCharc.computeIfAbsent("blocks", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -301,7 +294,6 @@ public class AdapterTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
-            //code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock() + "\n";
             featCharc.computeIfPresent("do", (k, v) -> v + 1);
             featCharc.computeIfAbsent("do", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -310,7 +302,6 @@ public class AdapterTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
-            //code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock() + "\n";
             featCharc.computeIfPresent("for", (k, v) -> v + 1);
             featCharc.computeIfAbsent("for", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -319,7 +310,6 @@ public class AdapterTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
-            //code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock() + "\n";
             featCharc.computeIfPresent("if", (k, v) -> v + 1);
             featCharc.computeIfAbsent("if", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -328,7 +318,6 @@ public class AdapterTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
-            //code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock() + "\n";
             featCharc.computeIfPresent("problem", (k, v) -> v + 1);
             featCharc.computeIfAbsent("problem", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -337,7 +326,6 @@ public class AdapterTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
-            //code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock() + "\n";
             featCharc.computeIfPresent("switch", (k, v) -> v + 1);
             featCharc.computeIfAbsent("switch", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -346,7 +334,6 @@ public class AdapterTest {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
-            //code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock() + "\n";
             featCharc.computeIfPresent("while", (k, v) -> v + 1);
             featCharc.computeIfAbsent("while", v -> 1);
             if (childNode.getChildren().size() > 0) {
@@ -358,15 +345,11 @@ public class AdapterTest {
             featCharc.computeIfPresent("case", (k, v) -> v + 1);
             featCharc.computeIfAbsent("case", v -> 1);
             if (((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
-                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
-                        //code[0] += node.getArtifact().getData();
                     }
                 }
-                //code[0] += "\n";
             } else {
-                //code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock() + "\n";
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
                         visitingNodes(node, featCharc);
