@@ -79,8 +79,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	private Path baseDir;
 	private Path repositoryDir;
 
-	private LinkedList<Commit> commits;
-
 	public Properties getProperties() {
 		return this.properties;
 	}
@@ -1556,9 +1554,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			String configurationString = "";
 			if (Files.exists(configFile))
 				configurationString = new String(Files.readAllBytes(configFile)).trim();
-			Commit commit = this.commit(configurationString);
-			commitDao.save(commit);
-			return commit;
+			return this.commit(configurationString);
 		} catch (IOException e) {
 			throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
 		}
@@ -1571,9 +1567,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return The resulting commit object.
 	 */
 	public synchronized Commit commit(String configurationString) {
-		Commit commit = this.commit(this.parseConfigurationString(configurationString));
-		commitDao.save(commit);
-		return commit;
+		return this.commit(this.parseConfigurationString(configurationString));
 	}
 
 	/**
@@ -1601,6 +1595,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 			this.transactionStrategy.end();
 
+			commitDao.save(commit);
 			return commit;
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();

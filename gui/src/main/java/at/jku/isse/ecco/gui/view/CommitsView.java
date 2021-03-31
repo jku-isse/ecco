@@ -27,7 +27,6 @@ public class CommitsView extends BorderPane implements EccoListener {
 	public CommitsView(EccoService service) {
 		this.service = service;
 
-
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
@@ -71,15 +70,18 @@ public class CommitsView extends BorderPane implements EccoListener {
 		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<Commit, String> idCol = new TableColumn<>("Id");
+		TableColumn<Commit, String> commiter = new TableColumn<>("Commiter");
+		TableColumn<Commit, String> date = new TableColumn<>("Date");
 		TableColumn<Commit, String> commitsCol = new TableColumn<>("Commits");
 
-		commitsCol.getColumns().addAll(idCol);
+		commitsCol.getColumns().addAll(idCol, commiter, date);
 		commitsTable.getColumns().setAll(commitsCol);
 
 		idCol.setCellValueFactory((TableColumn.CellDataFeatures<Commit, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getId()));
+		commiter.setCellValueFactory((TableColumn.CellDataFeatures<Commit, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getUsername()));
+		date.setCellValueFactory((TableColumn.CellDataFeatures<Commit, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getDate() == null ? "" : param.getValue().getDate().toString()));  //TODO do better
 
 		commitsTable.setItems(this.commitsData);
-
 
 		// commit details view
 		CommitDetailView commitDetailView = new CommitDetailView(service);

@@ -413,6 +413,8 @@ public interface Repository extends Persistable {
 			// create commit object
 			Commit commit = this.getEntityFactory().createCommit();
 			commit.setConfiguration(repoConfiguration);
+			commit.setUsername();
+			commit.setCurrDate();
 
 			return commit;
 		}

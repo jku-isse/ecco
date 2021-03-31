@@ -57,4 +57,42 @@ public class RepositoryTest {
         service.close();
         System.out.println("Repository closed.");
     }
+
+    @Test(groups = {"integration", "gui"})
+    public void setupReproForManualInspection() {
+        // open repository
+        EccoService service = new EccoService();
+
+        //create Repo
+        String repo = ".ecco";
+        Path p = basePath.resolve(repo);
+        try {
+            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //TBE ALLOW INSECURE
+            Files.delete(p);        //TBE Works only if the dir is already empty. (done by  deleteDirectoryContents)
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Assert.assertFalse(Files.exists(p));
+
+        service.setRepositoryDir(p);
+        service.init();
+
+        int variantsCnt = 0;
+        service.setBaseDir(basePath.resolve("V1_purpleshirt"));
+        service.commit();
+        variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V2_stripedshirt"));
+        service.commit();
+        variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V3_purpleshirt_jacket"));
+        service.commit();
+        variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V4_purpleshirt_jacket_glasses"));
+        service.commit();
+        variantsCnt++;
+    }
+
 }
