@@ -60,6 +60,10 @@ dependencies {
 
 	implementation project(':ecco-service')
 
+	runtime project(':ecco-adapter-file')
+	runtime project(':ecco-adapter-text')
+	runtime project(':ecco-adapter-image')
+
 	// the following should be "testRuntimeOnly". however, javafx seems to mess up these dependencies for the entire project.
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-text')
