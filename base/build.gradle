@@ -9,6 +9,10 @@ dependencies {
 
 	implementation 'com.google.guava:guava:27.1-jre'
 
+	testImplementation project(':ecco-adapter-file')		//TBE
+	testImplementation project(':ecco-adapter-image')
+	testImplementation project(':ecco-adapter-text')
+
 	testImplementation 'org.graphstream:gs-core:1.3'
 	testImplementation 'org.graphstream:gs-algo:1.3'
 	testImplementation 'org.graphstream:gs-ui:1.3'
