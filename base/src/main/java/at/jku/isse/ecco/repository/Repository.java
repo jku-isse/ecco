@@ -407,14 +407,17 @@ public interface Repository extends Persistable {
 				association.addObservation(moduleRevision);
 			}
 
-			// do actual extraction
-			this.extract(association);
+
+
 
 			// create commit object
 			Commit commit = this.getEntityFactory().createCommit();
 			commit.setConfiguration(repoConfiguration);
 			commit.setUsername();
 			commit.setCurrDate();
+
+			// do actual extraction
+			this.extract(association, commit);
 
 			return commit;
 		}
@@ -428,7 +431,7 @@ public interface Repository extends Persistable {
 			checkNotNull(inputAs);
 
 			for (Association.Op inputA : inputAs) {
-				this.extract(inputA);
+				this.extract(inputA, null);
 			}
 		}
 
@@ -437,7 +440,7 @@ public interface Repository extends Persistable {
 		 *
 		 * @param association The association to be committed.
 		 */
-		public default void extract(Association.Op association) {
+		public default void extract(Association.Op association, Commit commit) {
 			checkNotNull(association);
 
 			Trees.checkConsistency(association.getRootNode());
@@ -461,11 +464,14 @@ public interface Repository extends Persistable {
 				// INTERSECTION
 				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
 					toAdd.add(intA);
+					//if(commit != null && commit.containsAssociations(origA)) {		//TODO TBE check
+					//	commit.addAssociations(intA);
+					//}
 
 					Trees.checkConsistency(intA.getRootNode());
 
-					//intA.add(origA);
-					//intA.add(association);
+/*					intA.add(origA);
+					intA.add(association);*/
 					intA.getCounter().add(origA.getCounter());
 					intA.getCounter().add(association.getCounter());
 				}
@@ -475,6 +481,9 @@ public interface Repository extends Persistable {
 					Trees.checkConsistency(origA.getRootNode());
 				} else {
 					toRemove.add(origA);
+					//if(commit != null && commit.containsAssociations(origA)) {		//TODO TBE check
+					//	commit.deleteAssociations(origA);
+					//}
 				}
 			}
 
@@ -490,11 +499,13 @@ public interface Repository extends Persistable {
 			// remove associations from repository
 			for (Association.Op origA : toRemove) {
 				this.removeAssociation(origA);
+				commit.deleteAssociations(origA);	//TBE TODO
 			}
 
 			// add associations to repository
 			for (Association.Op newA : toAdd) {
 				this.addAssociation(newA);
+				commit.addAssociations(newA);		//TBE TODO
 			}
 		}
 
@@ -1108,7 +1119,7 @@ public interface Repository extends Persistable {
 				}
 
 				// commit association to this repository
-				this.extract(association);
+				this.extract(association, null);
 			}
 		}
 

@@ -109,10 +109,10 @@ public class CommitDetailView extends BorderPane {
 			this.commitId.setText(String.valueOf(commit.getId()));
 			this.commitConfiguration.setText(commit.getConfiguration() == null ? "" : commit.getConfiguration().toString());
 
-//			// show associations
-//			for (Association association : commit.getAssociations()) {
-//				CommitDetailView.this.associationsData.add(new AssociationInfo(association));
-//			}
+			// show associations
+			for (Association association : commit.getAssociations()) {
+				CommitDetailView.this.associationsData.add(new AssociationInfo(association));
+			}
 		} else {
 			this.setCenter(null);
 			this.toolBar.setDisable(true);

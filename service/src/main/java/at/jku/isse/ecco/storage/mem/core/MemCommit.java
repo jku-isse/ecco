@@ -1,8 +1,11 @@
 package at.jku.isse.ecco.storage.mem.core;
 
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 
 /**
@@ -17,6 +20,7 @@ public class MemCommit implements Commit {
 	private String committer;
 	private Configuration configuration;
 	private Date committingDate;
+	private Collection<Association> associations = new ArrayList<>();;
 
 
 	public MemCommit() {
@@ -60,6 +64,25 @@ public class MemCommit implements Commit {
 	@Override
 	public Date getDate() {
 		return committingDate;
+	}
+
+	@Override
+	public boolean containsAssociations(final Association association) {
+		return associations.contains(association);
+	}
+
+	@Override
+	public void addAssociations(final Association association) {
+		associations.add(association);
+	}
+
+	@Override
+	public void deleteAssociations(final Association association) {
+		associations.remove(association);
+	}
+
+	public Collection<Association> getAssociations() {
+		return associations;
 	}
 
 

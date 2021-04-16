@@ -3,6 +3,7 @@ package at.jku.isse.ecco.core;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 
+import java.util.Collection;
 import java.util.Date;
 
 /**
@@ -31,5 +32,13 @@ public interface Commit extends Persistable {
 	public void setCurrDate();
 
 	public Date getDate();
+
+	public boolean containsAssociations(Association association);
+
+	public void addAssociations(Association association);
+
+	public void deleteAssociations(Association association);
+
+	public Collection<Association> getAssociations();
 
 }
