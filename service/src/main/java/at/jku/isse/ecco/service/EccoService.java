@@ -1591,11 +1591,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			Commit commit = repository.extract(configuration, nodes);
 			LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
 
+			commitDao.save(commit);
+
 			this.repositoryDao.store(repository);
 
 			this.transactionStrategy.end();
 
-			commitDao.save(commit);
+
 			return commit;
 		} catch (Exception e) {
 			this.transactionStrategy.rollback();
