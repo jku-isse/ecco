@@ -5,7 +5,6 @@ import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
-import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -22,6 +21,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
 
+import java.io.ObjectInputFilter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,9 +37,21 @@ public interface Repository extends Persistable {
 
 	public Collection<? extends Association> getAssociations();
 
+	public ArrayList<Variant> getVariants();
+
+	public Variant getVariant(Configuration configuration);
+
+	public Variant getVariant(String id);
+
 	public Association getAssociation(String id);
 
 	public ArrayList<Feature> getFeature();
+
+	public void addVariant(Variant variant);
+
+	public void removeVariant(Variant variant);
+
+	public void updateVariant(Variant variant, Configuration configuration, String name);
 
 	/**
 	 * Private repository interface.
@@ -80,8 +92,11 @@ public interface Repository extends Persistable {
 
 		public Feature addFeature(String id, String name);
 
+		public void addVariant(Variant variant);
 
 		public void addAssociation(Association.Op association);
+
+		public void removeVariant(Variant variant);
 
 		public void removeAssociation(Association.Op association);
 

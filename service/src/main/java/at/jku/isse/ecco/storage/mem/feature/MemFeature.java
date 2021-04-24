@@ -77,6 +77,12 @@ public class MemFeature implements Feature {
 	}
 
 	@Override
+	public Feature feature(String name) {
+		this.name = name;
+		return this;
+	}
+
+	@Override
 	public String getId() {
 		return this.id;
 	}

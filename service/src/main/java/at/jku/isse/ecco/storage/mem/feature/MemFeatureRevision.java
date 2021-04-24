@@ -46,7 +46,6 @@ public class MemFeatureRevision implements FeatureRevision {
 		this.description = description;
 	}
 
-
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

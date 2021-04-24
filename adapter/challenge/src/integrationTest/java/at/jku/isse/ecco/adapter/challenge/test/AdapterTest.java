@@ -9,6 +9,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,7 +32,6 @@ public class AdapterTest {
 
 		System.out.println(nodes);
 	}
-
 
 	@Test(groups = {"integration", "java"})
 	public void ReadMethods(){
