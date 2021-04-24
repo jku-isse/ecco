@@ -70,6 +70,45 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 		return null;
 	}
 
+	public Path[] write2(Path base, Set<? extends Node> input, String feature) {
+		if (!Files.exists(base)) {
+			throw new EccoException("Base directory does not exist.");
+		} else if (Files.isDirectory(base)) {
+			try {
+				if (Files.list(base).anyMatch(path -> !path.equals(this.repositoryDir))) {
+					throw new EccoException("Current base directory must be empty for checkout operation.");
+				}
+			} catch (IOException e) {
+				throw new EccoException(e.getMessage());
+			}
+		} else {
+			throw new EccoException("Current base directory is not a directory but a file.");
+		}
+
+
+		List<Path> output = new ArrayList<>();
+
+		Properties hashes = new Properties();
+		for (Node node : input) {
+			this.writeRec2(base, base, node, output, hashes,feature);
+		}
+
+		// write hashes file into base directory
+		Path hashesFile = base.resolve(EccoService.HASHES_FILE_NAME);
+		if (Files.exists(hashesFile)) {
+			throw new EccoException("Hashes file already exists in base directory.");
+		} else {
+			try (Writer writer = Files.newBufferedWriter(hashesFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+				hashes.store(writer, null);
+			} catch (IOException e) {
+				throw new EccoException("Could not create hashes file.", e);
+			}
+			this.fireWriteEvent(hashesFile, this);
+		}
+
+		return output.toArray(new Path[0]);
+	}
+
 	@Override
 	public Path[] write(Set<? extends Node> input) {
 		return this.write(Paths.get("."), input);
@@ -140,6 +179,42 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			pluginInput.add(node);
 
 			Path[] outputPaths = writer.write(base, pluginInput);
+			for (Path outputPath : outputPaths) {
+				hashes.put(outputPath.toString(), EccoUtil.getSHA(base.resolve(outputPath)));
+			}
+
+			output.addAll(Arrays.asList(outputPaths));
+
+			this.fireWriteEvent(pluginArtifactData.getPath(), writer);
+		}
+	}
+
+
+	private void writeRec2(Path base, Path parent, Node node, List<Path> output, Properties hashes, String feature) {
+		Artifact artifact = node.getArtifact();
+		if (artifact.getData() instanceof DirectoryArtifactData) {
+			DirectoryArtifactData directoryArtifactData = (DirectoryArtifactData) artifact.getData();
+			Path path = parent.resolve(directoryArtifactData.getPath());
+			try {
+				if (!path.equals(parent))
+					Files.createDirectory(path);
+				output.add(path);
+				this.fireWriteEvent(path, this);
+				for (Node child : node.getChildren()) {
+					this.writeRec2(base, path, child, output, hashes,feature);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} else if (artifact.getData() instanceof PluginArtifactData) {
+			PluginArtifactData pluginArtifactData = (PluginArtifactData) node.getArtifact().getData();
+
+			ArtifactWriter<Set<Node>, Path> writer = this.getWriterForArtifact(pluginArtifactData);
+
+			Set<Node> pluginInput = new HashSet<>();
+			pluginInput.add(node);
+
+			Path[] outputPaths = writer.write2(base, pluginInput,feature);
 			for (Path outputPath : outputPaths) {
 				hashes.put(outputPath.toString(), EccoUtil.getSHA(base.resolve(outputPath)));
 			}
