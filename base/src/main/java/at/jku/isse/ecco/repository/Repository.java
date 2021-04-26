@@ -5,7 +5,6 @@ import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
-import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -40,6 +39,10 @@ public interface Repository extends Persistable {
 	public Association getAssociation(String id);
 
 	public ArrayList<Feature> getFeature();
+
+	public void setCommits(Collection<Commit> commits);
+
+	public Collection<Commit> getCommits();
 
 	/**
 	 * Private repository interface.
@@ -407,9 +410,6 @@ public interface Repository extends Persistable {
 				association.addObservation(moduleRevision);
 			}
 
-
-
-
 			// create commit object
 			Commit commit = this.getEntityFactory().createCommit();
 			commit.setConfiguration(repoConfiguration);
@@ -464,14 +464,19 @@ public interface Repository extends Persistable {
 				// INTERSECTION
 				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
 					toAdd.add(intA);
-					//if(commit != null && commit.containsAssociations(origA)) {		//TODO TBE check
-					//	commit.addAssociations(intA);
-					//}
+
+					commit.addAssociation(intA);		// add association to new commit
+					for (Commit c : getCommits()) {		// updates associations in previous commits
+						if (c.containsAssociation(origA)) {
+							c.addAssociation(intA);
+						}
+					}
+
 
 					Trees.checkConsistency(intA.getRootNode());
 
-/*					intA.add(origA);
-					intA.add(association);*/
+					//intA.add(origA);
+					//intA.add(association);
 					intA.getCounter().add(origA.getCounter());
 					intA.getCounter().add(association.getCounter());
 				}
@@ -481,15 +486,21 @@ public interface Repository extends Persistable {
 					Trees.checkConsistency(origA.getRootNode());
 				} else {
 					toRemove.add(origA);
-					//if(commit != null && commit.containsAssociations(origA)) {		//TODO TBE check
-					//	commit.deleteAssociations(origA);
-					//}
+
+					commit.deleteAssociation(origA);			// add association to new commit
+					for (Commit c : getCommits()) {				// updates associations in previous commits
+						if (c.containsAssociation(origA)) {
+							c.deleteAssociation(origA);
+						}
+					}
+
 				}
 			}
 
 			// REMAINDER
 			if (!association.getRootNode().getChildren().isEmpty()) { // if the remainder is not empty store it
 				toAdd.add(association);
+				commit.addAssociation(association);
 
 				Trees.sequence(association.getRootNode());
 				Trees.updateArtifactReferences(association.getRootNode());
@@ -499,13 +510,13 @@ public interface Repository extends Persistable {
 			// remove associations from repository
 			for (Association.Op origA : toRemove) {
 				this.removeAssociation(origA);
-				commit.deleteAssociations(origA);	//TBE TODO
+				//commit.deleteAssociations(origA);	//TBE TODO
 			}
 
 			// add associations to repository
 			for (Association.Op newA : toAdd) {
 				this.addAssociation(newA);
-				commit.addAssociations(newA);		//TBE TODO
+				//commit.addAssociations(newA);		//TBE TODO
 			}
 		}
 

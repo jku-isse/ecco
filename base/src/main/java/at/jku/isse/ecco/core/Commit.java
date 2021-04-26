@@ -33,11 +33,11 @@ public interface Commit extends Persistable {
 
 	public Date getDate();
 
-	public boolean containsAssociations(Association association);
+	public boolean containsAssociation(Association association);
 
-	public void addAssociations(Association association);
+	public void addAssociation(Association association);
 
-	public void deleteAssociations(Association association);
+	public void deleteAssociation(Association association);
 
 	public Collection<Association> getAssociations();
 
