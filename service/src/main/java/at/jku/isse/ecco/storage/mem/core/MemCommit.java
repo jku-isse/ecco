@@ -68,17 +68,17 @@ public class MemCommit implements Commit {
 	}
 
 	@Override
-	public boolean containsAssociations(final Association association) {
+	public boolean containsAssociation(final Association association) {
 		return associations.contains(association);
 	}
 
 	@Override
-	public void addAssociations(final Association association) {
+	public void addAssociation(final Association association) {
 		associations.add(association);
 	}
 
 	@Override
-	public void deleteAssociations(final Association association) {
+	public void deleteAssociation(final Association association) {
 		associations.remove(association);
 	}
 
