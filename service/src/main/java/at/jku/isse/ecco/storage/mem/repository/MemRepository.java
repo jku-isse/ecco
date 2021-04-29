@@ -24,10 +24,8 @@ public final class MemRepository implements Repository, Repository.Op {
 	private Map<String, MemFeature> features;
 	private Collection<Association.Op> associations;
 	private List<Map<MemModule, MemModule>> modules;
-	private Collection<Commit> commits;	//TBE Commits stored on repro
-
+	private Collection<Commit> commits;
 	private int maxOrder;
-
 
 	public MemRepository() {
 		this.features = Maps.mutable.empty();
@@ -35,14 +33,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
-	}
-
-	public void setCommits(Collection<Commit> commits) {
-		this.commits = commits;
-	}
-
-	public Collection<Commit> getCommits() {
-		return commits;
 	}
 
 	@Override
@@ -75,6 +65,23 @@ public final class MemRepository implements Repository, Repository.Op {
 		return features;
 	}
 
+	@Override
+	public void setCommits(Collection<Commit> commits) {
+		this.commits = commits;
+	}
+
+	@Override
+	public Collection<Commit> getCommits() {
+		return commits;
+	}
+
+	@Override
+	public void addCommit(final Commit commit) {
+		do {		//sets id
+			commit.setId(UUID.randomUUID().toString());
+		} while(getCommits().contains(commit));		//Just to make sure no Id is given twice
+		commits.add(commit);
+	}
 
 	@Override
 	public Collection<? extends Module> getModules(int order) {

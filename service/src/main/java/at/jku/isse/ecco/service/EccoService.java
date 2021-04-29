@@ -524,7 +524,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		this.repositoryDao.init();
 		this.remoteDao.init();
-		this.commitDao.init();
 
 		this.reader.init();
 
@@ -562,7 +561,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		this.repositoryDao.close();
 		this.remoteDao.close();
-		this.commitDao.close();
 
 		this.transactionStrategy.close();
 
