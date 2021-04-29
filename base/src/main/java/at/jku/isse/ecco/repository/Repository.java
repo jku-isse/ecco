@@ -415,7 +415,7 @@ public interface Repository extends Persistable {
 			commit.setConfiguration(repoConfiguration);
 			commit.setUsername();
 			commit.setCurrDate();
-			//TODO TBE save commit
+			addCommit(commit);
 
 			// do actual extraction
 			this.extract(association, commit);

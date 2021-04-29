@@ -7,6 +7,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * Memory implementation of {@link Commit}.
@@ -85,5 +86,16 @@ public class MemCommit implements Commit {
 		return associations;
 	}
 
+	@Override
+	public boolean equals(final Object o) {
+		if (this == o) return true;
+		if (!(o instanceof MemCommit)) return false;
+		final MemCommit memCommit = (MemCommit) o;
+		return Objects.equals(id, memCommit.id);
+	}
 
+	@Override
+	public int hashCode() {
+		return Objects.hash(id);
+	}
 }

@@ -28,7 +28,6 @@ public final class MemRepository implements Repository, Repository.Op {
 
 
 	public MemRepository() {
-		//this.features = new HashMap<>();
 		this.features = Maps.mutable.empty();
 		this.associations = new ArrayList<>();
 		this.modules = new ArrayList<>();

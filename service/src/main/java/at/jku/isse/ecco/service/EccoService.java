@@ -219,9 +219,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	private RepositoryDao repositoryDao;
 	@Inject
 	private RemoteDao remoteDao;
-	@Inject
-	private CommitDao commitDao;
-
 
 	// # LISTENERS #####################################################################################################
 
@@ -527,7 +524,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		this.repositoryDao.init();
 		this.remoteDao.init();
-		this.commitDao.init();
 
 		this.reader.init();
 
@@ -565,7 +561,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 		this.repositoryDao.close();
 		this.remoteDao.close();
-		this.commitDao.close();
 
 		this.transactionStrategy.close();
 
@@ -682,7 +677,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 			Repository repository = this.repositoryDao.load();
 			this.transactionStrategy.end();
-			repository.setCommits(getCommits());		//TODO TBE save commit direct in Repro
  			return repository;
 		} catch (EccoException e) {
 			this.transactionStrategy.rollback();
@@ -699,11 +693,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 		this.checkInitialized();
 
 		try {
-			this.commitDao.init();
-			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-			List<Commit> commits = this.commitDao.loadAllCommits();
-			this.transactionStrategy.end();
-			return commits;
+			return getRepository().getCommits();
 		} catch (EccoException e) {
 			this.transactionStrategy.rollback();
 			throw new EccoException("Error when retrieving commits.", e);
@@ -1592,7 +1582,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			Commit commit = repository.extract(configuration, nodes);
 			LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
 
-			commitDao.save(commit);		//TODO TBE save into repro direct
 			this.repositoryDao.store(repository);
 			this.transactionStrategy.end();
 			return commit;
