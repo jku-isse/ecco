@@ -152,5 +152,4 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.modules.get(module.getOrder()).put(module, module);
 		return module;
 	}
-
 }

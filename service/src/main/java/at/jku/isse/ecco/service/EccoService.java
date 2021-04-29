@@ -682,7 +682,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 			Repository repository = this.repositoryDao.load();
 			this.transactionStrategy.end();
-			repository.setCommits(getCommits());		//TODO check for better way to set commits
+			repository.setCommits(getCommits());		//TODO TBE save commit direct in Repro
  			return repository;
 		} catch (EccoException e) {
 			this.transactionStrategy.rollback();
@@ -1592,7 +1592,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			Commit commit = repository.extract(configuration, nodes);
 			LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
 
-			commitDao.save(commit);
+			commitDao.save(commit);		//TODO TBE save into repro direct
 			this.repositoryDao.store(repository);
 			this.transactionStrategy.end();
 			return commit;
