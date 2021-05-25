@@ -145,6 +145,7 @@ public class CommitView extends OperationView implements EccoListener {
 			if (selectedDirectory != null) {
 				baseDirTextField.setText(selectedDirectory.toPath().toString());
 			}
+			configurationStringTextField.setText(this.service.getConfigFile(selectedDirectory.toPath()));		//sets configuration string if .config file found
 		});
 
 

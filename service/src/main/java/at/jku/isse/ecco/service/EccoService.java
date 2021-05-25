@@ -1540,16 +1540,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return The resulting commit object.
 	 */
 	public synchronized Commit commit() {
-		Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
+		return this.commit(getConfigFile(this.baseDir));
+	}
+
+	public String getConfigFile(Path path) {
+		Path configFile = path.resolve(CONFIG_FILE_NAME);
 		try {
 			String configurationString = "";
 			if (Files.exists(configFile))
 				configurationString = new String(Files.readAllBytes(configFile)).trim();
-			return this.commit(configurationString);
+			return configurationString;
 		} catch (IOException e) {
 			throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
 		}
 	}
+
 
 	/**
 	 * Commits the files in the base directory using the given configuration string.
