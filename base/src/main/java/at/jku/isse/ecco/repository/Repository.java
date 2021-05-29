@@ -44,6 +44,8 @@ public interface Repository extends Persistable {
 
 	public Collection<Commit> getCommits();
 
+	public void addCommit(Commit commit);
+
 	/**
 	 * Private repository interface.
 	 */
@@ -473,11 +475,7 @@ public interface Repository extends Persistable {
 						}
 					}
 
-
 					Trees.checkConsistency(intA.getRootNode());
-
-					//intA.add(origA);
-					//intA.add(association);
 					intA.getCounter().add(origA.getCounter());
 					intA.getCounter().add(association.getCounter());
 				}
@@ -511,13 +509,11 @@ public interface Repository extends Persistable {
 			// remove associations from repository
 			for (Association.Op origA : toRemove) {
 				this.removeAssociation(origA);
-				//commit.deleteAssociations(origA);	//TBE TODO
 			}
 
 			// add associations to repository
 			for (Association.Op newA : toAdd) {
 				this.addAssociation(newA);
-				//commit.addAssociations(newA);		//TBE TODO
 			}
 		}
 

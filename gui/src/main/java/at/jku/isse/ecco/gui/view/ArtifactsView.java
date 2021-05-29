@@ -70,7 +70,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0));
         });
 
-
         // associations table
         TableView<AssociationInfo> associationsTable = new TableView<>();
         associationsTable.setEditable(true);
