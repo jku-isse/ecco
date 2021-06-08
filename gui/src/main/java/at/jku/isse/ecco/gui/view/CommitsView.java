@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.MainView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
@@ -15,9 +17,10 @@ import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.util.*;
 
@@ -32,6 +35,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
+
 
 		Button refreshButton = new Button("Refresh");
 		toolBar.getItems().add(refreshButton);
@@ -125,15 +129,21 @@ public class CommitsView extends BorderPane implements EccoListener {
 				if(selectedCommits.size() == 2) {
 					CommitComparisonView commitComparisonView =  new CommitComparisonView(service, selectedCommits.get(0), selectedCommits.get(1));
 					Stage stage = new Stage();
+					stage.initStyle(StageStyle.UTILITY);
+					stage.initModality(Modality.WINDOW_MODAL);
 					stage.setScene(new Scene(commitComparisonView));
+					stage.setTitle("Commit Comparison");
+
 					stage.show();
 				} else {
-					//TODO show Error message
-					System.out.println("TBE Error: Only two commits can be compared");
+					ExceptionAlert alert = new ExceptionAlert(new Throwable());
+					alert.setTitle("Commit Compare Error");
+					alert.setHeaderText("Please choose exactly two commits");
+
+					alert.showAndWait();
 				}
 
 				Platform.runLater(() -> toolBar.setDisable(false));
-				//new Thread(composeTask).start();
 			}
 		});
 
