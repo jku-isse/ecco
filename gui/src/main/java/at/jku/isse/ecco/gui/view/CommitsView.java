@@ -78,14 +78,16 @@ public class CommitsView extends BorderPane implements EccoListener {
 
 		TableColumn<CommitInfo, String> idCol = new TableColumn<>("Id");
 		TableColumn<CommitInfo, Boolean> selectedCommitCol = new TableColumn<>("Selected");
+		TableColumn<CommitInfo, String> commitMessage = new TableColumn<>("Commit Message");
 		TableColumn<CommitInfo, String> commiter = new TableColumn<>("Commiter");
 		TableColumn<CommitInfo, String> date = new TableColumn<>("Date");
 		TableColumn<CommitInfo, String> commitsCol = new TableColumn<>("Commits");		//Table Title
 
-		commitsCol.getColumns().addAll(idCol, selectedCommitCol, commiter, date);		//TBE Add columns
+		commitsCol.getColumns().addAll(idCol, selectedCommitCol, commitMessage, commiter, date);		//TBE Add columns
 		commitsTable.getColumns().setAll(commitsCol);
 
 		idCol.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getId()));
+		commitMessage.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getCommitMassage()));
 		commiter.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getUsername()));
 		date.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getDate() == null ? "" : param.getValue().getCommit().getDate().toString()));  //TODO do better
 

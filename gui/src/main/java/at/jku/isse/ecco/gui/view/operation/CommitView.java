@@ -122,6 +122,17 @@ public class CommitView extends OperationView implements EccoListener {
 		row++;
 
 
+		Label commitMessageLabel = new Label("Commit Message: ");
+		gridPane.add(commitMessageLabel, 0, row, 1, 1);
+
+		TextField commitMessageStringTextField = new TextField();
+		commitMessageStringTextField.setDisable(false);
+		commitMessageLabel.setLabelFor(commitMessageStringTextField);
+		gridPane.add(commitMessageStringTextField, 1, row, 2, 1);
+		row++;
+
+
+
 		Label configurationStringLabel = new Label("Configuration: ");
 		gridPane.add(configurationStringLabel, 0, row, 1, 1);
 
@@ -154,6 +165,7 @@ public class CommitView extends OperationView implements EccoListener {
 
 			Path baseDir = Paths.get(baseDirTextField.getText());
 			String configurationString = configurationStringTextField.getText();
+			String commitMessage = commitMessageStringTextField.getText();
 
 			this.service.setBaseDir(baseDir);
 
@@ -164,9 +176,9 @@ public class CommitView extends OperationView implements EccoListener {
 				@Override
 				public Commit call() {
 					if (!configurationString.isEmpty())
-						return CommitView.this.service.commit(configurationString);
+						return CommitView.this.service.commit(commitMessage, configurationString);
 					else
-						return CommitView.this.service.commit();
+						return CommitView.this.service.commit(commitMessage);
 				}
 
 				@Override

@@ -21,6 +21,7 @@ public class MemCommit implements Commit {
 	private String committer;
 	private Configuration configuration;
 	private Date committingDate;
+	private String commitMessage;
 	private Collection<Association> associations = new ArrayList<>();;
 
 
@@ -56,6 +57,17 @@ public class MemCommit implements Commit {
 	public String getUsername() {
 		return committer;
 	}
+
+	@Override
+	public void setCommitMassage(String commitMessage) {
+		this.commitMessage = commitMessage;
+	}
+
+	@Override
+	public String getCommitMassage() {
+		return commitMessage;
+	}
+
 
 	@Override
 	public void setCurrDate() {

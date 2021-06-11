@@ -1539,8 +1539,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @return The resulting commit object.
 	 */
-	public synchronized Commit commit() {
-		return this.commit(getConfigFile(this.baseDir));
+	public synchronized Commit commit(String commitMessage) {
+		return this.commit(commitMessage, getConfigFile(this.baseDir));
 	}
 
 	public String getConfigFile(Path path) {
@@ -1562,8 +1562,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configurationString The configuration string.
 	 * @return The resulting commit object.
 	 */
-	public synchronized Commit commit(String configurationString) {
-		return this.commit(this.parseConfigurationString(configurationString));
+	public synchronized Commit commit(String commitMessage, String configurationString) {
+		Commit commit = this.commit(this.parseConfigurationString(configurationString));
+		commit.setCommitMassage(commitMessage);
+		return commit;
 	}
 
 	/**
