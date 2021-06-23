@@ -1563,8 +1563,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @return The resulting commit object.
 	 */
 	public synchronized Commit commit(String commitMessage, String configurationString) {
-		Commit commit = this.commit(this.parseConfigurationString(configurationString));
-		commit.setCommitMassage(commitMessage);
+		Commit commit = this.commit(commitMessage, this.parseConfigurationString(configurationString));
 		return commit;
 	}
 
@@ -1574,7 +1573,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 * @param configuration The configuration to be commited.
 	 * @return The resulting commit object or null in case of an error.
 	 */
-	public synchronized Commit commit(Configuration configuration) {
+	public synchronized Commit commit(String commitMessage, Configuration configuration) {
 		this.checkInitialized();
 
 		checkNotNull(configuration);
@@ -1588,6 +1587,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 			long startTime = System.currentTimeMillis();
 			Commit commit = repository.extract(configuration, nodes);
 			LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
+
+			commit.setCommitMassage(commitMessage);
 
 			this.repositoryDao.store(repository);
 			this.transactionStrategy.end();
