@@ -121,25 +121,22 @@ public class CommitView extends OperationView implements EccoListener {
 		gridPane.add(selectBaseDirectoryButton, 2, row, 1, 1);
 		row++;
 
-
 		Label commitMessageLabel = new Label("Commit Message: ");
 		gridPane.add(commitMessageLabel, 0, row, 1, 1);
 
 		TextField commitMessageStringTextField = new TextField();
 		commitMessageStringTextField.setDisable(false);
 		commitMessageLabel.setLabelFor(commitMessageStringTextField);
-		gridPane.add(commitMessageStringTextField, 1, row, 2, 1);
+		gridPane.add(commitMessageStringTextField, 1, row, 3, 1);
 		row++;
 
-
-
 		Label configurationStringLabel = new Label("Configuration: ");
-		gridPane.add(configurationStringLabel, 0, row, 1, 1);
+		gridPane.add(configurationStringLabel, 0, row, 3, 1);
 
 		TextField configurationStringTextField = new TextField();
 		configurationStringTextField.setDisable(false);
 		configurationStringLabel.setLabelFor(configurationStringTextField);
-		gridPane.add(configurationStringTextField, 1, row, 2, 1);
+		gridPane.add(configurationStringTextField, 1, row, 3, 1);
 		row++;
 
 
@@ -217,7 +214,7 @@ public class CommitView extends OperationView implements EccoListener {
 
 		this.fit();
 
-		Platform.runLater(configurationStringTextField::requestFocus);
+		Platform.runLater(commitMessageStringTextField::requestFocus);
 	}
 
 	/**
