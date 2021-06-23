@@ -91,16 +91,23 @@ public class CommitsView extends BorderPane implements EccoListener {
 		commiter.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getUsername()));
 		date.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getDate() == null ? "" : param.getValue().getCommit().getDate().toString()));  //TODO do better
 
+		selectedCommitCol.maxWidthProperty().bind(commitsTable.widthProperty().divide(1.2));		//selected Column smaller than the other columns
 		selectedCommitCol.setCellFactory(column -> new CheckBoxTableCell<>());
 		selectedCommitCol.setCellValueFactory(cellData -> {
 			CommitInfo cellValue = cellData.getValue();
 			BooleanProperty property = cellValue.isSelected();
 
 			// Add listener to handler change
-			property.addListener((observable, oldValue, newValue) -> cellValue.setSelected(newValue));
-
+			property.addListener((observable, oldValue, newValue) -> {
+						if (commitsData.stream().filter(x -> x.isSelected().getValue()).count() > 2) {
+							cellValue.setSelected(oldValue);
+						} else {
+							cellValue.setSelected(newValue);
+						}
+					});
 			return property;
 		});
+
 
 		commitsTable.setItems(this.commitsData);
 
