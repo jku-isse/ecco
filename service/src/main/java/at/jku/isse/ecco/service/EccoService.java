@@ -1539,9 +1539,20 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	 *
 	 * @return The resulting commit object.
 	 */
+	public synchronized Commit commit() {
+		return this.commit("", getConfigFile(this.baseDir));
+	}
+
+	/**
+	 * Commits the files in the base directory with the commit message using the configuration string given in file {@link #CONFIG_FILE_NAME} or an empty configuration string if the file does not exist.
+	 *
+	 * @return The resulting commit object.
+	 */
 	public synchronized Commit commit(String commitMessage) {
 		return this.commit(commitMessage, getConfigFile(this.baseDir));
 	}
+
+
 
 	public String getConfigFile(Path path) {
 		Path configFile = path.resolve(CONFIG_FILE_NAME);
