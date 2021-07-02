@@ -415,8 +415,6 @@ public interface Repository extends Persistable {
 			// create commit object
 			Commit commit = this.getEntityFactory().createCommit();
 			commit.setConfiguration(repoConfiguration);
-			commit.setUsername();
-			commit.setCurrDate();
 			addCommit(commit);
 
 			// do actual extraction
@@ -486,7 +484,7 @@ public interface Repository extends Persistable {
 				} else {
 					toRemove.add(origA);
 
-					commit.deleteAssociation(origA);			// add association to new commit
+					commit.deleteAssociation(origA);			// delete association from new commit		//TODO can there even be any?
 					for (Commit c : getCommits()) {				// updates associations in previous commits
 						if (c.containsAssociation(origA)) {
 							c.deleteAssociation(origA);

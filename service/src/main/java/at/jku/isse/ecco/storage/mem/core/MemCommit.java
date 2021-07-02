@@ -26,6 +26,8 @@ public class MemCommit implements Commit {
 
 
 	public MemCommit() {
+		committer = System.getProperty("user.name"); 	//gets username of the logged in User of the OS
+		committingDate = new Date();
 	}
 
 	@Override
