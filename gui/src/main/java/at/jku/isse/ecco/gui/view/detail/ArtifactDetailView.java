@@ -33,7 +33,7 @@ public class ArtifactDetailView extends BorderPane {
 	public ArtifactDetailView(EccoService service) {
 		this.service = service;
 
-		this.partialOrderGraphView = new PartialOrderGraphView();
+		//this.partialOrderGraphView = new PartialOrderGraphView();
 	}
 
 
@@ -53,6 +53,7 @@ public class ArtifactDetailView extends BorderPane {
 
 		// if node is an ordered node display its sequence graph
 		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
+			this.partialOrderGraphView = new PartialOrderGraphView();
 			detailsSplitPane.getItems().add(this.partialOrderGraphView);
 			this.partialOrderGraphView.showGraph(node.getArtifact().getSequenceGraph());
 		}
@@ -66,14 +67,8 @@ public class ArtifactDetailView extends BorderPane {
 
 		if (this.initialized) {
 			// select artifact viewer
-			ArtifactViewer artifactViewer = null;
-			for (ArtifactViewer tempArtifactViewer : artifactViewers) {
-				if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
-					String pluginId = getPluginId(node);
-					if (tempArtifactViewer.getPluginId().equals(pluginId))
-						artifactViewer = tempArtifactViewer;
-				}
-			}
+
+			ArtifactViewer artifactViewer = getArtifactViewer(node);
 
 			// if an artifact viewer was found display it
 			if (artifactViewer != null && artifactViewer instanceof Pane) {
@@ -95,6 +90,24 @@ public class ArtifactDetailView extends BorderPane {
 			}
 		}
 
+	}
+
+	public ArtifactViewer getArtifactViewer(Node node) {
+		if (!this.initialized && this.service.isInitialized()) {
+			this.service.getInjector().injectMembers(this);
+
+			this.initialized = true;
+		}
+
+		ArtifactViewer artifactViewer = null;
+		for (ArtifactViewer tempArtifactViewer : artifactViewers) {
+			if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
+				String pluginId = getPluginId(node);
+				if (tempArtifactViewer.getPluginId().equals(pluginId))
+					artifactViewer = tempArtifactViewer;
+			}
+		}
+		return artifactViewer;
 	}
 
 

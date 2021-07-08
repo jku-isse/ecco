@@ -9,6 +9,7 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -16,11 +17,11 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -161,26 +162,41 @@ public class CommitsView extends BorderPane implements EccoListener {
 
 		//Detail view
 		ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
+		SplitPane detailView = new SplitPane();
+		detailView.setOrientation(Orientation.VERTICAL);
+		detailView.getItems().addAll(commitDetailView, artifactDetailView);
+
 		commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
 			if (newValue != null) {
 				LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
 				for (Association association : newValue.getCommit().getAssociations()) {
 					rootNode.addOrigNode(association.getRootNode());
 				}
-				artifactDetailView.showTree(rootNode.getChildren().get(0).getChildren().get(0));
+				artifactDetailView.showTree(findBestArtifact(artifactDetailView, rootNode));
 			}
 		});
 
-		VBox vbox = new VBox(commitDetailView, artifactDetailView);
-
 		// add to split pane
-		splitPane.getItems().addAll(commitsTable, vbox);
+		splitPane.getItems().addAll(commitsTable, detailView);
 
 		service.addListener(this);
 
 		if (!service.isInitialized()) {
 			this.setDisable(true);
 		}
+	}
+
+	public static Node findBestArtifact(ArtifactDetailView artifactDetailView, Node node) {
+		Node bestNode = null;
+		for (Node n : node.getChildren()) {
+			if (artifactDetailView.getArtifactViewer(n) != null) {
+				bestNode = n;
+				break;
+			} else {
+				bestNode = findBestArtifact(artifactDetailView, n);
+			}
+		}
+		return bestNode;
 	}
 
 
@@ -227,9 +243,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 		public void setSelected(boolean selected) {
 			this.selected.set(selected);
 		}
-
 	}
-
 }
 
 
