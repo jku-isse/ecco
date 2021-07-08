@@ -172,7 +172,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 				for (Association association : newValue.getCommit().getAssociations()) {
 					rootNode.addOrigNode(association.getRootNode());
 				}
-				artifactDetailView.showTree(findBestArtifact(artifactDetailView, rootNode));
+				artifactDetailView.showTree(ArtifactDetailView.findBestArtifact(artifactDetailView, rootNode));
 			}
 		});
 
@@ -185,20 +185,6 @@ public class CommitsView extends BorderPane implements EccoListener {
 			this.setDisable(true);
 		}
 	}
-
-	public static Node findBestArtifact(ArtifactDetailView artifactDetailView, Node node) {
-		Node bestNode = null;
-		for (Node n : node.getChildren()) {
-			if (artifactDetailView.getArtifactViewer(n) != null) {
-				bestNode = n;
-				break;
-			} else {
-				bestNode = findBestArtifact(artifactDetailView, n);
-			}
-		}
-		return bestNode;
-	}
-
 
 	@Override
 	public void statusChangedEvent(EccoService service) {

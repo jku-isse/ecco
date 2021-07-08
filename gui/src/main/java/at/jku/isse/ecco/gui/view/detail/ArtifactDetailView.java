@@ -92,7 +92,7 @@ public class ArtifactDetailView extends BorderPane {
 
 	}
 
-	public ArtifactViewer getArtifactViewer(Node node) {
+	private ArtifactViewer getArtifactViewer(Node node) {
 		if (!this.initialized && this.service.isInitialized()) {
 			this.service.getInjector().injectMembers(this);
 
@@ -108,6 +108,19 @@ public class ArtifactDetailView extends BorderPane {
 			}
 		}
 		return artifactViewer;
+	}
+
+	public static Node findBestArtifact(ArtifactDetailView artifactDetailView, Node node) {
+		Node bestNode = null;
+		for (Node n : node.getChildren()) {
+			if (artifactDetailView.getArtifactViewer(n) != null) {
+				bestNode = n;
+				break;
+			} else {
+				bestNode = findBestArtifact(artifactDetailView, n);
+			}
+		}
+		return bestNode;
 	}
 
 

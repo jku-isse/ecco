@@ -12,8 +12,6 @@ import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
-
-import javafx.scene.paint.Color;
 import scala.Tuple2;
 
 import java.util.Collection;
@@ -21,7 +19,6 @@ import java.util.Collection;
 public class CommitComparisonView extends OperationView implements EccoListener {
 
     final ObservableList<Tuple2<Association, Association>> comparisonData = FXCollections.observableArrayList();
-    private final ObservableList<ArtifactsView.AssociationInfo> associationsData = FXCollections.observableArrayList();
 
     public CommitComparisonView(final EccoService service, Commit oldCommit, Commit newCommit) {
 
@@ -73,12 +70,12 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
         commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
             if (newValue != null) {
-                artifactDetailView.showTree(newValue._1 != null ? CommitsView.findBestArtifact(artifactDetailView, newValue._1.getRootNode()) : CommitsView.findBestArtifact(artifactDetailView, newValue._2.getRootNode()));
+                artifactDetailView.showTree(newValue._1 != null ? ArtifactDetailView.findBestArtifact(artifactDetailView, newValue._1.getRootNode()) : ArtifactDetailView.findBestArtifact(artifactDetailView, newValue._2.getRootNode()));
             }
         });
 
         // add to split pane
-        splitPane.getItems().addAll(commitsTable, artifactDetailView);      //TODO add further views
+        splitPane.getItems().addAll(commitsTable, artifactDetailView);
 
 
         service.addListener(this);
