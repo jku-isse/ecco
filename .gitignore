@@ -10,6 +10,10 @@ bin
 *.iws
 *.ipr
 *.db
+*.png
+*.jar
 u
 ui
 test-output
+/adapter/at.jku.cdl.ecco.adapter.java-patched/
+/adapter/java-patched/

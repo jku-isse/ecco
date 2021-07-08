@@ -2,16 +2,18 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.gui.view.operation.OperationView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.beans.binding.When;
-import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.*;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
 
+import javafx.scene.paint.Color;
 import scala.Tuple2;
 
 import java.util.Collection;
@@ -19,6 +21,7 @@ import java.util.Collection;
 public class CommitComparisonView extends OperationView implements EccoListener {
 
     final ObservableList<Tuple2<Association, Association>> comparisonData = FXCollections.observableArrayList();
+    private final ObservableList<ArtifactsView.AssociationInfo> associationsData = FXCollections.observableArrayList();
 
     public CommitComparisonView(final EccoService service, Commit oldCommit, Commit newCommit) {
 
@@ -43,22 +46,22 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Tuple2<Association, Association>, String> oldId = new TableColumn<>("Id");
-        TableColumn<Tuple2<Association, Association>, String> oldArtifact = new TableColumn<>("Condition");
+        TableColumn<Tuple2<Association, Association>, String> oldAssociation = new TableColumn<>("Condition");
         TableColumn<Tuple2<Association, Association>, String> newId = new TableColumn<>("Id");
-        TableColumn<Tuple2<Association, Association>, String> newArtifact = new TableColumn<>("Condition");
+        TableColumn<Tuple2<Association, Association>, String> newAssociation = new TableColumn<>("Condition");
         TableColumn<Tuple2<Association, Association>, String> oldCommitCol = new TableColumn<>("Commit: " + oldCommit.getId().substring(0, 9) + "...");        //Table Title
         TableColumn<Tuple2<Association, Association>, String> newCommitCol = new TableColumn<>("Commit: " + newCommit.getId().substring(0, 9) + "...");        //Table Title
 
-        oldCommitCol.getColumns().addAll(oldId, oldArtifact);
-        newCommitCol.getColumns().addAll(newId, newArtifact);
+        oldCommitCol.getColumns().addAll(oldId, oldAssociation);
+        newCommitCol.getColumns().addAll(newId, newAssociation);
         commitsTable.getColumns().setAll(oldCommitCol, newCommitCol);
 
         oldId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue()._1 == null ? "" : param.getValue()._1.getId()));
         newId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue()._2 == null ? "" : param.getValue()._2.getId()));
-        oldArtifact.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty())
+        oldAssociation.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty())
                 .then(param.getValue()._1 == null ? "" : param.getValue()._1.computeCondition().getSimpleModuleRevisionConditionString())
                 .otherwise(param.getValue()._1 == null ? "" : param.getValue()._1.computeCondition().getModuleRevisionConditionString()));
-        newArtifact.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty())
+        newAssociation.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty())
                 .then(param.getValue()._2 == null ? "" : param.getValue()._2.computeCondition().getSimpleModuleRevisionConditionString())
                 .otherwise(param.getValue()._2 == null ? "" : param.getValue()._2.computeCondition().getModuleRevisionConditionString()));
 
@@ -66,8 +69,17 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         fillCompasisonData(oldCommit, newCommit);
         commitsTable.setItems(comparisonData);
 
+        //Detail view
+        ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
+        commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
+            if (newValue != null) {
+                artifactDetailView.showTree(newValue._1 != null ? newValue._1.getRootNode().getChildren().get(0).getChildren().get(0) : newValue._2.getRootNode().getChildren().get(0).getChildren().get(0));       //TODO always take the first one?
+            }
+        });
+
         // add to split pane
-        splitPane.getItems().addAll(commitsTable);      //TODO add further views
+        splitPane.getItems().addAll(commitsTable, artifactDetailView);      //TODO add further views
+
 
         service.addListener(this);
 
