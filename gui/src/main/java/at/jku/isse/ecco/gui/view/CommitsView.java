@@ -1,8 +1,10 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.composition.LazyCompositionRootNode;
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.gui.MainView;
+import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
@@ -18,6 +20,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -156,8 +159,22 @@ public class CommitsView extends BorderPane implements EccoListener {
 			}
 		});
 
+		//Detail view
+		ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
+		commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
+			if (newValue != null) {
+				LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+				for (Association association : newValue.getCommit().getAssociations()) {
+					rootNode.addOrigNode(association.getRootNode());
+				}
+				artifactDetailView.showTree(rootNode.getChildren().get(0).getChildren().get(0));
+			}
+		});
+
+		VBox vbox = new VBox(commitDetailView, artifactDetailView);
+
 		// add to split pane
-		splitPane.getItems().addAll(commitsTable, commitDetailView);
+		splitPane.getItems().addAll(commitsTable, vbox);
 
 		service.addListener(this);
 
