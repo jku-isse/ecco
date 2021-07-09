@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
@@ -101,6 +101,8 @@ public class RepositoryTest {
 
     @Test(groups = {"integration", "gui"})
     public void setupReproForManualInspectionBigHistory() {     //TBE
+
+        long starttime =  System.currentTimeMillis();
         // open repository
         EccoService service = new EccoService();
 
@@ -120,14 +122,17 @@ public class RepositoryTest {
         service.setRepositoryDir(p);
         service.init();
 
-       //int commitNumber = 1;
+        List<Long> time = new ArrayList<>();
         File[] files = basePath.toFile().listFiles();
+        long prevTime = System.currentTimeMillis();
         for(int commitNumber = 1; commitNumber < files.length; commitNumber++) {
             service.setBaseDir(basePath.resolve(files[commitNumber].getName()));
             System.out.println(files[commitNumber].getName());
             service.commit(commitNumber + ". Commit: " + files[commitNumber].getName());
-            //commitNumber++;
+            time.add(System.currentTimeMillis()- prevTime);
+            prevTime = System.currentTimeMillis();
         }
+        System.out.println(System.currentTimeMillis() - starttime);
+        System.out.println(time.toString());
     }
-
 }
