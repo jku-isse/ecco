@@ -29,11 +29,8 @@ public class ArtifactDetailView extends BorderPane {
 
 	private PartialOrderGraphView partialOrderGraphView;
 
-
 	public ArtifactDetailView(EccoService service) {
 		this.service = service;
-
-		//this.partialOrderGraphView = new PartialOrderGraphView();
 	}
 
 
@@ -41,7 +38,6 @@ public class ArtifactDetailView extends BorderPane {
 		SplitPane splitPane = new SplitPane();
 		splitPane.setOrientation(Orientation.HORIZONTAL);
 		this.setCenter(splitPane);
-
 
 		SplitPane detailsSplitPane = new SplitPane();
 		detailsSplitPane.setOrientation(Orientation.VERTICAL);
@@ -91,6 +87,7 @@ public class ArtifactDetailView extends BorderPane {
 		}
 
 	}
+
 
 	private ArtifactViewer getArtifactViewer(Node node) {
 		if (!this.initialized && this.service.isInitialized()) {

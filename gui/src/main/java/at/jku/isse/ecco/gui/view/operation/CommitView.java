@@ -50,7 +50,7 @@ public class CommitView extends OperationView implements EccoListener {
 		this.splitPane.setOrientation(Orientation.VERTICAL);
 
 		// commit detail view
-		this.commitDetailView = new CommitDetailView(service);
+		this.commitDetailView = new CommitDetailView();
 
 		// log table
 		this.logTable = new TableView<>();

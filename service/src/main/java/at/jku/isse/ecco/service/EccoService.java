@@ -1546,6 +1546,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Commits the files in the base directory with the commit message using the configuration string given in file {@link #CONFIG_FILE_NAME} or an empty configuration string if the file does not exist.
 	 *
+	 * @param commitMessage the commit message as string.
 	 * @return The resulting commit object.
 	 */
 	public synchronized Commit commit(String commitMessage) {
@@ -1553,7 +1554,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	}
 
 
-
+	/**
+	 * Gets the configuration by the given path.
+	 *
+	 * @param path the path to the config file.
+	 * @return the configuration string.
+	 */
 	public String getConfigFile(Path path) {
 		Path configFile = path.resolve(CONFIG_FILE_NAME);
 		try {
@@ -1570,6 +1576,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Commits the files in the base directory using the given configuration string.
 	 *
+	 * @param commitMessage the commit message as string.
 	 * @param configurationString The configuration string.
 	 * @return The resulting commit object.
 	 */
@@ -1581,6 +1588,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 	/**
 	 * Commits the files in the base directory as the given configuration and returns the resulting commit object, or null in case of an error.
 	 *
+	 * @param commitMessage the commit message as string.
 	 * @param configuration The configuration to be commited.
 	 * @return The resulting commit object or null in case of an error.
 	 */

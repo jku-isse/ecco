@@ -67,12 +67,11 @@ public class CommitsView extends BorderPane implements EccoListener {
 			}
 		});
 
-		toolBar.getItems().add(new Separator());
 
+		toolBar.getItems().add(new Separator());
 
 		SplitPane splitPane = new SplitPane();
 		this.setCenter(splitPane);
-
 
 		// list of commits
 		TableView<CommitInfo> commitsTable = new TableView<>();
@@ -87,7 +86,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 		TableColumn<CommitInfo, String> date = new TableColumn<>("Date");
 		TableColumn<CommitInfo, String> commitsCol = new TableColumn<>("Commits");		//Table Title
 
-		commitsCol.getColumns().addAll(idCol, selectedCommitCol, commitMessage, commiter, date);		//TBE Add columns
+		commitsCol.getColumns().addAll(idCol, selectedCommitCol, commitMessage, commiter, date);		//Add columns
 		commitsTable.getColumns().setAll(commitsCol);
 
 		idCol.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getId()));
@@ -111,13 +110,11 @@ public class CommitsView extends BorderPane implements EccoListener {
 					});
 			return property;
 		});
-
-
 		commitsTable.setItems(this.commitsData);
 
-
 		// commit details view
-		CommitDetailView commitDetailView = new CommitDetailView(service);
+		CommitDetailView commitDetailView = new CommitDetailView();
+
 
 		commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
 			if (newValue != null) {
@@ -201,13 +198,6 @@ public class CommitsView extends BorderPane implements EccoListener {
 			Platform.runLater(() -> this.setDisable(true));
 		}
 	}
-
-
-
-/*	@Override
-	public void commitsChangedEvent(EccoService service, Commit commit) {
-		Platform.runLater(() -> this.commitsData.add();		//TODO check if new CommitInfo
-	}*/
 
 	public class CommitInfo {
 		private Commit commit;

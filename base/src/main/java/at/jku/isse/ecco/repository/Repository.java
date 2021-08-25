@@ -85,11 +85,9 @@ public interface Repository extends Persistable {
 
 		public Feature addFeature(String id, String name);
 
-
 		public void addAssociation(Association.Op association);
 
 		public void removeAssociation(Association.Op association);
-
 
 		public Feature getOrphanedFeature(String id, String name);
 
@@ -98,7 +96,6 @@ public interface Repository extends Persistable {
 		public int getMaxOrder();
 
 		public void setMaxOrder(int maxOrder);
-
 
 		public EntityFactory getEntityFactory();
 

@@ -15,7 +15,7 @@ import java.util.List;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 public class RepositoryTest {
-    Path basePath = Path.of("D:\\Eigene Daten\\Studium\\Studium\\LVAs\\6_Semester\\Bsc\\ecco\\examples\\image_variants"); //TODO change to relative path
+    Path basePath = Path.of("D:\\Eigene Daten\\Studium\\Studium\\LVAs\\6_Semester\\Bsc\\ecco\\examples\\image_variants"); //TODO adapt path
 
     @Test(groups = {"integration", "gui"})
     public void populateSimpleVersionRepository() {
@@ -27,8 +27,8 @@ public class RepositoryTest {
         String repo = ".ecco";
         Path p = basePath.resolve(repo);
         try {
-            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //TBE ALLOW INSECURE
-            Files.delete(p);        //TBE Works only if the dir is already empty. (done by  deleteDirectoryContents)
+            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //ALLOW INSECURE
+            Files.delete(p);        //Works only if the dir is already empty. (done by  deleteDirectoryContents)
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -71,8 +71,8 @@ public class RepositoryTest {
         String repo = ".ecco";
         Path p = basePath.resolve(repo);
         try {
-            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //TBE ALLOW INSECURE
-            Files.delete(p);        //TBE Works only if the dir is already empty. (done by  deleteDirectoryContents)
+            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //ALLOW INSECURE
+            Files.delete(p);        //Works only if the dir is already empty. (done by  deleteDirectoryContents)
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -97,10 +97,30 @@ public class RepositoryTest {
         service.setBaseDir(basePath.resolve("V4_purpleshirt_jacket_glasses"));
         service.commit();
         variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V5_stripedshirt_jacket_glasses"));
+        service.commit();
+        variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V6_stripedshirt_glasses"));
+        service.commit();
+        variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V7_purpleshirt_glasses"));
+        service.commit();
+        variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V8_stripedshirt_jacket"));
+        service.commit();
+        variantsCnt++;
+
+        service.setBaseDir(basePath.resolve("V9_stripedshirt_jacket_hat"));
+        service.commit();
+        variantsCnt++;
     }
 
     @Test(groups = {"integration", "gui"})
-    public void setupReproForManualInspectionBigHistory() {     //TBE
+    public void setupReproForManualInspectionBigHistory() {
 
         long starttime =  System.currentTimeMillis();
         // open repository
@@ -112,8 +132,8 @@ public class RepositoryTest {
         basePath = basePath.getParent().resolve("BigHistory");
         Path p = basePath.resolve(repo);
         try {
-            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //TBE ALLOW INSECURE
-            Files.delete(p);        //TBE Works only if the dir is already empty. (done by  deleteDirectoryContents)
+            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //ALLOW INSECURE
+            Files.delete(p);        //Works only if the dir is already empty. (done by  deleteDirectoryContents)
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -134,5 +154,8 @@ public class RepositoryTest {
         }
         System.out.println(System.currentTimeMillis() - starttime);
         System.out.println(time.toString());
+
+        System.out.println("Nr of Ass." + service.getRepository().getAssociations().size());
     }
+
 }

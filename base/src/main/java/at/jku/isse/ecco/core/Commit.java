@@ -20,7 +20,6 @@ public interface Commit extends Persistable {
 
 	public void setId(String id);
 
-
 	public Configuration getConfiguration();
 
 	public void setConfiguration(Configuration configuration);
