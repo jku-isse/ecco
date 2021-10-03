@@ -79,6 +79,8 @@ public interface Module extends Persistable {
 
 	public Collection<? extends ModuleRevision> getRevisions();
 
+	public ModuleRevision getOrphanedRevision(FeatureRevision[] pos, Feature[] neg);
+
 	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg);
 
 	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg);

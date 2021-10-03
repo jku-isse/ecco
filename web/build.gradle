@@ -30,9 +30,10 @@ dependencies {
 
 	implementation project(':ecco-service')
 
-	testRuntimeOnly project(':ecco-adapter-file')
-	testRuntimeOnly project(':ecco-adapter-text')
-	testRuntimeOnly project(':ecco-adapter-image')
+	// the following should be "testRuntimeOnly". however, for some reason these dependencies do not work at the moment.
+	testImplementation project(':ecco-adapter-file')
+	testImplementation project(':ecco-adapter-text')
+	testImplementation project(':ecco-adapter-image')
 }
 
 //sourceSets {

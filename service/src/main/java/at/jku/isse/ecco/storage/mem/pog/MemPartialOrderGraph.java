@@ -18,7 +18,7 @@ public class MemPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 //		this.tail.getArtifact().setSequenceNumber(TAIL_SEQUENCE_NUMBER);
 		this.head = new MemPartialOrderGraphNode(null);
 		this.tail = new MemPartialOrderGraphNode(null);
-//		this.head.addChild(this.tail);
+		this.head.addChild(this.tail);
 	}
 
 	@Override
