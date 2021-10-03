@@ -2,9 +2,11 @@ package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.CommitDao;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.mem.core.MemCommit;
+import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.dao.Database;
 import com.google.inject.Inject;
 
@@ -69,5 +71,20 @@ public class SerCommitDao extends SerAbstractGenericDao implements CommitDao {
 
 		return baseEntity;
 	}
+
+	public Variant save(Variant entity) throws EccoException {
+		final Database root = this.transactionStrategy.getDatabase();
+
+		final MemVariant baseEntity = (MemVariant) entity;
+
+		if (!root.getVariantIndex().containsKey(baseEntity.getId())) {
+			baseEntity.setId(root.nextCommitId());
+		}
+
+		root.getVariantIndex().put(baseEntity.getId(), baseEntity);
+
+		return baseEntity;
+	}
+
 
 }

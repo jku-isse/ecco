@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service.listener;
 
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;

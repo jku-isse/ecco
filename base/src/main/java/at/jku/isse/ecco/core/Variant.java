@@ -8,6 +8,10 @@ import at.jku.isse.ecco.feature.Configuration;
  */
 public interface Variant extends Persistable {
 
+	public String getId();
+
+	public void setId(String id);
+
 	public String getName();
 
 	public void setName(String name);

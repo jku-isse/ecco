@@ -21,7 +21,6 @@ public interface FeatureRevision extends Persistable {
 
 	public void setDescription(String description);
 
-
 	@Override
 	public int hashCode();
 

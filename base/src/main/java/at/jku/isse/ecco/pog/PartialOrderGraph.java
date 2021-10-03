@@ -200,6 +200,7 @@ public interface PartialOrderGraph extends Persistable {
 			State rightState = new State();
 			rightState.counters.put(other.getTail(), 0);
 			this.alignMemoizedBacktrackingRec(leftState, rightState, matrix);
+			//System.out.println(matrix.size());
 			IntObjectMap<Node.Op> result = this.backtrackingRec(leftState, rightState, matrix);
 
 			// set sequence number of matched artifacts
