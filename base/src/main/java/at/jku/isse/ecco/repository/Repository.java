@@ -53,6 +53,12 @@ public interface Repository extends Persistable {
 
 	public void updateVariant(Variant variant, Configuration configuration, String name);
 
+	public void setCommits(Collection<Commit> commits);
+
+	public Collection<Commit> getCommits();
+
+	public void addCommit(Commit commit);
+
 	/**
 	 * Private repository interface.
 	 */
@@ -102,7 +108,6 @@ public interface Repository extends Persistable {
 
 		public void removeAssociation(Association.Op association);
 
-
 		public Feature getOrphanedFeature(String id, String name);
 
 		public Module getOrphanedModule(Feature[] posFeatures, Feature[] neg);
@@ -110,7 +115,6 @@ public interface Repository extends Persistable {
 		public int getMaxOrder();
 
 		public void setMaxOrder(int maxOrder);
-
 
 		public EntityFactory getEntityFactory();
 
@@ -426,12 +430,13 @@ public interface Repository extends Persistable {
 				association.addObservation(moduleRevision);
 			}
 
-			// do actual extraction
-			this.extract(association);
-
 			// create commit object
 			Commit commit = this.getEntityFactory().createCommit();
 			commit.setConfiguration(repoConfiguration);
+			addCommit(commit);
+
+			// do actual extraction
+			this.extract(association, commit);
 
 			return commit;
 		}
@@ -445,7 +450,7 @@ public interface Repository extends Persistable {
 			checkNotNull(inputAs);
 
 			for (Association.Op inputA : inputAs) {
-				this.extract(inputA);
+				this.extract(inputA, null);
 			}
 		}
 
@@ -454,7 +459,7 @@ public interface Repository extends Persistable {
 		 *
 		 * @param association The association to be committed.
 		 */
-		public default void extract(Association.Op association) {
+		public default void extract(Association.Op association, Commit commit) {
 			checkNotNull(association);
 
 			Trees.checkConsistency(association.getRootNode());
@@ -479,10 +484,14 @@ public interface Repository extends Persistable {
 				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
 					toAdd.add(intA);
 
-					Trees.checkConsistency(intA.getRootNode());
+					commit.addAssociation(intA);		// add association to new commit
+					for (Commit c : getCommits()) {		// updates associations in previous commits
+						if (c.containsAssociation(origA)) {
+							c.addAssociation(intA);
+						}
+					}
 
-					//intA.add(origA);
-					//intA.add(association);
+					Trees.checkConsistency(intA.getRootNode());
 					intA.getCounter().add(origA.getCounter());
 					intA.getCounter().add(association.getCounter());
 				}
@@ -492,12 +501,21 @@ public interface Repository extends Persistable {
 					Trees.checkConsistency(origA.getRootNode());
 				} else {
 					toRemove.add(origA);
+
+					commit.deleteAssociation(origA);			// delete association from new commit		//TODO can there even be any?
+					for (Commit c : getCommits()) {				// updates associations in previous commits
+						if (c.containsAssociation(origA)) {
+							c.deleteAssociation(origA);
+						}
+					}
+
 				}
 			}
 
 			// REMAINDER
 			if (!association.getRootNode().getChildren().isEmpty()) { // if the remainder is not empty store it
 				toAdd.add(association);
+				commit.addAssociation(association);
 
 				Trees.sequence(association.getRootNode());
 				Trees.updateArtifactReferences(association.getRootNode());
@@ -1220,7 +1238,7 @@ public interface Repository extends Persistable {
 				}
 
 				// commit association to this repository
-				this.extract(association);
+				this.extract(association, null);
 			}
 		}
 

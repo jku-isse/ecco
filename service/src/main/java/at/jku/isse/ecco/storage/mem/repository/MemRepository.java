@@ -2,6 +2,7 @@ package at.jku.isse.ecco.storage.mem.repository;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Variant;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -26,19 +27,17 @@ public final class MemRepository implements Repository, Repository.Op {
 	private Collection<Association.Op> associations;
 	private ArrayList<Variant> variants;
 	private List<Map<MemModule, MemModule>> modules;
-
+	private Collection<Commit> commits;
 	private int maxOrder;
 
-
 	public MemRepository() {
-		//this.features = new HashMap<>();
 		this.features = Maps.mutable.empty();
 		this.associations = new ArrayList<>();
 		this.variants =  new ArrayList<>();
 		this.modules = new ArrayList<>();
+		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
 	}
-
 
 	@Override
 	public Collection<Feature> getFeatures() {
@@ -95,6 +94,23 @@ public final class MemRepository implements Repository, Repository.Op {
 		return features;
 	}
 
+	@Override
+	public void setCommits(Collection<Commit> commits) {
+		this.commits = commits;
+	}
+
+	@Override
+	public Collection<Commit> getCommits() {
+		return commits;
+	}
+
+	@Override
+	public void addCommit(final Commit commit) {
+		do {		//sets id
+			commit.setId(UUID.randomUUID().toString());
+		} while(getCommits().contains(commit));		//Just to make sure no Id is given twice
+		commits.add(commit);
+	}
 
 	@Override
 	public Collection<? extends Module> getModules(int order) {
@@ -217,5 +233,4 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.modules.get(module.getOrder()).put(module, module);
 		return module;
 	}
-
 }
