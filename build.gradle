@@ -27,8 +27,8 @@ subprojects {
 	apply plugin: 'nebula.ospackage'
 	//apply plugin: 'checkstyle'
 
-	sourceCompatibility = JavaVersion.VERSION_15
-	targetCompatibility = JavaVersion.VERSION_15
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
 
 	repositories {
 		mavenCentral()
@@ -85,6 +85,10 @@ subprojects {
 		new File(getProjectDir(), 'src/integrationTest/resources/testng.xml').exists()
 	}
 	check.dependsOn -= integrationTest
+
+	tasks.named("processIntegrationTestResources") {
+		duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	}
 
 	tasks.withType(Test) {
 		reports.html.destination = file("${reporting.baseDir}/${name}")
