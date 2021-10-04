@@ -9,10 +9,7 @@ import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
 import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.core.Remote;
+import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.dao.RemoteDao;
 import at.jku.isse.ecco.dao.RepositoryDao;
@@ -27,6 +24,7 @@ import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.service.listener.ServerListener;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.storage.StoragePlugin;
+import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -201,14 +199,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private DispatchReader reader;
     @Inject
     private DispatchWriter writer;
-
-//	public ArtifactReader getReader() {
-//		return this.reader;
-//	}
-//
-//	public ArtifactWriter getWriter() {
-//		return this.writer;
-//	}
 
     @Inject
     private EntityFactory entityFactory;
@@ -710,7 +700,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configurationString The configuration string to parse.
      * @return The configuration object.
      */
-    private Configuration parseConfigurationString(String configurationString) {
+    public Configuration parseConfigurationString(String configurationString) {
         checkNotNull(configurationString);
 
         if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
@@ -1542,7 +1532,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The resulting commit object.
      */
     public synchronized Commit commit() {
-        return this.commit("", getConfigFile(this.baseDir));
+        return this.commit("", getConfigStringFromFile(this.baseDir));
     }
 
     /**
@@ -1552,7 +1542,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The resulting commit object.
      */
     public synchronized Commit commit(String commitMessage) {
-        return this.commit(commitMessage, getConfigFile(this.baseDir));
+        return this.commit(commitMessage, getConfigStringFromFile(this.baseDir));
     }
 
 
@@ -1562,7 +1552,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param path the path to the config file.
      * @return the configuration string.
      */
-    public String getConfigFile(Path path) {
+    public String getConfigStringFromFile(Path path) {
         Path configFile = path.resolve(CONFIG_FILE_NAME);
         try {
             String configurationString = "";
@@ -1583,8 +1573,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The resulting commit object.
      */
     public synchronized Commit commit(String commitMessage, String configurationString) {
-        Commit commit = this.commit(commitMessage, this.parseConfigurationString(configurationString));
-        return commit;
+        return this.commit(commitMessage, this.parseConfigurationString(configurationString));
     }
 
     /**
@@ -1605,14 +1594,32 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             Set<Node.Op> nodes = readFiles();
             Repository.Op repository = this.repositoryDao.load();
 
+            ArrayList<Variant> variants = repository.getVariants();
+
             long startTime = System.currentTimeMillis();
             Commit commit = repository.extract(configuration, nodes);
+
+            //storing new variant
+            Boolean hasConfigurarion = false;
+            for (Variant v : variants) {
+                if (v.getConfiguration().equals(configuration)) {
+                    hasConfigurarion = true;
+                }
+            }
+            if (!hasConfigurarion) {
+                MemVariant memVariant = new MemVariant("", configuration, UUID.randomUUID().toString());
+                repository.addVariant(memVariant);
+            }
+            //
+
             LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
 
             commit.setCommitMassage(commitMessage);
 
             this.repositoryDao.store(repository);
+
             this.transactionStrategy.end();
+
             return commit;
         } catch (Exception e) {
             this.transactionStrategy.rollback();
@@ -1620,6 +1627,208 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             throw new EccoException("Error during commit.", e);
         }
     }
+
+
+    /**
+     * Add a new variant configuration
+     *
+     * @param configuration The configuration of the variant
+     * @param service       The service to store the new variant
+     */
+    public synchronized void addVariant(Configuration configuration, String name, EccoService service) {
+        service.checkInitialized();
+
+        checkNotNull(configuration);
+
+        try {
+            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = service.repositoryDao.load();
+            ArrayList<Variant> variants = repository.getVariants();
+
+            //storing new variant
+            Boolean hasConfigurarion = false;
+            for (Variant v : variants) {
+                if (v.getConfiguration().equals(configuration)) {
+                    hasConfigurarion = true;
+                }
+            }
+            if (!hasConfigurarion) {
+                MemVariant memVariant = new MemVariant(name, configuration, UUID.randomUUID().toString());
+                repository.addVariant(memVariant);
+            }
+            //
+
+            service.repositoryDao.store(repository);
+
+            service.transactionStrategy.end();
+
+
+        } catch (Exception e) {
+            service.transactionStrategy.rollback();
+
+            throw new EccoException("Error during adding a variant.", e);
+        }
+    }
+
+    /**
+     * Remove a new variant configuration
+     *
+     * @param configuration The configuration of the variant
+     * @param service       The service to remove a variant from the repository
+     */
+    public synchronized void removeVariant(Configuration configuration, EccoService service) {
+        service.checkInitialized();
+
+        checkNotNull(configuration);
+
+        try {
+            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = service.repositoryDao.load();
+            Variant variant = repository.getVariant(configuration);
+            if (variant != null) {
+                repository.removeVariant(variant);
+            }
+            //
+
+            service.repositoryDao.store(repository);
+
+            service.transactionStrategy.end();
+
+
+        } catch (Exception e) {
+            service.transactionStrategy.rollback();
+
+            throw new EccoException("Error during adding a variant.", e);
+        }
+    }
+
+
+    public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id, EccoService service) {
+        service.checkInitialized();
+
+        try {
+            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = service.repositoryDao.load();
+
+            Variant variant = service.getRepository().getVariant(id);
+            FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
+            FeatureRevision[] newFeatureRevisions = new FeatureRevision[featureRevisions.length];
+            int count = 0;
+            Collection<? extends Feature> features = this.getRepository().getFeatures();
+            FeatureRevision featureRevisionToUpdate = null;
+            for (Feature feature : features) {
+                if (feature.getName().equals(featureRevisionUpdate.substring(0, featureRevisionUpdate.indexOf(".")))) {
+                    for (FeatureRevision revision : feature.getRevisions()) {
+                        if (revision.getFeatureRevisionString().equals(featureRevisionUpdate)) {
+                            featureRevisionToUpdate = revision;
+                        }
+                    }
+                }
+            }
+            String config = "";
+            for (FeatureRevision fr : featureRevisions) {
+                if (fr.equals(featureRevision) && featureRevisionToUpdate != null) {
+                    newFeatureRevisions[count] = featureRevisionToUpdate;
+                    config += "," + featureRevisionUpdate;
+                } else {
+                    newFeatureRevisions[count] = fr;
+                    config += "," + fr;
+                }
+                count++;
+            }
+            config = config.replaceFirst(",", "");
+            variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
+            Configuration newConfiguration = service.parseConfigurationString(config);
+            variant.setConfiguration(newConfiguration);
+
+            service.repositoryDao.store(repository);
+
+            service.transactionStrategy.end();
+
+
+        } catch (Exception e) {
+            service.transactionStrategy.rollback();
+
+            throw new EccoException("Error during adding a variant.", e);
+        }
+
+    }
+
+
+    public void removeFeatureRevision(FeatureRevision featureRevision, String id, EccoService service) {
+        service.checkInitialized();
+
+        try {
+            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = service.repositoryDao.load();
+
+            Variant variant = service.getRepository().getVariant(id);
+            FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
+            FeatureRevision[] newFeatureRevisions = new FeatureRevision[featureRevisions.length];
+            int count = 0;
+            String config = "";
+            for (FeatureRevision fr : featureRevisions) {
+                if (!fr.equals(featureRevision)) {
+                    newFeatureRevisions[count] = fr;
+                    config += "," + fr;
+                }
+                count++;
+            }
+            config = config.replaceFirst(",", "");
+            variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
+            Configuration newConfiguration = service.parseConfigurationString(config);
+            variant.setConfiguration(newConfiguration);
+
+            service.repositoryDao.store(repository);
+
+            service.transactionStrategy.end();
+
+
+        } catch (Exception e) {
+            service.transactionStrategy.rollback();
+
+            throw new EccoException("Error during adding a variant.", e);
+        }
+
+    }
+
+    /**
+     * Remove a new variant configuration
+     *
+     * @param configuration The configuration of the variant
+     * @param service       The service to update a variant in a repository
+     */
+    public synchronized void updateVariant(Configuration configuration, String name, String id, EccoService service) {
+        service.checkInitialized();
+
+        checkNotNull(configuration);
+
+        try {
+            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = service.repositoryDao.load();
+            Variant variant = repository.getVariant(id);
+            if (variant != null) {
+                repository.updateVariant(variant, configuration, name);
+            }
+            //
+
+            service.repositoryDao.store(repository);
+
+            service.transactionStrategy.end();
+
+
+        } catch (Exception e) {
+            service.transactionStrategy.rollback();
+
+            throw new EccoException("Error during adding a variant.", e);
+        }
+    }
+
 
     public synchronized Set<Node.Op> readFiles() {
         return this.reader.read(this.baseDir, new Path[]{Paths.get("")});

@@ -22,7 +22,6 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	public static final long serialVersionUID = 1L;
 
-
 	private Map<String, MemFeature> features;
 	private Collection<Association.Op> associations;
 	private ArrayList<Variant> variants;
@@ -170,24 +169,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.associations.remove(association);
 	}
 
-	@Override
-	public Feature getOrphanedFeature(String id, String name) {
-		MemFeature feature = this.getFeature(id);
-		if (feature == null) {
-			feature = new MemFeature(id, name);
-		}
-		return feature;
-	}
-
-	@Override
-	public Module getOrphanedModule(Feature[] pos, Feature[] neg) {
-		MemModule module = this.getModule(pos, neg);
-		if (module == null) {
-			module = new MemModule(pos, neg);
-		}
-		return module;
-	}
-
 
 	@Override
 	public int getMaxOrder() {
@@ -203,12 +184,10 @@ public final class MemRepository implements Repository, Repository.Op {
 		}
 	}
 
-
 	@Override
 	public EntityFactory getEntityFactory() {
 		return new MemEntityFactory();
 	}
-
 
 	@Override
 	public MemModule getModule(Feature[] pos, Feature[] neg) {

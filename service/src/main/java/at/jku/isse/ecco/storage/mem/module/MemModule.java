@@ -102,15 +102,6 @@ public class MemModule implements Module {
 		return null;
 	}
 
-	@Override
-	public ModuleRevision getOrphanedRevision(FeatureRevision[] pos, Feature[] neg) {
-		MemModuleRevision moduleRevision = this.getRevision(pos, neg);
-		if (moduleRevision == null) {
-			moduleRevision = new MemModuleRevision(this, pos, neg);
-		}
-		return moduleRevision;
-	}
-
 
 
 	@Override

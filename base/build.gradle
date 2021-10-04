@@ -16,7 +16,7 @@ dependencies {
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-java')
-	testImplementation project(':ecco-adapter-java-patched')
+//	testImplementation project(':ecco-adapter-java-patched')
 
 	testImplementation 'org.graphstream:gs-core:1.3'
 	testImplementation 'org.graphstream:gs-algo:1.3'

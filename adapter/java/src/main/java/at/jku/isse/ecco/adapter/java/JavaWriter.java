@@ -32,6 +32,11 @@ public class JavaWriter implements ArtifactWriter<Set<Node>, Path> {
 		return output.toArray(new Path[0]);
 	}
 
+	@Override
+	public Path[] write2(Path base, Set<Node> input, String f) {
+		return new Path[0];
+	}
+
 
 	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();
 
