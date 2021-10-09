@@ -159,11 +159,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
+		Platform.runLater(() -> statusChangedEvent(service));
 
 		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
 	}
 
 

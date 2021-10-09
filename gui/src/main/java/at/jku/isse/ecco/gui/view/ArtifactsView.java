@@ -332,14 +332,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         useSimplifiedLabelsCheckBox.setSelected(true);
 
 
-        Platform.runLater(() -> horizontalSplitPane.setDividerPosition(0, 0.2));
+        Platform.runLater(() -> {
+            horizontalSplitPane.setDividerPosition(0, 0.2);
+            if (!service.isInitialized())
+                this.setDisable(true);
+        });
 
 
         // ecco service
         service.addListener(this);
-
-        if (!service.isInitialized())
-            this.setDisable(true);
     }
 
 

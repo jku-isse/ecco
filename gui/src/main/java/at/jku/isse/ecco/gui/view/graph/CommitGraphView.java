@@ -115,11 +115,9 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 		swingNode.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
 
+		Platform.runLater(() -> statusChangedEvent(service));
 
 		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
 	}
 
 	private void updateGraph() {

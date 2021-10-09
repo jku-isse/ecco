@@ -176,11 +176,9 @@ public class CommitsView extends BorderPane implements EccoListener {
 		// add to split pane
 		splitPane.getItems().addAll(commitsTable, detailView);
 
-		service.addListener(this);
+		Platform.runLater(() -> statusChangedEvent(service));
 
-		if (!service.isInitialized()) {
-			this.setDisable(true);
-		}
+		service.addListener(this);
 	}
 
 	@Override

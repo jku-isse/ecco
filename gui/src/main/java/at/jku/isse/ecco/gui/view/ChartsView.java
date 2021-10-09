@@ -237,11 +237,9 @@ public class ChartsView extends BorderPane implements EccoListener {
 			centerBox.getChildren().add(titledPane);
 		}
 
+		Platform.runLater(() -> statusChangedEvent(service));
 
 		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
 	}
 
 	@Override
