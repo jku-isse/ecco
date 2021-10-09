@@ -22,11 +22,6 @@ public class TextStringWriter implements ArtifactWriter<Set<Node>, String> {
 	}
 
 	@Override
-	public String[] write2(String base, Set<Node> input, String f) {
-		return new String[0];
-	}
-
-	@Override
 	public String[] write(Set<Node> input) {
 		List<String> output = new ArrayList<>();
 
