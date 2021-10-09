@@ -42,8 +42,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	private boolean depthFade = false;
 	private boolean showLabels = true;
 
-	private int childCountLimit = CHILD_COUNT_LIMIT;
-	private int depthLimit = DEPTH_LIMIT;
+	private int childCountLimit = 20;
+	private int depthLimit = 10;
 
 	public ArtifactGraphView(EccoService service) {
 		this.service = service;
@@ -52,11 +52,11 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, 100, CHILD_COUNT_LIMIT);
+		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, CHILD_COUNT_LIMIT, childCountLimit);
 		childCountLimitSpinner.setEditable(true);
 		Label childCountLimitLabel = new Label("Child Count Limit: ");
 
-		Spinner<Integer> depthLimitSpinner = new EditableSpinner(1, 100, DEPTH_LIMIT);
+		Spinner<Integer> depthLimitSpinner = new EditableSpinner(1, DEPTH_LIMIT, depthLimit);
 		depthLimitSpinner.setEditable(true);
 		Label depthLimitLabel = new Label("Depth Limit: ");
 
@@ -261,8 +261,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	}
 
 
-	private static final int CHILD_COUNT_LIMIT = 20;
-	private static final int DEPTH_LIMIT = 10;
+	private static final int CHILD_COUNT_LIMIT = 1000;
+	private static final int DEPTH_LIMIT = 50;
 	private static final int MAX_SIZE = 100;
 	private static final int MIN_SIZE = 30;
 	private static final int DEFAULT_SIZE = 20;
