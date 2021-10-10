@@ -411,12 +411,9 @@ public class VariantsView extends BorderPane implements EccoListener {
         // add to split pane
         splitPane.getItems().addAll(variantsTable, variantDetailView);
 
+        Platform.runLater(() -> statusChangedEvent(service));
 
         service.addListener(this);
-        if (!service.isInitialized())
-            this.setDisable(true);
-
-
     }
 
 
