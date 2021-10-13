@@ -1596,8 +1596,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             ArrayList<Variant> variants = repository.getVariants();
 
-            long startTime = System.currentTimeMillis();
+            long extractTime = System.currentTimeMillis();
             Commit commit = repository.extract(configuration, nodes);
+            extractTime = System.currentTimeMillis() - extractTime;
 
             //storing new variant
             Boolean hasConfigurarion = false;
@@ -1610,15 +1611,17 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 MemVariant memVariant = new MemVariant("", configuration, UUID.randomUUID().toString());
                 repository.addVariant(memVariant);
             }
-            //
-
-            LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
 
             commit.setCommitMassage(commitMessage);
 
             this.repositoryDao.store(repository);
 
+            long endStrategyTime = System.currentTimeMillis();
             this.transactionStrategy.end();
+            endStrategyTime = System.currentTimeMillis() - endStrategyTime;
+
+            LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
+                    "ms, .transactionStrategy.end(): " + endStrategyTime + "ms");
 
             return commit;
         } catch (Exception e) {
