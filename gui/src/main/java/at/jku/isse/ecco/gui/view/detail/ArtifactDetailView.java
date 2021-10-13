@@ -4,8 +4,10 @@ import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
+import javafx.application.Platform;
 import javafx.geometry.Orientation;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
@@ -18,9 +20,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Set;
 
-public class ArtifactDetailView extends BorderPane {
+public class ArtifactDetailView extends BorderPane implements EccoListener {
 
-	private EccoService service;
+	private final EccoService service;
 
 	private boolean initialized;
 
@@ -31,6 +33,7 @@ public class ArtifactDetailView extends BorderPane {
 
 	public ArtifactDetailView(EccoService service) {
 		this.service = service;
+		service.addListener(this);
 	}
 
 
@@ -49,6 +52,9 @@ public class ArtifactDetailView extends BorderPane {
 
 		// if node is an ordered node display its sequence graph
 		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
+			if (null != partialOrderGraphView) {
+				partialOrderGraphView.closeGraph();
+			}
 			this.partialOrderGraphView = new PartialOrderGraphView();
 			detailsSplitPane.getItems().add(this.partialOrderGraphView);
 			this.partialOrderGraphView.showGraph(node.getArtifact().getSequenceGraph());
@@ -67,7 +73,7 @@ public class ArtifactDetailView extends BorderPane {
 			ArtifactViewer artifactViewer = getArtifactViewer(node);
 
 			// if an artifact viewer was found display it
-			if (artifactViewer != null && artifactViewer instanceof Pane) {
+			if (artifactViewer instanceof Pane) {
 				try {
 					splitPane.getItems().add((Pane) artifactViewer);
 					artifactViewer.showTree(node);
@@ -136,6 +142,17 @@ public class ArtifactDetailView extends BorderPane {
 			else {
 				return getPluginId(node.getParent());
 			}
+		}
+	}
+
+	@Override
+	public void statusChangedEvent(EccoService service) {
+		if (!service.isInitialized()) {
+			Platform.runLater(() -> {
+				if (null != partialOrderGraphView) {
+					partialOrderGraphView.closeGraph();
+				}
+			});
 		}
 	}
 

@@ -8,7 +8,6 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
-import javafx.embed.swing.SwingNode;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Separator;
@@ -20,27 +19,27 @@ import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
 import org.graphstream.stream.file.FileSink;
 import org.graphstream.stream.file.FileSinkFactory;
+import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
-import org.graphstream.ui.swingViewer.ViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.view.Viewer;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 
 public class CommitGraphView extends BorderPane implements EccoListener {
 
-	private EccoService service;
+	private final EccoService service;
 
-	private Graph graph;
-	private Layout layout;
-	private Viewer viewer;
-	private ViewPanel view;
+	private final Graph graph;
+	private final Layout layout;
+	private FxViewer viewer;
+	private FxViewPanel view;
 
 	public CommitGraphView(EccoService service) {
 		this.service = service;
-
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -49,11 +48,11 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 		toolBar.getItems().add(refreshButton);
 		refreshButton.setOnAction(e -> {
 			toolBar.setDisable(true);
-			Task refreshTask = new Task<Void>() {
+			Task<Void> refreshTask = new Task<>() {
 				@Override
 				public Void call() throws EccoException {
 					CommitGraphView.this.updateGraph();
-					Platform.runLater(() -> toolBar.setDisable(false));
+					Platform.runLater(() -> toolBar.setDisable(false) );
 					return null;
 				}
 			};
@@ -102,25 +101,38 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 		this.graph.addSink(this.layout);
 		this.layout.addAttributeSink(this.graph);
 
-		this.viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-		//viewer.enableAutoLayout(this.layout);
-		this.view = viewer.addDefaultView(false); // false indicates "no JFrame"
-
-		SwingNode swingNode = new SwingNode();
-
-		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
-
-		this.setCenter(swingNode);
-
-
-		swingNode.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
-
-		Platform.runLater(() -> statusChangedEvent(service));
+		this.setOnScroll(event -> {
+			if (null != view) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
+						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
 
 		service.addListener(this);
+		Platform.runLater(() -> statusChangedEvent(service));
+	}
+
+	private void initView() {
+		closeView();
+		viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
+
+		setCenter(view);
+	}
+
+	private void closeView() {
+		if (null == viewer) {
+			return;
+		}
+
+		setCenter(null);
+		viewer.close();
+		view = null;
+		viewer = null;
 	}
 
 	private void updateGraph() {
+		assert viewer != null && view != null;
 
 		this.viewer.disableAutoLayout();
 
@@ -132,9 +144,9 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 		this.view.getCamera().resetView();
 
 
-		this.graph.addAttribute("ui.quality");
-		this.graph.addAttribute("ui.antialias");
-		this.graph.addAttribute("ui.stylesheet",
+		this.graph.setAttribute("ui.quality");
+		this.graph.setAttribute("ui.antialias");
+		this.graph.setAttribute("ui.stylesheet",
 				"edge { size: 2px; shape: blob; } " +
 						"edge.commit { fill-color: #aaaaff; } " +
 						"edge.assoc { fill-color: #ffddaa; } " +
@@ -144,8 +156,8 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 
 		for (Commit commit : this.service.getCommits()) {
 			Node commitNode = this.graph.addNode("C" + commit.getId());
-			commitNode.addAttribute("ui.class", "commit");
-			commitNode.addAttribute("label", commitNode.getId());
+			commitNode.setAttribute("ui.class", "commit");
+			commitNode.setAttribute("label", commitNode.getId());
 
 //			for (Association association : commit.getAssociations()) {
 //				Node associationNode = this.graph.getNode("A" + association.getId());
@@ -165,9 +177,9 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 			Node associationNode = this.graph.getNode("A" + association.getId());
 			if (associationNode == null) {
 				associationNode = this.graph.addNode("A" + association.getId());
-				associationNode.addAttribute("ui.class", "association");
-				associationNode.addAttribute("label", associationNode.getId());
-				associationNode.addAttribute("ui.style", "size: " + Math.max(24.0, Math.min(100.0, 100.0 * ((double) association.getRootNode().countArtifacts() / 1000.0))) + "px;");
+				associationNode.setAttribute("ui.class", "association");
+				associationNode.setAttribute("label", associationNode.getId());
+				associationNode.setAttribute("ui.style", "size: " + Math.max(24.0, Math.min(100.0, 100.0 * ((double) association.getRootNode().countArtifacts() / 1000.0))) + "px;");
 			}
 
 //			for (Association parent : association.getParents()) {
@@ -195,11 +207,14 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
 			Platform.runLater(() -> {
-				//this.updateGraph();
+				initView();
 				this.setDisable(false);
 			});
 		} else {
-			Platform.runLater(() -> this.setDisable(true));
+			Platform.runLater(() -> {
+				closeView();
+				this.setDisable(true);
+			});
 		}
 	}
 

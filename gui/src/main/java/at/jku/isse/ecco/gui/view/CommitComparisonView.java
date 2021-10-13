@@ -12,8 +12,6 @@ import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
-import scala.Tuple2;
-
 import java.util.Collection;
 
 public class CommitComparisonView extends OperationView implements EccoListener {
@@ -109,4 +107,13 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         }
     }
 
+    private static class Tuple2<F, S> {
+        public F _1;
+        public S _2;
+
+        public Tuple2(F _1, S _2) {
+            this._1 = _1;
+            this._2 = _2;
+        }
+    }
 }

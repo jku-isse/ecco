@@ -1,29 +1,28 @@
 package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.pog.PartialOrderGraph;
-import javafx.embed.swing.SwingNode;
 import javafx.scene.layout.BorderPane;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.implementations.SingleGraph;
+import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
-import org.graphstream.ui.swingViewer.ViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.view.Viewer;
 
-import javax.swing.*;
 import java.util.HashMap;
 import java.util.Map;
 
 public class PartialOrderGraphView extends BorderPane {
 
-	private Graph graph;
-	private Layout layout;
-	private Viewer viewer;
-	private ViewPanel view;
+	private final Graph graph;
+	private final Layout layout;
+	private FxViewer viewer;
+	private FxViewPanel view;
 
 	public PartialOrderGraphView() {
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
-
 
 		this.graph = new SingleGraph("PartialOrderGraph");
 
@@ -31,22 +30,17 @@ public class PartialOrderGraphView extends BorderPane {
 		this.graph.addSink(layout);
 		layout.addAttributeSink(this.graph);
 
-		this.viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-		//viewer.enableAutoLayout(layout);
-		this.view = viewer.addDefaultView(false); // false indicates "no JFrame"
-
-		SwingNode swingNode = new SwingNode();
-
-		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
-
-
-		this.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
-
-
-		this.setCenter(swingNode);
+		this.setOnScroll(event -> {
+			if (null != view) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
+						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
 	}
 
 	public void showGraph(PartialOrderGraph pog) {
+		initView();
+
 		this.viewer.disableAutoLayout();
 
 		this.graph.removeSink(this.layout);
@@ -59,9 +53,9 @@ public class PartialOrderGraphView extends BorderPane {
 
 		this.graph.setStrict(false);
 
-		this.graph.addAttribute("ui.quality");
-		this.graph.addAttribute("ui.antialias");
-		this.graph.addAttribute("ui.stylesheet",
+		this.graph.setAttribute("ui.quality");
+		this.graph.setAttribute("ui.antialias");
+		this.graph.setAttribute("ui.stylesheet",
 				" node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
 
 		this.view.getCamera().resetView();
@@ -74,6 +68,25 @@ public class PartialOrderGraphView extends BorderPane {
 		this.layout.addAttributeSink(this.graph);
 
 		this.viewer.enableAutoLayout(this.layout);
+	}
+
+	private void initView() {
+		closeGraph();
+		viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
+
+		setCenter(view);
+	}
+
+	public void closeGraph() {
+		if (null == viewer) {
+			return;
+		}
+
+		setCenter(null);
+		viewer.close();
+		view = null;
+		viewer = null;
 	}
 
 	private void traversePartialOrderGraph(PartialOrderGraph.Node pogNode, org.graphstream.graph.Node gsParent, Map<PartialOrderGraph.Node, org.graphstream.graph.Node> nodeMap) {

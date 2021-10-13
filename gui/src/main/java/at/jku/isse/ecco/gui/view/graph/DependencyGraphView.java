@@ -6,7 +6,6 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.module.Condition;
 import javafx.application.Platform;
-import javafx.embed.swing.SwingNode;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
@@ -16,9 +15,11 @@ import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
 import org.graphstream.stream.file.FileSink;
 import org.graphstream.stream.file.FileSinkFactory;
+import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
-import org.graphstream.ui.swingViewer.ViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
@@ -27,12 +28,12 @@ import java.io.IOException;
 
 public class DependencyGraphView extends BorderPane implements EccoListener {
 
-	private EccoService service;
+	private final EccoService service;
 
-	private Graph graph;
-	private Layout layout;
-	private Viewer viewer;
-	private ViewPanel view;
+	private final Graph graph;
+	private final Layout layout;
+	private FxViewer viewer;
+	private FxViewPanel view;
 
 	private boolean showLabels = true;
 	private boolean simplifyLabels = true;
@@ -142,26 +143,17 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 		this.graph.addSink(this.layout);
 		this.layout.addAttributeSink(this.graph);
 
-		this.viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-		//this.viewer.enableAutoLayout(this.layout);
-		this.view = this.viewer.addDefaultView(false); // false indicates "no JFrame"
-
-		SwingNode swingNode = new SwingNode();
-
-		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
-
-
-		this.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
-
-
-		this.setCenter(swingNode);
-
+		this.setOnScroll(event -> {
+			if (null != view) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
+						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
 
 		showLabelsCheckbox.setSelected(this.showLabels);
 
-		Platform.runLater(() -> statusChangedEvent(service));
-
 		service.addListener(this);
+		Platform.runLater(() -> statusChangedEvent(service));
 	}
 
 
@@ -170,12 +162,33 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 		if (!this.showLabels)
 			textMode = "text-mode: hidden; ";
 
-		this.graph.addAttribute("ui.stylesheet",
+		this.graph.setAttribute("ui.stylesheet",
 				"edge { " + textMode + " size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
 						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: 10px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
 	}
 
+	private void initView() {
+		closeView();
+		viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
+
+		setCenter(view);
+	}
+
+	private void closeView() {
+		if (null == viewer) {
+			return;
+		}
+
+		setCenter(null);
+		viewer.close();
+		view = null;
+		viewer = null;
+	}
+
 	private void updateGraph() {
+		assert viewer != null && view != null;
+
 		this.viewer.disableAutoLayout();
 
 		this.graph.removeSink(this.layout);
@@ -188,8 +201,8 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 
 		//this.graph.setStrict(false);
 
-		this.graph.addAttribute("ui.quality");
-		this.graph.addAttribute("ui.antialias");
+		this.graph.setAttribute("ui.quality");
+		this.graph.setAttribute("ui.antialias");
 
 		this.updateGraphStylehseet();
 
@@ -251,11 +264,14 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
 			Platform.runLater(() -> {
-				//this.updateGraph();
+				initView();
 				this.setDisable(false);
 			});
 		} else {
-			Platform.runLater(() -> this.setDisable(true));
+			Platform.runLater(() -> {
+				closeView();
+				this.setDisable(true);
+			});
 		}
 	}
 
