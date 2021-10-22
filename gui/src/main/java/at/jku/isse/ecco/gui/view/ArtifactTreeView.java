@@ -17,12 +17,11 @@ public class ArtifactTreeView extends BorderPane {
 	private final EccoService service;
 
 	private final ArtifactTreeTableView artifactTreeTableView;
+	private final ArtifactDetailView artifactDetailView;
 
 	public ArtifactTreeView(final EccoService service) {
 		this.service = service;
-
-		final ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
-
+		artifactDetailView = new ArtifactDetailView(service);
 
 		// toolbar
 		ToolBar toolBar = new ToolBar();
@@ -119,10 +118,12 @@ public class ArtifactTreeView extends BorderPane {
 	}
 
 	public void setRootNode(RootNode rootNode) {
+		this.artifactDetailView.reset();
 		this.artifactTreeTableView.setRootNode(rootNode);
 	}
 
 	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfo> associationInfos) {
+		this.artifactDetailView.setAssociationInfo(associationInfos);
 		this.artifactTreeTableView.setAssociationInfo(associationInfos);
 	}
 

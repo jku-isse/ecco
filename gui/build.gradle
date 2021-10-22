@@ -1,6 +1,7 @@
 plugins {
 	id 'application'
 	id 'org.openjfx.javafxplugin' version '0.0.10'
+	//id 'com.palantir.docker' version '0.30.0'
 }
 
 application {
@@ -25,7 +26,7 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
 //	runtimeOnly project(':ecco-adapter-java')
-//	runtimeOnly project(':ecco-adapter-lilypond')
+	runtimeOnly project(':ecco-adapter-lilypond')
 
 
 	testRuntimeOnly project(':ecco-adapter-file')
@@ -37,7 +38,7 @@ dependencies {
 	testRuntimeOnly project(':ecco-adapter-challenge')
 	testRuntimeOnly project(':ecco-adapter-runtime')
 	testRuntimeOnly project(':ecco-adapter-cpp')
-//	testRuntimeOnly project(':ecco-adapter-lilypond')
+	testRuntimeOnly project(':ecco-adapter-lilypond')
 }
 
 ospackage {
@@ -83,3 +84,15 @@ repositories {
 	mavenCentral()
 }
 bundle.dependsOn += copyScripts
+
+/*
+apply plugin: 'com.palantir.docker'
+docker {
+	name "ecco-gui:${project.version}"
+	files "build/distribution/ecco-gui-${project.version}-linux.zip"
+	dockerfile file('Dockerfile')
+	//buildArgs(['BUILD_VERSION': "${project.version}"])
+}
+
+tasks.getByPath('docker').dependsOn('linuxZip')
+*/

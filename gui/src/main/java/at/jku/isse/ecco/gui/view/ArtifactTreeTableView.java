@@ -13,10 +13,7 @@ import javafx.scene.layout.BackgroundFill;
 import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.NodeWrapper> {
 
@@ -233,7 +230,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		public NodeWrapper(Node node) {
 			this.node = node;
-			this.color = new SimpleObjectProperty<Color>(Color.TRANSPARENT);
+			this.color = new SimpleObjectProperty<>(Color.TRANSPARENT);
 		}
 
 		public ObjectProperty<Color> colorProperty() {
@@ -295,7 +292,11 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		@Override
 		public List<? extends Node> getChildren() {
-			return node.getChildren();
+			List<NodeWrapper> children = new ArrayList<>();
+			for (Node n : node.getChildren()) {
+				children.add(new NodeWrapper(n));
+			}
+			return children;
 		}
 
 		@Override

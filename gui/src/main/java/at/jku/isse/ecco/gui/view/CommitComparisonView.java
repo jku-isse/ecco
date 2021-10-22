@@ -68,7 +68,7 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);
         commitsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
             if (newValue != null) {
-                artifactDetailView.showTree(newValue._1 != null ? ArtifactDetailView.findBestArtifact(artifactDetailView, newValue._1.getRootNode()) : ArtifactDetailView.findBestArtifact(artifactDetailView, newValue._2.getRootNode()));
+                artifactDetailView.showTree(newValue._1 != null ? ArtifactDetailView.findNodeWithArtifactViewerRec(artifactDetailView, newValue._1.getRootNode()) : ArtifactDetailView.findNodeWithArtifactViewerRec(artifactDetailView, newValue._2.getRootNode()));
             }
         });
 

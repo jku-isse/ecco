@@ -9,7 +9,6 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.listener.EccoListener;
-import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -169,7 +168,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 				for (Association association : newValue.getCommit().getAssociations()) {
 					rootNode.addOrigNode(association.getRootNode());
 				}
-				artifactDetailView.showTree(ArtifactDetailView.findBestArtifact(artifactDetailView, rootNode));
+				artifactDetailView.showTree(ArtifactDetailView.findNodeWithArtifactViewerRec(artifactDetailView, rootNode));
 			}
 		});
 

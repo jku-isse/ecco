@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.gui.view.graph;
 
 import at.jku.isse.ecco.pog.PartialOrderGraph;
+import javafx.application.Platform;
+import javafx.scene.Cursor;
 import javafx.scene.layout.BorderPane;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.implementations.SingleGraph;
@@ -10,7 +12,6 @@ import org.graphstream.ui.layout.springbox.implementations.SpringBox;
 import org.graphstream.ui.fx_viewer.FxViewPanel;
 import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.view.Viewer;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,39 +40,41 @@ public class PartialOrderGraphView extends BorderPane {
 	}
 
 	public void showGraph(PartialOrderGraph pog) {
-		initView();
+		if (null == viewer) {
+			initView();
+		}
 
-		this.viewer.disableAutoLayout();
+		setCursor(Cursor.WAIT);
+		Thread th = new Thread(() -> {
+			try {
+				this.viewer.disableAutoLayout();
+				this.graph.removeSink(this.layout);
+				this.layout.removeAttributeSink(this.graph);
+				this.layout.clear();
 
-		this.graph.removeSink(this.layout);
-		this.layout.removeAttributeSink(this.graph);
-		this.layout.clear();
-		this.graph.clear();
+				this.graph.clear();
+				this.graph.setStrict(false);
+				this.graph.setAttribute("ui.quality");
+				this.graph.setAttribute("ui.antialias");
+				this.graph.setAttribute("ui.stylesheet",
+						" node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
 
-		this.view.getCamera().resetView();
+				this.traversePartialOrderGraph(pog.getHead(), null, new HashMap<>());
 
+				this.graph.addSink(this.layout);
+				this.layout.addAttributeSink(this.graph);
+				this.viewer.enableAutoLayout(this.layout);
 
-		this.graph.setStrict(false);
+				this.view.getCamera().resetView();
 
-		this.graph.setAttribute("ui.quality");
-		this.graph.setAttribute("ui.antialias");
-		this.graph.setAttribute("ui.stylesheet",
-				" node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
-
-		this.view.getCamera().resetView();
-
-
-		this.traversePartialOrderGraph(pog.getHead(), null, new HashMap<>());
-
-
-		this.graph.addSink(this.layout);
-		this.layout.addAttributeSink(this.graph);
-
-		this.viewer.enableAutoLayout(this.layout);
+			} finally {
+				Platform.runLater(() -> setCursor(Cursor.DEFAULT));
+			}
+		});
+		th.start();
 	}
 
 	private void initView() {
-		closeGraph();
 		viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
 		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
 
@@ -79,14 +82,13 @@ public class PartialOrderGraphView extends BorderPane {
 	}
 
 	public void closeGraph() {
-		if (null == viewer) {
-			return;
-		}
-
 		setCenter(null);
-		viewer.close();
-		view = null;
-		viewer = null;
+
+		if (null != viewer) {
+			viewer.close();
+			view = null;
+			viewer = null;
+		}
 	}
 
 	private void traversePartialOrderGraph(PartialOrderGraph.Node pogNode, org.graphstream.graph.Node gsParent, Map<PartialOrderGraph.Node, org.graphstream.graph.Node> nodeMap) {
