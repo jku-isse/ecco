@@ -1,4 +1,14 @@
+plugins {
+	id 'application'
+	id 'org.openjfx.javafxplugin' version '0.0.10'
+}
+
 apply plugin: 'java-library'
+
+javafx {
+	version = "16"
+	modules = [ 'javafx.controls' ]
+}
 
 dependencies {
 	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
