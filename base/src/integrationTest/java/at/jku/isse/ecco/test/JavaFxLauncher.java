@@ -26,8 +26,9 @@ public class JavaFxLauncher extends Application {
         stage = primaryStage;
 
         stage.setOnCloseRequest(event -> {
+            event.consume();
             synchronized (sceneBarrier) {
-                sceneBarrier.notifyAll();
+                sceneBarrier.notify();
             }
         });
 
