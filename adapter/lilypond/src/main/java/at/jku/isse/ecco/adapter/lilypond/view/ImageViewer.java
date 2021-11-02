@@ -7,6 +7,7 @@ import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
 import at.jku.isse.ecco.adapter.lilypond.LilypondStringWriter;
 import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
+import javafx.scene.Cursor;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
@@ -26,31 +27,35 @@ public class ImageViewer extends BorderPane implements ArtifactViewer {
 		nodes.add(node);
 
 		if (node.getArtifact().getData() instanceof PluginArtifactData) {
-			LilypondCompiler lilyC = new LilypondCompiler(this.textWriter.write(nodes)[0]);
+            setCursor(Cursor.WAIT);
+            Thread th = new Thread(() -> {
+                LilypondCompiler lilyC = new LilypondCompiler(this.textWriter.write(nodes)[0]);
 
-            Image image = lilyC.compilePNG();
+                Image image = lilyC.compilePNG();
 
-            if (null != image) {
-                ImageView imageView = new ImageView();
-                imageView.setPreserveRatio(true);
-                imageView.setImage(image);
+                if (null != image) {
+                    ImageView imageView = new ImageView();
+                    imageView.setPreserveRatio(true);
+                    imageView.setImage(image);
 
-                ScrollPane sp = new ScrollPane();
-                sp.setContent(imageView);
-                Platform.runLater(() -> {
-                    this.setCenter(sp);
-                    this.setBackground(Background.EMPTY);
-                });
+                    ScrollPane sp = new ScrollPane();
+                    sp.setContent(imageView);
+                    Platform.runLater(() -> {
+                        this.setCenter(sp);
+                        this.setBackground(Background.EMPTY);
+                    });
 
-            } else if (null != lilyC.getLastError()) {
-                TextArea ta = new TextArea();
-                ta.setText(lilyC.getLastError());
-                Platform.runLater(() -> {
-                    this.setCenter(ta);
-                    this.setBackground(Background.EMPTY);
-                });
-            }
-
+                } else if (null != lilyC.getLastError()) {
+                    TextArea ta = new TextArea();
+                    ta.setText(lilyC.getLastError());
+                    Platform.runLater(() -> {
+                        this.setCenter(ta);
+                        this.setBackground(Background.EMPTY);
+                    });
+                }
+                Platform.runLater(() -> setCursor(Cursor.DEFAULT));
+            });
+            th.start();
 		}
 	}
 

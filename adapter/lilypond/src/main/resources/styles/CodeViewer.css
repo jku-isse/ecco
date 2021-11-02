@@ -1,0 +1,27 @@
+.list-cell {
+    -fx-padding: 1;
+}
+.list-cell:odd {
+    -fx-background-color: whitesmoke;
+}
+.list-cell:even {
+    -fx-background-color: whitesmoke;
+}
+HBox {
+    -fx-spacing: 2;
+}
+Label {
+    -fx-border-color: gray;
+    -fx-border-width: 1;
+    -fx-background-color: white;
+    -fx-padding: 1, 2, 1, 2;
+}
+Label.innerBlock {
+    -fx-border-color: gray transparent gray transparent;
+}
+Label.firstBlock {
+    -fx-border-color: gray transparent gray gray;
+}
+Label.lastBlock {
+    -fx-border-color: gray gray gray transparent;
+}
