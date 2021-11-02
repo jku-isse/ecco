@@ -122,7 +122,7 @@ public class ArtifactTreeView extends BorderPane {
 		this.artifactTreeTableView.setRootNode(rootNode);
 	}
 
-	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfo> associationInfos) {
+	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfoImpl> associationInfos) {
 		this.artifactDetailView.setAssociationInfo(associationInfos);
 		this.artifactTreeTableView.setAssociationInfo(associationInfos);
 	}

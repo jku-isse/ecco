@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.adapter.ArtifactViewer;
+import at.jku.isse.ecco.adapter.AssociationInfo;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.gui.view.ArtifactsView;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
@@ -10,8 +12,6 @@ import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
-import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
@@ -28,11 +28,13 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	private final HashMap<String, Tab> openDetailsTabs = new HashMap<>();
 
 	private boolean initialized;
-	private Collection<ArtifactsView.AssociationInfo> associationInfos = null;
+	private Collection<AssociationInfo> associationInfos = null;
 	private PartialOrderGraphView partialOrderGraphView;
 
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
+	@Inject
+	private Set<AssociationInfoArtifactViewer> associationInfoArtifactViewers;
 
 
 	public ArtifactDetailView(EccoService service) {
@@ -57,7 +59,10 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 		updateInfoTab(node);
 		updatePartialOrderGraphTab(node);
+
+		long tm = System.nanoTime();
 		updateArtifactViewerTabs(node);
+		System.out.println("\nArtifactDetailsView:showTree->updateArtifactViewerTabs: " + ((System.nanoTime() - tm)/1000000) + "ms");
 	}
 
 	private void updateInfoTab(Node node) {
@@ -86,7 +91,6 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			});
 			th.start();
 
-
 			if (!openDetailsTabs.containsKey("pog")) {
 				Tab t = new Tab("Graph");
 				t.setClosable(false);
@@ -103,7 +107,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	}
 
 	private void updateArtifactViewerTabs(Node node) {
-		List<ArtifactViewer> viewers = getArtifactViewers(node);
+		List<? extends ArtifactViewer> viewers = getArtifactViewers(node);
 		List<String> tabKeysToRemove = openDetailsTabs.keySet().stream()
 				.filter(k -> k.startsWith("AV_"))
 				.collect(Collectors.toList());
@@ -123,6 +127,9 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			}
 
 			try {
+				if (v instanceof AssociationInfoArtifactViewer) {
+					((AssociationInfoArtifactViewer)v).setAssociationInfos(associationInfos);
+				}
 				v.showTree(node);
 				t.setContent((Pane) v);
 
@@ -147,7 +154,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	}
 
 	/**
-	 * Checks for injected {@link ArtifactViewer}s with matching plugin id
+	 * Checks for injected {@link ArtifactViewer}s or {@link AssociationInfoArtifactViewer}s with matching plugin id
 	 * and adds them to resulting list if the viewer is an instance of {@link Pane}.
 	 * @param node The node to find {@link ArtifactViewer}s for.
 	 * @return A list of matching {@link ArtifactViewer}s or an empty list if there are no matches,
@@ -165,11 +172,19 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 			return viewers;
 		}
 
+		String pluginId = getPluginId(node);
 		for (ArtifactViewer tempArtifactViewer : artifactViewers) {
 			if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
-				String pluginId = getPluginId(node);
 				if (tempArtifactViewer.getPluginId().equals(pluginId)) {
 					viewers.add(tempArtifactViewer);
+				}
+			}
+		}
+
+		for (AssociationInfoArtifactViewer tempAssInfoArtifactViewer : associationInfoArtifactViewers) {
+			if (tempAssInfoArtifactViewer.getPluginId() != null && tempAssInfoArtifactViewer instanceof Pane) {
+				if (tempAssInfoArtifactViewer.getPluginId().equals(pluginId)) {
+					viewers.add(tempAssInfoArtifactViewer);
 				}
 			}
 		}
@@ -215,7 +230,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		}
 	}
 
-	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfo> associationInfos) {
-		this.associationInfos = associationInfos;
+	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfoImpl> associationInfos) {
+		this.associationInfos = associationInfos == null ? null :
+				associationInfos.stream()
+				.map(aii -> (AssociationInfo)aii)
+				.collect(Collectors.toCollection(ArrayList::new));
+		// TODO: check if viewers need to be updated
 	}
 }
