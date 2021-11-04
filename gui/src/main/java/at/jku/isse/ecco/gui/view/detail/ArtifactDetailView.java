@@ -60,9 +60,9 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		updateInfoTab(node);
 		updatePartialOrderGraphTab(node);
 
-		long tm = System.nanoTime();
+		//long tm = System.nanoTime();
 		updateArtifactViewerTabs(node);
-		System.out.println("\nArtifactDetailsView:showTree->updateArtifactViewerTabs: " + ((System.nanoTime() - tm)/1000000) + "ms");
+		//System.out.println("\nArtifactDetailsView:showTree->updateArtifactViewerTabs: " + ((System.nanoTime() - tm)/1000000) + "ms");
 	}
 
 	private void updateInfoTab(Node node) {
@@ -77,7 +77,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		}
 
 		// TODO: show some general info
-		t.setContent(new Label("Detail View"));
+		t.setContent(new Label("Detail View\n" + node.toString()));
 	}
 
 	private void updatePartialOrderGraphTab(Node node) {
@@ -226,7 +226,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	public void statusChangedEvent(EccoService service) {
 		if (!service.isInitialized()) {
 			initialized = false;
-			Platform.runLater(() -> reset());
+			Platform.runLater(this::reset);
 		}
 	}
 

@@ -53,9 +53,13 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 				ListCell<NodeTextBlock[]> cell = new ListCell<>() {
 					@Override
 					protected void updateItem(NodeTextBlock[] blocks, boolean empty) {
-						if (getGraphic() != null) {
-							//HBox hb = (HBox)getGraphic();
-							//for (hb.getChildren())
+						HBox old = (HBox)getGraphic();
+						if (old != null) {
+							for (javafx.scene.Node n : old.getChildren()) {
+								if (n instanceof TextBlockLabel tbl) {
+									tbl.highlightedProperty().unbind();
+								}
+							}
 						}
 
 						super.updateItem(blocks, empty);
@@ -63,33 +67,7 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 						if (empty || null == blocks) {
 							setGraphic(null);
 						} else {
-							HBox box = new HBox();
-							for (NodeTextBlock ntb : blocks) {
-								Label l = new Label(ntb.getText());
-								if (!ntb.isFirst() && !ntb.isLast()) {
-									l.getStyleClass().add("innerBlock");
-								} else if (!ntb.isLast()) {
-									l.getStyleClass().add("firstBlock");
-								} else if (!ntb.isFirst()) {
-									l.getStyleClass().add("lastBlock");
-								}
-								l.setOnMouseEntered(e -> {
-									l.setUserData(l.getBackground());
-									l.setBackground(new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null)));
-									showAssociationInfo(ntb.getAssociation());
-								});
-								l.setOnMouseExited(e -> {
-									l.setBackground((Background) l.getUserData());
-								});
-
-								String aiId = ntb.getAssociation().getId();
-								Object val = associationInfos.get(aiId).getPropertyValue("color");
-								if (val instanceof Color) {
-									String col = val.equals(Color.TRANSPARENT) ? "white" : "#" + val.toString().substring(2, 8);
-									l.setStyle("-fx-background-color: " + col);
-								}
-								box.getChildren().add(l);
-							}
+							HBox box = getCellContent(blocks);
 							setGraphic(box);
 						}
 					}
@@ -118,6 +96,33 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		Platform.runLater(() -> sp.setDividerPositions(0.95));
 	}
 
+	private HBox getCellContent(NodeTextBlock[] blocks) {
+		HBox box = new HBox();
+		for (NodeTextBlock ntb : blocks) {
+			TextBlockLabel l = new TextBlockLabel(ntb);
+			if (!ntb.isFirst() && !ntb.isLast()) {
+				l.getStyleClass().add("innerBlock");
+			} else if (!ntb.isLast()) {
+				l.getStyleClass().add("firstBlock");
+			} else if (!ntb.isFirst()) {
+				l.getStyleClass().add("lastBlock");
+			}
+
+			l.setOnMouseEntered(e -> {
+				l.setBackground(new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null)));
+				showAssociationInfo(ntb.getAssociation());
+			});
+			l.setOnMouseExited(e -> l.setBackground(new Background(new BackgroundFill(
+					l.getTextBlock().backgroundColorProperty().get(), null, null))));
+
+			l.highlightedProperty().set(ntb.highlightedProperty().getValue());
+			l.highlightedProperty().bind(ntb.highlightedProperty());
+
+			box.getChildren().add(l);
+		}
+		return box;
+	}
+
 	@Override
 	public void showTree(Node node) {
 		final Node n = node.getNode(); // in case of a wrapped node
@@ -128,14 +133,21 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		if (!pad.getFileName().equals(currentFile)) {
 			isTreeInitialized = false;
 			currentFile = pad.getFileName();
+			nodeIdIndexes.clear();
+			nodeIdIndexes.put("0", new int[]{0, 0});
 
 			Task<Void> buildTask = new Task<>() {
 				@Override
 				protected Void call() {
 					final ArrayList<NodeTextBlock[]> lines = new ArrayList<>();
 					ArrayList<NodeTextBlock> line = new ArrayList<>();
+					int[] pos = new int[]{0,0};
+					int idx = 0;
 					for (Node cn : root.getChildren()) {
-						line = buildCodeLinesRec(cn, lines, line);
+						String id = "0.".concat(String.valueOf(idx));
+						nodeIdIndexes.put(id, new int[]{pos[0], pos[1]});
+						line = buildCodeLinesRec(cn, id, pos, lines, line);
+						idx++;
 					}
 					NodeTextBlock[] lastLine = new NodeTextBlock[line.size()];
 					lines.add(line.toArray(lastLine));
@@ -170,7 +182,22 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 
 	private void highlightTree(Node node) {
 		String curId = calculateNodeId(node);
+		int[] pos = nodeIdIndexes.get(curId);
+		listView.scrollTo(pos[0]);
 
+		NodeTextBlock ntb;
+		do {
+			NodeTextBlock[] line = codeLines.get(pos[0]);
+			ntb = line[pos[1]];
+			ntb.setHighlighted(true);
+			if (pos[1] < line.length - 1) {
+				pos[1]++;
+			} else {
+				pos[0]++;
+				pos[1] = 0;
+			}
+
+		} while (!ntb.isLast());
 	}
 
 	private String calculateNodeId(Node node) {
@@ -186,31 +213,52 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 			node = node.getParent();
 		}
 		sb.insert(0, "0");
-		System.out.println(sb);
 		return sb.toString();
 	}
 
-	private ArrayList<NodeTextBlock> buildCodeLinesRec(Node n, Collection<NodeTextBlock[]> lines, ArrayList<NodeTextBlock> line) {
+	private ArrayList<NodeTextBlock> buildCodeLinesRec(Node n, String nodeId, int[] pos, Collection<NodeTextBlock[]> lines, ArrayList<NodeTextBlock> line) {
 		ArtifactData d = n.getArtifact().getData();
 		if (d instanceof BaseContextArtifactData) {
-			for (Node cn : n.getChildren()) {
-				line = buildCodeLinesRec(cn, lines, line);
+			List<? extends Node> children = n.getChildren();
+			for (int i = 0; i < children.size(); i++) {
+				String id = nodeId.concat(".").concat(String.valueOf(i));
+				nodeIdIndexes.put(id, new int[]{pos[0], pos[1]});
+				line = buildCodeLinesRec(children.get(i), id, pos, lines, line);
 			}
 
 		} else if (d instanceof DefaultTokenArtifactData) {
-			NodeTextBlock ntb = new NodeTextBlock(n);
+			Association ass = n.getArtifact().getContainingNode() != null
+					? n.getArtifact().getContainingNode().getContainingAssociation()
+					: null;
+			Color bgCol = Color.WHITE;
+			if (ass != null) {
+				String aiId = ass.getId();
+				if (associationInfos.containsKey(aiId)) {
+					Object val = associationInfos.get(aiId).getPropertyValue("color");
+					if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
+						bgCol = col;
+					}
+				}
+			}
+
+			NodeTextBlock ntb = new NodeTextBlock(n, bgCol);
+
 			line.add(ntb);
+			pos[1]++;
 
 			if (ntb.numLines() > 1) {
 				NodeTextBlock[] l = new NodeTextBlock[line.size()];
 				lines.add(line.toArray(l));
+				pos[0]++;
 
 				for (int i = 1; i < ntb.numLines(); i++) {
 					if (i < ntb.numLines() - 1) {
 						lines.add(new NodeTextBlock[]{ntb.getGroup().get(i)});
+						pos[0]++;
 					} else {
 						line = new ArrayList<>();
 						line.add(ntb.getGroup().get(i));
+						pos[1] = 1;
 					}
 				}
 			}
@@ -257,7 +305,15 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 	private PropertyChangeListener getColorPropertyListener() {
 		return evt -> {
 			if (evt.getPropertyName().equals("color")) {
-				System.out.println("color changed to " + evt.getNewValue());
+				String aId = ((AssociationInfo)evt.getSource()).getAssociation().getId();
+				for (NodeTextBlock[] blocks : codeLines) {
+					for (NodeTextBlock ntb : blocks) {
+						if (ntb.getAssociation() != null && aId.equals(ntb.getAssociation().getId())) {
+							ntb.setBackgroundColor((Color)evt.getNewValue());
+						}
+					}
+				}
+				listView.refresh();
 			}
 		};
 	}

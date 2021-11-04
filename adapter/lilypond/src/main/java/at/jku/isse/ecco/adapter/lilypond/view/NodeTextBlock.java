@@ -3,8 +3,8 @@ package at.jku.isse.ecco.adapter.lilypond.view;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
-import javafx.beans.value.ObservableValue;
-import javafx.scene.layout.Background;
+import javafx.beans.property.*;
+import javafx.scene.paint.Color;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,9 +17,12 @@ public class NodeTextBlock {
     private Group partOf;
     private boolean isFirst = true;
     private boolean isLast = true;
+    private final BooleanProperty highlighted = new SimpleBooleanProperty(false);
+    private final ObjectProperty<Color> backgroundColor = new SimpleObjectProperty<>();
 
-    public NodeTextBlock(Node node) {
+    public NodeTextBlock(Node node, Color backgroundColor) {
         this.node = node;
+        this.backgroundColor.set(backgroundColor);
 
         if (node.getArtifact() == null || node.getArtifact().getData() == null ||
                 !(node.getArtifact().getData() instanceof DefaultTokenArtifactData tad)) {
@@ -39,14 +42,15 @@ public class NodeTextBlock {
             partOf = new Group(this);
 
             for (int i=1; i<nodeLines.length; i++) {
-                partOf.add(new NodeTextBlock(node, association, nodeLines[i], partOf));
+                partOf.add(new NodeTextBlock(node, backgroundColor, association, nodeLines[i], partOf));
             }
             partOf.blocks.get(partOf.size()-1).setLast(true);
         }
     }
 
-    private NodeTextBlock(Node node, Association association, String text, Group group) {
+    private NodeTextBlock(Node node, Color bgColor, Association association, String text, Group group) {
         this.node = node;
+        this.backgroundColor.set(bgColor);
         isFirst = false;
         isLast = false;
         this.association = association;
@@ -86,6 +90,22 @@ public class NodeTextBlock {
         assert partOf != null;
 
         return partOf.getBlocks();
+    }
+
+    public BooleanProperty highlightedProperty() {
+        return highlighted;
+    }
+
+    public void setHighlighted(boolean flag) {
+        highlighted.set(flag);
+    }
+
+    public ObjectProperty<Color> backgroundColorProperty() {
+        return backgroundColor;
+    }
+
+    public void setBackgroundColor(Color color) {
+        backgroundColor.set(color);
     }
 
     private static class Group {

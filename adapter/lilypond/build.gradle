@@ -5,7 +5,7 @@ plugins {
 ecco.adapter = true
 
 javafx {
-	version = "11"
+	version = "16"
 	modules = [ 'javafx.controls' ]
 }
 
