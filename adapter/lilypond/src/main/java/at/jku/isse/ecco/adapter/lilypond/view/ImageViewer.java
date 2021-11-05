@@ -28,9 +28,9 @@ public class ImageViewer extends BorderPane implements ArtifactViewer {
 
 		if (node.getArtifact().getData() instanceof PluginArtifactData) {
             setCursor(Cursor.WAIT);
-            Thread th = new Thread(() -> {
-                LilypondCompiler lilyC = new LilypondCompiler(this.textWriter.write(nodes)[0]);
+            LilypondCompiler lilyC = new LilypondCompiler(this.textWriter.write(nodes)[0]);
 
+            Thread th = new Thread(() -> {
                 Image image = lilyC.compilePNG();
 
                 if (null != image) {

@@ -89,7 +89,6 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		sp.setOrientation(Orientation.VERTICAL);
 
 		this.setCenter(sp);
-		//BorderPane.setAlignment(sp, Pos.TOP_LEFT);
 
 		ArtifactDataLabelNode.setInfoArea(taInfo);
 
@@ -109,11 +108,13 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 			}
 
 			l.setOnMouseEntered(e -> {
-				l.setBackground(new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null)));
 				showAssociationInfo(ntb.getAssociation());
+				Background bg = new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null));
+				l.setBackground(bg);
+
 			});
 			l.setOnMouseExited(e -> l.setBackground(new Background(new BackgroundFill(
-					l.getTextBlock().backgroundColorProperty().get(), null, null))));
+					ntb.backgroundColorProperty().get(), null, null))));
 
 			l.highlightedProperty().set(ntb.highlightedProperty().getValue());
 			l.highlightedProperty().bind(ntb.highlightedProperty());
@@ -188,16 +189,19 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		NodeTextBlock ntb;
 		do {
 			NodeTextBlock[] line = codeLines.get(pos[0]);
-			ntb = line[pos[1]];
-			ntb.setHighlighted(true);
-			if (pos[1] < line.length - 1) {
-				pos[1]++;
+			if (line.length > 0) {
+				ntb = line[pos[1]];
+				ntb.setHighlighted(true);
+				if (pos[1] < line.length - 1) {
+					pos[1]++;
+				} else {
+					pos[0]++;
+					pos[1] = 0;
+				}
 			} else {
-				pos[0]++;
-				pos[1] = 0;
+				ntb = null;
 			}
-
-		} while (!ntb.isLast());
+		} while (ntb != null && !ntb.isLast());
 	}
 
 	private String calculateNodeId(Node node) {

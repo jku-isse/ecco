@@ -87,9 +87,7 @@ public class NodeTextBlock {
     }
 
     public List<NodeTextBlock> getGroup() {
-        assert partOf != null;
-
-        return partOf.getBlocks();
+        return partOf == null ? null : partOf.getBlocks();
     }
 
     public BooleanProperty highlightedProperty() {
