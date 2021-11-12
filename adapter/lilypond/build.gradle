@@ -11,7 +11,7 @@ javafx {
 
 dependencies {
 	implementation project(':ecco-service')
-    implementation files('src/libs/py4j0.10.9.jar')
+    implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
 }
 
 ospackage {

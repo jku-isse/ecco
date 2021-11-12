@@ -5,24 +5,24 @@ import py4j.GatewayServerListener;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class LilypondParserGateway {
-    private static LilypondParserGateway instance;
+public class Py4jGateway {
+    private static Py4jGateway instance;
     private final GatewayServer server;
-    private final LilypondParserEntryPoint entrypoint;
+    private final Py4jEntryPoint entrypoint;
 
-    private LilypondParserGateway() {
-        entrypoint = new LilypondParserEntryPoint();
+    private Py4jGateway() {
+        entrypoint = new Py4jEntryPoint();
         server = new GatewayServer(entrypoint);
     }
 
-    public static LilypondParserGateway getInstance() {
+    public static Py4jGateway getInstance() {
         if (instance == null) {
-            instance = new LilypondParserGateway();
+            instance = new Py4jGateway();
         }
         return instance;
     }
 
-    public ConcurrentLinkedQueue<LilypondParserEvent> getBuffer() {
+    public ConcurrentLinkedQueue<Py4jParseEvent> getBuffer() {
         if (instance == null) return null;
 
         return instance.entrypoint.getBuffer();

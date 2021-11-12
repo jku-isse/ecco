@@ -17,15 +17,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class FileParser implements LilypondParser<ParceToken> {
+public class Py4jFileParser implements LilypondParser<ParceToken> {
     public static final int MAX_SCRIPT_TIMEOUT = 10;
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
     protected static GatewayServerListener gatewayListener = getGatewayListener();
     private Path pythonScript;
 
     public void init() throws IOException {
-        LilypondParserGateway.getInstance().addListener(gatewayListener);
-        LilypondParserGateway.getInstance().start();
+        Py4jGateway.getInstance().addListener(gatewayListener);
+        Py4jGateway.getInstance().start();
 
         try {
             pythonScript = Files.createTempFile("lilypondParce", ".py");
@@ -77,7 +77,7 @@ public class FileParser implements LilypondParser<ParceToken> {
 
             if (exitCode == 0) {
                 LOGGER.log(Level.FINE, "Parce exited normal, code: {0}, {1}ms", new Object[] { exitCode, (System.nanoTime() - tm) / 1000000 });
-                return convertEventsToNodes(LilypondParserGateway.getInstance().getBuffer(), tokenMetric);
+                return convertEventsToNodes(Py4jGateway.getInstance().getBuffer(), tokenMetric);
 
             } else {
                 LOGGER.severe("Parce exited with code " + exitCode + ":\n" + sjErr);
@@ -99,12 +99,12 @@ public class FileParser implements LilypondParser<ParceToken> {
      * @param buffer Buffer with Parce events.
      * @return First node of list.
      */
-    private LilypondNode<ParceToken> convertEventsToNodes(ConcurrentLinkedQueue<LilypondParserEvent> buffer, HashMap<String, Integer> tokenMetric) {
+    private LilypondNode<ParceToken> convertEventsToNodes(ConcurrentLinkedQueue<Py4jParseEvent> buffer, HashMap<String, Integer> tokenMetric) {
         assert buffer != null;
 
         LOGGER.log(Level.INFO, "convert {0} events to tree", buffer.size());
         int depth = 0, maxDepth = 0, cnt = 0;
-        LilypondParserEvent e = buffer.poll();
+        Py4jParseEvent e = buffer.poll();
         LilypondNode<ParceToken> head = new LilypondNode<>("HEAD", null);
         head.setLevel(depth);
         LilypondNode<ParceToken> n = head;
@@ -151,7 +151,7 @@ public class FileParser implements LilypondParser<ParceToken> {
             LOGGER.log(Level.SEVERE, "could not delete temporary python script file", e);
         }
 
-        LilypondParserGateway.getInstance().shutdown();
+        Py4jGateway.getInstance().shutdown();
     }
 
     private static GatewayServerListener getGatewayListener() {

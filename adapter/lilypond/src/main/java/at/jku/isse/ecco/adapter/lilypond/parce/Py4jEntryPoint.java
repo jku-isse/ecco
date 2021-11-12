@@ -5,20 +5,20 @@ import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 
-public class LilypondParserEntryPoint {
+public class Py4jEntryPoint {
     private static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
 
-    private ConcurrentLinkedQueue<LilypondParserEvent> eventBuffer;
+    private ConcurrentLinkedQueue<Py4jParseEvent> eventBuffer;
     private ParceToken lastToken;
 
-    public LilypondParserEntryPoint() {
+    public Py4jEntryPoint() {
         eventBuffer = new ConcurrentLinkedQueue<>();
     }
 
-    private LilypondParserEvent event;
+    private Py4jParseEvent event;
 
     public void openEvent() {
-        event = new LilypondParserEvent();
+        event = new Py4jParseEvent();
     }
 
     public void addContext(String name) {
@@ -48,7 +48,7 @@ public class LilypondParserEntryPoint {
         event = null;
     }
 
-    ConcurrentLinkedQueue<LilypondParserEvent> getBuffer() {
+    ConcurrentLinkedQueue<Py4jParseEvent> getBuffer() {
         return eventBuffer;
     }
 }

@@ -89,7 +89,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
 
             LilypondNode<ParceToken> head = parser.parse(resolvedPath, tokenMetric);
             if (head == null) {
-                LOGGER.log(Level.SEVERE, "could not parse file {0}", resolvedPath);
+                LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", resolvedPath);
             } else {
                 //LilyEccoTransformer.transform(head);
                 generateEccoTree(head, pluginNode);

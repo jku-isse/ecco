@@ -55,9 +55,9 @@ public class PerformanceAndCorrectnessTest {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
                 //{"debussy_parce0.13_nodes", ".eccoDebussy13", true}
-                {"sulzer_parce0.13_nodes", ".eccoSulzer13", true}
+                //{"sulzer_parce0.13_nodes", ".eccoSulzer13", true}
                 //{"dieu_nodes", ".eccoDebussy", true}
-                //{"sulzer_nodes", ".eccoSulzer", true}
+                {"sulzer_nodes", ".eccoSulzer", true}
         };
     }
 
