@@ -67,8 +67,8 @@ public class PerformanceAndCorrectnessTest {
     public static Object[][] featurePaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                //{BASE_DIR.getParent().resolve("lytests/debussy").toString(), ".eccoDebussy", true}
-                {BASE_DIR.getParent().resolve("lytests/sulzer").toString(), ".eccoSulzer", true}
+                {BASE_DIR.getParent().resolve("lytests/debussy").toString(), ".eccoDebussy", true}
+                //{BASE_DIR.getParent().resolve("lytests/sulzer").toString(), ".eccoSulzer", true}
         };
     }
 

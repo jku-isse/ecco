@@ -15,8 +15,6 @@ public class TextBlockLabel extends Label {
     public TextBlockLabel(NodeTextBlock block) {
         super(block.getText());
         textBlock = block;
-        setBackground(new Background(new BackgroundFill(
-                block.backgroundColorProperty().getValue(), null, null)));
     }
 
     public NodeTextBlock getTextBlock() {

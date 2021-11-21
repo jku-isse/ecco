@@ -4,6 +4,8 @@ import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 import javafx.beans.property.*;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
 import javafx.scene.paint.Color;
 
 import java.util.ArrayList;
@@ -18,11 +20,12 @@ public class NodeTextBlock {
     private boolean isFirst = true;
     private boolean isLast = true;
     private final BooleanProperty highlighted = new SimpleBooleanProperty(false);
+    private final BooleanProperty mouseover = new SimpleBooleanProperty(false);
+    private final ObjectProperty<Background> background = new SimpleObjectProperty<>();
     private final ObjectProperty<Color> backgroundColor = new SimpleObjectProperty<>();
 
     public NodeTextBlock(Node node, Color backgroundColor) {
         this.node = node;
-        this.backgroundColor.set(backgroundColor);
 
         if (node.getArtifact() == null || node.getArtifact().getData() == null ||
                 !(node.getArtifact().getData() instanceof DefaultTokenArtifactData tad)) {
@@ -37,6 +40,9 @@ public class NodeTextBlock {
         String[] nodeLines = text.split("\\n", -1);
         this.text = nodeLines[0];
 
+        setupListeners();
+        this.backgroundColor.set(backgroundColor);
+
         if (nodeLines.length > 1) {
             isLast = false;
             partOf = new Group(this);
@@ -50,12 +56,38 @@ public class NodeTextBlock {
 
     private NodeTextBlock(Node node, Color bgColor, Association association, String text, Group group) {
         this.node = node;
-        this.backgroundColor.set(bgColor);
         isFirst = false;
         isLast = false;
         this.association = association;
         this.text = text;
         this.partOf = group;
+
+        setupListeners();
+        this.backgroundColor.set(bgColor);
+    }
+
+    private void setupListeners() {
+        mouseover.addListener((o, oldVal, newVal) -> {
+            Background bg = newVal ?
+                    new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null)) :
+                    new Background(new BackgroundFill(backgroundColor.getValue(), null, null));
+            if (partOf != null) {
+                for (NodeTextBlock ntb : partOf.getBlocks()) {
+                    ntb.background.set(bg);
+                }
+            } else {
+                background.set(bg);
+            }
+        });
+
+        backgroundColor.addListener((o, oldVal, newVal) -> {
+            if (!mouseover.getValue()) {
+                if (newVal == null || newVal == Color.TRANSPARENT) {
+                    newVal = Color.WHITE;
+                }
+                background.set(new Background(new BackgroundFill(newVal, null, null)));
+            }
+        });
     }
 
     public Node getNode() {
@@ -94,17 +126,15 @@ public class NodeTextBlock {
         return highlighted;
     }
 
+    public BooleanProperty mouseoverProperty() { return mouseover; }
+
     public void setHighlighted(boolean flag) {
         highlighted.set(flag);
     }
 
-    public ObjectProperty<Color> backgroundColorProperty() {
-        return backgroundColor;
-    }
+    public ReadOnlyObjectProperty<Background> backgroundProperty() { return background; }
 
-    public void setBackgroundColor(Color color) {
-        backgroundColor.set(color);
-    }
+    public ObjectProperty<Color> backgroundColor() { return backgroundColor; }
 
     private static class Group {
         private final ArrayList<NodeTextBlock> blocks;

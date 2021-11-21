@@ -16,8 +16,6 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
@@ -39,6 +37,7 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 	private Path currentFile;
 	private Node root;
 	private volatile boolean isTreeInitialized = false;
+	private final String style;
 
 	public CodeViewer() {
 		associationInfos = new HashMap<>();
@@ -46,6 +45,13 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		listView = new ListView<>(codeLines);
 		listView.setSelectionModel(new NoSelectionModel<>());
 		listView.setFocusTraversable(false);
+
+		URL url = ClassLoader.getSystemResource("styles/CodeViewer.css");
+		if (url != null) {
+			style = url.toExternalForm();
+		} else {
+			style = null;
+		}
 
 		listView.setCellFactory(new Callback<>() {
 			@Override
@@ -57,6 +63,7 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 						if (old != null) {
 							for (javafx.scene.Node n : old.getChildren()) {
 								if (n instanceof TextBlockLabel tbl) {
+									tbl.backgroundProperty().unbind();
 									tbl.highlightedProperty().unbind();
 								}
 							}
@@ -72,9 +79,8 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 						}
 					}
 				};
-				URL url = ClassLoader.getSystemResource("styles/CodeViewer.css");
-				if (url != null) {
-					cell.getStylesheets().add(url.toExternalForm());
+				if (style != null) {
+					cell.getStylesheets().add(style);
 				}
 				return cell;
 			}
@@ -89,8 +95,6 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		sp.setOrientation(Orientation.VERTICAL);
 
 		this.setCenter(sp);
-
-		ArtifactDataLabelNode.setInfoArea(taInfo);
 
 		Platform.runLater(() -> sp.setDividerPositions(0.95));
 	}
@@ -109,12 +113,12 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 
 			l.setOnMouseEntered(e -> {
 				showAssociationInfo(ntb.getAssociation());
-				Background bg = new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null));
-				l.setBackground(bg);
-
+				ntb.mouseoverProperty().set(true);
 			});
-			l.setOnMouseExited(e -> l.setBackground(new Background(new BackgroundFill(
-					ntb.backgroundColorProperty().get(), null, null))));
+			l.setOnMouseExited(e -> ntb.mouseoverProperty().set(false));
+
+			l.backgroundProperty().set(ntb.backgroundProperty().getValue());
+			l.backgroundProperty().bind(ntb.backgroundProperty());
 
 			l.highlightedProperty().set(ntb.highlightedProperty().getValue());
 			l.highlightedProperty().bind(ntb.highlightedProperty());
@@ -313,7 +317,7 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 				for (NodeTextBlock[] blocks : codeLines) {
 					for (NodeTextBlock ntb : blocks) {
 						if (ntb.getAssociation() != null && aId.equals(ntb.getAssociation().getId())) {
-							ntb.setBackgroundColor((Color)evt.getNewValue());
+							ntb.backgroundColor().set((Color)evt.getNewValue());
 						}
 					}
 				}
