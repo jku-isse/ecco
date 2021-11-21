@@ -14,8 +14,8 @@ public class ParserFactory {
 
     public static LilypondParser<ParceToken> getParser() {
         if (parseFiles) {
-            //return new Py4jFileParser();
-            return new GraalVMFileParser();
+            return new Py4jFileParser();
+            //return new GraalVMFileParser();
 
         } else {
             return new NodesDeserializer();

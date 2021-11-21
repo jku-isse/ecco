@@ -3,10 +3,13 @@ package at.jku.isse.ecco.adapter.lilypond.test;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
 import at.jku.isse.ecco.adapter.lilypond.ParserFactory;
+import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -21,6 +24,10 @@ import java.nio.file.Paths;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 
 public class PerformanceAndCorrectnessTest {
@@ -41,12 +48,27 @@ public class PerformanceAndCorrectnessTest {
         BASE_DIR = startupPath.getParent().getParent();
     }
 
+    @Test(groups = {"parce", "performance"})
+    @BeforeClass(alwaysRun = true)
+    private void setUp() {
+        Logger log = LilypondReader.getLogger();
+        log.setLevel(Level.ALL);
+        try {
+            FileHandler handler = new FileHandler("test.log");
+            handler.setFormatter(new SimpleFormatter());
+            log.addHandler(handler);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @DataProvider(name = "featurePaths")
     public static Object[][] featurePaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                //{"lytests/debussy", ".eccoDebussy", true}
-                //{"lytests/sulzer", ".eccoSulzer", true}
+                //{BASE_DIR.getParent().resolve("lytests/debussy").toString(), ".eccoDebussy", true}
+                {BASE_DIR.getParent().resolve("lytests/sulzer").toString(), ".eccoSulzer", true}
         };
     }
 
@@ -54,20 +76,20 @@ public class PerformanceAndCorrectnessTest {
     public static Object[][] serializedNodesPaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                //{"debussy_parce0.13_nodes", ".eccoDebussy13", true}
-                //{"sulzer_parce0.13_nodes", ".eccoSulzer13", true}
-                //{"dieu_nodes", ".eccoDebussy", true}
-                {"sulzer_nodes", ".eccoSulzer", true}
+                //{DATA_DIR.resolve("input/debussy_parce0.13_nodes").toString(), ".eccoDebussy13", true}
+                {DATA_DIR.resolve("input/sulzer_parce0.13_nodes").toString(), ".eccoSulzer13", true}
+                //{DATA_DIR.resolve("input/dieu_nodes").toString(), ".eccoDebussy", true}
+                //{DATA_DIR.resolve("input/sulzer_nodes").toString(), ".eccoSulzer", true}
         };
     }
 
     @DataProvider(name = "checkoutConfigurations")
     public static Object[][] checkoutConfigurations() {
-        String repo = ".eccoSulzer";
+        String repo = ".eccoSulzerOhneWS";
 
         return new Object[][] {
                 // name, filename, repository, config, Lily_searchPaths[]
-                {"AllFeatures",
+/*                {"AllFeatures",
                         "factusestrepente.ly",
                         repo,
                         """
@@ -84,7 +106,7 @@ header.1, partoneSopOneNotes.1, partoneTenOneDynamics.1, partoneBasOneBeams.1, p
 parttwoSopOneDynamics.1, partoneTenTwoNotes.1, scorePartTwo.1, partoneTenOneSlurs.1,
 parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamics.1, text.1""",
                         null},
-
+*/
                 {"PartTwo",
                         "factusestrepente.ly",
                         repo,
@@ -95,26 +117,37 @@ parttwoSopOneArticulations.1, parttwoSopOneDynamics.1,
 parttwoSopOneSlurs.1, parttwoSopOneBeams.1, parttwoSopTwoNotes.1,
 parttwoSopTwoLyrics.1, parttwoSopTwoArticulations.1,
 parttwoSopTwoDynamics.1, parttwoSopTwoSlurs.1, parttwoSopTwoBeams.1""",
-                        null},
+                        null}/*,
 
-                {"FemaleVoices",
+                {"SopranOne",
                         "factusestrepente.ly",
                         repo,
                         """
 header.1, scorePartOne.1, scorePartTwo.1,
-partoneSopOneNotes.1, partoneSopOneLyrics.1,
-partoneSopTwoNotes.1, partoneSopTwoLyrics.1,
-parttwoSopOneNotes.1, parttwoSopOneLyrics.1,
-parttwoSopTwoNotes.1, parttwoSopTwoLyrics.1,
-articulations.1, dynamics.1, sfpp.1, slurs.1,beams.1""",
+partoneSopOneNotes.1, partoneSopOneLyrics.1, partoneSopOneNArticulations.1,
+partoneSopOneNDynamics.1, partoneSopOneNSlurs.1, partoneSopOneNBeams.1,
+parttwoSopOneNotes.1, parttwoSopOneLyrics.1, parttwoSopOneNArticulations.1,
+parttwoSopOneNDynamics.1, parttwoSopOneNSlurs.1, parttwoSopOneNBeams.1""",
                         null},
 
-                {"TenorVoices",
+                {"NotesOnly",
                         "factusestrepente.ly",
                         repo,
-                        "header.1, scorePartOne.1, partoneTenOneNotes.1, partoneSopOneLyrics.1," +
-                                "articulations.1, dynamics.1, sfpp.1, slurs.1, beams.1, text.1",
-                        null}
+                        """
+parttwoSopTwoNotes.1, scorePartOne.1,
+partoneTenOneNotes.1, partoneBasOneNotes.1,
+partoneBasTwoNotes.1, partoneSopTwoNotes.1,
+parttwoSopOneNotes.1, header.1, partoneSopOneNotes.1, partoneTenTwoNotes.1, scorePartTwo.1""",
+                        null},
+
+                {"FemaleVoicesNotesOnly",
+                        "factusestrepente.ly",
+                        repo,
+                        """
+header.1, scorePartOne.1, scorePartTwo.1,
+partoneSopOneNotes.1, partoneSopTwoNotes.1,
+parttwoSopOneNotes.1, parttwoSopTwoNotes.1""",
+                        null}*/
         };
     }
 
@@ -161,7 +194,7 @@ articulations.1, dynamics.1, sfpp.1, slurs.1,beams.1""",
 
         EccoListener el = createMetrics ? getFileReadListener() : null;
 
-        Path root = DATA_DIR.resolve("input/" + inPath);
+        Path root = Path.of(inPath);
         List<Path> paths = Files.walk(root)
                 .filter(d -> !d.equals(root) && Files.isDirectory(d))
                 .sorted()
@@ -192,7 +225,7 @@ articulations.1, dynamics.1, sfpp.1, slurs.1,beams.1""",
     }
 
     // TODO: needs -Xss1024m in run configuration
-    @Test(groups = { "parce", "integration" }, dataProvider = "checkoutConfigurations")
+    @Test(groups = { "parce", "lilypond" }, dataProvider = "checkoutConfigurations")
     public void testCheckoutIsCompileable(String name, String filename, String repository, String config, String[] lilypondSearchPaths) {
         EccoService service = new EccoService();
         Path checkout = BASE_DIR.getParent().resolve("checkout");
@@ -203,7 +236,12 @@ articulations.1, dynamics.1, sfpp.1, slurs.1,beams.1""",
             Assert.fail();
         }
 
-        service.checkout(config);
+        Checkout chk = service.checkout(config);
+        System.out.println("selected associations:");
+        for (Association a : chk.getSelectedAssociations()) {
+            System.out.println(a.computeCondition().getSimpleModuleConditionString());
+        }
+        System.out.println("-------------------\n");
 
         if (isCompileable(checkout.resolve(filename), lilypondSearchPaths)) {
             System.out.println(name + " is COMPILABLE");

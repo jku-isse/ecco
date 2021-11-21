@@ -11,7 +11,9 @@ javafx {
 
 dependencies {
 	implementation project(':ecco-service')
-    implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
+	// TODO: include only dependency needed for current build
+	implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
+	implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
 }
 
 ospackage {

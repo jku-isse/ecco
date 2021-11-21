@@ -6,10 +6,11 @@ import java.util.Objects;
  * Represents a wrapper for a Parce-Token (<a href="https://parce.info/tree.html">https://parce.info</a>).
  */
 public class ParceToken {
-    private int pos;
+    private final int pos;
     private String text;
-    private String action;
+    private final String action;
     private String postWhitespace = "";
+    private Object transformationData;
 
     /**
      * Returns position of token in original text.
@@ -39,10 +40,25 @@ public class ParceToken {
         postWhitespace = ws;
     }
 
+    public Object getTransformationData() { return transformationData; }
+
+    /**
+     * Returns text and appended whitespace of token.
+     * @return Token text with appended whitespace characters.
+     */
+    public String getFullText() {
+        return text.concat(postWhitespace);
+    }
+
     public ParceToken(int pos, String text, String action) {
         this.pos = pos;
         this.text = text;
         this.action = action;
+    }
+
+    public ParceToken(int pos, String text, String action, Object transformationData) {
+        this(pos, text, action);
+        this.transformationData = transformationData;
     }
 
     @Override
@@ -50,19 +66,20 @@ public class ParceToken {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ParceToken that = (ParceToken) o;
-        return text.equals(that.text) && action.equals(that.action);
+        return text.equals(that.text) && action.equals(that.action) && postWhitespace.equals(that.postWhitespace);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(text, action);
+        return Objects.hash(text, action, postWhitespace);
     }
 
     @Override
     public String toString() {
-        return "LilypondParceToken{" +
+        return  "ParceToken{" +
                 "pos=" + pos +
+                ", action='" + action + "'" +
                 ", text='" + text + "'" +
-                ", action='" + action + "'}";
+                ", whitespace='" + postWhitespace + "'}";
     }
 }

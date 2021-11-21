@@ -173,18 +173,22 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		}
 
 		String pluginId = getPluginId(node);
-		for (ArtifactViewer tempArtifactViewer : artifactViewers) {
-			if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
-				if (tempArtifactViewer.getPluginId().equals(pluginId)) {
-					viewers.add(tempArtifactViewer);
+		if (artifactViewers != null) {
+			for (ArtifactViewer tempArtifactViewer : artifactViewers) {
+				if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
+					if (tempArtifactViewer.getPluginId().equals(pluginId)) {
+						viewers.add(tempArtifactViewer);
+					}
 				}
 			}
 		}
 
-		for (AssociationInfoArtifactViewer tempAssInfoArtifactViewer : associationInfoArtifactViewers) {
-			if (tempAssInfoArtifactViewer.getPluginId() != null && tempAssInfoArtifactViewer instanceof Pane) {
-				if (tempAssInfoArtifactViewer.getPluginId().equals(pluginId)) {
-					viewers.add(tempAssInfoArtifactViewer);
+		if (associationInfoArtifactViewers != null) {
+			for (AssociationInfoArtifactViewer tempAssInfoArtifactViewer : associationInfoArtifactViewers) {
+				if (tempAssInfoArtifactViewer.getPluginId() != null && tempAssInfoArtifactViewer instanceof Pane) {
+					if (tempAssInfoArtifactViewer.getPluginId().equals(pluginId)) {
+						viewers.add(tempAssInfoArtifactViewer);
+					}
 				}
 			}
 		}
@@ -235,6 +239,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 				associationInfos.stream()
 				.map(aii -> (AssociationInfo)aii)
 				.collect(Collectors.toCollection(ArrayList::new));
-		// TODO: check if viewers need to be updated
+
+		if (associationInfoArtifactViewers != null) {
+			for (AssociationInfoArtifactViewer v : associationInfoArtifactViewers) {
+				v.setAssociationInfos(this.associationInfos);
+			}
+		}
 	}
 }

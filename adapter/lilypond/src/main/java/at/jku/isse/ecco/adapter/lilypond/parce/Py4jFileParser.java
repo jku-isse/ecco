@@ -132,7 +132,7 @@ public class Py4jFileParser implements LilypondParser<ParceToken> {
 
                 n = n.append(t.getAction(), t, depth);
                 cnt++;
-                LOGGER.log(Level.FINER, "added token node '{0}' (depth: {1}), post '{2}'", new Object[] { t.getText(), depth, t.getPostWhitespace() });
+                LOGGER.log(Level.FINER, "added token node \"{0}\" (depth: {1}), post \"{2}\"", new Object[] { t.getText(), depth, t.getPostWhitespace() });
             }
 
             e = buffer.poll();

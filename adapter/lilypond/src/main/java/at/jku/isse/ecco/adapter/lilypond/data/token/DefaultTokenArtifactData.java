@@ -6,9 +6,9 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import java.util.Objects;
 
 public class DefaultTokenArtifactData implements ArtifactData {
-    private int pos;
-    private String token;
-    private String action;
+    private final int pos;
+    private final String token;
+    private final String action;
     protected String postWhitespace;
 
     public DefaultTokenArtifactData(ParceToken token)
@@ -51,7 +51,7 @@ public class DefaultTokenArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "Token '" + token + "', Action '" + action + "'";
+        return "Token '" + token + "', Action '" + action + "', whitespace '" + postWhitespace + "'";
     }
 
     @Override
@@ -59,12 +59,13 @@ public class DefaultTokenArtifactData implements ArtifactData {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DefaultTokenArtifactData that = (DefaultTokenArtifactData) o;
-        return token.equals(that.token) &&
-                action.equals(that.action);
+        return token.equals(that.token)
+                && action.equals(that.action);
+                //&& postWhitespace.equals(that.postWhitespace);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(token, action);
-    }
+    } // , postWhitespace
 }

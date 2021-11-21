@@ -26,12 +26,16 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
     protected final EntityFactory entityFactory;
     private HashMap<String, Integer> tokenMetric;
 
+    public static Logger getLogger() {
+        return LOGGER;
+    }
+
     @Inject
     public LilypondReader(EntityFactory entityFactory) {
         checkNotNull(entityFactory);
 
-        //LOGGER.setLevel(Level.INFO);                // change level for logger (e.g. DEBUG)
-        //LOGGER.info("LilypondReader logging level set to: " + LOGGER.getLevel());
+        //LOGGER.setLevel(Level.FINEST);                // change level for logger (e.g. DEBUG)
+        //LOGGER.info("LilypondReader logging level: " + LOGGER.getLevel());
         this.entityFactory = entityFactory;
     }
 
@@ -91,7 +95,8 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
             if (head == null) {
                 LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", resolvedPath);
             } else {
-                //LilyEccoTransformer.transform(head);
+                LOGGER.setLevel(Level.FINEST);                // change level for logger (e.g. DEBUG)
+                head = LilyEccoTransformer.transform(head);
                 generateEccoTree(head, pluginNode);
             }
 

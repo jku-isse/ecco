@@ -51,7 +51,7 @@ public class LilypondNode<T> {
     }
 
     public LilypondNode<T> append(String name, T data, int level) {
-        LilypondNode<T> n = new LilypondNode(name, data);
+        LilypondNode<T> n = new LilypondNode<>(name, data);
         append(n, level);
         return n;
     }

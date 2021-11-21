@@ -14,7 +14,7 @@ public class TokenArtifactDataFactory {
 
         switch (token.getAction()) {
             case "Name.Variable.Definition":
-                return new NamedArtifactData(token);
+                return new VariableDefinitionArtifactData(token);
 
             default:
                 return new DefaultTokenArtifactData(token);
