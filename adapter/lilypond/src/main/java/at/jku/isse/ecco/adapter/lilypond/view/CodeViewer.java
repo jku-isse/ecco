@@ -102,7 +102,7 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 	private HBox getCellContent(NodeTextBlock[] blocks) {
 		HBox box = new HBox();
 		for (NodeTextBlock ntb : blocks) {
-			TextBlockLabel l = new TextBlockLabel(ntb);
+			TextBlockLabel l = new TextBlockLabel(ntb.getText());
 			if (!ntb.isFirst() && !ntb.isLast()) {
 				l.getStyleClass().add("innerBlock");
 			} else if (!ntb.isLast()) {

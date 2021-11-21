@@ -4,21 +4,12 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.BooleanPropertyBase;
 import javafx.css.PseudoClass;
 import javafx.scene.control.Label;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
 
 public class TextBlockLabel extends Label {
     private final static PseudoClass HIGHLIGHT_PSEUDO_CLASS = PseudoClass.getPseudoClass("highlight");
 
-    private final NodeTextBlock textBlock;
-
-    public TextBlockLabel(NodeTextBlock block) {
-        super(block.getText());
-        textBlock = block;
-    }
-
-    public NodeTextBlock getTextBlock() {
-        return textBlock;
+    public TextBlockLabel(String text) {
+        super(text);
     }
 
     private final BooleanProperty highlighted = new BooleanPropertyBase() {
