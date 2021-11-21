@@ -122,9 +122,7 @@ public class AdapterTest {
     public static Object[][] serializedNodesPaths() {
         // input and output path relative to the parent directory (e.g. ../ecco)
         return new String[][] {
-                //{"lytests/debussy", "lytests/debussy_parce0.13_nodes"}
-                //{"lytests/sulzer", "lytests/sulzer_parce0.13_nodes"}
-                //{"lytests/debussy", "lytests/dieu_nodes"}
+                {"lytests/debussy", "lytests/dieu_nodes"}
                 //{"lytests/sulzer", "lytests/sulzer_nodes"}
         };
     }

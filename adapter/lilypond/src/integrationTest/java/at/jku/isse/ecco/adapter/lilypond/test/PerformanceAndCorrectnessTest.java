@@ -67,8 +67,8 @@ public class PerformanceAndCorrectnessTest {
     public static Object[][] featurePaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                {BASE_DIR.getParent().resolve("lytests/debussy").toString(), ".eccoDebussy", true}
-                //{BASE_DIR.getParent().resolve("lytests/sulzer").toString(), ".eccoSulzer", true}
+                //{BASE_DIR.getParent().resolve("lytests/debussy").toString(), ".eccoDebussy", true}
+                {BASE_DIR.getParent().resolve("lytests/sulzer").toString(), ".eccoSulzer", true}
         };
     }
 
@@ -76,16 +76,14 @@ public class PerformanceAndCorrectnessTest {
     public static Object[][] serializedNodesPaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                //{DATA_DIR.resolve("input/debussy_parce0.13_nodes").toString(), ".eccoDebussy13", true}
-                {DATA_DIR.resolve("input/sulzer_parce0.13_nodes").toString(), ".eccoSulzer13", true}
-                //{DATA_DIR.resolve("input/dieu_nodes").toString(), ".eccoDebussy", true}
-                //{DATA_DIR.resolve("input/sulzer_nodes").toString(), ".eccoSulzer", true}
+                {DATA_DIR.resolve("input/dieu_nodes").toString(), ".eccoDebussy", true},
+                {DATA_DIR.resolve("input/sulzer_nodes").toString(), ".eccoSulzer", true}
         };
     }
 
     @DataProvider(name = "checkoutConfigurations")
     public static Object[][] checkoutConfigurations() {
-        String repo = ".eccoSulzerOhneWS";
+        String repo = ".eccoSulzer";
 
         return new Object[][] {
                 // name, filename, repository, config, Lily_searchPaths[]
@@ -151,6 +149,9 @@ parttwoSopOneNotes.1, parttwoSopTwoNotes.1""",
         };
     }
 
+    /**
+     * This method creates and populates a repository from previously parsed and serialized files from resources folder.
+     */
     @Test(groups = {"performance"}, dataProvider = "serializedNodes")
     public void populateRepositoryFromNodes(String inPath, String repoName, boolean createMetrics) {
         ParserFactory.setParseFiles(false); // will load serialized nodes
