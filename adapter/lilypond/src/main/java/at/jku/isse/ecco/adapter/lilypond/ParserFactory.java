@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
-import at.jku.isse.ecco.adapter.lilypond.parce.GraalVMFileParser;
 import at.jku.isse.ecco.adapter.lilypond.parce.NodesDeserializer;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
-import at.jku.isse.ecco.adapter.lilypond.parce.Py4jFileParser;
+import at.jku.isse.ecco.adapter.lilypond.parce.py4j.FileParser;
+//import at.jku.isse.ecco.adapter.lilypond.parce.graalvm.FileParser;
 
 public class ParserFactory {
     private static boolean parseFiles = true;
@@ -14,8 +14,7 @@ public class ParserFactory {
 
     public static LilypondParser<ParceToken> getParser() {
         if (parseFiles) {
-            return new Py4jFileParser();
-            //return new GraalVMFileParser();
+            return new FileParser();
 
         } else {
             return new NodesDeserializer();

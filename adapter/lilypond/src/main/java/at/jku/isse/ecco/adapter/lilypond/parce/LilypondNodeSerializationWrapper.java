@@ -29,7 +29,6 @@ public class LilypondNodeSerializationWrapper implements Serializable {
             oos.writeInt(node.getData().getPos());
             oos.writeUTF(node.getData().getAction());
             oos.writeUTF(node.getData().getText());
-            oos.writeUTF(node.getData().getPostWhitespace());
         }
     }
 
@@ -44,9 +43,7 @@ public class LilypondNodeSerializationWrapper implements Serializable {
             int pos = ois.readInt();
             String action = ois.readUTF();
             String text = ois.readUTF();
-            String whitespace = ois.readUTF();
             t = new ParceToken(pos, text, action);
-            t.setPostWhitespace(whitespace);
         }
         node = new LilypondNode<>(name, t);
         node.setLevel(level);

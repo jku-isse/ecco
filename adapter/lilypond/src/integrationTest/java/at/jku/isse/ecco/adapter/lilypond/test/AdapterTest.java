@@ -5,10 +5,11 @@ import at.jku.isse.ecco.adapter.lilypond.parce.LilypondNodeSerializationWrapper;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
+import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import javax.swing.text.html.parser.Parser;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -20,6 +21,10 @@ import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -51,17 +56,35 @@ public class AdapterTest {
     }
 
     @Test(groups = {"parce"})
+    @BeforeClass(alwaysRun = true)
+    private void setUp() {
+        Logger log = LilypondReader.getLogger();
+        log.setLevel(Level.ALL);
+        try {
+            FileHandler handler = new FileHandler("test.log");
+            handler.setFormatter(new SimpleFormatter());
+            log.addHandler(handler);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test(groups = {"parce"})
 	public void Lilypond_Adapter_Test() {
 		LilypondReader reader = new LilypondReader(new MemEntityFactory());
 
 		System.out.println("READ FILES");
 		Set<Node.Op> nodes = reader.read(FILES);
+        Assert.assertEquals(nodes.size(), FILES.length);
 
 		System.out.println("END READ (" + nodes.size() + " files)");
 
         System.out.println("DUMP TREES");
         LilypondStringWriter sw = new LilypondStringWriter();
         String[] out = sw.write(nodes.stream().map(op -> (Node)op).collect(Collectors.toSet()));
+        Assert.assertEquals(out.length, FILES.length);
+        Assert.assertTrue(out[0].length() > 0);
         System.out.println(String.join("\n-------------------------\n", out));
         System.out.println("END DUMP TREES");
 	}

@@ -1,9 +1,11 @@
-package at.jku.isse.ecco.adapter.lilypond.parce;
+package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
+
+import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Py4jParseEvent {
+public class ParseEvent {
     private int popContext;
     private final List<String> contexts;
     private final List<ParceToken> tokens;
@@ -14,7 +16,7 @@ public class Py4jParseEvent {
         return tokens;
     }
 
-    public Py4jParseEvent() {
+    public ParseEvent() {
         contexts = new ArrayList<>();
         tokens = new ArrayList<>();
     }

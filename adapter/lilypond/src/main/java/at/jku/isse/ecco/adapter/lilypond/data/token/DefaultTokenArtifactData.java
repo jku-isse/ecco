@@ -9,14 +9,12 @@ public class DefaultTokenArtifactData implements ArtifactData {
     private final int pos;
     private final String token;
     private final String action;
-    protected String postWhitespace;
 
     public DefaultTokenArtifactData(ParceToken token)
     {
         this.pos = token.getPos();
         this.token = token.getText();
         this.action = token.getAction();
-        this.postWhitespace = token.getPostWhitespace();
     }
 
     /**
@@ -41,17 +39,9 @@ public class DefaultTokenArtifactData implements ArtifactData {
         return this.action;
     }
 
-    /**
-     * Returns the whitespace after this token.
-     * @return Additional whitespaces for writers
-     */
-    public String getPostWhitespace() {
-        return postWhitespace;
-    }
-
     @Override
     public String toString() {
-        return "Token '" + token + "', Action '" + action + "', whitespace '" + postWhitespace + "'";
+        return "Token '" + token + "', Action '" + action + "'";
     }
 
     @Override
@@ -61,11 +51,10 @@ public class DefaultTokenArtifactData implements ArtifactData {
         DefaultTokenArtifactData that = (DefaultTokenArtifactData) o;
         return token.equals(that.token)
                 && action.equals(that.action);
-                //&& postWhitespace.equals(that.postWhitespace);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(token, action);
-    } // , postWhitespace
+    }
 }

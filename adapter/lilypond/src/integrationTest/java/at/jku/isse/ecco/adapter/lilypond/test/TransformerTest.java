@@ -35,12 +35,12 @@ public class TransformerTest {
 
         LilypondNode<ParceToken> p;
         LilypondNode<ParceToken> n = new LilypondNode<>("Name.Variable.Definition", new ParceToken(0, "lyricsVar", "Name.Variable.Definition"));
-        n.getData().setPostWhitespace(" ");
+        //n.getData().setPostWhitespace(" ");
         h.append(n, 1);
         p = n;
 
         n = new LilypondNode<>("=", new ParceToken(10, "=", "Delimiter.Operator.Assignment"));
-        n.getData().setPostWhitespace(" ");
+        //n.getData().setPostWhitespace(" ");
         p.append(n, 0);
         p = n;
 
@@ -52,7 +52,7 @@ public class TransformerTest {
         assert h != null;
         Assert.assertEquals(h.getLevel(), 0); // musiclist
         Assert.assertEquals(h.getName(), "lyricsVar");
-        Assert.assertEquals(h.getData().getFullText(), "lyricsVar = ");
+        Assert.assertEquals(h.getData().getText(), "lyricsVar = ");
         n = h.getNext();
 
         Assert.assertEquals(n.getLevel(), 0); // \relative
@@ -67,7 +67,7 @@ public class TransformerTest {
         h.setLevel(0);
 
         LilypondNode<ParceToken> n = new LilypondNode<>("\\variableName", new ParceToken(0, "\\variableName", "Name.Variable"));
-        n.getData().setPostWhitespace(" ");
+        //n.getData().setPostWhitespace(" ");
         h.append(n, 1);
 
         h = LilyEccoTransformer.transform(h);
@@ -77,8 +77,8 @@ public class TransformerTest {
         Assert.assertEquals(h.getName(), "LilyPond.identifier_ref");
 
         Assert.assertEquals(h.getData().getText(), "\\variableName");
-        Assert.assertEquals(h.getData().getPostWhitespace(), " ");
-        Assert.assertEquals(h.getData().getFullText(), "\\variableName ");
+        //Assert.assertEquals(h.getData().getPostWhitespace(), " ");
+        Assert.assertEquals(h.getData().getText(), "\\variableName ");
 
         Assert.assertNull(h.getNext());
     }
@@ -97,7 +97,7 @@ public class TransformerTest {
         p = n;
 
         n = new LilypondNode<>("\\variableName2", new ParceToken(15, "variableName2", "Name.Variable"));
-        n.getData().setPostWhitespace(" ");
+        //n.getData().setPostWhitespace(" ");
         p.append(n, 1);
         p = n;
 
@@ -111,7 +111,7 @@ public class TransformerTest {
         Assert.assertEquals(h.getName(), "LilyPond.identifier_ref");
 
         Assert.assertEquals(h.getData().getText(), "\\variableName1.variableName2");
-        Assert.assertEquals(h.getData().getPostWhitespace(), " ");
+        //Assert.assertEquals(h.getData().getPostWhitespace(), " ");
 
         n =  h.getNext();
         Assert.assertEquals(n.getName(), "something");
@@ -121,12 +121,12 @@ public class TransformerTest {
     @Test(groups = {"transformation"})
     public void LyricList_Test() {
         LilypondNode<ParceToken> h = new LilypondNode<>("=", new ParceToken(0, "=", "Delimiter.Operator.Assignment"));
-        h.getData().setPostWhitespace(" ");
+        //h.getData().setPostWhitespace(" ");
         h.setLevel(0);
 
         LilypondNode<ParceToken> p = h;
         LilypondNode<ParceToken> n = new LilypondNode<>("Keyword.Lyric", new ParceToken(2, "\\lyricmode", "Keyword.Lyric"));
-        n.getData().setPostWhitespace(" ");
+        //n.getData().setPostWhitespace(" ");
         p.append(n, 0);
         p = n;
 
@@ -135,27 +135,27 @@ public class TransformerTest {
         p = n;
 
         n = new LilypondNode<>("{", new ParceToken(13, "{", "Delimiter.Bracket.Start"));
-        n.getData().setPostWhitespace("\n");
+        //n.getData().setPostWhitespace("\n");
         p.append(n, 1);
         p = n;
 
         n = new LilypondNode<>("Glo", new ParceToken(15, "Glo", "Text.Lyric.LyricText"));
-        n.getData().setPostWhitespace(" ");
+        //n.getData().setPostWhitespace(" ");
         p.append(n, 1);
         p = n;
 
         n = new LilypondNode<>("--", new ParceToken(19, "--", "Delimiter.Lyric.LyricHyphen"));
-        n.getData().setPostWhitespace(" ");
+        //n.getData().setPostWhitespace(" ");
         p.append(n, 1);
         p = n;
 
         n = new LilypondNode<>("ria", new ParceToken(22, "ria", "Text.Lyric.LyricText"));
-        n.getData().setPostWhitespace("\n");
+        //n.getData().setPostWhitespace("\n");
         p.append(n, 1);
         p = n;
 
         n = new LilypondNode<>("}", new ParceToken(26, "}", "Delimiter.Bracket.End"));
-        n.getData().setPostWhitespace("\n");
+        //n.getData().setPostWhitespace("\n");
         p.append(n, 1);
         p = n;
 
@@ -173,8 +173,8 @@ public class TransformerTest {
         Assert.assertEquals(n.getName(), "Keyword.Lyric");
         Assert.assertEquals(n.getData().getText(), "\\lyricmode {\nGlo -- ria\n}\n");
         Assert.assertEquals(n.getData().getAction(), "Text.Lyric.LyricText");
-        Assert.assertEquals(n.getData().getPostWhitespace(), "");
-        Assert.assertEquals(n.getData().getFullText(), "\\lyricmode {\nGlo -- ria\n}\n");
+        //Assert.assertEquals(n.getData().getPostWhitespace(), "");
+        Assert.assertEquals(n.getData().getText(), "\\lyricmode {\nGlo -- ria\n}\n");
         Assert.assertEquals(n.getLevel(), 0); // \relative
         n = n.getNext();
 

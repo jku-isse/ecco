@@ -3,7 +3,6 @@ package at.jku.isse.ecco.adapter.lilypond;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.lilypond.data.context.BaseContextArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
@@ -39,28 +38,27 @@ public class LilypondStringWriter implements ArtifactWriter<Set<Node>, String> {
                 throw new EccoException("Expected plugin artifact data.");
 
 			StringBuilder sb = new StringBuilder();
-			for (Node n : fileNode.getChildren()) {
-			    writeNodeRec(n, sb);
+			LilypondWriter.ArtifactIterator it = new LilypondWriter.ArtifactIterator(fileNode);
+			if (it.hasNext()) {
+				Node cur = it.next();
+				DefaultTokenArtifactData d = (DefaultTokenArtifactData)cur.getArtifact().getData();
+				while (it.hasNext()) {
+					Node next = it.next();
+					sb.append(d.getText());
+					DefaultTokenArtifactData n = (DefaultTokenArtifactData)next.getArtifact().getData();
+					if (LilypondFormatter.appendSpace(d, n)) {
+						sb.append(" ");
+					}
+					d = n;
+				}
+				sb.append(d.getText());
 			}
+
 			output.add(sb.toString());
 		}
 
 		return output.toArray(new String[0]);
 	}
-
-	private void writeNodeRec(Node n, StringBuilder sb) {
-        ArtifactData d = n.getArtifact().getData();
-        if (d instanceof BaseContextArtifactData) {
-            for (Node cn : n.getChildren()) {
-                writeNodeRec(cn, sb);
-            }
-
-        } else if (d instanceof DefaultTokenArtifactData) {
-            DefaultTokenArtifactData dad = (DefaultTokenArtifactData)d;
-            sb.append(dad.getText())
-                    .append(dad.getPostWhitespace());
-        }
-    }
 
 	private Collection<WriteListener> listeners = new ArrayList<>();
 

@@ -2,10 +2,12 @@ package at.jku.isse.ecco.adapter.lilypond;
 import javafx.scene.image.Image;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -16,12 +18,8 @@ public class LilypondCompiler {
 
     private Path startupPath = Path.of(System.getProperty("user.dir"));
     private Path basePath = startupPath.getParent();
-    /**
-     * Configure path to lilypond executable file
-     * TODO: move path configuration to gradle build file
-     */
-    private Path lilypond_exe = Path.of("C:/Program Files (x86)/LilyPond/usr/bin/lilypond-windows");
-    private Path[] lilypond_searchPaths = new Path[]{basePath.resolve("lytests/sulzer")};
+    private final static Path lilypond_exe = getLilypondPath();
+    private final static Path[] lilypond_searchPaths = getLilypondSearchPaths();
 
     private Path workingDir = basePath.getParent().resolve("lytests/compilerTest/");
     private String inFile = "input.ly";
@@ -96,5 +94,52 @@ public class LilypondCompiler {
         }
 
         return image;
+    }
+
+    public static Path LilypondPath() {
+        return lilypond_exe;
+    }
+    public static Path[] LilypondSearchPaths() {
+        return lilypond_searchPaths;
+    }
+
+    private static Path getLilypondPath() {
+        String path = getProperty("lilypond_executable");
+        if (path != null) {
+            return Path.of(path);
+        }
+        return null;
+    }
+    private static Path[] getLilypondSearchPaths() {
+        String prop = getProperty("lilypond_search_paths");
+        if (prop != null && !prop.isEmpty()) {
+            String[] paths = prop.split("|");
+            Path[] result = new Path[paths.length];
+            for (int i = 0; i < paths.length; i++) {
+                result[i] = Path.of(paths[i]);
+            }
+            return result;
+        }
+        return null;
+    }
+
+    private static Properties PROPERTIES;
+    private static String getProperty(String key) {
+        String configFile = "lilypond-config.properties";
+        if (PROPERTIES == null) {
+            PROPERTIES = new Properties();
+            try (InputStream in = LilypondCompiler.class.getClassLoader().getResourceAsStream("lilypond-config.properties")) {
+                PROPERTIES.load(in);
+
+            } catch (IOException ex) {
+                LOGGER.log(Level.SEVERE, "could not load properties file", ex);
+            }
+        }
+
+        if (!PROPERTIES.containsKey(key)) {
+            LOGGER.log(Level.SEVERE, "missing property '" + key + "' in config file '" + configFile + "'");
+        }
+
+        return PROPERTIES.getProperty(key);
     }
 }

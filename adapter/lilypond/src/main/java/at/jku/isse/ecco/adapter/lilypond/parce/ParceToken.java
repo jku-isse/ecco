@@ -9,7 +9,6 @@ public class ParceToken {
     private final int pos;
     private String text;
     private final String action;
-    private String postWhitespace = "";
     private Object transformationData;
 
     /**
@@ -34,21 +33,7 @@ public class ParceToken {
      */
     public String getAction() { return action; }
 
-    public String getPostWhitespace() { return postWhitespace; }
-
-    public void setPostWhitespace(String ws) {
-        postWhitespace = ws;
-    }
-
     public Object getTransformationData() { return transformationData; }
-
-    /**
-     * Returns text and appended whitespace of token.
-     * @return Token text with appended whitespace characters.
-     */
-    public String getFullText() {
-        return text.concat(postWhitespace);
-    }
 
     public ParceToken(int pos, String text, String action) {
         this.pos = pos;
@@ -66,12 +51,12 @@ public class ParceToken {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ParceToken that = (ParceToken) o;
-        return text.equals(that.text) && action.equals(that.action) && postWhitespace.equals(that.postWhitespace);
+        return text.equals(that.text) && action.equals(that.action);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(text, action, postWhitespace);
+        return Objects.hash(text, action);
     }
 
     @Override
@@ -79,7 +64,6 @@ public class ParceToken {
         return  "ParceToken{" +
                 "pos=" + pos +
                 ", action='" + action + "'" +
-                ", text='" + text + "'" +
-                ", whitespace='" + postWhitespace + "'}";
+                ", text='" + text + "'}";
     }
 }

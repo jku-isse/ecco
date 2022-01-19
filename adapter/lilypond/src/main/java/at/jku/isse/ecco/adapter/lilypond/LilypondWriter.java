@@ -3,7 +3,6 @@ package at.jku.isse.ecco.adapter.lilypond;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.lilypond.data.context.BaseContextArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
@@ -16,10 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 
@@ -41,16 +37,27 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 		for (Node fileNode : input) {
 			Artifact<?> fileArtifact = fileNode.getArtifact();
 			ArtifactData artifactData = fileArtifact.getData();
-			if (!(artifactData instanceof PluginArtifactData))
+			if (!(artifactData instanceof PluginArtifactData pluginArtifactData))
 				throw new EccoException("Expected plugin artifact data.");
-			PluginArtifactData pluginArtifactData = (PluginArtifactData) artifactData;
 			Path outputPath = base.resolve(pluginArtifactData.getPath());
 			output.add(outputPath);
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
-                for (Node n : fileNode.getChildren()) {
-                    writeNodeRec(n, bw);
-                }
+				ArtifactIterator it = new ArtifactIterator(fileNode);
+				if (it.hasNext()) {
+					Node cur = it.next();
+					DefaultTokenArtifactData d = (DefaultTokenArtifactData)cur.getArtifact().getData();
+					while (it.hasNext()) {
+						Node next = it.next();
+						bw.write(d.getText());
+						DefaultTokenArtifactData n = (DefaultTokenArtifactData)next.getArtifact().getData();
+						if (LilypondFormatter.appendSpace(d, n)) {
+							bw.write(" ");
+						}
+						d = n;
+					}
+					bw.write(d.getText());
+				}
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -60,19 +67,61 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 		return output.toArray(new Path[0]);
 	}
 
-    private void writeNodeRec(Node n, BufferedWriter bw) throws IOException {
-        ArtifactData d = n.getArtifact().getData();
-        if (d instanceof BaseContextArtifactData) {
-            for (Node cn : n.getChildren()) {
-                writeNodeRec(cn, bw);
-            }
+	static class ArtifactIterator implements Iterator<Node> {
+		private List<? extends  Node> children;
+		private Node nextNode = null;
+		Stack<Integer> indexes = new Stack<>();
 
-        } else if (d instanceof DefaultTokenArtifactData) {
-            DefaultTokenArtifactData dad = (DefaultTokenArtifactData)d;
-            bw.write(dad.getText());
-            bw.write(dad.getPostWhitespace());
-        }
-    }
+		public ArtifactIterator(Node n) {
+			assert n != null;
+
+			do {
+				calcNext(n);
+			} while (nextNode != null && !(nextNode.getArtifact().getData() instanceof DefaultTokenArtifactData));
+		}
+
+		@Override
+		public boolean hasNext() {
+			return nextNode != null;
+		}
+
+		@Override
+		public Node next() {
+			Node current = nextNode;
+			do {
+				calcNext(nextNode);
+			} while (nextNode != null && !(nextNode.getArtifact().getData() instanceof DefaultTokenArtifactData));
+			return current;
+		}
+
+		private void calcNext(Node n) {
+			List<? extends Node> cs = n.getChildren();
+			if (cs.size() > 0) {
+				children = cs;
+				indexes.push(0);
+				nextNode = children.get(0);
+
+			} else {
+				while (true) {
+					int i = indexes.pop();
+					i++;
+					if (i < children.size()) {
+						indexes.push(i);
+						nextNode = children.get(i);
+						return;
+
+					} else if (indexes.size() == 0 && i == children.size()) {
+						nextNode = null;
+						return;
+
+					} else {
+						n = n.getParent();
+						children = n.getParent().getChildren();
+					}
+				}
+			}
+		}
+	}
 
 	private Collection<WriteListener> listeners = new ArrayList<>();
 

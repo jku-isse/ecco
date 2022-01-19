@@ -29,6 +29,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
     public static Logger getLogger() {
         return LOGGER;
     }
+    public final static String PARSER_ACTION_LINEBREAK = "__LineBreak";
 
     @Inject
     public LilypondReader(EntityFactory entityFactory) {

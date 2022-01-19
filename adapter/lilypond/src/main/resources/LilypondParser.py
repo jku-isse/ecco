@@ -16,13 +16,19 @@ for e in parce.events(LilyPond.root, s):
     pop = 0
     if e.target:
         pop = e.target.pop
+        first = e.lexemes[0]
+        if first[0] > lastPos:
+            ep.addWhitespace(lastPos, s[lastPos:first[0]])
+            lastPos = first[0] + len(first[1])
         for c in e.target.push:
             ep.addContext(c.fullname)
 
-#    for tpl in e.tokens:        # until parce v0.13
-    for tpl in e.lexemes:      # since parce v0.14
-        ws = s[lastPos:tpl[0]]
-        ep.addToken(tpl[0], tpl[1], str(tpl[2]), ws)
+    for tpl in e.lexemes:
+        if tpl[0] > lastPos:
+            ep.addWhitespace(lastPos, s[lastPos:tpl[0]])
+        ep.addToken(tpl[0], tpl[1], str(tpl[2]))
         lastPos = tpl[0] + len(tpl[1])
 
     ep.closeEvent(pop)
+
+ep.addWhitespace(lastPos, s[lastPos:])

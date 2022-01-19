@@ -1,13 +1,13 @@
-package at.jku.isse.ecco.adapter.lilypond.parce;
+package at.jku.isse.ecco.adapter.lilypond.parce.graalvm;
 
+import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 import org.graalvm.polyglot.HostAccess;
 
 import java.util.LinkedList;
 import java.util.List;
 
-public class GraalVMService {
+public class Service {
     private ParseEvent event;
-    private ParceToken lastToken;
     private final List<ParseEvent> events = new LinkedList<>();
 
     @HostAccess.Export
@@ -20,14 +20,9 @@ public class GraalVMService {
     }
 
     @HostAccess.Export
-    public void addToken(int pos, String text, String action, String precedingWhitespace) {
-        if (lastToken != null) {
-            lastToken.setPostWhitespace(precedingWhitespace);
-        }
-
+    public void addToken(int pos, String text, String action) {
         ParceToken t = new ParceToken(pos, text, action);
         event.addToken(t);
-        lastToken = t;
     }
 
     @HostAccess.Export

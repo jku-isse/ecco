@@ -13,6 +13,10 @@ public class LilyEccoTransformer {
     private final static String DEF_LYRIC = "Keyword.Lyric";
     private final static String DEF_LYRICLIST = "LilyPond.lyriclist";
     private final static String DEF_BRACKET_START = "Delimiter.Bracket.Start";
+    private final static String DEF_STRING = "LilyPond.string";
+    private final static String DEF_SCHEME_STRING = "SchemeLily.string";
+    private final static String DEF_LITERAL_STRING = "Literal.String";
+    private final static String DEF_SCHEME_NUMBER = "SchemeLily.number";
 
     private static int cntInput;
     private static int cntOutput;
@@ -45,10 +49,12 @@ public class LilyEccoTransformer {
                     n = transformLyriclist(n);
                 }
 
-            } else {
-                if (n.getName().equals(DEF_IDENTIFIER)) {
-                    n = transformIdentifier(n);
-                }
+            } else if (n.getName().equals(DEF_IDENTIFIER)) {
+                n = transformIdentifier(n);
+            } else if (n.getName().equals(DEF_STRING) || n.getName().equals(DEF_SCHEME_STRING)) {
+                n = transformString(n, n.getName());
+            } else if (n.getName().equals(DEF_SCHEME_NUMBER)) {
+                n = transformSchemeNumber(n);
             }
 
             n = moveNext(n);
@@ -87,12 +93,12 @@ public class LilyEccoTransformer {
         LilypondNode<ParceToken> prev = defNode.getPrev().getPrev();
 
         StringBuilder variableDefinition = new StringBuilder(defNode.getData().getText());
-        StringBuilder fullVarDefinition = new StringBuilder(defNode.getData().getFullText());
+        StringBuilder fullVarDefinition = new StringBuilder(defNode.getData().getText());
         LilypondNode<ParceToken> next = defNode.getNext();
         cntInput++;
         while (next != null && next.getLevel() == defNode.getLevel()) {
             variableDefinition.append(next.getData().getText());
-            fullVarDefinition.append(next.getData().getFullText());
+            fullVarDefinition.append(next.getData().getText());
             next = next.getNext();
             cntInput++;
         } // var names like "varOne.varTwo"
@@ -101,7 +107,7 @@ public class LilyEccoTransformer {
         if (next == null || next.getData() == null || !next.getData().getAction().equals("Delimiter.Operator.Assignment")) {
             return defNode;
         }
-        fullVarDefinition.append(next.getData().getFullText());
+        fullVarDefinition.append(next.getData().getText());
 
         ParceToken t = new ParceToken(defNode.getData().getPos(),
                 fullVarDefinition.toString(), DEF_VARIABLE, variableDefinition.toString());
@@ -115,7 +121,7 @@ public class LilyEccoTransformer {
         return def;
     }
 
-    private static  LilypondNode<ParceToken> transformIdentifier(LilypondNode<ParceToken> identifier) {
+    private static LilypondNode<ParceToken> transformIdentifier(LilypondNode<ParceToken> identifier) {
         LilypondNode<ParceToken> n = identifier.getNext();
         cntInput++;
         StringBuilder sb = new StringBuilder();
@@ -123,14 +129,7 @@ public class LilyEccoTransformer {
         while (n != null && n.getLevel() > identifier.getLevel()) {
             if (n.getData() != null) {
                 if (newToken == null) { newToken = new ParceToken(n.getData().getPos(), "", n.getData().getAction()); }
-
-                if (n.getNext() == null || n.getNext().getLevel() == identifier.getLevel()) {
-                    // last reference node
-                    sb.append(n.getData().getText());
-                    newToken.setPostWhitespace(n.getData().getPostWhitespace());
-                } else {
-                    sb.append(n.getData().getFullText());
-                }
+                sb.append(n.getData().getText());
             }
 
             n = n.getNext();
@@ -150,6 +149,70 @@ public class LilyEccoTransformer {
 
         } else {
             return identifier;
+        }
+    }
+
+    private static LilypondNode<ParceToken> transformString(LilypondNode<ParceToken> string, String tokenName) {
+        LilypondNode<ParceToken> n = string.getNext();
+        if (n.getData() == null || !n.getData().getAction().equals(DEF_LITERAL_STRING)) { return string; }
+        cntInput++;
+        StringBuilder sb = new StringBuilder();
+        ParceToken newToken = null;
+        while (n != null && n.getLevel() > string.getLevel()) {
+            if (n.getData() != null) {
+                if (newToken == null) { newToken = new ParceToken(n.getData().getPos(), "", n.getData().getAction()); }
+                sb.append(n.getData().getText());
+            }
+
+            n = n.getNext();
+            cntInput++;
+        }
+
+        if (newToken != null) {
+            newToken.setText(sb.toString());
+            LilypondNode<ParceToken> newNode = new LilypondNode<>(tokenName, newToken);
+            newNode.setLevel(string.getLevel());
+            newNode.setPrev(string.getPrev());
+            string.getPrev().setNext(newNode);
+            newNode.setNext(n);
+            if (n != null) { n.setPrev(newNode); }
+
+            return newNode;
+
+        } else {
+            return string;
+        }
+    }
+
+    private static LilypondNode<ParceToken> transformSchemeNumber(LilypondNode<ParceToken> number) {
+        LilypondNode<ParceToken> n = number.getNext();
+        if (n.getData() == null || !n.getData().getAction().startsWith("Literal.Number")) { return number; }
+        cntInput++;
+        StringBuilder sb = new StringBuilder();
+        ParceToken newToken = null;
+        while (n != null && n.getLevel() > number.getLevel()) {
+            if (n.getData() != null) {
+                if (newToken == null) { newToken = new ParceToken(n.getData().getPos(), "", n.getData().getAction()); }
+                sb.append(n.getData().getText());
+            }
+
+            n = n.getNext();
+            cntInput++;
+        }
+
+        if (newToken != null) {
+            newToken.setText(sb.toString());
+            LilypondNode<ParceToken> newNode = new LilypondNode<>(DEF_SCHEME_NUMBER, newToken);
+            newNode.setLevel(number.getLevel());
+            newNode.setPrev(number.getPrev());
+            number.getPrev().setNext(newNode);
+            newNode.setNext(n);
+            if (n != null) { n.setPrev(newNode); }
+
+            return newNode;
+
+        } else {
+            return number;
         }
     }
 
@@ -175,10 +238,15 @@ public class LilyEccoTransformer {
         cntInput++;
 
         LilypondNode<ParceToken> prev = lyricmode.getPrev();
-        StringBuilder lyrics = new StringBuilder(lyricmode.getData().getFullText());
+        StringBuilder lyrics = new StringBuilder(lyricmode.getData().getText());
+        lyrics.append(" ");
         while (n != null && n.getLevel() > lyricmode.getLevel()) {
             if (n.getData() != null) {
-                lyrics.append(n.getData().getFullText());
+                if (n.getData().getAction().equals(LilypondReader.PARSER_ACTION_LINEBREAK)) {
+                    lyrics.append("\n").append(n.getData().getText());
+                } else {
+                    lyrics.append(n.getData().getText()).append(" ");
+                }
             }
 
             n = n.getNext();

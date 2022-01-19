@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond.data;
 
+import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
 import at.jku.isse.ecco.adapter.lilypond.data.token.*;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 
@@ -15,6 +16,9 @@ public class TokenArtifactDataFactory {
         switch (token.getAction()) {
             case "Name.Variable.Definition":
                 return new VariableDefinitionArtifactData(token);
+
+            case LilypondReader.PARSER_ACTION_LINEBREAK:
+                return new LineBreakArtifactData(token);
 
             default:
                 return new DefaultTokenArtifactData(token);

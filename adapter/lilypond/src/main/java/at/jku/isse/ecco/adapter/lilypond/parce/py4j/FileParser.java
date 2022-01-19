@@ -1,43 +1,41 @@
-package at.jku.isse.ecco.adapter.lilypond.parce;
+package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
 
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondParser;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
+import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 import py4j.GatewayServerListener;
 import py4j.Py4JServerConnection;
 
 import java.io.*;
-import java.nio.file.Files;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Py4jFileParser implements LilypondParser<ParceToken> {
+public class FileParser implements LilypondParser<ParceToken> {
     public static final int MAX_SCRIPT_TIMEOUT = 10;
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
     protected static GatewayServerListener gatewayListener = getGatewayListener();
-    private Path pythonScript;
+    private String pythonScript;
 
     public void init() throws IOException {
-        Py4jGateway.getInstance().addListener(gatewayListener);
-        Py4jGateway.getInstance().start();
+        Gateway.getInstance().addListener(gatewayListener);
+        Gateway.getInstance().start();
 
         try {
-            pythonScript = Files.createTempFile("lilypondParce", ".py");
-            InputStream is = ClassLoader.getSystemResourceAsStream("LilypondParser.py");
-            OutputStream os = Files.newOutputStream(pythonScript, StandardOpenOption.CREATE);
-            if (is != null) {
-                os.write(is.readAllBytes());
-            }
+            URI scriptUri = Objects.requireNonNull(ClassLoader.getSystemResource("LilypondParser.py")).toURI();
+            pythonScript = Paths.get(scriptUri).toString();
 
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "could not create temporary python script file", e);
-            throw e;
+        } catch (NullPointerException | URISyntaxException e) {
+            throw new IOException("could not load parser script", e);
         }
     }
 
@@ -47,7 +45,7 @@ public class Py4jFileParser implements LilypondParser<ParceToken> {
 
     public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
-        ProcessBuilder lilyparce = new ProcessBuilder("python", pythonScript.toString(), path.toString());
+        ProcessBuilder lilyparce = new ProcessBuilder("python", pythonScript, path.toString());
         Process process = null;
         try {
             process = lilyparce.start();
@@ -77,7 +75,7 @@ public class Py4jFileParser implements LilypondParser<ParceToken> {
 
             if (exitCode == 0) {
                 LOGGER.log(Level.FINE, "Parce exited normal, code: {0}, {1}ms", new Object[] { exitCode, (System.nanoTime() - tm) / 1000000 });
-                return convertEventsToNodes(Py4jGateway.getInstance().getBuffer(), tokenMetric);
+                return convertEventsToNodes(Gateway.getInstance().getBuffer(), tokenMetric);
 
             } else {
                 LOGGER.severe("Parce exited with code " + exitCode + ":\n" + sjErr);
@@ -99,12 +97,12 @@ public class Py4jFileParser implements LilypondParser<ParceToken> {
      * @param buffer Buffer with Parce events.
      * @return First node of list.
      */
-    private LilypondNode<ParceToken> convertEventsToNodes(ConcurrentLinkedQueue<Py4jParseEvent> buffer, HashMap<String, Integer> tokenMetric) {
+    private LilypondNode<ParceToken> convertEventsToNodes(ConcurrentLinkedQueue<ParseEvent> buffer, HashMap<String, Integer> tokenMetric) {
         assert buffer != null;
 
         LOGGER.log(Level.INFO, "convert {0} events to tree", buffer.size());
         int depth = 0, maxDepth = 0, cnt = 0;
-        Py4jParseEvent e = buffer.poll();
+        ParseEvent e = buffer.poll();
         LilypondNode<ParceToken> head = new LilypondNode<>("HEAD", null);
         head.setLevel(depth);
         LilypondNode<ParceToken> n = head;
@@ -132,7 +130,8 @@ public class Py4jFileParser implements LilypondParser<ParceToken> {
 
                 n = n.append(t.getAction(), t, depth);
                 cnt++;
-                LOGGER.log(Level.FINER, "added token node \"{0}\" (depth: {1}), post \"{2}\"", new Object[] { t.getText(), depth, t.getPostWhitespace() });
+                LOGGER.log(Level.FINER, "added token {0} \"{1}\" (depth: {2})",
+                        new Object[] { t.getAction(), t.getText(), depth });
             }
 
             e = buffer.poll();
@@ -144,14 +143,7 @@ public class Py4jFileParser implements LilypondParser<ParceToken> {
     }
 
     public void shutdown() {
-        try {
-            Files.delete(pythonScript);
-
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "could not delete temporary python script file", e);
-        }
-
-        Py4jGateway.getInstance().shutdown();
+        Gateway.getInstance().shutdown();
     }
 
     private static GatewayServerListener getGatewayListener() {

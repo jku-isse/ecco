@@ -1,28 +1,28 @@
-package at.jku.isse.ecco.adapter.lilypond.parce;
+package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
 
 import py4j.GatewayServer;
 import py4j.GatewayServerListener;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class Py4jGateway {
-    private static Py4jGateway instance;
+public class Gateway {
+    private static Gateway instance;
     private final GatewayServer server;
-    private final Py4jEntryPoint entrypoint;
+    private final EntryPoint entrypoint;
 
-    private Py4jGateway() {
-        entrypoint = new Py4jEntryPoint();
+    private Gateway() {
+        entrypoint = new EntryPoint();
         server = new GatewayServer(entrypoint);
     }
 
-    public static Py4jGateway getInstance() {
+    public static Gateway getInstance() {
         if (instance == null) {
-            instance = new Py4jGateway();
+            instance = new Gateway();
         }
         return instance;
     }
 
-    public ConcurrentLinkedQueue<Py4jParseEvent> getBuffer() {
+    public ConcurrentLinkedQueue<ParseEvent> getBuffer() {
         if (instance == null) return null;
 
         return instance.entrypoint.getBuffer();

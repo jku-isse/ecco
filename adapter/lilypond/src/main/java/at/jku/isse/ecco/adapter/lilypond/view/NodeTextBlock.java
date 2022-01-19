@@ -36,7 +36,7 @@ public class NodeTextBlock {
                 ? node.getArtifact().getContainingNode().getContainingAssociation()
                 : null;
 
-        String text = tad.getText().concat(tad.getPostWhitespace());
+        String text = tad.getText().concat(" "); // TODO: whitspace
         String[] nodeLines = text.split("\\n", -1);
         this.text = nodeLines[0];
 

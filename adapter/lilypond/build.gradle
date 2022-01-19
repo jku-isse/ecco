@@ -14,6 +14,7 @@ dependencies {
 	// TODO: include only dependency needed for current build
 	implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
 	implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
+	testImplementation group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
 }
 
 ospackage {
