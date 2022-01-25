@@ -1,5 +1,4 @@
 \version "2.19.80"
-%\include "snippets/editorial-tools/merge-rests-engraver/module.ily"
 
 \header {
 title = "Factus est repente"
@@ -7,28 +6,21 @@ composer = "Balduin Sulzer"
 subtitle = "Pfingstantiphon für 2 Soprane, 2 Tenöre und 2 Bässe a capella"
 poet = "In memoriam Joseph Kronsteiner"
 dedication = "Gewidmet dem Vokalensemble Voices"
-tagline = ""
 }
 sfpp = #(make-dynamic-script "sfpp")
 
-
-
-
 global = {
- \key c \major
- 
+ \key c
+ \major
  \dynamicUp
  \override Hairpin.to-barline = ##f
- %\override Staff.BarLine.hair-thickness = #0.25
  \autoBeamOff
 }
 
-
 sopranoOneVoice = \relative c'' {
  \global
- 
- % Music follows here.
  \tempo "Tempo giusto" 4 = 92
+
  R1*3 
  b,8\mf r fis'^>\sf r b,\mf r fis'^>\sf r fis^>\sf r b,\mf r b r fis'^>\sf fis^>\sf b,\mf r fis'^>\sf r b,\mf r fis'^>\sf r fis^>\sf r b,\mf r b r fis'^>\sf fis^>\sf
  gis8.\p gis16 gis8. gis16 gis8. gis16 gis8. gis16 
@@ -57,7 +49,6 @@ sopranoOneVoice = \relative c'' {
 }
 
 verseSopranoOneVoice = \lyricmode {
- % Lyrics follow here.
  so -- nus, so -- nus -- nus, so -- nus, so -- nus, so -- nus, so -- nus -- nus, so -- nus, so -- nus,
  tam -- quam, tam -- quam, tam -- quam, tam -- quam, 
  tam -- quam, ad -- ve -- ni -- en -- tis  __ Spi -- ri -- tus __ 
@@ -75,12 +66,11 @@ verseSopranoOneVoice = \lyricmode {
  ha -- ha -- ha -- ha! Al -- le -- lu, al -- le -- lu, al -- le -- lu -- ja -- _ ha, ha -- ha -- ha -- ha!
  Al -- le -- lu -- ja, al -- le -- lu -- ja,
  al -- le -- lu -- ja, __ al -- le -- lu -- ja. __
- }
+}
 
 sopranoTwoVoice = \relative c'' {
  \global
  
- % Music follows here.
  R1*3 
  b,8\mf r cis^>\sf r b\mf r cis^>\sf r cis^>\sf r b\mf r b r cis^>\sf cis^>\sf b\mf r cis^>\sf r b\mf r cis^>\sf r cis^>\sf r b\mf r b r cis^>\sf cis^>\sf
  gis'8.\p gis16 gis8. gis16 gis8. gis16 gis8. gis16 
@@ -107,7 +97,6 @@ dis'8\ff r dis r dis r dis r  \tuplet 3/2 {gis,8.^>\mf gis16 gis8 }  \tuplet 3/2
 }
 
 verseSopranoTwoVoice = \lyricmode {
- % Lyrics follow here.
  so -- nus, so -- nus -- nus, so -- nus, so -- nus, so -- nus, so -- nus -- nus, so -- nus, so -- nus,
  tam -- quam, tam -- quam, tam -- quam, tam -- quam, 
  tam -- quam, ad -- ve -- ni -- en -- tis __ Spi -- ri -- tus ve -- he -- men -- _ _ _ _ _ tis, __
@@ -124,13 +113,11 @@ verseSopranoTwoVoice = \lyricmode {
  ha -- ha -- ha -- ha! Al -- le -- lu, al -- le -- lu, al -- le -- lu -- ja -- _ ha, ha -- ha -- ha -- ha, al -- le -- lu, lu -- ja -- ha,
  al -- le -- lu -- ja, al -- le -- lu, al -- le -- lu, al -- le -- lu, al -- le -- lu, al -- le -- lu -- ja,
  al -- le -- lu -- ja, __ al -- le -- lu -- ja. __
- 
 }
 
 tenorOneVoice = \relative c' {
  \global
  
- % Music follows here.
  b4\p b b8. b16 b4 b b b8. b16 b4 b8.\< b16 b8. b16 b8 b16 b b8 b 
  b8\mf r fis'^>\sf r b,\mf r fis'^>\sf r fis^>\sf r b,\mf r b r fis'^>\sf fis^>\sf b,\mf r fis'^>\sf r b,\mf r fis'^>\sf r fis^>\sf r b,\mf r b r fis'^>\sf fis^>\sf
  gis,8.\p gis16 gis8. gis16 gis8. gis16 gis8. gis16 
@@ -150,12 +137,10 @@ tenorOneVoice = \relative c' {
  \tuplet 3/2 { gis8^>\sff dis16 dis gis8 } \tuplet 3/2 { gis8.^>\sff e16 e8 } \tuplet 3/2 { gis8.^>\sff e16 e8 } \tuplet 3/2 { gis8.^>\sff e16 e8 } \tuplet 3/2 { gis8^>\sff dis gis^>\sf } \tuplet 3/2 { gis8^> dis16 dis gis8^>\sff } r2
   gis8\ff r ais r gis r ais r R1 gis8\ff r ais r gis r ais r R1 r2 \tuplet 3/2 { gis,8([\p ais gis] fis[ dis]) cis } b2.( b'4) b1\> ~ b\fermata\!
  
- 
  \bar "|." 
 }
 
 verseTenorOneVoice = \lyricmode {
- % Lyrics follow here.
  Fac -- tus, fac -- tus est, fac -- tus, fac -- tus est, fac -- tus est re -- pen -- te de cœ -- lo
  so -- nus, so -- nus -- nus, so -- nus, so -- nus, so -- nus, so -- nus -- nus, so -- nus, so -- nus,
  tam -- quam, tam -- quam, tam -- quam, tam -- quam, 
@@ -171,13 +156,11 @@ verseTenorOneVoice = \lyricmode {
  ha -- ha -- ha -- ha! Al -- le -- lu, al -- le -- lu, al -- le -- lu -- ja -- _ ha, ha -- ha -- ha -- ha!
  Al -- le -- lu -- ja, al -- le -- lu -- ja,
  al -- le -- lu -- ja. __
- 
 }
 
 tenorTwoVoice = \relative c' {
  \global
  
- % Music follows here.
  b4\p b b8. b16 b4 b b b8. b16 b4 b8.\< b16 b8. b16 b8 b16 b b8 b 
  b8\mf r cis^>\sf r b\mf r cis^>\sf r cis^>\sf r b\mf r b r cis^>\sf cis^>\sf b\mf r cis^>\sf r b\mf r cis^>\sf r cis^>\sf r b\mf r b r cis^>\sf cis^>\sf
  gis8.\p gis16 gis8. gis16 gis8. gis16 gis8. gis16 
@@ -197,11 +180,9 @@ tenorTwoVoice = \relative c' {
  \tuplet 3/2 { dis8^>\sff gis16 gis dis8 } \tuplet 3/2 { gis,8^>\sff cis e } \tuplet 3/2 { gis,8^>\sff cis e } \tuplet 3/2 { gis,8^>\sff cis e } \tuplet 3/2 { dis8^>\sff gis dis^>\sf } \tuplet 3/2 { dis8^> gis16 gis dis8^>\sff }  \tuplet 3/2 { gis,8.\mf gis16 gis8}  \tuplet 3/2 { gis gis gis }
   dis'8\ff r fis r dis r fis r  \tuplet 3/2 { gis,8.^>\mf gis16  gis8 }   \tuplet 3/2 { gis8.^> gis16  gis8 }   \tuplet 3/2 { gis8.^> gis16 gis8 }   \tuplet 3/2 { gis8.^> gis16 gis8 }   dis'8\ff r fis r dis r fis r
  R1 r2 \tuplet 3/2 { gis,8([\p ais gis] fis[ dis]) cis } b4( dis2 gis8[ ais]) ais1\> ~ ais\fermata\!
- 
 }
 
 verseTenorTwoVoice = \lyricmode {
- % Lyrics follow here.
  Fac -- tus, fac -- tus est, fac -- tus, fac -- tus est, fac -- tus est re -- pen -- te de cœ -- lo
  so -- nus, so -- nus -- nus, so -- nus, so -- nus, so -- nus, so -- nus -- nus, so -- nus, so -- nus,
  tam -- quam, tam -- quam, tam -- quam, tam -- quam, 
@@ -223,7 +204,6 @@ verseTenorTwoVoice = \lyricmode {
 bassOneVoice = \relative c {
  \global
  
- % Music follows here.
  b4\p r b r4 b4 r b r4 b8\< b b b b b16 b b8 b 
  b8\mf r fis'^>\sf r b,\mf r fis'^>\sf r fis^>\sf r b,\mf r b r fis'^>\sf fis^>\sf b,\mf r fis'^>\sf r b,\mf r fis'^>\sf r fis^>\sf r b,\mf r b r fis'^>\sf fis^>\sf
  gis8.\p gis,16 gis8. gis16 gis8. gis16 gis8. gis16 
@@ -246,7 +226,6 @@ bassOneVoice = \relative c {
 }
 
 verseBassOneVoice = \lyricmode {
- % Lyrics follow here.
  Fac -- tus, fac -- tus, fac -- tus est re -- pen -- te de cœ -- lo
  so -- nus, so -- nus -- nus, so -- nus, so -- nus, so -- nus, so -- nus -- nus, so -- nus, so -- nus,
  tam -- quam, tam -- quam, tam -- quam, tam -- quam, 
@@ -264,14 +243,11 @@ verseBassOneVoice = \lyricmode {
  ha -- ha -- ha -- ha! Al -- le -- lu, al -- le -- lu, al -- le -- lu -- ja -- _ ha, ha -- ha -- ha -- ha!
  Al -- le -- lu -- ja, al -- le -- lu -- ja,
  al -- le -- lu -- ja. __
- 
- 
 }
 
 bassTwoVoice = \relative c {
  \global
  
- % Music follows here.
  b4\p r b r4 b4 r b r4 b8\< b b b b b16 b b8 b 
  b8\mf r cis^>\sf r b\mf r cis^>\sf r cis^>\sf r b\mf r b r cis^>\sf cis^>\sf b\mf r cis^>\sf r b\mf r cis^>\sf r cis^>\sf r b\mf r b r cis^>\sf cis^>\sf
  gis8.\p gis16 gis8. gis16 gis8. gis16 gis8. gis16 
@@ -294,7 +270,6 @@ bassTwoVoice = \relative c {
 }
 
 verseBassTwoVoice = \lyricmode {
- % Lyrics follow here.
  Fac -- tus, fac -- tus, fac -- tus est re -- pen -- te de cœ -- lo
  so -- nus, so -- nus -- nus, so -- nus, so -- nus, so -- nus, so -- nus -- nus, so -- nus, so -- nus,
  tam -- quam, tam -- quam, tam -- quam, tam -- quam, 
@@ -320,10 +295,7 @@ sopranoOneVoicePart = \new Staff \with {
  \override DynamicText.font-size = #-1
  instrumentName = "Sopran 1"
  shortInstrumentName = "S1"
- %midiInstrument = "string ensemble 1"
-} << \sopranoOneVoice 
-  %\new Dynamics = Dsone  \with { belowAboveContext = "sopranoOneVoicePart" } \dyn
->>
+} { \sopranoOneVoice }
 \addlyrics { \verseSopranoOneVoice }
 
 sopranoTwoVoicePart = \new Staff \with {
@@ -332,7 +304,6 @@ sopranoTwoVoicePart = \new Staff \with {
  \override DynamicText.font-size = #-1
  instrumentName = "Sopran 2"
  shortInstrumentName = "S2"
- %midiInstrument = "string ensemble 1"
 } { \sopranoTwoVoice }
 \addlyrics { \verseSopranoTwoVoice }
 
@@ -342,7 +313,6 @@ tenorOneVoicePart = \new Staff \with {
  \override DynamicText.font-size = #-1
  instrumentName = "Tenor 1"
  shortInstrumentName = "T1"
- %midiInstrument = "string ensemble 1"
 } { \clef "treble_8" \tenorOneVoice }
 \addlyrics { \verseTenorOneVoice }
 
@@ -352,7 +322,6 @@ tenorTwoVoicePart = \new Staff \with {
  \override DynamicText.font-size = #-1
  instrumentName = "Tenor 2"
  shortInstrumentName = "T2"
- %midiInstrument = "string ensemble 1"
 } { \clef "treble_8" \tenorTwoVoice }
 \addlyrics { \verseTenorTwoVoice }
 
@@ -362,7 +331,6 @@ bassOneVoicePart = \new Staff \with {
  \override DynamicText.font-size = #-1
  instrumentName = "Bass 1"
  shortInstrumentName = "B1"
- %midiInstrument = "string ensemble 1"
 } { \clef bass \bassOneVoice }
 \addlyrics { \verseBassOneVoice }
 
@@ -372,32 +340,28 @@ bassTwoVoicePart = \new Staff \with {
  \override DynamicText.font-size = #-1
  instrumentName = "Bass 2"
  shortInstrumentName = "B2"
- %midiInstrument = "string ensemble 1"
 } { \clef bass \bassTwoVoice }
 \addlyrics { \verseBassTwoVoice }
 
-%{  %}
-scoreA = { \new ChoirStaff << \transpose f f {
-  <<
-    \sopranoOneVoicePart
-    \sopranoTwoVoicePart
-    \tenorOneVoicePart
-    \tenorTwoVoicePart
-    \bassOneVoicePart
-    \bassTwoVoicePart 
-    
+scoreA = {
+  \new ChoirStaff << \transpose f f {
+    <<
+      \sopranoOneVoicePart
+      \sopranoTwoVoicePart
+      \tenorOneVoicePart
+      \tenorTwoVoicePart
+      \bassOneVoicePart
+      \bassTwoVoicePart 
     >>
-         } >>
+  } >>
 }
-\score { \scoreA 
-  %\include "layout.ily"
+\score { \scoreA
+  \layout{}
 }
-
 
 sopranoOneVoicePsalm = \relative c'' {
  \time 6/8 \autoBeamOff
  
- % Music follows here.
  \tempo "Psalm" \dynamicUp
   ais8^.\pp ais8^. ais8^. ais8^. ais8^. ais8^> ~ais ais16^. ais^. ais8^. ais8^. ais8^. ais8^.
   ais\mf dis^. fis^. ais^. fis^. dis^. ais'^. fis^. dis^. ais'^.([ gis]) ais^. b8. ais16^. gis8^. ais4( dis,8) dis4. ~dis8 r4
@@ -411,18 +375,16 @@ sopranoOneVoicePsalm = \relative c'' {
 }
 
 verseSopranoOneVoicePsalm = \lyricmode {
- % Lyrics follow here.
  Glo -- ri -- a, glo -- ri -- a, __ glo -- ri -- a, glo -- ri -- a, glo -- ri -- a Pa -- tri et ﬁ -- li -- o et __ spi -- ri -- tu -- i sanc -- to; __
  sanc -- to, sanc -- to, sanc -- to, __ sanc -- to, sanc -- to, sanc -- to, si -- cut e -- rat in prin -- ci -- pi -- o et nunc et sem -- per __
 et __ in sæ -- cu -- la sæ -- cu, sæ -- cu -- la sæ -- cu, sæ -- cu -- la sæ -- cu -- lo -- rum, lo -- rum, lo -- rum, __
 a -- men,  a -- men, a -- men, a -- men, a -- men, a -- men, a -- men. __
 }
  
- sopranoTwoVoicePsalm = \relative c' {
-\time 6/8 \autoBeamOff
+sopranoTwoVoicePsalm = \relative c' {
+  \time 6/8 \autoBeamOff
  
- % Music follows here.
- \tempo "Psalm" \dynamicUp
+  \tempo "Psalm" \dynamicUp
   fis8^.\pp fis8^. fis8^. fis8^. fis8^. fis8^> ~fis fis16^. fis^. fis8^. fis8^. fis8^. fis8^.
   fis\mf b^. dis^. fis^. dis^. b^. fis'^. dis^. b^. fis'^.([ e]) fis^. gis8. fis16^. e8^. fis4( b,8) b4. ~b8 r4
   b8^>\pp b^. b^. b^> b^. b^> ~b b16^. b16^.  b16^.  b16^.  b8^. b8^- r
@@ -435,24 +397,19 @@ a -- men,  a -- men, a -- men, a -- men, a -- men, a -- men, a -- men. __
 }
 
 verseSopranoTwoVoicePsalm = \lyricmode {
- % Lyrics follow here.
 Glo -- ri -- a, glo -- ri -- a, __ glo -- ri -- a, glo -- ri -- a, glo -- ri -- a Pa -- tri et ﬁ -- li -- o et __ spi -- ri -- tu -- i sanc -- to; __
  sanc -- to, sanc -- to, sanc -- to, __ sanc -- to, sanc -- to, sanc -- to, si -- cut e -- rat in prin -- ci -- pi -- o et nunc et sem -- per __
 et __ in sæ -- cu -- la sæ -- cu, sæ -- cu -- la sæ -- cu, sæ -- cu -- la sæ -- cu -- lo -- rum, lo -- rum, lo -- rum, __
 a -- men, __ a -- men,  a -- men, a -- men, a -- men, a -- men, a -- men. __
- 
 }
 
- sopranoOneVoicePartPsalm = \new Staff \with {
+sopranoOneVoicePartPsalm = \new Staff \with {
  #(set-accidental-style 'forget)
  \remove "Time_signature_engraver"
  \override DynamicText.font-size = #-1
  instrumentName = "Sopran 1"
  shortInstrumentName = "S1"
- %midiInstrument = "string ensemble 1"
-} << \sopranoOneVoicePsalm 
-  %\new Dynamics = Dsone  \with { belowAboveContext = "sopranoOneVoicePart" } \dyn
->>
+} { \sopranoOneVoicePsalm }
 \addlyrics { \verseSopranoOneVoicePsalm }
 
 sopranoTwoVoicePartPsalm = \new Staff \with {
@@ -461,64 +418,51 @@ sopranoTwoVoicePartPsalm = \new Staff \with {
  \override DynamicText.font-size = #-1
  instrumentName = "Sopran 2"
  shortInstrumentName = "S2"
- %midiInstrument = "string ensemble 1"
 } { \sopranoTwoVoicePsalm }
 \addlyrics { \verseSopranoTwoVoicePsalm }
 
 
-
-scoreB = { \new ChoirStaff << \transpose f f {
-  <<
-    \sopranoOneVoicePartPsalm
-    \sopranoTwoVoicePartPsalm
-
+scoreB = {
+  \new ChoirStaff << \transpose f f {
+    <<
+      \sopranoOneVoicePartPsalm
+      \sopranoTwoVoicePartPsalm
     >>
-         } >>
+  } >>
 }
-\score { \scoreB
-  %\include "layout.ily"
-  %\midi { \tempo 4 = 92 }
-}
-
-\markup {   \override #'(baseline-skip . 2)
- \fill-line {
-    \hspace #0.1 % moves the column off the left margin;
-        % can be removed if space on the page is tight
-     \column {
-      \line { 
-        \column {
-            " "
-            "Factus est repente de cœlo sonus" 
-            "tamquam advenientis spiritus vehementis"
-            "ubi erant sedentes, Alleluja: "
-            "et repleti sunt omnes Spiritu Sancto," 
-            "loquentes magnalia Dei, Alleluja, Alleluja."
-            " "
-        }
-      }
-      }
-    \hspace #0.1  % adds horizontal spacing between columns;
-        % if they are still too close, add more " " pairs
-        % until the result looks good
-     \column {
-      \line { 
-        \column {
-            " "
-            "Es entstand plötzlich vom Himmel her ein Brausen,"
-            "wie von einem daherfahrenden gewaltigen Wind,"
-            "wo sie gerade saßen, Alleluja:"
-            "Und sie wurden alle vom Heiligen Geist erfüllt"
-            "und sprachen von den Großtaten Gottes, Alleluja, Alleluja."
-        }
-      }
-      
-    }
-  \hspace #0.1 % gives some extra space on the right margin;
-      % can be removed if page space is tight
-  }
-}
-
 \score {
-  { \scoreA \scoreB  }
-   \midi {  }
+  \scoreB 
+  \layout{}
+}
+
+
+\markup {
+  \override #'(baseline-skip . 2)
+  \fill-line {
+    \column {
+      \line {
+        \column {
+          " "
+          "Factus est repente de cœlo sonus" 
+          "tamquam advenientis spiritus vehementis"
+          "ubi erant sedentes, Alleluja: "
+          "et repleti sunt omnes Spiritu Sancto," 
+          "loquentes magnalia Dei, Alleluja, Alleluja."
+          " "
+        }
+      }
+    }
+    \column {
+      \line { 
+        \column {
+          " "
+          "Es entstand plötzlich vom Himmel her ein Brausen,"
+          "wie von einem daherfahrenden gewaltigen Wind,"
+          "wo sie gerade saßen, Alleluja:"
+          "Und sie wurden alle vom Heiligen Geist erfüllt"
+          "und sprachen von den Großtaten Gottes, Alleluja, Alleluja."
+        }
+      }
+    }
+  }
 }
