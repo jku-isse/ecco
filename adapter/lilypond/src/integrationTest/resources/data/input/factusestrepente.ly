@@ -1,5 +1,5 @@
 \version "2.19.80"
-\include "snippets/editorial-tools/merge-rests-engraver/module.ily"
+%\include "snippets/editorial-tools/merge-rests-engraver/module.ily"
 
 \header {
 title = "Factus est repente"
