@@ -19,6 +19,8 @@ public interface Feature extends Persistable {
 
 	public FeatureRevision getLatestRevision();
 
+	public Feature feature(String name);
+
 
 	/**
 	 * Returns the id of the feature.

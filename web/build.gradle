@@ -14,19 +14,15 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 //apply plugin: 'jetty'
 
 dependencies {
-	implementation 'org.slf4j:slf4j-api:1.7.25'
+	testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.30'
+	implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
+	implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.1.1'
+	implementation group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '2.31'
+	implementation group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '2.31'
+	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.31'
+	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.31'
 
-	implementation 'org.glassfish.grizzly:grizzly-framework:2.3.24'
-	implementation 'org.glassfish.grizzly:grizzly-http:2.3.24'
-	implementation 'org.glassfish.grizzly:grizzly-http-servlet:2.3.24'
-	implementation 'org.glassfish.grizzly:grizzly-http-server:2.3.24'
-
-	implementation 'org.glassfish.jersey.core:jersey-server:2.22.2'
-	implementation 'org.glassfish.jersey.containers:jersey-container-servlet:2.22.2'
-	implementation 'org.glassfish.jersey.containers:jersey-container-grizzly2-http:2.22.2'
-	implementation 'org.glassfish.jersey.media:jersey-media-json-jackson:2.22.2'
-
-	implementation 'javax.servlet:javax.servlet-api:3.1.0'
+	implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
 
 	implementation project(':ecco-service')
 

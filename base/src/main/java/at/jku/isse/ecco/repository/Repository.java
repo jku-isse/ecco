@@ -21,6 +21,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
 
+import java.io.ObjectInputFilter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,9 +37,21 @@ public interface Repository extends Persistable {
 
 	public Collection<? extends Association> getAssociations();
 
+	public ArrayList<Variant> getVariants();
+
+	public Variant getVariant(Configuration configuration);
+
+	public Variant getVariant(String id);
+
 	public Association getAssociation(String id);
 
 	public ArrayList<Feature> getFeature();
+
+	public void addVariant(Variant variant);
+
+	public void removeVariant(Variant variant);
+
+	public void updateVariant(Variant variant, Configuration configuration, String name);
 
 	public void setCommits(Collection<Commit> commits);
 
@@ -83,13 +96,17 @@ public interface Repository extends Persistable {
 		 */
 		public Feature getFeature(String id);
 
+		public Feature getOrphanedFeature(String id, String name);
+
 		public Feature addFeature(String id, String name);
+
+		public void addVariant(Variant variant);
 
 		public void addAssociation(Association.Op association);
 
-		public void removeAssociation(Association.Op association);
+		public void removeVariant(Variant variant);
 
-		public Feature getOrphanedFeature(String id, String name);
+		public void removeAssociation(Association.Op association);
 
 		public Module getOrphanedModule(Feature[] posFeatures, Feature[] neg);
 
@@ -514,74 +531,6 @@ public interface Repository extends Persistable {
 
 
 		/**
-		 * Composes an artifact tree from the associations stored in this repository that implements the given configuration.
-		 *
-		 * @param configuration The configuration for which the implementing artifact tree shall be retrieved.
-		 * @return The checkout object.
-		 */
-		public default Checkout compose(Configuration configuration) {
-			return this.compose(configuration, true);
-		}
-
-		public default Checkout compose(Configuration configuration, boolean lazy) {
-			checkNotNull(configuration);
-
-			Set<Association.Op> selectedAssociations = new HashSet<>();
-			for (Association.Op association : this.getAssociations()) {
-				if (association.computeCondition().holds(configuration)) {
-					selectedAssociations.add(association);
-				}
-			}
-
-			Checkout checkout = this.compose(selectedAssociations, lazy);
-			checkout.setConfiguration(configuration);
-
-			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
-			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
-			Set<ModuleRevision> missingModules = new HashSet<>();
-			//Set<ModuleRevision> surplusModules = new HashSet<>();
-			Map<ModuleRevision,String> surplusModules = new HashMap<>();
-
-			// compute missing
-			for (ModuleRevision desiredModuleRevision : desiredModules) {
-				Feature[] posFeatures = Arrays.stream(desiredModuleRevision.getPos()).map(FeatureRevision::getFeature).toArray(Feature[]::new);
-				Module desiredModule = this.getModule(posFeatures, desiredModuleRevision.getNeg());
-				if (desiredModule == null || desiredModule.getRevision(desiredModuleRevision.getPos(), desiredModuleRevision.getNeg()) == null) {
-					missingModules.add(desiredModuleRevision);
-				}
-			}
-
-			/**
-			 * TODO: trim set of missing modules to only leave modules that are LIKELY missing:
-			 * - exclude missing modules that we know from previous revisions and that did not contain artifacts there.
-			 * - exclude missing higher order modules that are covered entirely by combinations of missing lower order modules (e.g., (A,B,C) can be ignored if (A,B), (A,C), and (B,C) are also missing).
-			 */
-
-			// compute surplus
-			for (Association association : selectedAssociations) {
-				Condition moduleCondition = association.computeCondition();
-				if (moduleCondition.getType() == Condition.TYPE.AND) {
-					Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
-					for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
-						if (entry.getValue() != null) {
-							for (ModuleRevision existingModuleRevision : entry.getValue()) {
-								if (!desiredModules.contains(existingModuleRevision)) {
-									surplusModules.put(existingModuleRevision,association.getId());
-								}
-							}
-						}
-					}
-				}
-			}
-
-			checkout.setSurplusModules(surplusModules);
-			checkout.getMissing().addAll(missingModules);
-
-			return checkout;
-		}
-
-
-		/**
 		 * Returns modules contained in the given configuration. Features, Modules, Revisions are taken from the repository if they exist, otherwise they are created as temporary orphaned objets. For example, a feature revision that is not actually added to the feature.
 		 *
 		 * @param configuration
@@ -675,6 +624,73 @@ public interface Repository extends Persistable {
 			return finalModuleRevisions;
 		}
 
+
+		/**
+		 * Composes an artifact tree from the associations stored in this repository that implements the given configuration.
+		 *
+		 * @param configuration The configuration for which the implementing artifact tree shall be retrieved.
+		 * @return The checkout object.
+		 */
+		public default Checkout compose(Configuration configuration) {
+			return this.compose(configuration, true);
+		}
+
+		public default Checkout compose(Configuration configuration, boolean lazy) {
+			checkNotNull(configuration);
+
+			Set<Association.Op> selectedAssociations = new HashSet<>();
+			for (Association.Op association : this.getAssociations()) {
+				if (association.computeCondition().holds(configuration)) {
+					selectedAssociations.add(association);
+				}
+			}
+
+			Checkout checkout = this.compose(selectedAssociations, lazy);
+			checkout.setConfiguration(configuration);
+
+			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
+			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
+			Set<ModuleRevision> missingModules = new HashSet<>();
+			//Set<ModuleRevision> surplusModules = new HashSet<>();
+			Map<ModuleRevision,String> surplusModules = new HashMap<>();
+
+			// compute missing
+			for (ModuleRevision desiredModuleRevision : desiredModules) {
+				Feature[] posFeatures = Arrays.stream(desiredModuleRevision.getPos()).map(FeatureRevision::getFeature).toArray(Feature[]::new);
+				Module desiredModule = this.getModule(posFeatures, desiredModuleRevision.getNeg());
+				if (desiredModule == null || desiredModule.getRevision(desiredModuleRevision.getPos(), desiredModuleRevision.getNeg()) == null) {
+					missingModules.add(desiredModuleRevision);
+				}
+			}
+
+			/**
+			 * TODO: trim set of missing modules to only leave modules that are LIKELY missing:
+			 * - exclude missing modules that we know from previous revisions and that did not contain artifacts there.
+			 * - exclude missing higher order modules that are covered entirely by combinations of missing lower order modules (e.g., (A,B,C) can be ignored if (A,B), (A,C), and (B,C) are also missing).
+			 */
+
+			// compute surplus
+			for (Association association : selectedAssociations) {
+				Condition moduleCondition = association.computeCondition();
+				if (moduleCondition.getType() == Condition.TYPE.AND) {
+					Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
+					for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
+						if (entry.getValue() != null) {
+							for (ModuleRevision existingModuleRevision : entry.getValue()) {
+								if (!desiredModules.contains(existingModuleRevision)) {
+									surplusModules.put(existingModuleRevision,association.getId());
+								}
+							}
+						}
+					}
+				}
+			}
+
+			checkout.setSurplusModules(surplusModules);
+			checkout.getMissing().addAll(missingModules);
+
+			return checkout;
+		}
 
 
 		public default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {

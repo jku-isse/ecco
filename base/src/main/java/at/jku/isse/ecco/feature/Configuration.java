@@ -28,7 +28,6 @@ public interface Configuration extends Persistable {
 
     public static final String CONFIGURATION_STRING_REGULAR_EXPRESSION = "(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?)*)?";
 
-
     /**
      * Returns a direct reference to the instance of the array of feature revisions that makes up the configuration.
      * DO NOT MODIFY THIS ARRAY!!!
@@ -37,6 +36,10 @@ public interface Configuration extends Persistable {
      * @return The array of feature revisions that makes up the configuration.
      */
     public FeatureRevision[] getFeatureRevisions();
+
+    public Configuration getConfiguration();
+
+    public void setFeatureRevisions(FeatureRevision[] featureRevisions);
 
     public default Set<ModuleRevision> computeModules(int maxOrder, Repository.Op repository, Configuration configuration) {
         Set<ModuleRevision> desiredModules = new HashSet<>();

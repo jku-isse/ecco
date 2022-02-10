@@ -6,7 +6,6 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
-import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
 import javafx.beans.binding.When;
 import javafx.beans.property.*;
@@ -30,7 +29,6 @@ import javafx.util.Callback;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
 
 public class ArtifactsView extends BorderPane implements EccoListener {
 

@@ -37,7 +37,6 @@ public class MainView extends BorderPane implements EccoListener {
 
 	private Button serverButton = new Button("Server");
 
-
 	public MainView(EccoService eccoService) {
 		this.eccoService = eccoService;
 
@@ -61,7 +60,6 @@ public class MainView extends BorderPane implements EccoListener {
 		this.pushButton.setOnAction(event -> this.openDialog("Push", new PushView(eccoService)));
 
 		this.serverButton.setOnAction(event -> this.openDialog("Server", new ServerView(eccoService)));
-
 
 		// toolbar
 		ToolBar toolBar = new ToolBar();
@@ -187,6 +185,15 @@ public class MainView extends BorderPane implements EccoListener {
 		PresenceTableView presenceTableView = new PresenceTableView(eccoService);
 		persenceTableTab.setContent(presenceTableView);
 
+		// variants
+		Tab variantsTab = new Tab();
+		variantsTab.setText("Variants");
+		variantsTab.setClosable(false);
+		tabPane.getTabs().add(variantsTab);
+
+		VariantsView variantsView = new VariantsView(eccoService);
+		variantsTab.setContent(variantsView);
+		//
 
 		this.eccoService.addListener(this);
 

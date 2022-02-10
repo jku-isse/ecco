@@ -5,10 +5,8 @@ import at.jku.isse.ecco.adapter.cpp.data.*;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
-import org.glassfish.grizzly.http.server.accesslog.FileAppender;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -140,65 +138,65 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof BlockArtifactData)) {
-            code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock()+ "\n";
+            code[0] += ((BlockArtifactData) childNode.getArtifact().getData()).getBlock() + "\n";
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node);
                 }
             }
         } else if ((childNode.getArtifact().getData() instanceof DoBlockArtifactData)) {
-            code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock()+ "\n";
+            code[0] += ((DoBlockArtifactData) childNode.getArtifact().getData()).getDoBlock() + "\n";
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node);
                 }
             }
-        }else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
-            code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock()+ "\n";
+        } else if ((childNode.getArtifact().getData() instanceof ForBlockArtifactData)) {
+            code[0] += ((ForBlockArtifactData) childNode.getArtifact().getData()).getForBlock() + "\n";
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node);
                 }
             }
-        }else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
-            code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock()+ "\n";
+        } else if ((childNode.getArtifact().getData() instanceof IfBlockArtifactData)) {
+            code[0] += ((IfBlockArtifactData) childNode.getArtifact().getData()).getIfBlock() + "\n";
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node);
                 }
             }
-        }else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
-            code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock()+ "\n";
+        } else if ((childNode.getArtifact().getData() instanceof ProblemBlockArtifactData)) {
+            code[0] += ((ProblemBlockArtifactData) childNode.getArtifact().getData()).getProblemBlock() + "\n";
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node);
                 }
             }
-        }else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
-            code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock()+ "\n";
+        } else if ((childNode.getArtifact().getData() instanceof SwitchBlockArtifactData)) {
+            code[0] += ((SwitchBlockArtifactData) childNode.getArtifact().getData()).getSwitchBlock() + "\n";
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node);
                 }
             }
-        }else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
-            code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock()+ "\n";
+        } else if ((childNode.getArtifact().getData() instanceof WhileBlockArtifactData)) {
+            code[0] += ((WhileBlockArtifactData) childNode.getArtifact().getData()).getWhileBlock() + "\n";
             if (childNode.getChildren().size() > 0) {
                 for (Node node : childNode.getChildren()) {
                     visitingNodes(node);
                 }
             }
-        }else if(childNode.getArtifact().getData() instanceof CaseBlockArtifactData){
-            if(((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
+        } else if (childNode.getArtifact().getData() instanceof CaseBlockArtifactData) {
+            if (((CaseBlockArtifactData) childNode.getArtifact().getData()).getSameline()) {
                 code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock();
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
-                       code[0] += node.getArtifact().getData();
+                        code[0] += node.getArtifact().getData();
                     }
                 }
                 code[0] += "\n";
-            }else{
-                code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock()+ "\n";
+            } else {
+                code[0] += ((CaseBlockArtifactData) childNode.getArtifact().getData()).getCaseblock() + "\n";
                 if (childNode.getChildren().size() > 0) {
                     for (Node node : childNode.getChildren()) {
                         visitingNodes(node);
@@ -206,7 +204,7 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
                 }
             }
 
-        }else {
+        } else {
             System.out.println("*************** Forgot to treat an artificat data type");
         }
     }
