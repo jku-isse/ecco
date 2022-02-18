@@ -34,20 +34,14 @@ public class GraphsResource {
 	@Path("/artifacts")
 	@Produces(MediaType.APPLICATION_JSON)
 	public ArtifactsGraphDTO getArtifactsGraph(@QueryParam("maxChildren") int maxChildren) {
-		if (!(this.application instanceof EccoApplication))
+/*		if (!(this.application instanceof EccoApplication))
 			throw new RuntimeException("No or wrong application object injected.");
 
 		EccoService eccoService = ((EccoApplication) this.application).getEccoService();
-		this.service = eccoService;
+		this.service = eccoService;*/
 
-		// TODO: cache the graph somewhere (in the application? or even the service?)
+		throw new RuntimeException("No or wrong application object injected.");
 
-
-		// compute graph
-		if (maxChildren > 0)
-			this.maxChildren = maxChildren;
-		this.updateGraph();
-		return this.graph;
 	}
 
 
