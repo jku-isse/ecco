@@ -1840,6 +1840,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // CHECKOUT ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    private synchronized Checkout compose(Configuration configuration) {
+        this.checkInitialized();
+
+        checkNotNull(configuration);
+
+        Repository.Op repository = this.repositoryDao.load();
+        return repository.compose(configuration);
+    }
+
     /**
      * Checks out the implementation of the configuration (given as configuration string) into the base directory.
      *
@@ -1850,17 +1859,31 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.checkout(this.parseConfigurationString(configurationString));
     }
 
+    /**
+     * Retrieves associations included in configuration.
+     * @param configurationString The configuration string for that associations shall be retrieved.
+     * @return Set of associations.
+     */
+    public synchronized Set<Association> getAssociations(String configurationString) {
+        return this.getAssociations(this.parseConfigurationString(configurationString));
+    }
+
+    /**
+     * Retrieves associations included in configuration.
+     * @param configuration The configuration for that the associations shall be retrieved.
+     * @return Set of associations.
+     */
+    public synchronized Set<Association> getAssociations(Configuration configuration) {
+        Checkout checkout = compose(configuration);
+        return checkout.getSelectedAssociations();
+    }
+
     public synchronized Set<Node> compareArtifacts(String configurationString) {
         return this.compareArtifacts(this.parseConfigurationString(configurationString));
     }
 
     public synchronized Set<Node> compareArtifacts(Configuration configuration) {
-        this.checkInitialized();
-
-        checkNotNull(configuration);
-
-        Repository.Op repository = this.repositoryDao.load();
-        Checkout checkout = repository.compose(configuration);
+        Checkout checkout = compose(configuration);
 
         for (Association selectedAssociation : checkout.getSelectedAssociations()) {
             this.fireAssociationSelectedEvent(selectedAssociation);
@@ -1879,12 +1902,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The checkout object.
      */
     public synchronized Checkout checkout(Configuration configuration) {
-        this.checkInitialized();
-
-        checkNotNull(configuration);
-
-        Repository.Op repository = this.repositoryDao.load();
-        Checkout checkout = repository.compose(configuration);
+        Checkout checkout = compose(configuration);
 
         for (Association selectedAssociation : checkout.getSelectedAssociations()) {
             this.fireAssociationSelectedEvent(selectedAssociation);
