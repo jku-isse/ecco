@@ -26,13 +26,13 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Callback;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedList;
+import java.util.*;
 
 public class ArtifactsView extends BorderPane implements EccoListener {
 
@@ -51,26 +51,41 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         Button refreshButton = new Button("Refresh");
 
-        Button selectAllButton = new Button("Select All");
-        Button unselectAllButton = new Button("Unselect All");
-        Button checkoutSelectedButton = new Button("Checkout Selected");
+        // selection
+        MenuItem selectAllMenuItem = new MenuItem("Select All");
+        MenuItem unselectAllMenuItem = new MenuItem("Unselect All");
+        MenuItem selectByConfigurationMenuItem = new MenuItem("Select by Configuration");
+        MenuButton selectionMenuButton = new MenuButton("Selection");
+        selectionMenuButton.getItems().addAll(
+                selectAllMenuItem,
+                selectByConfigurationMenuItem,
+                new SeparatorMenuItem(),
+                unselectAllMenuItem
+        );
 
+        Button checkoutSelectedButton = new Button("Checkout Selected");
         Button composeSelectedButton = new Button("Compose Selected");
 
         CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
         CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
 
         CheckBox showBelowAtomicCheckBox = new CheckBox("Show Artifacts Below Atomic"); // TODO
+        showBelowAtomicCheckBox.setDisable(true);
         CheckBox showBelowFilesCheckBox = new CheckBox("Show Artifacts Below File Level"); // TODO
+        showBelowFilesCheckBox.setDisable(true);
 
-        toolBar.getItems().addAll(refreshButton, new Separator(), selectAllButton, unselectAllButton, checkoutSelectedButton, composeSelectedButton, new Separator(), showEmptyAssociationsCheckBox, new Separator(), useSimplifiedLabelsCheckBox, new Separator(), showBelowAtomicCheckBox, new Separator(), showBelowFilesCheckBox, new Separator());
+        toolBar.getItems().addAll(refreshButton, new Separator(),
+                selectionMenuButton, checkoutSelectedButton, composeSelectedButton, new Separator(),
+                showEmptyAssociationsCheckBox, new Separator(),
+                useSimplifiedLabelsCheckBox, new Separator(),
+                showBelowAtomicCheckBox, new Separator(),
+                showBelowFilesCheckBox, new Separator());
 
 
         FilteredList<AssociationInfoImpl> filteredData = new FilteredList<>(this.associationsData, p -> true);
 
-        showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) -> {
-            filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0));
-        });
+        showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) ->
+                filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0)));
 
         // associations table
         TableView<AssociationInfoImpl> associationsTable = new TableView<>();
@@ -102,7 +117,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
 
         class ColorPickerTableCell<Inputs> extends TableCell<Inputs, Color> {
-            private ColorPicker cp;
+            private final ColorPicker cp;
 
             public ColorPickerTableCell(TableColumn<Inputs, Color> column) {
                 this.getStyleClass().add("color-picker-table-cell");
@@ -210,7 +225,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);
 
-                Task composeTask = new Task<Void>() {
+                Task<Void> composeTask = new Task<>() {
                     @Override
                     public Void call() throws EccoException {
                         Collection<Association> selectedAssociations = new ArrayList<>();
@@ -237,29 +252,71 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             }
         });
 
-        selectAllButton.setOnAction(new EventHandler<ActionEvent>() {
+        selectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);
-
-                for (AssociationInfoImpl assocInfo : ArtifactsView.this.associationsData) {
-                    assocInfo.setSelected(true);
-                }
-
+                setAllAssociationsSelected(true);
                 toolBar.setDisable(false);
             }
         });
 
-        unselectAllButton.setOnAction(new EventHandler<ActionEvent>() {
+        unselectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);
-
-                for (AssociationInfoImpl assocInfo : ArtifactsView.this.associationsData) {
-                    assocInfo.setSelected(false);
-                }
-
+                setAllAssociationsSelected(false);
                 toolBar.setDisable(false);
+            }
+        });
+
+        selectByConfigurationMenuItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                toolBar.setDisable(true);
+
+                TextInputDialog dialog = new TextInputDialog();
+                dialog.setTitle("Configuration");
+                dialog.setGraphic(null);
+                dialog.setHeaderText(null);
+                dialog.setContentText("Configuration:");
+                dialog.setResizable(true);
+                final Window wnd = dialog.getDialogPane().getScene().getWindow();
+                Stage stage = (Stage)wnd;
+                stage.setMinWidth(500);
+                stage.setMinHeight(150);
+                Optional<String> result = dialog.showAndWait();
+
+                if (!result.isPresent()) {
+                    toolBar.setDisable(false);
+                    return;
+                }
+                String config = result.get();
+
+                Task<Void> selectionTask = new Task<>() {
+                    @Override
+                    public Void call() throws EccoException {
+                        Set<Association> ass = service.getAssociations(config);
+                        LinkedList<AssociationInfoImpl> toSelect = new LinkedList<AssociationInfoImpl>();
+                        for (AssociationInfoImpl ai : associationsData) {
+                            if (ass.contains(ai.getAssociation())) {
+                                toSelect.add(ai);
+                            }
+                        }
+
+                        Platform.runLater(() -> {
+                            setAllAssociationsSelected(false);
+                            for (AssociationInfoImpl a : toSelect) {
+                                a.setSelected(true);
+                            }
+                            toolBar.setDisable(false);
+                        });
+
+                        return null;
+                    }
+                };
+
+                new Thread(selectionTask).start();
             }
         });
 
@@ -340,11 +397,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 this.setDisable(true);
         });
 
-
         // ecco service
         service.addListener(this);
     }
 
+    private void setAllAssociationsSelected(boolean flag) {
+        for (AssociationInfoImpl assocInfo : ArtifactsView.this.associationsData) {
+            assocInfo.setSelected(flag);
+        }
+    }
 
     @Override
     public void statusChangedEvent(EccoService service) {
@@ -354,7 +415,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             Platform.runLater(() -> this.setDisable(true));
         }
     }
-
 
     public class AssociationInfoImpl implements AssociationInfo {
         private final Association association;
