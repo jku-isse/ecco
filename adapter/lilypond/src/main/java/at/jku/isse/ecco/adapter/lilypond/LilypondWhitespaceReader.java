@@ -85,7 +85,7 @@ public class LilypondWhitespaceReader implements ArtifactReader<Path, Set<Node>>
         return nodes;
 	}
 
-	private Collection<ReadListener> listeners = new ArrayList<>();
+	private final Collection<ReadListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(ReadListener listener) {

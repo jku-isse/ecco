@@ -60,7 +60,7 @@ public class LilypondStringWriter implements ArtifactWriter<Set<Node>, String> {
 		return output.toArray(new String[0]);
 	}
 
-	private Collection<WriteListener> listeners = new ArrayList<>();
+	private final Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(WriteListener listener) {

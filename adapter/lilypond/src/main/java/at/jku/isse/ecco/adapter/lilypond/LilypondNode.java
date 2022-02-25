@@ -50,6 +50,13 @@ public class LilypondNode<T> {
         next.setLevel(level);
     }
 
+    /**
+     * Creates new node with given data and appends it to current node (sets new node as next of current node).
+     * @param name Name of node to append.
+     * @param data Data of the node to append.
+     * @param level Level of the node to append.
+     * @return Returns newly created node.
+     */
     public LilypondNode<T> append(String name, T data, int level) {
         LilypondNode<T> n = new LilypondNode<>(name, data);
         append(n, level);

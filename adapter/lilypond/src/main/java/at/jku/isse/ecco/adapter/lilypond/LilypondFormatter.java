@@ -4,10 +4,15 @@ import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 
 class LilypondFormatter {
     public static boolean appendSpace(DefaultTokenArtifactData d, DefaultTokenArtifactData next) {
-        if (d.getAction().equals(LilypondReader.PARSER_ACTION_LINEBREAK) ||
-            d.getAction().equals("Delimiter.Separator") ||
-            d.getAction().startsWith("Delimiter.ModeChange.") ||
-            d.getAction().equals("Comment")) {
+        if (d.getAction().equals("Delimiter.Operator.Assignment")) {
+            return true;
+
+        } else if (d.getAction().equals(LilypondReader.PARSER_ACTION_LINEBREAK) ||
+                d.getAction().equals("Delimiter.Separator") ||
+                d.getAction().startsWith("Delimiter.ModeChange.") ||
+                d.getAction().startsWith("Delimiter.Operator.") ||
+                d.getAction().startsWith("Delimiter.Scheme.") ||
+                d.getAction().equals("Comment")) {
             return false;
         }
 
@@ -22,12 +27,20 @@ class LilypondFormatter {
                     next.getAction().startsWith("Name.Builtin.Dynamic") ||
                     next.getAction().startsWith("Name.Script.Articulation") ||
                     next.getAction().startsWith("Name.Symbol.Spanner") ||
-                    next.getAction().startsWith("Delimiter.Separator")) {
+                    next.getAction().startsWith("Delimiter.Separator") ||
+                    next.getAction().equals("Text.Music.Pitch.Octave") ||
+                    next.getAction().equals("Delimiter.Direction")) {
                 return false;
             }
 
-            if (d.getAction().startsWith("Text.Music.") &&
+            if ((d.getAction().startsWith("Text.Music.") ||
+                    d.getAction().startsWith("Literal.Number.Duration")) &&
                     next.getAction().startsWith("Literal.Number.Duration")) {
+                return false;
+            }
+
+            if ((d.getAction().equals("Delimiter.Direction")) &&
+                    next.getAction().startsWith("Literal.Character.Script")) {
                 return false;
             }
         }

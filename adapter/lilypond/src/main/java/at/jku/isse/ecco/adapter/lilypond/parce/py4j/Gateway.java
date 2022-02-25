@@ -1,9 +1,9 @@
 package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
 
+import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
+import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 import py4j.GatewayServer;
 import py4j.GatewayServerListener;
-
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Gateway {
     private static Gateway instance;
@@ -22,10 +22,24 @@ public class Gateway {
         return instance;
     }
 
-    public ConcurrentLinkedQueue<ParseEvent> getBuffer() {
+    public void reset() {
+        if (instance != null) {
+            instance.entrypoint.reset();
+        }
+    }
+
+    public LilypondNode<ParceToken> getRoot() {
         if (instance == null) return null;
 
-        return instance.entrypoint.getBuffer();
+        return instance.entrypoint.getRoot();
+    }
+
+    public int getNodesCount() {
+        return instance.entrypoint.getNodesCount();
+    }
+
+    public int getMaxDepth() {
+        return instance.entrypoint.getMaxDepth();
     }
 
     /**

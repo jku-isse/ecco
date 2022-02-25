@@ -11,11 +11,6 @@ public class LineBreakArtifactData extends DefaultTokenArtifactData {
     }
 
     @Override
-    public String getText() {
-        return "\n".concat(super.getText());
-    }
-
-    @Override
     public String toString() {
         return "LineBreakArtifactData{" +
                 super.toString() + "}";

@@ -1,72 +1,81 @@
 package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
 
+import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
 import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class EntryPoint {
     private static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
 
-    private ConcurrentLinkedQueue<ParseEvent> eventBuffer;
-    private ParceToken lastToken;
+    private final LilypondNode<ParceToken> root;
+    private LilypondNode<ParceToken> current;
+    private int depth;
+    private int maxDepth;
+    private int nNodes;
 
     public EntryPoint() {
-        eventBuffer = new ConcurrentLinkedQueue<>();
+        root = new LilypondNode<>("ROOT", null);
+        reset();
     }
 
-    private ParseEvent event;
-
-    public void openEvent() {
-        event = new ParseEvent();
+    public void reset() {
+        current = root;
+        current.setNext(null);
+        depth = 0;
+        maxDepth = 0;
+        nNodes = 0;
     }
 
-    public void addContext(String name) {
-        assert event != null;
+    public int getNodesCount() {
+        return nNodes;
+    }
 
-        event.addContext(name);
+    public int getMaxDepth() {
+        return maxDepth;
+    }
+
+    public void pushContext(String name) {
+        current = current.append(name, null, depth++);
+        LOGGER.log(Level.FINER, "opened context ({0}, depth={1})", new Object[]{ name, depth });
+        maxDepth = Math.max(depth, maxDepth);
+        nNodes++;
     }
 
     public void addToken(int pos, String text, String action) {
-        assert event != null;
-
-        ParceToken lpt = new ParceToken(pos, text, action);
-        event.addToken(lpt);
-        lastToken = lpt;
+        ParceToken t = new ParceToken(pos, text, action);
+        current = current.append(t.getAction(), t, depth);
+        nNodes++;
+        LOGGER.log(Level.FINER, "added token ([{0}] \"{1}\", depth={2})",
+                new Object[] { t.getAction(), t.getText(), depth });
     }
 
     public void addWhitespace(int pos, String text) {
         if (null == text) { return; }
 
-        boolean isEventClosed = event == null;
-        if (isEventClosed) {
-            openEvent();
-        }
-
         String[] lines = text.split("\\n", -1);
-        int i = 1;
-        while (i < lines.length) {
-            pos += lines[i-1].length();
-            event.addToken(new ParceToken(pos, lines[i], LilypondReader.PARSER_ACTION_LINEBREAK));
-            i++;
+        if (lines.length > 1) {
+            ParceToken t = new ParceToken(pos,
+                    "\n".repeat(lines.length - 1).concat(lines[lines.length - 1]),
+                    LilypondReader.PARSER_ACTION_LINEBREAK);
+            current = current.append(t.getAction(), t, depth);
+            nNodes++;
+            LOGGER.log(Level.FINER, "added whitespace token ([{0}] \"{1}\", depth={2})",
+                    new Object[] { t.getAction(), t.getText(), depth });
         }
-
-        if (isEventClosed) { closeEvent(0); };
     }
 
-    public void closeEvent(int popContext) {
-        assert event != null;
+    public void popContext(int levels) {
+        if (levels >= 0) { return; }
 
-        event.setPopContext(popContext);
-        if (!eventBuffer.offer(event)) {
-            LOGGER.severe("could not add parse event to buffer");
-        }
-        event = null;
+        depth += levels;
+        LOGGER.log(Level.FINER, "closed context ({0}, depth={1})", new Object[]{ levels, depth });
     }
 
-    ConcurrentLinkedQueue<ParseEvent> getBuffer() {
-        return eventBuffer;
+    LilypondNode<ParceToken> getRoot() {
+        return root.getNext();
     }
 }

@@ -40,7 +40,7 @@ public class PerformanceAndCorrectnessTest {
 
 	private static final Path DATA_DIR;
 	private static final Path BASE_DIR;
-    private static final Path lilypond_exe;
+    private static final Path LILYPOND_PATH;
     private static final Path[] lilypond_search_paths;
 
 	static {
@@ -55,7 +55,7 @@ public class PerformanceAndCorrectnessTest {
         Path startupPath = Path.of(System.getProperty("user.dir"));
         BASE_DIR = startupPath.getParent().getParent();
 
-        lilypond_exe = LilypondCompiler.LilypondPath();
+        LILYPOND_PATH = LilypondCompiler.LilypondPath();
         lilypond_search_paths = LilypondCompiler.LilypondSearchPaths();
     }
 
@@ -78,7 +78,7 @@ public class PerformanceAndCorrectnessTest {
     public static Object[][] featurePaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                //{BASE_DIR.getParent().resolve("lytests/debussy").toString(), ".eccoDebussy", true}
+                {BASE_DIR.getParent().resolve("lytests/debussy").toString(), ".eccoDebussy", true},
                 {BASE_DIR.getParent().resolve("lytests/sulzer").toString(), ".eccoSulzer", true}
         };
     }
@@ -87,7 +87,7 @@ public class PerformanceAndCorrectnessTest {
     public static Object[][] serializedNodesPaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                //{DATA_DIR.resolve("input/dieu_nodes").toString(), ".eccoDebussy", true}
+                {DATA_DIR.resolve("input/dieu_nodes").toString(), ".eccoDebussy", true},
                 {DATA_DIR.resolve("input/sulzer_nodes").toString(), ".eccoSulzer", true}
         };
     }
@@ -98,7 +98,7 @@ public class PerformanceAndCorrectnessTest {
 
         return new Object[][] {
                 // name, filename, repository, config, Lily_searchPaths[]
-                /*{"AllFeatures",
+                {"AllFeatures",
                         "factusestrepente.ly",
                         repo,
                         """
@@ -114,7 +114,7 @@ partoneSopTwoBeams.1, parttwoSopTwoSlurs.1, partoneBasTwoSlurs.1, parttwoSopOneB
 header.1, partoneSopOneNotes.1, partoneTenOneDynamics.1, partoneBasOneBeams.1, partoneSopOneNDynamics.1,
 parttwoSopOneDynamics.1, partoneTenTwoNotes.1, scorePartTwo.1, partoneTenOneSlurs.1,
 parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamics.1, text.1""",
-                        null},
+                        null}/*,
 
                 {"PartTwo",
                         "factusestrepente.ly",
@@ -126,8 +126,11 @@ parttwoSopOneArticulations.1, parttwoSopOneDynamics.1,
 parttwoSopOneSlurs.1, parttwoSopOneBeams.1, parttwoSopTwoNotes.1,
 parttwoSopTwoLyrics.1, parttwoSopTwoArticulations.1,
 parttwoSopTwoDynamics.1, parttwoSopTwoSlurs.1, parttwoSopTwoBeams.1""",
-                        null},*/
-
+                        null},
+                {"Test","factusestrepente.ly",repo,
+                        "scorePartTwo.1, header.1, parttwoSopOneNotes.1, partoneTenOneDynamics.1, scorePartOne.1, partoneSopTwoNotes.1, partoneSopTwoDynamics.1, partoneTenOneNotes.1, parttwoSopOneDynamics.1",
+                        null
+                }
                 {"SopranOne",
                         "factusestrepente.ly",
                         repo,
@@ -137,7 +140,7 @@ partoneSopOneNotes.1, partoneSopOneLyrics.1, partoneSopOneNArticulations.1,
 partoneSopOneNDynamics.1, partoneSopOneNSlurs.1, partoneSopOneNBeams.1,
 parttwoSopOneNotes.1, parttwoSopOneLyrics.1, parttwoSopOneNArticulations.1,
 parttwoSopOneNDynamics.1, parttwoSopOneNSlurs.1, parttwoSopOneNBeams.1""",
-                        null}/*,
+                        null},
 
                 {"NotesOnly",
                         "factusestrepente.ly",
@@ -245,7 +248,6 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         }
     }
 
-    // TODO: needs -Xss1024m in run configuration as VM option
     @Test(groups = {"performance"}, dataProvider = "featurePaths")
     public void populateRepositoryFromFiles(String inPath, String repoName, boolean createMetrics) {
         try {
@@ -311,9 +313,8 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         System.out.println("Repository closed.");
     }
 
-    // TODO: needs -Xss1024m in run configuration
     @Test(groups = {"correctness"}, dataProvider = "checkoutConfigurations")
-    public void testCheckoutIsCompileable(String name, String filename, String repository, String config, String[] lilypondSearchPaths) {
+    public void testCheckoutIsCompilable(String name, String filename, String repository, String config, String[] lilypondSearchPaths) {
         EccoService service = new EccoService();
         Path checkout = BASE_DIR.getParent().resolve("checkout");
         try {
@@ -373,12 +374,12 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         System.out.println(features.size() + " features in repository");
 
         JDKRandomGenerator rnd = new JDKRandomGenerator(47277);
-        Path result = BASE_DIR.resolve("001_configurations.txt");
+        Path result = BASE_DIR.resolve("01_configurations.txt");
         try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(result, StandardOpenOption.CREATE))) {
             ArrayList<Set<String>> configs = new ArrayList<>();
             while (configs.size() < 100) {
                 final int rndSize = 1 + rnd.nextInt(features.size()); // pick number of features
-                HashSet<String> config = new HashSet<>(rndSize);
+                TreeSet<String> config = new TreeSet<>();
                 while (config.size() < rndSize) {
                     final int idx = rnd.nextInt(features.size()); // pick feature
                     String f = features.get(idx).getFeature().getName()
@@ -401,6 +402,33 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             ex.printStackTrace();
             Assert.fail();
         }
+    }
+
+    @Ignore
+    @Test(groups = {"correctness"})
+    public void storeGeneratedSulzerConfigurationsAsVariants() {
+        // open repository
+        EccoService service = new EccoService();
+
+        //open Repo
+        Path repo = BASE_DIR.resolve(".eccoSulzer_01");
+        if (!Files.exists(repo)) {
+            Assert.fail("repository " + repo + " does not exist");
+        }
+
+        service.setRepositoryDir(repo);
+        service.open();
+        System.out.println("opened repository " + repo);
+
+        Path pConfigs = BASE_DIR.resolve("01_configurations.txt");
+        List<String> configs;
+        try {
+            configs = Files.readAllLines(pConfigs);
+        } catch (IOException ex) {
+            Assert.fail(ex.getLocalizedMessage());
+            return;
+        }
+        // TODO
     }
 
     @Test(dataProvider = "sulzerFeatureDependencies")
@@ -492,7 +520,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             e.printStackTrace();
         }
 
-        System.out.println("\n" + compilableConfigs.size() + " compileable configs found:");
+        System.out.println("\n" + compilableConfigs.size() + " compilable configs found:");
         try {
             Path result = BASE_DIR.resolve("combinations.txt");
             try (OutputStream os = Files.newOutputStream(result)) {
@@ -512,8 +540,10 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     public static Object[][] sulzerConfigurationsFiles() {
         // run, repository, configurationsFile
         return new Object[][] {
-                //{1, ".eccoSulzer", "configurations.txt"}
-                {2, ".eccoSulzer", "configurations.txt"}
+                {1, ".eccoSulzer", "configurations.txt"}
+                //{2, ".eccoSulzer", "configurations.txt"}
+                //{3, ".eccoSulzer", "configurations.txt"}
+                //{4, ".eccoSulzer", "configurations.txt"}
         };
     }
 
@@ -530,7 +560,6 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         System.out.println("committed to " + service.getRepositoryDir());
     }
 
-    private static int cnt = 0;
     @Test(groups = {"correctness"}, dataProvider = "sulzerConfigurationsFiles")
     public void testSulzerConfigsAreCompilable(int run, String repoName, String configsFile) {
         // open repository
@@ -540,7 +569,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         //open Repo
         Path repo = BASE_DIR.resolve(String.format("%s_%02d", repoName, run));
         if (!Files.exists(repo)) {
-            System.out.println("repository " + repo + " does not exist");
+            Assert.fail("repository " + repo + " does not exist");
             return;
         }
 
@@ -548,7 +577,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         service.open();
         System.out.println("opened repository " + repo);
 
-        Path pConfigs = BASE_DIR.resolve("001_".concat(configsFile)); // always check all 100 configs (fixes possibly break others such that they are no longer compilable)
+        Path pConfigs = BASE_DIR.resolve("01_".concat(configsFile)); // always check all 100 configs (fixes possibly break others such that they are no longer compilable)
         List<String> configs;
         try {
              configs = Files.readAllLines(pConfigs);
@@ -557,7 +586,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             return;
         }
 
-        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(15);
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(5);
         ArrayList<String> compilableConfigs = new ArrayList<>();
         try {
             for (String c : configs) {
@@ -582,12 +611,13 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         }
 
         Path invalidConfigs = BASE_DIR.resolve(String.format("%02d_%s", run + 1, configsFile));
-        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(invalidConfigs, StandardOpenOption.CREATE))) {
+        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(invalidConfigs,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE))) {
             boolean checkedOutFirst = false;
-            for (String c : configs) {
-                if (!compilableConfigs.contains(c)) {
-                    // checkout first uncompilable config to fix
+            for (int i = 0; i < configs.size(); i++) {
+                if (!compilableConfigs.contains(configs.get(i))) {
                     if (!checkedOutFirst) {
+                        // checkout first uncompilable config to fix
                         checkedOutFirst = true;
                         Path checkout = BASE_DIR.getParent().resolve("checkout");
                         try {
@@ -599,10 +629,10 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
                             Assert.fail();
                         }
 
-                        service.checkout(c);
-                        System.out.println("checked out first uncompilable config to " + checkout);
+                        service.checkout(configs.get(i));
+                        System.out.println("checked out one uncompilable config to " + checkout);
                     }
-                    out.write(c.concat("\n").getBytes(StandardCharsets.UTF_8));
+                    out.write(configs.get(i).concat("\n").getBytes(StandardCharsets.UTF_8));
                 }
             }
 
@@ -647,7 +677,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     private boolean isCompilable(Path lilyFile, String[] lilypond_searchPaths, Boolean silent) {
         if (null == lilyFile) return false;
 
-        ProcessBuilder lilycmd=new ProcessBuilder(lilypond_exe.toString());
+        ProcessBuilder lilycmd=new ProcessBuilder(LILYPOND_PATH.toString());
         if (null != lilypond_searchPaths) {
             for (String p : lilypond_searchPaths) {
                 lilycmd.command().add("-I");
@@ -659,20 +689,22 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         Process process = null;
         try {
             process = lilycmd.start();
-            StringJoiner sjErr = null;
-            if (!silent) {
-                final BufferedReader errRd = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
-                sjErr = new StringJoiner(System.getProperty("line.separator"));
-                errRd.lines().iterator().forEachRemaining(sjErr::add);
-                errRd.close();
-            }
+            StringJoiner sjErr;
+            final BufferedReader errRd = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
+            sjErr = new StringJoiner(System.getProperty("line.separator"));
+            errRd.lines().iterator().forEachRemaining(sjErr::add);
+            errRd.close();
 
             int exitCode = -1;
-            if (process.waitFor(15, TimeUnit.SECONDS)) {
+            final int AWAIT_SECONDS = 30;
+            if (process.waitFor(AWAIT_SECONDS, TimeUnit.SECONDS)) {
                 exitCode = process.exitValue();
             }
 
-            if (sjErr != null) {
+            if (exitCode < 0) {
+                System.out.println("Lilypond could not finish in less than " + AWAIT_SECONDS + " seconds");
+            }
+            if (!silent || exitCode < -1) {
                 System.out.println(sjErr);
             }
             return exitCode == 0;

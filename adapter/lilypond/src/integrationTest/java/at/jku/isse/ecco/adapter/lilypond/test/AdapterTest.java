@@ -91,7 +91,7 @@ public class AdapterTest {
 
     private static final Path[] SIMPLE_FILES = new Path[]{Paths.get("input/simple.ly")};
 	@Test()
-	public void SimpleLilypond() {
+	public void testWhiteSpaceReader() {
 	    LilypondWhitespaceReader rd = new LilypondWhitespaceReader((new MemEntityFactory()));
 
 	    System.out.println("READ");
@@ -101,7 +101,7 @@ public class AdapterTest {
     }
 
     @Test()
-    public void SimpleWriterTest() {
+    public void testWhiteSpaceReaderAndWriter() {
         LilypondWhitespaceReader rd = new LilypondWhitespaceReader((new MemEntityFactory()));
         Set<Node> nodes = rd.read(DATA_DIR, SIMPLE_FILES);
 
@@ -127,7 +127,8 @@ public class AdapterTest {
         System.out.println("END WRITE");
     }
 
-    private static final Path[] SULZER_FILE = new Path[]{Paths.get("input/factusestrepente.ly")};
+//    private static final Path[] SULZER_FILE = new Path[]{Paths.get("input/factusestrepente.ly")};
+private static final Path[] SULZER_FILE = new Path[]{Paths.get("F:/Uni/Lilypond_ECCO/lytests/sulzer_first/v22/factusestrepente.ly")};
     @Test(groups = {"parce"})
     public void SulzerWriterTest() {
         LilypondReader rd = new LilypondReader((new MemEntityFactory()));
@@ -145,8 +146,8 @@ public class AdapterTest {
     public static Object[][] serializedNodesPaths() {
         // input and output path relative to the parent directory (e.g. ../ecco)
         return new String[][] {
-                {"lytests/debussy", "lytests/dieu_nodes"}
-                //{"lytests/sulzer", "lytests/sulzer_nodes"}
+                {"lytests/debussy", "lytests/dieu_nodes"},
+                {"lytests/sulzer", "lytests/sulzer_nodes"}
         };
     }
 
@@ -175,6 +176,7 @@ public class AdapterTest {
         Files.createDirectory(serPath);
 
         LilypondParser<ParceToken> parser = ParserFactory.getParser();
+        assert parser != null;
         try {
             parser.init();
 

@@ -34,11 +34,6 @@ public class LilypondModule extends AbstractModule {
 				new TypeLiteral<>() {
 				});
 		assInfoMultiBinder.addBinding().to(CodeViewer.class);
-
-		final Multibinder<ArtifactExporter<Set<Node>, Path>> exporterMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<>() {
-				});
-		exporterMultibinder.addBinding().to(LilypondExporter.class);
 	}
 
 }

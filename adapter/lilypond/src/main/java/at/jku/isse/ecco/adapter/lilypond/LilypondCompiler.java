@@ -120,7 +120,7 @@ public class LilypondCompiler {
             }
             return result;
         }
-        return null;
+        return new Path[]{};
     }
 
     private static Properties PROPERTIES;

@@ -36,7 +36,7 @@ public class NodeTextBlock {
                 ? node.getArtifact().getContainingNode().getContainingAssociation()
                 : null;
 
-        String text = tad.getText().concat(" "); // TODO: whitspace
+        String text = tad.getText();
         String[] nodeLines = text.split("\\n", -1);
         this.text = nodeLines[0];
 
@@ -50,7 +50,7 @@ public class NodeTextBlock {
             for (int i=1; i<nodeLines.length; i++) {
                 partOf.add(new NodeTextBlock(node, backgroundColor, association, nodeLines[i], partOf));
             }
-            partOf.blocks.get(partOf.size()-1).setLast(true);
+            partOf.blocks.get(partOf.size()-1).setLast();
         }
     }
 
@@ -106,16 +106,18 @@ public class NodeTextBlock {
         return partOf == null ? 0 : partOf.size();
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isFirst() {
         return isFirst;
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isLast() {
         return isLast;
     }
 
-    private void setLast(boolean f) {
-        isLast = f;
+    private void setLast() {
+        isLast = true;
     }
 
     public List<NodeTextBlock> getGroup() {

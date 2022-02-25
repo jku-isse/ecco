@@ -69,14 +69,19 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 
 	static class ArtifactIterator implements Iterator<Node> {
 		private List<? extends  Node> children;
-		private Node nextNode = null;
+		private Node nextNode;
 		Stack<Integer> indexes = new Stack<>();
 
 		public ArtifactIterator(Node n) {
 			assert n != null;
 
+			nextNode = n;
+			if (nextNode.getArtifact().getData() instanceof DefaultTokenArtifactData) {
+				return;
+			}
+
 			do {
-				calcNext(n);
+				calcNext(nextNode);
 			} while (nextNode != null && !(nextNode.getArtifact().getData() instanceof DefaultTokenArtifactData));
 		}
 
@@ -95,9 +100,9 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 		}
 
 		private void calcNext(Node n) {
-			List<? extends Node> cs = n.getChildren();
-			if (cs.size() > 0) {
-				children = cs;
+			List<? extends Node> c = n.getChildren();
+			if (c.size() > 0) {
+				children = c;
 				indexes.push(0);
 				nextNode = children.get(0);
 
@@ -123,7 +128,7 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 		}
 	}
 
-	private Collection<WriteListener> listeners = new ArrayList<>();
+	private final Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override
 	public void addListener(WriteListener listener) {

@@ -15,13 +15,12 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.StringJoiner;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class FileParser implements LilypondParser<ParceToken> {
-    public static final int MAX_SCRIPT_TIMEOUT = 10;
+    public static final int MAX_SCRIPT_TIMEOUT_SECONDS = 10;
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
     protected static GatewayServerListener gatewayListener = getGatewayListener();
     private String pythonScript;
@@ -45,6 +44,7 @@ public class FileParser implements LilypondParser<ParceToken> {
 
     public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
+        Gateway.getInstance().reset();
         ProcessBuilder lilyparce = new ProcessBuilder("python", pythonScript, path.toString());
         Process process = null;
         try {
@@ -67,15 +67,29 @@ public class FileParser implements LilypondParser<ParceToken> {
             }
 
             int exitCode = -1;
-            if (process.waitFor(MAX_SCRIPT_TIMEOUT, TimeUnit.SECONDS)) {
+            if (process.waitFor(MAX_SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 exitCode = process.exitValue();
             } else {
-                LOGGER.severe("parsing process timed out after " + MAX_SCRIPT_TIMEOUT + " seconds");
+                LOGGER.severe("parsing process timed out after " + MAX_SCRIPT_TIMEOUT_SECONDS + " seconds");
             }
 
             if (exitCode == 0) {
                 LOGGER.log(Level.FINE, "Parce exited normal, code: {0}, {1}ms", new Object[] { exitCode, (System.nanoTime() - tm) / 1000000 });
-                return convertEventsToNodes(Gateway.getInstance().getBuffer(), tokenMetric);
+                if (tokenMetric != null) {
+                    LilypondNode<ParceToken> n = Gateway.getInstance().getRoot();
+                    while (n != null) {
+                        if (n.getData() != null) {
+                            tokenMetric.put(n.getData().getAction(),
+                                    tokenMetric.getOrDefault(n.getData().getAction(), 0) + 1);
+                        }
+                        n = n.getNext();
+                    }
+                }
+                LOGGER.log(Level.INFO, "created {0} nodes (maxDepth: {1})",
+                        new Object[] { Gateway.getInstance().getNodesCount(),
+                        Gateway.getInstance().getMaxDepth()});
+
+                return Gateway.getInstance().getRoot();
 
             } else {
                 LOGGER.severe("Parce exited with code " + exitCode + ":\n" + sjErr);
@@ -89,57 +103,6 @@ public class FileParser implements LilypondParser<ParceToken> {
         }
 
         return null;
-    }
-
-    /**
-     * Converts the token stream from Parce to a list of nodes.
-     *
-     * @param buffer Buffer with Parce events.
-     * @return First node of list.
-     */
-    private LilypondNode<ParceToken> convertEventsToNodes(ConcurrentLinkedQueue<ParseEvent> buffer, HashMap<String, Integer> tokenMetric) {
-        assert buffer != null;
-
-        LOGGER.log(Level.INFO, "convert {0} events to tree", buffer.size());
-        int depth = 0, maxDepth = 0, cnt = 0;
-        ParseEvent e = buffer.poll();
-        LilypondNode<ParceToken> head = new LilypondNode<>("HEAD", null);
-        head.setLevel(depth);
-        LilypondNode<ParceToken> n = head;
-        while (e != null) {
-            int pop = e.getPopContext();
-            while (pop < 0) {
-                pop++;
-                depth--;
-
-                LOGGER.log(Level.FINER, "closed context (depth: {0})", depth);
-            }
-
-            for (String s : e.getContexts()) {
-                n = n.append(s, null, depth++);
-                cnt++;
-                LOGGER.log(Level.FINER, "opened {0}", n.getName());
-
-                maxDepth = Math.max(depth, maxDepth);
-            }
-
-            for (ParceToken t : e.getTokens()) {
-                if (null != tokenMetric) {
-                    tokenMetric.put(t.getAction(), tokenMetric.getOrDefault(t.getAction(), 0) + 1);
-                }
-
-                n = n.append(t.getAction(), t, depth);
-                cnt++;
-                LOGGER.log(Level.FINER, "added token {0} \"{1}\" (depth: {2})",
-                        new Object[] { t.getAction(), t.getText(), depth });
-            }
-
-            e = buffer.poll();
-        }
-
-        LOGGER.log(Level.INFO, "done conversion to {0} nodes (maxdepth: {1})", new Object[] { cnt, maxDepth });
-
-        return head.getNext();
     }
 
     public void shutdown() {
