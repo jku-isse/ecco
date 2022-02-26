@@ -538,19 +538,20 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
 
     @DataProvider(name = "sulzerConfigurationsFiles")
     public static Object[][] sulzerConfigurationsFiles() {
-        // run, repository, configurationsFile
+        // run, repository, resultsFile
         return new Object[][] {
-                {1, ".eccoSulzer", "configurations.txt"}
-                //{2, ".eccoSulzer", "configurations.txt"}
-                //{3, ".eccoSulzer", "configurations.txt"}
-                //{4, ".eccoSulzer", "configurations.txt"}
+                //{1, ".eccoSulzer", "results.csv"}
+                //{2, ".eccoSulzer", "results.csv"}
+                //{3, ".eccoSulzer", "results.csv"}
+                //{4, ".eccoSulzer", "results.csv"}
+                {5, ".eccoSulzer", "results.csv"}
         };
     }
 
     @Test(groups = {"correctness"})
     public void testCommitSulzerConfig() {
         EccoService service = new EccoService();
-        service.setRepositoryDir(BASE_DIR.resolve(".eccoSulzer_02"));
+        service.setRepositoryDir(BASE_DIR.resolve(".eccoSulzer_05"));
         service.open();
 
         Path inDir = BASE_DIR.getParent().resolve("checkout");
@@ -561,7 +562,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     }
 
     @Test(groups = {"correctness"}, dataProvider = "sulzerConfigurationsFiles")
-    public void testSulzerConfigsAreCompilable(int run, String repoName, String configsFile) {
+    public void testSulzerConfigsAreCompilable(int run, String repoName, String resultsFile) {
         // open repository
         EccoService service = new EccoService();
         String filename = "factusestrepente.ly";
@@ -577,7 +578,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
         service.open();
         System.out.println("opened repository " + repo);
 
-        Path pConfigs = BASE_DIR.resolve("01_".concat(configsFile)); // always check all 100 configs (fixes possibly break others such that they are no longer compilable)
+        Path pConfigs = BASE_DIR.resolve("configurations.txt"); // always check all 100 configs (fixes possibly break others such that they are no longer compilable)
         List<String> configs;
         try {
              configs = Files.readAllLines(pConfigs);
@@ -610,12 +611,17 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             Assert.fail();
         }
 
-        Path invalidConfigs = BASE_DIR.resolve(String.format("%02d_%s", run + 1, configsFile));
-        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(invalidConfigs,
-                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE))) {
+        Path results = BASE_DIR.resolve(resultsFile);
+        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(results,
+                StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND))) {
+
+            out.write((run + ";").getBytes(StandardCharsets.UTF_8));
             boolean checkedOutFirst = false;
             for (int i = 0; i < configs.size(); i++) {
-                if (!compilableConfigs.contains(configs.get(i))) {
+                if (compilableConfigs.contains(configs.get(i))) {
+                    out.write("1".getBytes(StandardCharsets.UTF_8));
+
+                } else {
                     if (!checkedOutFirst) {
                         // checkout first uncompilable config to fix
                         checkedOutFirst = true;
@@ -630,11 +636,15 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
                         }
 
                         service.checkout(configs.get(i));
-                        System.out.println("checked out one uncompilable config to " + checkout);
+                        System.out.println("checked out uncompilable config " + (i + 1) + " to " + checkout);
                     }
-                    out.write(configs.get(i).concat("\n").getBytes(StandardCharsets.UTF_8));
+                    out.write("0".getBytes(StandardCharsets.UTF_8));
+                }
+                if (i + 1 < configs.size()) {
+                    out.write(";".getBytes(StandardCharsets.UTF_8));
                 }
             }
+            out.write(System.lineSeparator().getBytes(StandardCharsets.UTF_8));
 
         } catch (IOException ex) {
             ex.printStackTrace();
