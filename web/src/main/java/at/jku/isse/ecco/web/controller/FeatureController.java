@@ -37,6 +37,18 @@ public class FeatureController {
     }
 
     @GET
+    @Path("/test")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public FeatureModel[] getTestFeature() {
+        System.out.println("Testing");
+        FeatureModel[] arr = new FeatureModel[2];
+        arr[0]= new FeatureModel("person", "persondesc" );
+        arr[1]= new FeatureModel("shirt", "shirtdesc" );
+        return new FeatureModel[2];
+    }
+
+
+    @GET
     @Produces({ MediaType.APPLICATION_JSON })
     public FeatureModel[] getFeatures() {
         ContextResolver<AbstractRepository> featureRepositoryContextResolver = providers.getContextResolver(AbstractRepository.class, MediaType.WILDCARD_TYPE);
