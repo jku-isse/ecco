@@ -27,6 +27,17 @@ public class FeatureController {
     @Context
     private Providers providers;
 
+    @GET
+    @Path("/test")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public FeatureModel[] getTestFeature() {
+        System.out.println("Testing");
+        FeatureModel[] arr = new FeatureModel[2];
+        arr[0]= new FeatureModel("person", "persondesc" );
+        arr[1]= new FeatureModel("shirt", "shirtdesc" );
+        return arr;
+    }
+
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
