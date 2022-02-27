@@ -41,6 +41,7 @@ public class OperationController {
     @Produces({ MediaType.APPLICATION_JSON })
     public OperationResponse createRepository(OperationContainer operationOnDirectory) {
         //TODO: Create eines Repos einmal hierein packen...
+
         return new CloseOperationResponse();
     }
 
