@@ -31,8 +31,8 @@ import at.jku.isse.ecco.tree.RootNode;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.Names;
+import org.springframework.stereotype.Service;
 
-import javax.inject.Inject;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
@@ -53,10 +53,22 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
-//@Service
+@Service
 public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
 
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
+
+    public EccoService(final DispatchReader reader) {
+        this.reader = reader;
+    }
+
+    public EccoService(final DispatchWriter writer, final EntityFactory entityFactory, final TransactionStrategy transactionStrategy, final RepositoryDao repositoryDao, final RemoteDao remoteDao) {
+        this.writer = writer;
+        this.entityFactory = entityFactory;
+        this.transactionStrategy = transactionStrategy;
+        this.repositoryDao = repositoryDao;
+        this.remoteDao = remoteDao;
+    }
 
     public enum Operation {
         OPEN, INIT, FORK, CLOSE, COMMIT, CHECKOUT, FETCH, PULL, PUSH, SERVER, OTHER
@@ -200,10 +212,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private DispatchReader reader;
     @Inject
     private DispatchWriter writer;
-
     @Inject
     private EntityFactory entityFactory;
-
     @Inject
     private TransactionStrategy transactionStrategy;
 
