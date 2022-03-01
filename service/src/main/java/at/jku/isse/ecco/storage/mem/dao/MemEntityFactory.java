@@ -20,13 +20,17 @@ import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class MemEntityFactory implements EntityFactory {
+	public MemEntityFactory() {
+	}
 
 	@Override
 	public Remote createRemote(String name, String address, Remote.Type type) {
@@ -43,7 +47,6 @@ public class MemEntityFactory implements EntityFactory {
 		return new MemConfiguration(featureRevisions);
 	}
 
-
 	@Override
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
 		return new MemArtifact<T>(data);
@@ -53,7 +56,6 @@ public class MemEntityFactory implements EntityFactory {
 	public Repository.Op createRepository() {
 		return new MemRepository();
 	}
-
 
 	@Override
 	public Association.Op createAssociation() {
