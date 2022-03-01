@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.storage.mem.repository;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -12,12 +12,14 @@ import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import org.eclipse.collections.impl.factory.Maps;
+import org.springframework.context.annotation.Bean;
 
 import java.util.*;
 
 /**
  * Memory implementation of {@link Repository}.
  */
+
 public final class MemRepository implements Repository, Repository.Op {
 
 	public static final long serialVersionUID = 1L;
@@ -48,6 +50,7 @@ public final class MemRepository implements Repository, Repository.Op {
 		return Collections.unmodifiableCollection(this.associations);
 	}
 
+	@Bean
 	@Override
 	public ArrayList<Variant> getVariants() {
 		return this.variants;
