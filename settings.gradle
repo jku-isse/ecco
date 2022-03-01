@@ -5,6 +5,7 @@ include 'service'
 include 'cli'
 include 'gui'
 include 'web'
+include 'rest'
 
 include 'adapter-file'
 include 'adapter-text'
@@ -14,6 +15,7 @@ include 'adapter-java'
 include 'adapter-challenge'
 include 'adapter-runtime'
 include 'adapter-cpp'
+
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')

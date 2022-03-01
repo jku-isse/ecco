@@ -53,6 +53,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
+//@Service
 public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
 
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
