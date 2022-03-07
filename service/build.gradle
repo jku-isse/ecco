@@ -16,6 +16,8 @@ dependencies {
 	api 'com.google.inject.extensions:guice-multibindings:4.2.3'
 
 	api project(':ecco-base')
+	implementation 'org.projectlombok:lombok:1.18.16'
+	implementation 'org.projectlombok:lombok:1.18.16'
 
 	testImplementation project(':ecco-adapter-file')
 	//testRuntimeOnly project(':ecco-adapter-text')
