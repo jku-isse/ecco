@@ -4,6 +4,9 @@ dependencies {
 	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
 	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
 
+	implementation 'org.springframework:spring-context:5.3.16'
+	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.13.1'
+
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
 

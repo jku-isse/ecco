@@ -8,6 +8,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Memory implementation of {@link FeatureRevision}.
  */
+
+
 public class MemFeatureRevision implements FeatureRevision {
 
 	public static final long serialVersionUID = 1L;
