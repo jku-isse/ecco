@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.dao.Persistable;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Collection;
 
@@ -17,6 +18,7 @@ public interface Feature extends Persistable {
 
 	public FeatureRevision getOrphanedRevision(String id);
 
+	@JsonIgnore
 	public FeatureRevision getLatestRevision();
 
 	public Feature feature(String name);
@@ -64,7 +66,7 @@ public interface Feature extends Persistable {
 	@Override
 	public boolean equals(Object object);
 
-
+	@JsonIgnore
 	public default String getFeatureString() {
 		return this.getName();
 	}

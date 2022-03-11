@@ -61,12 +61,12 @@ public class MemCommit implements Commit {
 	}
 
 	@Override
-	public void setCommitMassage(String commitMessage) {
+	public void setCommitMessage(String commitMessage) {
 		this.commitMessage = commitMessage;
 	}
 
 	@Override
-	public String getCommitMassage() {
+	public String getCommitMessage() {
 		return commitMessage;
 	}
 

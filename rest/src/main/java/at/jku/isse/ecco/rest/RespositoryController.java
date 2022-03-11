@@ -1,13 +1,13 @@
 package at.jku.isse.ecco.rest;
 
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.google.common.io.RecursiveDeleteOption;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,7 +17,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
@@ -29,32 +31,62 @@ import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 public class RespositoryController {
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
     //private EccoService service = new EccoService();
+    private Map<Integer, String> allRepros = null;
 
 
     @Autowired
     private EccoService service;
+    private String all;
 
     @PostMapping("test")
     public void setRoadAvailable() {
         System.out.println("test");
     }
 
-    @GetMapping("")
+
+    //----------------------- Repository ----------------//
+    @PostMapping("")
     public ResponseEntity getRepository () {
         Repository repository = service.getRepository();
-
-
-
         return new ResponseEntity(repository, HttpStatus.OK);
     }
 
+    @PostMapping("all")
+    public Map<Integer, String> getAllRep() {
+        if (allRepros == null) {
+            //TOdo Reporos
+            allRepros = new HashMap<>();
+            allRepros.put(1, "Repro1");
+            allRepros.put(2, "Repro2");
+            allRepros.put(3, "Repro3");
+            allRepros.put(4, "Repro4");
+            allRepros.put(5, "Repro5");
+            allRepros.put(6, "Repro6");
+        }
+        return allRepros;
+    }
 
-    @GetMapping("open")
-    public ResponseEntity openRepository () {
+    @PostMapping("create")
+    public Map<Integer, String> create(String name) {
+        //openRepository()  //TODO
+        allRepros.put(allRepros.size() +1, name);
+        return getAllRep();
+    }
+
+    @PostMapping("clone")
+    public Map<Integer, String> create(Integer fromId, String name) {
+        //openRepository()  //TODO
+        //cloneRepository()
+        allRepros.put(allRepros.size() +1, name);
+        return getAllRep();
+    }
+
+    @PostMapping("open")
+    public Repository openRepository () {
         //TODO select Repro
         if (service.isInitialized()) {
             LOGGER.info("Repository already in use");
-            return new ResponseEntity("The Repository is currently used by an other user", HttpStatus.FORBIDDEN);
+           // return new RestRepository("The Repository is currently used by an other user", HttpStatus.FORBIDDEN);
         } else {
             Path baseDir = Path.of(System.getProperty("user.dir"), "examples\\BigHistory\\.ecco");
             System.out.println(baseDir);
@@ -62,9 +94,12 @@ public class RespositoryController {
             service.setRepositoryDir(baseDir);
             service.open();
 
+            //RestRepository rep = new RestRepository(service);
 
-            return new ResponseEntity(service.getRepository(), HttpStatus.OK);
+            Repository r = service.getRepository();
+            return service.getRepository();
         }
+        return null;        //TODO delete
     }
 
     @PostMapping("init")
@@ -104,11 +139,13 @@ public class RespositoryController {
 
         System.out.printf("Committed %d variants\n", variantsCnt);
 
-        return new ResponseEntity(service.getRepository(), HttpStatus.OK);
+        RestRepository rep = new RestRepository(service);
+
+        return new ResponseEntity(rep, HttpStatus.OK);
     }
 
     @PostMapping("initBig")
-    public Repository initBigRepository () {
+    public RestRepository initBigRepository () {
         //TODO select Repro
 
         Path basePath = Path.of(System.getProperty("user.dir"), "examples\\bigHistory");
@@ -123,6 +160,7 @@ public class RespositoryController {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         service.setRepositoryDir(p);
         service.init();
 
@@ -137,14 +175,42 @@ public class RespositoryController {
             prevTime = System.currentTimeMillis();
         }
 
-        Repository r = service.getRepository();
-        return r;
+        RestRepository rep = new RestRepository(service);
+        return rep;
+    }
+
+    //----------------------- Feature ----------------//
+
+    @PostMapping("setFeatureDescription")
+    public Repository setFeatureDescription(String featureId, String description) {
+        service.getRepository().getFeature().stream().map(x -> {
+            if(x.getId().equals(featureId)) {
+                x.setDescription(description);
+            }
+            return x;
+        });
+
+        return service.getRepository();
+    }
+
+    @PostMapping("setFeatureRevisionDescription")
+    public Repository setFeatureRevisionDescription(String featureId, String RevisionId, String description) {
+        //service.getRepository(). ...
+        return service.getRepository();
+    }
+
+    //----------------------- Commit ----------------//
+
+    @PostMapping("commit")
+    public Repository commit() {
+        return service.getRepository();
     }
 
 
 
 
-    @PostMapping("close")
+
+            @PostMapping("close")
     public void closeRepository () {
         service.close();
     }

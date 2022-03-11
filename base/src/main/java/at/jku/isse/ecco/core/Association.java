@@ -9,6 +9,7 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.RootNode;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Represents a trace between a presence condition and an artifact tree. An association can have a set of parents.
@@ -74,7 +75,7 @@ public interface Association extends Persistable {
 
 		public Repository.Op getContainingRepository();
 
-
+		@JsonIgnore
 		public AssociationCounter getCounter();
 
 

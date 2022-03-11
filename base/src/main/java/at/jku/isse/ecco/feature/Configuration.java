@@ -6,8 +6,8 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -35,8 +35,10 @@ public interface Configuration extends Persistable {
      *
      * @return The array of feature revisions that makes up the configuration.
      */
+    @JsonIgnore
     public FeatureRevision[] getFeatureRevisions();
 
+    @JsonIgnore
     public Configuration getConfiguration();
 
     public void setFeatureRevisions(FeatureRevision[] featureRevisions);

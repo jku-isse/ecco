@@ -3,15 +3,16 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
-import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
-import at.jku.isse.ecco.tree.Node;
 import javafx.application.Platform;
-import javafx.beans.property.*;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -26,7 +27,9 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 
 public class CommitsView extends BorderPane implements EccoListener {
 
@@ -90,7 +93,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 		commitsTable.getColumns().setAll(commitsCol);
 
 		idCol.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getId()));
-		commitMessage.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getCommitMassage()));
+		commitMessage.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getCommitMessage()));
 		commiter.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getUsername()));
 		date.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getDate() == null ? "" : param.getValue().getCommit().getDate().toString()));  //TODO do better
 

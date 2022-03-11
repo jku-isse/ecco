@@ -12,14 +12,14 @@ import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import org.eclipse.collections.impl.factory.Maps;
-import org.springframework.stereotype.Component;
+//import org.springframework.stereotype.Component;
 
 import java.util.*;
 
 /**
  * Memory implementation of {@link Repository}.
  */
-@Component
+//@Component
 public final class MemRepository implements Repository, Repository.Op {
 
 	public static final long serialVersionUID = 1L;
@@ -43,6 +43,10 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public Collection<Feature> getFeatures() {
+		return Collections.unmodifiableCollection(this.features.values());
+	}
+
+	public Collection<Feature> getMemFeatures() {
 		return Collections.unmodifiableCollection(this.features.values());
 	}
 
