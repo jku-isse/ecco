@@ -2,6 +2,7 @@ package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Collection;
 import java.util.Date;
@@ -20,6 +21,7 @@ public interface Commit extends Persistable {
 
 	public void setId(String id);
 
+	@JsonIgnore
 	public Configuration getConfiguration();
 
 	public void setConfiguration(Configuration configuration);
@@ -28,9 +30,9 @@ public interface Commit extends Persistable {
 
 	public String getUsername();
 
-	public void setCommitMassage(String message);
+	public void setCommitMessage(String message);
 
-	public String getCommitMassage();
+	public String getCommitMessage();
 
 	public void setCurrDate();
 
@@ -42,6 +44,7 @@ public interface Commit extends Persistable {
 
 	public void deleteAssociation(Association association);
 
+	@JsonIgnore
 	public Collection<Association> getAssociations();
 
 }

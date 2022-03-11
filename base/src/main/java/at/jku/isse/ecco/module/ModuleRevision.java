@@ -5,6 +5,7 @@ import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -75,7 +76,7 @@ public interface ModuleRevision extends Persistable {
 
 	public void incCount(int count);
 
-
+	@JsonIgnore
 	public Module getModule();
 
 
