@@ -20,6 +20,7 @@ import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.ObjectInputFilter;
 import java.util.*;
@@ -35,6 +36,7 @@ public interface Repository extends Persistable {
 
 	public Collection<? extends Feature> getFeatures();
 
+	@JsonIgnore
 	public Collection<? extends Association> getAssociations();
 
 	public ArrayList<Variant> getVariants();
