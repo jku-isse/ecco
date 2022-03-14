@@ -35,7 +35,6 @@ public interface Configuration extends Persistable {
      *
      * @return The array of feature revisions that makes up the configuration.
      */
-    @JsonIgnore
     public FeatureRevision[] getFeatureRevisions();
 
     @JsonIgnore

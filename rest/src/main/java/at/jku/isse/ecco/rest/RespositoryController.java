@@ -1,31 +1,31 @@
 package at.jku.isse.ecco.rest;
 
+import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.io.RecursiveDeleteOption;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 
 
 @RestController
+@CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("api/repository")
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class RespositoryController {
@@ -51,8 +51,9 @@ public class RespositoryController {
         return new ResponseEntity(repository, HttpStatus.OK);
     }
 
+    @CrossOrigin(origins = "http://localhost:3000")
     @PostMapping("all")
-    public Map<Integer, String> getAllRep() {
+    public RepoHeader[] getAllRep() {
         if (allRepros == null) {
             //TOdo Reporos
             allRepros = new HashMap<>();
@@ -63,18 +64,18 @@ public class RespositoryController {
             allRepros.put(5, "Repro5");
             allRepros.put(6, "Repro6");
         }
-        return allRepros;
+        return allRepros.entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue())).toArray(RepoHeader[]::new);
     }
 
-    @PostMapping("create")
-    public Map<Integer, String> create(String name) {
+    @PostMapping("{name}")
+    public RepoHeader[] create(@PathVariable String name) {
         //openRepository()  //TODO
         allRepros.put(allRepros.size() +1, name);
         return getAllRep();
     }
 
     @PostMapping("clone")
-    public Map<Integer, String> create(Integer fromId, String name) {
+    public RepoHeader[] create(Integer fromId, String name) {
         //openRepository()  //TODO
         //cloneRepository()
         allRepros.put(allRepros.size() +1, name);
@@ -144,9 +145,29 @@ public class RespositoryController {
         return new ResponseEntity(rep, HttpStatus.OK);
     }
 
+    private static class RepoHeader implements Persistable {
+        public int id;
+        public String name;
+
+        public RepoHeader(int id, String name){
+            this.id=id;
+            this.name=name;
+        }
+
+        public int getId(){return id;}
+        public String getName() {return name;}
+
+
+    }
+
+    private static Repository currentrepo;
+
+    @CrossOrigin(origins = "http://localhost:3000")
     @PostMapping("initBig")
-    public RestRepository initBigRepository () {
+    public Repository initBigRepository () {
         //TODO select Repro
+
+        if (currentrepo != null ) return currentrepo;
 
         Path basePath = Path.of(System.getProperty("user.dir"), "examples\\bigHistory");
         basePath = basePath.getParent().resolve("BigHistory");
@@ -167,36 +188,31 @@ public class RespositoryController {
         List<Long> time = new ArrayList<>();
         File[] files = basePath.toFile().listFiles();
         long prevTime = System.currentTimeMillis();
-        for(int commitNumber = 1; commitNumber < 3; commitNumber++) {
+        for(int commitNumber = 1; commitNumber < 5; commitNumber++) {
             service.setBaseDir(basePath.resolve(files[commitNumber].getName()));
             System.out.println(files[commitNumber].getName());
             service.commit(commitNumber + ". Commit: " + files[commitNumber].getName());
             time.add(System.currentTimeMillis()- prevTime);
             prevTime = System.currentTimeMillis();
+            System.out.println(commitNumber);
         }
 
-        RestRepository rep = new RestRepository(service);
-        return rep;
+        Repository r = service.getRepository();
+        currentrepo = r;
+        return r;
     }
 
     //----------------------- Feature ----------------//
-
-    @PostMapping("setFeatureDescription")
-    public Repository setFeatureDescription(String featureId, String description) {
-        service.getRepository().getFeature().stream().map(x -> {
-            if(x.getId().equals(featureId)) {
-                x.setDescription(description);
-            }
-            return x;
-        });
-
-        return service.getRepository();
+    @PostMapping("/{featureId}/description")
+    public Repository setFeatureDescription(@PathVariable String featureId, @RequestBody String description) {
+        currentrepo.getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().ifPresent(x -> x.setDescription(description));
+        return currentrepo;
     }
 
-    @PostMapping("setFeatureRevisionDescription")
-    public Repository setFeatureRevisionDescription(String featureId, String RevisionId, String description) {
-        //service.getRepository(). ...
-        return service.getRepository();
+    @PostMapping("/{featureId}/{revisionId}/description")
+    public Repository setFeatureRevisionDescription(@PathVariable String featureId,  @PathVariable String revisionId, @RequestBody String description) {
+        currentrepo.getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().get().getRevision(revisionId).setDescription(description);
+        return currentrepo;
     }
 
     //----------------------- Commit ----------------//

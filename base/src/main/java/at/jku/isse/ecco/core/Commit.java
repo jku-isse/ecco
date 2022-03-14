@@ -21,7 +21,6 @@ public interface Commit extends Persistable {
 
 	public void setId(String id);
 
-	@JsonIgnore
 	public Configuration getConfiguration();
 
 	public void setConfiguration(Configuration configuration);
