@@ -1,10 +1,16 @@
 package at.jku.isse.ecco.rest;
 
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.storage.mem.core.MemVariant;
+import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
+import at.jku.isse.ecco.storage.mem.feature.MemFeatureRevision;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.io.RecursiveDeleteOption;
@@ -67,7 +73,7 @@ public class RespositoryController {
         return allRepros.entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue())).toArray(RepoHeader[]::new);
     }
 
-    @PostMapping("{name}")
+    @PutMapping("{name}")
     public RepoHeader[] create(@PathVariable String name) {
         //openRepository()  //TODO
         allRepros.put(allRepros.size() +1, name);
@@ -222,11 +228,83 @@ public class RespositoryController {
         return service.getRepository();
     }
 
+    // TODO compare commits?
+
+    //----------------------- Variant ----------------//
+    @PutMapping("/variant/{name}")
+    public Repository createVariant(@PathVariable String name, @RequestBody String config){
+        // TODO create new Variant with config from string??
+        Configuration configuration = new MemConfiguration(new FeatureRevision[0]);
+        System.out.println("Creating variant with config: "+config);
+        Variant var = new MemVariant(name, configuration, "new ID"); // TODO id > uuid
+
+        currentrepo.addVariant(var);
+        return currentrepo;
+    }
+
+    @DeleteMapping("/variant/{variantId}")
+    public Repository deleteVariant(@PathVariable String variantId){
+        System.out.println("DELETE Variant "+ variantId);
+        currentrepo.removeVariant(currentrepo.getVariant(variantId));
+        return currentrepo;
+    }
+
+    @PutMapping("/variant/{variantId}/feature/{featureId}")
+    public Repository variantAddFeature(@PathVariable String variantId, @PathVariable String featureId){
+        System.out.println("Add Feature " + featureId + " to variant " + variantId);
+
+        List<FeatureRevision> list = new LinkedList<>();
+        list.addAll(Arrays.stream(currentrepo.getVariant(variantId).getConfiguration().getFeatureRevisions()).toList());
+
+        for(Feature f : currentrepo.getFeature()){
+            if (f.getId().equals(featureId)) {
+                list.add(f.getLatestRevision());
+            }
+        }
+
+        currentrepo.getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
+        return currentrepo;
+    }
+
+    @PostMapping("/variant/{variantId}/feature/{featureName}")
+    public Repository variantUpdateFeature(@PathVariable String variantId, @PathVariable String featureName, @RequestBody String id){
+        System.out.println("Update FeatureRevision " + featureName + " from variant " + variantId + " to Revision " + id);
+        FeatureRevision[] arr = currentrepo.getVariant(variantId).getConfiguration().getFeatureRevisions();
+        List<FeatureRevision> list = new LinkedList<>();
+
+        for ( FeatureRevision rev : arr){
+            if (!rev.getFeature().getName().equals(featureName))
+                list.add(rev);
+            else{
+                list.add(rev.getFeature().getRevision(id));
+            }
+        }
+
+        currentrepo.getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
+        return currentrepo;
+    }
+
+    @DeleteMapping("/variant/{variantId}/feature/{featureName}")
+    public Repository variantRemoveFeature(@PathVariable String variantId, @PathVariable String featureName){
+        System.out.println("Remove Feature " + featureName + " from variant " + variantId);
+        FeatureRevision[] arr = currentrepo.getVariant(variantId).getConfiguration().getFeatureRevisions();
+        List<FeatureRevision> list = new LinkedList<>();
+
+        for ( FeatureRevision rev : arr){
+            if (!rev.getFeature().getName().equals(featureName))
+                list.add(rev);
+        }
+
+        currentrepo.getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
+        return currentrepo;
+    }
 
 
 
 
-            @PostMapping("close")
+
+
+    @PostMapping("close")
     public void closeRepository () {
         service.close();
     }
