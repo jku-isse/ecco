@@ -10,21 +10,20 @@ import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
-import at.jku.isse.ecco.storage.mem.feature.MemFeatureRevision;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.io.RecursiveDeleteOption;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
@@ -37,15 +36,17 @@ import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 public class RespositoryController {
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
     //private EccoService service = new EccoService();
-    private Map<Integer, String> allRepros = null;
 
 
     @Autowired
     private EccoService service;
-    private String all;
+    private Path repoStorage = Path.of(System.getProperty("user.dir"), "examples");
+    Map<Integer, String> allRepos = new TreeMap<>();
+    AtomicInteger RepoId = new AtomicInteger();
+
 
     @PostMapping("test")
-    public void setRoadAvailable() {
+    public void test() {
         System.out.println("test");
     }
 
@@ -60,36 +61,64 @@ public class RespositoryController {
     @CrossOrigin(origins = "http://localhost:3000")
     @PostMapping("all")
     public RepoHeader[] getAllRep() {
-        if (allRepros == null) {
-            //TOdo Reporos
-            allRepros = new HashMap<>();
-            allRepros.put(1, "Repro1");
-            allRepros.put(2, "Repro2");
-            allRepros.put(3, "Repro3");
-            allRepros.put(4, "Repro4");
-            allRepros.put(5, "Repro5");
-            allRepros.put(6, "Repro6");
+        File folder = new File(repoStorage.toString());
+        File[] files = folder.listFiles();
+
+        if (files == null) {
+            throw new ResponseStatusException(HttpStatus.NO_CONTENT, "No Repositories found");
         }
-        return allRepros.entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue())).toArray(RepoHeader[]::new);
+
+        for (final File file : files) {
+            if (!allRepos.containsValue(file.getName())) {
+                if (service.repositoryExists(file.toPath())) {
+                    allRepos.put(RepoId.incrementAndGet(), file.getName());
+                }
+            }
+        }
+        return allRepos.entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue())).toArray(RepoHeader[]::new);
     }
 
     @PutMapping("{name}")
+    @ResponseStatus(HttpStatus.OK)
     public RepoHeader[] create(@PathVariable String name) {
-        //openRepository()  //TODO
-        allRepros.put(allRepros.size() +1, name);
+        Path p = repoStorage.resolve(name);
+        if (p.toFile().exists()) {
+            throw new ResponseStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
+        }
+        p.toFile().mkdir();     //create File
+        service.setRepositoryDir(p.resolve(".ecco"));
+        service.setBaseDir(p);
+        service.init();
         return getAllRep();
     }
+
+    @PostMapping("open/{id}")
+    public Repository openRepository(@PathVariable int id) {
+        getAllRep();
+        if (service.isInitialized()) {
+            LOGGER.info("Another Repository is open, closing the open repository");
+            service.close();
+            //throw new ResponseStatusException(HttpStatus.IM_USED, "service is already initialized");
+        }
+        String name = allRepos.get(id);
+        Path p = repoStorage.resolve(name);
+        service.setRepositoryDir(p.resolve(".ecco"));
+        service.setBaseDir(p);
+        service.open();
+        return service.getRepository();
+    }
+
 
     @PostMapping("clone")
     public RepoHeader[] create(Integer fromId, String name) {
         //openRepository()  //TODO
         //cloneRepository()
-        allRepros.put(allRepros.size() +1, name);
+
         return getAllRep();
     }
 
-    @PostMapping("open")
-    public Repository openRepository () {
+    @PostMapping("openTest")
+    public Repository openTestRepository () {
         //TODO select Repro
         if (service.isInitialized()) {
             LOGGER.info("Repository already in use");
@@ -109,7 +138,7 @@ public class RespositoryController {
         return null;        //TODO delete
     }
 
-    @PostMapping("init")
+    @PostMapping("initTest")
     public ResponseEntity initRepository () {
         //TODO select Repro
 
