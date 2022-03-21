@@ -6,13 +6,13 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.rest.classes.RestFeature;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.google.common.io.RecursiveDeleteOption;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
@@ -35,15 +34,9 @@ import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class RespositoryController {
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
-    //private EccoService service = new EccoService();
+    private EccoService service = new EccoService();        //TODO delete
 
-
-    @Autowired
-    private EccoService service;
-    private Path repoStorage = Path.of(System.getProperty("user.dir"), "examples");
-    Map<Integer, String> allRepos = new TreeMap<>();
-    AtomicInteger RepoId = new AtomicInteger();
-
+    private RepositoryService repositoryService = new RepositoryService();
 
     @PostMapping("test")
     public void test() {
@@ -52,36 +45,21 @@ public class RespositoryController {
 
 
     //----------------------- Repository ----------------//
-    @PostMapping("")
-    public ResponseEntity getRepository () {
-        Repository repository = service.getRepository();
-        return new ResponseEntity(repository, HttpStatus.OK);
+    @PostMapping("{id}")
+    public ResponseEntity getRepository (@PathVariable int rId) {
+        return new ResponseEntity(repositoryService.getRepository(rId), HttpStatus.OK);
     }
 
     @CrossOrigin(origins = "http://localhost:3000")
-    @PostMapping("all")
+    @GetMapping("all")
     public RepoHeader[] getAllRep() {
-        File folder = new File(repoStorage.toString());
-        File[] files = folder.listFiles();
-
-        if (files == null) {
-            throw new ResponseStatusException(HttpStatus.NO_CONTENT, "No Repositories found");
-        }
-
-        for (final File file : files) {
-            if (!allRepos.containsValue(file.getName())) {
-                if (service.repositoryExists(file.toPath())) {
-                    allRepos.put(RepoId.incrementAndGet(), file.getName());
-                }
-            }
-        }
-        return allRepos.entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue())).toArray(RepoHeader[]::new);
+        return repositoryService.getAllRepositories().entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue())).toArray(RepoHeader[]::new);
     }
 
-    @PutMapping("{name}")
+    @PutMapping("{name}")           //create Repository
     @ResponseStatus(HttpStatus.OK)
     public RepoHeader[] create(@PathVariable String name) {
-        Path p = repoStorage.resolve(name);
+        Path p = repositoryService.getRepoStorage().resolve(name);
         if (p.toFile().exists()) {
             throw new ResponseStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
         }
@@ -93,19 +71,22 @@ public class RespositoryController {
     }
 
     @PostMapping("open/{id}")
-    public Repository openRepository(@PathVariable int id) {
+    public RestRepository openRepository(@PathVariable int id) {
         getAllRep();
-        if (service.isInitialized()) {
-            LOGGER.info("Another Repository is open, closing the open repository");
-            service.close();
-            //throw new ResponseStatusException(HttpStatus.IM_USED, "service is already initialized");
+
+        Collection<RestFeature> featureList =  new LinkedList<>();
+        Repository r = repositoryService.getRepository(id);
+        Collection<? extends Feature> test = r.getFeatures();
+        for (Feature f : test) {
+            //TODO geht nicht einmal so obwohl die Rückgabe nichts mit dem EccoService zu tun hat.
+/*            List<RestFeatureRevision> revisions = new ArrayList<>();
+            for (FeatureRevision r : f.getRevisions()) {
+                revisions.add(new RestFeatureRevision(r.getId(), r.getDescription(), r.getFeatureRevisionString()));
+            }
+            featureList.add(new RestFeature(f.getId(), f.getName(), revisions));*/
         }
-        String name = allRepos.get(id);
-        Path p = repoStorage.resolve(name);
-        service.setRepositoryDir(p.resolve(".ecco"));
-        service.setBaseDir(p);
-        service.open();
-        return service.getRepository();
+        RestRepository rep = new RestRepository("test", featureList);
+        return rep;
     }
 
 
@@ -118,7 +99,7 @@ public class RespositoryController {
     }
 
     @PostMapping("openTest")
-    public Repository openTestRepository () {
+    public RestRepository openTestRepository () {
         //TODO select Repro
         if (service.isInitialized()) {
             LOGGER.info("Repository already in use");
@@ -133,7 +114,9 @@ public class RespositoryController {
             //RestRepository rep = new RestRepository(service);
 
             Repository r = service.getRepository();
-            return service.getRepository();
+
+            //RestRepository rep = new RestRepository(service);
+            return null;
         }
         return null;        //TODO delete
     }
@@ -142,7 +125,7 @@ public class RespositoryController {
     public ResponseEntity initRepository () {
         //TODO select Repro
 
-        Path basePath = Path.of(System.getProperty("user.dir"), "examples\\image_variants");
+        Path basePath = Path.of(System.getProperty("user.dir"), "examples\\image_variantsTest");
 
         //create Repo
         String repo = ".ecco";
@@ -175,9 +158,9 @@ public class RespositoryController {
 
         System.out.printf("Committed %d variants\n", variantsCnt);
 
-        RestRepository rep = new RestRepository(service);
+        //RestRepository rep = new RestRepository(service);
 
-        return new ResponseEntity(rep, HttpStatus.OK);
+        return null; // new ResponseEntity(rep, HttpStatus.OK);
     }
 
     private static class RepoHeader implements Persistable {

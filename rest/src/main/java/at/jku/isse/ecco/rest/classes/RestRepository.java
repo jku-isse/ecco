@@ -1,41 +1,30 @@
 package at.jku.isse.ecco.rest.classes;
 
-import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.LinkedList;
 
-@Component
+//@Component
 public class RestRepository implements Serializable {
-    private String Name = "Test";
-    private final EccoService service;
+    private String name = "Test";
+    private Collection<RestFeature> featureList =  new LinkedList<>();
 
-    public RestRepository(EccoService service) {
-        this.service = service;
-        this.Name = service.getBaseDir().getFileName().toString();
+    public RestRepository(String name, Collection<RestFeature> features) {
+        this.name = name;
+        this.featureList = features;
     }
 
-
-    public Collection<? extends Feature> getFeatures() {
-        Repository r = service.getRepository();
-        Collection<? extends Feature> Test = service.getRepository().getFeatures();
-        return Test;
+    public Collection<? extends RestFeature> getFeatures(EccoService service) {
+        return featureList;
     }
 
-    @JsonIgnore
-    public Collection<? extends Commit> getCommits() {
-        return service.getCommits();
-    }
 
 
 
     public String getName() {
-        return Name;
+        return name;
     }
 
 /*    public Collection<Commit> getCommits () {
