@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputFilter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -281,18 +282,15 @@ public class RespositoryController {
     @PostMapping("/variant/{variantId}/feature/{featureName}")
     public Repository variantUpdateFeature(@PathVariable String variantId, @PathVariable String featureName, @RequestBody String id){
         System.out.println("Update FeatureRevision " + featureName + " from variant " + variantId + " to Revision " + id);
-        FeatureRevision[] arr = currentrepo.getVariant(variantId).getConfiguration().getFeatureRevisions();
-        List<FeatureRevision> list = new LinkedList<>();
 
-        for ( FeatureRevision rev : arr){
-            if (!rev.getFeature().getName().equals(featureName))
-                list.add(rev);
-            else{
-                list.add(rev.getFeature().getRevision(id));
+        FeatureRevision[] featureRevisions = currentrepo.getVariant(variantId).getConfiguration().getFeatureRevisions();
+        for (int i = 0; i < featureRevisions.length ; i++) {
+            if (featureRevisions[i].getFeature().getName().equals(featureName)){
+                Feature f = currentrepo.getFeature().stream().filter(fe -> fe.getName().equals(featureName)).findAny().orElse(null);
+                featureRevisions[i] = f.getRevision(id);
+                break;
             }
         }
-
-        currentrepo.getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
         return currentrepo;
     }
 
