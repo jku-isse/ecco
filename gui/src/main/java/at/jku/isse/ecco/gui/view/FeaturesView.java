@@ -137,11 +137,9 @@ public class FeaturesView extends BorderPane implements EccoListener {
 		// add to split pane
 		splitPane.getItems().addAll(featuresTable, featureDetailView);
 
+		Platform.runLater(() -> statusChangedEvent(service));
 
 		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
 	}
 
 

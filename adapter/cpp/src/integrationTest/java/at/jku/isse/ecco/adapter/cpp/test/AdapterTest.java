@@ -1,25 +1,22 @@
 package at.jku.isse.ecco.adapter.cpp.test;
 
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.cpp.CppReader;
 import at.jku.isse.ecco.adapter.cpp.data.*;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
-import org.glassfish.grizzly.http.server.accesslog.FileAppender;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -105,13 +102,25 @@ public class AdapterTest {
 
             //appending to the csv
             try {
+                FileWriter csvWriter = new FileWriter(featureCSV, true);
+                ArrayDeque<String> values = new ArrayDeque<>();
 
-                FileAppender csvWriter = new FileAppender(featureCSV);
-                String values = variantDir.getFileName().toString();
-                values += "," + (String.valueOf(output.get("includes"))) + "," + (String.valueOf(output.get("defines"))) + "," + (String.valueOf(output.get("functions"))) + "," + (String.valueOf(output.get("fields"))) + "," +
-                        (String.valueOf(output.get("blocks"))) + "," + (String.valueOf(output.get("if"))) + "," + (String.valueOf(output.get("for"))) + "," + (String.valueOf(output.get("switch"))) + "," + (String.valueOf(output.get("while"))) +
-                        "," + (String.valueOf(output.get("do"))) + "," + (String.valueOf(output.get("case"))) + "," + (String.valueOf(output.get("problem")));
-                csvWriter.append(String.join(",", values));
+                values.add(variantDir.getFileName().toString());
+                values.add(String.valueOf(output.get("includes")));
+                values.add(String.valueOf(output.get("defines")));
+                values.add(String.valueOf(output.get("functions")));
+                values.add(String.valueOf(output.get("fields")));
+                values.add(String.valueOf(output.get("blocks")));
+                values.add(String.valueOf(output.get("if")));
+                values.add(String.valueOf(output.get("for")));
+                values.add(String.valueOf(output.get("switch")));
+                values.add(String.valueOf(output.get("while")));
+                values.add(String.valueOf(output.get("do")));
+                values.add(String.valueOf(output.get("case")));
+                values.add(String.valueOf(output.get("problem")));
+
+                csvWriter.append(String.join(",", values))
+                        .append("\n");
                 csvWriter.close();
             } catch (IOException e) {
                 e.printStackTrace();

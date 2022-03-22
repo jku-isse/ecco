@@ -102,20 +102,7 @@ public class CliTestSecurityManager extends SecurityManager {
 	}
 
 	@Override
-	public boolean checkTopLevelWindow(Object window) {
-		return super.checkTopLevelWindow(window);
-	}
-
-	@Override
 	public void checkPrintJobAccess() {
-	}
-
-	@Override
-	public void checkSystemClipboardAccess() {
-	}
-
-	@Override
-	public void checkAwtEventQueueAccess() {
 	}
 
 	@Override
@@ -128,10 +115,6 @@ public class CliTestSecurityManager extends SecurityManager {
 
 	@Override
 	public void checkSetFactory() {
-	}
-
-	@Override
-	public void checkMemberAccess(Class<?> clazz, int which) {
 	}
 
 	@Override
