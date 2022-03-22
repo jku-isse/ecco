@@ -13,6 +13,7 @@ public class LilyEccoTransformer {
     private final static String DEF_IDENTIFIER = "LilyPond.identifier_ref";
     private final static String DEF_LYRIC = "Keyword.Lyric";
     private final static String DEF_LYRICLIST = "LilyPond.lyriclist";
+    private final static String DEF_LYRICSTO = "LilyPond.lyricsto";
     private final static String DEF_BRACKET_START = "Delimiter.Bracket.Start";
     private final static String DEF_STRING = "LilyPond.string";
     private final static String DEF_SCHEME_STRING = "SchemeLily.string";
@@ -219,11 +220,25 @@ public class LilyEccoTransformer {
     }
 
     private static boolean isLyriclist(LilypondNode<ParceToken> lyricmode) {
-        // pattern: Keyword.Lyric LilyPond.lyriclist
-        if (!lyricmode.getName().equals(DEF_LYRIC) || !lyricmode.getData().getText().equals("\\lyricmode")) {
+        // pattern: Keyword.Lyric { LilyPond.lyricsto LilyPond.list LilyPond.string ... } LilyPond.lyriclist
+        if (!lyricmode.getName().equals(DEF_LYRIC) ||
+                !lyricmode.getData().getText().equals("\\lyricmode") && !lyricmode.getData().getText().equals("\\lyricsto")) {
             return false;
         }
-        lyricmode = lyricmode.getNext();
+
+        if (lyricmode.getData().getText().equals("\\lyricsto")) {
+            lyricmode = lyricmode.getNext(); // LilyPond.lyricsto
+            if (lyricmode == null) return false;
+            int lvl = lyricmode.getLevel();
+
+            lyricmode = lyricmode.getNext(); // LilyPond.list
+            while (lyricmode != null && lyricmode.getLevel() > lvl) {
+                lyricmode = lyricmode.getNext();
+            }
+
+        } else {
+            lyricmode = lyricmode.getNext();
+        }
         if (lyricmode == null || !lyricmode.getName().equals(DEF_LYRICLIST)) {
             return false;
         }
@@ -232,17 +247,38 @@ public class LilyEccoTransformer {
     }
 
     private static LilypondNode<ParceToken> transformLyriclist(LilypondNode<ParceToken> lyricmode) {
-        LilypondNode<ParceToken> n = lyricmode.getNext().getNext();
+        // pattern: Keyword.Lyric { LilyPond.lyricsto LilyPond.list LilyPond.string ... } LilyPond.lyriclist
+        StringBuilder lyrics = new StringBuilder(lyricmode.getData().getText())
+                .append(" ");
+        LilypondNode<ParceToken> n = lyricmode.getNext();
+        cntInput++;
+        if (n.getName().equals(DEF_LYRICSTO)) {
+            n = n.getNext().getNext(); cntInput++; cntInput++;
+            n = transformString(n, n.getName());
+            lyrics.append(n.getData().getText())
+                    .append(" ");
+            if (n.getNext() == null) {
+                return n;
+            }
+            n = n.getNext(); cntInput++;
+
+            if (n.getNext() == null || n.getNext().getData() == null
+                    || !n.getNext().getData().getAction().equals(DEF_BRACKET_START)) {
+                return n;
+            }
+        }
+        n = n.getNext(); // Bracket.Start
+        cntInput++;
         if (n == null || n.getData() == null || !n.getData().getAction().equals(DEF_BRACKET_START)) {
             return lyricmode;
         }
         cntInput++;
-        cntInput++;
 
         LilypondNode<ParceToken> prev = lyricmode.getPrev();
-        StringBuilder lyrics = new StringBuilder(lyricmode.getData().getText());
-        lyrics.append(" ");
         while (n != null && n.getLevel() > lyricmode.getLevel()) {
+            if (n.getName().equals(DEF_STRING) || n.getName().equals(DEF_SCHEME_STRING)) {
+                n = transformString(n, n.getName());
+            }
             if (n.getData() != null) {
                 if (n.getData().getAction().equals(LilypondReader.PARSER_ACTION_LINEBREAK) ||
                     n.getData().getAction().equals("Comment")) {
