@@ -10,11 +10,9 @@ include 'adapter-file'
 include 'adapter-text'
 include 'adapter-image'
 //include 'adapter-java'
-//include 'adapter-java-patched'
 include 'adapter-challenge'
 include 'adapter-runtime'
 include 'adapter-cpp'
-//include 'adapter-lilypond'
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
@@ -25,11 +23,9 @@ project(':web').projectDir = file('web')
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
-//project(':adapter-java').projectDir = file('adapter/java-patched')
 //project(':adapter-java').projectDir = file('adapter/java')
 project(':adapter-challenge').projectDir = file('adapter/challenge')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
-//project(':adapter-lilypond').projectDir = file('adapter/lilypond')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }

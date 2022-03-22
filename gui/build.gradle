@@ -30,15 +30,11 @@ dependencies {
 
 
 	testRuntimeOnly project(':ecco-adapter-file')
-	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
 	testRuntimeOnly project(':ecco-adapter-image')
-//	testRuntimeOnly project(':ecco-adapter-java')
-
 	testRuntimeOnly project(':ecco-adapter-challenge')
 	testRuntimeOnly project(':ecco-adapter-runtime')
 	testRuntimeOnly project(':ecco-adapter-cpp')
-//	testRuntimeOnly project(':ecco-adapter-lilypond')
 }
 
 ospackage {
