@@ -1,14 +1,17 @@
-package at.jku.isse.ecco.storage.mem.artifact;
+package at.jku.isse.ecco.storage.neo4j.domain;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
-import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
+import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,43 +22,84 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Memory implementation of the {@link Artifact}.
  */
-public class MemArtifact<DataType extends ArtifactData> implements Artifact<DataType>, Artifact.Op<DataType> {
 
-	public static final long serialVersionUID = 1L;
+@NodeEntity
+public class NeoArtifact<DataType extends ArtifactData> extends NeoEntity implements Artifact<DataType>, Artifact.Op<DataType> {
 
+	@Property("buffer")
+	private byte[] buffer = null;
 
+	@Transient
 	private DataType data;
 
+	@Property("atomic")
 	private boolean atomic;
 
+	@Property("ordered")
 	private boolean ordered;
 
-	private PartialOrderGraph.Op sequenceGraph;
+	// backref
+	@Relationship("hasPOGAf")
+	private PartialOrderGraph.Op partialOrderGraph;
 
+	@Property("sequenceNumber")
 	private int sequenceNumber;
 
+	@Property("useReferencesInEquals")
 	private boolean useReferencesInEquals;
 
-	private transient Artifact.Op replacingArtifact;
 
 
-	public MemArtifact(DataType data) {
+	public NeoArtifact() {}
+
+	public NeoArtifact(DataType data) {
 		this(data, false);
 	}
 
-	public MemArtifact(DataType data, boolean ordered) {
+	public NeoArtifact(DataType data, boolean ordered) {
 		checkNotNull(data);
-		this.data = data;
+		this.setData(data);
 		this.ordered = ordered;
 		this.sequenceNumber = PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
 		this.useReferencesInEquals = false;
-		this.replacingArtifact = null;
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public DataType getData() {
+		if (this.data == null) {
+			if (this.buffer == null)
+				return null;
+			else {
+				try (ByteArrayInputStream bis = new ByteArrayInputStream(this.buffer)) {
+					try (ObjectInput in = new ObjectInputStream(bis)) {
+						this.data = (DataType) in.readObject();
+					}
+				} catch (IOException | ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		return this.data;
+	}
+
+	public void setData(DataType data) {
+		this.data = data;
+
+		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+			try (ObjectOutput out = new ObjectOutputStream(bos)) {
+				out.writeObject(this.data);
+				this.buffer = bos.toByteArray();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
 	@Override
 	public int hashCode() {
-		int result = this.data.hashCode();
+		int result = this.getData().hashCode();
 		result = 31 * result + (this.ordered ? 1 : 0);
 		return result;
 	}
@@ -65,7 +109,7 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		MemArtifact<?> that = (MemArtifact<?>) o;
+		NeoArtifact<?> that = (NeoArtifact<?>) o;
 
 		if (this.isOrdered() != that.isOrdered()) return false;
 		if (this.getSequenceNumber() != PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER && that.getSequenceNumber() != PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER && this.getSequenceNumber() != that.getSequenceNumber())
@@ -97,6 +141,13 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	}
 
 	@Override
+	public String toString() {
+		if (this.getData() == null)
+			return "NULL";
+		return this.getData().toString();
+	}
+
+	@Override
 	public boolean useReferencesInEquals() {
 		return this.useReferencesInEquals;
 	}
@@ -111,25 +162,12 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		MemArtifact<?> that = (MemArtifact<?>) o;
+		NeoArtifact<?> that = (NeoArtifact<?>) o;
 
 		if (this.isOrdered() != that.isOrdered()) return false;
 
 		return getData().equals(that.getData());
 	}
-
-
-	@Override
-	public String toString() {
-		return this.data.toString();
-	}
-
-
-	@Override
-	public DataType getData() {
-		return this.data;
-	}
-
 
 	@Override
 	public boolean isAtomic() {
@@ -153,12 +191,12 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public PartialOrderGraph.Op getPartialOrderGraph() {
-		return this.sequenceGraph;
+		return this.partialOrderGraph;
 	}
 
 	@Override
 	public void setPartialOrderGraph(PartialOrderGraph.Op partialOrderGraph) {
-		this.sequenceGraph = partialOrderGraph;
+		this.partialOrderGraph = partialOrderGraph;
 	}
 
 	@Override
@@ -172,29 +210,14 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	}
 
 	@Override
-	public Op<?> getReplacingArtifact() {
-		return this.replacingArtifact;
-	}
-
-	@Override
-	public void setReplacingArtifact(Op<?> replacingArtifact) {
-
-		if (replacingArtifact.hasReplacingArtifact()) {
-			throw new EccoException("Replacing artifact should not have a replacing artifact itself!");
-		}
-
-		this.replacingArtifact = replacingArtifact;
-	}
-
-	@Override
 	public boolean isSequenced() {
-		return this.sequenceGraph != null;
+		return this.partialOrderGraph != null;
 	}
 
 
 	@Override
 	public PartialOrderGraph.Op createSequenceGraph() {
-		return new MemPartialOrderGraph();
+		return new NeoPartialOrderGraph();
 	}
 
 
@@ -243,19 +266,19 @@ public class MemArtifact<DataType extends ArtifactData> implements Artifact<Data
 	}
 
 	@Override
-	public void addUses(Artifact.Op target) {
+	public void addUses(Op target) {
 		this.addUses(target, "");
 	}
 
 	@Override
-	public void addUses(Artifact.Op target, String type) {
+	public void addUses(Op target, String type) {
 		checkNotNull(target);
 		checkNotNull(type);
 
 		if (this.uses(target))
 			return;
 
-		ArtifactReference.Op artifactReference = new MemArtifactReference(type);
+		ArtifactReference.Op artifactReference = new NeoArtifactReference();
 		artifactReference.setSource(this);
 		artifactReference.setTarget(target);
 		this.addUses(artifactReference);

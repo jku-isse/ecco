@@ -726,30 +726,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     String featureName = pair[0];
                     String featureRevisionId = pair[1];
 
-                    Feature feature;
-                    if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
-                        featureName = featureName.substring(1, featureName.length() - 1);
-                        feature = repository.getFeature(featureName);
-                        if (feature == null) {
-                            //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(featureName, featureName);
-                        } else {
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        }
-                    } else { // feature name
-                        Collection<Feature> features = repository.getFeaturesByName(featureName);
-                        if (features.isEmpty()) {
-                            //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
-                        } else if (features.size() == 1) {
-                            feature = features.iterator().next();
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        } else {
-                            throw new EccoException("Feature name is not unique. Use feature id instead.");
-                        }
-                    }
+                    Feature feature = getFeature(repository, featureName);
 
                     FeatureRevision featureRevision = feature.getRevision(featureRevisionId);
                     if (featureRevision == null) {
@@ -760,60 +737,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 } else if (featureRevisionString.endsWith("'")) { // create new feature revision for feature
                     String featureName = featureRevisionString.substring(0, featureRevisionString.length() - 1);
 
-                    Feature feature;
-                    if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
-                        featureName = featureName.substring(1, featureName.length() - 1);
-                        feature = repository.getFeature(featureName);
-                        if (feature == null) {
-                            //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(featureName, featureName);
-                        } else {
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        }
-                    } else { // feature name
-                        Collection<Feature> features = repository.getFeaturesByName(featureName);
-                        if (features.isEmpty()) {
-                            //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        } else if (features.size() == 1) {
-                            feature = features.iterator().next();
-                        } else {
-                            throw new EccoException("Feature name is not unique. Use feature id instead.");
-                        }
-                    }
+                    Feature feature = getFeature(repository, featureName);
 
                     FeatureRevision featureRevision = feature.addRevision(UUID.randomUUID().toString());
                     featureRevisions.add(featureRevision);
                 } else { // use most recent feature revision of feature (or create a new one if none existed so far)
                     String featureName = featureRevisionString;
 
-                    Feature feature;
-                    if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
-                        featureName = featureName.substring(1, featureName.length() - 1);
-                        feature = repository.getFeature(featureName);
-                        if (feature == null) {
-                            //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(featureName, featureName);
-                        } else {
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        }
-                    } else { // feature name
-                        Collection<Feature> features = repository.getFeaturesByName(featureName);
-                        if (features.isEmpty()) {
-                            //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
-                        } else if (features.size() == 1) {
-                            feature = features.iterator().next();
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        } else {
-                            throw new EccoException("Feature name is not unique. Use feature id instead.");
-                        }
-                    }
+                    Feature feature = getFeature(repository, featureName);
 
                     FeatureRevision featureRevision = feature.getLatestRevision();
                     if (featureRevision == null) {
@@ -834,6 +765,34 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             throw new EccoException("Error parsing configuration string: " + configurationString, e);
         }
+    }
+
+    private Feature getFeature(Repository.Op repository, String featureName) {
+        Feature feature;
+        if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
+            featureName = featureName.substring(1, featureName.length() - 1);
+            feature = repository.getFeature(featureName);
+            if (feature == null) {
+                //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
+                // create temporary feature object
+                feature = this.entityFactory.createFeature(featureName, featureName);
+            } else {
+                feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
+            }
+        } else { // feature name
+            Collection<Feature> features = repository.getFeaturesByName(featureName);
+            if (features.isEmpty()) {
+                //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
+                // create temporary feature object
+                feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
+            } else if (features.size() == 1) {
+                feature = features.iterator().next();
+                feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
+            } else {
+                throw new EccoException("Feature name is not unique. Use feature id instead.");
+            }
+        }
+        return feature;
     }
 
 

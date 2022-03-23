@@ -82,11 +82,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 	private void updatePartialOrderGraphTab(Node node) {
 		// if node is an ordered node display its sequence graph
-		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
+		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
 			if (null == partialOrderGraphView) { partialOrderGraphView = new PartialOrderGraphView(); }
 
 			Thread th = new Thread(() -> {
-				PartialOrderGraph pog = node.getArtifact().getSequenceGraph();
+				PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
 				Platform.runLater(() -> partialOrderGraphView.showGraph(pog));
 			});
 			th.start();
