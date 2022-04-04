@@ -1,37 +1,43 @@
 plugins {
-    id 'org.springframework.boot' version '2.6.4'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
-    id 'java'
+    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("io.micronaut.application") version "3.3.2"
 }
 
-group = 'at.jku.isse.ecco'
-version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '17'
+version = "0.1"
+group = "at.jku.isse.ecco.rest"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-rest'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
-    implementation project(':ecco-service')
-    implementation project(':ecco-adapter-text')
-    implementation project(':ecco-adapter-image')
-
-    testImplementation project(':ecco-adapter-text')
-    testRuntimeOnly project(':ecco-adapter-image')
-    testImplementation project(':ecco-adapter-challenge')
-    testImplementation project(':ecco-adapter-cpp')
-    testImplementation project(':ecco-adapter-runtime')
-
-
+    annotationProcessor("io.micronaut:micronaut-http-validation")
+    implementation("io.micronaut:micronaut-http-client")
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.micronaut:micronaut-runtime")
+    implementation("jakarta.annotation:jakarta.annotation-api")
+    runtimeOnly("ch.qos.logback:logback-classic")
+    implementation("io.micronaut:micronaut-validation")
 
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
+
+application {
+    mainClass.set("at.jku.isse.ecco.rest.Application")
 }
+java {
+    sourceCompatibility = JavaVersion.toVersion("17")
+    targetCompatibility = JavaVersion.toVersion("17")
+}
+
+graalvmNative.toolchainDetection = false
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("at.jku.isse.ecco.rest.*")
+    }
+}
+
+
