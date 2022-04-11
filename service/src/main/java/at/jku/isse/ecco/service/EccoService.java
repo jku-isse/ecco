@@ -437,21 +437,22 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         if (this.properties.getProperty(ECCO_PROPERTIES_STORAGE) == null) {
             throw new EccoException("No data plugin specified.");
         }
-//		Collection<String> artifactPluginsList = new ArrayList<>();
-//		if (this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
-//			artifactPluginsList = Arrays.asList(this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
-//			LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
-//		}
+
+/*		Collection<String> artifactPluginsList = new ArrayList<>();
+		if (this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
+			artifactPluginsList = Arrays.asList(this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
+			//LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
+	    }*/
 
         // artifact adapter modules
         List<Module> artifactModules = new ArrayList<>();
         List<Module> allArtifactModules = new ArrayList<>();
         this.artifactPlugins = new ArrayList<>();
         for (ArtifactPlugin artifactPlugin : ArtifactPlugin.getArtifactPlugins()) {
-//			if (artifactPluginsList == null || artifactPluginsList.contains(artifactPlugin.getPluginId())) {
-            artifactModules.add(artifactPlugin.getModule());
-            this.artifactPlugins.add(artifactPlugin);
-//			}
+			//if (artifactPluginsList == null || artifactPluginsList.contains(artifactPlugin.getPluginId())) {
+                artifactModules.add(artifactPlugin.getModule());
+                this.artifactPlugins.add(artifactPlugin);
+			//}
             allArtifactModules.add(artifactPlugin.getModule());
         }
         LOGGER.config("ARTIFACT PLUGINS: " + artifactModules.toString());
