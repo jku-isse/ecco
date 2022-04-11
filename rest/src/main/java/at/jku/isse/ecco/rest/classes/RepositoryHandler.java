@@ -36,4 +36,13 @@ public class RepositoryHandler {
         return new RestRepository(service, name);
     }
 
+    public RestRepository createRepository() {
+        service = new EccoService();
+        service.setRepositoryDir(path.resolve(".ecco"));
+        service.setBaseDir(path);
+        service.init();
+        service.open();
+        return new RestRepository(service, name);
+    }
+
 }
