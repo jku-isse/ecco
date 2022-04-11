@@ -8,6 +8,10 @@ import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.RequestAttribute;
 import io.micronaut.http.multipart.CompletedFileUpload;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Path;
 
 @Controller("/api/{rId}/commit")
@@ -28,8 +32,6 @@ public class CommitController {
         System.out.println("message: " + message +  ", config: " + config);
         System.out.println(uploadingFiles.length);
 
-
-
         // copy files to futureBaseDir festplatte
 
         // TODO Ordnerstruktur ohne zwischenspeichern?
@@ -37,19 +39,15 @@ public class CommitController {
         //service.setBaseDir();
         //service.commit("message", "configString");
 
-        System.out.println(uploadingFiles);
-
         Path commitFolder = repositoryService.getRepoStorage().resolve("commit");
 
-/*        // remove existing files
-        try {
-            FileSystemUtils.deleteRecursively(commitFolder);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+       // remove existing files
+        deleteDirectory(commitFolder.toFile());
+
+        //FileSystemUtils.deleteRecursively(commitFolder);
         for(CompletedFileUpload uploadedFile : uploadingFiles) {
 
-            File file = commitFolder.resolve(Path.of(uploadedFile.getFilename())); //.getOriginalFilename().substring(1))).toFile();
+            File file = commitFolder.resolve(Path.of(uploadedFile.getFilename().substring(1))).toFile();
 
             File folder = file.getParentFile(); // create folders if they don't exist
             if(!folder.exists()){
@@ -64,8 +62,18 @@ public class CommitController {
         }
         // TODO
         // service.setBaseDir(repositoryService.getService(5).getBaseDir());
-        // service.commit(message, config);*/
+        // service.commit(message, config);
         return repositoryService.getRepository(rId);
+    }
+
+    boolean deleteDirectory(File directoryToBeDeleted) {
+        File[] allContents = directoryToBeDeleted.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectory(file);
+            }
+        }
+        return directoryToBeDeleted.delete();
     }
 
 
