@@ -11,13 +11,20 @@ import java.util.LinkedList;
 
 //@Component
 public class RestRepository implements Serializable {
+
+    private final int rId;
     private final String name;
     private final EccoService service;
 
 
-    public RestRepository(EccoService service, String name) {
+    public RestRepository(EccoService service, int rId, String name) {
+        this.rId = rId;
         this.name = name;
         this.service = service;
+    }
+
+    public int getRId() {
+        return rId;
     }
 
     public Collection<? extends RestFeature> getFeatures() {
