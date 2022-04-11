@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.rest.classes;
 
+import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.service.EccoService;
 
@@ -9,8 +11,8 @@ import java.util.LinkedList;
 
 //@Component
 public class RestRepository implements Serializable {
-    private String name;
-    private EccoService service;
+    private final String name;
+    private final EccoService service;
 
 
     public RestRepository(EccoService service, String name) {
@@ -30,20 +32,26 @@ public class RestRepository implements Serializable {
         return name;
     }
 
-/*    public Collection<Commit> getCommits () {
-        return service.getCommits();
-    }*/
+    public Collection<RestCommit> getCommits () {
+        Collection<RestCommit> commits = new LinkedList<>();
+        for (Commit c : service.getRepository().getCommits()) {
+            commits.add(new RestCommit(c));
+        }
+        return commits;
+    }
 
-    //Commits
-
-    //Varianten
-
-
+    public Collection<RestVariant> getVariants () {
+        Collection<RestVariant> variants = new LinkedList<>();
+        for (Variant v : service.getRepository().getVariants()) {
+            variants.add(new RestVariant(v));
+        }
+        return variants;
+    }
 }
+
     //private Collection<Association.Op> associations;
-    //private ArrayList<Variant> variants;
     //private List<Map<MemModule, MemModule>> modules;
-    //private Collection<Commit> commits;
+
 
 
 
