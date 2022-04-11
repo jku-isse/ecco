@@ -3,13 +3,7 @@ package at.jku.isse.ecco.rest;
 
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import io.micronaut.http.MediaType;
-import io.micronaut.http.annotation.Controller;
-import io.micronaut.http.annotation.Get;
-import io.micronaut.http.annotation.PathVariable;
-import io.micronaut.http.annotation.Put;
-import io.micronaut.http.annotation.Body;
-import io.micronaut.http.annotation.Delete;
-import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.*;
 
 
 @Controller("/api/{rId}/variant")
