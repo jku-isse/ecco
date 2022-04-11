@@ -4,6 +4,10 @@ micronaut:
   server:
     cors:
       enabled: true
+jackson:
+  serialization-inclusion: NON_ABSENT # Omit null and Optional.empty(), but include empty collections
+  serialization:
+    indent-output: true # Pretty-print JSON
 netty:
   default:
     allocator:
