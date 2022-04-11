@@ -31,6 +31,18 @@ public class RepositoryService {
         }
     }
 
+    public RestRepository createRepository(String name) {
+        Path p = getRepoStorage().resolve(name);
+        if (p.toFile().exists()) {
+            throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
+        }
+        p.toFile().mkdir();     //create folder
+        RepositoryHandler newRepo =  new RepositoryHandler(p);
+        newRepo.createRepository();
+        repositories.put(rId.incrementAndGet(), newRepo);
+        return newRepo.getRepository();
+    }
+
     public Path getRepoStorage() {
         return repoStorage;
     }
