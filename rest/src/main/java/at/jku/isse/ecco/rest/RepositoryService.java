@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.rest;
 
-import at.jku.isse.ecco.rest.classes.RepositoryHandler;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import io.micronaut.http.HttpStatus;
@@ -11,10 +10,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
 
 public class RepositoryService {
@@ -113,6 +115,25 @@ public class RepositoryService {
         repositories.get(rId).addCommit(message, config, commitFolder, committer);
 
         return repositories.get(rId).getRepository();
+    }
+
+    public void clone(int OldRid, String name) {
+        getRepositories();
+        Path oldDir = repositories.get(OldRid).getPath();
+        try {
+            Files.walk(oldDir).forEach(source -> copyFile(oldDir.getParent().resolve(name), source));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void copyFile(final Path newPath, final Path source) {
+        Path clonedDir = Paths.get(newPath.toString(), source. toString().substring(newPath.toString().length()));
+        try {
+            Files.copy(source, clonedDir);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     boolean deleteDirectory(File directoryToBeDeleted) {

@@ -3,14 +3,11 @@ package at.jku.isse.ecco.rest;
 
 import at.jku.isse.ecco.rest.classes.RepoHeader;
 import at.jku.isse.ecco.rest.classes.RestRepository;
-import io.micronaut.http.annotation.Controller;
-import io.micronaut.http.annotation.Get;
-import io.micronaut.http.annotation.PathVariable;
-import io.micronaut.http.annotation.Put;
-
+import io.micronaut.http.annotation.*;
 
 @Controller("/api/repository")
 public class RepositoryController {
+    //TODO change rId into /api/rId/repository
     private RepositoryService repositoryService = RepositoryService.getInstance();
 
     @Get("/{id}")
@@ -28,5 +25,14 @@ public class RepositoryController {
         repositoryService.createRepository(name);
         return getAllRepositories();
     }
+
+    @Put("/clone/{OldRId}/{name}")
+    public RepoHeader[] cloneRepository(@PathVariable int OldRId, @PathVariable String name) {
+        System.out.println("start cloning");
+        repositoryService.clone(OldRId, name);
+        return getAllRepositories();
+    }
+
+
 
 }

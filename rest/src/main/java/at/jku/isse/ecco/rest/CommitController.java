@@ -12,10 +12,11 @@ import io.micronaut.http.multipart.CompletedFileUpload;
 public class CommitController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
-    @Post(uri="add", consumes= MediaType.MULTIPART_FORM_DATA )
-    public RestRepository makeCommit(@PathVariable int rId, @RequestAttribute("file") CompletedFileUpload[] uploadingFiles, @RequestAttribute("message") String message, @RequestAttribute("config") String config) {
-        System.out.println("New Commit:");
-        System.out.println("message: " + message +  ", config: " + config);
+    @Post(uri="add", consumes= MediaType.MULTIPART_FORM_DATA)
+    public RestRepository makeCommit(@PathVariable int rId,
+                                     @RequestAttribute("file") CompletedFileUpload[] uploadingFiles,
+                                     @RequestAttribute("message") String message,
+                                     @RequestAttribute("config") String config) {
 
         //TODO change hardcoded Committer to username of Frontend
         return repositoryService.addCommit(rId, message, config, "Online Committer", uploadingFiles);

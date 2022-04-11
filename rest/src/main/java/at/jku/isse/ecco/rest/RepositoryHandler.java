@@ -1,9 +1,10 @@
-package at.jku.isse.ecco.rest.classes;
+package at.jku.isse.ecco.rest;
 
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
