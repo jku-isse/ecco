@@ -7,8 +7,6 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
-import io.micronaut.http.annotation.Body;
-import io.micronaut.http.annotation.PathVariable;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -57,6 +55,12 @@ public class RepositoryHandler {
         service.init();
         service.open();
         return new RestRepository(service, rId, name);
+    }
+
+    public RestRepository addCommit (String message, String config, Path commitFolder) {
+        service.setBaseDir(commitFolder);
+        service.commit(message, config);
+        return getRepository();
     }
 
     public RestRepository addVariant(String name, String config){

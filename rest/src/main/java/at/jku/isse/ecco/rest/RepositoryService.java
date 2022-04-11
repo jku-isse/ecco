@@ -1,17 +1,16 @@
 package at.jku.isse.ecco.rest;
 
-import at.jku.isse.ecco.core.Variant;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.rest.classes.RepositoryHandler;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.storage.mem.core.MemVariant;
-import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
+import io.micronaut.http.multipart.CompletedFileUpload;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.TreeMap;
@@ -83,6 +82,47 @@ public class RepositoryService {
                 }
             }
         }
+    }
+
+    public RestRepository addCommit(int rId, String message, String config,  CompletedFileUpload[] commitFiles) {
+
+        // Commit storage preparations
+        Path commitFolder = repositories.get(rId).getPath().resolve("lastCommit");
+        if(!commitFolder.toFile().exists()){    //create lastCommit folder if not already existing
+            commitFolder.toFile().mkdirs();
+        }
+
+        deleteDirectory(commitFolder.toFile());     //remove existing files recursively
+
+        //creates files from uploaded Commit
+        for(CompletedFileUpload uploadedFile : commitFiles) {
+            File file = commitFolder.resolve(Path.of(uploadedFile.getFilename().substring(1))).toFile();
+
+            File folder = file.getParentFile(); // create folders if they don't exist
+            if(!folder.exists()){
+                folder.mkdirs();
+            }
+
+            try (OutputStream os = new FileOutputStream(file)) {
+                os.write(uploadedFile.getBytes());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        repositories.get(rId).addCommit(message, config, commitFolder);
+
+        return repositories.get(rId).getRepository();
+    }
+
+    boolean deleteDirectory(File directoryToBeDeleted) {
+        File[] allContents = directoryToBeDeleted.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectory(file);
+            }
+        }
+        return directoryToBeDeleted.delete();
     }
 
     public RestRepository addVariant(int rId, String name, String config){
