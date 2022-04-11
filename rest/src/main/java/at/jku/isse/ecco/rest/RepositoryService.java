@@ -18,10 +18,18 @@ public class RepositoryService {
     private Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
     private AtomicInteger rId = new AtomicInteger();
     private EccoService generalService = new EccoService();
+    private static RepositoryService instance;
 
-    RepositoryService() {
-        readRepositories();
+    private RepositoryService() {
+
     }
+    static {
+        instance = new RepositoryService();
+    }
+    public static RepositoryService getInstance() {
+        return instance;
+    }
+
 
     public RestRepository getRepository(int rId) {
         if (repositories.containsKey(rId)) {

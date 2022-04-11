@@ -11,7 +11,7 @@ import io.micronaut.http.annotation.Put;
 
 @Controller("/api/repository")
 public class RepositoryController {
-    private final RepositoryService repositoryService = new RepositoryService();
+    private RepositoryService repositoryService = RepositoryService.getInstance();
 
     @Get("/{id}")
     public RestRepository getRepository (@PathVariable int id) {
