@@ -1584,8 +1584,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configurationString The configuration string.
      * @return The resulting commit object.
      */
+    public synchronized Commit commit(String commitMessage, String configurationString, String committer) {
+        return this.commit(commitMessage, this.parseConfigurationString(configurationString), committer);
+    }
+
     public synchronized Commit commit(String commitMessage, String configurationString) {
-        return this.commit(commitMessage, this.parseConfigurationString(configurationString));
+        return this.commit(commitMessage, this.parseConfigurationString(configurationString), System.getProperty("user.name")); //If no username is provided
     }
 
     /**
@@ -1595,7 +1599,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configuration The configuration to be commited.
      * @return The resulting commit object or null in case of an error.
      */
-    public synchronized Commit commit(String commitMessage, Configuration configuration) {
+    public synchronized Commit commit(String commitMessage, Configuration configuration, String committer) {
         this.checkInitialized();
 
         checkNotNull(configuration);
@@ -1609,7 +1613,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             ArrayList<Variant> variants = repository.getVariants();
 
             long startTime = System.currentTimeMillis();
-            Commit commit = repository.extract(configuration, nodes);
+            Commit commit = repository.extract(configuration, nodes, committer);
 
             //storing new variant
             Boolean hasConfigurarion = false;

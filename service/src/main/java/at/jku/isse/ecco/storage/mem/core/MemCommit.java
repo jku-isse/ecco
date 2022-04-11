@@ -25,8 +25,8 @@ public class MemCommit implements Commit {
 	private Collection<Association> associations = new ArrayList<>();;
 
 
-	public MemCommit() {
-		committer = System.getProperty("user.name"); 	//gets username of the logged in User of the OS
+	public MemCommit(String name) {
+		committer = name;
 		committingDate = new Date();
 	}
 

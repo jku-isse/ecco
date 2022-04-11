@@ -84,7 +84,7 @@ public class RepositoryService {
         }
     }
 
-    public RestRepository addCommit(int rId, String message, String config,  CompletedFileUpload[] commitFiles) {
+    public RestRepository addCommit(int rId, String message, String config, String committer,  CompletedFileUpload[] commitFiles) {
 
         // Commit storage preparations
         Path commitFolder = repositories.get(rId).getPath().resolve("lastCommit");
@@ -110,7 +110,7 @@ public class RepositoryService {
             }
         }
 
-        repositories.get(rId).addCommit(message, config, commitFolder);
+        repositories.get(rId).addCommit(message, config, commitFolder, committer);
 
         return repositories.get(rId).getRepository();
     }

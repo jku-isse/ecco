@@ -57,9 +57,9 @@ public class RepositoryHandler {
         return new RestRepository(service, rId, name);
     }
 
-    public RestRepository addCommit (String message, String config, Path commitFolder) {
+    public RestRepository addCommit (String message, String config, Path commitFolder, String committer) {
         service.setBaseDir(commitFolder);
-        service.commit(message, config);
+        service.commit(message, config, committer);
         return getRepository();
     }
 

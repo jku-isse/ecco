@@ -22,7 +22,6 @@ import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.io.ObjectInputFilter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -391,7 +390,7 @@ public interface Repository extends Persistable {
 		 * @param nodes         The root node of the artifact tree representing the implementation of the given configuration.
 		 * @return The commit object.
 		 */
-		public default Commit extract(Configuration configuration, Set<Node.Op> nodes) {
+		public default Commit extract(Configuration configuration, Set<Node.Op> nodes, String committer) {
 			checkNotNull(configuration);
 			checkNotNull(nodes);
 
@@ -429,7 +428,7 @@ public interface Repository extends Persistable {
 			}
 
 			// create commit object
-			Commit commit = this.getEntityFactory().createCommit();
+			Commit commit = this.getEntityFactory().createCommit(committer);
 			commit.setConfiguration(repoConfiguration);
 			addCommit(commit);
 
