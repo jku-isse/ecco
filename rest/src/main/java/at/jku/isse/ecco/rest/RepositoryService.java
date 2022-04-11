@@ -15,10 +15,10 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
 
 public class RepositoryService {
-    private final Path repoStorage = Path.of(System.getProperty("user.dir"), "examples");
+    private final Path repoStorage = Path.of(STORAGE_LOCATION_OF_REPOSITORIES);
     private Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
     private AtomicInteger rId = new AtomicInteger();
     private EccoService generalService = new EccoService();
