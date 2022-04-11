@@ -1,8 +1,13 @@
 package at.jku.isse.ecco.rest;
 
+import at.jku.isse.ecco.core.Variant;
+import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.rest.classes.RepositoryHandler;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.storage.mem.core.MemVariant;
+import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;
 
@@ -45,9 +50,11 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
         }
         p.toFile().mkdir();     //create folder
-        RepositoryHandler newRepo =  new RepositoryHandler(p);
+
+        int newId = rId.incrementAndGet();
+        RepositoryHandler newRepo =  new RepositoryHandler(p, newId);
         newRepo.createRepository();
-        repositories.put(rId.incrementAndGet(), newRepo);
+        repositories.put(newId, newRepo);
         return newRepo.getRepository();
     }
 
@@ -71,9 +78,30 @@ public class RepositoryService {
         for (final File file : files) {
             if(!repositories.values().stream().map(RepositoryHandler::getPath).toList().contains(file.toPath())) {
                 if (generalService.repositoryExists(file.toPath())) {
-                    repositories.put(rId.incrementAndGet(), new RepositoryHandler(file.toPath()));
+                    int newId = rId.incrementAndGet();
+                    repositories.put(newId, new RepositoryHandler(file.toPath(), newId));
                 }
             }
         }
+    }
+
+    public RestRepository addVariant(int rId, String name, String config){
+        return repositories.get(rId).addVariant(name, config);
+    }
+
+    public RestRepository removeVariant(int rId, String variantId){
+        return repositories.get(rId).removeVariant(variantId);
+    }
+
+    public RestRepository variantAddFeature(int rId, String variantId, String featureId){
+        return repositories.get(rId).variantAddFeature(variantId,featureId);
+    }
+
+    public RestRepository variantUpdateFeature(int rId, String variantId, String featureName, String id){
+        return repositories.get(rId).variantUpdateFeature(variantId, featureName, id);
+    }
+
+    public RestRepository variantRemoveFeature(int rId, String variantId, String featureName) {
+        return repositories.get(rId).variantRemoveFeature(variantId, featureName);
     }
 }
