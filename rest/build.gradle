@@ -1,6 +1,6 @@
 plugins {
     id("com.github.johnrengelman.shadow") version "7.1.2"
-    id("io.micronaut.application") version "3.3.2"
+    id("io.micronaut.minimal.application") version "3.3.2"
 }
 
 version = "0.1"
@@ -32,8 +32,9 @@ java {
     targetCompatibility = JavaVersion.toVersion("17")
 }
 
-graalvmNative.toolchainDetection = false
+//graalvmNative.toolchainDetection = false
 micronaut {
+    version = '3.3.2'
     runtime("netty")
     testRuntime("junit5")
     processing {
