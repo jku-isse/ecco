@@ -9,16 +9,16 @@ import io.micronaut.http.annotation.PathVariable;
 import io.micronaut.http.annotation.Put;
 
 
-@Controller("/api")
+@Controller("/api/repository")
 public class RepositoryController {
     private final RepositoryService repositoryService = new RepositoryService();
 
-    @Get("/repository/{id}")
+    @Get("/{id}")
     public RestRepository getRepository (@PathVariable int id) {
         return repositoryService.getRepository(id);
     }
 
-    @Get("/repository/all")
+    @Get("/all")
     public RepoHeader[] getAllRepositories() {
         return repositoryService.getRepositories().entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue().getName())).toArray(RepoHeader[]::new);
     }
