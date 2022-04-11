@@ -1,24 +1,24 @@
 package at.jku.isse.ecco.rest;
 
 
-import at.jku.isse.ecco.repository.Repository;
-import io.micronaut.http.HttpResponse;
-import io.micronaut.http.HttpStatus;
+import at.jku.isse.ecco.rest.classes.RepoHeader;
+import at.jku.isse.ecco.rest.classes.RestRepository;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.PathVariable;
 
 
 @Controller("/api")
 public class RepositoryController {
-    private RepositoryService repositoryService = new RepositoryService();
+    private final RepositoryService repositoryService = new RepositoryService();
 
-    @Get("/test")
-    public HttpResponse<?> openRepository() {
-            return HttpResponse.status(HttpStatus.OK).body("Test");
+    @Get("/repository/{id}")
+    public RestRepository getRepository (@PathVariable int id) {
+        return repositoryService.getRepository(id);
     }
 
-    @Get("/repository")
-    public Repository getRepository () {
-        return repositoryService.getRepository(1);
+    @Get("/repository/all")
+    public RepoHeader[] getAllRepositories() {
+        return repositoryService.getRepositories().entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue().getName())).toArray(RepoHeader[]::new);
     }
 }

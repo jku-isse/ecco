@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.rest.classes;
 
+import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.service.EccoService;
 
 import java.io.Serializable;
@@ -8,20 +9,22 @@ import java.util.LinkedList;
 
 //@Component
 public class RestRepository implements Serializable {
-    private String name = "Test";
-    private Collection<RestFeature> featureList =  new LinkedList<>();
+    private String name;
+    private EccoService service;
 
-    public RestRepository(String name, Collection<RestFeature> features) {
+
+    public RestRepository(EccoService service, String name) {
         this.name = name;
-        this.featureList = features;
+        this.service = service;
     }
 
-    public Collection<? extends RestFeature> getFeatures(EccoService service) {
-        return featureList;
+    public Collection<? extends RestFeature> getFeatures() {
+        Collection<RestFeature> features = new LinkedList<>();
+        for (Feature f : service.getRepository().getFeatures()) {
+            features.add(new RestFeature(f));
+        }
+        return features;
     }
-
-
-
 
     public String getName() {
         return name;

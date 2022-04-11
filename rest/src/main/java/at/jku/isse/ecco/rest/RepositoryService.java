@@ -1,8 +1,10 @@
 package at.jku.isse.ecco.rest;
 
-import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.rest.classes.RepositoryHandler;
+import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
-
+import io.micronaut.http.HttpStatus;
+import io.micronaut.http.exceptions.HttpStatusException;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -13,38 +15,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RepositoryService {
     private final Path repoStorage = Path.of(System.getProperty("user.dir"), "examples");
-    private Map<Integer, EccoService> repositories = new TreeMap<>();
-    private Map<Integer, String> allRepositories = new TreeMap<>();
+    private Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
     private AtomicInteger rId = new AtomicInteger();
     private EccoService generalService = new EccoService();
 
-    public EccoService getService(int rId) {
-        getAllRepositories();
-        if (repositories.containsKey(rId)) {
-            return repositories.get(rId);
-        } else {
-            EccoService service = new EccoService();
-            Path p = repoStorage.resolve(allRepositories.get(rId));
-            service.setRepositoryDir(p.resolve(".ecco"));
-            service.setBaseDir(p);
-            service.open();
-            repositories.put(rId, service);
-            return service;
-        }
+    RepositoryService() {
+        readRepositories();
     }
 
-    public Repository getRepository(int rId) {
-        getAllRepositories();
+    public RestRepository getRepository(int rId) {
         if (repositories.containsKey(rId)) {
             return repositories.get(rId).getRepository();
         } else {
-            EccoService service = new EccoService();
-            Path p = repoStorage.resolve(allRepositories.get(rId));
-            service.setRepositoryDir(p.resolve(".ecco"));
-            service.setBaseDir(p);
-            service.open();
-            repositories.put(rId, service);
-            return service.getRepository();
+            throw new HttpStatusException(HttpStatus.NOT_FOUND, "repository with the id does not exist");
         }
     }
 
@@ -52,21 +35,25 @@ public class RepositoryService {
         return repoStorage;
     }
 
-    public Map<Integer, String> getAllRepositories() {
+    public Map<Integer, RepositoryHandler> getRepositories() {
+        readRepositories();
+        return repositories;
+    }
+
+    public void readRepositories() {
         File folder = new File(repoStorage.toString());
         File[] files = folder.listFiles();
 
         if (files == null) {
-            //throw new ResponseStatusException(HttpStatus.NO_CONTENT, "No Repositories found");
+            throw new HttpStatusException(HttpStatus.NO_CONTENT, "No Repositories found");
         }
 
         for (final File file : files) {
-            if (!allRepositories.containsValue(file.getName())) {
+            if(!repositories.values().stream().map(RepositoryHandler::getPath).toList().contains(file.toPath())) {
                 if (generalService.repositoryExists(file.toPath())) {
-                    allRepositories.put(rId.incrementAndGet(), file.getName());
+                    repositories.put(rId.incrementAndGet(), new RepositoryHandler(file.toPath()));
                 }
             }
         }
-        return allRepositories;
     }
 }

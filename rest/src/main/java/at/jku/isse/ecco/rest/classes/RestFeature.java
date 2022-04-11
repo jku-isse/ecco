@@ -1,28 +1,31 @@
 package at.jku.isse.ecco.rest.classes;
 
-import java.util.List;
+import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
+
+import java.util.Collection;
+import java.util.LinkedList;
 
 public class RestFeature {
-    private final String id;
-    private final String name;
-    private final List<RestFeatureRevision> revision;
+    private final Feature feature;
 
-
-    public RestFeature(final String id, final String name, final List<RestFeatureRevision> revision) {
-        this.id = id;
-        this.name = name;
-        this.revision = revision;
+    public RestFeature(Feature feature) {
+        this.feature = feature;
     }
 
     public String getId() {
-        return id;
+        return feature.getId();
     }
 
     public String getName() {
-        return name;
+        return feature.getName();
     }
 
-    public List<RestFeatureRevision> getRevision() {
-        return revision;
+    public Collection<RestFeatureRevision> getRevisions() {
+        Collection<RestFeatureRevision> revisions = new LinkedList<>();
+        for (FeatureRevision f : feature.getRevisions()) {
+            revisions.add(new RestFeatureRevision(f));
+        }
+        return revisions;
     }
 }

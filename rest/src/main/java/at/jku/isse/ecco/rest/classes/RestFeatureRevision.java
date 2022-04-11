@@ -1,26 +1,23 @@
 package at.jku.isse.ecco.rest.classes;
 
+import at.jku.isse.ecco.feature.FeatureRevision;
+
 public class RestFeatureRevision {
-    private final String id;
-    private final String description;
-    private final String featureRevisionString;
+    private final FeatureRevision featureRevision;
 
-
-    public RestFeatureRevision(final String id, final String description, final String featureRevisionString) {
-        this.id = id;
-        this.description = description;
-        this.featureRevisionString = featureRevisionString;
+    public RestFeatureRevision(FeatureRevision featureRevision) {
+        this.featureRevision = featureRevision;
     }
 
     public String getId() {
-        return id;
+        return featureRevision.getId();
     }
 
     public String getDescription() {
-        return description;
+        return featureRevision.getDescription();
     }
 
     public String getFeatureRevisionString() {
-        return featureRevisionString;
+        return featureRevision.getFeatureRevisionString();
     }
 }
