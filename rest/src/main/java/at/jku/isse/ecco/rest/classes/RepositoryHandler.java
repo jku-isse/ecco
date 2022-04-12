@@ -7,6 +7,9 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
+import io.micronaut.http.annotation.Body;
+import io.micronaut.http.annotation.PathVariable;
+import io.micronaut.http.annotation.Post;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -57,12 +60,14 @@ public class RepositoryHandler {
         return new RestRepository(service, rId, name);
     }
 
+    // Commit ----------------------------------------------------------------------------------------------------------
     public RestRepository addCommit (String message, String config, Path commitFolder, String committer) {
         service.setBaseDir(commitFolder);
         service.commit(message, config, committer);
         return getRepository();
     }
 
+    // Variant ---------------------------------------------------------------------------------------------------------
     public RestRepository addVariant(String name, String config){
         // TODO use config
         Configuration configuration = new MemConfiguration(new FeatureRevision[0]);
@@ -117,6 +122,16 @@ public class RepositoryHandler {
         return getRepository();
     }
 
+    // Feature ---------------------------------------------------------------------------------------------------------
+    public RestRepository setFeatureDescription(String featureId, String description) {
+        service.getRepository().getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().ifPresent(x -> x.setDescription(description));
+        return getRepository();
+    }
+
+    public RestRepository setFeatureRevisionDescription(String featureId, String revisionId, String description) {
+        service.getRepository().getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().get().getRevision(revisionId).setDescription(description);
+        return getRepository();
+    }
 
 
 }

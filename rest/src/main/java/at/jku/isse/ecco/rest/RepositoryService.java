@@ -67,6 +67,8 @@ public class RepositoryService {
     }
 
     public void readRepositories() {
+        String text = repoStorage.toString();
+        String test2 = System.getProperty("user.dir");
         File folder = new File(repoStorage.toString());
         File[] files = folder.listFiles();
 
@@ -84,6 +86,7 @@ public class RepositoryService {
         }
     }
 
+    // Commit ----------------------------------------------------------------------------------------------------------
     public RestRepository addCommit(int rId, String message, String config, String committer,  CompletedFileUpload[] commitFiles) {
 
         // Commit storage preparations
@@ -125,23 +128,33 @@ public class RepositoryService {
         return directoryToBeDeleted.delete();
     }
 
-    public RestRepository addVariant(int rId, String name, String config){
+    // Variant ---------------------------------------------------------------------------------------------------------
+    public RestRepository addVariant(int rId, String name, String config) {
         return repositories.get(rId).addVariant(name, config);
     }
 
-    public RestRepository removeVariant(int rId, String variantId){
+    public RestRepository removeVariant(int rId, String variantId) {
         return repositories.get(rId).removeVariant(variantId);
     }
 
-    public RestRepository variantAddFeature(int rId, String variantId, String featureId){
-        return repositories.get(rId).variantAddFeature(variantId,featureId);
+    public RestRepository variantAddFeature(int rId, String variantId, String featureId) {
+        return repositories.get(rId).variantAddFeature(variantId, featureId);
     }
 
-    public RestRepository variantUpdateFeature(int rId, String variantId, String featureName, String id){
+    public RestRepository variantUpdateFeature(int rId, String variantId, String featureName, String id) {
         return repositories.get(rId).variantUpdateFeature(variantId, featureName, id);
     }
 
     public RestRepository variantRemoveFeature(int rId, String variantId, String featureName) {
         return repositories.get(rId).variantRemoveFeature(variantId, featureName);
+    }
+
+    // Feature ---------------------------------------------------------------------------------------------------------
+    public RestRepository setFeatureDescription(int rId, String featureId, String description) {
+        return repositories.get(rId).setFeatureDescription(featureId, description);
+    }
+
+    public RestRepository setFeatureRevisionDescription(int rId, String featureId, String revisionId, String description) {
+        return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
     }
 }
