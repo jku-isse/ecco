@@ -10,7 +10,8 @@ import io.micronaut.http.annotation.*;
 public class VariantController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
-    @Put(uri="/{name}", consumes = MediaType.TEXT_PLAIN)
+    @Put("/{name}")
+    @Consumes(MediaType.TEXT_PLAIN)
     public RestRepository addVariant(@PathVariable int rId, @PathVariable String name, @Body String config) {
         return repositoryService.addVariant(rId, name, config);
     }
@@ -26,6 +27,7 @@ public class VariantController {
     }
 
     @Post("/{variantId}/{featureName}")
+    @Consumes(MediaType.TEXT_PLAIN)
     public RestRepository variantUpdateFeature(@PathVariable int rId, @PathVariable String variantId, @PathVariable String featureName, @Body String id){
         return repositoryService.variantUpdateFeature(rId, variantId, featureName, id);
     }
