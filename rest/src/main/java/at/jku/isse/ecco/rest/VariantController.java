@@ -2,8 +2,12 @@ package at.jku.isse.ecco.rest;
 
 
 import at.jku.isse.ecco.rest.classes.RestRepository;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.micronaut.core.annotation.Introspected;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
+
+import java.util.Map;
 
 
 @Controller("/api/{rId}/variant")
@@ -19,6 +23,12 @@ public class VariantController {
     @Delete("/{variantId}")
     public RestRepository deleteVariant(@PathVariable int rId, @PathVariable String variantId){
         return repositoryService.removeVariant(rId, variantId);
+    }
+
+    @Post("/{variantId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public RestRepository variantSetNameDescription(@PathVariable int rId, @PathVariable String variantId, @Body Map<String,String> body){
+        return repositoryService.variantSetNameDescription(rId, variantId, body.get("name"), body.get("description"));
     }
 
     @Put("/{variantId}/{featureId}")

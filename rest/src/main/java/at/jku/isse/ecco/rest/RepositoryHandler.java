@@ -82,6 +82,13 @@ public class RepositoryHandler {
         return getRepository();
     }
 
+    public RestRepository variantSetNameDescription(String variantId, String name, String description) {
+        Variant variant = service.getRepository().getVariant(variantId);
+        variant.setName(name);
+        variant.setDescription(description);
+        return getRepository();
+    }
+
     public RestRepository variantAddFeature(String variantId, String featureId){
 
         List<FeatureRevision> list = new LinkedList<>(Arrays.stream(service.getRepository().getVariant(variantId).getConfiguration().getFeatureRevisions()).toList());

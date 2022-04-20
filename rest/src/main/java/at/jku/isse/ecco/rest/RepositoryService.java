@@ -158,6 +158,10 @@ public class RepositoryService {
         return repositories.get(rId).removeVariant(variantId);
     }
 
+    public RestRepository variantSetNameDescription(int rId, String variantId, String name, String description){
+        return repositories.get(rId).variantSetNameDescription(variantId, name, description);
+    }
+
     public RestRepository variantAddFeature(int rId, String variantId, String featureId) {
         return repositories.get(rId).variantAddFeature(variantId, featureId);
     }
