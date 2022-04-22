@@ -27,8 +27,8 @@ public class RepositoryService {
     private static RepositoryService instance;
 
     private RepositoryService() {
-
     }
+
     static {
         instance = new RepositoryService();
     }
@@ -69,8 +69,6 @@ public class RepositoryService {
     }
 
     public void readRepositories() {
-        String text = repoStorage.toString();
-        String test2 = System.getProperty("user.dir");
         File folder = new File(repoStorage.toString());
         File[] files = folder.listFiles();
 
@@ -187,5 +185,10 @@ public class RepositoryService {
 
     public RestRepository setFeatureRevisionDescription(int rId, String featureId, String revisionId, String description) {
         return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
+    }
+
+    public void deleteRepository(final int rId) {
+        deleteDirectory(repositories.get(rId).getPath().toFile());
+        repositories.remove(rId);
     }
 }

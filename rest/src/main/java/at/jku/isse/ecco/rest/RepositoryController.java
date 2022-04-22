@@ -10,9 +10,9 @@ public class RepositoryController {
     //TODO change rId into /api/rId/repository
     private RepositoryService repositoryService = RepositoryService.getInstance();
 
-    @Get("/{id}")
-    public RestRepository getRepository (@PathVariable int id) {
-        return repositoryService.getRepository(id);
+    @Get("/{rId}")
+    public RestRepository getRepository (@PathVariable int rId) {
+        return repositoryService.getRepository(rId);
     }
 
     @Get("/all")
@@ -29,6 +29,12 @@ public class RepositoryController {
     @Put("/clone/{OldRId}/{name}")
     public RepoHeader[] cloneRepository(@PathVariable int OldRId, @PathVariable String name) {
         repositoryService.clone(OldRId, name);
+        return getAllRepositories();
+    }
+
+    @Delete("/{rId}")
+    public RepoHeader[] deleteRepository(@PathVariable int rId) {
+        repositoryService.deleteRepository(rId);
         return getAllRepositories();
     }
 

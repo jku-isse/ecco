@@ -128,11 +128,13 @@ public class RepositoryHandler {
     // Feature ---------------------------------------------------------------------------------------------------------
     public RestRepository setFeatureDescription(String featureId, String description) {
         service.getRepository().getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().ifPresent(x -> x.setDescription(description));
+        service.store();
         return getRepository();
     }
 
     public RestRepository setFeatureRevisionDescription(String featureId, String revisionId, String description) {
         service.getRepository().getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().get().getRevision(revisionId).setDescription(description);
+        service.store();
         return getRepository();
     }
 
