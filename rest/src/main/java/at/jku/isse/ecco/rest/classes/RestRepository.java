@@ -49,8 +49,10 @@ public class RestRepository implements Serializable {
 
     public Collection<RestVariant> getVariants () {
         Collection<RestVariant> variants = new LinkedList<>();
-        for (Variant v : service.getRepository().getVariants()) {
-            variants.add(new RestVariant(v));
+        if (service.getRepository().getVariants() != null) {
+            for (Variant v : service.getRepository().getVariants()) {
+                variants.add(new RestVariant(v));
+            }
         }
         return variants;
     }

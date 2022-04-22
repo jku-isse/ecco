@@ -1709,31 +1709,62 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     /**
      * Remove a new variant configuration
      *
-     * @param configuration The configuration of the variant
-     * @param service       The service to remove a variant from the repository
+     * @param id The configuration of the variant
      */
-    public synchronized void removeVariant(Configuration configuration, EccoService service) {
-        service.checkInitialized();
+
+    //TODO check if there is a nice clean way to avoid duplicate way
+    public synchronized void removeVariant(String id) {
+        this.checkInitialized();
+
+        checkNotNull(id);
+
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = this.repositoryDao.load();
+            Variant variant = repository.getVariant(id);
+            if (variant != null) {
+                repository.removeVariant(variant);
+            }
+
+            this.repositoryDao.store(repository);
+
+            this.transactionStrategy.end();
+
+
+        } catch (Exception e) {
+            this.transactionStrategy.rollback();
+
+            throw new EccoException("Error during adding a variant.", e);
+        }
+    }
+
+    /**
+     * Remove a new variant configuration
+     *
+     * @param configuration The configuration of the variant
+     */
+    public synchronized void removeVariant(Configuration configuration) {
+        this.checkInitialized();
 
         checkNotNull(configuration);
 
         try {
-            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            Repository.Op repository = service.repositoryDao.load();
+            Repository.Op repository = this.repositoryDao.load();
             Variant variant = repository.getVariant(configuration);
             if (variant != null) {
                 repository.removeVariant(variant);
             }
-            //
 
-            service.repositoryDao.store(repository);
+            this.repositoryDao.store(repository);
 
-            service.transactionStrategy.end();
+            this.transactionStrategy.end();
 
 
         } catch (Exception e) {
-            service.transactionStrategy.rollback();
+            this.transactionStrategy.rollback();
 
             throw new EccoException("Error during adding a variant.", e);
         }

@@ -130,10 +130,6 @@ public class RepositoryService {
         }
     }
 
-    private void copyFile(final Path newPath, final Path source) {
-        Path clonedDir = Paths.get(newPath.toString(), source. toString().substring(newPath.toString().length()));
-        try {
-            Files.copy(source, clonedDir);
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -69,7 +69,7 @@ public class RepositoryHandler {
     }
 
     public RestRepository removeVariant(String variantId){
-        service.getRepository().removeVariant(service.getRepository().getVariant(variantId));
+        service.removeVariant(variantId);
         return getRepository();
     }
 
