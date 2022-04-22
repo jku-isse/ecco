@@ -77,6 +77,7 @@ public class RepositoryHandler {
         Variant variant = service.getRepository().getVariant(variantId);
         variant.setName(name);
         variant.setDescription(description);
+        service.store();
         return getRepository();
     }
 
@@ -91,6 +92,7 @@ public class RepositoryHandler {
         }
 
         service.getRepository().getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
+        service.store();
         return getRepository();
     }
 
@@ -105,6 +107,7 @@ public class RepositoryHandler {
                 break;
             }
         }
+        service.store();
         return getRepository();
     }
 
@@ -118,6 +121,7 @@ public class RepositoryHandler {
         }
 
         service.getRepository().getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
+        service.store();
         return getRepository();
     }
 

@@ -1770,6 +1770,23 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    public void store(){
+        this.checkInitialized();
+
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = this.repositoryDao.load();
+            this.repositoryDao.store(repository);
+            this.transactionStrategy.end();
+
+        } catch (Exception e) {
+            this.transactionStrategy.rollback();
+
+            throw new EccoException("Store error", e);
+        }
+    }
+
 
     public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id, EccoService service) {
         service.checkInitialized();
