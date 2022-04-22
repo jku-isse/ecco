@@ -123,12 +123,22 @@ public class RepositoryService {
     public void clone(int OldRid, String name) {
         getRepositories();
         Path oldDir = repositories.get(OldRid).getPath();
-        try {
-            Files.walk(oldDir).forEach(source -> copyFile(oldDir.getParent().resolve(name), source));
-        } catch (IOException e) {
-            e.printStackTrace();
+        Path newDir = oldDir.getParent().resolve(name);
+        if (newDir.toFile().exists()) {
+            throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
+        } else {
+            newDir.toFile().mkdir();
         }
-    }
+
+        try {
+            Files.walk(oldDir).forEach(source -> {
+                Path destDir = Paths.get(newDir.toString(), source.toString().substring(oldDir.toString().length()));
+                try {
+                    Files.copy(source, destDir);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
 
         } catch (IOException e) {
             e.printStackTrace();
