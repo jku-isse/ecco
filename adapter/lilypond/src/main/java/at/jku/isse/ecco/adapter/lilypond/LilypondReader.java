@@ -35,8 +35,6 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
     public LilypondReader(EntityFactory entityFactory) {
         checkNotNull(entityFactory);
 
-        //LOGGER.setLevel(Level.FINEST);                // change level for logger (e.g. DEBUG)
-        //LOGGER.info("LilypondReader logging level: " + LOGGER.getLevel());
         this.entityFactory = entityFactory;
     }
 
@@ -80,10 +78,14 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
 
         LilypondParser<ParceToken> parser = ParserFactory.getParser();
         try {
+            if (parser == null) {
+                throw new IOException("no parser found");
+            }
             parser.init();
+
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "could not initialize parser", e);
-            return nodes;
+            throw new RuntimeException("could not initialize parser", e);
         }
 
         for (Path path : input) {
@@ -109,7 +111,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
         return nodes;
     }
 
-    private void generateEccoTree(LilypondNode<ParceToken> head, Node.Op node) {
+    public void generateEccoTree(LilypondNode<ParceToken> head, Node.Op node) {
         Artifact.Op<ArtifactData> a;
         Node.Op nop;
 

@@ -25,7 +25,8 @@ class LilypondFormatter {
             if (next.getAction().startsWith("Pitch.") ||
                     next.getAction().startsWith("Number.Duration.") ||
                     next.getAction().startsWith("Name.Builtin.Dynamic") ||
-                    next.getAction().startsWith("Name.Script.Articulation") ||
+                    next.getAction().startsWith("Name.Script.Articulation") &&
+                            !d.getAction().startsWith("Literal.") ||
                     next.getAction().startsWith("Name.Symbol.Spanner") ||
                     next.getAction().startsWith("Delimiter.Separator") ||
                     next.getAction().equals("Text.Music.Pitch.Octave") ||
