@@ -2,8 +2,6 @@ package at.jku.isse.ecco.rest;
 
 
 import at.jku.isse.ecco.rest.classes.RestRepository;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.micronaut.core.annotation.Introspected;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 
@@ -15,9 +13,9 @@ public class VariantController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
     @Put("/{name}")
-    @Consumes(MediaType.TEXT_PLAIN)
-    public RestRepository addVariant(@PathVariable int rId, @PathVariable String name, @Body String config) {
-        return repositoryService.addVariant(rId, name, config);
+    @Consumes(MediaType.APPLICATION_JSON)
+    public RestRepository addVariant(@PathVariable int rId, @PathVariable String name, @Body Map<String,String> body) {
+        return repositoryService.addVariant(rId, name, body.get("configuration"), body.get("description"));
     }
 
     @Delete("/{variantId}")

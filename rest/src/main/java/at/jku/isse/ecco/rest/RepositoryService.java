@@ -150,8 +150,8 @@ public class RepositoryService {
     }
 
     // Variant ---------------------------------------------------------------------------------------------------------
-    public RestRepository addVariant(int rId, String name, String config) {
-        return repositories.get(rId).addVariant(name, config);
+    public RestRepository addVariant(int rId, String name, String config, String description) {
+        return repositories.get(rId).addVariant(name, config, description);
     }
 
     public RestRepository removeVariant(int rId, String variantId) {

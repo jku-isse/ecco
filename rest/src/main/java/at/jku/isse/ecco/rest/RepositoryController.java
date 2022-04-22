@@ -28,7 +28,6 @@ public class RepositoryController {
 
     @Put("/clone/{OldRId}/{name}")
     public RepoHeader[] cloneRepository(@PathVariable int OldRId, @PathVariable String name) {
-        System.out.println("start cloning");
         repositoryService.clone(OldRId, name);
         return getAllRepositories();
     }

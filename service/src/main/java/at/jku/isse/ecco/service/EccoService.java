@@ -1644,6 +1644,30 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    /**
+     * Add a new variant configuration by rest
+     *
+     * @param configurationString The configuration of the variant as String
+     * @param service       The service to store the new variant
+     * @see "called by at.jku.isse.ecco.gui.EccoGui (JavaFX Gui)"
+     */
+    public synchronized void addVariant(String configurationString, String name, String description, EccoService service) {
+        addVariant(this.parseConfigurationString(configurationString) , name, description, service);     //discription not supported by JavaFX gui
+    }
+
+    private void addVariant(final Configuration parseConfigurationString, final String name, final EccoService service, final String description) {
+    }
+
+    /**
+     * Add a new variant configuration by JavaFX Gui
+     *
+     * @param configuration The configuration of the variant
+     * @param service       The service to store the new variant
+     * @see "called by at.jku.isse.ecco.gui.EccoGui (JavaFX Gui)"
+     */
+    public synchronized void addVariant(Configuration configuration, String name, EccoService service) {
+        addVariant(configuration, name, service, null);     //discription not supported by JavaFX gui
+    }
 
     /**
      * Add a new variant configuration
@@ -1651,7 +1675,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configuration The configuration of the variant
      * @param service       The service to store the new variant
      */
-    public synchronized void addVariant(Configuration configuration, String name, EccoService service) {
+    public synchronized void addVariant(Configuration configuration, String name, String description, EccoService service) {
         service.checkInitialized();
 
         checkNotNull(configuration);
@@ -1671,6 +1695,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
             if (!hasConfigurarion) {
                 MemVariant memVariant = new MemVariant(name, configuration, UUID.randomUUID().toString());
+                memVariant.setDescription(description);
                 repository.addVariant(memVariant);
             }
             //

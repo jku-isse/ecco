@@ -6,11 +6,7 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.storage.mem.core.MemVariant;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
-import io.micronaut.http.annotation.Body;
-import io.micronaut.http.annotation.PathVariable;
-import io.micronaut.http.annotation.Post;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -69,11 +65,10 @@ public class RepositoryHandler {
     }
 
     // Variant ---------------------------------------------------------------------------------------------------------
-    public RestRepository addVariant(String name, String config){
+    public RestRepository addVariant(String name, String config, String description){
         // TODO use config
         Configuration configuration = new MemConfiguration(new FeatureRevision[0]);
-        Variant var = new MemVariant(name, configuration, "new ID"); // TODO id > uuid
-        service.getRepository().addVariant(var);
+        service.addVariant(configuration, name, description, service);
         return getRepository();
     }
 
