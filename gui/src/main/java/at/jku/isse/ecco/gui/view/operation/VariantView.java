@@ -2,7 +2,6 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.AddVariantView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
@@ -98,7 +97,7 @@ public class VariantView extends OperationView implements EccoListener {
                             String name = nameField.getText();
                             if(!configuration.equals("")) {
                                 Configuration config = service.parseConfigurationString(configuration);
-                                service.addVariant(config, name, service);
+                                service.addVariant(config, name);
                             }else{
                                 failed();
                             }

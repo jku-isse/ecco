@@ -1,12 +1,10 @@
 package at.jku.isse.ecco.rest;
 
 import at.jku.isse.ecco.core.Variant;
-import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -66,9 +64,7 @@ public class RepositoryHandler {
 
     // Variant ---------------------------------------------------------------------------------------------------------
     public RestRepository addVariant(String name, String config, String description){
-        // TODO use config
-        Configuration configuration = new MemConfiguration(new FeatureRevision[0]);
-        service.addVariant(configuration, name, description, service);
+        service.addVariant(config, name, description);
         return getRepository();
     }
 

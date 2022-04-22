@@ -1648,42 +1648,36 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * Add a new variant configuration by rest
      *
      * @param configurationString The configuration of the variant as String
-     * @param service       The service to store the new variant
      * @see "called by at.jku.isse.ecco.gui.EccoGui (JavaFX Gui)"
      */
-    public synchronized void addVariant(String configurationString, String name, String description, EccoService service) {
-        addVariant(this.parseConfigurationString(configurationString) , name, description, service);     //discription not supported by JavaFX gui
-    }
-
-    private void addVariant(final Configuration parseConfigurationString, final String name, final EccoService service, final String description) {
+    public synchronized void addVariant(String configurationString, String name, String description) {
+        addVariant(this.parseConfigurationString(configurationString) , name, description);     //discription not supported by JavaFX gui
     }
 
     /**
      * Add a new variant configuration by JavaFX Gui
      *
      * @param configuration The configuration of the variant
-     * @param service       The service to store the new variant
      * @see "called by at.jku.isse.ecco.gui.EccoGui (JavaFX Gui)"
      */
-    public synchronized void addVariant(Configuration configuration, String name, EccoService service) {
-        addVariant(configuration, name, service, null);     //discription not supported by JavaFX gui
+    public synchronized void addVariant(Configuration configuration, String name) {
+        addVariant(configuration, name, null);     //discription not supported by JavaFX gui
     }
 
     /**
      * Add a new variant configuration
      *
      * @param configuration The configuration of the variant
-     * @param service       The service to store the new variant
      */
-    public synchronized void addVariant(Configuration configuration, String name, String description, EccoService service) {
-        service.checkInitialized();
+    public synchronized void addVariant(Configuration configuration, String name, String description) {
+        this.checkInitialized();
 
         checkNotNull(configuration);
 
         try {
-            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            Repository.Op repository = service.repositoryDao.load();
+            Repository.Op repository = this.repositoryDao.load();
             ArrayList<Variant> variants = repository.getVariants();
 
             //storing new variant
@@ -1700,13 +1694,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
             //
 
-            service.repositoryDao.store(repository);
+            this.repositoryDao.store(repository);
 
-            service.transactionStrategy.end();
+            this.transactionStrategy.end();
 
 
         } catch (Exception e) {
-            service.transactionStrategy.rollback();
+            this.transactionStrategy.rollback();
 
             throw new EccoException("Error during adding a variant.", e);
         }
