@@ -8,6 +8,7 @@ import at.jku.isse.ecco.tree.Node;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -127,27 +128,11 @@ public class AdapterTest {
         System.out.println("END WRITE");
     }
 
-//    private static final Path[] SULZER_FILE = new Path[]{Paths.get("input/factusestrepente.ly")};
-private static final Path[] SULZER_FILE = new Path[]{Paths.get("F:/Uni/Lilypond_ECCO/lytests/sulzer_first/v22/factusestrepente.ly")};
-    @Test(groups = {"parce"})
-    public void SulzerWriterTest() {
-        LilypondReader rd = new LilypondReader((new MemEntityFactory()));
-        Set<Node.Op> nodes = rd.read(DATA_DIR, SULZER_FILE);
-
-        System.out.println("WRITE");
-        LilypondStringWriter lsw = new LilypondStringWriter();
-        for (String s : lsw.write(nodes.stream().map(op -> (Node)op).collect(Collectors.toSet()))) {
-            System.out.println(s);
-        }
-        System.out.println("END WRITE");
-    }
-
     @DataProvider(name = "serializationPaths")
     public static Object[][] serializedNodesPaths() {
         // input and output path relative to the parent directory (e.g. ../ecco)
         return new String[][] {
-                {"lytests/debussy", "lytests/dieu_nodes"},
-                {"lytests/sulzer", "lytests/sulzer_nodes"}
+                {"lytests/debussy", "lytests/dieu_nodes"}
         };
     }
 
@@ -156,6 +141,7 @@ private static final Path[] SULZER_FILE = new Path[]{Paths.get("F:/Uni/Lilypond_
      * which needs the Py4J module to be set up.
      * @throws IOException Thrown if feature path is missing.
      */
+    @Ignore
     @Test(groups = {"parce"}, dataProvider = "serializationPaths")
     public void serializeParsedNodes(String inputDir, String outputDir) throws IOException {
         ParserFactory.setParseFiles(true);
