@@ -26,12 +26,14 @@ public class RepositoryService {
     private EccoService generalService = new EccoService();
     private static RepositoryService instance;
 
+    // singleton
     private RepositoryService() {
     }
 
     static {
         instance = new RepositoryService();
     }
+
     public static RepositoryService getInstance() {
         return instance;
     }
@@ -57,6 +59,11 @@ public class RepositoryService {
         newRepo.createRepository();
         repositories.put(newId, newRepo);
         return newRepo.getRepository();
+    }
+
+    public void deleteRepository(final int rId) {
+        deleteDirectory(repositories.get(rId).getPath().toFile());
+        repositories.remove(rId);
     }
 
     public Path getRepoStorage() {
@@ -143,7 +150,7 @@ public class RepositoryService {
         }
     }
 
-    boolean deleteDirectory(File directoryToBeDeleted) {
+    private boolean deleteDirectory(File directoryToBeDeleted) {
         File[] allContents = directoryToBeDeleted.listFiles();
         if (allContents != null) {
             for (File file : allContents) {
@@ -187,8 +194,5 @@ public class RepositoryService {
         return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
     }
 
-    public void deleteRepository(final int rId) {
-        deleteDirectory(repositories.get(rId).getPath().toFile());
-        repositories.remove(rId);
-    }
+
 }
