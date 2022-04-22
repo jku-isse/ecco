@@ -21,7 +21,7 @@ public class LilypondCompiler {
     private final static Path lilypond_exe = getLilypondPath();
     private final static Path[] lilypond_searchPaths = getLilypondSearchPaths();
 
-    private Path workingDir = basePath.getParent().resolve("lytests/compilerTest/");
+    private Path workingDir = basePath.getParent().resolve("compiled");
     private String inFile = "input.ly";
     private String outName = "image";
     private String outFile = "image.cropped.png";
@@ -32,6 +32,14 @@ public class LilypondCompiler {
     }
 
     public LilypondCompiler(String lyCode) {
+
+        if (Files.notExists(workingDir)) {
+            try {
+                Files.createDirectories(workingDir);
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "could not create directory for compiled files\n", e);
+            }
+        }
 
         try {
             Files.writeString(workingDir.resolve(inFile), lyCode);
