@@ -36,6 +36,6 @@ public class ParserFactory {
 
         LOGGER.log(Level.SEVERE, "no parser found. configure Py4J- or GraalVM-Parser");
 
-        return  null;
+        return null;
     }
 }

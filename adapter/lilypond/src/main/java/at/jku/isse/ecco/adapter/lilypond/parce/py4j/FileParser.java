@@ -8,12 +8,10 @@ import py4j.GatewayServerListener;
 import py4j.Py4JServerConnection;
 
 import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
-import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -21,6 +19,7 @@ import java.util.logging.Logger;
 
 public class FileParser implements LilypondParser<ParceToken> {
     public static final int MAX_SCRIPT_TIMEOUT_SECONDS = 10;
+    public static final String PARSER_SCRIPT_NAME = "LilypondParser_1.py";
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
     protected static GatewayServerListener gatewayListener = getGatewayListener();
     private String pythonScript;
@@ -29,12 +28,25 @@ public class FileParser implements LilypondParser<ParceToken> {
         Gateway.getInstance().addListener(gatewayListener);
         Gateway.getInstance().start();
 
-        try {
-            URI scriptUri = Objects.requireNonNull(ClassLoader.getSystemResource("LilypondParser.py")).toURI();
-            pythonScript = Paths.get(scriptUri).toString();
+        Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
+        Path file = tempDir.resolve(PARSER_SCRIPT_NAME);
+        pythonScript = file.toString();
 
-        } catch (NullPointerException | URISyntaxException e) {
-            throw new IOException("could not load parser script", e);
+        if (!Files.exists(file)) {
+            try (InputStream is = ClassLoader.getSystemResourceAsStream(PARSER_SCRIPT_NAME);
+                OutputStream os = Files.newOutputStream(file, StandardOpenOption.CREATE)) {
+
+                if (is != null) {
+                    os.write(is.readAllBytes());
+                } else {
+                    throw new IOException("no resource '" + PARSER_SCRIPT_NAME + "' found");
+                }
+
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "could not initialize parser", e);
+                shutdown();
+                throw e;
+            }
         }
     }
 
@@ -107,6 +119,7 @@ public class FileParser implements LilypondParser<ParceToken> {
 
     public void shutdown() {
         Gateway.getInstance().shutdown();
+        Gateway.getInstance().removeListener(gatewayListener);
     }
 
     private static GatewayServerListener getGatewayListener() {
