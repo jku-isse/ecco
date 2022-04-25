@@ -46,20 +46,20 @@ public class RepositoryHandler {
         return new RestRepository(service, rId, name);
     }
 
-    public RestRepository createRepository() {
+    public void createRepository() {
         service = new EccoService();
         service.setRepositoryDir(path.resolve(".ecco"));
         service.setBaseDir(path);
         service.init();
         service.open();
-        return new RestRepository(service, rId, name);
+        new RestRepository(service, rId, name);
     }
 
     // Commit ----------------------------------------------------------------------------------------------------------
-    public RestRepository addCommit (String message, String config, Path commitFolder, String committer) {
+    public void addCommit (String message, String config, Path commitFolder, String committer) {
         service.setBaseDir(commitFolder);
         service.commit(message, config, committer);
-        return getRepository();
+        getRepository();
     }
 
     //checkout
@@ -110,7 +110,9 @@ public class RepositoryHandler {
         for (int i = 0; i < featureRevisions.length ; i++) {
             if (featureRevisions[i].getFeature().getName().equals(featureName)){
                 Feature f =  service.getRepository().getFeature().stream().filter(fe -> fe.getName().equals(featureName)).findAny().orElse(null);
-                featureRevisions[i] = f.getRevision(id);
+                if (f != null) {
+                    featureRevisions[i] = f.getRevision(id);
+                }
                 break;
             }
         }

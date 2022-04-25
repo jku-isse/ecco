@@ -15,6 +15,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -28,6 +29,7 @@ public class RepositoryService {
     private AtomicInteger rId = new AtomicInteger();
     private EccoService generalService = new EccoService();
     private static RepositoryService instance;
+    private static final Logger LOGGER = Logger.getLogger(RepositoryService.class.getName());
 
     // singleton
     private RepositoryService() {
@@ -35,6 +37,7 @@ public class RepositoryService {
 
     static {
         instance = new RepositoryService();
+        LOGGER.info("Repository service stated");
     }
 
     public static RepositoryService getInstance() {
@@ -50,23 +53,28 @@ public class RepositoryService {
         }
     }
 
-    public RestRepository createRepository(String name) {
+    public void createRepository(String name) {
         Path p = getRepoStorage().resolve(name);
         if (p.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
         }
-        p.toFile().mkdir();     //create folder
+        if(!p.toFile().mkdir()) {      //create folder
+            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + p.getFileName().toString());
+        }
 
         int newId = rId.incrementAndGet();
         RepositoryHandler newRepo =  new RepositoryHandler(p, newId);
         newRepo.createRepository();
         repositories.put(newId, newRepo);
-        return newRepo.getRepository();
+
+        LOGGER.info(newId + "repository created");
+        newRepo.getRepository();
     }
 
     public void deleteRepository(final int rId) {
         deleteDirectory(repositories.get(rId).getPath().toFile());
         repositories.remove(rId);
+        LOGGER.info(rId + ": repository deleted");
     }
 
     public Path getRepoStorage() {
@@ -111,7 +119,9 @@ public class RepositoryService {
 
             File folder = file.getParentFile(); // create folders if they don't exist
             if(!folder.exists()){
-                folder.mkdirs();
+                if(!folder.mkdir()) {      //create folder
+                    throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + folder.toString());
+                }
             }
 
             try (OutputStream os = new FileOutputStream(file)) {
@@ -123,6 +133,7 @@ public class RepositoryService {
 
         repositories.get(rId).addCommit(message, config, commitFolder, committer);
 
+        LOGGER.info(rId + ": committed");
         return repositories.get(rId).getRepository();
     }
 
@@ -133,7 +144,9 @@ public class RepositoryService {
         if (newDir.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
         } else {
-            newDir.toFile().mkdir();
+            if(!newDir.toFile().mkdir()) {      //create folder
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + newDir.getFileName().toString());
+            }
         }
 
         try {
@@ -142,13 +155,14 @@ public class RepositoryService {
                 try {
                     Files.copy(source, destDir);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.warning(OldRid + ": failed copying " + source.toString());
                 }
             });
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+        LOGGER.info("repository " + OldRid + "cloned");
     }
 
     private boolean deleteDirectory(File directoryToBeDeleted) {
@@ -202,28 +216,28 @@ public class RepositoryService {
 
         if(checkoutFolder.toFile().exists()){       //delete old checkout
             if(!deleteDirectory(checkoutFolder.toFile())) {
-                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old directory is not possible: " + checkoutFolder.toString());
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old directory is not possible: " + checkoutFolder.getParent().getFileName().toString());
             }
         }
         if(checkoutZip.toFile().exists()){      //delete old checkout zip file
             if(!deleteDirectory(checkoutZip.toFile())) {
-                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old zip-file is not possible: " + checkoutZip.toString());
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old zip-file is not possible: " + checkoutZip.getParent().getFileName().toString());
             }
         }
 
         if(!checkoutFolder.toFile().mkdir()) {      //create new checkout folder
-            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutZip.toString());
+            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutZip.getParent().getFileName().toString());
         }
-
 
         repositories.get(rId).checkout(variantId, checkoutFolder);
 
         try {
             zipFolder(checkoutFolder, checkoutZip);
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create checkout zip file");
         }
 
+        LOGGER.info(rId + ": checked out");
         return checkoutZip;
     }
 
