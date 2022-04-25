@@ -4,6 +4,7 @@ package at.jku.isse.ecco.rest;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
+import io.micronaut.http.server.types.files.SystemFile;
 
 import java.util.Map;
 
@@ -43,5 +44,11 @@ public class VariantController {
     @Delete("/{variantId}/{featureName}")
     public RestRepository variantRemoveFeature(@PathVariable int rId, @PathVariable String variantId, @PathVariable String featureName){
         return repositoryService.variantRemoveFeature(rId, variantId, featureName);
+    }
+
+    @Produces(value = "application/checkout.zip")
+    @Get("/{variantId}/checkout")
+    public SystemFile checkoutVariant(@PathVariable int rId, @PathVariable String variantId) {
+        return new SystemFile(repositoryService.checkout(rId, variantId).toFile());
     }
 }

@@ -26,7 +26,7 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	private Map<String, MemFeature> features;
 	private Collection<Association.Op> associations;
-	private ArrayList<Variant> variants;
+	private ArrayList<Variant> variants = new ArrayList<>();;
 	private List<Map<MemModule, MemModule>> modules;
 	private Collection<Commit> commits;
 	private int maxOrder;
@@ -34,7 +34,7 @@ public final class MemRepository implements Repository, Repository.Op {
 	public MemRepository() {
 		this.features = Maps.mutable.empty();
 		this.associations = new ArrayList<>();
-		this.variants =  new ArrayList<>();
+		//this.variants = new ArrayList<>();
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
@@ -156,6 +156,9 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public void addVariant(Variant variant) {
+		if(variants == null) {		//TODO TBE check again why needed
+			variants = new ArrayList<>();
+		}
 		this.variants.add(variant);
 	}
 

@@ -21,6 +21,10 @@ public class RestFeature {
         return feature.getName();
     }
 
+    public String getDescription() {
+        return feature.getDescription();
+    }
+
     public Collection<RestFeatureRevision> getRevisions() {
         Collection<RestFeatureRevision> revisions = new LinkedList<>();
         for (FeatureRevision f : feature.getRevisions()) {
