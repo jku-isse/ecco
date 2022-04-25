@@ -43,7 +43,6 @@ public interface Commit extends Persistable {
 
 	public void deleteAssociation(Association association);
 
-	@JsonIgnore
 	public Collection<Association> getAssociations();
 
 }
