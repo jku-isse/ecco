@@ -1,14 +1,18 @@
 package at.jku.isse.ecco.rest.classes;
 
+import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.LinkedList;
 
 
 public class RestCommit {
 
-    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
+    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
     private final Commit commit;
 
@@ -30,5 +34,13 @@ public class RestCommit {
 
     public RestConfiguration getConfiguration() {
         return new RestConfiguration(commit.getConfiguration());
+    }
+
+    public Collection<? extends RestAssociation> getAssociations() {
+        Collection<RestAssociation> associations = new LinkedList<>();
+        for (Association a : commit.getAssociations()) {
+            associations.add(new RestAssociation(a));
+        }
+        return associations;
     }
 }
