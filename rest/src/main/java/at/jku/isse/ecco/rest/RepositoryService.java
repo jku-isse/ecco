@@ -21,14 +21,12 @@ import java.util.zip.ZipOutputStream;
 
 import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
 
-
-
 public class RepositoryService {
     private final Path repoStorage = Path.of(STORAGE_LOCATION_OF_REPOSITORIES);
-    private Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
-    private AtomicInteger rId = new AtomicInteger();
-    private EccoService generalService = new EccoService();
-    private static RepositoryService instance;
+    private final Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
+    private final AtomicInteger rId = new AtomicInteger();
+    private final EccoService generalService = new EccoService();
+    private static final RepositoryService instance;
     private static final Logger LOGGER = Logger.getLogger(RepositoryService.class.getName());
 
     // singleton
@@ -44,7 +42,7 @@ public class RepositoryService {
         return instance;
     }
 
-
+    // Repositories ----------------------------------------------------------------------------------------------------
     public RestRepository getRepository(int rId) {
         if (repositories.containsKey(rId)) {
             return repositories.get(rId).getRepository();
@@ -54,7 +52,7 @@ public class RepositoryService {
     }
 
     public void createRepository(String name) {
-        Path p = getRepoStorage().resolve(name);
+        Path p = repoStorage.resolve(name);
         if (p.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
         }
@@ -62,13 +60,42 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + p.getFileName().toString());
         }
 
-        int newId = rId.incrementAndGet();
+        int newId = rId.incrementAndGet();      //get new id
         RepositoryHandler newRepo =  new RepositoryHandler(p, newId);
         newRepo.createRepository();
-        repositories.put(newId, newRepo);
-
+        repositories.put(newId, newRepo);       //add to Map
         LOGGER.info(newId + "repository created");
-        newRepo.getRepository();
+    }
+
+    public void cloneRepository(int OldRid, String name) {
+        getRepositories();
+        Path oldDir = repositories.get(OldRid).getPath();
+        Path newDir = oldDir.getParent().resolve(name);
+
+        if (newDir.toFile().exists()) {
+            throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
+        } else {
+            if(!newDir.toFile().mkdir()) {      //create folder
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + newDir.getFileName().toString());
+            }
+        }
+
+        try {
+            Files.walk(oldDir).forEach(source -> {
+                Path destDir = Paths.get(newDir.toString(), source.toString().substring(oldDir.toString().length()));
+                try {
+                    Files.copy(source, destDir);
+                } catch (IOException e) {
+                    LOGGER.warning(OldRid + ": failed copying " + source.toString());
+                    //TODO terminate and clean up
+                }
+            });
+
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+        LOGGER.info("repository " + OldRid + "cloned");
     }
 
     public void deleteRepository(final int rId) {
@@ -77,16 +104,7 @@ public class RepositoryService {
         LOGGER.info(rId + ": repository deleted");
     }
 
-    public Path getRepoStorage() {
-        return repoStorage;
-    }
-
-    public Map<Integer, RepositoryHandler> getRepositories() {
-        readRepositories();
-        return repositories;
-    }
-
-    public void readRepositories() {
+    public Map<Integer, RepositoryHandler> getRepositories() {      //TODO do not read all folders each time again
         File folder = new File(repoStorage.toString());
         File[] files = folder.listFiles();
 
@@ -102,6 +120,7 @@ public class RepositoryService {
                 }
             }
         }
+        return repositories;
     }
 
     // Commit ----------------------------------------------------------------------------------------------------------
@@ -124,55 +143,20 @@ public class RepositoryService {
                 }
             }
 
+            //write file
             try (OutputStream os = new FileOutputStream(file)) {
                 os.write(uploadedFile.getBytes());
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.warning(rId + ": the committed file" + file.getName() + " could not be created");
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "the committed file " + file.getName() + "could not be created");
+                //if one of the errors occur the process is terminated and no commit is created
             }
         }
 
-        repositories.get(rId).addCommit(message, config, commitFolder, committer);
+        repositories.get(rId).addCommit(message, config, commitFolder, committer);      //service commit
 
         LOGGER.info(rId + ": committed");
         return repositories.get(rId).getRepository();
-    }
-
-    public void clone(int OldRid, String name) {
-        getRepositories();
-        Path oldDir = repositories.get(OldRid).getPath();
-        Path newDir = oldDir.getParent().resolve(name);
-        if (newDir.toFile().exists()) {
-            throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
-        } else {
-            if(!newDir.toFile().mkdir()) {      //create folder
-                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + newDir.getFileName().toString());
-            }
-        }
-
-        try {
-            Files.walk(oldDir).forEach(source -> {
-                Path destDir = Paths.get(newDir.toString(), source.toString().substring(oldDir.toString().length()));
-                try {
-                    Files.copy(source, destDir);
-                } catch (IOException e) {
-                    LOGGER.warning(OldRid + ": failed copying " + source.toString());
-                }
-            });
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        LOGGER.info("repository " + OldRid + "cloned");
-    }
-
-    private boolean deleteDirectory(File directoryToBeDeleted) {
-        File[] allContents = directoryToBeDeleted.listFiles();
-        if (allContents != null) {
-            for (File file : allContents) {
-                deleteDirectory(file);      //delete recursive
-            }
-        }
-        return directoryToBeDeleted.delete();
     }
 
     // Variant ---------------------------------------------------------------------------------------------------------
@@ -200,16 +184,6 @@ public class RepositoryService {
         return repositories.get(rId).variantRemoveFeature(variantId, featureName);
     }
 
-    // Feature ---------------------------------------------------------------------------------------------------------
-    public RestRepository setFeatureDescription(int rId, String featureId, String description) {
-        return repositories.get(rId).setFeatureDescription(featureId, description);
-    }
-
-    public RestRepository setFeatureRevisionDescription(int rId, String featureId, String revisionId, String description) {
-        return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
-    }
-
-
     public Path checkout(final int rId, final String variantId) {
         Path checkoutFolder = repositories.get(rId).getPath().resolve("checkout");
         Path checkoutZip = checkoutFolder.getParent().resolve("checkout.zip");
@@ -229,7 +203,7 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutZip.getParent().getFileName().toString());
         }
 
-        repositories.get(rId).checkout(variantId, checkoutFolder);
+        repositories.get(rId).checkout(variantId, checkoutFolder);      //service checkout
 
         try {
             zipFolder(checkoutFolder, checkoutZip);
@@ -241,6 +215,16 @@ public class RepositoryService {
         return checkoutZip;
     }
 
+    // Feature ---------------------------------------------------------------------------------------------------------
+    public RestRepository setFeatureDescription(int rId, String featureId, String description) {
+        return repositories.get(rId).setFeatureDescription(featureId, description);
+    }
+
+    public RestRepository setFeatureRevisionDescription(int rId, String featureId, String revisionId, String description) {
+        return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
+    }
+
+    // private methods -------------------------------------------------------------------------------------------------
     private void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
         //from https://www.quickprogrammingtips.com/java/how-to-zip-a-folder-in-java.html
         ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
@@ -253,5 +237,15 @@ public class RepositoryService {
             }
         });
         zos.close();
+    }
+
+    private boolean deleteDirectory(File directoryToBeDeleted) {
+        File[] allContents = directoryToBeDeleted.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectory(file);      //delete recursive
+            }
+        }
+        return directoryToBeDeleted.delete();   //actual deletion
     }
 }

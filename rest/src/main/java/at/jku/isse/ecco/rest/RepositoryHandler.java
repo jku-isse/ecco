@@ -59,12 +59,11 @@ public class RepositoryHandler {
     public void addCommit (String message, String config, Path commitFolder, String committer) {
         service.setBaseDir(commitFolder);
         service.commit(message, config, committer);
-        getRepository();
     }
 
     //checkout
     public void checkout(String variantId, Path checkoutPath) {
-        getRepository();        //TODO find a better way to initialize service
+        getRepository();
         service.setBaseDir(checkoutPath);
         service.checkout(service.getRepository().getVariant(variantId).getConfiguration());
     }

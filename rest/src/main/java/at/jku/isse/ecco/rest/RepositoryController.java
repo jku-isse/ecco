@@ -8,7 +8,7 @@ import io.micronaut.http.annotation.*;
 @Controller("/api/repository")
 public class RepositoryController {
     //TODO change rId into /api/rId/repository
-    private RepositoryService repositoryService = RepositoryService.getInstance();
+    private final RepositoryService repositoryService = RepositoryService.getInstance();
 
     @Get("/{rId}")
     public RestRepository getRepository (@PathVariable int rId) {
@@ -28,7 +28,7 @@ public class RepositoryController {
 
     @Put("/clone/{OldRId}/{name}")
     public RepoHeader[] cloneRepository(@PathVariable int OldRId, @PathVariable String name) {
-        repositoryService.clone(OldRId, name);
+        repositoryService.cloneRepository(OldRId, name);
         return getAllRepositories();
     }
 
