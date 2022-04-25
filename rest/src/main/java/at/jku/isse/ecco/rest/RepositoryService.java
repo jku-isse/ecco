@@ -10,14 +10,17 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
+
+
 
 public class RepositoryService {
     private final Path repoStorage = Path.of(STORAGE_LOCATION_OF_REPOSITORIES);
@@ -98,11 +101,9 @@ public class RepositoryService {
 
         // Commit storage preparations
         Path commitFolder = repositories.get(rId).getPath().resolve("lastCommit");
-        if(!commitFolder.toFile().exists()){    //create lastCommit folder if not already existing
-            commitFolder.toFile().mkdirs();
+        if(commitFolder.toFile().exists()){    //create lastCommit folder if not already existing
+            deleteDirectory(commitFolder.toFile());     //remove existing files recursively
         }
-
-        deleteDirectory(commitFolder.toFile());     //remove existing files recursively
 
         //creates files from uploaded Commit
         for(CompletedFileUpload uploadedFile : commitFiles) {
@@ -154,7 +155,7 @@ public class RepositoryService {
         File[] allContents = directoryToBeDeleted.listFiles();
         if (allContents != null) {
             for (File file : allContents) {
-                deleteDirectory(file);
+                deleteDirectory(file);      //delete recursive
             }
         }
         return directoryToBeDeleted.delete();
@@ -195,4 +196,48 @@ public class RepositoryService {
     }
 
 
+    public Path checkout(final int rId, final String variantId) {
+        Path checkoutFolder = repositories.get(rId).getPath().resolve("checkout");
+        Path checkoutZip = checkoutFolder.getParent().resolve("checkout.zip");
+
+        if(checkoutFolder.toFile().exists()){       //delete old checkout
+            if(!deleteDirectory(checkoutFolder.toFile())) {
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old directory is not possible: " + checkoutFolder.toString());
+            }
+        }
+        if(checkoutZip.toFile().exists()){      //delete old checkout zip file
+            if(!deleteDirectory(checkoutZip.toFile())) {
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old zip-file is not possible: " + checkoutZip.toString());
+            }
+        }
+
+        if(!checkoutFolder.toFile().mkdir()) {      //create new checkout folder
+            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutZip.toString());
+        }
+
+
+        repositories.get(rId).checkout(variantId, checkoutFolder);
+
+        try {
+            zipFolder(checkoutFolder, checkoutZip);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return checkoutZip;
+    }
+
+    private void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
+        //from https://www.quickprogrammingtips.com/java/how-to-zip-a-folder-in-java.html
+        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
+        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
+                Files.copy(file, zos);
+                zos.closeEntry();
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        zos.close();
+    }
 }

@@ -62,6 +62,13 @@ public class RepositoryHandler {
         return getRepository();
     }
 
+    //checkout
+    public void checkout(String variantId, Path checkoutPath) {
+        getRepository();        //TODO find a better way to initialize service
+        service.setBaseDir(checkoutPath);
+        service.checkout(service.getRepository().getVariant(variantId).getConfiguration());
+    }
+
     // Variant ---------------------------------------------------------------------------------------------------------
     public RestRepository addVariant(String name, String config, String description){
         service.addVariant(config, name, description);
