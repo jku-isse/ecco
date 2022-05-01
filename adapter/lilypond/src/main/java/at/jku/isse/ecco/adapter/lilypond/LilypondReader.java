@@ -98,7 +98,6 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
             if (head == null) {
                 LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", resolvedPath);
             } else {
-                LOGGER.setLevel(Level.FINEST);                // change level for logger (e.g. DEBUG)
                 head = LilyEccoTransformer.transform(head);
                 generateEccoTree(head, pluginNode);
             }
