@@ -3,6 +3,7 @@ package at.jku.isse.ecco.adapter.lilypond;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 
 class LilypondFormatter {
+    @SuppressWarnings("RedundantIfStatement")
     public static boolean appendSpace(DefaultTokenArtifactData d, DefaultTokenArtifactData next) {
         if (d.getAction().equals("Delimiter.Operator.Assignment")) {
             return true;
@@ -17,6 +18,11 @@ class LilypondFormatter {
         }
 
         if (next != null) {
+            if (d.getAction().equals("Literal.String") && next.getAction().equals("Literal.String")) {
+                return false;
+            } else if (d.getAction().startsWith("Literal.Number") && next.getAction().startsWith("Literal.Number")) {
+                return false;
+            }
             if (next.getAction().equals(LilypondReader.PARSER_ACTION_LINEBREAK) ||
                 next.getAction().equals("Delimiter.Separator")) {
                 return false;
