@@ -7,7 +7,6 @@ import io.micronaut.http.annotation.*;
 
 @Controller("/api/repository")
 public class RepositoryController {
-    //TODO change rId into /api/rId/repository
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
     @Get("/{rId}")

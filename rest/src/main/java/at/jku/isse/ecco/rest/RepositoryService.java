@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +32,7 @@ public class RepositoryService {
 
     // singleton
     private RepositoryService() {
+        getRepositories();
     }
 
     static {
@@ -64,38 +66,28 @@ public class RepositoryService {
         RepositoryHandler newRepo =  new RepositoryHandler(p, newId);
         newRepo.createRepository();
         repositories.put(newId, newRepo);       //add to Map
-        LOGGER.info(newId + "repository created");
+        LOGGER.info(newId + ": repository created");
     }
 
     public void cloneRepository(int OldRid, String name) {
-        getRepositories();
         Path oldDir = repositories.get(OldRid).getPath();
         Path newDir = oldDir.getParent().resolve(name);
 
         if (newDir.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
-        } else {
-            if(!newDir.toFile().mkdir()) {      //create folder
-                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + newDir.getFileName().toString());
-            }
         }
 
         try {
-            Files.walk(oldDir).forEach(source -> {
-                Path destDir = Paths.get(newDir.toString(), source.toString().substring(oldDir.toString().length()));
-                try {
-                    Files.copy(source, destDir);
-                } catch (IOException e) {
-                    LOGGER.warning(OldRid + ": failed copying " + source.toString());
-                    //TODO terminate and clean up
-                }
-            });
-
+            for (Path f: Files.walk(oldDir).toList()) {
+                Path destDir = Paths.get(newDir.toString(), f.toString().substring(oldDir.toString().length()));
+                Files.copy(f, destDir);
+            }
         } catch (IOException e) {
-
-            e.printStackTrace();
+            deleteDirectory(newDir.toFile());
+            LOGGER.warning(OldRid + ": could not be cloned");
+            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "cloning failed");
         }
-        LOGGER.info("repository " + OldRid + "cloned");
+        LOGGER.info("repository " + OldRid + " cloned");
     }
 
     public void deleteRepository(final int rId) {
@@ -104,7 +96,7 @@ public class RepositoryService {
         LOGGER.info(rId + ": repository deleted");
     }
 
-    public Map<Integer, RepositoryHandler> getRepositories() {      //TODO do not read all folders each time again
+    public Map<Integer, RepositoryHandler> getRepositories() {
         File folder = new File(repoStorage.toString());
         File[] files = folder.listFiles();
 
@@ -112,8 +104,9 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.NO_CONTENT, "No Repositories found");
         }
 
+        List<Path> paths =  repositories.values().stream().map(RepositoryHandler::getPath).toList();
         for (final File file : files) {
-            if(!repositories.values().stream().map(RepositoryHandler::getPath).toList().contains(file.toPath())) {
+            if(!paths.contains(file.toPath())) {
                 if (generalService.repositoryExists(file.toPath())) {
                     int newId = rId.incrementAndGet();
                     repositories.put(newId, new RepositoryHandler(file.toPath(), newId));

@@ -18,7 +18,7 @@ public class CommitController {
                                      @RequestAttribute("message") String message,
                                      @RequestAttribute("config") String config) {
 
-        //TODO change hardcoded Committer to username of Frontend
+        //TODO change hardcoded Committer to username of frontend
         return repositoryService.addCommit(rId, message, config, "Online Committer", uploadingFiles);
     }
 

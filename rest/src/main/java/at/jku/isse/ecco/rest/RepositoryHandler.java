@@ -51,7 +51,6 @@ public class RepositoryHandler {
         service.setRepositoryDir(path.resolve(".ecco"));
         service.setBaseDir(path);
         service.init();
-        service.open();
         new RestRepository(service, rId, name);
     }
 
