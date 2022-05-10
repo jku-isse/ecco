@@ -121,18 +121,19 @@ public class RepositoryService {
 
         // Commit storage preparations
         Path commitFolder = repositories.get(rId).getPath().resolve("lastCommit");
-        if(commitFolder.toFile().exists()){    //create lastCommit folder if not already existing
+        if(commitFolder.toFile().exists()){
             deleteDirectory(commitFolder.toFile());     //remove existing files recursively
         }
 
-        //creates files from uploaded Commit
+        // create files from uploaded Commit
         for(CompletedFileUpload uploadedFile : commitFiles) {
             File file = commitFolder.resolve(Path.of(uploadedFile.getFilename().substring(1))).toFile();
 
-            File folder = file.getParentFile(); // create folders if they don't exist
+            // create folders if they don't exist
+            File folder = file.getParentFile();
             if(!folder.exists()){
-                if(!folder.mkdir()) {      //create folder
-                    throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + folder.toString());
+                if(!folder.mkdirs()) { // create folder + missing parent folders
+                    throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + folder);
                 }
             }
 
@@ -221,7 +222,7 @@ public class RepositoryService {
     private void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
         //from https://www.quickprogrammingtips.com/java/how-to-zip-a-folder-in-java.html
         ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
-        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
+        Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<>() {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
                 Files.copy(file, zos);
