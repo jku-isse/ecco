@@ -69,8 +69,16 @@ public class RepositoryService {
         LOGGER.info(newId + ": repository created");
     }
 
-    public void cloneRepository(int OldRid, String name) {
-        Path oldDir = repositories.get(OldRid).getPath();
+    public void forkRepository(int oldRid, String name, String selectedFeatures) {
+
+
+    }
+
+
+
+    //old Methode
+    public void cloneRepository(int oldRid, String name) {
+        Path oldDir = repositories.get(oldRid).getPath();
         Path newDir = oldDir.getParent().resolve(name);
 
         if (newDir.toFile().exists()) {
@@ -84,10 +92,10 @@ public class RepositoryService {
             }
         } catch (IOException e) {
             deleteDirectory(newDir.toFile());
-            LOGGER.warning(OldRid + ": could not be cloned");
+            LOGGER.warning(oldRid + ": could not be cloned");
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "cloning failed");
         }
-        LOGGER.info("repository " + OldRid + " cloned");
+        LOGGER.info("repository " + oldRid + " cloned");
     }
 
     public void deleteRepository(final int rId) {
@@ -218,6 +226,10 @@ public class RepositoryService {
         return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
     }
 
+    public void pullFeaturesRepository(final int toRId, final String oldRId, final String selectedFeatures) {
+
+    }
+
     // private methods -------------------------------------------------------------------------------------------------
     private void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
         //from https://www.quickprogrammingtips.com/java/how-to-zip-a-folder-in-java.html
@@ -242,4 +254,6 @@ public class RepositoryService {
         }
         return directoryToBeDeleted.delete();   //actual deletion
     }
+
+
 }

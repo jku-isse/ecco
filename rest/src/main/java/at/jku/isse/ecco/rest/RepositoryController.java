@@ -3,6 +3,7 @@ package at.jku.isse.ecco.rest;
 
 import at.jku.isse.ecco.rest.classes.RepoHeader;
 import at.jku.isse.ecco.rest.classes.RestRepository;
+import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 
 @Controller("/api/repository")
@@ -25,9 +26,17 @@ public class RepositoryController {
         return getAllRepositories();
     }
 
-    @Put("/clone/{OldRId}/{name}")
-    public RepoHeader[] cloneRepository(@PathVariable int OldRId, @PathVariable String name) {
-        repositoryService.cloneRepository(OldRId, name);
+    //old Methode
+    @Put("/clone/{oldRId}/{name}")
+    public RepoHeader[] cloneRepository(@PathVariable int oldRId, @PathVariable String name) {
+        repositoryService.cloneRepository(oldRId, name);
+        return getAllRepositories();
+    }
+
+    @Put("/fork/{oldRId}/{name}")
+    @Consumes(MediaType.TEXT_PLAIN)
+    public RepoHeader[] forkRepository(@PathVariable int oldRId, @PathVariable String name, @Body String selectedFeatures) {
+        repositoryService.forkRepository(oldRId, name, selectedFeatures);
         return getAllRepositories();
     }
 
@@ -36,6 +45,8 @@ public class RepositoryController {
         repositoryService.deleteRepository(rId);
         return getAllRepositories();
     }
+
+
 
 
 
