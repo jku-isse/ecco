@@ -31,6 +31,7 @@ dependencies {
     testImplementation project(':ecco-adapter-text')
     testImplementation project(':ecco-adapter-image')
 
+    implementation(group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.0.5') // file upload to server
 }
 
 
