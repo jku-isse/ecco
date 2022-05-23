@@ -14,15 +14,15 @@ public class FeatureController {
 
 
     @Post("/{featureId}/description")
-    @Consumes(MediaType.TEXT_PLAIN)
-    public RestRepository setFeatureDescription(@PathVariable int rId, @PathVariable String featureId, @Body String description) {
-        return repositoryService.setFeatureDescription(rId, featureId, description == null ? "" : description);     //TODO check
+    @Consumes(MediaType.APPLICATION_JSON)
+    public RestRepository setFeatureDescription(@PathVariable int rId, @PathVariable String featureId, @Body Map<String,String> body) {
+        return repositoryService.setFeatureDescription(rId, featureId, body.get("description"));
     }
 
     @Post("/{featureId}/{revisionId}/description")
-    @Consumes(MediaType.TEXT_PLAIN)
-    public RestRepository setFeatureRevisionDescription(@PathVariable int rId, @PathVariable String featureId, @PathVariable String revisionId, @Body String description) {
-        return repositoryService.setFeatureRevisionDescription(rId, featureId, revisionId, description == null ? "" : description);     //TODO check
+    @Consumes(MediaType.APPLICATION_JSON)
+    public RestRepository setFeatureRevisionDescription(@PathVariable int rId, @PathVariable String featureId, @PathVariable String revisionId, @Body Map<String,String> body) {
+        return repositoryService.setFeatureRevisionDescription(rId, featureId, revisionId, body.get("description"));
     }
 
     @Post("/pull")
