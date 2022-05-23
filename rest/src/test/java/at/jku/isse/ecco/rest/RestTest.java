@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+//Do not run with Grade use Intellij IDEE or similar instead
+
 @MicronautTest
 class RestTest {
 
@@ -18,6 +20,11 @@ class RestTest {
     @Inject
     @Client("/api")
     HttpClient client;
+
+    @Test
+    void test() {
+        System.out.println("TBE");
+    }
 
     @Test
     void testItWorks() {
@@ -30,6 +37,7 @@ class RestTest {
             String res = client.toBlocking().retrieve(request);
             Assertions.assertEquals("test", res);
             System.out.println("Executed: " + res);
+            Assertions.assertTrue(false);
     }
 
 }

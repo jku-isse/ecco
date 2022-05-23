@@ -30,8 +30,13 @@ dependencies {
     testImplementation project(':ecco-adapter-file')
     testImplementation project(':ecco-adapter-text')
     testImplementation project(':ecco-adapter-image')
+    testImplementation "org.junit.jupiter:junit-jupiter:5.7.1"
 
     implementation(group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.0.5') // file upload to server
+}
+
+test {
+    useJUnitPlatform()
 }
 
 
