@@ -146,4 +146,10 @@ public class RepositoryHandler {
     }
 
 
+    public void fork(RepositoryHandler origRepo, final String disabledFeatures) {
+        if(origRepo.service == null) {
+            origRepo.getRepository();       //TODO change to better initialisation in general
+        }
+        service.forkAlreadyOpen(origRepo.service, disabledFeatures);
+    }
 }

@@ -849,7 +849,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
 
-    private Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
+    public Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
         if (featureRevisionsString == null)
             throw new EccoException("No feature revisions string provided.");
 
@@ -1155,7 +1155,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
-
     public synchronized void fork(String hostname, int port) {
         this.fork(hostname, port, "");
     }
@@ -1282,6 +1281,31 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         } catch (Exception e) {
             this.transactionStrategy.rollback();
 
+            throw new EccoException("Error during local fork.", e);
+        }
+    }
+
+    public synchronized void forkAlreadyOpen(EccoService origService, String deselectedFeatureRevisionsString) {
+
+        // create subset repository
+        Repository.Op subsetOriginRepository;
+        try {
+            origService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            Repository.Op originRepository = (Repository.Op) origService.getRepository();
+            subsetOriginRepository = originRepository.subset(origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
+            origService.transactionStrategy.end();
+        } catch (Exception e) {
+            throw new EccoException("Error during local fork.", e);
+        }
+
+        try {
+            Repository.Op repository = (Repository.Op) this.getRepository();
+            repository.merge(subsetOriginRepository);
+
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.repositoryDao.store(repository);
+            this.transactionStrategy.end();
+        } catch (Exception e) {
             throw new EccoException("Error during local fork.", e);
         }
     }
@@ -1809,7 +1833,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                             featureRevisionToUpdate = revision;
                         }
                     }
-                }
+                }/**/
             }
             String config = "";
             for (FeatureRevision fr : featureRevisions) {

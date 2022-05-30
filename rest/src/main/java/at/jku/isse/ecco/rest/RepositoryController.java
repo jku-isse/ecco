@@ -6,6 +6,8 @@ import at.jku.isse.ecco.rest.classes.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 
+import java.util.Map;
+
 @Controller("/api/repository")
 public class RepositoryController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
@@ -34,9 +36,9 @@ public class RepositoryController {
     }
 
     @Put("/fork/{oldRId}/{name}")
-    @Consumes(MediaType.TEXT_PLAIN)
-    public RepoHeader[] forkRepository(@PathVariable int oldRId, @PathVariable String name, @Body String selectedFeatures) {
-        repositoryService.forkRepository(oldRId, name, selectedFeatures);
+    @Consumes(MediaType.APPLICATION_JSON)
+    public RepoHeader[] forkRepository(@PathVariable int oldRId, @PathVariable String name, @Body Map<String,String> body) {
+        repositoryService.forkRepository(oldRId, name, body.get("deselectedFeatures"));
         return getAllRepositories();
     }
 

@@ -1139,7 +1139,8 @@ public interface Repository extends Persistable {
 				}
 
 				// commit association to this repository
-				this.extract(association, null);
+				Commit commit = this.getEntityFactory().createCommit("merge");
+				this.extract(association, commit);
 			}
 		}
 

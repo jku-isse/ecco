@@ -53,7 +53,7 @@ public class RepositoryService {
         }
     }
 
-    public void createRepository(String name) {
+    public RepositoryHandler createRepository(String name) {
         Path p = repoStorage.resolve(name);
         if (p.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
@@ -67,11 +67,12 @@ public class RepositoryService {
         newRepo.createRepository();
         repositories.put(newId, newRepo);       //add to Map
         LOGGER.info(newId + ": repository created");
+        return repositories.get(newId);
     }
 
-    public void forkRepository(int oldRid, String name, String selectedFeatures) {
-
-
+    public void forkRepository(int oldRid, String name, String disabledFeatures) {
+        RepositoryHandler newRepo = createRepository(name);
+        newRepo.fork(repositories.get(oldRid), disabledFeatures);
     }
 
 
@@ -163,6 +164,7 @@ public class RepositoryService {
 
     // Variant ---------------------------------------------------------------------------------------------------------
     public RestRepository addVariant(int rId, String name, String config, String description) {
+        System.out.println("Variant added");
         return repositories.get(rId).addVariant(name, config, description);
     }
 
