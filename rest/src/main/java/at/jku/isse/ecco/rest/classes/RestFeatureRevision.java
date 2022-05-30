@@ -20,4 +20,8 @@ public class RestFeatureRevision {
     public String getFeatureRevisionString() {
         return featureRevision.getFeatureRevisionString();
     }
+
+    public String getFeatureName() { return featureRevision.getFeature().getName(); }
+
+    public String getFeatureRevisionIndex() { return featureRevision.getFeatureRevisionString().split("\\.")[1]; }
 }

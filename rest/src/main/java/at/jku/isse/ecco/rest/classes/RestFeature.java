@@ -18,7 +18,7 @@ public class RestFeature {
     }
 
     public String getName() {
-        return feature.getName().toUpperCase();
+        return feature.getName();
     }
 
     public String getDescription() {
