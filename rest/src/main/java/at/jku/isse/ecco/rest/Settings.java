@@ -14,9 +14,9 @@ public class Settings {
 
     private static String getAutoLocation() {
         if(Path.of(System.getProperty("user.dir")).getFileName().toString().equals("rest")) {
-            return Path.of(System.getProperty("user.dir")).getParent().resolve("examples").toString();
+            return Path.of(System.getProperty("user.dir")).getParent().resolve("serverRepositories").toString();
         } else {
-            return Path.of(System.getProperty("user.dir"), "examples").toString();
+            return Path.of(System.getProperty("user.dir"), "serverRepositories").toString();
         }
     }
 }
