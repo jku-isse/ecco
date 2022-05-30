@@ -602,7 +602,7 @@ public interface PartialOrderGraph extends Persistable {
 
 		public default void copy(PartialOrderGraph.Op other) {
 			//if (this.getHead().getNext().size() != 1 || this.getHead().getNext().iterator().next() != this.getTail())
-			if (!this.getHead().getNext().isEmpty())
+			if (!this.getHead().getNext().equals("NULL"))
 				throw new EccoException("Partial order graph must be empty to copy another.");
 
 			this.getHead().removeChild(this.getTail());
