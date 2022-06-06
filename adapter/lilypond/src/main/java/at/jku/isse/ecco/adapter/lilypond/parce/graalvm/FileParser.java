@@ -53,7 +53,7 @@ public class FileParser implements LilypondParser<ParceToken> {
     public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
 
-        Service service = new Service();
+        LilypondService service = new LilypondService();
         context.getBindings("python").putMember("service", service);
 
         context.eval("python", "f = open('" + path.toString() + "', 'r', -1, 'UTF-8');" +
@@ -61,75 +61,31 @@ public class FileParser implements LilypondParser<ParceToken> {
                 "f.close();" +
                 "lastPos = 0;");
 
-        /* TODO: the \ in lilypond code raises an exception in parce module (problem of GraalVM) - 26.11.2021
-         - if it is fixed, remove the line below */
-        context.eval("python", "for e in parce.events(LilyPond.root, 'g4 \\mf'):\n" +
+        /* TODO: the \ in lilypond code raises an exception in parce module (problem of GraalVM)
+         - if it is fixed, remove two lines below */
+        context.eval("python", "for e in parce.events(LilyPond.root, 'g4 \\mf'):\n" + // contains '\' to test if parsing works
                 "    print(e)");
 
-        context.eval("python", "for e in parce.events(LilyPond.root, s):\n" +
-            "    pop = 0\n" +
-            "    if e.target:\n" +
-            "        pop = e.target.pop\n" +
-            "        for c in e.target.push:\n" +
-            "            service.addContext(c.fullname)\n" +
-            "    print(e.lexemes)\n" +
-            "    for tpl in e.lexemes:\n" +
-            "        ws = s[lastPos:tpl[0]]\n" +
-            "        service.addToken(tpl[0], tpl[1], str(tpl[2]), ws)\n" +
-            "        lastPos = tpl[0] + len(tpl[1])\n" +
-            "    service.closeEvent(pop)");
+        context.eval("python", """
+                for e in parce.events(LilyPond.root, s):
+                    pop = 0
+                    if e.target:
+                        service.popContext(e.target.pop)
+                        first = e.lexemes[0]
+                        if first[0] > lastPos:
+                            service.addWhitespace(lastPos, s[lastPos:first[0]])
+                            lastPos = first[0] + len(first[1])
+                        for c in e.target.push:
+                            service.pushContext(c.fullname)
+                    for tpl in e.lexemes:
+                        if tpl[0] > lastPos:
+                            service.addWhitespace(lastPos, s[lastPos:tpl[0]])
+                        service.addToken(tpl[0], tpl[1], str(tpl[2]))
+                        lastPos = tpl[0] + len(tpl[1])
+                service.addWhitespace(lastPos, s[lastPos:])
+                """);
 
-        return convertEventsToNodes(service.getEvents(), tokenMetric);
-    }
-
-    /**
-     * Converts the token stream from Parce to a list of nodes.
-     *
-     * @param events List of parsing events.
-     * @param tokenMetric Map to be filled with token metric if not null.
-     * @return First node of list.
-     */
-    private LilypondNode<ParceToken> convertEventsToNodes(List<Service.ParseEvent> events, HashMap<String, Integer> tokenMetric) {
-        LOGGER.log(Level.INFO, "convert {0} events to tree", events.size());
-        int depth = 0, maxDepth = 0, cnt = 0;
-
-        LilypondNode<ParceToken> head = new LilypondNode<>("HEAD", null);
-        head.setLevel(depth);
-        LilypondNode<ParceToken> n = head;
-
-        Iterator<Service.ParseEvent> it = events.iterator();
-        while (it.hasNext()) {
-            Service.ParseEvent e = it.next();
-            int pop = e.getPopContext();
-            while (pop < 0) {
-                pop++;
-                depth--;
-
-                LOGGER.log(Level.FINER, "closed context (depth: {0})", depth);
-            }
-
-            for (String s : e.getContexts()) {
-                n = n.append(s, null, depth++);
-                cnt++;
-                LOGGER.log(Level.FINER, "opened {0}", n.getName());
-
-                maxDepth = Math.max(depth, maxDepth);
-            }
-
-            for (ParceToken t : e.getTokens()) {
-                if (null != tokenMetric) {
-                    tokenMetric.put(t.getAction(), tokenMetric.getOrDefault(t.getAction(), 0) + 1);
-                }
-
-                n = n.append(t.getAction(), t, depth);
-                cnt++;
-                LOGGER.log(Level.FINER, "added token node '{0}' (depth: {1})", new Object[] { t.getText(), depth });
-            }
-        }
-
-        LOGGER.log(Level.INFO, "done conversion to {0} nodes (maxdepth: {1})", new Object[] { cnt, maxDepth });
-
-        return head.getNext();
+        return service.getRoot();
     }
 
     public void shutdown() {

@@ -121,7 +121,6 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
                 this.entityFactory.createArtifact(ContextArtifactDataFactory.getContextArtifactData(n.getName())) :
                 this.entityFactory.createArtifact(TokenArtifactDataFactory.getTokenArtifactData(n.getData()));
 
-            assert node != null;
             if (n.getNext() != null && n.getNext().getLevel() > n.getLevel()) {
                 nop = this.entityFactory.createOrderedNode(a);
                 node.addChild(nop);
@@ -141,7 +140,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
                 node = node.getParent();
             }
             if (node == null && n != null) {
-                LOGGER.log(Level.SEVERE, "EccoNode is null after node {0}", cntNodes);
+                LOGGER.log(Level.SEVERE, "EccoNode is null after {0} nodes", cntNodes);
             }
         }
     }
