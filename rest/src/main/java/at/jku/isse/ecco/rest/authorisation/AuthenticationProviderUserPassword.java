@@ -14,16 +14,21 @@ import reactor.core.publisher.FluxSink;
 @Singleton
 public class AuthenticationProviderUserPassword implements AuthenticationProvider {
 
+    TestUserDB userDB = new TestUserDB();
     @Override
-    public Publisher<AuthenticationResponse> authenticate(@Nullable HttpRequest<?> httpRequest,
-                                                          AuthenticationRequest<?, ?> authenticationRequest) {
+    public Publisher<AuthenticationResponse> authenticate(@Nullable HttpRequest<?> httpRequest, AuthenticationRequest<?, ?> authenticationRequest) {
         return Flux.create(emitter -> {
-            if (authenticationRequest.getIdentity().equals("sherlock") &&
-                    authenticationRequest.getSecret().equals("password")) {
-                emitter.next(AuthenticationResponse.success((String) authenticationRequest.getIdentity()));
-                emitter.complete();
+            if (userDB.findUser(authenticationRequest.getIdentity().toString()) != null) {
+                User user = userDB.findUser(authenticationRequest.getIdentity().toString());
+                if (authenticationRequest.getIdentity().equals(user.getName()) &&
+                        authenticationRequest.getSecret().equals(user.getPassword())) {
+                    emitter.next(AuthenticationResponse.success((String) authenticationRequest.getIdentity(), user.getRoles()));
+                    emitter.complete();
+                } else {
+                    emitter.error(AuthenticationResponse.exception("Wrong password"));
+                }
             } else {
-                emitter.error(AuthenticationResponse.exception());
+                emitter.error(AuthenticationResponse.exception("User not found"));
             }
         }, FluxSink.OverflowStrategy.ERROR);
     }
