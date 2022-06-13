@@ -228,8 +228,9 @@ public class RepositoryService {
         return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
     }
 
-    public void pullFeaturesRepository(final int toRId, final String oldRId, final String selectedFeatures) {
-
+    public void pullFeaturesRepository(final int toRId, final int oldRId, final String deselectedFeatures) {
+        //TODO throw error if features are in bought repositories
+        repositories.get(toRId).fork(repositories.get(oldRId), deselectedFeatures);
     }
 
     // private methods -------------------------------------------------------------------------------------------------

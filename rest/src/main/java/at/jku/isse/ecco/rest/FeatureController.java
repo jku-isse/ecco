@@ -28,7 +28,8 @@ public class FeatureController {
     @Post("/pull")
     @Consumes(MediaType.APPLICATION_JSON)
     public RestRepository pullFeaturesRepository(@PathVariable int rId, @Body Map<String,String> body) {
-        repositoryService.pullFeaturesRepository(rId, body.get("fromRId"), body.get("selectedFeatures"));
+        int fromRId = Integer.parseInt(body.get("fromRId"));        //TODO handle exception
+        repositoryService.pullFeaturesRepository(rId, fromRId, body.get("deselectedFeatures"));
         return repositoryService.getRepository(rId);
     }
 }
