@@ -7,6 +7,8 @@ import io.micronaut.http.annotation.PathVariable;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.RequestAttribute;
 import io.micronaut.http.multipart.CompletedFileUpload;
+import io.micronaut.security.annotation.Secured;
+import io.micronaut.security.rules.SecurityRule;
 import org.reactivestreams.Publisher;
 import io.reactivex.Flowable;
 
@@ -14,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+@Secured(SecurityRule.IS_AUTHENTICATED)
 @Controller("/api/{rId}/commit")
 public class CommitController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();

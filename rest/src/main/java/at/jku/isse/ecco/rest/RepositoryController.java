@@ -5,9 +5,12 @@ import at.jku.isse.ecco.rest.classes.RepoHeader;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
+import io.micronaut.security.annotation.Secured;
+import io.micronaut.security.rules.SecurityRule;
 
 import java.util.Map;
 
+@Secured(SecurityRule.IS_AUTHENTICATED)
 @Controller("/api/repository")
 public class RepositoryController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
