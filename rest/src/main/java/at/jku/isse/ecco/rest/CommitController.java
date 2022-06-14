@@ -26,7 +26,8 @@ public class CommitController {
     public RestRepository makeCommit(@PathVariable int rId,
                                      Publisher<CompletedFileUpload> file,
                                      @RequestAttribute("message") String message,
-                                     @RequestAttribute("config") String config) {
+                                     @RequestAttribute("config") String config,
+                                    @RequestAttribute("username") String username){
 
         List<CompletedFileUpload> fileList = new ArrayList<>();
         Flowable.fromPublisher(file).subscribe(fileList::add);
@@ -34,7 +35,7 @@ public class CommitController {
         LOGGER.info(fileList.size() + " files uploaded.");
 
         //TODO change hardcoded Committer to username of frontend
-        return repositoryService.addCommit(rId, message, config, "Online Committer", fileList);
+        return repositoryService.addCommit(rId, message, config, username, fileList);
     }
 
 }
