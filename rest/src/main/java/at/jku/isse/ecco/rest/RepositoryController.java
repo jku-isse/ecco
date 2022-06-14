@@ -5,9 +5,14 @@ import at.jku.isse.ecco.rest.classes.RepoHeader;
 import at.jku.isse.ecco.rest.classes.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
+import io.micronaut.security.annotation.Secured;
+import io.micronaut.security.authentication.Authentication;
+import io.micronaut.security.authentication.AuthenticationResponse;
+import io.micronaut.security.rules.SecurityRule;
 
 import java.util.Map;
 
+@Secured(SecurityRule.IS_AUTHENTICATED)
 @Controller("/api/repository")
 public class RepositoryController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
@@ -46,5 +51,11 @@ public class RepositoryController {
     public RepoHeader[] deleteRepository(@PathVariable int rId) {
         repositoryService.deleteRepository(rId);
         return getAllRepositories();
+    }
+
+    @Get("/isAuthorized")
+    public AuthenticationResponse isAuthorized(Authentication authentication) {
+        System.out.println(authentication);
+        return AuthenticationResponse.success( authentication.getName(), authentication.getRoles());
     }
 }
