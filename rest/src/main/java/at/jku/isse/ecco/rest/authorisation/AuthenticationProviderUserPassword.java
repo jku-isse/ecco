@@ -23,6 +23,7 @@ public class AuthenticationProviderUserPassword implements AuthenticationProvide
                 if (authenticationRequest.getIdentity().equals(user.getName()) &&
                         authenticationRequest.getSecret().equals(user.getPassword())) {
                     emitter.next(AuthenticationResponse.success((String) authenticationRequest.getIdentity(), user.getRoles()));
+                    System.out.println((authenticationRequest.getIdentity()).toString() + " logged in");
                     emitter.complete();
                 } else {
                     emitter.error(AuthenticationResponse.exception("Wrong password"));
