@@ -120,7 +120,7 @@ public class DependencyGraph {
 			}
 
 			// parent
-			if (node.getParent() != null && node.getParent().getArtifact() != null) {
+			if (node.getParent() != null && node.getParent().getArtifact() != null && node.getParent().getArtifact().getContainingNode() != null ) {
 				Association parentA = node.getParent().getArtifact().getContainingNode().getContainingAssociation();
 
 				if (parentA != null) {
