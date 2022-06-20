@@ -602,8 +602,13 @@ public interface PartialOrderGraph extends Persistable {
 
 		public default void copy(PartialOrderGraph.Op other) {
 			//if (this.getHead().getNext().size() != 1 || this.getHead().getNext().iterator().next() != this.getTail())
+
+			//TODO Check if needed, blocks fork. Why is it "NULL" ....
+			//Check again befor merge
+			/*
 			if (!this.getHead().getNext().equals("NULL"))
 				throw new EccoException("Partial order graph must be empty to copy another.");
+			 */
 
 			this.getHead().removeChild(this.getTail());
 			this.setMaxIdentifier(other.getMaxIdentifier());
