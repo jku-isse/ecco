@@ -1647,7 +1647,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 }
             }
             if (!hasConfigurarion) {
-                MemVariant memVariant = new MemVariant("Commit Variant: " + commitMessage, configuration, UUID.randomUUID().toString());
+                MemVariant memVariant = new MemVariant("Commit" , configuration, UUID.randomUUID().toString());
+                memVariant.setDescription(commitMessage);
                 repository.addVariant(memVariant);
             }
 
