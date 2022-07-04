@@ -11,6 +11,10 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+/** Holds {@see EccoService} with one Repository
+ * EccoService gets initialized at first usage of the Repository.
+ * Each Repository has its own EccoService for Multi user support and performance (loading Repository takes some time)
+ */
 public class RepositoryHandler {
 
     private final int rId;
@@ -145,10 +149,9 @@ public class RepositoryHandler {
         return getRepository();
     }
 
-
     public void fork(RepositoryHandler origRepo, final String disabledFeatures) {
         if(origRepo.service == null) {
-            origRepo.getRepository();       //TODO change to better initialisation in general
+            origRepo.getRepository();
         }
         service.forkAlreadyOpen(origRepo.service, disabledFeatures);
     }

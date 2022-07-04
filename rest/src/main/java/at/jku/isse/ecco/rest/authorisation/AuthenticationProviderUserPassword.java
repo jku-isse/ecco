@@ -13,8 +13,9 @@ import reactor.core.publisher.FluxSink;
 
 @Singleton
 public class AuthenticationProviderUserPassword implements AuthenticationProvider {
+    //Adapted from https://guides.micronaut.io/latest/micronaut-security-jwt-gradle-java.html
 
-    TestUserDB userDB = new TestUserDB();
+    DummyUserDB userDB = new DummyUserDB();
     @Override
     public Publisher<AuthenticationResponse> authenticate(@Nullable HttpRequest<?> httpRequest, AuthenticationRequest<?, ?> authenticationRequest) {
         return Flux.create(emitter -> {
@@ -23,7 +24,7 @@ public class AuthenticationProviderUserPassword implements AuthenticationProvide
                 if (authenticationRequest.getIdentity().equals(user.getName()) &&
                         authenticationRequest.getSecret().equals(user.getPassword())) {
                     emitter.next(AuthenticationResponse.success((String) authenticationRequest.getIdentity(), user.getRoles()));
-                    System.out.println((authenticationRequest.getIdentity()).toString() + " logged in");
+                    System.out.println((authenticationRequest.getIdentity()).toString() + " logged-in");
                     emitter.complete();
                 } else {
                     emitter.error(AuthenticationResponse.exception("Wrong password"));

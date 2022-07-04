@@ -16,7 +16,6 @@ public class RestRepository implements Serializable {
     private final String name;
     private final EccoService service;
 
-
     public RestRepository(EccoService service, int rId, String name) {
         this.rId = rId;
         this.name = name;
@@ -57,10 +56,6 @@ public class RestRepository implements Serializable {
         return variants;
     }
 }
-
-    //private Collection<Association.Op> associations;
-    //private List<Map<MemModule, MemModule>> modules;
-
 
 
 

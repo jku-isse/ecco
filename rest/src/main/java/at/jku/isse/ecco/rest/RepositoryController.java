@@ -6,8 +6,6 @@ import at.jku.isse.ecco.rest.classes.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 import io.micronaut.security.annotation.Secured;
-import io.micronaut.security.authentication.Authentication;
-import io.micronaut.security.authentication.AuthenticationResponse;
 import io.micronaut.security.rules.SecurityRule;
 
 import java.util.Map;
@@ -17,7 +15,7 @@ import java.util.Map;
 public class RepositoryController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
-    @Get("/{rId}")
+    @Get("/{rId}")      //return Repository
     public RestRepository getRepository (@PathVariable int rId) {
         return repositoryService.getRepository(rId);
     }
@@ -33,29 +31,22 @@ public class RepositoryController {
         return getAllRepositories();
     }
 
-    //old Methode
-    @Put("/clone/{oldRId}/{name}")
+    @Put("/clone/{oldRId}/{name}")      //old Methode
     public RepoHeader[] cloneRepository(@PathVariable int oldRId, @PathVariable String name) {
         repositoryService.cloneRepository(oldRId, name);
         return getAllRepositories();
     }
 
-    @Put("/fork/{oldRId}/{name}")
+    @Put("/fork/{oldRId}/{name}")       //forks given repository (with selected features) to new Repository with given @name
     @Consumes(MediaType.APPLICATION_JSON)
     public RepoHeader[] forkRepository(@PathVariable int oldRId, @PathVariable String name, @Body Map<String,String> body) {
         repositoryService.forkRepository(oldRId, name, body.get("deselectedFeatures"));
         return getAllRepositories();
     }
 
-    @Delete("/{rId}")
+    @Delete("/{rId}")       //delete Repository
     public RepoHeader[] deleteRepository(@PathVariable int rId) {
         repositoryService.deleteRepository(rId);
         return getAllRepositories();
-    }
-
-    @Get("/isAuthorized")
-    public AuthenticationResponse isAuthorized(Authentication authentication) {
-        System.out.println(authentication);
-        return AuthenticationResponse.success( authentication.getName(), authentication.getRoles());
     }
 }

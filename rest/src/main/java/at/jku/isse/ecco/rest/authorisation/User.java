@@ -2,6 +2,10 @@ package at.jku.isse.ecco.rest.authorisation;
 
 import java.util.Collection;
 
+/** Dummy User
+ * replace by actual user from preexisting DB
+ */
+
 public class User {
     private final String name;
     private final String password;

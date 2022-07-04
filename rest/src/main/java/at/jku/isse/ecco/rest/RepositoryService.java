@@ -22,6 +22,11 @@ import java.util.zip.ZipOutputStream;
 
 import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
 
+/** "Main" class called by all controllers.
+ * Holds all RepositoryHandler
+ * only one instance possible (singleton)
+ */
+
 public class RepositoryService {
     private final Path repoStorage = Path.of(STORAGE_LOCATION_OF_REPOSITORIES);
     private final Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
@@ -110,7 +115,7 @@ public class RepositoryService {
         File[] files = folder.listFiles();
 
         if (files == null) {
-            throw new HttpStatusException(HttpStatus.NO_CONTENT, "No Repositories found");
+            throw new HttpStatusException(HttpStatus.NO_CONTENT, "No repositories found");
         }
 
         List<Path> paths =  repositories.values().stream().map(RepositoryHandler::getPath).toList();
@@ -156,7 +161,7 @@ public class RepositoryService {
             }
         }
 
-        repositories.get(rId).addCommit(message, config, commitFolder, committer);      //service commit
+        repositories.get(rId).addCommit(message, config, commitFolder, committer);      //handler commit
 
         LOGGER.info(rId + ": committed");
         return repositories.get(rId).getRepository();
@@ -164,7 +169,7 @@ public class RepositoryService {
 
     // Variant ---------------------------------------------------------------------------------------------------------
     public RestRepository addVariant(int rId, String name, String config, String description) {
-        System.out.println("Variant added");
+        LOGGER.info("Adding Variant");
         return repositories.get(rId).addVariant(name, config, description);
     }
 
@@ -192,7 +197,7 @@ public class RepositoryService {
         Path checkoutFolder = repositories.get(rId).getPath().resolve("checkout");
         Path checkoutZip = checkoutFolder.getParent().resolve("checkout.zip");
 
-        if(checkoutFolder.toFile().exists()){       //delete old checkout
+        if(checkoutFolder.toFile().exists()){       //delete old checkout folder
             if(!deleteDirectory(checkoutFolder.toFile())) {
                 throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old directory is not possible: " + checkoutFolder.getParent().getFileName().toString());
             }
@@ -207,7 +212,7 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutZip.getParent().getFileName().toString());
         }
 
-        repositories.get(rId).checkout(variantId, checkoutFolder);      //service checkout
+        repositories.get(rId).checkout(variantId, checkoutFolder);      //handler checkout
 
         try {
             zipFolder(checkoutFolder, checkoutZip);
@@ -229,8 +234,7 @@ public class RepositoryService {
     }
 
     public void pullFeaturesRepository(final int toRId, final int oldRId, final String deselectedFeatures) {
-        //TODO throw error if features are in bought repositories
-        repositories.get(toRId).fork(repositories.get(oldRId), deselectedFeatures);
+        repositories.get(toRId).fork(repositories.get(oldRId), deselectedFeatures);     //handler fork
     }
 
     // private methods -------------------------------------------------------------------------------------------------
@@ -257,6 +261,4 @@ public class RepositoryService {
         }
         return directoryToBeDeleted.delete();   //actual deletion
     }
-
-
 }

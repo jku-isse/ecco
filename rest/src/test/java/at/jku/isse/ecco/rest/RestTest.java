@@ -18,13 +18,14 @@ class RestTest {
     EmbeddedApplication<?> application;
 
     @Inject
-    @Client("/api")
+    @Client("/")
     HttpClient client;
 
     @Test
     void test() {
         System.out.println("TBE");
     }
+
 
     @Test
     void testItWorks() {

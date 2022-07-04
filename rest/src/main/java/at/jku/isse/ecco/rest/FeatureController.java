@@ -14,7 +14,6 @@ import java.util.Map;
 public class FeatureController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
-
     @Post("/{featureId}/description")
     @Consumes(MediaType.APPLICATION_JSON)
     public RestRepository setFeatureDescription(@PathVariable int rId, @PathVariable String featureId, @Body Map<String,String> body) {
@@ -30,7 +29,7 @@ public class FeatureController {
     @Post("/pull")
     @Consumes(MediaType.APPLICATION_JSON)
     public RestRepository pullFeaturesRepository(@PathVariable int rId, @Body Map<String,String> body) {
-        int fromRId = Integer.parseInt(body.get("fromRId"));        //TODO handle exception
+        int fromRId = Integer.parseInt(body.get("fromRId"));
         repositoryService.pullFeaturesRepository(rId, fromRId, body.get("deselectedFeatures"));
         return repositoryService.getRepository(rId);
     }

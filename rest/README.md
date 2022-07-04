@@ -1,3 +1,16 @@
+## Rest-API for Ecco
+
+This part provides a Rest-API for ECCO  
+The corresponding frontend can be found on [GitHub](https://github.com/MatthiasPreuner/ecco-client.git)
+
+To run the API use the Gradle commands under ecco-rest:
+- ecco-rest:build for the first initialization 
+- ecco-rest:run to start the server
+
+The server storage can be changed in the "Setting" class.  
+Users can be added by chancing the "DummyUserDB" class or add your own user database.
+
+
 ## Micronaut 3.4.1 Documentation
 
 - [User Guide](https://docs.micronaut.io/3.4.1/guide/index.html)

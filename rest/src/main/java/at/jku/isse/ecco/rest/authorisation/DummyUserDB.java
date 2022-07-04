@@ -9,11 +9,16 @@ enum Role {
     Admin, User
 }
 
-public class TestUserDB {
+/** Dummy User DB
+ * replace by preexisting DB or change Users in this DB
+ * Change usage also in @class AuthenticationProviderUserPassword
+ */
+public class DummyUserDB {
+
 
     List<User> users = new ArrayList<>();
 
-    public TestUserDB() {
+    public DummyUserDB() {
         users.add(new User("Thomas", "firstUser", Collections.singleton(Role.User)));
         users.add(new User("Max", "secondUser", Collections.singleton(Role.User)));
         users.add(new User("Tobias", "admin", Arrays.asList(Role.User, Role.Admin)) );
@@ -22,7 +27,6 @@ public class TestUserDB {
     }
 
     public User findUser(String name) {
-        //TODO find better way
         return users.stream().filter(x -> x.getName().equals(name)).findFirst().orElse(null);
     }
 
