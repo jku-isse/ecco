@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.rest;
 
-import io.micronaut.http.HttpRequest;
 import io.micronaut.http.client.HttpClient;
 import io.micronaut.http.client.annotation.Client;
 import io.micronaut.runtime.EmbeddedApplication;
@@ -32,13 +31,5 @@ class RestTest {
         Assertions.assertTrue(application.isRunning());
     }
 
-    @Test
-    void testCommitController() {
-            HttpRequest request = HttpRequest.GET("/repository/all");
-            String res = client.toBlocking().retrieve(request);
-            Assertions.assertEquals("test", res);
-            System.out.println("Executed: " + res);
-            Assertions.assertTrue(false);
-    }
 
 }
