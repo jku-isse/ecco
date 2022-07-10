@@ -1,0 +1,24 @@
+{
+  "properties": [
+    {
+      "name": "openWeatherMap.API",
+      "type": "java.lang.String",
+      "description": "Defines the API key that is used for retrieving the weather data from openweathermap.org."
+    },
+    {
+      "name": "openWeatherMap.version",
+      "type": "java.lang.String",
+      "description": "Determines the current version of openweathermap.org that is in use."
+    },
+    {
+      "name": "openWeatherMap.units",
+      "type": "java.lang.String",
+      "description": "Specifies the units openweathermap.org returns (metric or imperial)."
+    },
+    {
+      "name": "openWeatherMap.language",
+      "type": "java.lang.String",
+      "description": "Defines the language used for the weather information. For more information see https://openweathermap.org/current#multi."
+    }
+  ]
+}

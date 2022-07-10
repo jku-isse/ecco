@@ -1,0 +1,29 @@
+{
+  "properties": [
+    {
+      "name": "openweathermap.API",
+      "type": "java.lang.String",
+      "description": "Defines the API key that is used for retrieving the weather data from openweathermap.org."
+    },
+    {
+      "name": "openweathermap.version",
+      "type": "java.lang.String",
+      "description": "Determines the current version of openweathermap.org that is in use."
+    },
+    {
+      "name": "openweathermap.units",
+      "type": "java.lang.String",
+      "description": "Specifies the units openweathermap.org returns (metric or imperial)."
+    },
+    {
+      "name": "openweathermap.forecastDays",
+      "type": "java.lang.Integer",
+      "description": "Defines the amount of forecast days for openweathermap.org. Has to be in [1,16]."
+    },
+    {
+      "name": "smartmirror.language",
+      "type": "java.lang.String",
+      "description": "Defines the language for the application."
+    }
+  ]
+}

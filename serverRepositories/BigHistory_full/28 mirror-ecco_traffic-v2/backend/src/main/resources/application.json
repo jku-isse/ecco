@@ -1,0 +1,33 @@
+{
+  "openweathermap": {
+    "API": "Enter-API-KEY",
+    "version": "2.5",
+    "units": "metric",
+    "forecastDays": 7
+  },
+  "rss": {
+    "feeds": [
+      {
+        "id": "orf-news",
+        "title": "ORF - News",
+        "url": "https://rss.orf.at/news.xml",
+        "elements": 10
+      },
+      {
+        "id": "orf-sport",
+        "title": "ORF - Sport",
+        "url": "https://rss.orf.at/sport.xml",
+        "elements": 10
+      },
+      {
+        "id": "new-york-times",
+        "title": "New-York Times",
+        "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "elements": "10"
+      }
+    ]
+  },
+  "smartmirror": {
+    "language": "en"
+  }
+}

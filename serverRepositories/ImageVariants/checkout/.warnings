@@ -1,0 +1,15 @@
+MISSING: d^1(jacket.1, !person)
+MISSING: d^2(jacket.1, !glasses, !person)
+MISSING: d^2(jacket.1, !person, !purpleshirt)
+MISSING: d^1(stripedshirt.1, !person)
+MISSING: d^2(stripedshirt.1, !person, !purpleshirt)
+MISSING: d^2(stripedshirt.1, !glasses, !person)
+MISSING: d^2(jacket.1, !person, !hat)
+MISSING: d^2(stripedshirt.1, !person, !hat)
+MISSING: d^2(stripedshirt.1, jacket.1, !person)
+SURPLUS: d^2(person.1, stripedshirt.1, !purpleshirt) trace id: 7e46f97e-1e82-4ebd-ba17-b06451aa19ed
+SURPLUS: d^2(person.1, stripedshirt.1, jacket.1) trace id: b2c00d4f-3ed7-4336-afae-c02519279e30
+SURPLUS: d^1(person.1, jacket.1) trace id: d9564039-94bc-4e47-a65e-7c58b9407f9a
+SURPLUS: d^1(person.1, !purpleshirt) trace id: 7e46f97e-1e82-4ebd-ba17-b06451aa19ed
+SURPLUS: d^2(person.1, jacket.1, !purpleshirt) trace id: b2c00d4f-3ed7-4336-afae-c02519279e30
+SURPLUS: d^1(person.1, stripedshirt.1) trace id: 7e46f97e-1e82-4ebd-ba17-b06451aa19ed
