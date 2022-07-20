@@ -38,7 +38,7 @@ public class AdapterTest {
 	static {
         Path data = null;
         try {
-            data = Paths.get(Objects.requireNonNull(AdapterTest.class.getClassLoader().getResource("data")).toURI());
+            data = Paths.get(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("data")).toURI());
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
@@ -132,7 +132,7 @@ public class AdapterTest {
     public static Object[][] serializedNodesPaths() {
         // input and output path relative to the parent directory (e.g. ../ecco)
         return new String[][] {
-                {"lytests/debussy", "lytests/dieu_nodes"}
+                {"pathToDirectoryToSerializeLilypondFiles", "destinationDirectory"}
         };
     }
 

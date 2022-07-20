@@ -6,8 +6,6 @@ import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 import org.graalvm.polyglot.HostAccess;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

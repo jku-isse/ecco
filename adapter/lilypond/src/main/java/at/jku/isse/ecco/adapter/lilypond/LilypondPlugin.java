@@ -11,7 +11,7 @@ public class LilypondPlugin extends ArtifactPlugin {
 		return fileTypes;
 	}
 
-	private LilypondModule module = new LilypondModule();
+	private final LilypondModule module = new LilypondModule();
 
 	@Override
 	public String getPluginId() {

@@ -21,7 +21,7 @@ public class FileParser implements LilypondParser<ParceToken> {
     public static final int MAX_SCRIPT_TIMEOUT_SECONDS = 10;
     public static final String PARSER_SCRIPT_NAME = "LilypondParser_1.py";
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
-    protected static GatewayServerListener gatewayListener = getGatewayListener();
+    protected static final GatewayServerListener gatewayListener = getGatewayListener();
     private String pythonScript;
 
     public void init() throws IOException {

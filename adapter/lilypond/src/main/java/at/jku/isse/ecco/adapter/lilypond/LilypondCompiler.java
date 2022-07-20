@@ -16,15 +16,15 @@ import java.util.logging.Logger;
 public class LilypondCompiler {
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
 
-    private Path startupPath = Path.of(System.getProperty("user.dir"));
-    private Path basePath = startupPath.getParent();
+    private final Path startupPath = Path.of(System.getProperty("user.dir"));
+    private final Path basePath = startupPath.getParent();
     private final static Path lilypond_exe = getLilypondPath();
     private final static Path[] lilypond_searchPaths = getLilypondSearchPaths();
 
-    private Path workingDir = basePath.getParent().resolve("compiled");
-    private String inFile = "input.ly";
-    private String outName = "image";
-    private String outFile = "image.cropped.png";
+    private final Path workingDir = basePath.getParent().resolve("compiled");
+    private final String inFile = "input.ly";
+    private final String outName = "image";
+    private final String outFile = "image.cropped.png";
     private String lastError;
 
     public String getLastError() {
@@ -86,7 +86,11 @@ public class LilypondCompiler {
 
             if (exitCode == 0) {
                 LOGGER.log(Level.FINE, "Lilypond exited normal, code: {0}", exitCode);
-                image = new Image(Files.newInputStream(workingDir.resolve(outFile)));
+                if (Files.notExists(workingDir.resolve(outFile))) {
+                    lastError = "Lilypond could not create an image.";
+                } else {
+                    image = new Image(Files.newInputStream(workingDir.resolve(outFile)));
+                }
 
             } else {
                 lastError = sjErr.toString();
@@ -136,7 +140,11 @@ public class LilypondCompiler {
         String configFile = "lilypond-config.properties";
         if (PROPERTIES == null) {
             PROPERTIES = new Properties();
-            try (InputStream in = LilypondCompiler.class.getClassLoader().getResourceAsStream("lilypond-config.properties")) {
+            try (InputStream in = LilypondCompiler.class.getClassLoader().getResourceAsStream(configFile)) {
+                if (in == null) {
+                    LOGGER.log(Level.INFO, "configuration file " + configFile + " not found");
+                    return null;
+                }
                 PROPERTIES.load(in);
 
             } catch (IOException ex) {
