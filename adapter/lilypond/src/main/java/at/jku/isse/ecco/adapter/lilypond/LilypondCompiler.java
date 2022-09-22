@@ -121,7 +121,7 @@ public class LilypondCompiler {
     private static Path[] getLilypondSearchPaths() {
         String prop = getProperty("lilypond_search_paths");
         if (prop != null && !prop.isEmpty()) {
-            String[] paths = prop.split("|");
+            String[] paths = prop.split("[|]");
             Path[] result = new Path[paths.length];
             for (int i = 0; i < paths.length; i++) {
                 result[i] = Path.of(paths[i]);
