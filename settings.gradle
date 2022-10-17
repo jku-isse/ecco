@@ -16,6 +16,8 @@ include 'adapter-challenge'
 include 'adapter-runtime'
 include 'adapter-cpp'
 
+include 'adapter-python'
+project(':adapter-python').projectDir = file('adapter/python')
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
