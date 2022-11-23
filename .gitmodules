@@ -1,0 +1,3 @@
+[submodule "adapter/python"]
+	path = adapter/python
+	url = https://github.com/MatthiasPreuner/ecco-adapter-python.git

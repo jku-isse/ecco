@@ -1,3 +1,0 @@
-
-# ECCO Python Adapter
-
