@@ -11,6 +11,8 @@ include 'adapter-file'
 include 'adapter-text'
 include 'adapter-image'
 include 'adapter-java'
+include 'adapter-xml'
+include 'adapter-eplan'
 //include 'adapter-java-patched'
 include 'adapter-challenge'
 include 'adapter-runtime'
@@ -26,6 +28,8 @@ project(':web').projectDir = file('web')
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
+project(':adapter-xml').projectDir = file('adapter/xml')
+project(':adapter-eplan').projectDir = file('adapter/eplan')
 //project(':adapter-java').projectDir = file('adapter/java-patched')
 project(':adapter-java').projectDir = file('adapter/java')
 project(':adapter-challenge').projectDir = file('adapter/challenge')

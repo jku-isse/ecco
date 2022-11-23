@@ -19,3 +19,5 @@ test-output
 /adapter/java-patched/
 adapter-java-patched
 /serverRepositories
+/adapter/xml/*
+/adapter/eplan/*

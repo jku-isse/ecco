@@ -22,6 +22,8 @@ dependencies {
 	testImplementation project(':ecco-adapter-file')
 	//testRuntimeOnly project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-text')
+    testImplementation project(':ecco-adapter-xml')
+    testImplementation project(':ecco-adapter-eplan')
 	testRuntimeOnly project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-challenge')
 	testImplementation project(':ecco-adapter-cpp')
