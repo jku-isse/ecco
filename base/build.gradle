@@ -18,6 +18,7 @@ dependencies {
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-text')
+	testImplementation project(':ecco-adapter-python')
 //	testImplementation project(':ecco-adapter-java')
 //	testImplementation project(':ecco-adapter-java-patched')
 

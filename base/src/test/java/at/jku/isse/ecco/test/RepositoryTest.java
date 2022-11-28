@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.test;
 
+import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.service.EccoService;
 import com.google.common.io.RecursiveDeleteOption;
 import org.testng.Assert;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
@@ -178,6 +180,13 @@ public class RepositoryTest {
         service.setRepositoryDir(p);
         service.init();
 
+        Collection<ArtifactPlugin> coll = service.getArtifactPlugins();
+        boolean pythonPluginLoaded = service.getArtifactPlugins().stream().anyMatch(pl -> pl.getName().equals("PythonArtifactPlugin"));
+        if(!pythonPluginLoaded){
+            System.out.println("Python Plugin not loaded ... skipping tests...");
+            return;
+        }
+
         // make commits
         String[] commits = new String[]{
                 "V1_purpleshirt",
@@ -201,7 +210,12 @@ public class RepositoryTest {
         // checkout variants
         String[] checkouts = new String[]{
                 "person.1, purpleshirt.1, glasses.1, hat.1",
-                "person.1, purpleshirt.1, glasses.1"
+                "person.1",
+                "purpleshirt.1",
+                "jacket.1",
+                "stripedshirt.1",
+                "glasses.1",
+                "hat.1"
         };
 
         for (int i = 0; i < checkouts.length; i++) {
