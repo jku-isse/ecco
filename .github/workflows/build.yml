@@ -40,3 +40,11 @@ jobs:
         gradle-version: 7.4.1
         arguments: test
         build-root-directory: rest    
+        
+    - name: Publish to GitHub Packages
+      uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
+      with:
+        arguments: publish
+      env:
+        USERNAME: ${{ github.actor }}
+        TOKEN: ${{ secrets.GITHUB_TOKEN }}
