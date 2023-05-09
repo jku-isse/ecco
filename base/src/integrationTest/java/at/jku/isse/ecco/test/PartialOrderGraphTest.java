@@ -5,20 +5,21 @@ import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraph;
 import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraphNode;
+import javafx.scene.Scene;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
+import org.graphstream.ui.fx_viewer.FxViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewer;
+import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
-import org.graphstream.ui.swingViewer.ViewPanel;
 import org.graphstream.ui.view.Viewer;
 import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import javax.swing.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -693,9 +694,9 @@ public class PartialOrderGraphTest {
 
 		graph.setStrict(false);
 
-		graph.addAttribute("ui.quality");
-		graph.addAttribute("ui.antialias");
-		graph.addAttribute("ui.stylesheet", " node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
+		graph.setAttribute("ui.quality");
+		graph.setAttribute("ui.antialias");
+		graph.setAttribute("ui.stylesheet", " node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
 
 		this.traversePartialOrderGraph(graph, pog.getHead(), null, new HashMap<>());
 
@@ -703,35 +704,16 @@ public class PartialOrderGraphTest {
 		graph.addSink(layout);
 		layout.addAttributeSink(graph);
 
-		//Viewer viewer = graph.display();
-		Viewer viewer = new Viewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-		//viewer.setCloseFramePolicy(Viewer.CloseFramePolicy.CLOSE_VIEWER);
+		FxViewer viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
 		viewer.enableAutoLayout();
 
-		ViewPanel view = viewer.addDefaultView(false); // false indicates "no JFrame"
+		FxViewPanel view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
 
-		Object lock = new Object();
-		JFrame frame = new JFrame();
-		frame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent arg0) {
-				synchronized (lock) {
-					frame.setVisible(false);
-					lock.notify();
-				}
-			}
-		});
-		frame.add(view);
-		frame.setSize(300, 300);
-		frame.setVisible(true);
-
-		synchronized (lock) {
-			while (frame.isVisible())
-				try {
-					lock.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+		Scene scene = new Scene(view, 300, 300);
+		try {
+			JavaFxLauncher.setScene(scene);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 
 //		try {
@@ -782,6 +764,10 @@ public class PartialOrderGraphTest {
 		return artifact;
 	}
 
+	@BeforeClass
+	public void setup() throws InterruptedException {
+		JavaFxLauncher.initialize();
+	}
 
 	@BeforeTest(alwaysRun = true)
 	public void beforeTest() {
@@ -794,3 +780,4 @@ public class PartialOrderGraphTest {
 	}
 
 }
+

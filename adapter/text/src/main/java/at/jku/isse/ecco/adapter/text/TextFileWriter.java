@@ -59,7 +59,6 @@ public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 		return output.toArray(new Path[0]);
 	}
 
-
 	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override

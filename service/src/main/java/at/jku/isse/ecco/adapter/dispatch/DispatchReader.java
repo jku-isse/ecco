@@ -82,6 +82,9 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		this.prioritizedPatterns = new HashMap<>();
 	}
 
+	public void addAdapterMappings(String pattern, ArtifactReader<Path, Set<Node.Op>> reader) {
+		this.adapterMappings.add(new Mapping(pattern, reader));
+	}
 
 	public class Mapping {
 		private String pattern;

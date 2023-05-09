@@ -40,7 +40,7 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	static {
 		prioritizedPatterns = new HashMap<>();
-		prioritizedPatterns.put(1, new String[]{"**.txt", "**.md", "**.xml", "**.html", "**.css", "**.js", "**.java", "**.c", "**.h", "**.cpp", "**.hpp"});
+		prioritizedPatterns.put(1, new String[]{"**.txt", "**.md", "**.xml", "**.html", "**.css", "**.js", "**.java"});//, "**.c", "**.h", "**.cpp", "**.hpp"});
 	}
 
 	@Override

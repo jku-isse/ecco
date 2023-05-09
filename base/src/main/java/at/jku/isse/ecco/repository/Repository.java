@@ -21,6 +21,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
 
+import java.io.ObjectInputFilter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,27 @@ public interface Repository extends Persistable {
 
 	public Collection<? extends Association> getAssociations();
 
+	public ArrayList<Variant> getVariants();
+
+	public Variant getVariant(Configuration configuration);
+
+	public Variant getVariant(String id);
+
+	public Association getAssociation(String id);
+
+	public ArrayList<Feature> getFeature();
+
+	public void addVariant(Variant variant);
+
+	public void removeVariant(Variant variant);
+
+	public void updateVariant(Variant variant, Configuration configuration, String name);
+
+	public void setCommits(Collection<Commit> commits);
+
+	public Collection<Commit> getCommits();
+
+	public void addCommit(Commit commit);
 
 	/**
 	 * Private repository interface.
@@ -78,16 +100,19 @@ public interface Repository extends Persistable {
 
 		public Feature addFeature(String id, String name);
 
+		public void addVariant(Variant variant);
 
 		public void addAssociation(Association.Op association);
 
+		public void removeVariant(Variant variant);
+
 		public void removeAssociation(Association.Op association);
 
+		public Module getOrphanedModule(Feature[] posFeatures, Feature[] neg);
 
 		public int getMaxOrder();
 
 		public void setMaxOrder(int maxOrder);
-
 
 		public EntityFactory getEntityFactory();
 
@@ -100,8 +125,6 @@ public interface Repository extends Persistable {
 		 * @return The module or null if it does not exist.
 		 */
 		public Module getModule(Feature[] pos, Feature[] neg);
-
-		public Module getOrphanedModule(Feature[] pos, Feature[] neg);
 
 		/**
 		 * Checks if the given module already exists and throws an exception if it does.
@@ -403,12 +426,13 @@ public interface Repository extends Persistable {
 				association.addObservation(moduleRevision);
 			}
 
-			// do actual extraction
-			this.extract(association);
-
 			// create commit object
 			Commit commit = this.getEntityFactory().createCommit();
 			commit.setConfiguration(repoConfiguration);
+			addCommit(commit);
+
+			// do actual extraction
+			this.extract(association, commit);
 
 			return commit;
 		}
@@ -422,7 +446,7 @@ public interface Repository extends Persistable {
 			checkNotNull(inputAs);
 
 			for (Association.Op inputA : inputAs) {
-				this.extract(inputA);
+				this.extract(inputA, null);
 			}
 		}
 
@@ -431,7 +455,7 @@ public interface Repository extends Persistable {
 		 *
 		 * @param association The association to be committed.
 		 */
-		public default void extract(Association.Op association) {
+		public default void extract(Association.Op association, Commit commit) {
 			checkNotNull(association);
 
 			Trees.checkConsistency(association.getRootNode());
@@ -456,10 +480,14 @@ public interface Repository extends Persistable {
 				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
 					toAdd.add(intA);
 
-					Trees.checkConsistency(intA.getRootNode());
+					commit.addAssociation(intA);		// add association to new commit
+					for (Commit c : getCommits()) {		// updates associations in previous commits
+						if (c.containsAssociation(origA)) {
+							c.addAssociation(intA);
+						}
+					}
 
-					//intA.add(origA);
-					//intA.add(association);
+					Trees.checkConsistency(intA.getRootNode());
 					intA.getCounter().add(origA.getCounter());
 					intA.getCounter().add(association.getCounter());
 				}
@@ -469,12 +497,21 @@ public interface Repository extends Persistable {
 					Trees.checkConsistency(origA.getRootNode());
 				} else {
 					toRemove.add(origA);
+
+					commit.deleteAssociation(origA);			// delete association from new commit		//TODO can there even be any?
+					for (Commit c : getCommits()) {				// updates associations in previous commits
+						if (c.containsAssociation(origA)) {
+							c.deleteAssociation(origA);
+						}
+					}
+
 				}
 			}
 
 			// REMAINDER
 			if (!association.getRootNode().getChildren().isEmpty()) { // if the remainder is not empty store it
 				toAdd.add(association);
+				commit.addAssociation(association);
 
 				Trees.sequence(association.getRootNode());
 				Trees.updateArtifactReferences(association.getRootNode());
@@ -614,7 +651,8 @@ public interface Repository extends Persistable {
 			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
 			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
 			Set<ModuleRevision> missingModules = new HashSet<>();
-			Set<ModuleRevision> surplusModules = new HashSet<>();
+			//Set<ModuleRevision> surplusModules = new HashSet<>();
+			Map<ModuleRevision,String> surplusModules = new HashMap<>();
 
 			// compute missing
 			for (ModuleRevision desiredModuleRevision : desiredModules) {
@@ -640,7 +678,7 @@ public interface Repository extends Persistable {
 						if (entry.getValue() != null) {
 							for (ModuleRevision existingModuleRevision : entry.getValue()) {
 								if (!desiredModules.contains(existingModuleRevision)) {
-									surplusModules.add(existingModuleRevision);
+									surplusModules.put(existingModuleRevision,association.getId());
 								}
 							}
 						}
@@ -648,11 +686,12 @@ public interface Repository extends Persistable {
 				}
 			}
 
-			checkout.getSurplus().addAll(surplusModules);
+			checkout.setSurplusModules(surplusModules);
 			checkout.getMissing().addAll(missingModules);
 
 			return checkout;
 		}
+
 
 		public default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {
 			Node compRootNode;
@@ -1099,7 +1138,7 @@ public interface Repository extends Persistable {
 				}
 
 				// commit association to this repository
-				this.extract(association);
+				this.extract(association, null);
 			}
 		}
 
@@ -1250,5 +1289,6 @@ public interface Repository extends Persistable {
 		}
 
 	}
+
 
 }

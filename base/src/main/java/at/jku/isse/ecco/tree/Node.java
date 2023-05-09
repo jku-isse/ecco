@@ -47,6 +47,13 @@ public interface Node extends Persistable {
 		public void visit(Node node);
 	}
 
+	/**
+	 * Self reference which can be used by adapters.
+	 * @return Instance of the node.
+	 */
+	default Node getNode() {
+		return this;
+	}
 
 	/**
 	 * Returns whether this node is atomic or not.

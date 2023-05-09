@@ -17,8 +17,9 @@ public interface Feature extends Persistable {
 
 	public FeatureRevision getOrphanedRevision(String id);
 
-
 	public FeatureRevision getLatestRevision();
+
+	public Feature feature(String name);
 
 
 	/**

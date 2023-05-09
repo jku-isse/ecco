@@ -43,7 +43,6 @@ public class AwtImageWriter implements ArtifactWriter<Set<Node>, BufferedImage> 
 		return output.toArray(new BufferedImage[output.size()]);
 	}
 
-
 	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override

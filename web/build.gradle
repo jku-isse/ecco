@@ -15,14 +15,14 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 
 dependencies {
 	testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.30'
-	compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
-	compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.1.1'
-	compile group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '2.31'
-	compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '2.31'
-	compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.31'
-	compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.31'
+	implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
+	implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.1.1'
+	implementation group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '2.31'
+	implementation group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '2.31'
+	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.31'
+	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.31'
 
-	compile group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
+	implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
 
 	implementation project(':ecco-service')
 

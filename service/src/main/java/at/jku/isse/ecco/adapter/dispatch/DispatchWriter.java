@@ -149,5 +149,4 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			this.fireWriteEvent(pluginArtifactData.getPath(), writer);
 		}
 	}
-
 }
