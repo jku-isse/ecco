@@ -1,0 +1,50 @@
+plugins {
+	id 'org.openjfx.javafxplugin' version '0.0.10'
+}
+
+ecco.adapter = true
+
+javafx {
+	version = "16"
+	modules = [ 'javafx.controls' ]
+}
+
+sourceSets {
+	main {
+		if (!use_py4j_parser.toBoolean()) {
+			java {
+				exclude '**/py4j/**'
+			}
+		}
+		if (!use_graalvm_parser.toBoolean()) {
+			java {
+				exclude '**/graalvm/**'
+			}
+			resources {
+				exclude 'graalVM-config.properties'
+			}
+		}
+		if (!use_lilypond.toBoolean()) {
+			resources {
+				exclude 'lilypond-config.properties'
+			}
+		}
+	}
+}
+
+dependencies {
+	implementation project(':ecco-service')
+	if (use_py4j_parser.toBoolean()) {
+		println 'include py4j dependency'
+		implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
+	}
+	if (use_graalvm_parser.toBoolean()) {
+		println 'include graalvm dependency'
+		implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
+	}
+}
+
+ospackage {
+	requires('ecco-base', version, EQUAL)
+	requires('ecco-service', version, EQUAL)
+}

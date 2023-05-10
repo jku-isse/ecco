@@ -6,13 +6,18 @@ include 'cli'
 include 'gui'
 include 'web'
 
+//include 'storage-neo4j'
+
 include 'adapter-file'
 include 'adapter-text'
 include 'adapter-image'
-include 'adapter-java'
 include 'adapter-challenge'
-include 'adapter-runtime'
+//include 'adapter-java'
+//include 'adapter-java-8'
 include 'adapter-cpp'
+include 'adapter-runtime'
+
+//include 'preprocessor'
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
@@ -20,13 +25,17 @@ project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
 
+//project(':storage-neo4j').projectDir = file('storage/neo4j')
+
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
-project(':adapter-java').projectDir = file('adapter/java')
 project(':adapter-challenge').projectDir = file('adapter/challenge')
-project(':adapter-runtime').projectDir = file('adapter/runtime')
+//project(':adapter-java').projectDir = file('adapter/java')
+//project(':adapter-java').projectDir = file('adapter/java8')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
+project(':adapter-runtime').projectDir = file('adapter/runtime')
 
+//project(':preprocessor').projectDir = file('preprocessor')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }

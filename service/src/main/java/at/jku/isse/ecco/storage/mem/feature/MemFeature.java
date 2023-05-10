@@ -2,6 +2,7 @@ package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
 
 import java.util.ArrayList;
 import java.util.Collection;

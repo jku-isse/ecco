@@ -1,10 +1,17 @@
 plugins {
-	id 'nebula.ospackage' version '8.0.3'
+	id 'nebula.ospackage' version '9.0.0'
+	id 'pmd'
+	//id 'checkstyle'
 }
 
 allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
+	apply plugin: 'pmd'
+
+	pmd {
+		ignoreFailures = true
+	}
 }
 
 subprojects {
@@ -18,9 +25,10 @@ subprojects {
 	apply plugin: 'java'
 	apply plugin: 'maven-publish'
 	apply plugin: 'nebula.ospackage'
+	//apply plugin: 'checkstyle'
 
-	sourceCompatibility = JavaVersion.VERSION_13
-	targetCompatibility = JavaVersion.VERSION_13
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
 
 	repositories {
 		mavenCentral()
@@ -69,6 +77,7 @@ subprojects {
 		useTestNG() {
 			suites 'src/integrationTest/resources/testng.xml'
 		}
+//		duplicatesStrategy = DuplicatesStrategy.INCLUDE
 		classpath = sourceSets.integrationTest.runtimeClasspath
 		outputs.upToDateWhen { false }
 	}
@@ -76,6 +85,10 @@ subprojects {
 		new File(getProjectDir(), 'src/integrationTest/resources/testng.xml').exists()
 	}
 	check.dependsOn -= integrationTest
+
+	tasks.named("processIntegrationTestResources") {
+		duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	}
 
 	tasks.withType(Test) {
 		reports.html.destination = file("${reporting.baseDir}/${name}")
@@ -215,14 +228,14 @@ subprojects {
 		into project.file('build/bundle/')
 	}
 	task copyDependencies(type: Copy) {
-		from(project.configurations.runtime)
+		from(project.configurations.runtimeOnly)
 		into project.file('build/bundle/lib/')
 	}
 	task bundle(dependsOn: [copyJars, copyDependencies])
 
 	task depTest {
-		def temp = project.configurations.runtime
-		project.configurations.findAll { it.name.equals("runtime"); }.collectMany { it.allDependencies }.findAll {
+		def temp = project.configurations.runtimeOnly
+		project.configurations.findAll { it.name.equals("runtimeOnly"); }.collectMany { it.allDependencies }.findAll {
 			it instanceof ProjectDependency
 		}.collect { it.dependencyProject.jar.outputs.files }.each { println it };
 	}
@@ -239,14 +252,14 @@ task combinedjavadoc(type: Javadoc, group: "documentation") {
 
 task combinedrpm(type: Copy, group: 'packaging') {
 	dependsOn subprojects.rpm
-	into "$project.distsDir/rpm"
+	into "$project.distsDirectory/rpm"
 	//from project.subprojects.collect { it.rpm.archivePath }
 	from subprojects.rpm.archivePath
 }
 
 task combineddeb(type: Copy, group: 'packaging') {
 	dependsOn subprojects.deb
-	into "$project.distsDir/deb"
+	into "$project.distsDirectory/deb"
 	//from project.subprojects.collect { it.deb.archivePath }
 	from subprojects.deb.archivePath
 }
@@ -254,7 +267,7 @@ task combineddeb(type: Copy, group: 'packaging') {
 task combinedLinuxZip(type: Zip, group: 'packaging') {
 	into project.name
 	archiveClassifier = 'linux'
-	destinationDirectory = file("$project.distsDir/zip")
+	destinationDirectory = file("$project.distsDirectory/zip")
 	from { subprojects.linuxZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
@@ -262,7 +275,7 @@ task combinedLinuxZip(type: Zip, group: 'packaging') {
 task combinedWindowsZip(type: Zip, group: 'packaging') {
 	into project.name
 	archiveClassifier = 'windows'
-	destinationDirectory = file("$project.distsDir/zip")
+	destinationDirectory = file("$project.distsDirectory/zip")
 	from { subprojects.windowsZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

@@ -103,6 +103,7 @@ public class MemModule implements Module {
 	}
 
 
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

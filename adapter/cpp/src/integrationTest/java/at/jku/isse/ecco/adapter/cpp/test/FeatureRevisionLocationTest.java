@@ -3,6 +3,7 @@ package at.jku.isse.ecco.adapter.cpp.test;
 import at.jku.isse.ecco.service.EccoService;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
+import com.opencsv.exceptions.CsvException;
 import difflib.Delta;
 import difflib.DiffUtils;
 import difflib.Patch;
@@ -122,7 +123,7 @@ public class FeatureRevisionLocationTest {
     //get the metrics of each and for all the target projects together.
     //To compute the metrics of variants this is considering all the files match and to compute files metrics this is considering all the lines match
     @org.testng.annotations.Test
-    public void GetCSVInformationTotalTest() throws IOException {
+    public void GetCSVInformationTotalTest() throws IOException, CsvException {
         //set into this list of File the folders with csv files resulted from the comparison of variants of each target project
         File[] folder = {new File(marlinFolder),
                 new File(libsshFolder),

@@ -124,11 +124,9 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		showEmptyAssociationsCheckBox.setSelected(false);
 		useSimplifiedLabelsCheckBox.setSelected(true);
 
+		Platform.runLater(() -> statusChangedEvent(service));
 
 		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
 	}
 
 

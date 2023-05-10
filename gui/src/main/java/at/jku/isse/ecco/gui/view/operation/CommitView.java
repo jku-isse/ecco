@@ -50,7 +50,7 @@ public class CommitView extends OperationView implements EccoListener {
 		this.splitPane.setOrientation(Orientation.VERTICAL);
 
 		// commit detail view
-		this.commitDetailView = new CommitDetailView(service);
+		this.commitDetailView = new CommitDetailView();
 
 		// log table
 		this.logTable = new TableView<>();
@@ -121,14 +121,22 @@ public class CommitView extends OperationView implements EccoListener {
 		gridPane.add(selectBaseDirectoryButton, 2, row, 1, 1);
 		row++;
 
+		Label commitMessageLabel = new Label("Commit Message: ");
+		gridPane.add(commitMessageLabel, 0, row, 1, 1);
+
+		TextField commitMessageStringTextField = new TextField();
+		commitMessageStringTextField.setDisable(false);
+		commitMessageLabel.setLabelFor(commitMessageStringTextField);
+		gridPane.add(commitMessageStringTextField, 1, row, 3, 1);
+		row++;
 
 		Label configurationStringLabel = new Label("Configuration: ");
-		gridPane.add(configurationStringLabel, 0, row, 1, 1);
+		gridPane.add(configurationStringLabel, 0, row, 3, 1);
 
 		TextField configurationStringTextField = new TextField();
 		configurationStringTextField.setDisable(false);
 		configurationStringLabel.setLabelFor(configurationStringTextField);
-		gridPane.add(configurationStringTextField, 1, row, 2, 1);
+		gridPane.add(configurationStringTextField, 1, row, 3, 1);
 		row++;
 
 
@@ -145,6 +153,7 @@ public class CommitView extends OperationView implements EccoListener {
 			if (selectedDirectory != null) {
 				baseDirTextField.setText(selectedDirectory.toPath().toString());
 			}
+			configurationStringTextField.setText(this.service.getConfigStringFromFile(selectedDirectory.toPath()));		//sets configuration string if .config file found
 		});
 
 
@@ -153,6 +162,7 @@ public class CommitView extends OperationView implements EccoListener {
 
 			Path baseDir = Paths.get(baseDirTextField.getText());
 			String configurationString = configurationStringTextField.getText();
+			String commitMessage = commitMessageStringTextField.getText();
 
 			this.service.setBaseDir(baseDir);
 
@@ -163,9 +173,9 @@ public class CommitView extends OperationView implements EccoListener {
 				@Override
 				public Commit call() {
 					if (!configurationString.isEmpty())
-						return CommitView.this.service.commit(configurationString);
+						return CommitView.this.service.commit(commitMessage, configurationString);
 					else
-						return CommitView.this.service.commit();
+						return CommitView.this.service.commit(commitMessage);
 				}
 
 				@Override
@@ -204,7 +214,7 @@ public class CommitView extends OperationView implements EccoListener {
 
 		this.fit();
 
-		Platform.runLater(configurationStringTextField::requestFocus);
+		Platform.runLater(commitMessageStringTextField::requestFocus);
 	}
 
 	/**

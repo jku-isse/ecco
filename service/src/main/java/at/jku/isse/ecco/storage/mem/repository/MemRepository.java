@@ -2,6 +2,7 @@ package at.jku.isse.ecco.storage.mem.repository;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Variant;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -21,24 +22,21 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	public static final long serialVersionUID = 1L;
 
-
 	private Map<String, MemFeature> features;
 	private Collection<Association.Op> associations;
 	private ArrayList<Variant> variants;
 	private List<Map<MemModule, MemModule>> modules;
-
+	private Collection<Commit> commits;
 	private int maxOrder;
 
-
 	public MemRepository() {
-		//this.features = new HashMap<>();
 		this.features = Maps.mutable.empty();
 		this.associations = new ArrayList<>();
 		this.variants =  new ArrayList<>();
 		this.modules = new ArrayList<>();
+		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
 	}
-
 
 	@Override
 	public Collection<Feature> getFeatures() {
@@ -95,6 +93,23 @@ public final class MemRepository implements Repository, Repository.Op {
 		return features;
 	}
 
+	@Override
+	public void setCommits(Collection<Commit> commits) {
+		this.commits = commits;
+	}
+
+	@Override
+	public Collection<Commit> getCommits() {
+		return commits;
+	}
+
+	@Override
+	public void addCommit(final Commit commit) {
+		do {		//sets id
+			commit.setId(UUID.randomUUID().toString());
+		} while(getCommits().contains(commit));		//Just to make sure no Id is given twice
+		commits.add(commit);
+	}
 
 	@Override
 	public Collection<? extends Module> getModules(int order) {
@@ -105,6 +120,15 @@ public final class MemRepository implements Repository, Repository.Op {
 	@Override
 	public MemFeature getFeature(String id) {
 		return this.features.get(id);
+	}
+
+	@Override
+	public Feature getOrphanedFeature(String id, String name) {
+		MemFeature feature = this.getFeature(id);
+		if (feature == null) {
+			feature = new MemFeature(id, name);
+		}
+		return feature;
 	}
 
 	@Override
@@ -145,24 +169,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.associations.remove(association);
 	}
 
-	@Override
-	public Feature getOrphanedFeature(String id, String name) {
-		MemFeature feature = this.getFeature(id);
-		if (feature == null) {
-			feature = new MemFeature(id, name);
-		}
-		return feature;
-	}
-
-	@Override
-	public Module getOrphanedModule(Feature[] pos, Feature[] neg) {
-		MemModule module = this.getModule(pos, neg);
-		if (module == null) {
-			module = new MemModule(pos, neg);
-		}
-		return module;
-	}
-
 
 	@Override
 	public int getMaxOrder() {
@@ -178,17 +184,24 @@ public final class MemRepository implements Repository, Repository.Op {
 		}
 	}
 
-
 	@Override
 	public EntityFactory getEntityFactory() {
 		return new MemEntityFactory();
 	}
 
-
 	@Override
 	public MemModule getModule(Feature[] pos, Feature[] neg) {
 		MemModule queryModule = new MemModule(pos, neg);
 		return this.modules.get(queryModule.getOrder()).get(queryModule);
+	}
+
+	@Override
+	public Module getOrphanedModule(Feature[] pos, Feature[] neg) {
+		MemModule module = this.getModule(pos, neg);
+		if (module == null) {
+			module = new MemModule(pos, neg);
+		}
+		return module;
 	}
 
 	@Override
@@ -199,5 +212,4 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.modules.get(module.getOrder()).put(module, module);
 		return module;
 	}
-
 }

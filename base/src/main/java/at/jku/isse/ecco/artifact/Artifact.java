@@ -111,7 +111,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 	 */
 	public boolean isSequenced();
 
-	public PartialOrderGraph getSequenceGraph();
+	public PartialOrderGraph getPartialOrderGraph();
 
 
 	public boolean equalsIgnoreSequenceNumber(Object obj);
@@ -243,9 +243,9 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 		/**
 		 * Sets the sequence graph of this artifact.
 		 *
-		 * @param sequenceGraph The sequence graph.
+		 * @param partialOrderGraph The sequence graph.
 		 */
-		public void setSequenceGraph(PartialOrderGraph.Op sequenceGraph);
+		public void setPartialOrderGraph(PartialOrderGraph.Op partialOrderGraph);
 
 
 		/**
@@ -313,8 +313,8 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 			}
 
 			// update sequence graph symbols (which are artifacts)
-			if (this.getSequenceGraph() != null) {
-				this.getSequenceGraph().updateArtifactReferences();
+			if (this.getPartialOrderGraph() != null) {
+				this.getPartialOrderGraph().updateArtifactReferences();
 			}
 		}
 
@@ -332,7 +332,7 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 		public void addUses(Artifact.Op artifact, String type);
 
 
-		public PartialOrderGraph.Op getSequenceGraph();
+		public PartialOrderGraph.Op getPartialOrderGraph();
 
 
 		/**

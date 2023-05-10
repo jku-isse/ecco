@@ -87,7 +87,7 @@ public class LazyCompositionNode implements Node {
 		this.activated = true;
 
 		// finally set the order of the children
-		if (this.orderSelector != null && this.getArtifact() != null && this.getArtifact().isOrdered() && this.getArtifact().isSequenced() && this.getArtifact().getSequenceGraph() != null) {
+		if (this.orderSelector != null && this.getArtifact() != null && this.getArtifact().isOrdered() && this.getArtifact().isSequenced() && this.getArtifact().getPartialOrderGraph() != null) {
 			List<Node> orderedChildren = this.orderSelector.select(this);
 			this.children.clear();
 			this.children.addAll(orderedChildren);

@@ -23,7 +23,6 @@ import com.opencsv.CSVReaderBuilder;
 import difflib.Delta;
 import difflib.DiffUtils;
 import difflib.Patch;
-import org.glassfish.grizzly.http.server.accesslog.FileAppender;
 import org.testng.annotations.Test;
 
 import javax.swing.text.StyledEditorKit;
@@ -207,7 +206,7 @@ public class FeatureRevisionLocationTest {
                 Path variant_dir = Paths.get(String.valueOf(checkoutfile));
                 checkoutfile.mkdir();
                 service.setBaseDir(variant_dir);
-                service.checkout2(revision.getFeatureRevisionString());
+                service.checkout(revision.getFeatureRevisionString());
                 //for (Node node : nodes) {
                 //    composeNodes(node, revision.getFeatureRevisionString(), featureCSV);
                 //}
@@ -256,7 +255,7 @@ public class FeatureRevisionLocationTest {
             //appending to the csv
             try {
 
-                FileAppender csvWriter = new FileAppender(file);
+                FileWriter csvWriter = new FileWriter(file);
                 String values = featurerevision;
                 values += "," + (String.valueOf(output.get("includes"))) + "," + (String.valueOf(output.get("defines"))) + "," + (String.valueOf(output.get("functions"))) + "," + (String.valueOf(output.get("fields"))) + "," +
                         (String.valueOf(output.get("blocks"))) + "," + (String.valueOf(output.get("if"))) + "," + (String.valueOf(output.get("for"))) + "," + (String.valueOf(output.get("switch"))) + "," + (String.valueOf(output.get("while"))) +
