@@ -27,8 +27,8 @@ subprojects {
 	apply plugin: 'nebula.ospackage'
 	//apply plugin: 'checkstyle'
 
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = JavaVersion.VERSION_13
+	targetCompatibility = JavaVersion.VERSION_13
 
 	repositories {
 		mavenCentral()
@@ -167,17 +167,20 @@ subprojects {
 			}
 
 			from({
-				def temp = project.configurations.runtime;
-				project.configurations.findAll { it.name.equals("runtime") }.collectMany {
+				def temp = project.configurations.runtimeClasspath;
+
+				project.configurations.findAll { it.name.equals("runtimeClasspath") }.collectMany {
 					it.allDependencies
 				}.findAll { it instanceof ProjectDependency }.collect {
-					it.dependencyProject.configurations.runtime
+					(it as ProjectDependency).dependencyProject.configurations.runtimeClasspath
 				}.each { temp = temp - it };
-				project.configurations.findAll { it.name.equals("runtime") }.collectMany {
+
+				project.configurations.findAll { it.name.equals("runtimeClasspath") }.collectMany {
 					it.allDependencies
-				}.findAll { it instanceof ProjectDependency }.collect { it.dependencyProject.jar.outputs.files }.each {
+				}.findAll { it instanceof ProjectDependency }.collect { (it as ProjectDependency).dependencyProject.jar.outputs.files }.each {
 					temp = temp - it;
 				};
+
 				return temp;
 			}) {
 				addParentDirs false
@@ -208,7 +211,7 @@ subprojects {
 
 	task linuxZip(type: Zip, group: 'packaging') {
 		archiveClassifier = 'linux'
-		into(archiveName - ('.' + archiveExtension)) {
+		into(archiveFileName.get() - ('.' + archiveExtension)) {
 			from project.jar
 			from project.configurations.runtimeClasspath
 		}
@@ -216,7 +219,7 @@ subprojects {
 
 	task windowsZip(type: Zip, group: 'packaging') {
 		archiveClassifier = 'windows'
-		into(archiveName - ('.' + archiveExtension)) {
+		into(archiveFileName.get() - ('.' + archiveExtension)) {
 			from project.jar
 			from project.configurations.runtimeClasspath
 		}

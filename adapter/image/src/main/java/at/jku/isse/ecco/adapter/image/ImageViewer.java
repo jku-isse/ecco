@@ -62,7 +62,8 @@ public class ImageViewer extends BorderPane implements ArtifactViewer {
 			this.setTop(saveButton);
 			this.setCenter(imageView);
 			this.setBackground(Background.EMPTY);
-		} else if (node.getArtifact().getData() instanceof ImageArtifactData imageArtifactData) {
+		} else if (node.getArtifact().getData() instanceof ImageArtifactData) {
+			ImageArtifactData imageArtifactData = (ImageArtifactData) node.getArtifact().getData();
 
 			if (imageArtifactData.getType().equals(ImageReader.TYPE_COLOR)) {
 				this.setCenter(null);
