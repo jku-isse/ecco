@@ -1,10 +1,11 @@
-package at.jku.isse.ecco.gui.view;
+package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
+import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -30,8 +31,7 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.Callback;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.util.*;
 
 public class ArtifactsView extends BorderPane implements EccoListener {
@@ -136,16 +136,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         commitEdit(newValue);
                     }
                 });
-//				this.cp.setOnAction(event -> {
-//					if (isEditing()) {
-//						commitEdit(this.cp.getValue());
-//					}
-//				});
-//				this.cp.setOnHiding(event -> {
-//					if (isEditing()) {
-//						commitEdit(this.cp.getValue());
-//					}
-//				});
 
                 this.cp.setValue(getItem());
 
@@ -287,7 +277,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 stage.setMinHeight(150);
                 Optional<String> result = dialog.showAndWait();
 
-                if (!result.isPresent()) {
+                if (result.isEmpty()) {
                     toolBar.setDisable(false);
                     return;
                 }
@@ -322,7 +312,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         checkoutSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
-            public void handle(ActionEvent e) {
+            public void handle(ActionEvent checkoutSelectedClickEvent) {
                 toolBar.setDisable(true);
 
                 Collection<Association> selectedAssociations = new ArrayList<>();
@@ -338,47 +328,19 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         rootNode.addOrigNode(association.getRootNode());
                     }
 
-                    Task checkoutTask = new Task<Void>() {
-                        @Override
-                        public Void call() throws EccoException {
-                            ArtifactsView.this.service.checkout(rootNode);
-                            return null;
+                    try {
+                        if (!Directory.isEmpty(service.getBaseDir())) {
+                            new DeleteDirectoryContentsDialog(service.getBaseDir()).showBlocked();
                         }
+                    }catch (IOException e) {
+                        ExceptionAlert alert = new ExceptionAlert(e);
+                        alert.setTitle("Checkout Error");
+                        alert.setHeaderText("Checkout Error");
 
-                        public void finished() {
-                            //toolBar.setDisable(false);
-                        }
+                        alert.showAndWait();
+                    }
 
-                        @Override
-                        public void succeeded() {
-                            super.succeeded();
-                            this.finished();
-
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Checkout Successful");
-                            alert.setHeaderText("Checkout Successful");
-                            alert.setContentText("Checkout Successful!");
-
-                            alert.showAndWait();
-                        }
-
-                        @Override
-                        public void cancelled() {
-                            super.cancelled();
-                        }
-
-                        @Override
-                        public void failed() {
-                            super.failed();
-                            this.finished();
-
-                            ExceptionAlert alert = new ExceptionAlert(this.getException());
-                            alert.setTitle("Checkout Error");
-                            alert.setHeaderText("Checkout Error");
-
-                            alert.showAndWait();
-                        }
-                    };
+                    Task<Void> checkoutTask = new CheckoutTask(service, rootNode);
                     new Thread(checkoutTask).start();
                 }
 
@@ -386,10 +348,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             }
         });
 
-
         showEmptyAssociationsCheckBox.setSelected(false);
         useSimplifiedLabelsCheckBox.setSelected(true);
-
 
         Platform.runLater(() -> {
             horizontalSplitPane.setDividerPosition(0, 0.2);
@@ -413,92 +373,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             Platform.runLater(() -> this.setDisable(false));
         } else {
             Platform.runLater(() -> this.setDisable(true));
-        }
-    }
-
-    public class AssociationInfoImpl implements AssociationInfo {
-        private final Association association;
-
-        private final BooleanProperty selected;
-
-        private final ObjectProperty<Color> color;
-
-        private final IntegerProperty numArtifacts;
-
-        private final LinkedList<PropertyChangeListener> listeners;
-
-        public AssociationInfoImpl(Association association) {
-            this.association = association;
-            this.listeners = new LinkedList<>();
-            this.selected = new SimpleBooleanProperty(false);
-            this.selected.addListener((observable, oldValue, newValue) ->
-                    onPropertyChanged("selected", oldValue, newValue));
-            this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
-            this.numArtifacts.addListener((observable, oldValue, newValue) ->
-                    onPropertyChanged("numArtifacts", oldValue, newValue));
-            this.color = new SimpleObjectProperty<>(Color.TRANSPARENT);
-            this.color.addListener((observable, oldValue, newValue) ->
-                    onPropertyChanged("color", oldValue, newValue));
-        }
-
-        @Override
-        public final Association getAssociation() {
-            return this.association;
-        }
-
-        @Override
-        public void addPropertyChangeListener(PropertyChangeListener listener) {
-            listeners.add(listener);
-        }
-
-        @Override
-        public void removePropertyChangeListener(PropertyChangeListener listener) {
-            listeners.remove(listener);
-        }
-
-        @Override
-        public Object getPropertyValue(String propertyName) {
-            switch (propertyName) {
-                case "color":
-                    return colorProperty().getValue();
-                case "selected":
-                    return selectedProperty().getValue();
-                case "numArtifacts":
-                    return numArtifactsProperty().getValue();
-                default:
-                    return null;
-            }
-        }
-
-        public boolean isSelected() {
-            return this.selected.get();
-        }
-
-        public void setSelected(boolean selected) { this.selected.set(selected); }
-
-        public BooleanProperty selectedProperty() {
-            return this.selected;
-        }
-
-        public ObjectProperty<Color> colorProperty() {
-            return this.color;
-        }
-
-        public int getNumArtifacts() {
-            return this.numArtifacts.get();
-        }
-
-        public void setNumArtifacts(int numArtifacts) {
-            this.numArtifacts.set(numArtifacts);
-        }
-
-        public IntegerProperty numArtifactsProperty() {
-            return this.numArtifacts;
-        }
-
-        private void onPropertyChanged(String propertyName, Object oldValue, Object newValue) {
-            listeners.forEach(pcl -> pcl.propertyChange(
-                    new PropertyChangeEvent(this, propertyName, oldValue, newValue)));
         }
     }
 }

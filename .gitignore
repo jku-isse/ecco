@@ -10,3 +10,6 @@ bin
 test-output
 /adapter/lilypond/.jython_cache/
 desktop.ini
+**/*.deb
+**/*.rpm
+**/*.zip

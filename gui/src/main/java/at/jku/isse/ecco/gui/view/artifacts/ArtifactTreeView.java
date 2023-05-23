@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui.view;
+package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.service.EccoService;
@@ -13,14 +13,10 @@ import javafx.scene.layout.BorderPane;
 import java.util.Collection;
 
 public class ArtifactTreeView extends BorderPane {
-
-	private final EccoService service;
-
 	private final ArtifactTreeTableView artifactTreeTableView;
 	private final ArtifactDetailView artifactDetailView;
 
 	public ArtifactTreeView(final EccoService service) {
-		this.service = service;
 		artifactDetailView = new ArtifactDetailView(service);
 
 		// toolbar
@@ -60,61 +56,6 @@ public class ArtifactTreeView extends BorderPane {
 
 			toolBar.setDisable(false);
 		});
-
-//		splitMarkedButton.setOnAction(new EventHandler<ActionEvent>() {
-//			@Override
-//			public void handle(ActionEvent e) {
-//				toolBar.setDisable(true);
-//
-//				Task extractTask = new Task<Void>() {
-//					@Override
-//					public Void call() throws EccoException {
-//						service.split();
-//
-//						Platform.runLater(() -> {
-//							ArtifactsView.this.refresh();
-//						});
-//						return null;
-//					}
-//
-//					public void finished() {
-//						toolBar.setDisable(false);
-//					}
-//
-//					@Override
-//					public void succeeded() {
-//						super.succeeded();
-//						this.finished();
-//
-//						Alert alert = new Alert(Alert.AlertType.INFORMATION);
-//						alert.setTitle("Extraction Successful");
-//						alert.setHeaderText("Extraction Successful");
-//						alert.setContentText("Extraction Successful!");
-//
-//						alert.showAndWait();
-//					}
-//
-//					@Override
-//					public void cancelled() {
-//						super.cancelled();
-//					}
-//
-//					@Override
-//					public void failed() {
-//						super.failed();
-//						this.finished();
-//
-//						ExceptionAlert alert = new ExceptionAlert(this.getException());
-//						alert.setTitle("Extraction Error");
-//						alert.setHeaderText("Extraction Error");
-//
-//						alert.showAndWait();
-//					}
-//				};
-//
-//				new Thread(extractTask).start();
-//			}
-//		});
 	}
 
 	public void setRootNode(RootNode rootNode) {
@@ -122,7 +63,7 @@ public class ArtifactTreeView extends BorderPane {
 		this.artifactTreeTableView.setRootNode(rootNode);
 	}
 
-	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfoImpl> associationInfos) {
+	public void setAssociationInfo(Collection<AssociationInfoImpl> associationInfos) {
 		this.artifactDetailView.setAssociationInfo(associationInfos);
 		this.artifactTreeTableView.setAssociationInfo(associationInfos);
 	}
