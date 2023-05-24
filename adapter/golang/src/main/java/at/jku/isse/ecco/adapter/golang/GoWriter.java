@@ -10,7 +10,7 @@ import java.util.Set;
 public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
     @Override
     public String getPluginId() {
-        return null;
+        return new GoPlugin().getPluginId();
     }
 
     @Override
