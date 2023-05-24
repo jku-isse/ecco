@@ -1,16 +1,9 @@
 package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.golang.antlr.GoLexer;
-import at.jku.isse.ecco.adapter.golang.antlr.GoParser;
-import at.jku.isse.ecco.adapter.golang.antlr.GoParserListener;
 import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.ErrorNode;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
@@ -21,14 +14,14 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class GolangParserTest {
+public class ParserTest {
     private static final String SIMPLE_GO_PATH = "simple.go";
     private static final String COMPLEX_GO_PATH = "conways-game-of-life.go";
 
     @Test
     public void simpleGolangWalker() {
         try {
-            new GoWalker().walk(SIMPLE_GO_PATH, new PrintTreeListener());
+            new NodeWalker().walk(SIMPLE_GO_PATH, new PrintTreeListener());
         } catch (IOException e) {
             fail(e);
         }
@@ -37,7 +30,7 @@ public class GolangParserTest {
     @Test
     public void complexGolangWalker() {
         try {
-            new GoWalker().walk(COMPLEX_GO_PATH, new PrintTreeListener());
+            new NodeWalker().walk(COMPLEX_GO_PATH, new PrintTreeListener());
         } catch (IOException e) {
             fail(e);
         }

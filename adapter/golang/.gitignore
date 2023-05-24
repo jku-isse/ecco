@@ -56,3 +56,11 @@ bin/
 /antlr/GoParser.tokens
 /antlr/GoParserBaseListener.java
 /antlr/GoParserListener.java
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoLexer.java
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoLexer.interp
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoLexer.tokens
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoParser.java
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoParser.interp
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoParser.tokens
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoParserBaseListener.java
+/src/main/java/at/jku/isse/ecco/adapter/golang/antlr/GoParserListener.java
