@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.golang.antlr.GoLexer;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -14,6 +13,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -56,40 +56,35 @@ public class GoReaderTest {
 
         assertTrue(resultArray.length > 0);
         assertNodeIsPluginArtifact(resourcePath, resultArray[0]);
-        assertArtifactTokensEqualCodeTokens(simpleGoResource, resultArray);
+        assertArtifactTokensEqualCodeTokens(simpleGoResource, resultArray[0]);
     }
 
-    private static void assertArtifactTokensEqualCodeTokens(URL golangCodeResource, Node.Op[] resultArray) throws IOException, URISyntaxException {
-        GoLexer lexer = new GoLexer(CharStreams.fromPath(Path.of(golangCodeResource.toURI()), StandardCharsets.UTF_8));
-        Token lexerToken = lexer.nextToken();
+    private static void assertArtifactTokensEqualCodeTokens(URL golangCodeResource, Node.Op pluginNode) throws IOException, URISyntaxException {
+        FlattenableGoLexer lexer = new FlattenableGoLexer(CharStreams.fromPath(Path.of(golangCodeResource.toURI()), StandardCharsets.UTF_8));
+        List<Token> tokenList = lexer.flat();
 
-        // First (i=0) result node is plugin data and must be skipped
-        for(int i = 1; lexerToken.getType() != Token.EOF; i++) {
-            // If resultArray[i] causes an IndexOutOfBounds exception, not all tokens made it into the resultArray
-            assertTrue(resultArray.length >= i+1);
-            assertInstanceOf(TokenArtifactData.class, resultArray[i].getArtifact().getData());
+        pluginNode.traverse((Node.NodeVisitor) node -> {
+            Artifact<?> artifact = node.getArtifact();
 
-            TokenArtifactData tokenArtifactData = (TokenArtifactData) resultArray[i].getArtifact().getData();
+            if (artifact.getData() instanceof TokenArtifactData) {
+                TokenArtifactData tokenData = (TokenArtifactData) artifact.getData();
+                tokenList.removeIf(token -> token.getLine() == tokenData.getRow() && token.getCharPositionInLine() == tokenData.getColumn());
+            }
+        });
 
-            assertEquals(lexerToken.getText(), tokenArtifactData.getToken());
-            assertEquals(lexerToken.getLine(), tokenArtifactData.getRow());
-            assertEquals(lexerToken.getCharPositionInLine(), tokenArtifactData.getColumn());
-
-            lexerToken = lexer.nextToken();
-        }
+        // pluginNode should contain all tokens of the input including whitespace but excluding EOF token
+        assertEquals(1, tokenList.size());
+        assertEquals(Token.EOF, tokenList.get(0).getType());
     }
 
     private static void assertNodeIsPluginArtifact(Path resourcePath, Node.Op node) {
-        Artifact.Op<PluginArtifactData> pluginArtifact;
+        Artifact.Op<?> artifact = node.getArtifact();
 
-        try {
-            pluginArtifact = (Artifact.Op<PluginArtifactData>) node.getArtifact();
-            PluginArtifactData data = pluginArtifact.getData();
+        assertInstanceOf(PluginArtifactData.class, artifact.getData());
 
-            assertEquals(new GoPlugin().getPluginId(), data.getPluginId());
-            assertEquals(resourcePath, data.getPath());
-        }catch (ClassCastException e) {
-            fail(e);
-        }
+        PluginArtifactData data = (PluginArtifactData) artifact.getData();
+
+        assertEquals(new GoPlugin().getPluginId(), data.getPluginId());
+        assertEquals(resourcePath, data.getPath());
     }
 }
