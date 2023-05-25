@@ -130,7 +130,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     private Node.Op createTokenNode(Token golangToken) {
         Artifact.Op<TokenArtifactData> tokenArtifactData =
-                this.entityFactory.createArtifact(new TokenArtifactData(golangToken.getText(), golangToken.getTokenIndex(), golangToken.getLine(), golangToken.getCharPositionInLine()));
+                this.entityFactory.createArtifact(new TokenArtifactData(golangToken.getText(), golangToken.getLine(), golangToken.getCharPositionInLine()));
         return this.entityFactory.createOrderedNode(tokenArtifactData);
     }
 
