@@ -29,6 +29,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
             Collections.singletonMap(1, new String[]{"**.go"});
 
     private final EntityFactory entityFactory;
+    private final List<ReadListener> listeners = new LinkedList<>();
 
     @Inject
     public GoReader(final EntityFactory entityFactory) {
@@ -75,6 +76,8 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
             } catch (IOException e) {
                 throw new EccoException(e);
             }
+
+            listeners.forEach(listener -> listener.fileReadEvent(resolvedPath, this));
         }
 
         return resultNodes;
@@ -162,7 +165,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
      */
     @Override
     public void addListener(ReadListener listener) {
-
+        listeners.add(listener);
     }
 
     /**
@@ -175,6 +178,6 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
      */
     @Override
     public void removeListener(ReadListener listener) {
-
+        listeners.remove(listener);
     }
 }

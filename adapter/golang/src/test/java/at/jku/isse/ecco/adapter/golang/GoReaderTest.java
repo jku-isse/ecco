@@ -3,6 +3,7 @@ package at.jku.isse.ecco.adapter.golang;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.CharStreams;
@@ -20,6 +21,9 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 public class GoReaderTest {
     @Test
@@ -88,5 +92,40 @@ public class GoReaderTest {
 
         assertEquals(new GoPlugin().getPluginId(), data.getPluginId());
         assertEquals(resourcePath, data.getPath());
+    }
+
+    @Test
+    public void readListenerIsCalled() throws URISyntaxException {
+        URL simpleGoResource = getClass().getClassLoader().getResource("simple.go");
+
+        assertNotNull(simpleGoResource);
+
+        Path resourcePath = Path.of(simpleGoResource.toURI());
+
+        GoReader reader = new GoReader(new MemEntityFactory());
+        ReadListener mockListener = mock(ReadListener.class);
+
+        reader.addListener(mockListener);
+        reader.read(Paths.get("."), new Path[]{resourcePath});
+
+        verify(mockListener).fileReadEvent(eq(resourcePath), any());
+    }
+
+    @Test
+    public void readListenerIsRemoved() throws URISyntaxException {
+        URL simpleGoResource = getClass().getClassLoader().getResource("simple.go");
+
+        assertNotNull(simpleGoResource);
+
+        Path resourcePath = Path.of(simpleGoResource.toURI());
+
+        GoReader reader = new GoReader(new MemEntityFactory());
+        ReadListener mockListener = mock(ReadListener.class);
+
+        reader.addListener(mockListener);
+        reader.removeListener(mockListener);
+        reader.read(Paths.get("."), new Path[]{resourcePath});
+
+        verify(mockListener, never()).fileReadEvent(eq(resourcePath), any());
     }
 }

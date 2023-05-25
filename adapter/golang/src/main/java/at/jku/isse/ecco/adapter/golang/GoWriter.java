@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
     private final SourceWriter sourceWriter;
+    private final List<WriteListener> listeners = new LinkedList<>();
 
     @Inject
     public GoWriter(SourceWriter sourceWriter) {
@@ -70,6 +71,7 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
             }
 
             writtenFiles.add(outputPath);
+            listeners.forEach(listener -> listener.fileWriteEvent(outputPath, this));
         }
 
         return writtenFiles.toArray(new Path[0]);
@@ -109,7 +111,7 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
      */
     @Override
     public void addListener(WriteListener listener) {
-
+        listeners.add(listener);
     }
 
     /**
@@ -122,6 +124,6 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
      */
     @Override
     public void removeListener(WriteListener listener) {
-
+        listeners.remove(listener);
     }
 }
