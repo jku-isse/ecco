@@ -25,10 +25,10 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
-//	runtimeOnly project(':ecco-adapter-java')
-//	runtimeOnly project(':ecco-adapter-lilypond')
+	runtimeOnly project(':ecco-adapter-golang')
 
 
+	testRuntimeOnly project(':ecco-adapter-golang')
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
 	testRuntimeOnly project(':ecco-adapter-image')
@@ -80,15 +80,3 @@ repositories {
 	mavenCentral()
 }
 bundle.dependsOn += copyScripts
-
-/*
-apply plugin: 'com.palantir.docker'
-docker {
-	name "ecco-gui:${project.version}"
-	files "build/distribution/ecco-gui-${project.version}-linux.zip"
-	dockerfile file('Dockerfile')
-	//buildArgs(['BUILD_VERSION': "${project.version}"])
-}
-
-tasks.getByPath('docker').dependsOn('linuxZip')
-*/

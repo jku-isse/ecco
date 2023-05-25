@@ -16,6 +16,7 @@ public class GoModule extends AbstractModule {
     @Override
     protected void configure() {
         super.configure();
+
         final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder =
                 Multibinder.newSetBinder(
                         binder(),

@@ -17,7 +17,6 @@ generateTestGrammarSource {
 
 dependencies {
     antlr "org.antlr:antlr4:4.13.0"
-    implementation group: 'org.antlr', name: 'stringtemplate', version: '4.0'
 
     implementation project(':ecco-service')
 

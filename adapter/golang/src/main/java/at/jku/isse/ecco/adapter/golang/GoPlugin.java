@@ -6,6 +6,8 @@ import com.google.inject.Module;
 public class GoPlugin extends ArtifactPlugin {
     public static final String DESCRIPTION = "Adds support for Golang source files";
 
+    private final GoModule module = new GoModule();
+
     @Override
     public String getPluginId() {
         return GoPlugin.class.getName();
@@ -13,7 +15,7 @@ public class GoPlugin extends ArtifactPlugin {
 
     @Override
     public Module getModule() {
-        return new GoModule();
+        return module;
     }
 
     @Override
