@@ -2,6 +2,8 @@ package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.golang.io.FileSourceWriter;
+import at.jku.isse.ecco.adapter.golang.io.SourceWriter;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
@@ -29,5 +31,7 @@ public class GoModule extends AbstractModule {
                         });
 
         writerMultibinder.addBinding().to(GoWriter.class);
+
+        bind(SourceWriter.class).to(FileSourceWriter.class);
     }
 }

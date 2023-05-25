@@ -2,6 +2,8 @@ package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.golang.io.FileSourceWriter;
+import at.jku.isse.ecco.adapter.golang.io.SourceWriter;
 import at.jku.isse.ecco.adapter.golang.node.EntityFactoryModule;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.*;
@@ -60,5 +62,19 @@ public class GoModuleTest {
         } catch (ConfigurationException e) {
             fail(e);
         }
+    }
+
+    @Test
+    public void configuresSourceWriter() {
+        GoModule module = new GoModule();
+        Injector injector = Guice.createInjector(new EntityFactoryModule(), module);
+        var bindings = injector.getBindings();
+        Key<SourceWriter> key = Key.get(SourceWriter.class);
+
+        assertTrue(bindings.containsKey(key));
+
+        SourceWriter sourceWriter = injector.getInstance(key);
+
+        assertInstanceOf(FileSourceWriter.class, sourceWriter);
     }
 }

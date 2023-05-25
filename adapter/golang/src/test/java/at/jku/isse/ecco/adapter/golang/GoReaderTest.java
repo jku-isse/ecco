@@ -14,6 +14,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,7 +50,7 @@ public class GoReaderTest {
 
         Path resourcePath = Path.of(simpleGoResource.toURI());
 
-        Set<Node.Op> resultSet = new GoReader(new MemEntityFactory()).read(Path.of("."), new Path[]{resourcePath});
+        Set<Node.Op> resultSet = new GoReader(new MemEntityFactory()).read(Paths.get("."), new Path[]{resourcePath});
 
         assertNotNull(resultSet);
 

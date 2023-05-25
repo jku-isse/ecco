@@ -21,6 +21,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
@@ -149,7 +150,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
      */
     @Override
     public Set<Node.Op> read(Path[] input) {
-        return this.read(Path.of("."), input);
+        return this.read(Paths.get("."), input);
     }
 
     /**
