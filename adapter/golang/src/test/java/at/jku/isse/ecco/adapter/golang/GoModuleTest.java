@@ -2,6 +2,7 @@ package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.golang.node.EntityFactoryModule;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.*;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,7 @@ public class GoModuleTest {
             final TypeLiteral<Set<ArtifactWriter<Set<Node>, Path>>> setArtifactWriterType = new TypeLiteral<>(){};
 
             GoModule module = new GoModule();
-            Injector injector = Guice.createInjector(module);
+            Injector injector = Guice.createInjector(new EntityFactoryModule(), module);
             Key<Set<ArtifactWriter<Set<Node>, Path>>> setKey = Key.get(setArtifactWriterType);
 
             var bindings = injector.getBindings();
@@ -45,7 +46,7 @@ public class GoModuleTest {
             final TypeLiteral<Set<ArtifactReader<Path, Set<Node.Op>>>> artifactReaderSetType = new TypeLiteral<>(){};
 
             GoModule module = new GoModule();
-            Injector injector = Guice.createInjector(module);
+            Injector injector = Guice.createInjector(new EntityFactoryModule(), module);
             Key<Set<ArtifactReader<Path, Set<Node.Op>>>> setKey = Key.get(artifactReaderSetType);
 
             var bindings = injector.getBindings();

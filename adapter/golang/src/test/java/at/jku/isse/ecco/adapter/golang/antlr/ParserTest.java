@@ -1,6 +1,5 @@
-package at.jku.isse.ecco.adapter.golang;
+package at.jku.isse.ecco.adapter.golang.antlr;
 
-import at.jku.isse.ecco.adapter.golang.antlr.GoLexer;
 import org.antlr.v4.runtime.*;
 import org.junit.jupiter.api.Test;
 
@@ -14,6 +13,10 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Does not test production code but shows how ANTLR parsers and lexers can be used.
+ * Necessary, because the documentation for ANTLR stuff is the book the ANTLR author wants to peddle.
+ */
 public class ParserTest {
     private static final String SIMPLE_GO_PATH = "simple.go";
     private static final String COMPLEX_GO_PATH = "conways-game-of-life.go";
@@ -98,4 +101,5 @@ public class ParserTest {
         fail();
         return "";
     }
+
 }

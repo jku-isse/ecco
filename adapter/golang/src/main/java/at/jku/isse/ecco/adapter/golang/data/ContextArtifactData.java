@@ -1,5 +1,6 @@
-package at.jku.isse.ecco.adapter.golang;
+package at.jku.isse.ecco.adapter.golang.data;
 
+import at.jku.isse.ecco.adapter.golang.GoReader;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.tree.Node;
 

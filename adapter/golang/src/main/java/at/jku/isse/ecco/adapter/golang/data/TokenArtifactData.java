@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.golang;
+package at.jku.isse.ecco.adapter.golang.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 

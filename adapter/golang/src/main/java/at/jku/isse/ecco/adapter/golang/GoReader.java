@@ -4,6 +4,8 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.golang.antlr.GoParser;
+import at.jku.isse.ecco.adapter.golang.data.ContextArtifactData;
+import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;

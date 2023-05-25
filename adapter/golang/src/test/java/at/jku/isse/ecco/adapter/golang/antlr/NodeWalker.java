@@ -1,8 +1,8 @@
-package at.jku.isse.ecco.adapter.golang;
+package at.jku.isse.ecco.adapter.golang.antlr;
 
-import at.jku.isse.ecco.adapter.golang.antlr.GoLexer;
-import at.jku.isse.ecco.adapter.golang.antlr.GoParser;
-import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
@@ -10,8 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-
-public class NodeWalker {
+class NodeWalker {
     public void walk(String path, ParseTreeListener parseTreeListener) throws IOException {
         try (InputStream goInputStream = getClass().getClassLoader().getResourceAsStream(path)) {
             if (goInputStream == null) {

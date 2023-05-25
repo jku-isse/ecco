@@ -1,16 +1,14 @@
-package at.jku.isse.ecco.adapter.golang;
+package at.jku.isse.ecco.adapter.golang.antlr;
 
-import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-public class PrintTreeListener implements ParseTreeListener {
+class PrintTreeListener implements ParseTreeListener {
     @Override
     public void visitTerminal(TerminalNode node) {
         System.out.print(node.getText());
-
     }
 
     @Override
@@ -18,8 +16,10 @@ public class PrintTreeListener implements ParseTreeListener {
     }
 
     @Override
-    public void enterEveryRule(ParserRuleContext ctx) {}
+    public void enterEveryRule(ParserRuleContext ctx) {
+    }
 
     @Override
-    public void exitEveryRule(ParserRuleContext ctx) {}
+    public void exitEveryRule(ParserRuleContext ctx) {
+    }
 }

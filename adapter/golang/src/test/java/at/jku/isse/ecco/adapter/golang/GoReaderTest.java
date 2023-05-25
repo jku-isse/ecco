@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -29,8 +30,8 @@ public class GoReaderTest {
     public void prioritizedPatternsIncludeGolangFiles() {
         Map<Integer, String[]> patterns = new GoReader(new MemEntityFactory()).getPrioritizedPatterns();
 
-        assertTrue(patterns.containsKey(Integer.MAX_VALUE));
-        assertEquals("*.go", patterns.get(Integer.MAX_VALUE)[0]);
+        assertTrue(patterns.containsKey(1));
+        assertEquals("**.go", patterns.get(1)[0]);
     }
 
     @Test
