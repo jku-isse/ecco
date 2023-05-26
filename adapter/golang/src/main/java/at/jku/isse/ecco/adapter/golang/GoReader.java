@@ -4,7 +4,6 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.golang.antlr.GoParser;
-import at.jku.isse.ecco.adapter.golang.data.ContextArtifactData;
 import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -106,9 +105,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
             ParseTree childTree = tree.getChild(i);
 
             if (childTree instanceof RuleContext) {
-                Node.Op branchNode = this.createBranchNode();
-                rootNode.addChild(branchNode);
-                parseContext(branchNode, childTree, tokenList);
+                parseContext(rootNode, childTree, tokenList);
             } else if (childTree instanceof TerminalNode) {
                 TerminalNode terminalNode = (TerminalNode) childTree;
                 Token terminalSymbol = terminalNode.getSymbol();
@@ -131,13 +128,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
     private Node.Op createTokenNode(Token golangToken) {
         Artifact.Op<TokenArtifactData> tokenArtifactData =
                 this.entityFactory.createArtifact(new TokenArtifactData(golangToken.getText(), golangToken.getLine(), golangToken.getCharPositionInLine()));
-        return this.entityFactory.createOrderedNode(tokenArtifactData);
-    }
-
-    private Node.Op createBranchNode() {
-        Artifact.Op<ContextArtifactData> contextArtifactData =
-                this.entityFactory.createArtifact(new ContextArtifactData());
-        return this.entityFactory.createOrderedNode(contextArtifactData);
+        return this.entityFactory.createNode(tokenArtifactData);
     }
 
     private Node.Op createFileNode(Path path) {

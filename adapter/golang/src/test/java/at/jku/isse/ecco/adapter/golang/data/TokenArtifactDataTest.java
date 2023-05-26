@@ -11,14 +11,14 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TokenArtifactDataTest {
     @Test
     public void isInstanceOfArtifactData() {
-        assertInstanceOf(ArtifactData.class, new TokenArtifactData("", 0, 1, 2));
+        assertInstanceOf(ArtifactData.class, new TokenArtifactData("", 1, 2));
     }
 
     @Test
     public void hasImmutableTokenData() throws NoSuchFieldException {
         final String expectedToken = "func";
 
-        TokenArtifactData data = new TokenArtifactData(expectedToken, 0, 1, 2);
+        TokenArtifactData data = new TokenArtifactData(expectedToken, 1, 2);
         String actualToken = data.getToken();
         int expectedRow = 1;
         int expectedColumn = 2;

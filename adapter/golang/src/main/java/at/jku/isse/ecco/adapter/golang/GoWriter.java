@@ -51,14 +51,51 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
 
             flattenNodeTree(childNodes, tokenList);
 
-            tokenList.sort((a, b) -> {
-                if (a.getRow() != b.getRow()) {
-                    // First sort by line number
-                    return a.getRow() - b.getRow();
+
+            sortTokenList(tokenList);
+
+            for (int rowNumber = 1; rowNumber < tokenList.get(tokenList.size() - 1).getRow(); rowNumber++) {
+                final int rowNr = rowNumber;
+                List<TokenArtifactData> row = tokenList.stream().filter(token -> token.getRow() == rowNr).collect(Collectors.toList());
+                List<TokenArtifactData> duplicates = new LinkedList<>();
+                List<TokenArtifactData> conflicts = new LinkedList<>();
+
+                for (int i = 0; i < row.size(); i++) {
+                    TokenArtifactData a = row.get(i);
+
+                    for (int j = i + 1; j < row.size(); j++) {
+                        TokenArtifactData b = row.get(j);
+
+                        if (a.getColumn() == b.getColumn()) {
+                            duplicates.add(b);
+                            conflicts.add(a);
+                            conflicts.add(b);
+                            row.remove(b);
+                            tokenList.remove(b);
+                        }
+                    }
                 }
-                // Then by column
-                return a.getColumn() - b.getColumn();
-            });
+
+                if (!duplicates.isEmpty()) {
+                    row.stream().filter(token -> !conflicts.contains(token))
+                            .forEach(token -> duplicates.add(new TokenArtifactData(token.getToken(), token.getRow(), token.getColumn())));
+
+                    tokenList = tokenList.stream()
+                            .map(token -> {
+                                if (token.getRow() > rowNr) {
+                                    return new TokenArtifactData(token.getToken(), token.getRow() + 2, token.getColumn());
+                                }
+                                return token;
+                            })
+                            .collect(Collectors.toList());
+
+                    for (TokenArtifactData token : duplicates) {
+                        tokenList.add(new TokenArtifactData(token.getToken(), token.getRow() + 1, token.getColumn()));
+                    }
+
+                    sortTokenList(tokenList);
+                }
+            }
 
             String reconstructedFile = tokenList.stream()
                     .map(TokenArtifactData::getToken)
@@ -77,8 +114,19 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
         return writtenFiles.toArray(new Path[0]);
     }
 
+    private void sortTokenList(List<TokenArtifactData> tokenList) {
+        tokenList.sort((a, b) -> {
+            if (a.getRow() != b.getRow()) {
+                // First sort by line number
+                return a.getRow() - b.getRow();
+            }
+            // Then by column
+            return a.getColumn() - b.getColumn();
+        });
+    }
+
     private void flattenNodeTree(List<? extends Node> childNodes, List<TokenArtifactData> tokenList) {
-        for (Node childNode: childNodes) {
+        for (Node childNode : childNodes) {
             ArtifactData childNodeData = childNode.getArtifact().getData();
 
             if (childNodeData instanceof ContextArtifactData) {

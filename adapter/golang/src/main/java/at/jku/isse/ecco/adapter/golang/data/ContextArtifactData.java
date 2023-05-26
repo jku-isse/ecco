@@ -5,6 +5,7 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.tree.Node;
 
 import java.nio.file.Path;
+import java.util.Objects;
 
 /**
  * Used to add depth to the ECCO tree
@@ -13,4 +14,13 @@ import java.nio.file.Path;
  * @see GoReader#parseGoFile(Node.Op, Path)
  */
 public class ContextArtifactData implements ArtifactData {
+    @Override
+    public boolean equals(Object o) {
+        return this == o || o != null && getClass() == o.getClass();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash("");
+    }
 }
