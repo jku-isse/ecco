@@ -48,7 +48,7 @@ public class GoWriterTest {
             assertTrue(writtenFiles.containsKey(path));
         }
 
-        assertEquals(sourceWriter.getWrittenFiles().get(resourcePath), Files.readString(resourcePath));
+        assertEquals(Files.readString(resourcePath), sourceWriter.getWrittenFiles().get(resourcePath));
     }
 
     @Test

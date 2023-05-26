@@ -6,6 +6,7 @@ import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.golang.data.ContextArtifactData;
 import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.adapter.golang.io.SourceWriter;
+import at.jku.isse.ecco.adapter.golang.merging.TokenMerger;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
@@ -38,105 +39,70 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
         List<Path> writtenFiles = new LinkedList<>();
 
         for (Node node : input) {
-            ArtifactData data = node.getArtifact().getData();
-
-            if (!(data instanceof PluginArtifactData)) {
+            Path outputPath = getPathFromPluginArtifact(base, node);
+            if (outputPath == null) {
+                // If root node is not a plugin node the tree is faulty, so ignore it
                 continue;
             }
 
-            PluginArtifactData pluginArtifactData = (PluginArtifactData) data;
-            Path outputPath = base.resolve(pluginArtifactData.getPath());
-            List<? extends Node> childNodes = node.getChildren();
-            List<TokenArtifactData> tokenList = new LinkedList<>();
+            List<TokenArtifactData> tokenList = flattenAndMerge(node);
 
-            flattenNodeTree(childNodes, tokenList);
-
-
-            sortTokenList(tokenList);
-
-            for (int rowNumber = 1; rowNumber < tokenList.get(tokenList.size() - 1).getRow(); rowNumber++) {
-                final int rowNr = rowNumber;
-                List<TokenArtifactData> row = tokenList.stream().filter(token -> token.getRow() == rowNr).collect(Collectors.toList());
-                List<TokenArtifactData> duplicates = new LinkedList<>();
-                List<TokenArtifactData> conflicts = new LinkedList<>();
-
-                for (int i = 0; i < row.size(); i++) {
-                    TokenArtifactData a = row.get(i);
-
-                    for (int j = i + 1; j < row.size(); j++) {
-                        TokenArtifactData b = row.get(j);
-
-                        if (a.getColumn() == b.getColumn()) {
-                            duplicates.add(b);
-                            conflicts.add(a);
-                            conflicts.add(b);
-                            row.remove(b);
-                            tokenList.remove(b);
-                        }
-                    }
-                }
-
-                if (!duplicates.isEmpty()) {
-                    row.stream().filter(token -> !conflicts.contains(token))
-                            .forEach(token -> duplicates.add(new TokenArtifactData(token.getToken(), token.getRow(), token.getColumn())));
-
-                    tokenList = tokenList.stream()
-                            .map(token -> {
-                                if (token.getRow() > rowNr) {
-                                    return new TokenArtifactData(token.getToken(), token.getRow() + 2, token.getColumn());
-                                }
-                                return token;
-                            })
-                            .collect(Collectors.toList());
-
-                    for (TokenArtifactData token : duplicates) {
-                        tokenList.add(new TokenArtifactData(token.getToken(), token.getRow() + 1, token.getColumn()));
-                    }
-
-                    sortTokenList(tokenList);
-                }
-            }
-
-            String reconstructedFile = tokenList.stream()
-                    .map(TokenArtifactData::getToken)
-                    .collect(Collectors.joining());
-
-            try {
-                sourceWriter.writeString(outputPath, reconstructedFile, StandardOpenOption.CREATE_NEW);
-            } catch (IOException e) {
-                throw new EccoException(e);
-            }
-
+            writeTokensToFile(outputPath, tokenList);
             writtenFiles.add(outputPath);
-            listeners.forEach(listener -> listener.fileWriteEvent(outputPath, this));
         }
 
         return writtenFiles.toArray(new Path[0]);
     }
 
-    private void sortTokenList(List<TokenArtifactData> tokenList) {
-        tokenList.sort((a, b) -> {
-            if (a.getRow() != b.getRow()) {
-                // First sort by line number
-                return a.getRow() - b.getRow();
-            }
-            // Then by column
-            return a.getColumn() - b.getColumn();
-        });
+    private Path getPathFromPluginArtifact(Path base, Node node) {
+        ArtifactData data = node.getArtifact().getData();
+
+        if (!(data instanceof PluginArtifactData)) {
+            return null;
+        }
+
+        PluginArtifactData pluginArtifactData = (PluginArtifactData) data;
+        return base.resolve(pluginArtifactData.getPath());
     }
 
-    private void flattenNodeTree(List<? extends Node> childNodes, List<TokenArtifactData> tokenList) {
+    private List<TokenArtifactData> flattenAndMerge(Node node) {
+        List<? extends Node> childNodes = node.getChildren();
+        List<TokenArtifactData> tokenList = flattenNodeTree(childNodes);
+
+        tokenList = new TokenMerger().merge(tokenList);
+        return tokenList;
+    }
+
+    private void writeTokensToFile(Path outputPath, List<TokenArtifactData> tokenList) {
+        String reconstructedFile = tokenList.stream()
+                .map(TokenArtifactData::getToken)
+                .collect(Collectors.joining());
+
+        try {
+            sourceWriter.writeString(outputPath, reconstructedFile, StandardOpenOption.CREATE_NEW);
+        } catch (IOException e) {
+            throw new EccoException(e);
+        }
+
+        listeners.forEach(listener -> listener.fileWriteEvent(outputPath, this));
+    }
+
+    private List<TokenArtifactData> flattenNodeTree(List<? extends Node> childNodes) {
+        List<TokenArtifactData> tokenList = new LinkedList<>();
+
         for (Node childNode : childNodes) {
             ArtifactData childNodeData = childNode.getArtifact().getData();
 
             if (childNodeData instanceof ContextArtifactData) {
-                flattenNodeTree(childNode.getChildren(), tokenList);
+                tokenList.addAll(flattenNodeTree(childNode.getChildren()));
             } else if (childNodeData instanceof TokenArtifactData) {
                 tokenList.add((TokenArtifactData) childNodeData);
                 // A TokenArtifactInstance is only created for terminal nodes,
                 // which are not expected to have any children
             }
         }
+
+        return tokenList;
     }
 
 
