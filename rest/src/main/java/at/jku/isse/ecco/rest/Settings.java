@@ -13,10 +13,17 @@ public class Settings {
     public static final String STORAGE_LOCATION_OF_REPOSITORIES = getAutoLocation();
 
     private static String getAutoLocation() {
-        if(Path.of(System.getProperty("user.dir")).getFileName().toString().equals("rest")) {
-            return Path.of(System.getProperty("user.dir")).getParent().resolve("serverRepositories").toString();
+        if(System.getProperty("user.name").equals("jenkins")) {
+            System.out.println(System.getProperty("user.name"));
+            return "/home/jenkins/host";
         } else {
-            return Path.of(System.getProperty("user.dir"), "serverRepositories").toString();
+            if(Path.of(System.getProperty("user.dir")).getFileName().toString().equals("rest")) {
+                System.out.println("Local Server Repository");
+                return Path.of(System.getProperty("user.dir")).getParent().resolve("serverRepositories").toString();
+            } else {
+                System.out.println("Local Server Repository");
+                return Path.of(System.getProperty("user.dir"), "serverRepositories").toString();
+            }
         }
     }
 }
