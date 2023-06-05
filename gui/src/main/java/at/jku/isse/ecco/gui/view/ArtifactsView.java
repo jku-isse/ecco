@@ -458,12 +458,16 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         @Override
         public Object getPropertyValue(String propertyName) {
-            return switch (propertyName) {
-                case "color" -> colorProperty().getValue();
-                case "selected" -> selectedProperty().getValue();
-                case "numArtifacts" -> numArtifactsProperty().getValue();
-                default -> null;
-            };
+            switch (propertyName) {
+                case "color":
+                    return colorProperty().getValue();
+                case "selected":
+                    return selectedProperty().getValue();
+                case "numArtifacts":
+                    return numArtifactsProperty().getValue();
+                default:
+                    return null;
+            }
         }
 
         public boolean isSelected() {
