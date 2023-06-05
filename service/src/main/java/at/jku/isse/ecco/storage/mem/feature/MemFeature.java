@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.storage.mem.module.MemModuleRevision;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -62,8 +64,23 @@ public class MemFeature implements Feature {
 	}
 
 	@Override
+	public FeatureRevision getOrphanedRevision(String id) {
+		MemFeatureRevision featureRevision = this.getRevision(id);
+		if (featureRevision == null) {
+			featureRevision = new MemFeatureRevision(this, id);
+		}
+		return featureRevision;
+	}
+
+	@Override
 	public MemFeatureRevision getLatestRevision() {
 		return this.latest;
+	}
+
+	@Override
+	public Feature feature(String name) {
+		this.name = name;
+		return this;
 	}
 
 	@Override

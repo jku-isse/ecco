@@ -9,7 +9,6 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
-import javafx.embed.swing.SwingNode;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
@@ -19,9 +18,11 @@ import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
 import org.graphstream.stream.file.FileSink;
 import org.graphstream.stream.file.FileSinkFactory;
+import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
-import org.graphstream.ui.swingViewer.ViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewPanel;
+import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.view.Viewer;
 
 import javax.swing.*;
@@ -29,34 +30,34 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ArtifactGraphView extends BorderPane implements EccoListener {
 
-	private EccoService service;
+	private final EccoService service;
 
-	private Graph graph;
-	private Layout layout;
-	private Viewer viewer;
-	private ViewPanel view;
+	private final Graph graph;
+	private final Layout layout;
+	private FxViewer viewer;
+	private FxViewPanel view;
 
 	private boolean depthFade = false;
 	private boolean showLabels = true;
 
-	private int childCountLimit = CHILD_COUNT_LIMIT;
-	private int depthLimit = DEPTH_LIMIT;
+	private int childCountLimit = 20;
+	private int depthLimit = 10;
 
 	public ArtifactGraphView(EccoService service) {
 		this.service = service;
 
-
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, 100, CHILD_COUNT_LIMIT);
+		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, CHILD_COUNT_LIMIT, childCountLimit);
 		childCountLimitSpinner.setEditable(true);
 		Label childCountLimitLabel = new Label("Child Count Limit: ");
 
-		Spinner<Integer> depthLimitSpinner = new EditableSpinner(1, 100, DEPTH_LIMIT);
+		Spinner<Integer> depthLimitSpinner = new EditableSpinner(1, DEPTH_LIMIT, depthLimit);
 		depthLimitSpinner.setEditable(true);
 		Label depthLimitLabel = new Label("Depth Limit: ");
 
@@ -123,29 +124,18 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		this.graph.addSink(this.layout);
 		this.layout.addAttributeSink(this.graph);
 
-		this.viewer = new Viewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
-		//this.viewer.enableAutoLayout(this.layout);
-		this.view = this.viewer.addDefaultView(false); // false indicates "no JFrame"
-
-		SwingNode swingNode = new SwingNode();
-
-		SwingUtilities.invokeLater(() -> swingNode.setContent(view));
-
-
-		this.setOnScroll(event -> view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0, view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY()))));
-
-
-		this.setCenter(swingNode);
-
+		this.setOnScroll(event -> {
+			if (null != view) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
+						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
 
 		depthFadeCheckBox.setSelected(this.depthFade);
 		showLabelsCheckbox.setSelected(this.showLabels);
 
-
 		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
+		Platform.runLater(() -> statusChangedEvent(service));
 	}
 
 
@@ -153,12 +143,12 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		Map<String, Integer> idColorMap = new HashMap<>();
 		int nextColor = 1;
 
-		for (Node node : this.graph.getNodeSet()) {
-			int depth = node.getAttribute(DEPTH_ATTRIBUTE);
+		for (Node node : this.graph.nodes().collect(Collectors.toSet())) {
+			int depth = node.getAttribute(DEPTH_ATTRIBUTE, Integer.class);
 
 			int size = DEFAULT_SIZE;
 			if (node.hasAttribute(SUCCESSOR_COUNT_ATTRIBUTE)) {
-				int successorsCount = node.getAttribute(SUCCESSOR_COUNT_ATTRIBUTE);
+				int successorsCount = node.getAttribute(SUCCESSOR_COUNT_ATTRIBUTE, Integer.class);
 				size = (int) ((double) MIN_SIZE + ((double) successorsCount) / (double) (this.maxSuccessorsCount) * (double) (MAX_SIZE - MIN_SIZE));
 			}
 
@@ -169,7 +159,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 			} else {
 				node.setAttribute("ui.style", "size: " + size + "px;");
 				if (node.hasAttribute(ASSOC_ID_ATTRIBUTE)) {
-					String id = node.<String>getAttribute(ASSOC_ID_ATTRIBUTE);
+					String id = node.getAttribute(ASSOC_ID_ATTRIBUTE, String.class);
 					if (!idColorMap.containsKey(id)) {
 						idColorMap.put(id, nextColor++);
 					}
@@ -179,21 +169,21 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 			}
 		}
 
-		for (Edge edge : this.graph.getEdgeSet()) {
+		for (Edge edge : this.graph.edges().collect(Collectors.toSet())) {
 			//int depth = edge.getAttribute(DEPTH_ATTRIBUTE);
-			int depth = edge.getSourceNode().getAttribute(DEPTH_ATTRIBUTE);
+			int depth = edge.getSourceNode().getAttribute(DEPTH_ATTRIBUTE, Integer.class);
 			int colorValue = (int) (((double) depth) * 200.0 / ((double) this.maxDepth));
 			if (depthFade) {
-				edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
+				edge.setAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
 				edge.removeAttribute("ui.class");
 			} else {
 				if (edge.getSourceNode().hasAttribute(ASSOC_ID_ATTRIBUTE)) {
-					String id = edge.getSourceNode().<String>getAttribute(ASSOC_ID_ATTRIBUTE);
+					String id = edge.getSourceNode().getAttribute(ASSOC_ID_ATTRIBUTE, String.class);
 					if (!idColorMap.containsKey(id)) {
 						idColorMap.put(id, nextColor++);
 					}
-					edge.addAttribute("ui.class", "A" + idColorMap.get(id));
-					//edge.addAttribute("ui.class", "A" + ((edge.getSourceNode().<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+					edge.setAttribute("ui.class", "A" + idColorMap.get(id));
+					//edge.setAttribute("ui.class", "A" + ((edge.getSourceNode().getAttribute(ASSOC_ID_ATTRIBUTE, Integer.class) % 7) + 1));
 				}
 				edge.removeAttribute("ui.style");
 			}
@@ -205,7 +195,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		if (!showLabels)
 			textMode = "text-mode: hidden; ";
 
-		this.graph.addAttribute("ui.stylesheet",
+		this.graph.setAttribute("ui.stylesheet",
 				"edge { size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
 						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: " + DEFAULT_SIZE + "px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } " +
 						"edge.A1 { fill-color: #ffaaaa88; } " +
@@ -224,7 +214,28 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 						"node.A7 { fill-color: #aaaaaa88; } ");
 	}
 
+	private void initView() {
+		closeView();
+		viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
+		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
+
+		setCenter(view);
+	}
+
+	private void closeView() {
+		if (null == viewer) {
+			return;
+		}
+
+		setCenter(null);
+		viewer.close();
+		view = null;
+		viewer = null;
+	}
+
 	private void updateGraph(boolean depthFade, boolean showLabels) {
+		assert viewer != null && view != null;
+
 		this.viewer.disableAutoLayout();
 
 		this.graph.removeSink(this.layout);
@@ -235,8 +246,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		this.view.getCamera().resetView();
 
 
-		this.graph.addAttribute("ui.quality");
-		this.graph.addAttribute("ui.antialias");
+		this.graph.setAttribute("ui.quality");
+		this.graph.setAttribute("ui.antialias");
 
 		this.artifactCount = 0;
 		this.maxSuccessorsCount = 0;
@@ -263,8 +274,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	}
 
 
-	private static final int CHILD_COUNT_LIMIT = 20;
-	private static final int DEPTH_LIMIT = 10;
+	private static final int CHILD_COUNT_LIMIT = 1000;
+	private static final int DEPTH_LIMIT = 50;
 	private static final int MAX_SIZE = 100;
 	private static final int MIN_SIZE = 30;
 	private static final int DEFAULT_SIZE = 20;
@@ -302,9 +313,9 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 			this.artifactCount++;
 
 			graphNode = this.graph.addNode(String.valueOf(this.artifactCount));
-			graphNode.addAttribute(DEPTH_ATTRIBUTE, depth);
+			graphNode.setAttribute(DEPTH_ATTRIBUTE, depth);
 			assocId = eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId();
-			graphNode.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+			graphNode.setAttribute(ASSOC_ID_ATTRIBUTE, assocId);
 			if (this.maxDepth < depth)
 				this.maxDepth = depth;
 
@@ -348,9 +359,9 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 //					if (!depthFade) {
 //						graphChildNode.addAttribute("ui.class", "A" + ((entry.getKey().getId() % 7) + 1));
 //					}
-					graphChildNode.addAttribute(SUCCESSOR_COUNT_ATTRIBUTE, entry.getValue());
-					graphChildNode.addAttribute(DEPTH_ATTRIBUTE, depth + 1);
-					graphChildNode.addAttribute(ASSOC_ID_ATTRIBUTE, entry.getKey().getId());
+					graphChildNode.setAttribute(SUCCESSOR_COUNT_ATTRIBUTE, entry.getValue());
+					graphChildNode.setAttribute(DEPTH_ATTRIBUTE, depth + 1);
+					graphChildNode.setAttribute(ASSOC_ID_ATTRIBUTE, entry.getKey().getId());
 
 					if (this.maxSuccessorsCount < entry.getValue())
 						this.maxSuccessorsCount = entry.getValue();
@@ -389,16 +400,16 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		return graphNode;
 	}
 
-
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
 			Platform.runLater(() -> {
-				//this.updateGraph();
+				initView();
 				this.setDisable(false);
 			});
 		} else {
 			Platform.runLater(() -> {
+				closeView();
 				this.setDisable(true);
 			});
 		}

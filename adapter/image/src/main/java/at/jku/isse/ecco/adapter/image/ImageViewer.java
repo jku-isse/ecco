@@ -22,7 +22,6 @@ import java.util.Set;
 
 public class ImageViewer extends BorderPane implements ArtifactViewer {
 
-	//private AwtImageWriter imageWriter = new AwtImageWriter();
 	private FxImageWriter imageWriter = new FxImageWriter();
 
 	@Override
@@ -31,7 +30,6 @@ public class ImageViewer extends BorderPane implements ArtifactViewer {
 		nodes.add(node);
 
 		if (node.getArtifact().getData() instanceof PluginArtifactData) {
-			//Image image = SwingFXUtils.toFXImage(this.imageWriter.write(nodes)[0], null);
 			Image image = this.imageWriter.write(nodes)[0];
 
 			ImageView imageView = new ImageView();

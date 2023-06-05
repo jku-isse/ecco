@@ -5,7 +5,7 @@ import com.google.inject.Module;
 
 public class TextPlugin extends ArtifactPlugin {
 
-	private static final String[] fileTypes = new String[]{"txt", "xml", "tex", "java", "c", "h", "cpp", "hpp"};
+	private static final String[] fileTypes = new String[]{"txt", "xml", "tex", "java"};//, "c", "h", "cpp", "hpp"};
 
 	private TextModule module = new TextModule();
 

@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import javafx.beans.property.IntegerProperty;
@@ -14,31 +13,18 @@ import javafx.scene.layout.*;
 
 public class CommitDetailView extends BorderPane {
 
-	private EccoService service;
-
-	private Commit currentCommit;
-
 	final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
-
-
 	private Pane centerPane;
 	private ToolBar toolBar;
-
-
 	private TextField commitId;
 	private TextField commitConfiguration;
 
 
-	public CommitDetailView(EccoService service) {
-		this.service = service;
-
-		this.currentCommit = null;
-
+	public CommitDetailView() {
 
 		// toolbar
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
-
 
 		// details
 		GridPane detailsPane = new GridPane();
@@ -70,7 +56,6 @@ public class CommitDetailView extends BorderPane {
 		detailsPane.add(this.commitConfiguration, 1, row, 1, 1);
 		row++;
 
-
 		// list of associations
 		TableView<AssociationInfo> associationsTable = new TableView<>();
 		associationsTable.setEditable(false);
@@ -91,14 +76,12 @@ public class CommitDetailView extends BorderPane {
 		detailsPane.add(associationsTable, 1, row, 1, 1);
 		row++;
 
-
 		// show nothing initially
 		this.showCommit(null);
 	}
 
 
 	public void showCommit(Commit commit) {
-		this.currentCommit = commit;
 
 		this.associationsData.clear();
 
@@ -109,10 +92,10 @@ public class CommitDetailView extends BorderPane {
 			this.commitId.setText(String.valueOf(commit.getId()));
 			this.commitConfiguration.setText(commit.getConfiguration() == null ? "" : commit.getConfiguration().toString());
 
-//			// show associations
-//			for (Association association : commit.getAssociations()) {
-//				CommitDetailView.this.associationsData.add(new AssociationInfo(association));
-//			}
+			// show associations
+			for (Association association : commit.getAssociations()) {
+				CommitDetailView.this.associationsData.add(new AssociationInfo(association));
+			}
 		} else {
 			this.setCenter(null);
 			this.toolBar.setDisable(true);

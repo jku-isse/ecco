@@ -5,10 +5,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class Checkout {
 
@@ -17,6 +14,8 @@ public class Checkout {
 
 	private Set<ModuleRevision> missing;
 	private Set<ModuleRevision> surplus;
+	private Map<ModuleRevision,String> surplusModules;
+
 
 	private Collection<Artifact<?>> orderWarnings;
 
@@ -31,6 +30,7 @@ public class Checkout {
 		this.warnings = new ArrayList<>();
 		this.missing = new HashSet<>();
 		this.surplus = new HashSet<>();
+		this.surplusModules = new HashMap<>();
 		this.orderWarnings = new ArrayList<>();
 		this.unresolvedAssociations = new HashSet<>();
 		this.selectedAssociations = new HashSet<>();
@@ -60,6 +60,14 @@ public class Checkout {
 
 	public Set<ModuleRevision> getSurplus() {
 		return this.surplus;
+	}
+
+	public Map<ModuleRevision,String> getSurplusModules() {
+		return this.surplusModules;
+	}
+
+	public void setSurplusModules(Map<ModuleRevision,String> surplusModules){
+		this.surplusModules = surplusModules;
 	}
 
 	public Set<ModuleRevision> getMissing() {

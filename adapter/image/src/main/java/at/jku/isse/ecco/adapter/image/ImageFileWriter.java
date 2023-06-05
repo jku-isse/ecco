@@ -63,7 +63,6 @@ public class ImageFileWriter implements ArtifactWriter<Set<Node>, Path> {
 		return output.toArray(new Path[output.size()]);
 	}
 
-
 	private Collection<WriteListener> listeners = new ArrayList<>();
 
 	@Override

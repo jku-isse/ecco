@@ -13,10 +13,7 @@ import javafx.scene.layout.BackgroundFill;
 import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.NodeWrapper> {
 
@@ -185,9 +182,9 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 	}
 
 
-	private Collection<ArtifactsView.AssociationInfo> associationInfos = null;
+	private Collection<ArtifactsView.AssociationInfoImpl> associationInfos = null;
 
-	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfo> associationInfos) {
+	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfoImpl> associationInfos) {
 		this.associationInfos = associationInfos;
 	}
 
@@ -202,7 +199,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 				if (node != null && node.getArtifact() != null && node.getArtifact().getContainingNode() != null) {
 					Association nodeAssociation = node.getArtifact().getContainingNode().getContainingAssociation();
 					if (nodeAssociation != null) {
-						Optional<ArtifactsView.AssociationInfo> opt = ArtifactTreeTableView.this.associationInfos.stream().filter(o -> o.getAssociation() == nodeAssociation).findFirst();
+						Optional<ArtifactsView.AssociationInfoImpl> opt = ArtifactTreeTableView.this.associationInfos.stream().filter(o -> o.getAssociation() == nodeAssociation).findFirst();
 						opt.ifPresent(associationInfo -> node.colorProperty().bind(associationInfo.colorProperty()));
 					}
 				}
@@ -233,7 +230,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		public NodeWrapper(Node node) {
 			this.node = node;
-			this.color = new SimpleObjectProperty<Color>(Color.TRANSPARENT);
+			this.color = new SimpleObjectProperty<>(Color.TRANSPARENT);
 		}
 
 		public ObjectProperty<Color> colorProperty() {
@@ -242,6 +239,9 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 
 		private Node node;
+
+		@Override
+		public Node getNode() { return node; }
 
 		@Override
 		public int hashCode() {
@@ -294,9 +294,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		}
 
 		@Override
-		public List<? extends Node> getChildren() {
-			return node.getChildren();
-		}
+		public List<? extends Node> getChildren() { return node.getChildren(); }
 
 		@Override
 		public int countArtifacts() {

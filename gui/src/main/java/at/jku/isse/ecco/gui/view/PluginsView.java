@@ -45,9 +45,9 @@ public class PluginsView extends TableView<PluginsView.PluginInfo> implements Ec
 
 		this.initialized = false;
 
-		service.addListener(this);
+		Platform.runLater(() -> statusChangedEvent(service));
 
-		this.statusChangedEvent(service);
+		service.addListener(this);
 	}
 
 

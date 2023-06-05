@@ -79,6 +79,8 @@ public interface Module extends Persistable {
 
 	public Collection<? extends ModuleRevision> getRevisions();
 
+	public ModuleRevision getOrphanedRevision(FeatureRevision[] pos, Feature[] neg);
+
 	public ModuleRevision addRevision(FeatureRevision[] pos, Feature[] neg);
 
 	public ModuleRevision getRevision(FeatureRevision[] pos, Feature[] neg);
@@ -182,6 +184,14 @@ public interface Module extends Persistable {
 			moduleString += ", " + Arrays.stream(this.getNeg()).map(feature -> "!" + feature.toString()).collect(Collectors.joining(", "));
 
 		return "d^" + this.getOrder() + "(" + moduleString + ")";
+	}
+	
+	public default String getPreprocessorModuleString() {
+		String moduleString = Arrays.stream(this.getPos()).map(Feature::toString).collect(Collectors.joining(" && "));
+		if (this.getNeg().length > 0)
+			moduleString += " && " + Arrays.stream(this.getNeg()).map(feature -> "!" + feature.toString()).collect(Collectors.joining(" && "));
+
+		return "(" + moduleString + ")";
 	}
 
 	@Override

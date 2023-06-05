@@ -70,7 +70,6 @@ public class FileWriter implements ArtifactWriter<Set<Node>, Path> {
 		return output.toArray(new Path[output.size()]);
 	}
 
-
 	private Collection<WriteListener> listeners = new ArrayList<WriteListener>();
 
 	@Override

@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.ExceptionAlert;
@@ -25,99 +26,116 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Callback;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.*;
 
 public class ArtifactsView extends BorderPane implements EccoListener {
 
-	private final EccoService service;
+    private final EccoService service;
 
-	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
-
-
-	public ArtifactsView(final EccoService service) {
-		this.service = service;
+    private final ObservableList<AssociationInfoImpl> associationsData = FXCollections.observableArrayList();
 
 
-		// toolbar
-		ToolBar toolBar = new ToolBar();
-		this.setTop(toolBar);
-
-		Button refreshButton = new Button("Refresh");
-
-		Button selectAllButton = new Button("Select All");
-		Button unselectAllButton = new Button("Unselect All");
-		Button checkoutSelectedButton = new Button("Checkout Selected");
-
-		Button composeSelectedButton = new Button("Compose Selected");
-
-		CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
-		CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
-
-		CheckBox showBelowAtomicCheckBox = new CheckBox("Show Artifacts Below Atomic"); // TODO
-		CheckBox showBelowFilesCheckBox = new CheckBox("Show Artifacts Below File Level"); // TODO
-
-		toolBar.getItems().addAll(refreshButton, new Separator(), selectAllButton, unselectAllButton, checkoutSelectedButton, composeSelectedButton, new Separator(), showEmptyAssociationsCheckBox, new Separator(), useSimplifiedLabelsCheckBox, new Separator(), showBelowAtomicCheckBox, new Separator(), showBelowFilesCheckBox, new Separator());
+    public ArtifactsView(final EccoService service) {
+        this.service = service;
 
 
-		FilteredList<AssociationInfo> filteredData = new FilteredList<>(this.associationsData, p -> true);
+        // toolbar
+        ToolBar toolBar = new ToolBar();
+        this.setTop(toolBar);
 
-		showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) -> {
-			filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0));
-		});
+        Button refreshButton = new Button("Refresh");
+
+        // selection
+        MenuItem selectAllMenuItem = new MenuItem("Select All");
+        MenuItem unselectAllMenuItem = new MenuItem("Unselect All");
+        MenuItem selectByConfigurationMenuItem = new MenuItem("Select by Configuration");
+        MenuButton selectionMenuButton = new MenuButton("Selection");
+        selectionMenuButton.getItems().addAll(
+                selectAllMenuItem,
+                selectByConfigurationMenuItem,
+                new SeparatorMenuItem(),
+                unselectAllMenuItem
+        );
+
+        Button checkoutSelectedButton = new Button("Checkout Selected");
+        Button composeSelectedButton = new Button("Compose Selected");
+
+        CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
+        CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
+
+        CheckBox showBelowAtomicCheckBox = new CheckBox("Show Artifacts Below Atomic"); // TODO
+        showBelowAtomicCheckBox.setDisable(true);
+        CheckBox showBelowFilesCheckBox = new CheckBox("Show Artifacts Below File Level"); // TODO
+        showBelowFilesCheckBox.setDisable(true);
+
+        toolBar.getItems().addAll(refreshButton, new Separator(),
+                selectionMenuButton, checkoutSelectedButton, composeSelectedButton, new Separator(),
+                showEmptyAssociationsCheckBox, new Separator(),
+                useSimplifiedLabelsCheckBox, new Separator(),
+                showBelowAtomicCheckBox, new Separator(),
+                showBelowFilesCheckBox, new Separator());
 
 
-		// associations table
-		TableView<AssociationInfo> associationsTable = new TableView<>();
-		associationsTable.setEditable(true);
-		associationsTable.setTableMenuButtonVisible(true);
-		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        FilteredList<AssociationInfoImpl> filteredData = new FilteredList<>(this.associationsData, p -> true);
 
-		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
-		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
-		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
+        showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) ->
+                filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0)));
 
-		TableColumn<AssociationInfo, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
+        // associations table
+        TableView<AssociationInfoImpl> associationsTable = new TableView<>();
+        associationsTable.setEditable(true);
+        associationsTable.setTableMenuButtonVisible(true);
+        associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<AssociationInfo, Color> highlightedAssocationCol = new TableColumn<>("Highlighted");
+        TableColumn<AssociationInfoImpl, String> idAssociationsCol = new TableColumn<>("Id");
+        TableColumn<AssociationInfoImpl, String> conditionAssociationsCol = new TableColumn<>("Condition");
+        TableColumn<AssociationInfoImpl, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
 
-		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
+        TableColumn<AssociationInfoImpl, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
 
-		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol, highlightedAssocationCol);
-		associationsTable.getColumns().setAll(associationsCol);
+        TableColumn<AssociationInfoImpl, Color> highlightedAssocationCol = new TableColumn<>("Highlighted");
 
-		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
-		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
+        TableColumn<AssociationInfoImpl, String> associationsCol = new TableColumn<>("Associations");
+
+        associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol, selectedAssocationCol, highlightedAssocationCol);
+        associationsTable.getColumns().setAll(associationsCol);
+
+        idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
+        conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
+        numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 
 
-		selectedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("selected"));
-		selectedAssocationCol.setCellFactory(CheckBoxTableCell.forTableColumn(selectedAssocationCol));
-		selectedAssocationCol.setEditable(true);
+        selectedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("selected"));
+        selectedAssocationCol.setCellFactory(CheckBoxTableCell.forTableColumn(selectedAssocationCol));
+        selectedAssocationCol.setEditable(true);
 
 
-		class ColorPickerTableCell<Inputs> extends TableCell<Inputs, Color> {
-			private ColorPicker cp;
+        class ColorPickerTableCell<Inputs> extends TableCell<Inputs, Color> {
+            private final ColorPicker cp;
 
-			public ColorPickerTableCell(TableColumn<Inputs, Color> column) {
-				this.getStyleClass().add("color-picker-table-cell");
+            public ColorPickerTableCell(TableColumn<Inputs, Color> column) {
+                this.getStyleClass().add("color-picker-table-cell");
 
-				this.cp = new ColorPicker();
+                this.cp = new ColorPicker();
 
-				this.cp.editableProperty().bind(column.editableProperty());
-				this.cp.disableProperty().bind(column.editableProperty().not());
+                this.cp.editableProperty().bind(column.editableProperty());
+                this.cp.disableProperty().bind(column.editableProperty().not());
 
-				this.cp.setOnShowing(event -> {
-					getTableView().edit(getTableRow().getIndex(), column);
-				});
+                this.cp.setOnShowing(event -> {
+                    getTableView().edit(getTableRow().getIndex(), column);
+                });
 
-				this.cp.valueProperty().addListener((observable, oldValue, newValue) -> {
-					if (isEditing()) {
-						commitEdit(newValue);
-					}
-				});
+                this.cp.valueProperty().addListener((observable, oldValue, newValue) -> {
+                    if (isEditing()) {
+                        commitEdit(newValue);
+                    }
+                });
 //				this.cp.setOnAction(event -> {
 //					if (isEditing()) {
 //						commitEdit(this.cp.getValue());
@@ -129,278 +147,358 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 //					}
 //				});
 
-				this.cp.setValue(getItem());
+                this.cp.setValue(getItem());
 
-				this.setGraphic(this.cp);
-				this.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-				this.setEditable(true);
-				this.setAlignment(Pos.CENTER);
-			}
+                this.setGraphic(this.cp);
+                this.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                this.setEditable(true);
+                this.setAlignment(Pos.CENTER);
+            }
 
-			@Override
-			protected void updateItem(Color item, boolean empty) {
-				super.updateItem(item, empty);
+            @Override
+            protected void updateItem(Color item, boolean empty) {
+                super.updateItem(item, empty);
 //				this.cp.setVisible(!empty);
 //				this.cp.setValue(item);
 
-				setText(null);
-				if (empty) {
-					setGraphic(null);
-				} else {
-					this.cp.setValue(item);
-					this.setGraphic(this.cp);
-				}
+                setText(null);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    this.cp.setValue(item);
+                    this.setGraphic(this.cp);
+                }
 
-				this.setBackground(new Background(new BackgroundFill(item, null, null)));
-				//this.backgroundProperty().bind(Bindings.createObjectBinding(() -> new Background(new BackgroundFill(this.cp.getValue(), null, null)), this.cp.valueProperty()));
-			}
-		}
+                this.setBackground(new Background(new BackgroundFill(item, null, null)));
+                //this.backgroundProperty().bind(Bindings.createObjectBinding(() -> new Background(new BackgroundFill(this.cp.getValue(), null, null)), this.cp.valueProperty()));
+            }
+        }
 
-		highlightedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("color"));
-		highlightedAssocationCol.setCellFactory(new Callback<TableColumn<AssociationInfo, Color>, TableCell<AssociationInfo, Color>>() {
-			@Override
-			public TableCell<AssociationInfo, Color> call(TableColumn<AssociationInfo, Color> param) {
-				return new ColorPickerTableCell<>(highlightedAssocationCol);
-			}
-		});
-		highlightedAssocationCol.setEditable(true);
-
-
-		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
-		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
-
-		associationsTable.setItems(sortedData);
+        highlightedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("color"));
+        highlightedAssocationCol.setCellFactory(new Callback<TableColumn<AssociationInfoImpl, Color>, TableCell<AssociationInfoImpl, Color>>() {
+            @Override
+            public TableCell<AssociationInfoImpl, Color> call(TableColumn<AssociationInfoImpl, Color> param) {
+                return new ColorPickerTableCell<>(highlightedAssocationCol);
+            }
+        });
+        highlightedAssocationCol.setEditable(true);
 
 
-		ArtifactTreeView artifactTreeView = new ArtifactTreeView(service);
-		artifactTreeView.setAssociationInfo(this.associationsData);
+        SortedList<AssociationInfoImpl> sortedData = new SortedList<>(filteredData);
+        sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
-		// split panes
-		SplitPane horizontalSplitPane = new SplitPane();
-		horizontalSplitPane.setOrientation(Orientation.VERTICAL);
-		horizontalSplitPane.getItems().addAll(associationsTable, artifactTreeView);
-
-		this.setCenter(horizontalSplitPane);
+        associationsTable.setItems(sortedData);
 
 
-		refreshButton.setOnAction(e -> {
-			toolBar.setDisable(true);
+        ArtifactTreeView artifactTreeView = new ArtifactTreeView(service);
 
-			artifactTreeView.setRootNode(null);
+        // split panes
+        SplitPane horizontalSplitPane = new SplitPane();
+        horizontalSplitPane.setOrientation(Orientation.VERTICAL);
+        horizontalSplitPane.getItems().addAll(associationsTable, artifactTreeView);
 
-			Task refreshTask = new Task<Void>() {
-				@Override
-				public Void call() throws EccoException {
-					Collection<? extends Association> associations = ArtifactsView.this.service.getRepository().getAssociations();
-					Platform.runLater(() -> {
-						ArtifactsView.this.associationsData.clear();
-						for (Association a : associations) {
-							ArtifactsView.this.associationsData.add(new AssociationInfo(a));
-						}
-					});
-					Platform.runLater(() -> toolBar.setDisable(false));
-					return null;
-				}
-			};
-
-			new Thread(refreshTask).start();
-		});
-
-		composeSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-
-				Task composeTask = new Task<Void>() {
-					@Override
-					public Void call() throws EccoException {
-						Collection<Association> selectedAssociations = new ArrayList<>();
-						for (AssociationInfo associationInfo : ArtifactsView.this.associationsData) {
-							if (associationInfo.isSelected())
-								selectedAssociations.add(associationInfo.getAssociation());
-						}
-
-						// use composition here to merge selected associations
-						LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
-						for (Association association : selectedAssociations) {
-							rootNode.addOrigNode(association.getRootNode());
-						}
-						Platform.runLater(() -> artifactTreeView.setRootNode(rootNode));
-
-						Platform.runLater(() -> toolBar.setDisable(false));
-						return null;
-					}
-				};
-
-				new Thread(composeTask).start();
-			}
-		});
-
-		selectAllButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-
-				for (AssociationInfo assocInfo : ArtifactsView.this.associationsData) {
-					assocInfo.setSelected(true);
-				}
-
-				toolBar.setDisable(false);
-			}
-		});
-
-		unselectAllButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-
-				for (AssociationInfo assocInfo : ArtifactsView.this.associationsData) {
-					assocInfo.setSelected(false);
-				}
-
-				toolBar.setDisable(false);
-			}
-		});
-
-		checkoutSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent e) {
-				toolBar.setDisable(true);
-
-				Collection<Association> selectedAssociations = new ArrayList<>();
-				for (AssociationInfo associationInfo : ArtifactsView.this.associationsData) {
-					if (associationInfo.isSelected())
-						selectedAssociations.add(associationInfo.getAssociation());
-				}
-
-				// use composition here to merge selected associations
-				if (!selectedAssociations.isEmpty()) {
-					final LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
-					for (Association association : selectedAssociations) {
-						rootNode.addOrigNode(association.getRootNode());
-					}
-
-					Task checkoutTask = new Task<Void>() {
-						@Override
-						public Void call() throws EccoException {
-							ArtifactsView.this.service.checkout(rootNode);
-							return null;
-						}
-
-						public void finished() {
-							//toolBar.setDisable(false);
-						}
-
-						@Override
-						public void succeeded() {
-							super.succeeded();
-							this.finished();
-
-							Alert alert = new Alert(Alert.AlertType.INFORMATION);
-							alert.setTitle("Checkout Successful");
-							alert.setHeaderText("Checkout Successful");
-							alert.setContentText("Checkout Successful!");
-
-							alert.showAndWait();
-						}
-
-						@Override
-						public void cancelled() {
-							super.cancelled();
-						}
-
-						@Override
-						public void failed() {
-							super.failed();
-							this.finished();
-
-							ExceptionAlert alert = new ExceptionAlert(this.getException());
-							alert.setTitle("Checkout Error");
-							alert.setHeaderText("Checkout Error");
-
-							alert.showAndWait();
-						}
-					};
-					new Thread(checkoutTask).start();
-				}
-
-				toolBar.setDisable(false);
-			}
-		});
+        this.setCenter(horizontalSplitPane);
 
 
-		showEmptyAssociationsCheckBox.setSelected(false);
-		useSimplifiedLabelsCheckBox.setSelected(true);
+        refreshButton.setOnAction(e -> {
+            toolBar.setDisable(true);
+
+            artifactTreeView.setRootNode(null);
+
+            Thread th =  new Thread(() -> {
+                Collection<? extends Association> associations = ArtifactsView.this.service.getRepository().getAssociations();
+                Platform.runLater(() -> {
+                    ArtifactsView.this.associationsData.clear();
+                    for (Association a : associations) {
+                        ArtifactsView.this.associationsData.add(new AssociationInfoImpl(a));
+                    }
+                    artifactTreeView.setAssociationInfo(ArtifactsView.this.associationsData);
+
+                    toolBar.setDisable(false);
+                });
+            });
+            th.start();
+        });
+
+        composeSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                toolBar.setDisable(true);
+
+                Task<Void> composeTask = new Task<>() {
+                    @Override
+                    public Void call() throws EccoException {
+                        Collection<Association> selectedAssociations = new ArrayList<>();
+                        for (AssociationInfoImpl associationInfo : ArtifactsView.this.associationsData) {
+                            if (associationInfo.isSelected())
+                                selectedAssociations.add(associationInfo.getAssociation());
+                        }
+
+                        // use composition here to merge selected associations
+                        LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+                        for (Association association : selectedAssociations) {
+                            rootNode.addOrigNode(association.getRootNode());
+                        }
+                        Platform.runLater(() -> {
+                            artifactTreeView.setRootNode(rootNode);
+                            toolBar.setDisable(false);
+                        });
+
+                        return null;
+                    }
+                };
+
+                new Thread(composeTask).start();
+            }
+        });
+
+        selectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                toolBar.setDisable(true);
+                setAllAssociationsSelected(true);
+                toolBar.setDisable(false);
+            }
+        });
+
+        unselectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                toolBar.setDisable(true);
+                setAllAssociationsSelected(false);
+                toolBar.setDisable(false);
+            }
+        });
+
+        selectByConfigurationMenuItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                toolBar.setDisable(true);
+
+                TextInputDialog dialog = new TextInputDialog();
+                dialog.setTitle("Configuration");
+                dialog.setGraphic(null);
+                dialog.setHeaderText(null);
+                dialog.setContentText("Configuration:");
+                dialog.setResizable(true);
+                final Window wnd = dialog.getDialogPane().getScene().getWindow();
+                Stage stage = (Stage)wnd;
+                stage.setMinWidth(500);
+                stage.setMinHeight(150);
+                Optional<String> result = dialog.showAndWait();
+
+                if (!result.isPresent()) {
+                    toolBar.setDisable(false);
+                    return;
+                }
+                String config = result.get();
+
+                Task<Void> selectionTask = new Task<>() {
+                    @Override
+                    public Void call() throws EccoException {
+                        Set<Association> ass = service.getAssociations(config);
+                        LinkedList<AssociationInfoImpl> toSelect = new LinkedList<AssociationInfoImpl>();
+                        for (AssociationInfoImpl ai : associationsData) {
+                            if (ass.contains(ai.getAssociation())) {
+                                toSelect.add(ai);
+                            }
+                        }
+
+                        Platform.runLater(() -> {
+                            setAllAssociationsSelected(false);
+                            for (AssociationInfoImpl a : toSelect) {
+                                a.setSelected(true);
+                            }
+                            toolBar.setDisable(false);
+                        });
+
+                        return null;
+                    }
+                };
+
+                new Thread(selectionTask).start();
+            }
+        });
+
+        checkoutSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                toolBar.setDisable(true);
+
+                Collection<Association> selectedAssociations = new ArrayList<>();
+                for (AssociationInfoImpl associationInfo : ArtifactsView.this.associationsData) {
+                    if (associationInfo.isSelected())
+                        selectedAssociations.add(associationInfo.getAssociation());
+                }
+
+                // use composition here to merge selected associations
+                if (!selectedAssociations.isEmpty()) {
+                    final LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+                    for (Association association : selectedAssociations) {
+                        rootNode.addOrigNode(association.getRootNode());
+                    }
+
+                    Task checkoutTask = new Task<Void>() {
+                        @Override
+                        public Void call() throws EccoException {
+                            ArtifactsView.this.service.checkout(rootNode);
+                            return null;
+                        }
+
+                        public void finished() {
+                            //toolBar.setDisable(false);
+                        }
+
+                        @Override
+                        public void succeeded() {
+                            super.succeeded();
+                            this.finished();
+
+                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                            alert.setTitle("Checkout Successful");
+                            alert.setHeaderText("Checkout Successful");
+                            alert.setContentText("Checkout Successful!");
+
+                            alert.showAndWait();
+                        }
+
+                        @Override
+                        public void cancelled() {
+                            super.cancelled();
+                        }
+
+                        @Override
+                        public void failed() {
+                            super.failed();
+                            this.finished();
+
+                            ExceptionAlert alert = new ExceptionAlert(this.getException());
+                            alert.setTitle("Checkout Error");
+                            alert.setHeaderText("Checkout Error");
+
+                            alert.showAndWait();
+                        }
+                    };
+                    new Thread(checkoutTask).start();
+                }
+
+                toolBar.setDisable(false);
+            }
+        });
 
 
-		Platform.runLater(() -> horizontalSplitPane.setDividerPosition(0, 0.2));
+        showEmptyAssociationsCheckBox.setSelected(false);
+        useSimplifiedLabelsCheckBox.setSelected(true);
 
 
-		// ecco service
-		service.addListener(this);
+        Platform.runLater(() -> {
+            horizontalSplitPane.setDividerPosition(0, 0.2);
+            if (!service.isInitialized())
+                this.setDisable(true);
+        });
 
-		if (!service.isInitialized())
-			this.setDisable(true);
-	}
+        // ecco service
+        service.addListener(this);
+    }
 
+    private void setAllAssociationsSelected(boolean flag) {
+        for (AssociationInfoImpl assocInfo : ArtifactsView.this.associationsData) {
+            assocInfo.setSelected(flag);
+        }
+    }
 
-	@Override
-	public void statusChangedEvent(EccoService service) {
-		if (service.isInitialized()) {
-			Platform.runLater(() -> this.setDisable(false));
-		} else {
-			Platform.runLater(() -> this.setDisable(true));
-		}
-	}
+    @Override
+    public void statusChangedEvent(EccoService service) {
+        if (service.isInitialized()) {
+            Platform.runLater(() -> this.setDisable(false));
+        } else {
+            Platform.runLater(() -> this.setDisable(true));
+        }
+    }
 
+    public class AssociationInfoImpl implements AssociationInfo {
+        private final Association association;
 
-	public class AssociationInfo {
-		private Association association;
+        private final BooleanProperty selected;
 
-		private BooleanProperty selected;
+        private final ObjectProperty<Color> color;
 
-		private ObjectProperty<Color> color;
+        private final IntegerProperty numArtifacts;
 
-		private IntegerProperty numArtifacts;
+        private final LinkedList<PropertyChangeListener> listeners;
 
-		public AssociationInfo(Association association) {
-			this.association = association;
-			this.selected = new SimpleBooleanProperty(false);
-			this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
-			this.color = new SimpleObjectProperty<Color>(Color.TRANSPARENT);
-		}
+        public AssociationInfoImpl(Association association) {
+            this.association = association;
+            this.listeners = new LinkedList<>();
+            this.selected = new SimpleBooleanProperty(false);
+            this.selected.addListener((observable, oldValue, newValue) ->
+                    onPropertyChanged("selected", oldValue, newValue));
+            this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
+            this.numArtifacts.addListener((observable, oldValue, newValue) ->
+                    onPropertyChanged("numArtifacts", oldValue, newValue));
+            this.color = new SimpleObjectProperty<>(Color.TRANSPARENT);
+            this.color.addListener((observable, oldValue, newValue) ->
+                    onPropertyChanged("color", oldValue, newValue));
+        }
 
-		public Association getAssociation() {
-			return this.association;
-		}
+        @Override
+        public final Association getAssociation() {
+            return this.association;
+        }
 
-		public boolean isSelected() {
-			return this.selected.get();
-		}
+        @Override
+        public void addPropertyChangeListener(PropertyChangeListener listener) {
+            listeners.add(listener);
+        }
 
-		public void setSelected(boolean selected) {
-			this.selected.set(selected);
-		}
+        @Override
+        public void removePropertyChangeListener(PropertyChangeListener listener) {
+            listeners.remove(listener);
+        }
 
-		public BooleanProperty selectedProperty() {
-			return this.selected;
-		}
+        @Override
+        public Object getPropertyValue(String propertyName) {
+            switch (propertyName) {
+                case "color":
+                    return colorProperty().getValue();
+                case "selected":
+                    return selectedProperty().getValue();
+                case "numArtifacts":
+                    return numArtifactsProperty().getValue();
+                default:
+                    return null;
+            }
+        }
 
-		public ObjectProperty<Color> colorProperty() {
-			return this.color;
-		}
+        public boolean isSelected() {
+            return this.selected.get();
+        }
 
-		public int getNumArtifacts() {
-			return this.numArtifacts.get();
-		}
+        public void setSelected(boolean selected) { this.selected.set(selected); }
 
-		public void setNumArtifacts(int numArtifacts) {
-			this.numArtifacts.set(numArtifacts);
-		}
+        public BooleanProperty selectedProperty() {
+            return this.selected;
+        }
 
-		public IntegerProperty numArtifactsProperty() {
-			return this.numArtifacts;
-		}
-	}
+        public ObjectProperty<Color> colorProperty() {
+            return this.color;
+        }
 
+        public int getNumArtifacts() {
+            return this.numArtifacts.get();
+        }
+
+        public void setNumArtifacts(int numArtifacts) {
+            this.numArtifacts.set(numArtifacts);
+        }
+
+        public IntegerProperty numArtifactsProperty() {
+            return this.numArtifacts;
+        }
+
+        private void onPropertyChanged(String propertyName, Object oldValue, Object newValue) {
+            listeners.forEach(pcl -> pcl.propertyChange(
+                    new PropertyChangeEvent(this, propertyName, oldValue, newValue)));
+        }
+    }
 }

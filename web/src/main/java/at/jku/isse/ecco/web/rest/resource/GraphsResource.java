@@ -1,14 +1,12 @@
 package at.jku.isse.ecco.web.rest.resource;
 
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.web.rest.EccoApplication;
 import at.jku.isse.ecco.web.rest.dto.ArtifactsGraphDTO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -24,8 +22,6 @@ import java.util.Map;
 
 @Path("/graph")
 public class GraphsResource {
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(FeaturesResource.class);
 
 	@Context
 	private Application application;
@@ -43,8 +39,6 @@ public class GraphsResource {
 
 		EccoService eccoService = ((EccoApplication) this.application).getEccoService();
 		this.service = eccoService;
-
-		LOGGER.info("getArtifactsGraph(maxChildren: " + maxChildren + ")");
 
 		// TODO: cache the graph somewhere (in the application? or even the service?)
 

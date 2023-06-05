@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.util.Arrays;
@@ -15,18 +16,26 @@ public class MemConfiguration implements Configuration {
 	public static final long serialVersionUID = 1L;
 
 
-	private final FeatureRevision[] featureRevisions;
-
+	private FeatureRevision[] featureRevisions;
 
 	public MemConfiguration(FeatureRevision[] featureRevisions) {
 		checkNotNull(featureRevisions);
 		this.featureRevisions = featureRevisions;
 	}
 
-
 	@Override
 	public FeatureRevision[] getFeatureRevisions() {
 		return this.featureRevisions;
+	}
+
+	@Override
+	public Configuration getConfiguration() {
+		return this;
+	}
+
+	@Override
+	public void setFeatureRevisions(FeatureRevision[] featureRevisions) {
+		this.featureRevisions = featureRevisions;
 	}
 
 
