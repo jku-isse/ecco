@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-public class ListActionTest {
+public class ListFeaturesActionTest {
     @Test
     public void printsFeatures() {
         EccoService service = mock(EccoService.class);
@@ -24,13 +24,13 @@ public class ListActionTest {
             add(new TestFeature("feature 2"));
             add(new TestFeature("feature 3"));
         }};
-        ListAction listAction = new ListAction(service, stringWriter);
+        ListFeaturesAction listFeaturesAction = new ListFeaturesAction(service, stringWriter);
 
         when(service.getRepository()).thenReturn(repository);
         // thenReturn does not like generics
         doReturn(features).when(repository).getFeatures();
 
-        listAction.run(null, null, null, null, null, null);
+        listFeaturesAction.run();
 
         verify(service).open();
         verify(service).getRepository();

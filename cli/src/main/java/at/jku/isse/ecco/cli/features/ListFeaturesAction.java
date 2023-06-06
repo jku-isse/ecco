@@ -1,21 +1,18 @@
 package at.jku.isse.ecco.cli.features;
 
-import at.jku.isse.ecco.cli.DefaultArgumentAction;
+import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
+import at.jku.isse.ecco.cli.writer.SystemWriter;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.service.EccoService;
-import net.sourceforge.argparse4j.inf.Argument;
-import net.sourceforge.argparse4j.inf.ArgumentParser;
 
 import java.util.Collection;
-import java.util.Map;
-import java.util.function.Consumer;
 
-public class ListAction extends DefaultArgumentAction {
+public class ListFeaturesAction implements Command {
     private final EccoService eccoService;
     private final OutWriter writer;
 
-    public ListAction(
+    public ListFeaturesAction(
             EccoService eccoService,
             OutWriter writer
     ) {
@@ -23,8 +20,12 @@ public class ListAction extends DefaultArgumentAction {
         this.writer = writer;
     }
 
+    public ListFeaturesAction(EccoService eccoService) {
+        this(eccoService, new SystemWriter());
+    }
+
     @Override
-    public void run(ArgumentParser parser, Argument arg, Map<String, Object> attrs, String flag, Object value, Consumer<Object> valueSetter) {
+    public void run() {
         eccoService.open();
 
         Collection<? extends Feature> features = this.eccoService.getRepository().getFeatures();

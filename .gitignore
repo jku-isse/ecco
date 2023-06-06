@@ -12,3 +12,4 @@ test-output
 desktop.ini
 /cli/reports/
 /cli/tests/
+/cli/install.sh

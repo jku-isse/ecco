@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.cli.init;
 
 import at.jku.isse.ecco.service.EccoService;
-import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -13,23 +12,24 @@ import java.util.Comparator;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class InitActionTest {
+public class InitCommandTest {
     @BeforeAll
     public static void deleteTestRepositories() throws IOException {
+        //noinspection resource,ResultOfMethodCallIgnored
         Files.walk(Path.of("tests"))
                 .sorted(Comparator.reverseOrder())
                 .map(Path::toFile)
                 .forEach(File::delete);
     }
     @Test
-    public void initializesRepository() throws IOException, ArgumentParserException {
+    public void initializesRepository() throws IOException {
         Path testDir = Path.of("tests/initialize-repo-test");
         Path eccoDir = Path.of("tests/initialize-repo-test/.ecco");
         Files.createDirectories(testDir);
         EccoService eccoService = new EccoService(testDir);
-        InitAction action = new InitAction(eccoService);
+        InitCommand action = new InitCommand(eccoService);
 
-        action.run(null, null, null, null, null, null);
+        action.run();
 
         assertTrue(Files.exists(testDir));
         assertTrue(Files.exists(eccoDir));
