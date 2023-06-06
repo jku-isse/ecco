@@ -117,7 +117,7 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     /**
-     * Adds a <a href="#{@link}">{@link WriteListener}</a> that
+     * Adds a {@link WriteListener} that
      * is notified everytime a file has been written.
      *
      * @param listener Instance of WriteListener to be notified
@@ -129,7 +129,7 @@ public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     /**
-     * Removes a <a href="#{@link}">{@link WriteListener}</a> that
+     * Removes a {@link WriteListener} that
      * is notified everytime a file has been written.
      *
      * @param listener Instance of WriteListener to remove

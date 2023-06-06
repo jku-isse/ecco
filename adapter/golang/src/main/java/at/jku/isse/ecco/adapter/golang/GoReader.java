@@ -148,7 +148,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     /**
-     * Adds a <a href="#{@link}">{@link ReadListener}</a> that
+     * Adds a {@link ReadListener ReadListener} that
      * is notified everytime a file has been read.
      *
      * @param listener Instance of ReadListener to be notified
@@ -160,7 +160,7 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     /**
-     * Removes a <a href="#{@link}">{@link ReadListener}</a> that
+     * Removes a {@link ReadListener ReadListener} that
      * is notified everytime a file has been read.
      *
      * @param listener Instance of ReadListener to remove
