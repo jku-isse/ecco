@@ -10,10 +10,10 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 
 test {
 	useJUnitPlatform()
+}
 
-	testLogging {
-		events "passed", "skipped", "failed"
-	}
+integrationTest {
+	useJUnitPlatform()
 }
 
 dependencies {
