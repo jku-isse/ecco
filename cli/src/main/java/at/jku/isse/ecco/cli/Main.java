@@ -4,7 +4,6 @@ import at.jku.isse.ecco.EccoException;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.*;
-import net.sourceforge.argparse4j.internal.HelpScreenException;
 
 /**
  * Main class for the CLI. Parses the command line parameters.
@@ -24,11 +23,7 @@ public class Main {
 
 
 	public static void main(String[] args) {
-
 		EccoCli cli = new EccoCli();
-
-
-		// parse arguments
 
 		ArgumentParser parser = ArgumentParsers.newArgumentParser("ecco").description("ECCO. A Variability-Aware / Feature-Oriented Version Control System.").version("0.1.4");
 		parser.addArgument("-v", "--version").action(Arguments.version()).help("show the version");
@@ -112,10 +107,6 @@ public class Main {
 		// server
 		Subparser parserServer = subparsers.addParser("server").help("start a server").description("Start a server on the given port.");
 		parserServer.addArgument(REMOTE_NAME);
-
-
-		// TODO: update (update working copy)?
-
 
 		try {
 			Namespace res = parser.parseArgs(args);
@@ -221,9 +212,7 @@ public class Main {
 					break;
 			}
 
-		} catch (HelpScreenException e) {
-			parser.handleError(e);
-		} catch (ArgumentParserException e) {
+		}  catch (ArgumentParserException e) {
 			System.err.println("ERROR: " + e.getMessage());
 			System.err.flush();
 			System.exit(1);

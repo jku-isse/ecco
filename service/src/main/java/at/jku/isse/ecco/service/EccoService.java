@@ -426,11 +426,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         if (this.properties.getProperty(ECCO_PROPERTIES_STORAGE) == null) {
             throw new EccoException("No data plugin specified.");
         }
-//		Collection<String> artifactPluginsList = new ArrayList<>();
-//		if (this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
-//			artifactPluginsList = Arrays.asList(this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
-//			LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
-//		}
 
         // artifact adapter modules
         List<Module> artifactModules = new ArrayList<>();

@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 
-public abstract class ArtifactPlugin {
+public abstract class  ArtifactPlugin {
 
 	/**
 	 * Must always return the plugin class name:
