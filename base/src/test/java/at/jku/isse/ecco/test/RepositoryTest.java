@@ -15,7 +15,7 @@ import java.util.List;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 public class RepositoryTest {
-    Path basePath = Path.of("D:\\Eigene Daten\\Studium\\Studium\\LVAs\\6_Semester\\Bsc\\ecco\\examples\\image_variants"); //TODO adapt path
+    Path basePath = Path.of(System.getProperty("user.dir")).getParent().resolve("examples").resolve("image_variants");
 
     @Test(groups = {"integration", "gui"})
     public void populateSimpleVersionRepository() {
