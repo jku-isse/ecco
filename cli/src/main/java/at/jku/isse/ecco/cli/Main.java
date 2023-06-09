@@ -3,6 +3,7 @@ package at.jku.isse.ecco.cli;
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.command.CommandRegister;
 import at.jku.isse.ecco.cli.command.adapters.ListAdaptersCommand;
+import at.jku.isse.ecco.cli.command.checkout.CheckoutCommand;
 import at.jku.isse.ecco.cli.command.commit.CommitCommand;
 import at.jku.isse.ecco.cli.command.features.ListFeaturesCommand;
 import at.jku.isse.ecco.cli.command.init.InitCommand;
@@ -41,6 +42,7 @@ public class Main {
         registerSimpleCommand(commandParser, ListAdaptersCommand.ADAPTERS, new ListAdaptersCommand(eccoService));
 
         registerCommitCommand(commandParser);
+        registerCheckoutCommand(commandParser);
     }
 
     private static void registerCommitCommand(Subparsers commandParser) {
@@ -49,6 +51,13 @@ public class Main {
         commitCommandParser.addArgument(CommitCommand.FLAG_CONFIGURATION).required(true);
         commitCommandParser.addArgument(CommitCommand.FLAG_COMMIT_MESSAGE).setDefault("").required(false);
         commandRegister.register(CommitCommand.COMMIT, new CommitCommand(eccoService));
+    }
+
+    private static void registerCheckoutCommand(Subparsers commandParser) {
+        Subparser commitCommandParser = commandParser.addParser(CheckoutCommand.CHECKOUT);
+        commitCommandParser.setDefault(ProgramConstants.COMMAND, CheckoutCommand.CHECKOUT);
+        commitCommandParser.addArgument(CheckoutCommand.FLAG_CONFIGURATION).required(true);
+        commandRegister.register(CheckoutCommand.CHECKOUT, new CheckoutCommand(eccoService));
     }
 
     private static void registerSimpleCommand(Subparsers commandParser, String commandString, Command command) {
