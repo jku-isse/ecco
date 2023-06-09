@@ -75,4 +75,19 @@ tasks.register('copyScripts', Copy) {
 	from 'ecco', 'ecco.bat'
 	into project.file('build/bundle/')
 }
+
+tasks.register('fatJar', Jar) {
+	manifest {
+		attributes 'Main-Class': 'at.jku.isse.ecco.cli.Main'
+	}
+	archiveClassifier = "all"
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	from {
+		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+	} {
+		exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+	}
+	with jar
+}
+
 bundle.dependsOn += copyScripts
