@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.cli.features;
+package at.jku.isse.ecco.cli.command.features;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;

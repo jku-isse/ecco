@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.cli.features;
+package at.jku.isse.ecco.cli.command.features;
 
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
@@ -8,11 +8,11 @@ import at.jku.isse.ecco.service.EccoService;
 
 import java.util.Collection;
 
-public class ListFeaturesAction implements Command {
+public class ListFeaturesCommand implements Command {
     private final EccoService eccoService;
     private final OutWriter writer;
 
-    public ListFeaturesAction(
+    public ListFeaturesCommand(
             EccoService eccoService,
             OutWriter writer
     ) {
@@ -20,7 +20,7 @@ public class ListFeaturesAction implements Command {
         this.writer = writer;
     }
 
-    public ListFeaturesAction(EccoService eccoService) {
+    public ListFeaturesCommand(EccoService eccoService) {
         this(eccoService, new SystemWriter());
     }
 

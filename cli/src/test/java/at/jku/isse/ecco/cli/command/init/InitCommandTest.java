@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.cli.init;
+package at.jku.isse.ecco.cli.command.init;
 
 import at.jku.isse.ecco.service.EccoService;
 import org.junit.jupiter.api.Test;

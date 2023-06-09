@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.init;
 
+import at.jku.isse.ecco.cli.command.init.InitCommand;
 import at.jku.isse.ecco.service.EccoService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

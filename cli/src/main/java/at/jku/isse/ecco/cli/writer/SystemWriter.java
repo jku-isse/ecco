@@ -5,4 +5,9 @@ public class SystemWriter implements OutWriter {
     public void println(String line) {
         System.out.println(line);
     }
+
+    @Override
+    public void printf(String formatString, Object... args) {
+        System.out.printf(formatString, args);
+    }
 }

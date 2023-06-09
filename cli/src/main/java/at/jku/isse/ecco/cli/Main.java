@@ -2,8 +2,9 @@ package at.jku.isse.ecco.cli;
 
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.command.CommandRegister;
-import at.jku.isse.ecco.cli.features.ListFeaturesAction;
-import at.jku.isse.ecco.cli.init.InitCommand;
+import at.jku.isse.ecco.cli.command.adapters.ListAdaptersCommand;
+import at.jku.isse.ecco.cli.command.features.ListFeaturesCommand;
+import at.jku.isse.ecco.cli.command.init.InitCommand;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
@@ -38,7 +39,8 @@ public class Main {
         Subparsers commandParser  = parser.addSubparsers().title(ProgramConstants.COMMAND);
 
         registerCommand(commandParser, ProgramConstants.INIT, new InitCommand(eccoService));
-        registerCommand(commandParser, ProgramConstants.FEATURES, new ListFeaturesAction(eccoService));
+        registerCommand(commandParser, ProgramConstants.FEATURES, new ListFeaturesCommand(eccoService));
+        registerCommand(commandParser, ProgramConstants.ADAPTERS, new ListAdaptersCommand(eccoService));
     }
 
     private static void registerCommand(Subparsers commandParser, String commandString, Command command) {

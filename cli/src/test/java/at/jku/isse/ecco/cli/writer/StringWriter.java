@@ -11,6 +11,11 @@ public class StringWriter implements OutWriter {
         this.lines.add(line);
     }
 
+    @Override
+    public void printf(String formatString, Object... args) {
+        this.lines.add(String.format(formatString, args));
+    }
+
     public List<String> getLines() {
         return lines;
     }

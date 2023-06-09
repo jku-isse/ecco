@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.cli.features;
+package at.jku.isse.ecco.cli.command.features;
 
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.feature.Feature;
@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-public class ListFeaturesActionTest {
+public class ListFeaturesCommandTest {
     @Test
     public void printsFeatures() {
         EccoService service = mock(EccoService.class);
@@ -24,7 +24,7 @@ public class ListFeaturesActionTest {
             add(new TestFeature("feature 2"));
             add(new TestFeature("feature 3"));
         }};
-        ListFeaturesAction listFeaturesAction = new ListFeaturesAction(service, stringWriter);
+        ListFeaturesCommand listFeaturesAction = new ListFeaturesCommand(service, stringWriter);
 
         when(service.getRepository()).thenReturn(repository);
         // thenReturn does not like generics
