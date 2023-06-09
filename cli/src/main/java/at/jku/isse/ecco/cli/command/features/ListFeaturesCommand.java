@@ -5,10 +5,12 @@ import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.service.EccoService;
+import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.util.Collection;
 
 public class ListFeaturesCommand implements Command {
+    public final static String FEATURES = "features";
     private final EccoService eccoService;
     private final OutWriter writer;
 
@@ -25,7 +27,7 @@ public class ListFeaturesCommand implements Command {
     }
 
     @Override
-    public void run() {
+    public void run(Namespace namespace) {
         eccoService.open();
 
         Collection<? extends Feature> features = this.eccoService.getRepository().getFeatures();

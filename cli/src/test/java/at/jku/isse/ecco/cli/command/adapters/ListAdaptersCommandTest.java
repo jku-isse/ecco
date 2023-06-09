@@ -2,9 +2,11 @@ package at.jku.isse.ecco.cli.command.adapters;
 
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.service.EccoService;
+import net.sourceforge.argparse4j.inf.Namespace;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -23,7 +25,7 @@ public class ListAdaptersCommandTest {
             new TestAdapter(4)
         )).when(service).getArtifactPlugins();
 
-        command.run();
+        command.run(new Namespace(Map.of()));
 
         verify(service).getArtifactPlugins();
 

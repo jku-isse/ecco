@@ -4,10 +4,12 @@ import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
+import net.sourceforge.argparse4j.inf.Namespace;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,7 +32,7 @@ public class ListFeaturesCommandTest {
         // thenReturn does not like generics
         doReturn(features).when(repository).getFeatures();
 
-        listFeaturesAction.run();
+        listFeaturesAction.run(new Namespace(Map.of()));
 
         verify(service).open();
         verify(service).getRepository();
