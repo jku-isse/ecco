@@ -48,7 +48,7 @@ ospackage {
 }
 
 linuxZip {
-	into(archiveFileName - ('.' + archiveExtension)) {
+	into(archiveFileName.get() - ('.' + archiveExtension)) {
 		from 'ecco'
 	}
 }
@@ -59,7 +59,7 @@ sourcesZip {
 }
 
 windowsZip {
-	into(archiveFileName - ('.' + archiveExtension)) {
+	into(archiveFileName.get() - ('.' + archiveExtension)) {
 		from 'ecco.bat'
 	}
 }
