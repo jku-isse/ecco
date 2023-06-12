@@ -65,11 +65,6 @@ public class RuntimeWriter implements ArtifactWriter<Set<Node>, Path> {
         return toreturn;
     }
 
-    @Override
-    public Path[] write2(Path base, Set<Node> input, String f) {
-        return new Path[0];
-    }
-
     /**
      * @param baseNode The base node which should be processed
      * @param basePath The base path (need to parse package hierarchy

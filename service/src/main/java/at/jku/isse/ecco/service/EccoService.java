@@ -87,7 +87,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
 
 
-    private Properties properties = new Properties();
+    private final Properties properties = new Properties();
 
     private Path baseDir;
     private Path repositoryDir;
@@ -206,7 +206,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.initialized;
     }
 
-    private MemEntityFactory memEntityFactory = new MemEntityFactory();
+    private final MemEntityFactory memEntityFactory = new MemEntityFactory();
 
     @Inject
     private DispatchReader reader;
@@ -225,7 +225,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // # LISTENERS #####################################################################################################
 
-    private Collection<EccoListener> listeners = new ArrayList<>();
+    private final Collection<EccoListener> listeners = new ArrayList<>();
 
     public void addListener(EccoListener listener) {
         this.listeners.add(listener);
@@ -738,30 +738,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     String featureName = pair[0];
                     String featureRevisionId = pair[1];
 
-                    Feature feature;
-                    if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
-                        featureName = featureName.substring(1, featureName.length() - 1);
-                        feature = repository.getFeature(featureName);
-                        if (feature == null) {
-                            //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(featureName, featureName);
-                        } else {
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        }
-                    } else { // feature name
-                        Collection<Feature> features = repository.getFeaturesByName(featureName);
-                        if (features.isEmpty()) {
-                            //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
-                        } else if (features.size() == 1) {
-                            feature = features.iterator().next();
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        } else {
-                            throw new EccoException("Feature name is not unique. Use feature id instead.");
-                        }
-                    }
+                    Feature feature = getFeature(repository, featureName);
 
                     FeatureRevision featureRevision = feature.getRevision(featureRevisionId);
                     if (featureRevision == null) {
@@ -772,60 +749,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 } else if (featureRevisionString.endsWith("'")) { // create new feature revision for feature
                     String featureName = featureRevisionString.substring(0, featureRevisionString.length() - 1);
 
-                    Feature feature;
-                    if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
-                        featureName = featureName.substring(1, featureName.length() - 1);
-                        feature = repository.getFeature(featureName);
-                        if (feature == null) {
-                            //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(featureName, featureName);
-                        } else {
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        }
-                    } else { // feature name
-                        Collection<Feature> features = repository.getFeaturesByName(featureName);
-                        if (features.isEmpty()) {
-                            //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        } else if (features.size() == 1) {
-                            feature = features.iterator().next();
-                        } else {
-                            throw new EccoException("Feature name is not unique. Use feature id instead.");
-                        }
-                    }
+                    Feature feature = getFeature(repository, featureName);
 
                     FeatureRevision featureRevision = feature.addRevision(UUID.randomUUID().toString());
                     featureRevisions.add(featureRevision);
                 } else { // use most recent feature revision of feature (or create a new one if none existed so far)
                     String featureName = featureRevisionString;
 
-                    Feature feature;
-                    if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
-                        featureName = featureName.substring(1, featureName.length() - 1);
-                        feature = repository.getFeature(featureName);
-                        if (feature == null) {
-                            //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(featureName, featureName);
-                        } else {
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        }
-                    } else { // feature name
-                        Collection<Feature> features = repository.getFeaturesByName(featureName);
-                        if (features.isEmpty()) {
-                            //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
-                            // create temporary feature object
-                            feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
-                        } else if (features.size() == 1) {
-                            feature = features.iterator().next();
-                            feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
-                        } else {
-                            throw new EccoException("Feature name is not unique. Use feature id instead.");
-                        }
-                    }
+                    Feature feature = getFeature(repository, featureName);
 
                     FeatureRevision featureRevision = feature.getLatestRevision();
                     if (featureRevision == null) {
@@ -846,6 +777,34 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             throw new EccoException("Error parsing configuration string: " + configurationString, e);
         }
+    }
+
+    private Feature getFeature(Repository.Op repository, String featureName) {
+        Feature feature;
+        if (featureName.startsWith("[") && featureName.endsWith("]")) { // feature id
+            featureName = featureName.substring(1, featureName.length() - 1);
+            feature = repository.getFeature(featureName);
+            if (feature == null) {
+                //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
+                // create temporary feature object
+                feature = this.entityFactory.createFeature(featureName, featureName);
+            } else {
+                feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
+            }
+        } else { // feature name
+            Collection<Feature> features = repository.getFeaturesByName(featureName);
+            if (features.isEmpty()) {
+                //feature = this.addFeature(UUID.randomUUID().toString(), featureName);
+                // create temporary feature object
+                feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
+            } else if (features.size() == 1) {
+                feature = features.iterator().next();
+                feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
+            } else {
+                throw new EccoException("Feature name is not unique. Use feature id instead.");
+            }
+        }
+        return feature;
     }
 
 
@@ -920,7 +879,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private ServerSocketChannel ssChannel = null;
     private boolean serverShutdown = false;
     private boolean serverRunning = false;
-    private Lock serverLock = new ReentrantLock();
+    private final Lock serverLock = new ReentrantLock();
 
     public boolean serverRunning() {
         return this.serverRunning;
@@ -1094,7 +1053,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
                     String[] pair = remote.getAddress().split(":");
-                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.valueOf(pair[1])))) {
+                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.parseInt(pair[1])))) {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
@@ -1210,7 +1169,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.repositoryDao.store(repository);
 
             // after fork add used remote as default origin remote
-            Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + Integer.toString(port), Remote.Type.REMOTE);
+            Remote remote = this.entityFactory.createRemote(ORIGIN_REMOTE_NAME, hostname + ":" + port, Remote.Type.REMOTE);
             this.remoteDao.storeRemote(remote);
 
             this.transactionStrategy.end();
@@ -1336,7 +1295,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
                     String[] pair = remote.getAddress().split(":");
-                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.valueOf(pair[1])))) {
+                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.parseInt(pair[1])))) {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
@@ -1436,9 +1395,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
                     String[] pair = remote.getAddress().split(":");
-                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.valueOf(pair[1])))) {
+                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.parseInt(pair[1])))) {
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                        ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+                        //ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
 
                         oos.writeObject("PUSH");
 
@@ -1636,17 +1595,18 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             ArrayList<Variant> variants = repository.getVariants();
 
-            long startTime = System.currentTimeMillis();
+            long extractTime = System.currentTimeMillis();
             Commit commit = repository.extract(configuration, nodes, committer);
+            extractTime = System.currentTimeMillis() - extractTime;
 
             //storing new variant
-            Boolean hasConfigurarion = false;
+            boolean hasConfiguration = false;
             for (Variant v : variants) {
                 if (v.getConfiguration().equals(configuration)) {
-                    hasConfigurarion = true;
+                    hasConfiguration = true;
                 }
             }
-            if (!hasConfigurarion) {
+            if (!hasConfiguration) {
                 MemVariant memVariant = new MemVariant("Commit" , configuration, UUID.randomUUID().toString());
                 memVariant.setDescription(commitMessage);
                 repository.addVariant(memVariant);
@@ -1658,7 +1618,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             this.repositoryDao.store(repository);
 
+            long endStrategyTime = System.currentTimeMillis();
             this.transactionStrategy.end();
+            endStrategyTime = System.currentTimeMillis() - endStrategyTime;
+
+            LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
+                    "ms, .transactionStrategy.end(): " + endStrategyTime + "ms");
 
             return commit;
         } catch (Exception e) {
@@ -1705,7 +1670,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             ArrayList<Variant> variants = repository.getVariants();
 
             //storing new variant
-            Boolean hasConfigurarion = false;
+            boolean hasConfigurarion = false;
             for (Variant v : variants) {
                 if (v.getConfiguration().equals(configuration)) {
                     hasConfigurarion = true;
@@ -1835,18 +1800,18 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     }
                 }/**/
             }
-            String config = "";
+            StringBuilder sb = new StringBuilder();
             for (FeatureRevision fr : featureRevisions) {
                 if (fr.equals(featureRevision) && featureRevisionToUpdate != null) {
                     newFeatureRevisions[count] = featureRevisionToUpdate;
-                    config += "," + featureRevisionUpdate;
+                    sb.append(",").append(featureRevisionUpdate);
                 } else {
                     newFeatureRevisions[count] = fr;
-                    config += "," + fr;
+                    sb.append(",").append(fr);
                 }
                 count++;
             }
-            config = config.replaceFirst(",", "");
+            String config = sb.length() > 0 ? sb.substring(1) : ""; // remove first ','
             variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
             Configuration newConfiguration = service.parseConfigurationString(config);
             variant.setConfiguration(newConfiguration);
@@ -1877,15 +1842,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
             FeatureRevision[] newFeatureRevisions = new FeatureRevision[featureRevisions.length];
             int count = 0;
-            String config = "";
+            StringBuilder sb = new StringBuilder();
             for (FeatureRevision fr : featureRevisions) {
                 if (!fr.equals(featureRevision)) {
                     newFeatureRevisions[count] = fr;
-                    config += "," + fr;
+                    sb.append(",").append(fr);
                 }
                 count++;
             }
-            config = config.replaceFirst(",", "");
+            String config = sb.length() > 0 ? sb.substring(1) : ""; // remove first ','
             variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
             Configuration newConfiguration = service.parseConfigurationString(config);
             variant.setConfiguration(newConfiguration);
@@ -1945,6 +1910,20 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     // CHECKOUT ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
+     * Composes checkout with given configuration.
+     * @param configuration Configuration to be composed.
+     * @return Checkout with composed artifacts.
+     */
+    private synchronized Checkout compose(Configuration configuration) {
+        this.checkInitialized();
+
+        checkNotNull(configuration);
+
+        Repository.Op repository = this.repositoryDao.load();
+        return repository.compose(configuration);
+    }
+
+    /**
      * Checks out the implementation of the configuration (given as configuration string) into the base directory.
      *
      * @param configurationString The configuration string representing the configuration that shall be checked out.
@@ -1954,96 +1933,41 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.checkout(this.parseConfigurationString(configurationString));
     }
 
+    /**
+     * Retrieves associations needed to compose a configuration.
+     * @param configurationString The configuration string for that associations shall be retrieved.
+     * @return Set of associations.
+     */
+    public synchronized Set<Association> getAssociations(String configurationString) {
+        return this.getAssociations(this.parseConfigurationString(configurationString));
+    }
+
+    /**
+     * Retrieves associations needed to compose a configuration.
+     * @param configuration The configuration for that associations shall be retrieved.
+     * @return Set of associations.
+     */
+    public synchronized Set<Association> getAssociations(Configuration configuration) {
+        Checkout checkout = compose(configuration);
+        return checkout.getSelectedAssociations();
+    }
+
     public synchronized Set<Node> compareArtifacts(String configurationString) {
         return this.compareArtifacts(this.parseConfigurationString(configurationString));
     }
 
     public synchronized Set<Node> compareArtifacts(Configuration configuration) {
-        this.checkInitialized();
+        Checkout checkout = compose(configuration);
+        return compareArtifacts(checkout);
+    }
 
-        checkNotNull(configuration);
-
-        Repository.Op repository = this.repositoryDao.load();
-        Checkout checkout = repository.compose(configuration);
-
+    // TODO: check if 'compareArtifacts' is proper name for method (fires association-selected events and returns artifact nodes)
+    private synchronized Set<Node> compareArtifacts(Checkout checkout) {
         for (Association selectedAssociation : checkout.getSelectedAssociations()) {
             this.fireAssociationSelectedEvent(selectedAssociation);
         }
-
-        // write artifacts to files
-        Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
-
-        return nodes;
-    }
-
-    public synchronized Checkout checkout2(String configurationString) {
-        return this.checkout2(this.parseConfigurationString(configurationString));
-    }
-
-    public synchronized Checkout checkout2(Configuration configuration) {
-        this.checkInitialized();
-
-        checkNotNull(configuration);
-
-        Repository.Op repository = this.repositoryDao.load();
-        Checkout checkout = repository.compose(configuration);
-
-        for (Association selectedAssociation : checkout.getSelectedAssociations()) {
-            this.fireAssociationSelectedEvent(selectedAssociation);
-        }
-
-        // write artifacts to files
-        Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
-        this.writer.write2(this.baseDir, nodes, configuration.getConfigurationString());
-
-        // write config file into base directory
-        Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
-        if (Files.exists(configFile)) {
-            throw new EccoException("Configuration file already exists in base directory.");
-        } else {
-            try {
-                Files.write(configFile, configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch (IOException e) {
-                throw new EccoException("Could not create configuration file.", e);
-            }
-            this.fireWriteEvent(configFile, this.writer);
-        }
-
-        // write warnings file into base directory
-        Path warningsFile = this.baseDir.resolve(WARNINGS_FILE_NAME);
-        if (Files.exists(warningsFile)) {
-            throw new EccoException("Warnings file already exists in base directory.");
-        } else {
-            try {
-                StringBuilder sb = new StringBuilder();
-                for (ModuleRevision mr : checkout.getMissing()) {
-                    sb.append("MISSING: ").append(mr).append(System.lineSeparator());
-                }
-                for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
-                    sb.append("SURPLUS: ").append(mr.getKey() + " trace id: " + mr.getValue()).append(System.lineSeparator());
-                }
-                for (Artifact a : checkout.getOrderWarnings()) {
-                    List<String> pathList = new LinkedList<>();
-                    Node current = a.getContainingNode().getParent();
-                    while (current != null) {
-                        if (current.getArtifact() != null)
-                            pathList.add(0, current.getArtifact().toString() + " > ");
-                        current = current.getParent();
-                    }
-                    pathList.add(a.toString());
-                    sb.append("ORDER: ").append(String.join("", pathList)).append(System.lineSeparator());
-                }
-                for (Association association : checkout.getUnresolvedAssociations()) {
-                    sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());
-                }
-                Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch (IOException e) {
-                throw new EccoException("Could not create warnings file.", e);
-            }
-            this.fireWriteEvent(warningsFile, this.writer);
-        }
-
-        return checkout;
+        // nodes (artifacts) to write to files
+        return new HashSet<>(checkout.getNode().getChildren());
     }
 
     /**
@@ -2053,19 +1977,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The checkout object.
      */
     public synchronized Checkout checkout(Configuration configuration) {
-        this.checkInitialized();
+        Checkout checkout = compose(configuration);
 
-        checkNotNull(configuration);
-
-        Repository.Op repository = this.repositoryDao.load();
-        Checkout checkout = repository.compose(configuration);
-
-        for (Association selectedAssociation : checkout.getSelectedAssociations()) {
-            this.fireAssociationSelectedEvent(selectedAssociation);
-        }
-
-        // write artifacts to files
-        Set<Node> nodes = new HashSet<>(checkout.getNode().getChildren());
+        Set<Node> nodes = compareArtifacts(checkout);
         this.writer.write(this.baseDir, nodes);
 
         // write config file into base directory
@@ -2092,7 +2006,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     sb.append("MISSING: ").append(mr).append(System.lineSeparator());
                 }
                 for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
-                    sb.append("SURPLUS: ").append(mr.getKey() + " trace id: " + mr.getValue()).append(System.lineSeparator());
+                    sb.append("SURPLUS: ").append(mr.getKey()).append(" trace id: ")
+                            .append(mr.getValue()).append(System.lineSeparator());
                 }
                 for (Artifact a : checkout.getOrderWarnings()) {
                     List<String> pathList = new LinkedList<>();

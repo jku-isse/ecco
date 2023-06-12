@@ -50,22 +50,6 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
 
-    public Path[] write2(Path base, Set<Node> input, String feature) {
-        Path[] toreturn = input.parallelStream().map(node -> {
-            try {
-                includes[0] = "";
-                return processNode(node, base);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-        }).filter(Objects::nonNull).toArray(Path[]::new);
-        if (toreturn.length != input.size())
-            throw new IllegalStateException("Not all files could be written!");
-        return toreturn;
-    }
-
-
     /**
      * @param baseNode The base node which should be processed
      * @param basePath The base path (need to parse package hierarchy

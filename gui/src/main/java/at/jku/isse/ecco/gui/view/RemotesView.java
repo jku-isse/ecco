@@ -126,11 +126,9 @@ public class RemotesView extends BorderPane implements EccoListener {
 		// add to split pane
 		splitPane.getItems().addAll(remotesTable, remoteDetailView);
 
+		Platform.runLater(() -> statusChangedEvent(service));
 
 		service.addListener(this);
-
-		if (!service.isInitialized())
-			this.setDisable(true);
 	}
 
 
