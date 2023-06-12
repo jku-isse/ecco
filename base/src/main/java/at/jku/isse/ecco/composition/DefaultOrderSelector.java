@@ -35,12 +35,12 @@ public class DefaultOrderSelector implements OrderSelector {
 		checkArgument(node.getArtifact() != null, "Cannot select order for node without artifact.");
 		checkArgument(node.getArtifact().isOrdered(), "Cannot select order for node with unordered artifact.");
 		checkArgument(node.getArtifact().isSequenced(), "Cannot select order for node with ordered artifact that has not been sequenced yet.");
-		checkArgument(node.getArtifact().getSequenceGraph() != null, "Cannot select order for node with ordered artifact that has no sequence graph.");
-//		if (node.getArtifact() == null || !node.getArtifact().isOrdered() || !node.getArtifact().isSequenced() || node.getArtifact().getSequenceGraph() == null)
+		checkArgument(node.getArtifact().getPartialOrderGraph() != null, "Cannot select order for node with ordered artifact that has no sequence graph.");
+//		if (node.getArtifact() == null || !node.getArtifact().isOrdered() || !node.getArtifact().isSequenced() || node.getArtifact().getPartialOrderGraph() == null)
 //			return null;
 
 		List<at.jku.isse.ecco.tree.Node> orderedChildren = new ArrayList<>();
-		PartialOrderGraph graph = node.getArtifact().getSequenceGraph();
+		PartialOrderGraph graph = node.getArtifact().getPartialOrderGraph();
 		boolean uncertainOrder = false;
 
 		Map<PartialOrderGraph.Node, Integer> pogNodesCounter = new HashMap<>();

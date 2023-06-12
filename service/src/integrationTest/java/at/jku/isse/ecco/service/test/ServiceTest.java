@@ -1,9 +1,11 @@
 package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Remote;
+import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.service.EccoService;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -48,6 +50,35 @@ public class ServiceTest {
 		service.commit();
 		for (Association a : service.getRepository().getAssociations()) {
 			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
+		}
+
+		service.close();
+	}
+
+	@Test(groups = {"integration", "base", "service", "checkout"})
+	public void Checkout_Test() throws EccoException, IOException {
+		EccoService service = new EccoService(inputDir.resolve(Paths.get("V1_purpleshirt")), repositoryDir.resolve(Paths.get(".ecco")));
+		service.init();
+
+		System.out.println("Commit 1:");
+		service.setBaseDir(inputDir.resolve(Paths.get("V1_purpleshirt")));
+		service.commit();
+		for (Association a : service.getRepository().getAssociations()) {
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
+		}
+
+		System.out.println("Commit 2:");
+		service.setBaseDir(inputDir.resolve(Paths.get("V2_stripedshirt")));
+		service.commit();
+		for (Association a : service.getRepository().getAssociations()) {
+			System.out.println("A(" + a.getRootNode().countArtifacts() + "): " + a.computeCondition().toString());
+		}
+
+		System.out.println("Checkout:");
+		service.setBaseDir(outputDir.resolve(Paths.get("checkout")));
+		Checkout checkout = service.checkout("person.1, purpleshirt.1, stripedshirt.1, new.1");
+		for (ModuleRevision m : checkout.getMissing()) {
+			System.out.println("MISSING: " + m);
 		}
 
 		service.close();
@@ -144,8 +175,6 @@ public class ServiceTest {
 	}
 
 
-
-
 	@Test(groups = {"integration", "base", "service", "pull"})
 	public void Selective_Pull_Test() throws IOException { // TODO: make proper test here
 
@@ -167,9 +196,6 @@ public class ServiceTest {
 	}
 
 
-
-
-
 	@Test(groups = {"integration", "base", "service", "bugzilla"})
 	public void Bugzilla_Test() throws IOException {
 
@@ -180,7 +206,7 @@ public class ServiceTest {
 		System.out.println("Repository initialized.");
 
 		// commit all existing variants to the new repository
-		String[] variants = new String[] { "Teclo-00-Base", "Teclo-01-Usestatuswhiteboard", "Teclo-02-Letsubmitterchoosepriority", "Teclo-03-Specificsearchallowempty", "Teclo-04-Addproduct", "Teclo-07-Simplebugworkflow" };
+		String[] variants = new String[]{"Teclo-00-Base", "Teclo-01-Usestatuswhiteboard", "Teclo-02-Letsubmitterchoosepriority", "Teclo-03-Specificsearchallowempty", "Teclo-04-Addproduct", "Teclo-07-Simplebugworkflow"};
 		for (String variant : variants) {
 			service.setBaseDir(Paths.get("C:\\Users\\user\\_ISSE\\GitHub\\rramler\\teclo\\" + variant + "\\src"));
 			service.commit();
@@ -188,8 +214,8 @@ public class ServiceTest {
 		}
 
 		// checkout all possible combinations of features from the new repository
-		String[] mandatoryFeatures = new String[] { "base.1" };
-		String[] optionalFeatures = new String[] { "addproduct.1", "specificsearchallowempty.1", "letsubmitterchoosepriority.1", "usestatuswhiteboard.1", "simplebugworkflow.1" };
+		String[] mandatoryFeatures = new String[]{"base.1"};
+		String[] optionalFeatures = new String[]{"addproduct.1", "specificsearchallowempty.1", "letsubmitterchoosepriority.1", "usestatuswhiteboard.1", "simplebugworkflow.1"};
 		Set<String> mandatoryFeaturesSet = new HashSet(Arrays.asList(mandatoryFeatures));
 		Set<String> optionalFeaturesSet = new HashSet(Arrays.asList(optionalFeatures));
 		Set<Set<String>> powerSet = powerSet(optionalFeaturesSet);
@@ -237,11 +263,6 @@ public class ServiceTest {
 		}
 		return sets;
 	}
-
-
-
-
-
 
 
 	@BeforeTest(alwaysRun = true)

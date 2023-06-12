@@ -6,6 +6,7 @@ import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.storage.mem.MemModule;
 import at.jku.isse.ecco.tree.Node;
+import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import org.testng.annotations.AfterTest;

@@ -14,6 +14,17 @@ public class MemVariant implements Variant {
 	private String name;
 	private String description;
 	private Configuration configuration;
+	private String id;
+
+	@Override
+	public String getId() {
+		return this.id;
+	}
+
+	@Override
+	public void setId(String id) {
+		this.id = id;
+	}
 
 	@Override
 	public String getName() {
@@ -45,4 +56,9 @@ public class MemVariant implements Variant {
 		this.configuration = configuration;
 	}
 
+	public MemVariant(String name, Configuration configuration, String id) {
+		this.name = name;
+		this.configuration = configuration;
+		this.id = id;
+	}
 }
