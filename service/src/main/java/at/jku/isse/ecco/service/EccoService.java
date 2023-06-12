@@ -1612,8 +1612,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 repository.addVariant(memVariant);
             }
 
-            LOGGER.info(Repository.class.getName() + ".extract(): " + (System.currentTimeMillis() - startTime) + "ms");
-
             commit.setCommitMessage(commitMessage);
 
             this.repositoryDao.store(repository);
