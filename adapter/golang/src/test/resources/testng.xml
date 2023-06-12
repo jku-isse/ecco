@@ -1,0 +1,5 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<!-- Empty testng xml so the tests are picked up by the Gradle configuration -->
+<suite name="Golang Tests" verbose="1">
+</suite>

@@ -16,6 +16,7 @@ include 'adapter-challenge'
 include 'adapter-java'
 include 'adapter-cpp'
 include 'adapter-runtime'
+include 'adapter-golang'
 
 //include 'preprocessor'
 
@@ -36,7 +37,9 @@ project(':adapter-java').projectDir = file('adapter/java')
 //project(':adapter-java').projectDir = file('adapter/java8')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
+project(':adapter-golang').projectDir = file('adapter/golang')
 
 //project(':preprocessor').projectDir = file('preprocessor')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }
+

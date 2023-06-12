@@ -20,7 +20,6 @@ dependencies {
 	implementation 'org.projectlombok:lombok:1.18.16'
 
 	testImplementation project(':ecco-adapter-file')
-	//testRuntimeOnly project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-text')
     testImplementation project(':ecco-adapter-xml')
     testImplementation project(':ecco-adapter-eplan')
