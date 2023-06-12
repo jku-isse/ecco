@@ -19,10 +19,10 @@ public class Settings {
         } else {
             if(Path.of(System.getProperty("user.dir")).getFileName().toString().equals("rest")) {
                 System.out.println("Local Server Repository");
-                return Path.of(System.getProperty("user.dir")).getParent().resolve("serverRepositories").toString();
+                return Path.of(System.getProperty("user.dir")).getParent().resolve("examples").toString();
             } else {
                 System.out.println("Local Server Repository");
-                return Path.of(System.getProperty("user.dir"), "serverRepositories").toString();
+                return Path.of(System.getProperty("user.dir"), "examples").toString();
             }
         }
     }
