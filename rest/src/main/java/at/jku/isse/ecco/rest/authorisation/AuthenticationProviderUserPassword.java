@@ -16,6 +16,7 @@ public class AuthenticationProviderUserPassword implements AuthenticationProvide
     //Adapted from https://guides.micronaut.io/latest/micronaut-security-jwt-gradle-java.html
 
     DummyUserDB userDB = new DummyUserDB();
+
     @Override
     public Publisher<AuthenticationResponse> authenticate(@Nullable HttpRequest<?> httpRequest, AuthenticationRequest<?, ?> authenticationRequest) {
         return Flux.create(emitter -> {

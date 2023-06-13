@@ -31,7 +31,6 @@ import at.jku.isse.ecco.tree.RootNode;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.Names;
-import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -53,22 +52,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
-@Service
 public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
 
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
-
-    public EccoService(final DispatchReader reader) {
-        this.reader = reader;
-    }
-
-    public EccoService(final DispatchWriter writer, final EntityFactory entityFactory, final TransactionStrategy transactionStrategy, final RepositoryDao repositoryDao, final RemoteDao remoteDao) {
-        this.writer = writer;
-        this.entityFactory = entityFactory;
-        this.transactionStrategy = transactionStrategy;
-        this.repositoryDao = repositoryDao;
-        this.remoteDao = remoteDao;
-    }
 
     public enum Operation {
         OPEN, INIT, FORK, CLOSE, COMMIT, CHECKOUT, FETCH, PULL, PUSH, SERVER, OTHER
@@ -438,21 +424,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             throw new EccoException("No data plugin specified.");
         }
 
-/*		Collection<String> artifactPluginsList = new ArrayList<>();
-		if (this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT) != null) {
-			artifactPluginsList = Arrays.asList(this.properties.getProperty(ECCO_PROPERTIES_ARTIFACT).split(","));
-			//LOGGER.debug("Found optional property: " + ECCO_PROPERTIES_ARTIFACT);
-	    }*/
 
         // artifact adapter modules
         List<Module> artifactModules = new ArrayList<>();
         List<Module> allArtifactModules = new ArrayList<>();
         this.artifactPlugins = new ArrayList<>();
         for (ArtifactPlugin artifactPlugin : ArtifactPlugin.getArtifactPlugins()) {
-			//if (artifactPluginsList == null || artifactPluginsList.contains(artifactPlugin.getPluginId())) {
-                artifactModules.add(artifactPlugin.getModule());
-                this.artifactPlugins.add(artifactPlugin);
-			//}
+            artifactModules.add(artifactPlugin.getModule());
+            this.artifactPlugins.add(artifactPlugin);
             allArtifactModules.add(artifactPlugin.getModule());
         }
         LOGGER.config("ARTIFACT PLUGINS: " + artifactModules.toString());

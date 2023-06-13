@@ -22,25 +22,30 @@ public class RepositoryController {
 
     @Get("/all")
     public RepoHeader[] getAllRepositories() {
-        return repositoryService.getRepositories().entrySet().stream().map(e -> new RepoHeader(e.getKey(), e.getValue().getName())).toArray(RepoHeader[]::new);
+        return repositoryService
+                .getRepositories()
+                .entrySet()
+                .stream()
+                .map(e -> new RepoHeader(e.getKey(), e.getValue().getName()))
+                .toArray(RepoHeader[]::new);
     }
 
-    @Put("/{name}")           //create Repository
-    public RepoHeader[] create(@PathVariable String name) {
-        repositoryService.createRepository(name);
+    @Put("/{repositoryName}")           //create Repository
+    public RepoHeader[] create(@PathVariable String repositoryName) {
+        repositoryService.createRepository(repositoryName);
         return getAllRepositories();
     }
 
-    @Put("/clone/{oldRId}/{name}")      //old Methode
-    public RepoHeader[] cloneRepository(@PathVariable int oldRId, @PathVariable String name) {
-        repositoryService.cloneRepository(oldRId, name);
+    @Put("/clone/{oldRId}/{repositoryName}")      //old Methode
+    public RepoHeader[] cloneRepository(@PathVariable int oldRId, @PathVariable String repositoryName) {
+        repositoryService.cloneRepository(oldRId, repositoryName);
         return getAllRepositories();
     }
 
-    @Put("/fork/{oldRId}/{name}")       //forks given repository (with selected features) to new Repository with given @name
+    @Put("/fork/{oldRId}/{newRepositoryName}")       //forks given repository (with selected features) to new Repository with given @newRepositoryName
     @Consumes(MediaType.APPLICATION_JSON)
-    public RepoHeader[] forkRepository(@PathVariable int oldRId, @PathVariable String name, @Body Map<String,String> body) {
-        repositoryService.forkRepository(oldRId, name, body.get("deselectedFeatures"));
+    public RepoHeader[] forkRepository(@PathVariable int oldRId, @PathVariable String newRepositoryName, @Body Map<String,String> body) {
+        repositoryService.forkRepository(oldRId, newRepositoryName, body.get("deselectedFeatures"));
         return getAllRepositories();
     }
 

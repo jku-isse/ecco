@@ -15,10 +15,10 @@ import java.util.Map;
 public class VariantController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
-    @Put("/{name}")
+    @Put("/{variantName}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public RestRepository addVariant(@PathVariable int rId, @PathVariable String name, @Body Map<String,String> body) {
-        return repositoryService.addVariant(rId, name, body.get("configuration"), body.get("description"));
+    public RestRepository addVariant(@PathVariable int rId, @PathVariable String variantName, @Body Map<String,String> body) {
+        return repositoryService.addVariant(rId, variantName, body.get("configuration"), body.get("description"));
     }
 
     @Delete("/{variantId}")

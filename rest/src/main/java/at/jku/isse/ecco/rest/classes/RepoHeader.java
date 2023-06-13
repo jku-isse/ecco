@@ -1,18 +1,18 @@
 package at.jku.isse.ecco.rest.classes;
 
 public class RepoHeader {
-    private final int rId;
-    private final String name;
-    public RepoHeader(int rId, String name) {
-        this.rId = rId;
-        this.name = name;
+    private final int id;
+    private final String repositoryName;
+    public RepoHeader(int id, String repositoryName) {
+        this.id = id;
+        this.repositoryName = repositoryName;
     }
 
-    public int getRId() {
-        return rId;
+    public int getId() {
+        return id;
     }
 
     public String getName() {
-        return name;
+        return repositoryName;
     }
 }

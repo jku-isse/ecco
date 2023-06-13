@@ -54,7 +54,6 @@ java {
     targetCompatibility = JavaVersion.toVersion("17")
 }
 
-//graalvmNative.toolchainDetection = false
 micronaut {
     version = '3.3.2'
     runtime("netty")

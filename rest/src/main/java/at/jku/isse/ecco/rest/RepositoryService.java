@@ -141,7 +141,9 @@ public class RepositoryService {
 
         // create files from uploaded Commit
         for(CompletedFileUpload uploadedFile : commitFiles) {
-            File file = commitFolder.resolve(Path.of(uploadedFile.getFilename().substring(1))).toFile();
+            File file = commitFolder
+                            .resolve(Path.of(uploadedFile.getFilename().substring(1)))
+                            .toFile();
 
             // create folders if they don't exist
             File folder = file.getParentFile();

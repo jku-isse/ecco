@@ -20,7 +20,6 @@ import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,7 +34,6 @@ public interface Repository extends Persistable {
 
 	public Collection<? extends Feature> getFeatures();
 
-	@JsonIgnore
 	public Collection<? extends Association> getAssociations();
 
 	public ArrayList<Variant> getVariants();
@@ -388,6 +386,7 @@ public interface Repository extends Persistable {
 		 *
 		 * @param configuration The configuration describing the given artifact tree.
 		 * @param nodes         The root node of the artifact tree representing the implementation of the given configuration.
+		 * @param committer     The Name of the user who committed.
 		 * @return The commit object.
 		 */
 		public default Commit extract(Configuration configuration, Set<Node.Op> nodes, String committer) {

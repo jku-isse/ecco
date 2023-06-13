@@ -11,7 +11,6 @@ import java.util.LinkedList;
 
 
 public class RestCommit {
-
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
     private final Commit commit;
@@ -30,7 +29,7 @@ public class RestCommit {
         return commit.getUsername();
     }
 
-    public String getDate() {return  dateFormat.format(commit.getDate()); } // maybe outsource to client if number can be parsed?
+    public String getDate() {return  dateFormat.format(commit.getDate()); }
 
     public RestConfiguration getConfiguration() {
         return new RestConfiguration(commit.getConfiguration());

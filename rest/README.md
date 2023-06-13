@@ -9,7 +9,7 @@ To run the API use the Gradle commands under ecco-rest:
 
 The server storage can be changed in the "Setting" class.  
 Users can be added by chancing the "DummyUserDB" class or add your own user database.
-
+mirconaut-cli.yml contains the config for possible CLI usage.
 
 ## Micronaut 3.4.1 Documentation
 

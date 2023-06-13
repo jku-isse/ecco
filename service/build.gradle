@@ -4,9 +4,6 @@ dependencies {
 	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
 	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
 
-	implementation 'org.springframework:spring-context:5.3.16'
-	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.13.1'
-
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
 	implementation 'io.github.java-diff-utils:java-diff-utils:2.2.0'
@@ -16,7 +13,6 @@ dependencies {
 	api 'com.google.inject.extensions:guice-multibindings:4.2.3'
 
 	api project(':ecco-base')
-	implementation 'org.projectlombok:lombok:1.18.16'
 	implementation 'org.projectlombok:lombok:1.18.16'
 
 	testImplementation project(':ecco-adapter-file')
