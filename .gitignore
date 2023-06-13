@@ -10,3 +10,6 @@ bin
 test-output
 /adapter/lilypond/.jython_cache/
 desktop.ini
+/cli/reports/
+/cli/tests/
+/cli/install.sh
