@@ -1663,8 +1663,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.repositoryDao.store(repository);
 
             this.transactionStrategy.end();
-
-
         } catch (Exception e) {
             this.transactionStrategy.rollback();
 
@@ -1694,10 +1692,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
 
             this.repositoryDao.store(repository);
-
             this.transactionStrategy.end();
-
-
         } catch (Exception e) {
             this.transactionStrategy.rollback();
 
@@ -1775,7 +1770,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                             featureRevisionToUpdate = revision;
                         }
                     }
-                }/**/
+                }
             }
             StringBuilder sb = new StringBuilder();
             for (FeatureRevision fr : featureRevisions) {
@@ -1794,13 +1789,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             variant.setConfiguration(newConfiguration);
 
             service.repositoryDao.store(repository);
-
             service.transactionStrategy.end();
-
-
         } catch (Exception e) {
             service.transactionStrategy.rollback();
-
             throw new EccoException("Error during adding a variant.", e);
         }
 

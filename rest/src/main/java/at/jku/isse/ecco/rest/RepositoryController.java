@@ -36,13 +36,13 @@ public class RepositoryController {
         return getAllRepositories();
     }
 
-    @Put("/clone/{oldRepositoryHandlerId}/{repositoryName}")      //old Methode
+    @Put("/clone/{oldRepositoryHandlerId}/{repositoryName}")
     public RepoHeader[] cloneRepository(@PathVariable int oldRepositoryHandlerId, @PathVariable String repositoryName) {
         repositoryService.cloneRepository(oldRepositoryHandlerId, repositoryName);
         return getAllRepositories();
     }
 
-    @Put("/fork/{oldRepositoryHandlerId}/{newRepositoryName}")       //forks given repository (with selected features) to new Repository with given @newRepositoryName
+    @Put("/fork/{oldRepositoryHandlerId}/{newRepositoryName}")
     @Consumes(MediaType.APPLICATION_JSON)
     public RepoHeader[] forkRepository(@PathVariable int oldRepositoryHandlerId, @PathVariable String newRepositoryName, @Body Map<String,String> body) {
         repositoryService.forkRepository(oldRepositoryHandlerId, newRepositoryName, body.get("deselectedFeatures"));

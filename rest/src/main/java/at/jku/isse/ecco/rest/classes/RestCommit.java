@@ -12,7 +12,6 @@ import java.util.LinkedList;
 
 public class RestCommit {
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-
     private final Commit commit;
 
     public RestCommit(Commit commit) {

@@ -63,14 +63,14 @@ public class RepositoryService {
         if (p.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
         }
-        if(!p.toFile().mkdir()) {      //create folder
+        if(!p.toFile().mkdir()) {
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + p.getFileName().toString());
         }
 
         int newId = repositoryHandlerId.incrementAndGet();      //get new id
         RepositoryHandler newRepo =  new RepositoryHandler(p, newId);
         newRepo.createRepository();
-        repositories.put(newId, newRepo);       //add to Map
+        repositories.put(newId, newRepo);
         LOGGER.info(newId + ": repository created");
         return repositories.get(newId);
     }
@@ -80,9 +80,6 @@ public class RepositoryService {
         newRepo.fork(repositories.get(oldRepositoryHandlerId), disabledFeatures);
     }
 
-
-
-    //old Methode
     public void cloneRepository(int oldRepositoryHandlerId, String name) {
         Path oldDir = repositories.get(oldRepositoryHandlerId).getPath();
         Path newDir = oldDir.getParent().resolve(name);
