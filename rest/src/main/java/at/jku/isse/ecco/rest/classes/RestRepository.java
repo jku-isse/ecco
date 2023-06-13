@@ -12,18 +12,18 @@ import java.util.LinkedList;
 //@Component
 public class RestRepository implements Serializable {
 
-    private final int rId;
+    private final int repositoryHandlerId;
     private final String name;
     private final EccoService service;
 
-    public RestRepository(EccoService service, int rId, String name) {
-        this.rId = rId;
+    public RestRepository(EccoService service, int repositoryHandlerId, String name) {
+        this.repositoryHandlerId = repositoryHandlerId;
         this.name = name;
         this.service = service;
     }
 
-    public int getRId() {
-        return rId;
+    public int getRepositoryHandlerId() {
+        return repositoryHandlerId;
     }
 
     public Collection<? extends RestFeature> getFeatures() {

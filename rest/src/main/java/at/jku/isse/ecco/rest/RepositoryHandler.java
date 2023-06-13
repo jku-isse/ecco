@@ -17,7 +17,7 @@ import java.util.List;
  */
 public class RepositoryHandler {
 
-    private final int rId;
+    private final int repositoryHandlerId;
     private final String name;
     private final Path path;
     private EccoService eccoService;
@@ -30,9 +30,9 @@ public class RepositoryHandler {
         return name;
     }
 
-    public RepositoryHandler(Path path, int rId) {
+    public RepositoryHandler(Path path, int repositoryHandlerId) {
         name = path.getFileName().toString();
-        this.rId = rId;
+        this.repositoryHandlerId = repositoryHandlerId;
         this.path = path;
     }
 
@@ -47,7 +47,7 @@ public class RepositoryHandler {
             eccoService.setBaseDir(path);
             eccoService.open();
         }
-        return new RestRepository(eccoService, rId, name);
+        return new RestRepository(eccoService, repositoryHandlerId, name);
     }
 
     public void createRepository() {
@@ -55,7 +55,7 @@ public class RepositoryHandler {
         eccoService.setRepositoryDir(path.resolve(".ecco"));
         eccoService.setBaseDir(path);
         eccoService.init();
-        new RestRepository(eccoService, rId, name);
+        new RestRepository(eccoService, repositoryHandlerId, name);
     }
 
     // Commit ----------------------------------------------------------------------------------------------------------

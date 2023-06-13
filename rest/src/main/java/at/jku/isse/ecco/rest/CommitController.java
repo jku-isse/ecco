@@ -17,13 +17,13 @@ import java.util.List;
 import java.util.logging.Logger;
 
 @Secured(SecurityRule.IS_AUTHENTICATED)
-@Controller("/api/{rId}/commit")
+@Controller("/api/{repositoryHandlerId}/commit")
 public class CommitController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
     private static final Logger LOGGER = Logger.getLogger(RepositoryService.class.getName());
 
     @Post(uri="add", consumes= MediaType.MULTIPART_FORM_DATA)
-    public RestRepository makeCommit(@PathVariable int rId,
+    public RestRepository makeCommit(@PathVariable int repositoryHandlerId,
                                      Publisher<CompletedFileUpload> file,
                                      @RequestAttribute("message") String message,
                                      @RequestAttribute("config") String config,
@@ -34,7 +34,7 @@ public class CommitController {
 
         LOGGER.info(fileList.size() + " files uploaded.");
 
-        return repositoryService.addCommit(rId, message, config, username, fileList);
+        return repositoryService.addCommit(repositoryHandlerId, message, config, username, fileList);
     }
 
 }

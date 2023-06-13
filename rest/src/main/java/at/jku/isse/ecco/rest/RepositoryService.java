@@ -30,7 +30,7 @@ import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
 public class RepositoryService {
     private final Path repoStorage = Path.of(STORAGE_LOCATION_OF_REPOSITORIES);
     private final Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
-    private final AtomicInteger rId = new AtomicInteger();
+    private final AtomicInteger repositoryHandlerId = new AtomicInteger();
     private final EccoService generalService = new EccoService();
     private static final RepositoryService instance;
     private static final Logger LOGGER = Logger.getLogger(RepositoryService.class.getName());
@@ -50,9 +50,9 @@ public class RepositoryService {
     }
 
     // Repositories ----------------------------------------------------------------------------------------------------
-    public RestRepository getRepository(int rId) {
-        if (repositories.containsKey(rId)) {
-            return repositories.get(rId).getRepository();
+    public RestRepository getRepository(int repositoryHandlerId) {
+        if (repositories.containsKey(repositoryHandlerId)) {
+            return repositories.get(repositoryHandlerId).getRepository();
         } else {
             throw new HttpStatusException(HttpStatus.NOT_FOUND, "repository with the id does not exist");
         }
@@ -67,7 +67,7 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + p.getFileName().toString());
         }
 
-        int newId = rId.incrementAndGet();      //get new id
+        int newId = repositoryHandlerId.incrementAndGet();      //get new id
         RepositoryHandler newRepo =  new RepositoryHandler(p, newId);
         newRepo.createRepository();
         repositories.put(newId, newRepo);       //add to Map
@@ -75,16 +75,16 @@ public class RepositoryService {
         return repositories.get(newId);
     }
 
-    public void forkRepository(int oldRid, String name, String disabledFeatures) {
+    public void forkRepository(int oldRepositoryHandlerId, String name, String disabledFeatures) {
         RepositoryHandler newRepo = createRepository(name);
-        newRepo.fork(repositories.get(oldRid), disabledFeatures);
+        newRepo.fork(repositories.get(oldRepositoryHandlerId), disabledFeatures);
     }
 
 
 
     //old Methode
-    public void cloneRepository(int oldRid, String name) {
-        Path oldDir = repositories.get(oldRid).getPath();
+    public void cloneRepository(int oldRepositoryHandlerId, String name) {
+        Path oldDir = repositories.get(oldRepositoryHandlerId).getPath();
         Path newDir = oldDir.getParent().resolve(name);
 
         if (newDir.toFile().exists()) {
@@ -98,16 +98,16 @@ public class RepositoryService {
             }
         } catch (IOException e) {
             deleteDirectory(newDir.toFile());
-            LOGGER.warning(oldRid + ": could not be cloned");
+            LOGGER.warning(oldRepositoryHandlerId + ": could not be cloned");
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "cloning failed");
         }
-        LOGGER.info("repository " + oldRid + " cloned");
+        LOGGER.info("repository " + oldRepositoryHandlerId + " cloned");
     }
 
-    public void deleteRepository(final int rId) {
-        deleteDirectory(repositories.get(rId).getPath().toFile());
-        repositories.remove(rId);
-        LOGGER.info(rId + ": repository deleted");
+    public void deleteRepository(final int repositoryHandlerId) {
+        deleteDirectory(repositories.get(repositoryHandlerId).getPath().toFile());
+        repositories.remove(repositoryHandlerId);
+        LOGGER.info(repositoryHandlerId + ": repository deleted");
     }
 
     public Map<Integer, RepositoryHandler> getRepositories() {
@@ -122,7 +122,7 @@ public class RepositoryService {
         for (final File file : files) {
             if(!paths.contains(file.toPath())) {
                 if (generalService.repositoryExists(file.toPath())) {
-                    int newId = rId.incrementAndGet();
+                    int newId = repositoryHandlerId.incrementAndGet();
                     repositories.put(newId, new RepositoryHandler(file.toPath(), newId));
                 }
             }
@@ -131,10 +131,10 @@ public class RepositoryService {
     }
 
     // Commit ----------------------------------------------------------------------------------------------------------
-    public RestRepository addCommit(int rId, String message, String config, String committer,  List<CompletedFileUpload> commitFiles) {
+    public RestRepository addCommit(int repositoryHandlerId, String message, String config, String committer,  List<CompletedFileUpload> commitFiles) {
 
         // Commit storage preparations
-        Path commitFolder = repositories.get(rId).getPath().resolve("lastCommit");
+        Path commitFolder = repositories.get(repositoryHandlerId).getPath().resolve("lastCommit");
         if(commitFolder.toFile().exists()){
             deleteDirectory(commitFolder.toFile());     //remove existing files recursively
         }
@@ -157,46 +157,46 @@ public class RepositoryService {
             try (OutputStream os = new FileOutputStream(file)) {
                 os.write(uploadedFile.getBytes());
             } catch (IOException e) {
-                LOGGER.warning(rId + ": the committed file" + file.getName() + " could not be created");
+                LOGGER.warning(repositoryHandlerId + ": the committed file" + file.getName() + " could not be created");
                 throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "the committed file " + file.getName() + "could not be created");
                 //if one of the errors occur the process is terminated and no commit is created
             }
         }
 
-        repositories.get(rId).addCommit(message, config, commitFolder, committer);      //handler commit
+        repositories.get(repositoryHandlerId).addCommit(message, config, commitFolder, committer);      //handler commit
 
-        LOGGER.info(rId + ": committed");
-        return repositories.get(rId).getRepository();
+        LOGGER.info(repositoryHandlerId + ": committed");
+        return repositories.get(repositoryHandlerId).getRepository();
     }
 
     // Variant ---------------------------------------------------------------------------------------------------------
-    public RestRepository addVariant(int rId, String name, String config, String description) {
+    public RestRepository addVariant(int repositoryHandlerId, String name, String config, String description) {
         LOGGER.info("Adding Variant");
-        return repositories.get(rId).addVariant(name, config, description);
+        return repositories.get(repositoryHandlerId).addVariant(name, config, description);
     }
 
-    public RestRepository removeVariant(int rId, String variantId) {
-        return repositories.get(rId).removeVariant(variantId);
+    public RestRepository removeVariant(int repositoryHandlerId, String variantId) {
+        return repositories.get(repositoryHandlerId).removeVariant(variantId);
     }
 
-    public RestRepository variantSetNameDescription(int rId, String variantId, String name, String description){
-        return repositories.get(rId).variantSetNameDescription(variantId, name, description);
+    public RestRepository variantSetNameDescription(int repositoryHandlerId, String variantId, String name, String description){
+        return repositories.get(repositoryHandlerId).variantSetNameDescription(variantId, name, description);
     }
 
-    public RestRepository variantAddFeature(int rId, String variantId, String featureId) {
-        return repositories.get(rId).variantAddFeature(variantId, featureId);
+    public RestRepository variantAddFeature(int repositoryHandlerId, String variantId, String featureId) {
+        return repositories.get(repositoryHandlerId).variantAddFeature(variantId, featureId);
     }
 
-    public RestRepository variantUpdateFeature(int rId, String variantId, String featureName, String id) {
-        return repositories.get(rId).variantUpdateFeature(variantId, featureName, id);
+    public RestRepository variantUpdateFeature(int repositoryHandlerId, String variantId, String featureName, String id) {
+        return repositories.get(repositoryHandlerId).variantUpdateFeature(variantId, featureName, id);
     }
 
-    public RestRepository variantRemoveFeature(int rId, String variantId, String featureName) {
-        return repositories.get(rId).variantRemoveFeature(variantId, featureName);
+    public RestRepository variantRemoveFeature(int repositoryHandlerId, String variantId, String featureName) {
+        return repositories.get(repositoryHandlerId).variantRemoveFeature(variantId, featureName);
     }
 
-    public Path checkout(final int rId, final String variantId) {
-        Path checkoutFolder = repositories.get(rId).getPath().resolve("checkout");
+    public Path checkout(final int repositoryHandlerId, final String variantId) {
+        Path checkoutFolder = repositories.get(repositoryHandlerId).getPath().resolve("checkout");
         Path checkoutZip = checkoutFolder.getParent().resolve("checkout.zip");
 
         if(checkoutFolder.toFile().exists()){       //delete old checkout folder
@@ -214,7 +214,7 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutZip.getParent().getFileName().toString());
         }
 
-        repositories.get(rId).checkout(variantId, checkoutFolder);      //handler checkout
+        repositories.get(repositoryHandlerId).checkout(variantId, checkoutFolder);      //handler checkout
 
         try {
             zipFolder(checkoutFolder, checkoutZip);
@@ -222,21 +222,21 @@ public class RepositoryService {
             throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create checkout zip file");
         }
 
-        LOGGER.info(rId + ": checked out");
+        LOGGER.info(repositoryHandlerId + ": checked out");
         return checkoutZip;
     }
 
     // Feature ---------------------------------------------------------------------------------------------------------
-    public RestRepository setFeatureDescription(int rId, String featureId, String description) {
-        return repositories.get(rId).setFeatureDescription(featureId, description);
+    public RestRepository setFeatureDescription(int repositoryHandlerId, String featureId, String description) {
+        return repositories.get(repositoryHandlerId).setFeatureDescription(featureId, description);
     }
 
-    public RestRepository setFeatureRevisionDescription(int rId, String featureId, String revisionId, String description) {
-        return repositories.get(rId).setFeatureRevisionDescription(featureId, revisionId, description);
+    public RestRepository setFeatureRevisionDescription(int repositoryHandlerId, String featureId, String revisionId, String description) {
+        return repositories.get(repositoryHandlerId).setFeatureRevisionDescription(featureId, revisionId, description);
     }
 
-    public void pullFeaturesRepository(final int toRId, final int oldRId, final String deselectedFeatures) {
-        repositories.get(toRId).fork(repositories.get(oldRId), deselectedFeatures);     //handler fork
+    public void pullFeaturesRepository(final int toRepositoryHandlerId, final int oldRepositoryHandlerId, final String deselectedFeatures) {
+        repositories.get(toRepositoryHandlerId).fork(repositories.get(oldRepositoryHandlerId), deselectedFeatures);     //handler fork
     }
 
     // private methods -------------------------------------------------------------------------------------------------

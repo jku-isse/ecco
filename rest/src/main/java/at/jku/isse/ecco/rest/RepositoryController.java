@@ -15,9 +15,9 @@ import java.util.Map;
 public class RepositoryController {
     private final RepositoryService repositoryService = RepositoryService.getInstance();
 
-    @Get("/{rId}")      //return Repository
-    public RestRepository getRepository (@PathVariable int rId) {
-        return repositoryService.getRepository(rId);
+    @Get("/{repositoryHandlerId}")      //return Repository
+    public RestRepository getRepository (@PathVariable int repositoryHandlerId) {
+        return repositoryService.getRepository(repositoryHandlerId);
     }
 
     @Get("/all")
@@ -36,22 +36,22 @@ public class RepositoryController {
         return getAllRepositories();
     }
 
-    @Put("/clone/{oldRId}/{repositoryName}")      //old Methode
-    public RepoHeader[] cloneRepository(@PathVariable int oldRId, @PathVariable String repositoryName) {
-        repositoryService.cloneRepository(oldRId, repositoryName);
+    @Put("/clone/{oldRepositoryHandlerId}/{repositoryName}")      //old Methode
+    public RepoHeader[] cloneRepository(@PathVariable int oldRepositoryHandlerId, @PathVariable String repositoryName) {
+        repositoryService.cloneRepository(oldRepositoryHandlerId, repositoryName);
         return getAllRepositories();
     }
 
-    @Put("/fork/{oldRId}/{newRepositoryName}")       //forks given repository (with selected features) to new Repository with given @newRepositoryName
+    @Put("/fork/{oldRepositoryHandlerId}/{newRepositoryName}")       //forks given repository (with selected features) to new Repository with given @newRepositoryName
     @Consumes(MediaType.APPLICATION_JSON)
-    public RepoHeader[] forkRepository(@PathVariable int oldRId, @PathVariable String newRepositoryName, @Body Map<String,String> body) {
-        repositoryService.forkRepository(oldRId, newRepositoryName, body.get("deselectedFeatures"));
+    public RepoHeader[] forkRepository(@PathVariable int oldRepositoryHandlerId, @PathVariable String newRepositoryName, @Body Map<String,String> body) {
+        repositoryService.forkRepository(oldRepositoryHandlerId, newRepositoryName, body.get("deselectedFeatures"));
         return getAllRepositories();
     }
 
-    @Delete("/{rId}")       //delete Repository
-    public RepoHeader[] deleteRepository(@PathVariable int rId) {
-        repositoryService.deleteRepository(rId);
+    @Delete("/{repositoryHandlerId}")       //delete Repository
+    public RepoHeader[] deleteRepository(@PathVariable int repositoryHandlerId) {
+        repositoryService.deleteRepository(repositoryHandlerId);
         return getAllRepositories();
     }
 }

@@ -58,6 +58,8 @@ public interface Repository extends Persistable {
 
 	public void addCommit(Commit commit);
 
+	static final String MERGE = "merge";
+
 	/**
 	 * Private repository interface.
 	 */
@@ -426,7 +428,6 @@ public interface Repository extends Persistable {
 				association.addObservation(moduleRevision);
 			}
 
-			// create commit object
 			Commit commit = this.getEntityFactory().createCommit(committer);
 			commit.setConfiguration(repoConfiguration);
 			addCommit(commit);
@@ -1138,7 +1139,7 @@ public interface Repository extends Persistable {
 				}
 
 				// commit association to this repository
-				Commit commit = this.getEntityFactory().createCommit("merge");
+				Commit commit = this.getEntityFactory().createCommit(MERGE);
 				this.extract(association, commit);
 			}
 		}
