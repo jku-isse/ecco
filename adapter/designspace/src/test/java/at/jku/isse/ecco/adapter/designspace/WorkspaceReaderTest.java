@@ -88,7 +88,6 @@ public class WorkspaceReaderTest {
         for (int i = 0; i < listeners.size(); i++) {
             ReadListener listener = listeners.get(i);
 
-
             if (i % 2 == 0) {
                 verify(listener, never()).fileReadEvent(null, reader);
             } else {

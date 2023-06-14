@@ -16,6 +16,7 @@ public class Workspaces {
                 put((long)i, operations[i]);
             }
         }};
+        
         return workspace;
     }
 }
