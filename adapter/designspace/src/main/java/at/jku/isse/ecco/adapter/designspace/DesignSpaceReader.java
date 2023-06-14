@@ -3,7 +3,6 @@ package at.jku.isse.ecco.adapter.designspace;
 import at.jku.isse.designspace.sdk.core.model.Workspace;
 import at.jku.isse.designspace.sdk.core.operations.*;
 import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.designspace.artifact.EmptyNodeArtifact;
 import at.jku.isse.ecco.adapter.designspace.artifact.OperationArtifact;
 import at.jku.isse.ecco.adapter.designspace.exception.MultipleWorkspaceException;
 import at.jku.isse.ecco.adapter.designspace.exception.NoWorkspaceException;
@@ -12,12 +11,11 @@ import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class DesignSpaceReader implements ArtifactReader<Workspace, Set<Node.Op>> {
     private final EntityFactory entityFactory;
+    private final List<ReadListener> listeners = new ArrayList<>();
 
     @Inject
     public DesignSpaceReader(EntityFactory entityFactory) {
@@ -46,40 +44,23 @@ public class DesignSpaceReader implements ArtifactReader<Workspace, Set<Node.Op>
         }
 
         Node.Op rootNode = entityFactory.createRootNode();
-        Node.Op currentElementCreationNode = rootNode;
-        Node.Op currentElementDeletionNode = rootNode;
-        Node.Op currentElementUpdateNode = null;
-        Node.Op currentPropertyCreateNode = rootNode;
-        Node.Op currentPropertyDeleteNode = rootNode;
-        Node.Op currentPropertyUpdateNode = null;
-        Node.Op currentPropertyUpdateAddNode = rootNode;
-        Node.Op currentPropertyUpdateSetNode = rootNode;
-        Node.Op currentPropertyUpdateRemoveNode = rootNode;
-        Collection<Operation> operations = base.operationsProcessed.values();
+        List<Operation> operationList = new ArrayList<>(base.operationsProcessed.values());
+        List<Node.Op> childNodes = new ArrayList<>();
 
-        for (Operation operation :operations) {
-            OperationArtifact operationArtifact = new OperationArtifact(operation);
-            Node.Op node = entityFactory.createNode(operationArtifact);
+        childNodes.add(rootNode);
+        childNodes.add(rootNode);
 
-            if(operation instanceof ElementCreate) {
-                currentElementCreationNode.addChild(node);
-                currentElementCreationNode = node;
-            } else if (operation instanceof ElementDelete) {
-                currentElementDeletionNode.addChild(node);
-                currentElementDeletionNode = node;
-            } else if (operation instanceof ElementUpdate) {
-                if (currentElementUpdateNode == null) {
-                    currentElementUpdateNode = entityFactory.createNode(new EmptyNodeArtifact());
-                    rootNode.addChild(currentElementUpdateNode);
-                }
+        for (Operation operation : operationList) {
+            Node.Op root = childNodes.remove(0);
+            Node.Op node = entityFactory.createNode(new OperationArtifact(operation));
 
-                if (operation instanceof PropertyCreate) {
-                    currentElementUpdateNode.addChild(node);
-                    currentElementUpdateNode = node;
-                }
-            }
+            root.addChild(node);
+
+            childNodes.add(node);
+            childNodes.add(node);
         }
 
+        listeners.forEach(listener -> listener.fileReadEvent(null, this));
         return Set.of(rootNode);
     }
 
@@ -98,11 +79,11 @@ public class DesignSpaceReader implements ArtifactReader<Workspace, Set<Node.Op>
 
     @Override
     public void addListener(ReadListener listener) {
-
+        listeners.add(listener);
     }
 
     @Override
     public void removeListener(ReadListener listener) {
-
+        listeners.remove(listener);
     }
 }
