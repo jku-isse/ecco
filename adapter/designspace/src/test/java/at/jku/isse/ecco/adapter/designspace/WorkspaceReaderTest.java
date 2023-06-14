@@ -1,9 +1,6 @@
 package at.jku.isse.ecco.adapter.designspace;
 
 import at.jku.isse.designspace.sdk.core.model.Workspace;
-import at.jku.isse.designspace.sdk.core.operations.ElementCreate;
-import at.jku.isse.designspace.sdk.core.operations.ElementDelete;
-import at.jku.isse.designspace.sdk.core.operations.ElementUpdate;
 import at.jku.isse.designspace.sdk.core.operations.Operation;
 import at.jku.isse.ecco.adapter.designspace.artifact.OperationArtifact;
 import at.jku.isse.ecco.adapter.designspace.exception.MultipleWorkspaceException;
@@ -15,24 +12,23 @@ import at.jku.isse.ecco.tree.RootNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-public class DesignSpaceReaderTest {
+public class WorkspaceReaderTest {
     @Test
     public void multipleWorkspacesAreNotSupported() {
-        DesignSpaceReader reader = new DesignSpaceReader(null);
+        WorkspaceReader reader = new WorkspaceReader(null);
         assertThrows(MultipleWorkspaceException.class, () -> reader.read(new Workspace[2]));
         assertThrows(MultipleWorkspaceException.class, () -> reader.read(mock(Workspace.class), new Workspace[1]));
     }
 
     @Test
     public void noWorkspaceGivenRaisesException() {
-        DesignSpaceReader reader = new DesignSpaceReader(null);
+        WorkspaceReader reader = new WorkspaceReader(null);
         assertThrows(NoWorkspaceException.class, () -> reader.read(null));
         assertThrows(NoWorkspaceException.class, () -> reader.read(null, null));
         assertThrows(NoWorkspaceException.class, () -> reader.read(new Workspace[0]));
@@ -40,8 +36,8 @@ public class DesignSpaceReaderTest {
 
     @Test
     public void fillsTreeLayerByLayer() {
-        Operation[] operations = initTestOperations();
-        Workspace workspace = initWorkspaceWithOperations(operations);
+        Operation[] operations = new Operations().initTestOperations();
+        Workspace workspace = new Workspaces().initTestWorkspaceWithOperations(operations);
         List<Node.Op> operationTree = new ArrayList<>(readWorkspace(workspace));
 
         assertEquals(1, operationTree.size());
@@ -51,9 +47,9 @@ public class DesignSpaceReaderTest {
 
     @Test
     public void callsAddedListeners() {
-        Operation[] operations = initTestOperations();
-        Workspace workspace = initWorkspaceWithOperations(operations);
-        DesignSpaceReader reader = new DesignSpaceReader(new MemEntityFactory());
+        Operation[] operations = new Operations().initTestOperations();
+        Workspace workspace = new Workspaces().initTestWorkspaceWithOperations(operations);
+        WorkspaceReader reader = new WorkspaceReader(new MemEntityFactory());
         List<ReadListener> listeners = new ArrayList<>() {{
            add(mock(ReadListener.class));
         }};
@@ -71,9 +67,9 @@ public class DesignSpaceReaderTest {
 
     @Test
     public void doesNotCallRemovedListeners() {
-        Operation[] operations = initTestOperations();
-        Workspace workspace = initWorkspaceWithOperations(operations);
-        DesignSpaceReader reader = new DesignSpaceReader(new MemEntityFactory());
+        Operation[] operations = new Operations().initTestOperations();
+        Workspace workspace = new Workspaces().initTestWorkspaceWithOperations(operations);
+        WorkspaceReader reader = new WorkspaceReader(new MemEntityFactory());
         List<ReadListener> listeners = new ArrayList<>() {{
             add(mock(ReadListener.class));
         }};
@@ -136,33 +132,7 @@ public class DesignSpaceReaderTest {
     }
 
     private Set<Node.Op> readWorkspace(Workspace workspace) {
-        return new DesignSpaceReader(new MemEntityFactory()).read(workspace, null);
+        return new WorkspaceReader(new MemEntityFactory()).read(workspace, null);
     }
 
-    private Workspace initWorkspaceWithOperations(Operation[] operations) {
-        Workspace workspace = mock(Workspace.class);
-
-        workspace.operationsProcessed = new HashMap<>(){{
-            for (int i = 0; i < operations.length; i++) {
-                put((long)i, operations[i]);
-            }
-        }};
-        return workspace;
-    }
-
-    private Operation[] initTestOperations() {
-        Operation[] operations = new Operation[100];
-
-        for (int i = 0; i < operations.length; i++) {
-            if (i % 3 == 0) {
-                operations[i] = mock(ElementCreate.class);
-            } else if (i % 3 == 1) {
-                operations[i] = mock(ElementUpdate.class);
-            } else {
-                operations[i] = mock(ElementDelete.class);
-            }
-        }
-
-        return operations;
-    }
 }
