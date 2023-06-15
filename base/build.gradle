@@ -11,7 +11,7 @@ javafx {
 }
 
 dependencies {
-	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
 	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
 
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
