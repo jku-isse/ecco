@@ -7,9 +7,10 @@ import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.service.*;
 import at.jku.isse.ecco.tree.Node;
+import com.opencsv.*;
+import com.opencsv.exceptions.*;
 import com.github.difflib.*;
 import com.github.difflib.patch.*;
-import com.opencsv.*;
 import org.testng.annotations.Test;
 
 import java.io.*;
@@ -447,6 +448,8 @@ public class FeatureRevisionLocationTest {
                 }
             } catch (FileNotFoundException fe) {
                 System.out.println("file not found!");
+            } catch (CsvException e) {
+                throw new RuntimeException(e);
             }
         }
         System.out.println("SurplusArtifacts: "+(totallinesurplus*100)/eccototalLines + " Total lines surplus: "+ totallinesurplus + " Total lines variants composed: " + eccototalLines);
@@ -802,7 +805,13 @@ public class FeatureRevisionLocationTest {
                 if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
                     Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                     CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                    List<String[]> matchesVariants = csvReader.readAll();
+                    List<String[]> matchesVariants = null;
+
+                    try {
+                        matchesVariants = csvReader.readAll();
+                    } catch (CsvException e) {
+                        throw new RuntimeException(e);
+                    }
 
                     if (file.getName().contains("runtime")) {
                         for (int i = 0; i < matchesVariants.size(); i++) {
@@ -1481,7 +1490,13 @@ public class FeatureRevisionLocationTest {
             if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
                 Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                 CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                List<String[]> matchesVariants = csvReader.readAll();
+                List<String[]> matchesVariants = null;
+
+                try {
+                    matchesVariants = csvReader.readAll();
+                } catch (CsvException e) {
+                    throw new RuntimeException(e);
+                }
 
                 if (file.getName().contains("runtime")) {
                     for (int i = 0; i < matchesVariants.size(); i++) {
