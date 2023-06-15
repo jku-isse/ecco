@@ -19,6 +19,7 @@ A `-Module` file, that registers the files above with the Guice dependency injec
 And finally a `-Plugin` file, that stores metadata about your plugin.
 Those files should all have a fitting prefix, mentioning what it is that you are supporting.
 For example, the plugin supporting Golang artefacts contains the files `GoReader`, `GoWriter`, `GoModule`, and `GoPlugin`.
+
 In the resource folder, create a file named `at.jku.isse.ecco.adapter.ArtifactPlugin`.
 The content of this file must be the fully qualified class name of your `-Plugin` file.
 For example, the Golang plugin's ArtifactPlugin-file contains the string `at.jku.isse.ecco.adapter.golang.GoPlugin`.
@@ -41,12 +42,28 @@ After this step, the folder structure should look similar to the following:
       * ``build.gradle`` 
 
 If your IDE didn't create the build.gradle file yet, now is the time to do so.
-Then, insert the following text, replacing any other text that might had been created.
+Then, insert the following text, replacing any other text that might have been created.
 ```groovy
+plugins {
+  id 'java'
+}
+
+group = 'at.jku.isse.ecco'
+version = '0.1.9'
 ecco.adapter = true
 
+repositories {
+  mavenCentral()
+}
+
 dependencies {
-    implementation project(':ecco-service')
+  implementation project(':ecco-service')
+  testImplementation platform('org.junit:junit-bom:5.9.1')
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+  useJUnitPlatform()
 }
 ```
 
