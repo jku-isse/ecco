@@ -1,5 +1,5 @@
 plugins {
-	id 'nebula.ospackage' version '9.0.0'
+	id 'nebula.ospackage' version '9.1.1'
 	id 'pmd'
 	//id 'checkstyle'
 }
