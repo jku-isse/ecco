@@ -2,6 +2,7 @@ package at.jku.isse.ecco.web.rest;
 
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.web.domain.model.ArtefactGraphModel;
+import jakarta.ws.rs.ApplicationPath;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
@@ -9,12 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
 
-/*
-ApplicationPath hat leider keine Auswirkung auf die URI auf der die API laufen wird
-siehe https://github.com/eclipse-ee4j/jersey/issues/4205
-Issue ist bisher auch nicht closed hat auch keinen Workaround...
- */
-//@ApplicationPath("ecco")
+@ApplicationPath("ecco")
 public class EccoApplication extends ResourceConfig {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(EccoApplication.class);
@@ -33,6 +29,7 @@ public class EccoApplication extends ResourceConfig {
 	public EccoService getEccoService() {
 		return this.eccoService;
 	}
+
 	public void open(String baseDirectory) {
 		this.eccoService.setBaseDir(Paths.get(baseDirectory));
 		this.eccoService.setRepositoryDir(Paths.get(baseDirectory + ECCO_REPOSITORY_DIRECTORY));
