@@ -2,7 +2,7 @@
 dependencies {
 	implementation group: 'commons-io', name: 'commons-io', version: '2.5'
 	// https://mvnrepository.com/artifact/com.bpodgursky/jbool_expressions
-	implementation group: 'com.bpodgursky', name: 'jbool_expressions', version: '1.22'
+	implementation group: 'com.bpodgursky', name: 'jbool_expressions', version: '1.24'
 
 	implementation project(':ecco-base')
 
