@@ -18,6 +18,7 @@ generateTestGrammarSource {
 dependencies {
     antlr "org.antlr:antlr4:4.13.0"
 
+    implementation project(':ecco-base')
     implementation project(':ecco-service')
 
     testImplementation platform('org.junit:junit-bom:5.9.3')

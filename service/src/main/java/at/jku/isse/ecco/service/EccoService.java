@@ -32,7 +32,6 @@ import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 
-import javax.inject.Inject;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
