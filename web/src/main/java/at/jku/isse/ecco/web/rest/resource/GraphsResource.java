@@ -1,24 +1,15 @@
 package at.jku.isse.ecco.web.rest.resource;
 
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.composition.LazyCompositionRootNode;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.web.rest.EccoApplication;
-import at.jku.isse.ecco.web.rest.dto.ArtifactsGraphDTO;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.composition.*;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.service.*;
+import at.jku.isse.ecco.web.rest.*;
+import at.jku.isse.ecco.web.rest.dto.*;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.*;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Application;
-import javax.ws.rs.core.Configuration;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Path("/graph")
 public class GraphsResource {

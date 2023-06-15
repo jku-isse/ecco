@@ -10,10 +10,7 @@ import at.jku.isse.ecco.web.rest.EccoApplication;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotAllowedException;
-import javax.ws.rs.NotFoundException;
+import jakarta.ws.rs.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
