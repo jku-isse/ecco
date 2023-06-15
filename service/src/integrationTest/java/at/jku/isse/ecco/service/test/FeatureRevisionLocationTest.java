@@ -1,34 +1,21 @@
 package at.jku.isse.ecco.service.test;
 
-import java.io.*;
-import java.nio.charset.MalformedInputException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import at.jku.isse.ecco.adapter.cpp.data.*;
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.artifact.*;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.service.*;
 import at.jku.isse.ecco.tree.Node;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import difflib.Delta;
-import difflib.DiffUtils;
-import difflib.Patch;
+import com.github.difflib.*;
+import com.github.difflib.patch.*;
+import com.opencsv.*;
 import org.testng.annotations.Test;
 
-import javax.swing.text.StyledEditorKit;
-
-import static at.jku.isse.ecco.util.Trees.computeDepth;
-import static at.jku.isse.ecco.util.Trees.slice;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
@@ -1040,10 +1027,10 @@ public class FeatureRevisionLocationTest {
                             matchFiles = true;
                         } else {
                             String del = "", insert = "";
-                            for (Delta delta : patch.getDeltas()) {
+                            for (AbstractDelta<String> delta : patch.getDeltas()) {
                                 String line = "";
                                 if (delta.getType().toString().equals("INSERT")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*") && !line.equals("}")) {
@@ -1054,8 +1041,8 @@ public class FeatureRevisionLocationTest {
                                         }
                                     }
                                 } else if (delta.getType().toString().equals("CHANGE")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
-                                    ArrayList<String> arrayOriginal = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
+                                    ArrayList<String> arrayOriginal = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
@@ -1071,7 +1058,7 @@ public class FeatureRevisionLocationTest {
                                         }
                                     }
                                 } else {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
