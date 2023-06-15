@@ -3,7 +3,7 @@ ecco.set("storage", true)
 dependencies {
 	implementation project(':ecco-service')
 
-	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
 	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
 
 	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.9'
