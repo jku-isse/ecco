@@ -6,7 +6,7 @@ dependencies {
 
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
-	implementation 'io.github.java-diff-utils:java-diff-utils:2.2.0'
+	implementation 'io.github.java-diff-utils:java-diff-utils:4.12'
 	implementation 'com.opencsv:opencsv:4.6'
 	implementation 'com.google.guava:guava:32.0.1-jre'
 	api 'com.google.inject:guice:7.0.0'
