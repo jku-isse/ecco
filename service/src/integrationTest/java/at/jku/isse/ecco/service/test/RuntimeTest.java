@@ -10,6 +10,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.*;
 import com.google.inject.*;
 import com.opencsv.*;
+import com.opencsv.exceptions.*;
 import difflib.*;
 import org.testng.annotations.Test;
 
@@ -249,7 +250,13 @@ public class RuntimeTest {
             if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
                 Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                 CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                List<String[]> matchesVariants = csvReader.readAll();
+                List<String[]> matchesVariants = null;
+
+                try {
+                    matchesVariants = csvReader.readAll();
+                } catch (CsvException e) {
+                    throw new RuntimeException(e);
+                }
 
                 for (int i = 1; i < matchesVariants.size(); i++) {
                     String[] line = matchesVariants.get(i);
@@ -324,7 +331,13 @@ public class RuntimeTest {
                 Float matchesFiles = Float.valueOf(0), eccototalLines = Float.valueOf(0), originaltotalLines = Float.valueOf(0), missingFiles = Float.valueOf(0), remainingFiles = Float.valueOf(0), totalVariantsMatch = Float.valueOf(0), truepositiveLines = Float.valueOf(0), falsepositiveLines = Float.valueOf(0), falsenegativeLines = Float.valueOf(0);
                 Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                 CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                List<String[]> matchesVariants = csvReader.readAll();
+                List<String[]> matchesVariants = null;
+
+                try {
+                    matchesVariants = csvReader.readAll();
+                } catch (CsvException e) {
+                    throw new RuntimeException(e);
+                }
 
                 for (int i = 1; i < matchesVariants.size(); i++) {
                     String[] line = matchesVariants.get(i);

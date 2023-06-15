@@ -1,34 +1,21 @@
 package at.jku.isse.ecco.service.test;
 
-import java.io.*;
-import java.nio.charset.MalformedInputException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import at.jku.isse.ecco.adapter.cpp.data.*;
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.artifact.*;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.service.*;
 import at.jku.isse.ecco.tree.Node;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import difflib.Delta;
-import difflib.DiffUtils;
-import difflib.Patch;
+import com.opencsv.*;
+import com.opencsv.exceptions.*;
+import difflib.*;
 import org.testng.annotations.Test;
 
-import javax.swing.text.StyledEditorKit;
-
-import static at.jku.isse.ecco.util.Trees.computeDepth;
-import static at.jku.isse.ecco.util.Trees.slice;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
@@ -460,6 +447,8 @@ public class FeatureRevisionLocationTest {
                 }
             } catch (FileNotFoundException fe) {
                 System.out.println("file not found!");
+            } catch (CsvException e) {
+                throw new RuntimeException(e);
             }
         }
         System.out.println("SurplusArtifacts: "+(totallinesurplus*100)/eccototalLines + " Total lines surplus: "+ totallinesurplus + " Total lines variants composed: " + eccototalLines);
@@ -815,7 +804,13 @@ public class FeatureRevisionLocationTest {
                 if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
                     Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                     CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                    List<String[]> matchesVariants = csvReader.readAll();
+                    List<String[]> matchesVariants = null;
+
+                    try {
+                        matchesVariants = csvReader.readAll();
+                    } catch (CsvException e) {
+                        throw new RuntimeException(e);
+                    }
 
                     if (file.getName().contains("runtime")) {
                         for (int i = 0; i < matchesVariants.size(); i++) {
@@ -1494,7 +1489,13 @@ public class FeatureRevisionLocationTest {
             if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
                 Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                 CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                List<String[]> matchesVariants = csvReader.readAll();
+                List<String[]> matchesVariants = null;
+
+                try {
+                    matchesVariants = csvReader.readAll();
+                } catch (CsvException e) {
+                    throw new RuntimeException(e);
+                }
 
                 if (file.getName().contains("runtime")) {
                     for (int i = 0; i < matchesVariants.size(); i++) {
