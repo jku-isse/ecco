@@ -1,18 +1,16 @@
 package at.jku.isse.ecco.test;
 
-import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
-import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.RootNode;
-import at.jku.isse.ecco.util.Trees;
-import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import at.jku.isse.ecco.dao.*;
+import at.jku.isse.ecco.storage.mem.dao.*;
+import at.jku.isse.ecco.tree.*;
+import at.jku.isse.ecco.util.*;
+import org.junit.jupiter.api.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TreesTest {
 
-	@Test(groups = {"unit", "base", "tree"})
+	@Test
 	public void Trees_Full() {
 		EntityFactory ef = new MemEntityFactory();
 
@@ -22,8 +20,8 @@ public class TreesTest {
 		Trees.checkConsistency(root1); // TODO: have this return true/false or an error code instead of throwing an exception?
 		Trees.checkConsistency(root2);
 
-		Assert.assertEquals(Trees.countArtifacts(root1), 16);
-		Assert.assertEquals(Trees.countArtifacts(root2), 17);
+		assertEquals(Trees.countArtifacts(root1), 16);
+		assertEquals(Trees.countArtifacts(root2), 17);
 
 		Trees.print(root1);
 		Trees.print(root2);
@@ -179,12 +177,12 @@ public class TreesTest {
 	}
 
 
-	@BeforeTest(alwaysRun = true)
+	@BeforeEach
 	public void beforeTest() {
 		System.out.println("BEFORE");
 	}
 
-	@AfterTest(alwaysRun = true)
+	@AfterEach
 	public void afterTest() {
 		System.out.println("AFTER");
 	}

@@ -11,7 +11,7 @@ import com.opencsv.*;
 import com.opencsv.exceptions.*;
 import com.github.difflib.*;
 import com.github.difflib.patch.*;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.*;
@@ -44,7 +44,7 @@ public class FeatureRevisionLocationTest {
 
 
     //feature revision location where the traces are computed by the input containing a set of feature revisions (configuration) and its artifacts (variant source code)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCommit() throws IOException {
         ArrayList<String> configsToCommit = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -78,7 +78,7 @@ public class FeatureRevisionLocationTest {
 
 
     //checkout each set of feature revisions (configuration) and its artifacts (variant source code) by the traces located before by the feature revision location (TestEccoCommit)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCheckout() throws IOException {
         ArrayList<String> configsToCheckout = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -112,7 +112,7 @@ public class FeatureRevisionLocationTest {
 
 
     //compare the ground truth variants with the composed variants (containing the artifacts mapped according to the feature revision location)
-    @org.testng.annotations.Test
+    @Test
     public void TestCompareVariants() {
         //"input_variants" folder contains the ground truth variants and "checkout" folder contains the composed variants
         File variantsrc = new File(resultsCSVs_path, "ecco");
@@ -128,7 +128,7 @@ public class FeatureRevisionLocationTest {
         }
     }
 
-    @org.testng.annotations.Test
+    @Test
     public void TestNrModulesWarnings() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
         for (File path : checkoutfile.listFiles()) {
@@ -156,7 +156,7 @@ public class FeatureRevisionLocationTest {
     }
 
 
-    @Test(groups = {"integration", "java"})
+    @Test
     public void FeatureRevisionCharacteristicTest() throws IOException {
         Path repo = Paths.get("D:\\Gabriela\\FRL-ecco\\CaseStudies\\SQLite\\variant_results");
         File file = new File(String.valueOf(Paths.get(repo.toUri())), "featureCharacteristics");
@@ -274,7 +274,7 @@ public class FeatureRevisionLocationTest {
         return featCharc;
     }
 
-    @org.testng.annotations.Test
+    @Test
     public void TestWarnings() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
         EccoService service = new EccoService();
@@ -457,7 +457,7 @@ public class FeatureRevisionLocationTest {
     }
 
 
-    @org.testng.annotations.Test
+    @Test
     public void TestWarningsUsefulness() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkout");
         int usefullwarnings = 0;
@@ -777,7 +777,7 @@ public class FeatureRevisionLocationTest {
 
     //get the metrics of each and for all the target projects together.
     //To compute the metrics of variants this is considering all the files match and to compute files metrics this is considering all the lines match
-    @org.testng.annotations.Test
+    @Test
     public void GetCSVInformationTotalTest() throws IOException {
         //set into this list of File the folders with csv files resulted from the comparison of variants of each target project
         File[] folder = {//new File(csvcomparison_path)
@@ -1443,7 +1443,7 @@ public class FeatureRevisionLocationTest {
     }
 
     //count SLOC
-    @org.testng.annotations.Test
+    @Test
     public void countLinesOfCode() throws IOException {
         List<String> fileTypes = new LinkedList<String>();
         File gitFolder = new File("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\clean");
@@ -1477,7 +1477,7 @@ public class FeatureRevisionLocationTest {
         System.out.println("Size: " + countLines);
     }
 
-    @org.testng.annotations.Test
+    @Test
     public void getCSVInformation2() throws IOException {
         File folder = new File(csvcomparison_path);
         File[] lista = folder.listFiles();

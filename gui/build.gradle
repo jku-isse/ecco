@@ -55,7 +55,7 @@ ospackage {
 }
 
 linuxZip {
-	into(archiveName - ('.' + archiveExtension)) {
+	into(archiveFileName.get() - ('.' + archiveExtension)) {
 		from 'ecco-gui'
 	}
 }
@@ -66,7 +66,7 @@ sourcesZip {
 }
 
 windowsZip {
-	into(archiveName - ('.' + archiveExtension)) {
+	into(archiveFileName.get() - ('.' + archiveExtension)) {
 		from 'ecco-gui.bat'
 	}
 }

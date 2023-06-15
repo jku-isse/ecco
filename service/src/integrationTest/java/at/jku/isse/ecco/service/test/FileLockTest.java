@@ -1,28 +1,23 @@
 package at.jku.isse.ecco.service.test;
 
-import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.dao.TransactionStrategy;
-import at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy;
-import at.jku.isse.ecco.tree.RootNode;
+import at.jku.isse.ecco.*;
+import at.jku.isse.ecco.dao.*;
+import at.jku.isse.ecco.service.*;
+import at.jku.isse.ecco.storage.ser.dao.*;
+import at.jku.isse.ecco.tree.*;
+import org.junit.jupiter.api.*;
 
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.io.*;
+import java.nio.channels.*;
+import java.nio.charset.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
 
-public class Test {
+public class FileLockTest {
 
 
-	@org.testng.annotations.Test(groups = {"integration", "base", "service"})
+	@Test
 	public void FileLockTest2() throws IOException {
 		SerTransactionStrategy ts = new SerTransactionStrategy(Paths.get("C:\\Users\\user\\Desktop\\ECCO_TEST\\repo"));
 
@@ -39,7 +34,7 @@ public class Test {
 		ts.close();
 	}
 
-	@org.testng.annotations.Test(groups = {"integration", "base", "service"})
+	@Test
 	public void FileLockTest() throws IOException {
 		Path idFile = Paths.get("C:/Users/user/Desktop/ECCO_TEST/idfile");
 		Path writeLockFile = Paths.get("C:/Users/user/Desktop/ECCO_TEST/writelockfile");
@@ -80,7 +75,7 @@ public class Test {
 	}
 
 
-	@org.testng.annotations.Test(groups = {"integration", "base", "service"})
+	@Test
 	public void Test() throws EccoException {
 
 		// create new repository
@@ -111,7 +106,7 @@ public class Test {
 
 	}
 
-	@org.testng.annotations.Test(groups = {"integration", "base", "service"})
+	@Test
 	public void Test2() throws EccoException {
 
 		// create new repository
@@ -142,7 +137,7 @@ public class Test {
 
 	}
 
-	@org.testng.annotations.Test(groups = {"integration", "base", "service"})
+	@Test
 	public void Test3() throws EccoException, IOException {
 
 		// create new repository

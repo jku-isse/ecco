@@ -2,14 +2,6 @@ apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.cli.Main"
 applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 
-test {
-	useJUnitPlatform()
-}
-
-integrationTest {
-	useJUnitPlatform()
-}
-
 dependencies {
 	implementation 'net.sourceforge.argparse4j:argparse4j:0.9.0'
 
