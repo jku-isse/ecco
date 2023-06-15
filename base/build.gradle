@@ -17,7 +17,7 @@ dependencies {
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
 
-	implementation 'com.google.guava:guava:27.1-jre'
+	implementation 'com.google.guava:guava:32.0.1-jre'
 
 	implementation 'com.github.javaparser:javaparser-core:3.23.1'
 
