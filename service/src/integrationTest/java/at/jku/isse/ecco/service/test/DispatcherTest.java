@@ -9,9 +9,8 @@ import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.Names;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,7 +30,7 @@ public class DispatcherTest {
 	@Inject
 	private DispatchWriter writer;
 
-	@Test(groups = {"integration", "dispatcher"})
+	@Test
 	public void Text_Module_Test() throws IOException {
 		Path[] inputFiles = new Path[]{Paths.get("variant1"), Paths.get("variant1/file.txt"), Paths.get("variant1/1.png"), Paths.get("variant1/subdir"), Paths.get("variant1/subdir/file")};
 		Path input = Paths.get("data/input");
@@ -63,13 +62,13 @@ public class DispatcherTest {
 		}
 	}
 
-	@AfterTest(alwaysRun = true)
+	@AfterEach
 	public void afterTest() {
 		System.out.println("AFTER");
 		deleteDatabaseFile();
 	}
 
-	@BeforeTest(alwaysRun = true)
+	@BeforeEach
 	public void beforeTest() {
 		System.out.println("BEFORE");
 

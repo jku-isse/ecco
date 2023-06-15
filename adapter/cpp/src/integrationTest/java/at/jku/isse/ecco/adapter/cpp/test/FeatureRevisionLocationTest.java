@@ -5,6 +5,7 @@ import com.github.difflib.*;
 import com.github.difflib.patch.*;
 import com.opencsv.*;
 import com.opencsv.exceptions.*;
+import org.junit.jupiter.api.*;
 
 import java.io.*;
 import java.nio.charset.*;
@@ -31,7 +32,7 @@ public class FeatureRevisionLocationTest {
 
 
     //feature revision location where the traces are computed by the input containing a set of feature revisions (configuration) and its artifacts (variant source code)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCommit() throws IOException {
         ArrayList<String> configsToCommit = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -65,7 +66,7 @@ public class FeatureRevisionLocationTest {
 
 
     //checkout each set of feature revisions (configuration) and its artifacts (variant source code) by the traces located before by the feature revision location (TestEccoCommit)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCheckout() throws IOException {
         ArrayList<String> configsToCheckout = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -99,7 +100,7 @@ public class FeatureRevisionLocationTest {
 
 
     //compare the ground truth variants with the composed variants (containing the artifacts mapped according to the feature revision location)
-    @org.testng.annotations.Test
+    @Test
     public void TestCompareVariants() {
         //"input_variants" folder contains the ground truth variants and "checkout" folder contains the composed variants
         File variantsrc = new File(resultsCSVs_path, "Input_variants");
@@ -115,7 +116,7 @@ public class FeatureRevisionLocationTest {
 
     //get the metrics of each and for all the target projects together.
     //To compute the metrics of variants this is considering all the files match and to compute files metrics this is considering all the lines match
-    @org.testng.annotations.Test
+    @Test
     public void GetCSVInformationTotalTest() throws IOException, CsvException {
         //set into this list of File the folders with csv files resulted from the comparison of variants of each target project
         File[] folder = {new File(marlinFolder),

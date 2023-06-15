@@ -1,29 +1,21 @@
 package at.jku.isse.ecco.adapter.challenge.test;
 
-import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.challenge.JavaChallengeReader;
-import at.jku.isse.ecco.adapter.challenge.data.MethodArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.adapter.challenge.*;
+import at.jku.isse.ecco.storage.mem.dao.*;
 import at.jku.isse.ecco.tree.Node;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.*;
+import java.nio.file.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
 public class AdapterTest {
 
 	private static final Path BASE_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\teste\\ActualECCO\\Method_Comparison\\Sudoku\\variants");
 	private static final Path[] FILES = new Path[]{Paths.get("AbstractFilePersister.java")};
 
-	@Test(groups = {"integration", "java"})
+	@Test
 	public void Java_Adapter_Test() {
 		JavaChallengeReader reader = new JavaChallengeReader(new MemEntityFactory());
 
@@ -33,7 +25,7 @@ public class AdapterTest {
 		System.out.println(nodes);
 	}
 
-	@Test(groups = {"integration", "java"})
+	@Test
 	public void ReadMethods(){
 		JavaChallengeReader reader = new JavaChallengeReader(new MemEntityFactory());
 		System.out.println("READ");
@@ -56,7 +48,6 @@ public class AdapterTest {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-
 		}
 	}
 }

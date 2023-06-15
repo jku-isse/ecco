@@ -6,9 +6,8 @@ import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.service.EccoService;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,7 +22,7 @@ public class ServiceTest {
 	private Path inputDir = Paths.get("C:\\Users\\user\\Desktop\\transfer\\input");
 
 
-	@Test(groups = {"integration", "base", "service", "init"})
+	@Test
 	public void Init_Test() throws EccoException, IOException {
 		EccoService service = new EccoService(inputDir.resolve(Paths.get("V1")), repositoryDir.resolve(Paths.get(".ecco")));
 
@@ -34,7 +33,7 @@ public class ServiceTest {
 		service.open();
 	}
 
-	@Test(groups = {"integration", "base", "service", "commit"})
+	@Test
 	public void Commit_Test() throws EccoException, IOException {
 		EccoService service = new EccoService(inputDir.resolve(Paths.get("V1")), repositoryDir.resolve(Paths.get(".ecco")));
 		service.init();
@@ -55,7 +54,7 @@ public class ServiceTest {
 		service.close();
 	}
 
-	@Test(groups = {"integration", "base", "service", "checkout"})
+	@Test
 	public void Checkout_Test() throws EccoException, IOException {
 		EccoService service = new EccoService(inputDir.resolve(Paths.get("V1_purpleshirt")), repositoryDir.resolve(Paths.get(".ecco")));
 		service.init();
@@ -85,7 +84,7 @@ public class ServiceTest {
 	}
 
 
-	@Test(groups = {"integration", "base", "service", "fork"})
+	@Test
 	public void Fork_Test() throws IOException {
 		// create parent repo
 		EccoService parentService = new EccoService();
@@ -119,7 +118,7 @@ public class ServiceTest {
 	}
 
 
-	@Test(groups = {"integration", "base", "service", "pull"})
+	@Test
 	public void Pull_Test() throws IOException {
 		// create parent repo
 		EccoService parentService = new EccoService();
@@ -175,7 +174,7 @@ public class ServiceTest {
 	}
 
 
-	@Test(groups = {"integration", "base", "service", "pull"})
+	@Test
 	public void Selective_Pull_Test() throws IOException { // TODO: make proper test here
 
 		EccoService service2 = new EccoService();
@@ -196,7 +195,7 @@ public class ServiceTest {
 	}
 
 
-	@Test(groups = {"integration", "base", "service", "bugzilla"})
+	@Test
 	public void Bugzilla_Test() throws IOException {
 
 		// create new repository
@@ -265,7 +264,7 @@ public class ServiceTest {
 	}
 
 
-	@BeforeTest(alwaysRun = true)
+	@BeforeEach
 	public void beforeTest() throws IOException {
 		System.out.println("BEFORE");
 
@@ -287,7 +286,7 @@ public class ServiceTest {
 		Files.createDirectories(this.outputDir.resolve("forked_repo"));
 	}
 
-	@AfterTest(alwaysRun = true)
+	@AfterEach
 	public void afterTest() {
 		System.out.println("AFTER");
 	}

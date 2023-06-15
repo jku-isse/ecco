@@ -13,7 +13,7 @@ import com.github.difflib.patch.*;
 import com.google.inject.*;
 import com.opencsv.*;
 import com.opencsv.exceptions.*;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.*;
@@ -38,7 +38,7 @@ public class RuntimeTest {
     public int count = 0;
     public int countLines = 0;
 
-    @Test(groups = {"integration", "java"})
+    @Test
     public void adapter_Test() throws IOException {
 
         RuntimeReader readerRuntime = new RuntimeReader(new MemEntityFactory());
@@ -168,7 +168,7 @@ public class RuntimeTest {
     }
 
 
-    @Test(groups = {"integration", "java"})
+    @Test
     public void testCommit() {
         EccoService ecco = new EccoService();
         ecco.setRepositoryDir(Paths.get("C:\\Users\\gabil\\Desktop\\ECCO_Work\\testando-falsenegative\\Marlin\\variant_results\\repo"));
