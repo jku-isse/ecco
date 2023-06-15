@@ -1,23 +1,16 @@
 package at.jku.isse.ecco.adapter.cpp.test;
 
-import at.jku.isse.ecco.service.EccoService;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import com.opencsv.exceptions.CsvException;
-import difflib.Delta;
-import difflib.DiffUtils;
-import difflib.Patch;
+import at.jku.isse.ecco.service.*;
+import com.github.difflib.*;
+import com.github.difflib.patch.*;
+import com.opencsv.*;
+import com.opencsv.exceptions.*;
 
 import java.io.*;
-import java.nio.charset.MalformedInputException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.nio.charset.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
@@ -362,12 +355,12 @@ public class FeatureRevisionLocationTest {
                         } else {
                             //matchFiles = false;
                             String del ="", insert = "";
-                            for (Delta delta : patch.getDeltas()) {
-                                Integer difLines = Math.abs(delta.getOriginal().getLines().size() - delta.getRevised().getLines().size());
+                            for (AbstractDelta<String> delta : patch.getDeltas()) {
+                                Integer difLines = Math.abs(delta.getSource().getLines().size() - delta.getTarget().getLines().size());
                                 //List<String> unifiedDiff = DiffUtils.generateUnifiedDiff(f.getName(), fEcco.getName(), original, patch, original.size());
                                 String line = "";
                                 if (delta.getType().toString().equals("INSERT")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("")) {
@@ -380,7 +373,7 @@ public class FeatureRevisionLocationTest {
                                         }
                                     }
                                 } else {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("")) {

@@ -8,10 +8,11 @@ import at.jku.isse.ecco.service.*;
 import at.jku.isse.ecco.storage.mem.dao.*;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.*;
+import com.github.difflib.*;
+import com.github.difflib.patch.*;
 import com.google.inject.*;
 import com.opencsv.*;
 import com.opencsv.exceptions.*;
-import difflib.*;
 import org.testng.annotations.Test;
 
 import java.io.*;
@@ -457,10 +458,10 @@ public class RuntimeTest {
                             matchFiles = true;
                         } else {
                             String del = "", insert = "";
-                            for (Delta delta : patch.getDeltas()) {
+                            for (AbstractDelta<String> delta : patch.getDeltas()) {
                                 String line = "";
                                 if (delta.getType().toString().equals("INSERT")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
@@ -471,8 +472,8 @@ public class RuntimeTest {
                                         }
                                     }
                                 } else if (delta.getType().toString().equals("CHANGE")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
-                                    ArrayList<String> arrayOriginal = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
+                                    ArrayList<String> arrayOriginal = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
@@ -488,7 +489,7 @@ public class RuntimeTest {
                                         }
                                     }
                                 } else {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
