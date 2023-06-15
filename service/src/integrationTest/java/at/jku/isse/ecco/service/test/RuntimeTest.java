@@ -1,27 +1,22 @@
 package at.jku.isse.ecco.service.test;
 
-import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.*;
 import at.jku.isse.ecco.adapter.challenge.*;
-import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
-import at.jku.isse.ecco.adapter.runtime.RuntimeReader;
-import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.adapter.runtime.*;
+import at.jku.isse.ecco.service.*;
+import at.jku.isse.ecco.storage.mem.dao.*;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import difflib.Delta;
-import difflib.DiffUtils;
-import difflib.Patch;
+import at.jku.isse.ecco.util.*;
+import com.google.inject.*;
+import com.opencsv.*;
+import difflib.*;
 import org.testng.annotations.Test;
 
-import javax.inject.Inject;
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
 public class RuntimeTest {
 
