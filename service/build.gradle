@@ -2,7 +2,7 @@ apply plugin: 'java-library'
 
 dependencies {
 	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
-	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
 
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
