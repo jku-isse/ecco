@@ -1,30 +1,23 @@
 package at.jku.isse.ecco.adapter.cpp.test;
 
 
-import at.jku.isse.ecco.adapter.cpp.CppReader;
+import at.jku.isse.ecco.adapter.cpp.*;
 import at.jku.isse.ecco.adapter.cpp.data.*;
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.artifact.*;
+import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.service.*;
+import at.jku.isse.ecco.storage.mem.dao.*;
 import at.jku.isse.ecco.tree.Node;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.*;
+import java.nio.file.*;
 import java.util.*;
 import java.util.logging.*;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
-import static at.jku.isse.ecco.util.Trees.slice;
+import static at.jku.isse.ecco.util.Trees.*;
 
 
 public class AdapterTest {
@@ -34,7 +27,7 @@ public class AdapterTest {
     private static final Path[] FILES = new Path[]{Paths.get("temperature.cpp")};
     private static final Path repo = Paths.get("D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin\\variant_results");
 
-    @Test(groups = {"integration", "java"})
+    @Test
     public void CPP_Adapter_Test() {
         CppReader reader = new CppReader(new MemEntityFactory());
 
@@ -45,7 +38,7 @@ public class AdapterTest {
     }
 
 
-    @Test(groups = {"integration", "java"})
+    @Test
     public void ComparisonTreesTest() throws IOException {
         CppReader reader = new CppReader(new MemEntityFactory());
         File repo = new File("D:\\Gabriela\\FRL-ecco\\CaseStudies\\SQLite\\variant_results");
@@ -173,7 +166,7 @@ public class AdapterTest {
     }
 
 
-    @Test(groups = {"integration", "java"})
+    @Test
     public void FeatureRevisionCharacteristicTest() throws IOException {
         File file = new File(String.valueOf(Paths.get(repo.toUri())), "featureCharacteristics");
         if (!file.exists())
@@ -381,12 +374,12 @@ public class AdapterTest {
     /**
      * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.
      */
-    @Test(groups = {"integration", "runtime"})
+    @Test
     public void Create_Repo() throws IOException {
         this.createRepo(SCENARIO_DIR, SCENARIO_OUTPUT_DIR);
     }
 
-    @BeforeTest(alwaysRun = true)
+    @BeforeEach
     public void beforeTest() {
         System.out.println("BEFORE");
 
@@ -403,7 +396,7 @@ public class AdapterTest {
         logger.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
     }
 
-    @AfterTest(alwaysRun = true)
+    @AfterEach
     public void afterTest() {
         System.out.println("AFTER");
     }

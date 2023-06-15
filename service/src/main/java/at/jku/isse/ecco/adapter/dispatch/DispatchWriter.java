@@ -117,6 +117,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 
 	private void writeRec(Path base, Path parent, Node node, List<Path> output, Properties hashes) {
 		Artifact artifact = node.getArtifact();
+
 		if (artifact.getData() instanceof DirectoryArtifactData) {
 			DirectoryArtifactData directoryArtifactData = (DirectoryArtifactData) artifact.getData();
 			Path path = parent.resolve(directoryArtifactData.getPath());

@@ -8,7 +8,7 @@ dependencies {
     compile project(':ecco-service')
 
     // https://mvnrepository.com/artifact/com.thoughtworks.xstream/xstream
-    compile group: 'com.thoughtworks.xstream', name: 'xstream', version: '1.4.10'
+    compile group: 'com.thoughtworks.xstream', name: 'xstream', version: '1.4.20'
 
 }
 

@@ -1,34 +1,22 @@
 package at.jku.isse.ecco.service.test;
 
-import java.io.*;
-import java.nio.charset.MalformedInputException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import at.jku.isse.ecco.adapter.cpp.data.*;
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.artifact.*;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.service.*;
 import at.jku.isse.ecco.tree.Node;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import difflib.Delta;
-import difflib.DiffUtils;
-import difflib.Patch;
-import org.testng.annotations.Test;
+import com.opencsv.*;
+import com.opencsv.exceptions.*;
+import com.github.difflib.*;
+import com.github.difflib.patch.*;
+import org.junit.jupiter.api.Test;
 
-import javax.swing.text.StyledEditorKit;
-
-import static at.jku.isse.ecco.util.Trees.computeDepth;
-import static at.jku.isse.ecco.util.Trees.slice;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
@@ -56,7 +44,7 @@ public class FeatureRevisionLocationTest {
 
 
     //feature revision location where the traces are computed by the input containing a set of feature revisions (configuration) and its artifacts (variant source code)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCommit() throws IOException {
         ArrayList<String> configsToCommit = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -90,7 +78,7 @@ public class FeatureRevisionLocationTest {
 
 
     //checkout each set of feature revisions (configuration) and its artifacts (variant source code) by the traces located before by the feature revision location (TestEccoCommit)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCheckout() throws IOException {
         ArrayList<String> configsToCheckout = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -124,7 +112,7 @@ public class FeatureRevisionLocationTest {
 
 
     //compare the ground truth variants with the composed variants (containing the artifacts mapped according to the feature revision location)
-    @org.testng.annotations.Test
+    @Test
     public void TestCompareVariants() {
         //"input_variants" folder contains the ground truth variants and "checkout" folder contains the composed variants
         File variantsrc = new File(resultsCSVs_path, "ecco");
@@ -140,7 +128,7 @@ public class FeatureRevisionLocationTest {
         }
     }
 
-    @org.testng.annotations.Test
+    @Test
     public void TestNrModulesWarnings() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
         for (File path : checkoutfile.listFiles()) {
@@ -168,7 +156,7 @@ public class FeatureRevisionLocationTest {
     }
 
 
-    @Test(groups = {"integration", "java"})
+    @Test
     public void FeatureRevisionCharacteristicTest() throws IOException {
         Path repo = Paths.get("D:\\Gabriela\\FRL-ecco\\CaseStudies\\SQLite\\variant_results");
         File file = new File(String.valueOf(Paths.get(repo.toUri())), "featureCharacteristics");
@@ -286,7 +274,7 @@ public class FeatureRevisionLocationTest {
         return featCharc;
     }
 
-    @org.testng.annotations.Test
+    @Test
     public void TestWarnings() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkoutRandom");
         EccoService service = new EccoService();
@@ -460,6 +448,8 @@ public class FeatureRevisionLocationTest {
                 }
             } catch (FileNotFoundException fe) {
                 System.out.println("file not found!");
+            } catch (CsvException e) {
+                throw new RuntimeException(e);
             }
         }
         System.out.println("SurplusArtifacts: "+(totallinesurplus*100)/eccototalLines + " Total lines surplus: "+ totallinesurplus + " Total lines variants composed: " + eccototalLines);
@@ -467,7 +457,7 @@ public class FeatureRevisionLocationTest {
     }
 
 
-    @org.testng.annotations.Test
+    @Test
     public void TestWarningsUsefulness() throws IOException {
         File checkoutfile = new File(resultMetrics_path, "checkout");
         int usefullwarnings = 0;
@@ -787,7 +777,7 @@ public class FeatureRevisionLocationTest {
 
     //get the metrics of each and for all the target projects together.
     //To compute the metrics of variants this is considering all the files match and to compute files metrics this is considering all the lines match
-    @org.testng.annotations.Test
+    @Test
     public void GetCSVInformationTotalTest() throws IOException {
         //set into this list of File the folders with csv files resulted from the comparison of variants of each target project
         File[] folder = {//new File(csvcomparison_path)
@@ -815,7 +805,13 @@ public class FeatureRevisionLocationTest {
                 if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
                     Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                     CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                    List<String[]> matchesVariants = csvReader.readAll();
+                    List<String[]> matchesVariants = null;
+
+                    try {
+                        matchesVariants = csvReader.readAll();
+                    } catch (CsvException e) {
+                        throw new RuntimeException(e);
+                    }
 
                     if (file.getName().contains("runtime")) {
                         for (int i = 0; i < matchesVariants.size(); i++) {
@@ -1040,10 +1036,10 @@ public class FeatureRevisionLocationTest {
                             matchFiles = true;
                         } else {
                             String del = "", insert = "";
-                            for (Delta delta : patch.getDeltas()) {
+                            for (AbstractDelta<String> delta : patch.getDeltas()) {
                                 String line = "";
                                 if (delta.getType().toString().equals("INSERT")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*") && !line.equals("}")) {
@@ -1054,8 +1050,8 @@ public class FeatureRevisionLocationTest {
                                         }
                                     }
                                 } else if (delta.getType().toString().equals("CHANGE")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
-                                    ArrayList<String> arrayOriginal = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
+                                    ArrayList<String> arrayOriginal = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
@@ -1071,7 +1067,7 @@ public class FeatureRevisionLocationTest {
                                         }
                                     }
                                 } else {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("") && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*/") && !line.startsWith("*")) {
@@ -1447,7 +1443,7 @@ public class FeatureRevisionLocationTest {
     }
 
     //count SLOC
-    @org.testng.annotations.Test
+    @Test
     public void countLinesOfCode() throws IOException {
         List<String> fileTypes = new LinkedList<String>();
         File gitFolder = new File("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\clean");
@@ -1481,7 +1477,7 @@ public class FeatureRevisionLocationTest {
         System.out.println("Size: " + countLines);
     }
 
-    @org.testng.annotations.Test
+    @Test
     public void getCSVInformation2() throws IOException {
         File folder = new File(csvcomparison_path);
         File[] lista = folder.listFiles();
@@ -1494,7 +1490,13 @@ public class FeatureRevisionLocationTest {
             if ((file.getName().indexOf(".csv") != -1) && !(file.getName().contains("features_report_each_project_commit")) && !(file.getName().contains("configurations"))) {
                 Reader reader = Files.newBufferedReader(Paths.get(file.getAbsolutePath()));
                 CSVReader csvReader = new CSVReaderBuilder(reader).build();
-                List<String[]> matchesVariants = csvReader.readAll();
+                List<String[]> matchesVariants = null;
+
+                try {
+                    matchesVariants = csvReader.readAll();
+                } catch (CsvException e) {
+                    throw new RuntimeException(e);
+                }
 
                 if (file.getName().contains("runtime")) {
                     for (int i = 0; i < matchesVariants.size(); i++) {

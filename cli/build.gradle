@@ -2,14 +2,6 @@ apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.cli.Main"
 applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 
-test {
-	useJUnitPlatform()
-}
-
-integrationTest {
-	useJUnitPlatform()
-}
-
 dependencies {
 	implementation 'net.sourceforge.argparse4j:argparse4j:0.9.0'
 
@@ -25,7 +17,7 @@ dependencies {
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-golang')
 
-	testImplementation platform('org.junit:junit-bom:5.9.1')
+	testImplementation platform('org.junit:junit-bom:5.9.3')
 	testImplementation 'org.junit.jupiter:junit-jupiter'
 	testImplementation "org.mockito:mockito-core:5.3.1"
 }

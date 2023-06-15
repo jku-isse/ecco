@@ -1,15 +1,15 @@
 apply plugin: 'java-library'
 
 dependencies {
-	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
-	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
 
 	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
-	implementation 'io.github.java-diff-utils:java-diff-utils:2.2.0'
-	implementation 'com.opencsv:opencsv:4.6'
-	implementation 'com.google.guava:guava:27.1-jre'
-	api 'com.google.inject:guice:5.0.1'
+	implementation 'io.github.java-diff-utils:java-diff-utils:4.12'
+	implementation 'com.opencsv:opencsv:5.7.1'
+	implementation 'com.google.guava:guava:32.0.1-jre'
+	api 'com.google.inject:guice:7.0.0'
 	api 'com.google.inject.extensions:guice-multibindings:4.2.3'
 
 	api project(':ecco-base')

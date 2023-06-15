@@ -1,23 +1,21 @@
 package at.jku.isse.ecco.gui.test;
 
-import at.jku.isse.ecco.gui.EccoGui;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import at.jku.isse.ecco.gui.*;
+import org.junit.jupiter.api.*;
 
 public class GuiTest {
 
-	@Test(groups = {"integration", "gui"})
+	@Test
 	public void Gui_Test() {
 		EccoGui.main(new String[]{});
 	}
 
-	@AfterTest(alwaysRun = true)
+	@AfterEach
 	public void afterTest() {
 		System.out.println("AFTER");
 	}
 
-	@BeforeTest(alwaysRun = true)
+	@BeforeEach
 	public void beforeTest() {
 		System.out.println("BEFORE");
 	}

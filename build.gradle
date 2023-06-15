@@ -1,5 +1,5 @@
 plugins {
-	id 'nebula.ospackage' version '9.0.0'
+	id 'com.netflix.nebula.ospackage' version '11.3.0'
 	id 'pmd'
 	//id 'checkstyle'
 }
@@ -24,7 +24,7 @@ subprojects {
 
 	apply plugin: 'java'
 	apply plugin: 'maven-publish'
-	apply plugin: 'nebula.ospackage'
+	apply plugin: 'com.netflix.nebula.ospackage'
 	//apply plugin: 'checkstyle'
 
 	sourceCompatibility = JavaVersion.VERSION_13
@@ -35,7 +35,7 @@ subprojects {
 	}
 
 	dependencies {
-		testImplementation 'org.testng:testng:6.14.3'
+		testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
 	}
 
 	jar {
@@ -64,22 +64,21 @@ subprojects {
 	}
 
 	test {
-		useTestNG() {
-			suites 'src/test/resources/testng.xml'
-		}
+		useJUnitPlatform()
 		outputs.upToDateWhen { false }
-	}
-	test.onlyIf {
-		new File(getProjectDir(), 'src/test/resources/testng.xml').exists()
+		filter {
+			exclude("**/integrationTest/**")
+		}
 	}
 
 	task integrationTest(type: Test, group: 'verification', description: 'Runs the integration tests.') {
-		useTestNG() {
-			suites 'src/integrationTest/resources/testng.xml'
-		}
-//		duplicatesStrategy = DuplicatesStrategy.INCLUDE
+		useJUnitPlatform()
 		classpath = sourceSets.integrationTest.runtimeClasspath
 		outputs.upToDateWhen { false }
+
+		filter {
+			exclude("**/test/**")
+		}
 	}
 	integrationTest.onlyIf {
 		new File(getProjectDir(), 'src/integrationTest/resources/testng.xml').exists()
