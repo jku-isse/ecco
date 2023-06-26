@@ -1,6 +1,6 @@
 plugins {
     id("com.github.johnrengelman.shadow") version "7.1.2"
-    id("io.micronaut.minimal.application") version "3.3.2"
+    id("io.micronaut.minimal.application") version "3.7.10"
 }
 
 version = "0.1"
@@ -30,7 +30,7 @@ dependencies {
     runtimeOnly project(':ecco-adapter-file')
     runtimeOnly project(':ecco-adapter-text')
     runtimeOnly project(':ecco-adapter-image')
-    //runtimeOnly project(':ecco-adapter-java')
+    runtimeOnly project(':ecco-adapter-java')
 
     // the following should be "testRuntimeOnly". however, javafx seems to mess up these dependencies for the entire project.
     testImplementation project(':ecco-adapter-file')
@@ -45,7 +45,6 @@ test {
     useJUnitPlatform()
 }
 
-
 application {
     mainClass.set("at.jku.isse.ecco.rest.Application")
 }
@@ -55,14 +54,11 @@ java {
 }
 
 micronaut {
-    version = '3.3.2'
+    version = "3.9.4"
     runtime("netty")
     testRuntime("junit5")
     processing {
         incremental(true)
         annotations("at.jku.isse.ecco.rest.*")
     }
-
 }
-
-

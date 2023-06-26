@@ -1,24 +1,17 @@
 package at.jku.isse.ecco.web.controller;
 
-import at.jku.isse.ecco.web.domain.model.CloseOperationResponse;
-import at.jku.isse.ecco.web.domain.model.FeatureModel;
-import at.jku.isse.ecco.web.domain.model.OperationContainer;
-import at.jku.isse.ecco.web.domain.model.OperationResponse;
-import at.jku.isse.ecco.web.domain.repository.AbstractRepository;
-import at.jku.isse.ecco.web.domain.repository.OperationRepository;
-import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
-import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import at.jku.isse.ecco.web.domain.model.*;
+import at.jku.isse.ecco.web.domain.repository.*;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import jakarta.ws.rs.ext.*;
-import java.io.InputStream;
+import org.glassfish.jersey.media.multipart.*;
+import org.slf4j.*;
+
+import java.io.*;
 
 @Path("/repository")
 public class OperationController {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(OperationController.class);
 
     @Context
@@ -26,20 +19,6 @@ public class OperationController {
 
     @Context
     private Providers providers;
-
-    /**
-     * Create new Repo with a given
-     * @param operationOnDirectory
-     * @return
-     */
-    @PUT
-    @Consumes({ MediaType.APPLICATION_JSON })
-    @Produces({ MediaType.APPLICATION_JSON })
-    public OperationResponse createRepository(OperationContainer operationOnDirectory) {
-        //TODO: Create eines Repos einmal hierein packen...
-
-        return new CloseOperationResponse();
-    }
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })

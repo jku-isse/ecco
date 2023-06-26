@@ -34,16 +34,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class CheckoutView extends OperationView implements EccoListener {
-
     private final EccoService service;
-
     private final ObservableList<FileInfo> logData = FXCollections.observableArrayList();
-
-
     private final SplitPane splitPane;
     private final CheckoutDetailView checkoutDetailView;
     private final TableView<FileInfo> logTable;
-
 
     public CheckoutView(EccoService service) {
         super();
@@ -273,5 +268,4 @@ public class CheckoutView extends OperationView implements EccoListener {
             this.plugin.set(plugin);
         }
     }
-
 }

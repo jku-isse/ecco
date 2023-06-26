@@ -1,9 +1,6 @@
-package at.jku.isse.ecco.rest.classes;
+package at.jku.isse.ecco.rest.models;
 
 import at.jku.isse.ecco.core.Variant;
-
-import java.util.Collection;
-import java.util.LinkedList;
 
 public class RestVariant {
 

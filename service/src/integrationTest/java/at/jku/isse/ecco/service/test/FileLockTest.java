@@ -15,8 +15,6 @@ import java.util.*;
 import java.util.stream.*;
 
 public class FileLockTest {
-
-
 	@Test
 	public void FileLockTest2() throws IOException {
 		SerTransactionStrategy ts = new SerTransactionStrategy(Paths.get("C:\\Users\\user\\Desktop\\ECCO_TEST\\repo"));
@@ -33,7 +31,6 @@ public class FileLockTest {
 
 		ts.close();
 	}
-
 
 	@Test
 	public void FileLockTest() throws IOException {
@@ -165,7 +162,5 @@ public class FileLockTest {
 		// close repository
 		service.close();
 		System.out.println("Repository closed.");
-
 	}
-
 }

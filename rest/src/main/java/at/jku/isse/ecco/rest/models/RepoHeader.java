@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.rest.classes;
+package at.jku.isse.ecco.rest.models;
 
 public class RepoHeader {
     private final int id;

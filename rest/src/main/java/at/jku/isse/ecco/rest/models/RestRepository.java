@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.rest.classes;
+package at.jku.isse.ecco.rest.models;
 
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
@@ -11,7 +11,6 @@ import java.util.LinkedList;
 
 //@Component
 public class RestRepository implements Serializable {
-
     private final int repositoryHandlerId;
     private final String name;
     private final EccoService service;
@@ -56,8 +55,3 @@ public class RestRepository implements Serializable {
         return variants;
     }
 }
-
-
-
-
-

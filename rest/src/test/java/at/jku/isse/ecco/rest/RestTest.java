@@ -8,8 +8,6 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-//Do not run with Grade use Intellij IDEE or similar instead
-
 @MicronautTest
 class RestTest {
 
@@ -30,6 +28,4 @@ class RestTest {
     void testItWorks() {
         Assertions.assertTrue(application.isRunning());
     }
-
-
 }

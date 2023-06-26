@@ -63,6 +63,7 @@ public final class MemRepository implements Repository, Repository.Op {
 				return v;
 			}
 		}
+
 		return null;
 	}
 
@@ -153,6 +154,7 @@ public final class MemRepository implements Repository, Repository.Op {
 		if(variants == null) {
 			variants = new ArrayList<>();
 		}
+
 		this.variants.add(variant);
 	}
 

@@ -13,7 +13,6 @@ import java.util.*;
 
 @Path("/graph")
 public class GraphsResource {
-
 	@Context
 	private Application application;
 
@@ -25,35 +24,30 @@ public class GraphsResource {
 	@Path("/artifacts")
 	@Produces(MediaType.APPLICATION_JSON)
 	public ArtifactsGraphDTO getArtifactsGraph(@QueryParam("maxChildren") int maxChildren) {
-/*		if (!(this.application instanceof EccoApplication))
+		if (!(this.application instanceof EccoApplication)) {
 			throw new RuntimeException("No or wrong application object injected.");
+		}
 
-		EccoService eccoService = ((EccoApplication) this.application).getEccoService();
-		this.service = eccoService;*/
-
-		throw new RuntimeException("No or wrong application object injected.");
+		updateGraph(((EccoApplication) this.application).getEccoService());
+		return graph;
 
 	}
 
-
-	private EccoService service;
 	private ArtifactsGraphDTO graph;
 
-	private void updateGraph() {
-		this.graph = new ArtifactsGraphDTO();
-
-		this.maxSuccessorsCount = 0;
-		this.maxDepth = 0;
-
-		// traverse trees and add nodes
+	private void updateGraph(EccoService eccoService) {
 		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
-		for (Association association : this.service.getRepository().getAssociations()) {
+		graph = new ArtifactsGraphDTO();
+		maxSuccessorsCount = 0;
+		maxDepth = 0;
+
+		for (Association association : eccoService.getRepository().getAssociations()) {
 			compRootNode.addOrigNode(association.getRootNode());
 		}
-		this.traverseTree(compRootNode, 0);
 
-		this.graph.setMaxNumArtifacts(this.maxSuccessorsCount);
-		this.graph.setMaxDepth(this.maxDepth);
+		traverseTree(compRootNode, 0);
+		graph.setMaxNumArtifacts(maxSuccessorsCount);
+		graph.setMaxDepth(maxDepth);
 	}
 
 

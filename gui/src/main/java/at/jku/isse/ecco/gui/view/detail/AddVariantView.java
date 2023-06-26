@@ -8,13 +8,10 @@ import javafx.scene.control.ToolBar;
 import javafx.scene.layout.*;
 
 public class AddVariantView extends BorderPane {
-
-    private Variant currentVariant;
-
     private final Pane centerPane;
     private final ToolBar toolBar;
-
     private final TextField variantConfiguration;
+    private Variant currentVariant;
 
     public AddVariantView() {
 

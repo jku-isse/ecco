@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.rest.classes;
+package at.jku.isse.ecco.rest.models;
 
 import at.jku.isse.ecco.core.Association;
 
@@ -16,5 +16,4 @@ public class RestAssociation {
     public String getSimpleModuleRevisionCondition() {
         return association.computeCondition().getSimpleModuleRevisionConditionString();
     }
-
 }

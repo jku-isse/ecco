@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.rest;
 
-import at.jku.isse.ecco.rest.classes.RestRepository;
+import at.jku.isse.ecco.rest.models.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.PathVariable;
@@ -36,5 +36,4 @@ public class CommitController {
 
         return repositoryService.addCommit(repositoryHandlerId, message, config, username, fileList);
     }
-
 }

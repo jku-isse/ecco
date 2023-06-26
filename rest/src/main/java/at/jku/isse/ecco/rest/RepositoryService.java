@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.rest;
 
-import at.jku.isse.ecco.rest.classes.RestRepository;
+import at.jku.isse.ecco.rest.models.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.exceptions.HttpStatusException;

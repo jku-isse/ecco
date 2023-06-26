@@ -1,8 +1,7 @@
-package at.jku.isse.ecco.rest.classes;
+package at.jku.isse.ecco.rest.models;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
-import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;

@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.rest;
 
 
-import at.jku.isse.ecco.rest.classes.RestRepository;
+import at.jku.isse.ecco.rest.models.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 import io.micronaut.security.annotation.Secured;

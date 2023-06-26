@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.rest;
 
 
-import at.jku.isse.ecco.rest.classes.RestRepository;
+import at.jku.isse.ecco.rest.models.RestRepository;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 import io.micronaut.http.server.types.files.SystemFile;
@@ -48,7 +48,7 @@ public class VariantController {
         return repositoryService.variantRemoveFeature(repositoryHandlerId, variantId, featureName);
     }
 
-    @Produces(value = "application/checkout.zip")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Get("/{variantId}/checkout")
     public SystemFile checkoutVariant(@PathVariable int repositoryHandlerId, @PathVariable String variantId) {
         return new SystemFile(repositoryService.checkout(repositoryHandlerId, variantId).toFile());

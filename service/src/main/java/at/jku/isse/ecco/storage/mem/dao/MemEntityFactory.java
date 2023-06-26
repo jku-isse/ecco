@@ -36,8 +36,8 @@ public class MemEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Commit createCommit(String name) {
-		return new MemCommit(name);
+	public Commit createCommit(String username) {
+		return new MemCommit(username);
 	}
 
 	@Override
