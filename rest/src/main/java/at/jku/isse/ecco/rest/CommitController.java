@@ -9,6 +9,7 @@ import io.micronaut.http.annotation.RequestAttribute;
 import io.micronaut.http.multipart.CompletedFileUpload;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.security.rules.SecurityRule;
+import jakarta.inject.*;
 import org.reactivestreams.Publisher;
 import io.reactivex.Flowable;
 
@@ -19,8 +20,13 @@ import java.util.logging.Logger;
 @Secured(SecurityRule.IS_AUTHENTICATED)
 @Controller("/api/{repositoryHandlerId}/commit")
 public class CommitController {
-    private final RepositoryService repositoryService = RepositoryService.getInstance();
-    private static final Logger LOGGER = Logger.getLogger(RepositoryService.class.getName());
+    private final RepositoryService repositoryService;
+    private static final Logger LOGGER = Logger.getLogger(CommitController.class.getName());
+
+    @Inject
+    public CommitController(RepositoryService repositoryService) {
+        this.repositoryService = repositoryService;
+    }
 
     @Post(uri="add", consumes= MediaType.MULTIPART_FORM_DATA)
     public RestRepository makeCommit(@PathVariable int repositoryHandlerId,

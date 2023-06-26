@@ -2,6 +2,7 @@ package at.jku.isse.ecco.rest;
 
 
 import at.jku.isse.ecco.rest.models.RestRepository;
+import com.google.inject.*;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 import io.micronaut.security.annotation.Secured;
@@ -12,7 +13,12 @@ import java.util.Map;
 @Secured(SecurityRule.IS_AUTHENTICATED)
 @Controller("/api/{repositoryHandlerId}/feature")
 public class FeatureController {
-    private final RepositoryService repositoryService = RepositoryService.getInstance();
+    private final RepositoryService repositoryService;
+
+    @Inject
+    public FeatureController(RepositoryService repositoryService) {
+        this.repositoryService = repositoryService;
+    }
 
     @Post("/{featureId}/description")
     @Consumes(MediaType.APPLICATION_JSON)

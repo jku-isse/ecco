@@ -7,13 +7,19 @@ import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.*;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.security.rules.SecurityRule;
+import jakarta.inject.*;
 
 import java.util.Map;
 
 @Secured(SecurityRule.IS_AUTHENTICATED)
 @Controller("/api/repository")
 public class RepositoryController {
-    private final RepositoryService repositoryService = RepositoryService.getInstance();
+    private final RepositoryService repositoryService;
+
+    @Inject
+    public RepositoryController(RepositoryService repositoryService) {
+        this.repositoryService = repositoryService;
+    }
 
     @Get("/{repositoryHandlerId}")      //return Repository
     public RestRepository getRepository (@PathVariable int repositoryHandlerId) {
