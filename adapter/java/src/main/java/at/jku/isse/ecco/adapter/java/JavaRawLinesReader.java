@@ -11,7 +11,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
-import com.github.javaparser.JavaParser;
+import com.github.javaparser.*;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
@@ -84,7 +84,7 @@ public class JavaRawLinesReader implements ArtifactReader<Path, Set<Node.Op>> {
 			}
 
 			try {
-				CompilationUnit cu = JavaParser.parse(resolvedPath);
+				CompilationUnit cu = StaticJavaParser.parse(resolvedPath);
 
 				String packageName = "";
 				if (cu.getPackageDeclaration().isPresent())
