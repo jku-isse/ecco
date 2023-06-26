@@ -236,7 +236,6 @@ public class RepositoryService {
         repositories.get(toRepositoryHandlerId).fork(repositories.get(oldRepositoryHandlerId), deselectedFeatures);     //handler fork
     }
 
-    // private methods -------------------------------------------------------------------------------------------------
     private void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
         //from https://www.quickprogrammingtips.com/java/how-to-zip-a-folder-in-java.html
         ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
