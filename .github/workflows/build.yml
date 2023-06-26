@@ -27,6 +27,7 @@ jobs:
     - name: Execute Gradle build
       run: |
         ./gradlew build
+        ./gradlew test
         ./gradlew combinedjavadoc
         ./gradlew combinedWindowsZip
         ./gradlew combinedLinuxZip
