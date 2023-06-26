@@ -1,6 +1,6 @@
 plugins {
 	id 'application'
-	id 'org.openjfx.javafxplugin' version '0.0.10'
+	id 'org.openjfx.javafxplugin' version '0.0.14'
 }
 
 apply plugin: 'java-library'
@@ -11,13 +11,12 @@ javafx {
 }
 
 dependencies {
-	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
-	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
 
-	implementation 'com.google.guava:guava:27.1-jre'
+	implementation 'com.google.guava:guava:32.0.1-jre'
 
-	implementation 'com.github.javaparser:javaparser-core:3.23.1'
-	implementation files('../adapter/at.jku.cdl.ecco.adapter.java-patched.jar')
+	implementation 'com.github.javaparser:javaparser-core:3.25.3'
 
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-image')

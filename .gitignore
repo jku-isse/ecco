@@ -10,12 +10,10 @@ bin
 test-output
 /adapter/lilypond/.jython_cache/
 desktop.ini
+/cli/reports/
+/cli/tests/
+/cli/install.sh
+/serverRepositories
 **/*.deb
 **/*.rpm
 **/*.zip
-/adapter/at.jku.cdl.ecco.adapter.java-patched/
-/adapter/java-patched/
-adapter-java-patched
-/serverRepositories
-/adapter/xml/*
-/adapter/eplan/*

@@ -424,7 +424,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             throw new EccoException("No data plugin specified.");
         }
 
-
         // artifact adapter modules
         List<Module> artifactModules = new ArrayList<>();
         List<Module> allArtifactModules = new ArrayList<>();

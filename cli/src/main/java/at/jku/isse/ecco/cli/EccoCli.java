@@ -20,8 +20,7 @@ import java.nio.file.Paths;
  * This class implements all the CLI commands.
  */
 public class EccoCli implements EccoListener {
-
-	private EccoService eccoService;
+	private final EccoService eccoService;
 
 
 	// # EVENTS ######################################
@@ -134,11 +133,6 @@ public class EccoCli implements EccoListener {
 				this.eccoService.setBaseDir(baseDir);
 				System.out.println("SUCCESS: SET baseDir=" + baseDir);
 				break;
-//			case "maxorder":
-//				int maxOrder = Integer.parseInt(value);
-//				this.eccoService.setMaxOrder(maxOrder);
-//				System.out.println("SUCCESS: SET maxOrder=" + maxOrder);
-//				break;
 			default:
 				System.out.println("ERROR: No property named \"" + clientProperty + "\".");
 				break;
@@ -154,9 +148,6 @@ public class EccoCli implements EccoListener {
 			case "basedir":
 				System.out.println("SUCCESS: GET baseDir=" + this.eccoService.getBaseDir());
 				break;
-//			case "maxorder":
-//				System.out.println("SUCCESS: GET maxOrder=" + this.eccoService.getMaxOrder());
-//				break;
 			default:
 				System.out.println("ERROR: No property named \"" + clientProperty + "\".");
 				break;
@@ -164,47 +155,6 @@ public class EccoCli implements EccoListener {
 
 		this.eccoService.close();
 	}
-
-//	public void addFiles(String pathString) throws EccoException {
-//		if (!this.repository.repositoryDirectoryExists())
-//			return;
-//
-//		this.repository.detectRepository();
-//		this.repository.init();
-//
-//		// NOTE: maybe do this in the client service and not in the CLI.
-//		try {
-//			// collect ecco files
-//			Set<Path> eccoFiles = new HashSet<Path>();
-//			Files.walk(this.repository.getBaseDir()).forEach(eccoFiles::add);
-//
-//			// go through files in current folder
-//			Files.walk(Paths.get(pathString)).filter(path -> {
-//				boolean accept = true;
-//				// ignore all ecco files
-//				accept = accept && !eccoFiles.contains(path);
-//				// ignore directories
-//				accept = accept && !Files.isDirectory(path);
-//				// ignore all files on the ignore list
-////				accept = accept && !this.clientService.getIgnoredFiles().contains(path);
-//				return accept;
-//			}).forEach(path -> {
-////				this.clientService.addTrackedFile(path);
-//				System.out.println("ADDED: " + path.toString());
-//			});
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-//
-//	}
-//
-//	public void removeFiles(String path) {
-//
-//	}
-//
-//	public void ignoreFiles(String path) {
-//
-//	}
 
 	public void checkout(String configurationString) {
 		this.initRepo();
@@ -316,26 +266,6 @@ public class EccoCli implements EccoListener {
 
 	public void addRemote(String remoteName, String remoteUriString) {
 		this.eccoService.addRemote(remoteName, remoteUriString);
-
-//		Path path;
-//		try {
-//			path = Paths.get(remoteUriString);
-//		} catch (InvalidPathException | NullPointerException ex) {
-//			path = null;
-//		}
-//
-//		Remote.Type remoteType;
-//		if (path != null) {
-//			this.initRepo();
-//			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.LOCAL);
-//			this.eccoService.close();
-//		} else if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
-//			this.initRepo();
-//			this.eccoService.addRemote(remoteName, remoteUriString, Remote.Type.REMOTE);
-//			this.eccoService.close();
-//		} else {
-//			System.err.println("ERROR: Invalid remote address provided.");
-//		}
 	}
 
 	public void removeRemote(String remoteName) {

@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+}
+
+group = 'at.jku.isse.ecco'
+version = '0.1.9'
+ecco.adapter = true
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation project(':ecco-service')
+
+    implementation("at.jku.isse.designspace.sdk:main:4.0")
+
+    testImplementation platform('org.junit:junit-bom:5.9.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "org.mockito:mockito-core:5.4.0"
+}
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
