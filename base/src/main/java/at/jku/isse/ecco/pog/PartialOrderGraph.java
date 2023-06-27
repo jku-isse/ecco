@@ -600,16 +600,15 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		default void copy(PartialOrderGraph.Op other) {
-			//if (this.getHead().getNext().size() != 1 || this.getHead().getNext().iterator().next() != this.getTail())
-
-			//TODO Check if needed, blocks fork. Why is it "NULL" ....
-			//Check again befor merge
-			/*
-			if (!this.getHead().getNext().equals("NULL"))
-				throw new EccoException("Partial order graph must be empty to copy another.");
-			 */
-
+			// New sequences are created with their (null-)tail as a child of their (null-)heads
+			// Therefore, even a new sequence is technically "not empty".
+			// So first, remove the tail from the head and if it is not empty afterward, it really actually is not empty
 			this.getHead().removeChild(this.getTail());
+
+			if (!this.getHead().getNext().isEmpty()) {
+				throw new EccoException("Partial order graph must be empty to copy another.");
+			}
+
 			this.setMaxIdentifier(other.getMaxIdentifier());
 
 			Map<PartialOrderGraph.Node.Op, PartialOrderGraph.Node.Op> matches = new HashMap<>();

@@ -1206,9 +1206,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     public synchronized void forkAlreadyOpen(EccoService origService, String deselectedFeatureRevisionsString) {
-
         // create subset repository
         Repository.Op subsetOriginRepository;
+
         try {
             origService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
             Repository.Op originRepository = (Repository.Op) origService.getRepository();

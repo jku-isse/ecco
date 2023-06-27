@@ -122,8 +122,12 @@ public class FileRepositoryService implements RepositoryService {
     // Commit ----------------------------------------------------------------------------------------------------------
     @Override
     public RestRepository addCommit(int repositoryHandlerId, String message, String config, String committer, List<CompletedFileUpload> commitFiles) {
+        RepositoryHandler repository = repositories.get(repositoryHandlerId);
 
-        // Commit storage preparations
+        if (repository == null) {
+            throw new NullPointerException(String.format("repository with id '%d' does not exist", repositoryHandlerId));
+        }
+
         Path commitFolder = repositories.get(repositoryHandlerId).getPath().resolve("lastCommit");
         if(commitFolder.toFile().exists()){
             deleteDirectory(commitFolder.toFile());     //remove existing files recursively
@@ -131,8 +135,9 @@ public class FileRepositoryService implements RepositoryService {
 
         // create files from uploaded Commit
         for(CompletedFileUpload uploadedFile : commitFiles) {
+            String filename = uploadedFile.getFilename();
             File file = commitFolder
-                            .resolve(Path.of(uploadedFile.getFilename().substring(1)))
+                            .resolve(Path.of(filename))
                             .toFile();
 
             // create folders if they don't exist
