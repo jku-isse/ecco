@@ -2,7 +2,7 @@ ecco.adapter = true
 
 dependencies {
 	//implementation 'com.github.javaparser:javaparser-core:3.14.1'
-	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.3'
+	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.4'
 
 	implementation project(':ecco-service')
 }
