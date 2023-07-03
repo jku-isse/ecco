@@ -1,12 +1,15 @@
 name: Gradle Build
 
 on:
-  push:
-    branches:
-      - "**"
   pull_request:
     branches:
+      - "main"
       - "master"
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
 
 jobs:
   build:
