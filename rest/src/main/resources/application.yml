@@ -1,15 +1,45 @@
 micronaut:
   application:
     name: rest
+
+  router:
+    static-resources:
+      swagger:
+        paths: classpath:META-INF/swagger
+        mapping: /swagger/**
+      swagger-ui:
+        paths: classpath:META-INF/swagger/views/swagger-ui
+        mapping: /swagger-ui/**
+
   server:
     cors:
       enabled: true
+
   security:
     authentication: bearer
     token:
       jwt:
         signatures:
           secret: ${JWT_GENERATOR_SIGNATURE_SECRET:pleaseChangeThisSecretForANewOne}
+    intercept-url-map:
+      - pattern: /swagger/**
+        http-method: GET
+        access:
+          - isAnonymous()
+      - pattern: /swagger-ui/**
+        http-method: GET
+        access:
+          - isAnonymous()
+
+  openapi:
+    views:
+      spec: |
+        swagger-ui.enabled=true,
+        swagger-ui.theme=flattop
+    swagger-ui:
+      enabled: true
+
+
 
 jackson:
   serialization-inclusion: NON_ABSENT # Omit null and Optional.empty(), but include empty collections

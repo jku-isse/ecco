@@ -25,6 +25,9 @@ dependencies {
     implementation("io.micronaut.reactor:micronaut-reactor")
     implementation("io.micronaut.security:micronaut-security-jwt")
 
+    annotationProcessor("io.micronaut.openapi:micronaut-openapi:4.9.2")
+    implementation("io.swagger.core.v3:swagger-annotations")
+
     implementation project(':ecco-service')
 
     runtimeOnly project(':ecco-adapter-file')
@@ -62,3 +65,5 @@ micronaut {
         annotations("at.jku.isse.ecco.rest.*")
     }
 }
+
+run.dependsOn += build

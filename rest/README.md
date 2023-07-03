@@ -1,4 +1,4 @@
-## Rest-API for Ecco
+# Rest-API for Ecco
 
 This part provides a Rest-API for ECCO  
 The corresponding frontend can be found on [GitHub](https://github.com/MatthiasPreuner/ecco-client.git)
@@ -10,6 +10,12 @@ To run the API use the Gradle commands under ecco-rest:
 The server storage can be changed in the "Setting" class.  
 Users can be added by chancing the "DummyUserDB" class or add your own user database.
 mirconaut-cli.yml contains the config for possible CLI usage.
+
+## API Documentation
+
+This server provides an OpenAPI documentation as well as a Swagger UI.
+After the server has started, it is accessible via http://localhost:8080/swagger-ui.
+The raw OpenAPI documentation can be accessed via http://localhost:8080/swagger/ecco-restservice-0.0.1.yml.
 
 ## Additional documentation
 
