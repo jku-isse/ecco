@@ -13,7 +13,6 @@ desktop.ini
 /cli/reports/
 /cli/tests/
 /cli/install.sh
-/serverRepositories
 **/*.deb
 **/*.rpm
 **/*.zip
