@@ -19,7 +19,7 @@ dependencies {
 
 	implementation 'com.google.guava:guava:32.0.1-jre'
 
-	implementation 'com.github.javaparser:javaparser-core:3.25.3'
+	implementation 'com.github.javaparser:javaparser-core:3.25.4'
 
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-image')
