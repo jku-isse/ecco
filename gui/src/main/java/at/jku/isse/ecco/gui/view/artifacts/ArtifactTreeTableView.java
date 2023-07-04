@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.gui.view;
+package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
@@ -36,12 +36,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		TreeTableColumn<NodeWrapper, Color> colorNodeCol = new TreeTableColumn<>();
 		colorNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Color> param) -> param.getValue().getValue().colorProperty());
-		colorNodeCol.setCellFactory(new Callback<TreeTableColumn<NodeWrapper, Color>, TreeTableCell<NodeWrapper, Color>>() {
-			@Override
-			public TreeTableCell<NodeWrapper, Color> call(TreeTableColumn<NodeWrapper, Color> param) {
-				return new ColorTreeTableCell<>();
-			}
-		});
+		colorNodeCol.setCellFactory(param -> new ColorTreeTableCell<>());
 
 		TreeTableColumn<NodeWrapper, String> labelNodeCol = new TreeTableColumn<>("Node");
 		labelNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, String> param) -> new ReadOnlyStringWrapper(param.getValue().getValue().toString()));
@@ -56,7 +51,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		uniqueNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().isUnique()));
 
 		TreeTableColumn<NodeWrapper, Integer> snNodeCol = new TreeTableColumn<>("Sequence Number");
-		snNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Integer> param) -> new ReadOnlyObjectWrapper<Integer>(param.getValue().getValue().getArtifact() == null ? -1 : param.getValue().getValue().getArtifact().getSequenceNumber()));
+		snNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().getArtifact() == null ? -1 : param.getValue().getValue().getArtifact().getSequenceNumber()));
 
 		TreeTableColumn<NodeWrapper, String> associationNodeCol = new TreeTableColumn<>("Association");
 		associationNodeCol.setCellValueFactory(
@@ -110,21 +105,17 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		artifactTreeCol.getColumns().setAll(labelNodeCol, colorNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol, isSelectedNodeCol);
 
 
-		uniqueNodeCol.setCellFactory(new Callback<TreeTableColumn<NodeWrapper, Boolean>, TreeTableCell<NodeWrapper, Boolean>>() {
+		uniqueNodeCol.setCellFactory(new Callback<>() {
 			public TreeTableCell<NodeWrapper, Boolean> call(TreeTableColumn param) {
-				return new TreeTableCell<NodeWrapper, Boolean>() {
+				return new TreeTableCell<>() {
 					@Override
 					public void updateItem(Boolean item, boolean empty) {
 						super.updateItem(item, empty);
 						if (!isEmpty()) {
 							if (item) {
 								this.setTextFill(Color.GREEN);
-//								getTreeTableRow().getStyleClass().add("uniquerow");
-//								getTreeTableRow().setTextFill(Color.BLACK);
 							} else {
 								this.setTextFill(Color.RED);
-//								getTreeTableRow().getStyleClass().add("nonuniquerow");
-//								getTreeTableRow().setTextFill(Color.GRAY);
 							}
 							this.setText(item.toString());
 						} else {
@@ -182,9 +173,9 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 	}
 
 
-	private Collection<ArtifactsView.AssociationInfoImpl> associationInfos = null;
+	private Collection<AssociationInfoImpl> associationInfos = null;
 
-	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfoImpl> associationInfos) {
+	public void setAssociationInfo(Collection<AssociationInfoImpl> associationInfos) {
 		this.associationInfos = associationInfos;
 	}
 
@@ -199,7 +190,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 				if (node != null && node.getArtifact() != null && node.getArtifact().getContainingNode() != null) {
 					Association nodeAssociation = node.getArtifact().getContainingNode().getContainingAssociation();
 					if (nodeAssociation != null) {
-						Optional<ArtifactsView.AssociationInfoImpl> opt = ArtifactTreeTableView.this.associationInfos.stream().filter(o -> o.getAssociation() == nodeAssociation).findFirst();
+						Optional<AssociationInfoImpl> opt = ArtifactTreeTableView.this.associationInfos.stream().filter(o -> o.getAssociation() == nodeAssociation).findFirst();
 						opt.ifPresent(associationInfo -> node.colorProperty().bind(associationInfo.colorProperty()));
 					}
 				}
@@ -226,7 +217,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 	public class NodeWrapper implements Node {
 
-		private ObjectProperty<Color> color;
+		private final ObjectProperty<Color> color;
 
 		public NodeWrapper(Node node) {
 			this.node = node;

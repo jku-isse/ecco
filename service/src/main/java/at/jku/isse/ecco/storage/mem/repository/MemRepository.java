@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.storage.mem.repository;
 
 import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -24,7 +24,7 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	private Map<String, MemFeature> features;
 	private Collection<Association.Op> associations;
-	private ArrayList<Variant> variants;
+	private ArrayList<Variant> variants = new ArrayList<>();;
 	private List<Map<MemModule, MemModule>> modules;
 	private Collection<Commit> commits;
 	private int maxOrder;
@@ -32,7 +32,6 @@ public final class MemRepository implements Repository, Repository.Op {
 	public MemRepository() {
 		this.features = Maps.mutable.empty();
 		this.associations = new ArrayList<>();
-		this.variants =  new ArrayList<>();
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
@@ -40,6 +39,10 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public Collection<Feature> getFeatures() {
+		return Collections.unmodifiableCollection(this.features.values());
+	}
+
+	public Collection<Feature> getMemFeatures() {
 		return Collections.unmodifiableCollection(this.features.values());
 	}
 
@@ -60,6 +63,7 @@ public final class MemRepository implements Repository, Repository.Op {
 				return v;
 			}
 		}
+
 		return null;
 	}
 
@@ -116,7 +120,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		return Collections.unmodifiableCollection(this.modules.get(order).values());
 	}
 
-
 	@Override
 	public MemFeature getFeature(String id) {
 		return this.features.get(id);
@@ -148,6 +151,10 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public void addVariant(Variant variant) {
+		if(variants == null) {
+			variants = new ArrayList<>();
+		}
+
 		this.variants.add(variant);
 	}
 

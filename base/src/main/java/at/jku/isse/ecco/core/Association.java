@@ -20,73 +20,67 @@ public interface Association extends Persistable {
 	 *
 	 * @return The id of the association.
 	 */
-	public String getId();
+	String getId();
 
 	/**
 	 * Sets the id of the association.
 	 *
 	 * @param id The id of the association.
 	 */
-	public void setId(String id);
+	void setId(String id);
 
 	/**
 	 * Returns the root node of the artifact tree or null if no artifacts are stored.
 	 *
 	 * @return The root of the artifact tree.
 	 */
-	public RootNode getRootNode();
+	RootNode getRootNode();
 
+	Repository getContainingRepository();
 
-	// TODO: make use of this! use it to check added modules that do not already exist in counter.
-	public Repository getContainingRepository();
+	Condition computeCondition();
 
-
-	public Condition computeCondition();
-
-
-	public default String getAssociationString() {
+	default String getAssociationString() {
 		return this.getId().substring(0, Math.min(this.getId().length(), 7));
 	}
 
 	@Override
-	public String toString();
-
+	String toString();
 
 	/**
 	 * Private association operand interface.
 	 */
-	public interface Op extends Association {
+	interface Op extends Association {
 
 		/**
 		 * Returns the root node operand.
 		 *
 		 * @return The root node operand.
 		 */
-		public RootNode.Op getRootNode();
+		RootNode.Op getRootNode();
 
 		/**
 		 * Sets the root node of the artifact tree.
 		 *
 		 * @param root The root of the artifact tree (may be null).
 		 */
-		public void setRootNode(RootNode.Op root);
+		void setRootNode(RootNode.Op root);
 
 
-		public Repository.Op getContainingRepository();
+		Repository.Op getContainingRepository();
+
+		AssociationCounter getCounter();
 
 
-		public AssociationCounter getCounter();
+		Condition createCondition();
 
 
-		public Condition createCondition();
+		boolean isVisible();
+
+		void setVisible(boolean visible);
 
 
-		public boolean isVisible();
-
-		public void setVisible(boolean visible);
-
-
-		public default Condition computeCondition() {
+		default Condition computeCondition() {
 			Condition moduleCondition = this.computeLikelyCondition();
 
 			// if the module condition is empty
@@ -97,7 +91,7 @@ public interface Association extends Persistable {
 			return moduleCondition;
 		}
 
-		public default Condition computeLikelyCondition() {
+		default Condition computeLikelyCondition() {
 			AssociationCounter associationCounter = this.getCounter();
 			Condition moduleCondition = this.createCondition();
 			moduleCondition.setType(Condition.TYPE.AND);
@@ -117,7 +111,7 @@ public interface Association extends Persistable {
 			return moduleCondition;
 		}
 
-		public default Condition computeCertainCondition() {
+		default Condition computeCertainCondition() {
 			AssociationCounter associationCounter = this.getCounter();
 			Condition moduleCondition = this.createCondition();
 			moduleCondition.setType(Condition.TYPE.OR);
@@ -142,31 +136,11 @@ public interface Association extends Persistable {
 		 *
 		 * @param other The other association whose observations are to be added to this association's observations.
 		 */
-		public default void add(Association.Op other) {
+		default void add(Association.Op other) {
 			this.getCounter().add(other.getCounter());
-//			AssociationCounter thisCounter = this.getCounter();
-//			AssociationCounter otherCounter = other.getCounter();
-//			thisCounter.incCount(otherCounter.getCount());
-//			// add every module in other association to this association
-//			for (ModuleCounter otherModuleCounter : otherCounter.getChildren()) {
-//				ModuleCounter thisModuleCounter = thisCounter.getChild(otherModuleCounter.getObject());
-//				// if the counter for this module does not exist yet add it
-//				if (thisModuleCounter == null) {
-//					thisModuleCounter = thisCounter.addChild(otherModuleCounter.getObject());
-//				}
-//				thisModuleCounter.incCount(otherModuleCounter.getCount());
-//				// add every module revision in other module to this module
-//				for (ModuleRevisionCounter otherModuleRevisionCounter : otherModuleCounter.getChildren()) {
-//					ModuleRevisionCounter thisModuleRevisionCounter = thisModuleCounter.getChild(otherModuleRevisionCounter.getObject());
-//					if (thisModuleRevisionCounter == null) {
-//						thisModuleRevisionCounter = thisModuleCounter.addChild(otherModuleRevisionCounter.getObject());
-//					}
-//					thisModuleRevisionCounter.incCount(otherModuleRevisionCounter.getCount());
-//				}
-//			}
 		}
 
-		public default void addObservation(ModuleRevision moduleRevision, int count) {
+		default void addObservation(ModuleRevision moduleRevision, int count) {
 			// get module
 			Module module = moduleRevision.getModule();
 			// get association counter
@@ -189,7 +163,7 @@ public interface Association extends Persistable {
 			moduleRevisionCounter.incCount(count);
 		}
 
-		public default void addObservation(ModuleRevision moduleRevision) {
+		default void addObservation(ModuleRevision moduleRevision) {
 			this.addObservation(moduleRevision, 1);
 		}
 

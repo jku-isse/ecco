@@ -5,11 +5,13 @@ include 'service'
 include 'cli'
 include 'gui'
 include 'web'
+include 'rest'
 
 include 'adapter-file'
 include 'adapter-text'
 include 'adapter-image'
 include 'adapter-challenge'
+include 'adapter-java'
 include 'adapter-cpp'
 include 'adapter-runtime'
 include 'adapter-golang'
@@ -24,6 +26,7 @@ project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
 project(':adapter-challenge').projectDir = file('adapter/challenge')
+project(':adapter-java').projectDir = file('adapter/java')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
 project(':adapter-golang').projectDir = file('adapter/golang')

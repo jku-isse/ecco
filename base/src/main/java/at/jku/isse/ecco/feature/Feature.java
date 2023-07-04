@@ -8,18 +8,17 @@ import java.util.Collection;
  * Contains id, name and description of a feature as well as a collection of all revisions of this feature.
  */
 public interface Feature extends Persistable {
+	Collection<? extends FeatureRevision> getRevisions();
 
-	public Collection<? extends FeatureRevision> getRevisions();
+	FeatureRevision addRevision(String id);
 
-	public FeatureRevision addRevision(String id);
+	FeatureRevision getRevision(String id);
 
-	public FeatureRevision getRevision(String id);
+	FeatureRevision getOrphanedRevision(String id);
 
-	public FeatureRevision getOrphanedRevision(String id);
+	FeatureRevision getLatestRevision();
 
-	public FeatureRevision getLatestRevision();
-
-	public Feature feature(String name);
+	Feature feature(String name);
 
 
 	/**
@@ -27,45 +26,44 @@ public interface Feature extends Persistable {
 	 *
 	 * @return The id.
 	 */
-	public String getId();
+	String getId();
 
 	/**
 	 * Returns the name of the feature.
 	 *
 	 * @return The name.
 	 */
-	public String getName();
+	String getName();
 
 	/**
 	 * Sets the name of the feature.
 	 *
 	 * @param name of the feature
 	 */
-	public void setName(String name);
+	void setName(String name);
 
 	/**
 	 * Returns the description.
 	 *
 	 * @return The description.
 	 */
-	public String getDescription();
+	String getDescription();
 
 	/**
 	 * Sets the description.
 	 *
 	 * @param description of the association
 	 */
-	public void setDescription(String description);
+	void setDescription(String description);
 
 
 	@Override
-	public int hashCode();
+	int hashCode();
 
 	@Override
-	public boolean equals(Object object);
+	boolean equals(Object object);
 
-
-	public default String getFeatureString() {
+	default String getFeatureString() {
 		return this.getName();
 	}
 
@@ -75,6 +73,6 @@ public interface Feature extends Persistable {
 	 * @return The feature string representing this feature.
 	 */
 	@Override
-	public String toString();
+	String toString();
 
 }

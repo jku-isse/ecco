@@ -128,7 +128,6 @@ public class EccoUtil {
 		for (Node.Op childNode : node.getChildren()) {
 			Node.Op childNode2 = EccoUtil.deepCopyTreeRec(childNode, entityFactory);
 			node2.addChild(childNode2);
-			//childNode2.setParent(node2); // not necessary
 		}
 
 		return node2;

@@ -28,9 +28,9 @@ public interface Commit extends Persistable {
 
 	public String getUsername();
 
-	public void setCommitMassage(String message);
+	public void setCommitMessage(String commitMessage);
 
-	public String getCommitMassage();
+	public String getCommitMessage();
 
 	public void setCurrDate();
 

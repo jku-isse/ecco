@@ -1,60 +1,43 @@
 package at.jku.isse.ecco.service;
 
-import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.EccoUtil;
-import at.jku.isse.ecco.adapter.ArtifactPlugin;
-import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.ArtifactWriter;
-import at.jku.isse.ecco.adapter.dispatch.DispatchModule;
-import at.jku.isse.ecco.adapter.dispatch.DispatchReader;
-import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
-import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.*;
+import at.jku.isse.ecco.adapter.*;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.artifact.*;
 import at.jku.isse.ecco.core.*;
-import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.dao.RemoteDao;
-import at.jku.isse.ecco.dao.RepositoryDao;
-import at.jku.isse.ecco.dao.TransactionStrategy;
-import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.ModuleRevision;
-import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.service.listener.EccoListener;
-import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.service.listener.ServerListener;
-import at.jku.isse.ecco.service.listener.WriteListener;
-import at.jku.isse.ecco.storage.StoragePlugin;
-import at.jku.isse.ecco.storage.mem.core.MemVariant;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.dao.*;
+import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.module.*;
+import at.jku.isse.ecco.repository.*;
+import at.jku.isse.ecco.service.listener.*;
+import at.jku.isse.ecco.storage.*;
+import at.jku.isse.ecco.storage.mem.core.*;
+import at.jku.isse.ecco.storage.mem.dao.*;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.tree.RootNode;
+import at.jku.isse.ecco.tree.*;
 import com.google.inject.Module;
 import com.google.inject.*;
-import com.google.inject.name.Names;
+import com.google.inject.name.*;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.nio.channels.AsynchronousCloseException;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.net.*;
+import java.nio.channels.*;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
+import java.util.concurrent.locks.*;
+import java.util.function.*;
+import java.util.logging.*;
+import java.util.stream.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.*;
 
 /**
  * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
 public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
-
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
+    public static final String KEY_USER_NAME = "user.name";
+    public static final String DEFAULT_USER_NAME = "anonymous";
 
     public enum Operation {
         OPEN, INIT, FORK, CLOSE, COMMIT, CHECKOUT, FETCH, PULL, PUSH, SERVER, OTHER
@@ -198,10 +181,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private DispatchReader reader;
     @Inject
     private DispatchWriter writer;
-
     @Inject
     private EntityFactory entityFactory;
-
     @Inject
     private TransactionStrategy transactionStrategy;
 
@@ -431,10 +412,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         List<Module> allArtifactModules = new ArrayList<>();
         this.artifactPlugins = new ArrayList<>();
         for (ArtifactPlugin artifactPlugin : ArtifactPlugin.getArtifactPlugins()) {
-//			if (artifactPluginsList == null || artifactPluginsList.contains(artifactPlugin.getPluginId())) {
             artifactModules.add(artifactPlugin.getModule());
             this.artifactPlugins.add(artifactPlugin);
-//			}
             allArtifactModules.add(artifactPlugin.getModule());
         }
         LOGGER.config("ARTIFACT PLUGINS: " + artifactModules.toString());
@@ -790,7 +769,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
 
-    private Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
+    public Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
         if (featureRevisionsString == null)
             throw new EccoException("No feature revisions string provided.");
 
@@ -1096,7 +1075,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
-
     public synchronized void fork(String hostname, int port) {
         this.fork(hostname, port, "");
     }
@@ -1223,6 +1201,31 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         } catch (Exception e) {
             this.transactionStrategy.rollback();
 
+            throw new EccoException("Error during local fork.", e);
+        }
+    }
+
+    public synchronized void forkAlreadyOpen(EccoService origService, String deselectedFeatureRevisionsString) {
+        // create subset repository
+        Repository.Op subsetOriginRepository;
+
+        try {
+            origService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            Repository.Op originRepository = (Repository.Op) origService.getRepository();
+            subsetOriginRepository = originRepository.subset(origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
+            origService.transactionStrategy.end();
+        } catch (Exception e) {
+            throw new EccoException("Error during local fork.", e);
+        }
+
+        try {
+            Repository.Op repository = (Repository.Op) this.getRepository();
+            repository.merge(subsetOriginRepository);
+
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.repositoryDao.store(repository);
+            this.transactionStrategy.end();
+        } catch (Exception e) {
             throw new EccoException("Error during local fork.", e);
         }
     }
@@ -1525,8 +1528,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configurationString The configuration string.
      * @return The resulting commit object.
      */
+    public synchronized Commit commit(String commitMessage, String configurationString, String committer) {
+        return this.commit(commitMessage, this.parseConfigurationString(configurationString), committer);
+    }
+
     public synchronized Commit commit(String commitMessage, String configurationString) {
-        return this.commit(commitMessage, this.parseConfigurationString(configurationString));
+        String username = System.getProperty(KEY_USER_NAME, DEFAULT_USER_NAME);
+        return this.commit(commitMessage, this.parseConfigurationString(configurationString), username);
     }
 
     /**
@@ -1536,7 +1544,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configuration The configuration to be commited.
      * @return The resulting commit object or null in case of an error.
      */
-    public synchronized Commit commit(String commitMessage, Configuration configuration) {
+    public synchronized Commit commit(String commitMessage, Configuration configuration, String committer) {
         this.checkInitialized();
 
         checkNotNull(configuration);
@@ -1550,7 +1558,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             ArrayList<Variant> variants = repository.getVariants();
 
             long extractTime = System.currentTimeMillis();
-            Commit commit = repository.extract(configuration, nodes);
+            Commit commit = repository.extract(configuration, nodes, committer);
             extractTime = System.currentTimeMillis() - extractTime;
 
             //storing new variant
@@ -1561,11 +1569,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 }
             }
             if (!hasConfiguration) {
-                MemVariant memVariant = new MemVariant("", configuration, UUID.randomUUID().toString());
+                MemVariant memVariant = new MemVariant("Commit", configuration, UUID.randomUUID().toString());
+                memVariant.setDescription(commitMessage);
                 repository.addVariant(memVariant);
             }
 
-            commit.setCommitMassage(commitMessage);
+            commit.setCommitMessage(commitMessage);
 
             this.repositoryDao.store(repository);
 
@@ -1584,22 +1593,39 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    /**
+     * Add a new variant configuration
+     *
+     * @param configurationString The configuration of the variant as String
+     */
+    public synchronized void addVariant(String configurationString, String name, String description) {
+        Configuration configuration = parseConfigurationString(configurationString);
+        addVariant(configuration, name, description);
+    }
 
     /**
      * Add a new variant configuration
      *
      * @param configuration The configuration of the variant
-     * @param service       The service to store the new variant
      */
-    public synchronized void addVariant(Configuration configuration, String name, EccoService service) {
-        service.checkInitialized();
+    public synchronized void addVariant(Configuration configuration, String name) {
+        addVariant(configuration, name, null);
+    }
+
+    /**
+     * Add a new variant configuration
+     *
+     * @param configuration The configuration of the variant
+     */
+    public synchronized void addVariant(Configuration configuration, String name, String description) {
+        this.checkInitialized();
 
         checkNotNull(configuration);
 
         try {
-            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            Repository.Op repository = service.repositoryDao.load();
+            Repository.Op repository = this.repositoryDao.load();
             ArrayList<Variant> variants = repository.getVariants();
 
             //storing new variant
@@ -1611,17 +1637,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
             if (!hasConfigurarion) {
                 MemVariant memVariant = new MemVariant(name, configuration, UUID.randomUUID().toString());
+                memVariant.setDescription(description);
                 repository.addVariant(memVariant);
             }
             //
 
-            service.repositoryDao.store(repository);
+            repositoryDao.store(repository);
 
-            service.transactionStrategy.end();
-
-
+            transactionStrategy.end();
         } catch (Exception e) {
-            service.transactionStrategy.rollback();
+            transactionStrategy.rollback();
 
             throw new EccoException("Error during adding a variant.", e);
         }
@@ -1630,33 +1655,75 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     /**
      * Remove a new variant configuration
      *
-     * @param configuration The configuration of the variant
-     * @param service       The service to remove a variant from the repository
+     * @param id The configuration of the variant
      */
-    public synchronized void removeVariant(Configuration configuration, EccoService service) {
-        service.checkInitialized();
+    public synchronized void removeVariant(String id) {
+        checkInitialized();
+        checkNotNull(id);
+        safeTransaction(repository -> removeVariantById(repository, id));
+    }
 
+    /**
+     * Remove a new variant configuration
+     *
+     * @param configuration The configuration of the variant
+     */
+    public synchronized void removeVariant(Configuration configuration) {
+        checkInitialized();
         checkNotNull(configuration);
+        safeTransaction(repository -> removeVariantByConfiguration(repository, configuration));
+    }
+
+    private Repository.Op removeVariantById(Repository.Op repository, String id) {
+        Variant variant = repository.getVariant(id);
+
+        if (variant != null) {
+            repository.removeVariant(variant);
+        }
+
+        return repository;
+    }
+
+    private Repository.Op removeVariantByConfiguration(Repository.Op repository, Configuration configuration) {
+        Variant variant = repository.getVariant(configuration);
+
+        if (variant != null) {
+            repository.removeVariant(variant);
+        }
+
+        return repository;
+    }
+
+    private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
+        try {
+            transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            Repository.Op repository = repositoryDao.load();
+
+            repository = transaction.apply(repository);
+
+            repositoryDao.store(repository);
+            transactionStrategy.end();
+        } catch (Exception e) {
+            transactionStrategy.rollback();
+
+            throw new EccoException("Error while adding a variant.", e);
+        }
+    }
+
+    public void store() {
+        this.checkInitialized();
 
         try {
-            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            Repository.Op repository = service.repositoryDao.load();
-            Variant variant = repository.getVariant(configuration);
-            if (variant != null) {
-                repository.removeVariant(variant);
-            }
-            //
-
-            service.repositoryDao.store(repository);
-
-            service.transactionStrategy.end();
-
+            Repository.Op repository = this.repositoryDao.load();
+            this.repositoryDao.store(repository);
+            this.transactionStrategy.end();
 
         } catch (Exception e) {
-            service.transactionStrategy.rollback();
+            this.transactionStrategy.rollback();
 
-            throw new EccoException("Error during adding a variant.", e);
+            throw new EccoException("Store error", e);
         }
     }
 
@@ -1701,13 +1768,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             variant.setConfiguration(newConfiguration);
 
             service.repositoryDao.store(repository);
-
             service.transactionStrategy.end();
-
-
         } catch (Exception e) {
             service.transactionStrategy.rollback();
-
             throw new EccoException("Error during adding a variant.", e);
         }
 
@@ -1795,6 +1858,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     /**
      * Composes checkout with given configuration.
+     *
      * @param configuration Configuration to be composed.
      * @return Checkout with composed artifacts.
      */
@@ -1819,6 +1883,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     /**
      * Retrieves associations needed to compose a configuration.
+     *
      * @param configurationString The configuration string for that associations shall be retrieved.
      * @return Set of associations.
      */
@@ -1828,6 +1893,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     /**
      * Retrieves associations needed to compose a configuration.
+     *
      * @param configuration The configuration for that associations shall be retrieved.
      * @return Set of associations.
      */

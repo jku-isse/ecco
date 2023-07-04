@@ -1,0 +1,69 @@
+plugins {
+    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("io.micronaut.minimal.application") version "3.7.10"
+}
+
+version = "0.1"
+group = "at.jku.isse.ecco.rest"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    annotationProcessor("io.micronaut:micronaut-http-validation")
+    implementation("io.micronaut:micronaut-http-client")
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.micronaut:micronaut-runtime")
+    implementation("jakarta.annotation:jakarta.annotation-api")
+    runtimeOnly("ch.qos.logback:logback-classic")
+    implementation("io.micronaut:micronaut-validation")
+
+    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+    annotationProcessor("io.micronaut.security:micronaut-security-annotations")
+    implementation("io.micronaut.data:micronaut-data-jdbc")
+    implementation("io.micronaut.reactor:micronaut-reactor")
+    implementation("io.micronaut.security:micronaut-security-jwt")
+
+    annotationProcessor("io.micronaut.openapi:micronaut-openapi:4.9.2")
+    implementation("io.swagger.core.v3:swagger-annotations")
+
+    implementation project(':ecco-service')
+
+    runtimeOnly project(':ecco-adapter-file')
+    runtimeOnly project(':ecco-adapter-text')
+    runtimeOnly project(':ecco-adapter-image')
+    runtimeOnly project(':ecco-adapter-java')
+
+    // the following should be "testRuntimeOnly". however, javafx seems to mess up these dependencies for the entire project.
+    testImplementation project(':ecco-adapter-file')
+    testImplementation project(':ecco-adapter-text')
+    testImplementation project(':ecco-adapter-image')
+    testImplementation "org.junit.jupiter:junit-jupiter:5.7.1"
+
+    implementation(group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.0.5') // file upload to server
+}
+
+test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClass.set("at.jku.isse.ecco.rest.Application")
+}
+java {
+    sourceCompatibility = JavaVersion.toVersion("17")
+    targetCompatibility = JavaVersion.toVersion("17")
+}
+
+micronaut {
+    version = "3.9.4"
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("at.jku.isse.ecco.rest.*")
+    }
+}
+
+run.dependsOn += build
