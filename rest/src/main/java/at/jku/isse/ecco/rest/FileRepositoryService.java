@@ -135,7 +135,7 @@ public class FileRepositoryService implements RepositoryService {
 
         // create files from uploaded Commit
         for(CompletedFileUpload uploadedFile : commitFiles) {
-            String filename = uploadedFile.getFilename();
+            String filename = uploadedFile.getFilename().substring(1);      //substring removes the \ before the filename
             File file = commitFolder
                             .resolve(Path.of(filename))
                             .toFile();
