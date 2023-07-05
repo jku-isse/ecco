@@ -1,13 +1,10 @@
 docs:
 
-- title: About
+- title: Home
   url: /
 
 - title: Publications
   url: /publications/
-
-- title: Showcase
-  url: /showcase/
 
 - title: Tool
   url: /tool/

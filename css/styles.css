@@ -1,11 +1,13 @@
-
-body {
-	padding-top: 60px;
-	padding-bottom: 60px;
-	padding-left: 10px;
-	padding-right: 10px;
+.navbar {
+	background: white !important;
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
+	border-radius: 8px;
 }
 
+main {
+	padding-top: 32px;
+	padding-bottom: 32px;
+}
 
 .features {
 	line-height: 180%;
@@ -16,53 +18,32 @@ body {
 	max-width: 100%;
 }
 
-@keyframes journal_highlight {
-	0% {
-		background: #c32b72;
-	}
-	100% {
-		background: none;
-	}
-}
-#journals a:target {
-	animation: journal_highlight 2s;
-}
 #journals .list-group-item {
 	border-left-width: 10px;
 	border-left-color: #c32b72;
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-@keyframes conference_highlight {
-	0% {
-		background: #196ca3;
-	}
-	100% {
-		background: none;
-	}
+#journals .list-group-item:hover {
+	box-shadow: 0 8px 8px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
-#conferences a:target {
-	animation: conference_highlight 2s;
-}
+
 #conferences .list-group-item {
 	border-left-width: 10px;
 	border-left-color: #196ca3;
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-@keyframes workshop_highlight {
-	0% {
-		background: #196ca3;
-	}
-	100% {
-		background: none;
-	}
+#conferences .list-group-item:hover {
+	box-shadow: 0 8px 8px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
-#workshops a:target {
-	animation: workshop_highlight 2s;
-}
+
 #workshops .list-group-item {
 	border-left-width: 10px;
-	border-left-color: #196ca3;
+	border-left-color: #19a31b;
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-
-
+#workshops .list-group-item:hover {
+	box-shadow: 0 8px 8px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
