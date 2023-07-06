@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter.designspace;
 
-import at.jku.isse.designspace.sdk.core.model.Workspace;
+import at.jku.isse.designspace.sdk.core.model.*;
 import at.jku.isse.designspace.sdk.core.operations.*;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.designspace.artifact.OperationArtifact;

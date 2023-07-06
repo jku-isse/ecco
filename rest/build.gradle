@@ -8,6 +8,7 @@ group = "at.jku.isse.ecco.rest"
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 dependencies {
@@ -29,6 +30,8 @@ dependencies {
     implementation("io.swagger.core.v3:swagger-annotations")
 
     implementation project(':ecco-service')
+
+    implementation "at.jku.isse.designspace.sdk:main:4.0"
 
     runtimeOnly project(':ecco-adapter-file')
     runtimeOnly project(':ecco-adapter-text')
