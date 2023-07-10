@@ -21,9 +21,11 @@ public class MergeWorkspaces implements Command {
 
     @Override
     public void run(Namespace namespace) {
-        String configurationString = namespace.getString(CONFIGURATION);
         eccoService.open();
+
+        String configurationString = namespace.getString(CONFIGURATION);
         Configuration configuration = eccoService.parseConfigurationString(configurationString);
+
         eccoService.close();
         System.out.println(configuration);
     }
