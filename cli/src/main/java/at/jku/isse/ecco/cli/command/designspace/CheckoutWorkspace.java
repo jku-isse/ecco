@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.command.designspace;
 
+import at.jku.isse.designspace.sdk.core.DesignSpace;
 import at.jku.isse.ecco.cli.ProgramConstants;
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.command.CommandRegister;
@@ -9,13 +10,13 @@ import net.sourceforge.argparse4j.inf.Namespace;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 
-public class MergeWorkspaces implements Command {
-    private static final String MERGE = "merge";
+public class CheckoutWorkspace implements Command {
+    private static final String CHECKOUT = "checkout";
     private static final String CONFIGURATION = "CONFIGURATION";
 
     private final EccoService eccoService;
 
-    public MergeWorkspaces(EccoService eccoService) {
+    public CheckoutWorkspace(EccoService eccoService) {
         this.eccoService = eccoService;
     }
 
@@ -26,16 +27,24 @@ public class MergeWorkspaces implements Command {
         String configurationString = namespace.getString(CONFIGURATION);
         Configuration configuration = eccoService.parseConfigurationString(configurationString);
 
+        DesignSpace.allWorkspaces().stream()
+                .filter(configurations -> configurations.name().equals(configurationString))
+                .findFirst()
+                .ifPresent(workspace -> {
+                    System.out.printf("Workspace for configuration '%s' already exists", configurationString);
+                    System.exit(0);
+                });
+
         eccoService.close();
         System.out.println(configuration);
     }
 
     @Override
     public void register(Subparsers commandParser, CommandRegister commandRegister) {
-        Subparser parser = commandParser.addParser(MERGE);
+        Subparser parser = commandParser.addParser(CHECKOUT);
 
-        parser.setDefault(ProgramConstants.COMMAND, MERGE);
+        parser.setDefault(ProgramConstants.COMMAND, CHECKOUT);
         parser.addArgument(CONFIGURATION).required(true);
-        commandRegister.register(MERGE, this);
+        commandRegister.register(CHECKOUT, this);
     }
 }
