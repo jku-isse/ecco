@@ -6,6 +6,7 @@ dependencies {
 	implementation 'net.sourceforge.argparse4j:argparse4j:0.9.0'
 
 	implementation project(':ecco-service')
+	implementation("at.jku.isse.designspace.sdk:main:4.0")
 
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
@@ -66,20 +67,6 @@ tasks.register('runTest', JavaExec) {
 tasks.register('copyScripts', Copy) {
 	from 'ecco', 'ecco.bat'
 	into project.file('build/bundle/')
-}
-
-tasks.register('fatJar', Jar) {
-	manifest {
-		attributes 'Main-Class': 'at.jku.isse.ecco.cli.Main'
-	}
-	archiveClassifier = "all"
-	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-	from {
-		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-	} {
-		exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-	}
-	with jar
 }
 
 bundle.dependsOn += copyScripts

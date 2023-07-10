@@ -31,6 +31,7 @@ subprojects {
 	targetCompatibility = JavaVersion.VERSION_13
 
 	repositories {
+		mavenLocal()
 		mavenCentral()
 	}
 

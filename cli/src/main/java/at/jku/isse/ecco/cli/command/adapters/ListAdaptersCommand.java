@@ -1,11 +1,14 @@
 package at.jku.isse.ecco.cli.command.adapters;
 
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
+import at.jku.isse.ecco.cli.ProgramConstants;
 import at.jku.isse.ecco.cli.command.Command;
+import at.jku.isse.ecco.cli.command.CommandRegister;
 import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;
+import net.sourceforge.argparse4j.inf.Subparsers;
 
 import java.util.Collection;
 
@@ -41,5 +44,11 @@ public class ListAdaptersCommand implements Command {
         outWriter.println("");
 
         eccoService.close();
+    }
+
+    @Override
+    public void register(Subparsers commandParser, CommandRegister commandRegister) {
+        commandParser.addParser(ADAPTERS).setDefault(ProgramConstants.COMMAND, ADAPTERS);
+        commandRegister.register(ADAPTERS, this);
     }
 }
