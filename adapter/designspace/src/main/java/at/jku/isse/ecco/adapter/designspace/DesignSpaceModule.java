@@ -1,23 +1,21 @@
 package at.jku.isse.ecco.adapter.designspace;
 
-import at.jku.isse.designspace.sdk.core.*;
-import at.jku.isse.designspace.sdk.core.model.*;
-import at.jku.isse.designspace.sdk.core.operations.*;
-import at.jku.isse.ecco.adapter.*;
-import at.jku.isse.ecco.dao.*;
-import at.jku.isse.ecco.tree.*;
-import com.google.inject.*;
-import com.google.inject.multibindings.*;
+import at.jku.isse.designspace.sdk.core.DesignSpace;
+import at.jku.isse.designspace.sdk.core.model.Workspace;
+import at.jku.isse.designspace.sdk.core.operations.Operation;
+import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.tree.Node;
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.TypeLiteral;
+import com.google.inject.multibindings.Multibinder;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Set;
 
 public class DesignSpaceModule extends AbstractModule {
-    private final EntityFactory entityFactory;
-
-    @Inject
-    public DesignSpaceModule(EntityFactory entityFactory) {
-        this.entityFactory = entityFactory;
-    }
 
     @Override
     protected void configure() {
@@ -38,11 +36,5 @@ public class DesignSpaceModule extends AbstractModule {
                         });
 
         writerMultibinder.addBinding().to(OperationsWriter.class);
-
-        DesignSpace
-                .allWorkspaces()
-                .forEach(workspace -> {
-                    workspace.addListener(new EccoWorkspaceListener());
-                });
     }
 }

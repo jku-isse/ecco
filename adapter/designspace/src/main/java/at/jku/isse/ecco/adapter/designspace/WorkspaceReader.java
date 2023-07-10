@@ -25,7 +25,7 @@ public class WorkspaceReader implements ArtifactReader<Workspace, Set<Node.Op>> 
 
     @Override
     public String getPluginId() {
-        return new DesignSpacePlugin().getPluginId();
+        return DesignSpacePlugin.class.getName();
     }
 
     @Override

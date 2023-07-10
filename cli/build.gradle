@@ -11,11 +11,13 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
 	runtimeOnly project(':ecco-adapter-golang')
+	runtimeOnly project(':ecco-adapter-designspace')
 
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-golang')
+	testImplementation project(':ecco-adapter-designspace')
 
 	testImplementation platform('org.junit:junit-bom:5.9.3')
 	testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -28,6 +30,12 @@ ospackage {
 
 	requires('ecco-base', version, EQUAL)
 	requires('ecco-service', version, EQUAL)
+
+	requires ':ecco-adapter-file'
+	requires ':ecco-adapter-text'
+	requires ':ecco-adapter-image'
+	requires ':ecco-adapter-golang'
+	requires ':ecco-adapter-designspace'
 
 	requires('javapackages-tools')
 
@@ -66,20 +74,6 @@ tasks.register('runTest', JavaExec) {
 tasks.register('copyScripts', Copy) {
 	from 'ecco', 'ecco.bat'
 	into project.file('build/bundle/')
-}
-
-tasks.register('fatJar', Jar) {
-	manifest {
-		attributes 'Main-Class': 'at.jku.isse.ecco.cli.Main'
-	}
-	archiveClassifier = "all"
-	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-	from {
-		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-	} {
-		exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-	}
-	with jar
 }
 
 bundle.dependsOn += copyScripts

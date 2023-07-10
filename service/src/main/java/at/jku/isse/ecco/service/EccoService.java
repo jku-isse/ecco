@@ -411,11 +411,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         List<Module> artifactModules = new ArrayList<>();
         List<Module> allArtifactModules = new ArrayList<>();
         this.artifactPlugins = new ArrayList<>();
+
         for (ArtifactPlugin artifactPlugin : ArtifactPlugin.getArtifactPlugins()) {
             artifactModules.add(artifactPlugin.getModule());
             this.artifactPlugins.add(artifactPlugin);
             allArtifactModules.add(artifactPlugin.getModule());
+            artifactPlugin.init();
         }
+
         LOGGER.config("ARTIFACT PLUGINS: " + artifactModules.toString());
         LOGGER.config("ALL ARTIFACT PLUGINS: " + allArtifactModules.toString());
         if (artifactModules.isEmpty())
@@ -462,6 +465,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         LOGGER.config("REPOSITORY_DIR: " + this.repositoryDir);
 
         Collection<Module> modules = this.initializeService();
+
+        for (Module module : modules) {
+            LOGGER.info(module.toString());
+        }
 
         // create settings module
         final Module settingsModule = new AbstractModule() {

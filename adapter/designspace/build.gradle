@@ -7,8 +7,8 @@ version = '0.1.9'
 ecco.adapter = true
 
 repositories {
-    mavenCentral()
     mavenLocal()
+    mavenCentral()
 }
 
 dependencies {

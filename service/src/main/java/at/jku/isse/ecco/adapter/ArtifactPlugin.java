@@ -22,6 +22,8 @@ public abstract class ArtifactPlugin {
 
 	public abstract String getDescription(); // should be abstract static
 
+	public void init() {}
+
 	public static ArtifactPlugin[] getArtifactPlugins() {
 		final ServiceLoader<ArtifactPlugin> loader = ServiceLoader.load(ArtifactPlugin.class);
 

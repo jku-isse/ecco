@@ -16,7 +16,7 @@ public class OperationsWriter implements ArtifactWriter<Set<Node>, HashMap<Long,
 
     @Override
     public String getPluginId() {
-        return new DesignSpacePlugin().getPluginId();
+        return DesignSpacePlugin.class.getName();
     }
 
     @Override

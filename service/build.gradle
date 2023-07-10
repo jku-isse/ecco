@@ -21,5 +21,6 @@ dependencies {
 	testImplementation project(':ecco-adapter-challenge')
 	testImplementation project(':ecco-adapter-cpp')
 	testImplementation project(':ecco-adapter-runtime')
+	testImplementation project(':ecco-adapter-designspace')
 
 }

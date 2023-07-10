@@ -4,6 +4,7 @@ import at.jku.isse.designspace.sdk.core.model.Workspace;
 import at.jku.isse.designspace.sdk.core.operations.Operation;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.*;
 import org.junit.jupiter.api.Test;
