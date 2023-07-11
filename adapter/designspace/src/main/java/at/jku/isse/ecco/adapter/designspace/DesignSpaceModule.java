@@ -1,10 +1,8 @@
 package at.jku.isse.ecco.adapter.designspace;
 
-import at.jku.isse.designspace.sdk.core.*;
 import at.jku.isse.designspace.sdk.core.model.*;
 import at.jku.isse.designspace.sdk.core.operations.*;
 import at.jku.isse.ecco.adapter.*;
-import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.tree.*;
 import com.google.inject.*;
 import com.google.inject.multibindings.*;
@@ -12,12 +10,9 @@ import com.google.inject.multibindings.*;
 import java.util.*;
 
 public class DesignSpaceModule extends AbstractModule {
-    private final EntityFactory entityFactory;
 
     @Inject
-    public DesignSpaceModule(EntityFactory entityFactory) {
-        this.entityFactory = entityFactory;
-    }
+    public DesignSpaceModule() {    }
 
     @Override
     protected void configure() {
@@ -38,11 +33,5 @@ public class DesignSpaceModule extends AbstractModule {
                         });
 
         writerMultibinder.addBinding().to(OperationsWriter.class);
-
-        DesignSpace
-                .allWorkspaces()
-                .forEach(workspace -> {
-                    workspace.addListener(new EccoWorkspaceListener());
-                });
     }
 }
