@@ -42,7 +42,7 @@ jobs:
         sudo unzip protoc-3.3.0-linux-x86_64.zip -d /usr/
 
     - name: Cache local Maven repository
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
