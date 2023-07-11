@@ -60,6 +60,7 @@ jobs:
 
     - name: Execute Gradle build
       run: |
+        pushd main
         ./gradlew build
         ./gradlew test
         ./gradlew combinedjavadoc
@@ -67,3 +68,4 @@ jobs:
         ./gradlew combinedLinuxZip
         ./gradlew combinedrpm
         ./gradlew combineddeb
+        popd
