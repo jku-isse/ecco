@@ -40,7 +40,7 @@ dependencies {
     testImplementation project(':ecco-adapter-file')
     testImplementation project(':ecco-adapter-text')
     testImplementation project(':ecco-adapter-image')
-    testImplementation "org.junit.jupiter:junit-jupiter:5.9.3"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.0"
 
     implementation(group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.2.21') // file upload to server
 }
