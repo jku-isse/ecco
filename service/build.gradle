@@ -8,7 +8,7 @@ dependencies {
 	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
 	implementation 'io.github.java-diff-utils:java-diff-utils:4.12'
 	implementation 'com.opencsv:opencsv:5.8'
-	implementation 'com.google.guava:guava:32.1.1-jre'
+	implementation 'com.google.guava:guava:32.1.2-jre'
 	api 'com.google.inject:guice:7.0.0'
 	api 'com.google.inject.extensions:guice-multibindings:4.2.3'
 
