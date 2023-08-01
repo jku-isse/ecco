@@ -14,7 +14,7 @@ dependencies {
     compile group: 'org.neo4j', name: 'neo4j-ogm-core', version: '4.0.6'
     
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-embedded-driver
-    compile group: 'org.neo4j', name: 'neo4j-ogm-embedded-driver', version: '3.2.42'
+    compile group: 'org.neo4j', name: 'neo4j-ogm-embedded-driver', version: '3.3.0'
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-bolt
     testCompile group: 'org.neo4j', name: 'neo4j-bolt', version: '5.10.0'
