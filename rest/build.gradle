@@ -26,7 +26,7 @@ dependencies {
     implementation("io.micronaut.reactor:micronaut-reactor")
     implementation("io.micronaut.security:micronaut-security-jwt")
 
-    annotationProcessor("io.micronaut.openapi:micronaut-openapi:4.9.2")
+    annotationProcessor("io.micronaut.openapi:micronaut-openapi:4.10.0")
     implementation("io.swagger.core.v3:swagger-annotations")
 
     implementation project(':ecco-service')
