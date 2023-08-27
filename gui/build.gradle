@@ -27,6 +27,7 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-image')
 //	runtimeOnly project(':ecco-adapter-java')
 	runtimeOnly project(':ecco-adapter-lilypond')
+	runtimeOnly project(':ecco-adapter-typescript')
 
 
 	testRuntimeOnly project(':ecco-adapter-file')
@@ -39,6 +40,7 @@ dependencies {
 	testRuntimeOnly project(':ecco-adapter-runtime')
 	testRuntimeOnly project(':ecco-adapter-cpp')
 	testRuntimeOnly project(':ecco-adapter-lilypond')
+	testRuntimeOnly project(':ecco-adapter-typescript')
 }
 
 ospackage {
