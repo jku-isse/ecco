@@ -4,7 +4,7 @@ ecco.adapter = true
 dependencies {
     compile fileTree(dir: 'lib', include: '*.jar')
     compile group: 'org.eclipse.emf', name: 'org.eclipse.emf.ecore', version: '2.34.0'
-    compile group: 'org.eclipse.emf', name: 'org.eclipse.emf.common', version: '2.28.0'
+    compile group: 'org.eclipse.emf', name: 'org.eclipse.emf.common', version: '2.29.0'
     compile group: 'org.eclipse.emf', name: 'org.eclipse.emf.ecore.xmi', version: '2.18.0'
 
     compile project(':at.jku.isse.ecco.base')
