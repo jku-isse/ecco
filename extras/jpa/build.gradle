@@ -2,7 +2,7 @@
 ecco.set("storage", true)
 
 dependencies {
-	compile 'org.hibernate:hibernate-core:6.2.7.Final'
+	compile 'org.hibernate:hibernate-core:6.3.0.Final'
 	compile 'org.hibernate:hibernate-entitymanager:5.6.15.Final'
 	//compile 'org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final'
 	//compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
