@@ -2,7 +2,7 @@
 ecco.adapter = true
 
 dependencies {
-	compile('org.antlr:antlr4:4.13.0')
+	compile('org.antlr:antlr4:4.13.1')
 
 	compile('org.apache.commons:commons-lang3:3.13.0')
 	compile('org.apache.commons:commons-collections4:4.4')
