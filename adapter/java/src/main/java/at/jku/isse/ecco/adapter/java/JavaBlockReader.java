@@ -8,7 +8,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
-import com.github.javaparser.JavaParser;
+import com.github.javaparser.*;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
@@ -70,7 +70,7 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 
 			try {
-				CompilationUnit cu = JavaParser.parse(resolvedPath);
+				CompilationUnit cu = StaticJavaParser.parse(resolvedPath);
 
 				String packageName = "";
 				if (cu.getPackageDeclaration().isPresent())
@@ -257,7 +257,7 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 					addMethodChild(nodeChild, blockNode);
 				}
 			}
-		} else if (node instanceof ForeachStmt) {
+		} else if (node instanceof ForEachStmt) {
 			String stmt = "for (" + node.getChildNodes().get(0).toString() + " : " + node.getChildNodes().get(1).toString() + ")";
 			Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(stmt));
 			Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
@@ -293,8 +293,8 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 			methodNode.addChild(blockNode);
 
 			if (((SwitchStmt) node).getEntries().size() > 1) {
-				for (SwitchEntryStmt entryStmt : ((SwitchStmt) node).getEntries()) {
-					SwitchEntryStmt switchEntryStmt = entryStmt;
+				for (SwitchEntry entryStmt : ((SwitchStmt) node).getEntries()) {
+					SwitchEntry switchEntryStmt = entryStmt;
 					int endSwitchEntry = switchEntryStmt.toString().indexOf(":");
 					String entry = switchEntryStmt.toString().substring(0, endSwitchEntry);
 					Artifact.Op<BlockArtifactData> blockArtifactEntry = this.entityFactory.createArtifact(new BlockArtifactData(entry));
@@ -387,9 +387,9 @@ public class JavaBlockReader implements ArtifactReader<Path, Set<Node.Op>> {
 				methodNode.addChild(lineNode);
 			}
 
-		} else if (node instanceof SwitchEntryStmt) {
+		} else if (node instanceof SwitchEntry) {
 
-			if (((SwitchEntryStmt) node).getStatements().size() > 1) {
+			if (((SwitchEntry) node).getStatements().size() > 1) {
 				for (com.github.javaparser.ast.Node switchentry : node.getChildNodes()) {
 					addMethodChild(switchentry, methodNode);
 				}

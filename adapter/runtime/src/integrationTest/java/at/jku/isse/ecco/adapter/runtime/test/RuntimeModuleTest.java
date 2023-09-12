@@ -1,39 +1,22 @@
 package at.jku.isse.ecco.adapter.runtime.test;
 
-import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.runtime.RuntimeReader;
+import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.runtime.data.*;
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.module.Condition;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.Module;
-import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.module.*;
+import at.jku.isse.ecco.repository.*;
+import at.jku.isse.ecco.service.*;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.ImportDeclaration;
-import com.github.javaparser.ast.body.*;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import at.jku.isse.ecco.util.*;
+import org.junit.jupiter.api.*;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.*;
 import java.util.logging.*;
-import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import java.util.stream.*;
 
 public class RuntimeModuleTest {
 
@@ -59,7 +42,7 @@ public class RuntimeModuleTest {
     /**
      * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.
      */
-    @Test(groups = {"integration", "runtime"})
+    @Test
     public void Create_Repo() throws IOException {
         this.createRepo(SCENARIO_DIR, SCENARIO_OUTPUT_DIR);
     }
@@ -67,7 +50,7 @@ public class RuntimeModuleTest {
     /**
      * Computes results from repository stored in SCENARIO_OUTPUT_DIR and stores them in SCENARIO_OUTPUT_DIR.
      */
-    @Test(groups = {"integration", "runtime"})
+    @Test
     public void Compute_Results() throws IOException {
         this.computeResults(SCENARIO_OUTPUT_DIR);
     }
@@ -75,12 +58,12 @@ public class RuntimeModuleTest {
     /**
      * Computes metrics precision, recall and fscore according to the ground truth.
      */
-    @Test(groups = {"integration", "runtime"})
+    @Test
     public void Compute_Metrics() {
         MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), SCENARIO_OUTPUT_DIR);
     }
 
-    @BeforeTest(alwaysRun = true)
+    @BeforeEach
     public void beforeTest() {
         System.out.println("BEFORE");
 
@@ -97,7 +80,7 @@ public class RuntimeModuleTest {
         logger.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
     }
 
-    @AfterTest(alwaysRun = true)
+    @AfterEach
     public void afterTest() {
         System.out.println("AFTER");
     }
@@ -345,7 +328,7 @@ public class RuntimeModuleTest {
     }
 
 
-    @Test(groups = {"integration", "runtime"})
+    @Test
     public void Analyze_Differences() throws IOException {
         Path GT_PATH = BENCHMARK_DIR.resolve("C:\\Users\\gabil\\Desktop\\teste\\ActualECCO\\Method_Comparison\\Notepad\\test_method\\gt\\featuresANDbase");
         //Path MY_PATH = BENCHMARK_DIR.resolve("yourResults");
@@ -398,7 +381,7 @@ public class RuntimeModuleTest {
     }
 
 
-    @Test(groups = {"test", "runtime"})
+    @Test
     public void CountLines() throws IOException {
         File[] files = new File("C:\\Users\\gabil\\Desktop\\New folder").listFiles();
         Integer totalLines = 0;

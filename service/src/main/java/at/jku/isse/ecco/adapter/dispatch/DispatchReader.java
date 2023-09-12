@@ -9,8 +9,7 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
-
-import javax.inject.Named;
+import com.google.inject.name.Named;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
@@ -67,7 +66,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	 * @param repositoryDir The repository directory.
 	 */
 	@Inject
-	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node.Op>>> readers, @Named("repositoryDir") Path repositoryDir) {
+	public DispatchReader(EntityFactory entityFactory, Set<ArtifactReader<Path, Set<Node.Op>>> readers,
+						  @Named("repositoryDir") Path repositoryDir) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;

@@ -13,18 +13,11 @@ import com.github.javaparser.ast.type.*;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 
 public class JavaParserReader implements VoidVisitor<Void> {
-
+    private JavaParReader nodeHandler;
 
     public JavaParserReader() {
 
     }
-
-    public interface JavaParReader {
-        boolean handle(Node node);
-    }
-
-    private JavaParReader nodeHandler;
-
 
     public JavaParserReader(JavaParReader nodeHandler) {
         this.nodeHandler = nodeHandler;
@@ -37,7 +30,6 @@ public class JavaParserReader implements VoidVisitor<Void> {
 
             }
     }
-
 
     @Override
     public void visit(NodeList n, Void arg) {
@@ -220,7 +212,7 @@ public class JavaParserReader implements VoidVisitor<Void> {
     }
 
     @Override
-    public void visit(ForeachStmt n, Void arg) {
+    public void visit(ForEachStmt n, Void arg) {
         System.out.println(n.toString());
     }
 
@@ -276,6 +268,11 @@ public class JavaParserReader implements VoidVisitor<Void> {
 
     @Override
     public void visit(LocalClassDeclarationStmt n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(LocalRecordDeclarationStmt n, Void arg) {
         System.out.println(n.toString());
     }
 
@@ -350,6 +347,16 @@ public class JavaParserReader implements VoidVisitor<Void> {
     }
 
     @Override
+    public void visit(RecordDeclaration n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(CompactConstructorDeclaration n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
     public void visit(ReturnStmt n, Void arg) {
         System.out.println(n.toString());
     }
@@ -375,7 +382,7 @@ public class JavaParserReader implements VoidVisitor<Void> {
     }
 
     @Override
-    public void visit(SwitchEntryStmt n, Void arg) {
+    public void visit(SwitchEntry n, Void arg) {
         System.out.println(n.toString());
     }
 
@@ -460,27 +467,27 @@ public class JavaParserReader implements VoidVisitor<Void> {
     }
 
     @Override
-    public void visit(ModuleRequiresStmt n, Void arg) {
+    public void visit(ModuleRequiresDirective n, Void arg) {
         System.out.println(n.toString());
     }
 
     @Override
-    public void visit(ModuleExportsStmt n, Void arg) {
+    public void visit(ModuleExportsDirective n, Void arg) {
         System.out.println(n.toString());
     }
 
     @Override
-    public void visit(ModuleProvidesStmt n, Void arg) {
+    public void visit(ModuleProvidesDirective n, Void arg) {
         System.out.println(n.toString());
     }
 
     @Override
-    public void visit(ModuleUsesStmt n, Void arg) {
+    public void visit(ModuleUsesDirective n, Void arg) {
         System.out.println(n.toString());
     }
 
     @Override
-    public void visit(ModuleOpensStmt n, Void arg) {
+    public void visit(ModuleOpensDirective n, Void arg) {
         System.out.println(n.toString());
     }
 
@@ -497,5 +504,34 @@ public class JavaParserReader implements VoidVisitor<Void> {
     @Override
     public void visit(VarType n, Void arg) {
         System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(Modifier n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(SwitchExpr n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(TextBlockLiteralExpr n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(YieldStmt n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(PatternExpr n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    public interface JavaParReader {
+        boolean handle(Node node);
     }
 }

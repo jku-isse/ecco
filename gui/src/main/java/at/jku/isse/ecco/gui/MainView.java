@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.gui;
 
+import at.jku.isse.ecco.gui.view.artifacts.ArtifactsView;
+import at.jku.isse.ecco.gui.view.operation.checkout.CheckoutView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.gui.view.*;
 import at.jku.isse.ecco.gui.view.graph.ArtifactGraphView;
@@ -18,38 +20,28 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 public class MainView extends BorderPane implements EccoListener {
+	private final EccoService eccoService;
 
-	private EccoService eccoService;
+	private final Button openButton = new Button("Open");
+	private final Button closeButton = new Button("Close");
 
+	private final Button initButton = new Button("Init");
+	private final Button forkButton = new Button("Fork");
 
-	private Button openButton = new Button("Open");
-	private Button closeButton = new Button("Close");
+	private final Button commitButton = new Button("Commit");
+	private final Button checkoutButton = new Button("Checkout");
 
-	private Button initButton = new Button("Init");
-	private Button forkButton = new Button("Fork");
+	private final Button fetchButton = new Button("Fetch");
+	private final Button pullButton = new Button("Pull");
+	private final Button pushButton = new Button("Push");
 
-	private Button commitButton = new Button("Commit");
-	private Button checkoutButton = new Button("Checkout");
-
-	private Button fetchButton = new Button("Fetch");
-	private Button pullButton = new Button("Pull");
-	private Button pushButton = new Button("Push");
-
-	private Button serverButton = new Button("Server");
+	private final Button serverButton = new Button("Server");
 
 	public MainView(EccoService eccoService) {
 		this.eccoService = eccoService;
 
-//		// menu
-//		final Menu fileMenu = new Menu("File");
-//
-//		MenuBar menuBar = new MenuBar();
-//		menuBar.getMenus().addAll(fileMenu);
-//		this.setTop(menuBar);
-
 		this.openButton.setOnAction(event -> this.openDialog("Open", new OpenView(eccoService)));
 		this.initButton.setOnAction(event -> this.openDialog("Init", new InitView(eccoService)));
-		//this.forkButton.setOnAction(event -> this.openDialog("Fork", new ForkView(eccoService)));
 		this.closeButton.setOnAction(event -> this.eccoService.close());
 
 		this.commitButton.setOnAction(event -> this.openDialog("Commit", new CommitView(eccoService)));
@@ -249,9 +241,7 @@ public class MainView extends BorderPane implements EccoListener {
 
 	@Override
 	public void statusChangedEvent(EccoService service) {
-		Platform.runLater(() -> {
-			this.updateView();
-		});
+		Platform.runLater(this::updateView);
 	}
 
 }

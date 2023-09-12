@@ -1,24 +1,20 @@
 package at.jku.isse.ecco.adapter.golang;
 
-import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.adapter.ArtifactWriter;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.golang.data.ContextArtifactData;
-import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
-import at.jku.isse.ecco.adapter.golang.io.SourceWriter;
-import at.jku.isse.ecco.adapter.golang.merging.TokenMerger;
-import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.service.listener.WriteListener;
+import at.jku.isse.ecco.*;
+import at.jku.isse.ecco.adapter.*;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.adapter.golang.data.*;
+import at.jku.isse.ecco.adapter.golang.io.*;
+import at.jku.isse.ecco.adapter.golang.merging.*;
+import at.jku.isse.ecco.artifact.*;
+import at.jku.isse.ecco.service.listener.*;
 import at.jku.isse.ecco.tree.Node;
+import com.google.inject.*;
 
-import javax.inject.Inject;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
 
 public class GoWriter implements ArtifactWriter<Set<Node>, Path> {
     private final SourceWriter sourceWriter;

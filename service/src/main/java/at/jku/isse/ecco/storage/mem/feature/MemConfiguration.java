@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.storage.mem.feature;
 
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
 import java.util.Arrays;

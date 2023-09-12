@@ -1,0 +1,71 @@
+name: Gradle Build
+
+on:
+  pull_request:
+    branches:
+      - "main"
+      - "master"
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+      with:
+        path: main
+
+    - name: Checkout DesignSpace SDK
+      uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+      with:
+        repository: meik99/DesignSpace-4.0-Java-SDK.git
+        token: ${{ secrets.SDK_TOKEN }}
+        ref: main
+        path: sdk
+
+    - name: Setup JDK 20
+      uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3.12.0
+      with:
+        java-version: 20
+        distribution: oracle
+        cache: gradle
+
+    - name: Install Protoc
+      run: |
+        curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip"
+        sudo unzip protoc-3.3.0-linux-x86_64.zip -d /usr/
+
+    - name: Cache local Maven repository
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Install SDK to local maven repository
+      run: |
+        pushd sdk
+        mvn -Dmaven.test.failure.ignore=true  clean install
+        popd
+
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@ef76a971e2fa3f867b617efd72f2fbd72cf6f8bc # v2.8.0
+
+    - name: Execute Gradle build
+      run: |
+        pushd main
+        ./gradlew build
+        ./gradlew test
+        ./gradlew combinedjavadoc
+        ./gradlew combinedWindowsZip
+        ./gradlew combinedLinuxZip
+        ./gradlew combinedrpm
+        ./gradlew combineddeb
+        popd

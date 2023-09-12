@@ -1,6 +1,6 @@
 plugins {
 	id 'application'
-	id 'org.openjfx.javafxplugin' version '0.0.10'
+	id 'org.openjfx.javafxplugin' version '0.1.0'
 	//id 'com.palantir.docker' version '0.30.0'
 }
 
@@ -55,7 +55,7 @@ ospackage {
 }
 
 linuxZip {
-	into(archiveName - ('.' + archiveExtension)) {
+	into(archiveFileName.get() - ('.' + archiveExtension)) {
 		from 'ecco-gui'
 	}
 }
@@ -66,7 +66,7 @@ sourcesZip {
 }
 
 windowsZip {
-	into(archiveName - ('.' + archiveExtension)) {
+	into(archiveFileName.get() - ('.' + archiveExtension)) {
 		from 'ecco-gui.bat'
 	}
 }

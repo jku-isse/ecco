@@ -27,6 +27,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MemEntityFactory implements EntityFactory {
+	public MemEntityFactory() {
+	}
 
 	@Override
 	public Remote createRemote(String name, String address, Remote.Type type) {
@@ -34,15 +36,14 @@ public class MemEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Commit createCommit() {
-		return new MemCommit();
+	public Commit createCommit(String username) {
+		return new MemCommit(username);
 	}
 
 	@Override
 	public Configuration createConfiguration(FeatureRevision[] featureRevisions) {
 		return new MemConfiguration(featureRevisions);
 	}
-
 
 	@Override
 	public <T extends ArtifactData> Artifact.Op<T> createArtifact(T data) {
@@ -53,7 +54,6 @@ public class MemEntityFactory implements EntityFactory {
 	public Repository.Op createRepository() {
 		return new MemRepository();
 	}
-
 
 	@Override
 	public Association.Op createAssociation() {

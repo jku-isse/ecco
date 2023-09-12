@@ -11,32 +11,31 @@ import org.eclipse.collections.impl.factory.primitive.IntObjectMaps;
 import java.util.*;
 
 public interface PartialOrderGraph extends Persistable {
-
-	public static final int INITIAL_SEQUENCE_NUMBER = 1;
-	public static final int NOT_MATCHED_SEQUENCE_NUMBER = -1;
-	public static final int UNASSIGNED_SEQUENCE_NUMBER = -2;
-	public static final int HEAD_SEQUENCE_NUMBER = -3;
-	public static final int TAIL_SEQUENCE_NUMBER = -4;
-
-
-	public Node getHead();
-
-	public Collection<? extends Node> collectNodes();
+	int INITIAL_SEQUENCE_NUMBER = 1;
+	int NOT_MATCHED_SEQUENCE_NUMBER = -1;
+	int UNASSIGNED_SEQUENCE_NUMBER = -2;
+	int HEAD_SEQUENCE_NUMBER = -3;
+	int TAIL_SEQUENCE_NUMBER = -4;
 
 
-	public interface Op extends PartialOrderGraph {
+	Node getHead();
 
-		public Node.Op getHead();
+	Collection<? extends Node> collectNodes();
 
-		public Node.Op getTail();
 
-		public int getMaxIdentifier();
+	interface Op extends PartialOrderGraph {
 
-		public void setMaxIdentifier(int value);
+		Node.Op getHead();
 
-		public void incMaxIdentifier();
+		Node.Op getTail();
 
-		public default List<Node.Op> collectNodes() { // TODO: this potentially adds the same nodes multiple times!
+		int getMaxIdentifier();
+
+		void setMaxIdentifier(int value);
+
+		void incMaxIdentifier();
+
+		default List<Node.Op> collectNodes() {
 			List<Node.Op> nodes = new ArrayList<>();
 
 			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
@@ -65,10 +64,10 @@ public interface PartialOrderGraph extends Persistable {
 			return nodes;
 		}
 
-		public Node.Op createNode(Artifact.Op<?> artifact);
+		Node.Op createNode(Artifact.Op<?> artifact);
 
 
-		public PartialOrderGraph.Op createPartialOrderGraph();
+		PartialOrderGraph.Op createPartialOrderGraph();
 
 
 		// #############################################################################################################
@@ -78,7 +77,7 @@ public interface PartialOrderGraph extends Persistable {
 		 *
 		 * @param artifacts Sequence of artifacts to be aligned to this partial order graph.
 		 */
-		public default void align(List<? extends Artifact.Op<?>> artifacts) {
+		default void align(List<? extends Artifact.Op<?>> artifacts) {
 			this.align(this.fromList(artifacts));
 		}
 
@@ -91,7 +90,7 @@ public interface PartialOrderGraph extends Persistable {
 		 *
 		 * @param other Other partial order graph to be aligned to this partial order graph.
 		 */
-		public default void align(PartialOrderGraph.Op other) {
+		default void align(PartialOrderGraph.Op other) {
 			this.alignMemoizedBacktracking(other);
 		}
 
@@ -209,7 +208,7 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 		//private
-		static final Cell ZERO_CELL = new Cell();
+		Cell ZERO_CELL = new Cell();
 
 		//private
 		default Cell alignMemoizedBacktrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
@@ -409,14 +408,14 @@ public interface PartialOrderGraph extends Persistable {
 		 *
 		 * @param artifacts Sequence of artifacts to be merged into this partial order graph.
 		 */
-		public default void merge(List<? extends Artifact.Op<?>> artifacts) {
+		default void merge(List<? extends Artifact.Op<?>> artifacts) {
 			this.merge(this.fromList(artifacts));
 		}
 
 		/**
 		 * @param other Other partial order graph to be merged into this partial order graph.
 		 */
-		public default void merge(PartialOrderGraph.Op other) {
+		default void merge(PartialOrderGraph.Op other) {
 			// align other graph to this graph
 			this.align(other);
 
@@ -600,12 +599,16 @@ public interface PartialOrderGraph extends Persistable {
 		// #############################################################################################################
 
 
-		public default void copy(PartialOrderGraph.Op other) {
-			//if (this.getHead().getNext().size() != 1 || this.getHead().getNext().iterator().next() != this.getTail())
-			if (!this.getHead().getNext().isEmpty())
-				throw new EccoException("Partial order graph must be empty to copy another.");
-
+		default void copy(PartialOrderGraph.Op other) {
+			// New sequences are created with their (null-)tail as a child of their (null-)heads
+			// Therefore, even a new sequence is technically "not empty".
+			// So first, remove the tail from the head and if it is not empty afterward, it really actually is not empty
 			this.getHead().removeChild(this.getTail());
+
+			if (!this.getHead().getNext().isEmpty()) {
+				throw new EccoException("Partial order graph must be empty to copy another.");
+			}
+
 			this.setMaxIdentifier(other.getMaxIdentifier());
 
 			Map<PartialOrderGraph.Node.Op, PartialOrderGraph.Node.Op> matches = new HashMap<>();
@@ -657,11 +660,11 @@ public interface PartialOrderGraph extends Persistable {
 					if (node.getArtifact() != null) {
 						at.jku.isse.ecco.tree.Node current = node.getArtifact().getContainingNode();
 						while (current != null) {
-							sb.append(current.toString() + " - ");
+							sb.append(current + " - ");
 							current = current.getParent();
 						}
 					}
-					throw new EccoException("The same partial order graph node is being visited twice (this indicates a cycle)! " + sb.toString());
+					throw new EccoException("The same partial order graph node is being visited twice (this indicates a cycle)! " + sb);
 				} else
 					visited.add(node);
 
@@ -684,11 +687,11 @@ public interface PartialOrderGraph extends Persistable {
 				if (!this.getHead().getNext().isEmpty() && this.getHead().getNext().iterator().next().getArtifact() != null) {
 					at.jku.isse.ecco.tree.Node current = this.getHead().getNext().iterator().next().getArtifact().getContainingNode();
 					while (current != null) {
-						sb.append(current.toString() + " - ");
+						sb.append(current + " - ");
 						current = current.getParent();
 					}
 				}
-				throw new EccoException("Not all partial order graph nodes can be reached (this indicates a cycle or an orphan node without parent)! " + sb.toString());
+				throw new EccoException("Not all partial order graph nodes can be reached (this indicates a cycle or an orphan node without parent)! " + sb);
 			}
 		}
 
@@ -716,7 +719,7 @@ public interface PartialOrderGraph extends Persistable {
 		 *
 		 * @param symbols Symbols to keep.
 		 */
-		public default void trim(Collection<? extends Artifact.Op<?>> symbols) {
+		default void trim(Collection<? extends Artifact.Op<?>> symbols) {
 			// for every node
 			LinkedList<Node.Op> stack = new LinkedList<>();
 			stack.push(this.getHead());
@@ -749,7 +752,7 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		public default void updateArtifactReferences() {
+		default void updateArtifactReferences() {
 			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
 			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
 			stack.push(this.getHead());
@@ -779,7 +782,7 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		public default Collection<List<Node.Op>> computeAllOrders() {
+		default Collection<List<Node.Op>> computeAllOrders() {
 			Map<Node.Op, Integer> nodes = new HashMap<>();
 			nodes.put(this.getHead(), 0);
 			return this.computeAllOrdersRec(nodes);
@@ -824,14 +827,14 @@ public interface PartialOrderGraph extends Persistable {
 	}
 
 
-	public interface Node extends Persistable {
-		public Collection<? extends Node> getPrevious();
+	interface Node extends Persistable {
+		Collection<? extends Node> getPrevious();
 
-		public Collection<? extends Node> getNext();
+		Collection<? extends Node> getNext();
 
-		public Artifact<?> getArtifact();
+		Artifact<?> getArtifact();
 
-		public default void traverse(NodeVisitor visitor) {
+		default void traverse(NodeVisitor visitor) {
 			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
 			Stack<PartialOrderGraph.Node> stack = new Stack<>();
 			stack.push(this);
@@ -856,33 +859,33 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
-		public interface NodeVisitor {
-			public void visit(Node node);
+		interface NodeVisitor {
+			void visit(Node node);
 		}
 
 
-		public interface Op extends Node {
-			public Collection<? extends Node.Op> getPrevious();
+		interface Op extends Node {
+			Collection<? extends Node.Op> getPrevious();
 
-			public Collection<? extends Node.Op> getNext();
+			Collection<? extends Node.Op> getNext();
 
 			@Override
-			public Artifact.Op<?> getArtifact();
+			Artifact.Op<?> getArtifact();
 
-			public void setArtifact(Artifact.Op<?> artifact);
+			void setArtifact(Artifact.Op<?> artifact);
 
-			public Node.Op addChild(Node.Op child);
+			Node.Op addChild(Node.Op child);
 
-			public void removeChild(Node.Op child);
+			void removeChild(Node.Op child);
 
-			public default void traverse(NodeVisitor visitor) {
+			default void traverse(NodeVisitor visitor) {
 				visitor.visit(this);
 
 				throw new UnsupportedOperationException("Not yet implemented.");
 			}
 
-			public interface NodeVisitor {
-				public void visit(Node.Op node);
+			interface NodeVisitor {
+				void visit(Node.Op node);
 			}
 
 		}

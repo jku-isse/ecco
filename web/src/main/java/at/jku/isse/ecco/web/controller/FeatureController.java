@@ -9,12 +9,9 @@ import at.jku.isse.ecco.web.domain.repository.FeatureRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.Configuration;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.ext.ContextResolver;
-import javax.ws.rs.ext.Providers;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.*;
+import jakarta.ws.rs.ext.*;
 
 @Path("features")
 public class FeatureController {
@@ -26,6 +23,17 @@ public class FeatureController {
 
     @Context
     private Providers providers;
+
+    @GET
+    @Path("/test")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public FeatureModel[] getTestFeature() {
+        System.out.println("Testing");
+        FeatureModel[] arr = new FeatureModel[2];
+        arr[0]= new FeatureModel("person", "persondesc" );
+        arr[1]= new FeatureModel("shirt", "shirtdesc" );
+        return arr;
+    }
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })

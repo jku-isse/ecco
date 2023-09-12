@@ -1,5 +1,5 @@
 plugins {
-	id 'org.openjfx.javafxplugin' version '0.0.10'
+	id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 ecco.adapter = true
@@ -36,11 +36,11 @@ dependencies {
 	implementation project(':ecco-service')
 	if (use_py4j_parser.toBoolean()) {
 		println 'include py4j dependency'
-		implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
+		implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.7'
 	}
 	if (use_graalvm_parser.toBoolean()) {
 		println 'include graalvm dependency'
-		implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
+		implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '23.0.1'
 	}
 }
 

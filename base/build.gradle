@@ -1,6 +1,6 @@
 plugins {
 	id 'application'
-	id 'org.openjfx.javafxplugin' version '0.0.10'
+	id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 apply plugin: 'java-library'
@@ -11,22 +11,17 @@ javafx {
 }
 
 dependencies {
-	implementation 'org.eclipse.collections:eclipse-collections-api:9.1.0'
-	implementation 'org.eclipse.collections:eclipse-collections:9.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
+	implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
 
-	//implementation 'com.koloboke:koloboke-api-jdk8:1.0.0'
-	//runtime 'com.koloboke:koloboke-impl-jdk8:1.0.0'
+	implementation 'com.google.guava:guava:32.1.2-jre'
 
-	implementation 'com.google.guava:guava:27.1-jre'
-
-	implementation 'com.github.javaparser:javaparser-core:3.23.1'
-	implementation files('../adapter/at.jku.cdl.ecco.adapter.java-patched.jar')
+	implementation 'com.github.javaparser:javaparser-core:3.25.5'
 
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-text')
-//	testImplementation project(':ecco-adapter-java')
-//	testImplementation project(':ecco-adapter-java-patched')
+	testImplementation project(':ecco-adapter-java')
 
 	testImplementation 'org.graphstream:gs-core:2.0'
 	testImplementation 'org.graphstream:gs-algo:2.0'
