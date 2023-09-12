@@ -1,6 +1,10 @@
 package at.jku.isse.ecco.rest;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 public class Settings {
     //automatically choose the example path
@@ -14,7 +18,10 @@ public class Settings {
 
 
     private static String getAutoLocation() {
-        if(System.getProperty(USERNAME).equals(JENKINS)) {
+        if(isRunningInsideDocker()){
+            System.out.println("running in Docker");
+            return "/media/serverRepositories";
+        } else if(System.getProperty(USERNAME).equals(JENKINS)) {
             System.out.println(System.getProperty("user.name"));
             return JENKINS_PATH;
         } else {
@@ -25,6 +32,14 @@ public class Settings {
                 System.out.println("Local Server Repository");
                 return Path.of(System.getProperty(USER_DIR), EXAMPLES).toString();
             }
+        }
+    }
+
+    private static Boolean isRunningInsideDocker() {
+        try (Stream<String> stream = Files.lines(Paths.get("/proc/1/cgroup"))) {
+            return stream.anyMatch(line -> line.contains("/docker"));
+        } catch (IOException e) {
+            return false;
         }
     }
 }
