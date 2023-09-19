@@ -40,7 +40,7 @@ dependencies {
 	}
 	if (use_graalvm_parser.toBoolean()) {
 		println 'include graalvm dependency'
-		implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '23.0.1'
+		implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '23.1.0'
 	}
 }
 
