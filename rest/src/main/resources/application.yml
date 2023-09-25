@@ -12,6 +12,7 @@ micronaut:
         mapping: /swagger-ui/**
 
   server:
+    port: 8081
     cors:
       enabled: true
 
