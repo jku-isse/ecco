@@ -8,34 +8,34 @@ dependencies {
     compile project(':ecco-service')
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j
-    compile group: 'org.neo4j', name: 'neo4j', version: '5.9.0'
+    compile group: 'org.neo4j', name: 'neo4j', version: '5.12.0'
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-core
-    compile group: 'org.neo4j', name: 'neo4j-ogm-core', version: '4.0.5'
+    compile group: 'org.neo4j', name: 'neo4j-ogm-core', version: '4.0.6'
     
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-embedded-driver
-    compile group: 'org.neo4j', name: 'neo4j-ogm-embedded-driver', version: '3.2.40'
+    compile group: 'org.neo4j', name: 'neo4j-ogm-embedded-driver', version: '3.3.0'
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-bolt
-    testCompile group: 'org.neo4j', name: 'neo4j-bolt', version: '5.9.0'
+    testCompile group: 'org.neo4j', name: 'neo4j-bolt', version: '5.12.0'
 
     // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
-    testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.4.8'
+    testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.4.11'
 
     // https://mvnrepository.com/artifact/ch.qos.logback/logback-core
-    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.4.8'
+    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.4.11'
 
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-    compile group: 'org.slf4j', name: 'slf4j-api', version: '2.0.7'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '2.0.9'
 
     // https://mvnrepository.com/artifact/uk.co.jemos.podam/podam
-    testCompile group: 'uk.co.jemos.podam', name: 'podam', version: '7.2.11.RELEASE'
+    testCompile group: 'uk.co.jemos.podam', name: 'podam', version: '8.0.0.RELEASE'
 
     // This scala import is necessary to make Neo4J storage plugin work
     // Issue: https://github.com/neo4j/neo4j/issues/8832
 
     // https://mvnrepository.com/artifact/org.scala-lang/scala-library
-    compile group: 'org.scala-lang', name: 'scala-library', version: '2.13.11'
+    compile group: 'org.scala-lang', name: 'scala-library', version: '2.13.12'
 
     testRuntime project(':ecco-adapter-file')
     testRuntime project(':ecco-adapter-text')

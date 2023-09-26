@@ -1,5 +1,5 @@
 plugins {
-	id 'com.netflix.nebula.ospackage' version '11.3.0'
+	id 'com.netflix.nebula.ospackage' version '11.5.0'
 	id 'pmd'
 	//id 'checkstyle'
 }
@@ -35,7 +35,7 @@ subprojects {
 	}
 
 	dependencies {
-		testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
+		testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 	}
 
 	jar {

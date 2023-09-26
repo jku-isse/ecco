@@ -16,14 +16,14 @@ generateTestGrammarSource {
 }
 
 dependencies {
-    antlr "org.antlr:antlr4:4.13.0"
+    antlr "org.antlr:antlr4:4.13.1"
 
     implementation project(':ecco-base')
     implementation project(':ecco-service')
 
-    testImplementation platform('org.junit:junit-bom:5.9.3')
+    testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation "org.mockito:mockito-core:5.4.0"
+    testImplementation "org.mockito:mockito-core:5.5.0"
 }
 
 test {
