@@ -12,9 +12,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 
 @Singleton
-public class AuthenticationProviderUserPassword implements AuthenticationProvider {
-
-@Singleton
 public class AuthenticationProviderUserPassword implements AuthenticationProvider<HttpRequest<?>> {
     //Adapted from https://guides.micronaut.io/latest/micronaut-security-jwt-gradle-java.html
     DummyUserDB userDB = new DummyUserDB();
