@@ -3,7 +3,6 @@ package at.jku.isse.ecco.storage.mem.dao;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.springframework.stereotype.Component;
 
 @Singleton
 public class MemTransactionStrategy implements TransactionStrategy {

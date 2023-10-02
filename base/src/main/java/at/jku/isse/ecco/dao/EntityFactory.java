@@ -34,7 +34,7 @@ public interface EntityFactory {
 	 *
 	 * @return The commit object.
 	 */
-	public Commit createCommit(String name);
+	public Commit createCommit(String username);
 
 	/**
 	 * Creates a configuration containing the given feature revisions.

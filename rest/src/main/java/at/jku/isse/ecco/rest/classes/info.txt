@@ -1,1 +1,0 @@
-Class mapper for Frontend

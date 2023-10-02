@@ -2,14 +2,14 @@
 ecco.set("storage", true)
 
 dependencies {
-	compile 'org.hibernate:hibernate-core:5.0.7.Final'
-	compile 'org.hibernate:hibernate-entitymanager:5.0.7.Final'
+	compile 'org.hibernate:hibernate-core:6.3.1.Final'
+	compile 'org.hibernate:hibernate-entitymanager:5.6.15.Final'
 	//compile 'org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final'
 	//compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
 
 	//compile 'com.esotericsoftware.kryo:kryo:2.24.0'
 
-	compile 'org.apache.derby:derby:10.12.1.1'
+	compile 'org.apache.derby:derby:10.16.1.1'
 
 	compile project(':at.jku.isse.ecco.base')
 	compile project(':at.jku.isse.ecco.service')

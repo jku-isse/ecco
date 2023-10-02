@@ -20,14 +20,12 @@ import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class MemEntityFactory implements EntityFactory {
 	public MemEntityFactory() {
 	}
@@ -38,8 +36,8 @@ public class MemEntityFactory implements EntityFactory {
 	}
 
 	@Override
-	public Commit createCommit(String name) {
-		return new MemCommit(name);
+	public Commit createCommit(String username) {
+		return new MemCommit(username);
 	}
 
 	@Override

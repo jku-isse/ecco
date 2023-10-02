@@ -21,17 +21,14 @@ import javafx.scene.layout.Priority;
 import javafx.stage.Stage;
 
 public class VariantView extends OperationView implements EccoListener {
-
-    private EccoService service;
-    private SplitPane splitPane;
-    CheckoutView checkoutView;
-
-    private AddVariantView addVariantView;
+    private final EccoService service;
+    private final SplitPane splitPane;
+    private final AddVariantView addVariantView;
 
     public VariantView(EccoService service) {
         super();
         this.service = service;
-        this.addVariantView = new AddVariantView(service);
+        this.addVariantView = new AddVariantView();
 
         // split pane
         this.splitPane = new SplitPane();
@@ -123,8 +120,5 @@ public class VariantView extends OperationView implements EccoListener {
                 new Thread(variantsUpdateTask).start();
             }
         });
-
     }
-
-
 }

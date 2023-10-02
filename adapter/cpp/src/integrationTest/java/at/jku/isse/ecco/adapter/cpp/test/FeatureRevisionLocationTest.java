@@ -1,22 +1,17 @@
 package at.jku.isse.ecco.adapter.cpp.test;
 
-import at.jku.isse.ecco.service.EccoService;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import difflib.Delta;
-import difflib.DiffUtils;
-import difflib.Patch;
+import at.jku.isse.ecco.service.*;
+import com.github.difflib.*;
+import com.github.difflib.patch.*;
+import com.opencsv.*;
+import com.opencsv.exceptions.*;
+import org.junit.jupiter.api.*;
 
 import java.io.*;
-import java.nio.charset.MalformedInputException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.nio.charset.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
 
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
@@ -37,7 +32,7 @@ public class FeatureRevisionLocationTest {
 
 
     //feature revision location where the traces are computed by the input containing a set of feature revisions (configuration) and its artifacts (variant source code)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCommit() throws IOException {
         ArrayList<String> configsToCommit = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -71,7 +66,7 @@ public class FeatureRevisionLocationTest {
 
 
     //checkout each set of feature revisions (configuration) and its artifacts (variant source code) by the traces located before by the feature revision location (TestEccoCommit)
-    @org.testng.annotations.Test
+    @Test
     public void TestEccoCheckout() throws IOException {
         ArrayList<String> configsToCheckout = new ArrayList<>();
         File configuration = new File(configuration_path);
@@ -105,7 +100,7 @@ public class FeatureRevisionLocationTest {
 
 
     //compare the ground truth variants with the composed variants (containing the artifacts mapped according to the feature revision location)
-    @org.testng.annotations.Test
+    @Test
     public void TestCompareVariants() {
         //"input_variants" folder contains the ground truth variants and "checkout" folder contains the composed variants
         File variantsrc = new File(resultsCSVs_path, "Input_variants");
@@ -121,8 +116,8 @@ public class FeatureRevisionLocationTest {
 
     //get the metrics of each and for all the target projects together.
     //To compute the metrics of variants this is considering all the files match and to compute files metrics this is considering all the lines match
-    @org.testng.annotations.Test
-    public void GetCSVInformationTotalTest() throws IOException {
+    @Test
+    public void GetCSVInformationTotalTest() throws IOException, CsvException {
         //set into this list of File the folders with csv files resulted from the comparison of variants of each target project
         File[] folder = {new File(marlinFolder),
                 new File(libsshFolder),
@@ -361,12 +356,12 @@ public class FeatureRevisionLocationTest {
                         } else {
                             //matchFiles = false;
                             String del ="", insert = "";
-                            for (Delta delta : patch.getDeltas()) {
-                                Integer difLines = Math.abs(delta.getOriginal().getLines().size() - delta.getRevised().getLines().size());
+                            for (AbstractDelta<String> delta : patch.getDeltas()) {
+                                Integer difLines = Math.abs(delta.getSource().getLines().size() - delta.getTarget().getLines().size());
                                 //List<String> unifiedDiff = DiffUtils.generateUnifiedDiff(f.getName(), fEcco.getName(), original, patch, original.size());
                                 String line = "";
                                 if (delta.getType().toString().equals("INSERT")) {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getRevised().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getTarget().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("")) {
@@ -379,7 +374,7 @@ public class FeatureRevisionLocationTest {
                                         }
                                     }
                                 } else {
-                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getOriginal().getLines();
+                                    ArrayList<String> arraylines = (ArrayList<String>) delta.getSource().getLines();
                                     for (String deltaaux : arraylines) {
                                         line = deltaaux.trim().replaceAll("\t", "").replaceAll(",", "").replaceAll(" ", "");
                                         if (!line.equals("")) {

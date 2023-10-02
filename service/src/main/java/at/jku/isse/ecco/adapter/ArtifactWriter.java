@@ -8,8 +8,6 @@ public interface ArtifactWriter<I, O> {
 
 	public abstract O[] write(O base, I input);
 
-	public abstract O[] write2(O base, I input, String f);
-
 	public abstract O[] write(I input);
 
 	public void addListener(WriteListener listener);

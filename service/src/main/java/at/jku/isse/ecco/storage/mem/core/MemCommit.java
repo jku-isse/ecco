@@ -13,20 +13,18 @@ import java.util.Objects;
  * Memory implementation of {@link Commit}.
  */
 public class MemCommit implements Commit {
-
 	public static final long serialVersionUID = 1L;
-
 
 	private String id;
 	private String committer;
 	private Configuration configuration;
 	private Date committingDate;
 	private String commitMessage;
-	private Collection<Association> associations = new ArrayList<>();;
+	private final Collection<Association> associations = new ArrayList<>();;
 
 
-	public MemCommit(String name) {
-		committer = name;
+	public MemCommit(String username) {
+		committer = username;
 		committingDate = new Date();
 	}
 
@@ -52,7 +50,7 @@ public class MemCommit implements Commit {
 
 	@Override
 	public void setUsername() {
-		committer = System.getProperty("user.name"); 	//gets username of the logged in User of the OS
+		committer = System.getProperty("user.name");
 	}
 
 	@Override

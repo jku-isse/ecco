@@ -6,7 +6,6 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,8 +24,7 @@ import java.util.stream.Collectors;
  * </ul>
  */
 public interface Configuration extends Persistable {
-
-    public static final String CONFIGURATION_STRING_REGULAR_EXPRESSION = "(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?)*)?";
+    String CONFIGURATION_STRING_REGULAR_EXPRESSION = "(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?)*)?";
 
     /**
      * Returns a direct reference to the instance of the array of feature revisions that makes up the configuration.
@@ -35,14 +33,13 @@ public interface Configuration extends Persistable {
      *
      * @return The array of feature revisions that makes up the configuration.
      */
-    public FeatureRevision[] getFeatureRevisions();
+    FeatureRevision[] getFeatureRevisions();
 
-    @JsonIgnore
-    public Configuration getConfiguration();
+    Configuration getConfiguration();
 
-    public void setFeatureRevisions(FeatureRevision[] featureRevisions);
+    void setFeatureRevisions(FeatureRevision[] featureRevisions);
 
-    public default Set<ModuleRevision> computeModules(int maxOrder, Repository.Op repository, Configuration configuration) {
+    default Set<ModuleRevision> computeModules(int maxOrder, Repository.Op repository, Configuration configuration) {
         Set<ModuleRevision> desiredModules = new HashSet<>();
         FeatureRevision[] featuresRevisions = configuration.getFeatureRevisions();
         ArrayList<Feature> features = new ArrayList<>();
@@ -58,8 +55,10 @@ public interface Configuration extends Persistable {
                         for (ModuleRevision existingModuleRevision : entry.getValue()) {
                             Boolean addmodule = true;
                             for (Feature negfeat : existingModuleRevision.getNeg()) {
-                                if (features.contains(negfeat))
+                                if (features.contains(negfeat)) {
                                     addmodule = false;
+                                    break;
+                                }
                             }
                             if (addmodule) {
                                 FeatureRevision[] featmodule = existingModuleRevision.getPos();
@@ -79,7 +78,7 @@ public interface Configuration extends Persistable {
         return desiredModules;
     }
 
-    public default Set<ModuleRevision> computeModulesMissing(int maxOrder, Repository.Op repository, Configuration configuration) {
+    default Set<ModuleRevision> computeModulesMissing(int maxOrder, Repository.Op repository, Configuration configuration) {
         Set<ModuleRevision> missinModules = new HashSet<>();
         FeatureRevision[] featuresRevisions = configuration.getFeatureRevisions();
         List<FeatureRevision> featrev =Arrays.asList(configuration.getFeatureRevisions());
@@ -95,8 +94,10 @@ public interface Configuration extends Persistable {
                     for (ModuleRevision existingModuleRevision : entry.getValue()) {
                         Boolean addmodule = false;
                         for (FeatureRevision posfeat : existingModuleRevision.getPos()) {
-                            if (featrev.contains(posfeat))
+                            if (featrev.contains(posfeat)) {
                                 addmodule = true;
+                                break;
+                            }
                         }
                         if (addmodule) {
                             Feature[] negfeatmodule = existingModuleRevision.getNeg();
@@ -114,7 +115,7 @@ public interface Configuration extends Persistable {
         return missinModules;
     }
 
-    public default boolean contains(Module module) {
+    default boolean contains(Module module) {
         // check if all positive features of the module are contained in the configuration
         for (Feature feature : module.getPos()) {
             boolean found = false;
@@ -137,7 +138,7 @@ public interface Configuration extends Persistable {
         return true;
     }
 
-    public default boolean contains(ModuleRevision moduleRevision) {
+    default boolean contains(ModuleRevision moduleRevision) {
         // check if all positive features revisiosn of the module are contained in the configuration
         for (FeatureRevision featureRevision : moduleRevision.getPos()) {
             boolean found = false;
@@ -162,13 +163,13 @@ public interface Configuration extends Persistable {
 
 
     @Override
-    public int hashCode();
+    int hashCode();
 
     @Override
-    public boolean equals(Object object);
+    boolean equals(Object object);
 
 
-    public default String getConfigurationString() {
+    default String getConfigurationString() {
         return Arrays.stream(this.getFeatureRevisions()).map(FeatureRevision::toString).collect(Collectors.joining(", "));
     }
 
@@ -178,6 +179,6 @@ public interface Configuration extends Persistable {
      * @return The configuration string representing this configuration.
      */
     @Override
-    public String toString();
+    String toString();
 
 }

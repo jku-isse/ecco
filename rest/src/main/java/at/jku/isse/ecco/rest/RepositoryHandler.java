@@ -3,7 +3,7 @@ package at.jku.isse.ecco.rest;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.rest.classes.RestRepository;
+import at.jku.isse.ecco.rest.models.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 
 import java.nio.file.Path;
@@ -11,16 +11,16 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-/** Holds {@see EccoService} with one Repository
+/**
+ * Holds {@see EccoService} with one Repository
  * EccoService gets initialized at first usage of the Repository.
  * Each Repository has its own EccoService for Multi user support and performance (loading Repository takes some time)
  */
 public class RepositoryHandler {
-
-    private final int rId;
+    private final int repositoryHandlerId;
     private final String name;
     private final Path path;
-    private EccoService service;
+    private EccoService eccoService;
 
     public Path getPath() {
         return path;
@@ -30,100 +30,120 @@ public class RepositoryHandler {
         return name;
     }
 
-    public RepositoryHandler(Path path, int rId) {
+    public RepositoryHandler(Path path, int repositoryHandlerId) {
         name = path.getFileName().toString();
-        this.rId = rId;
+        this.repositoryHandlerId = repositoryHandlerId;
         this.path = path;
     }
 
-    public boolean isInitialized () {
-        return service != null;
+    public boolean isInitialized() {
+        return eccoService != null;
     }
 
     public RestRepository getRepository() {
-        if(!isInitialized()) {
-            service = new EccoService();
-            service.setRepositoryDir(path.resolve(".ecco"));
-            service.setBaseDir(path);
-            service.open();
+        if (!isInitialized()) {
+            eccoService = new EccoService();
+            eccoService.setRepositoryDir(path.resolve(".ecco"));
+            eccoService.setBaseDir(path);
+            eccoService.open();
         }
-        return new RestRepository(service, rId, name);
+        return new RestRepository(eccoService, repositoryHandlerId, name);
     }
 
     public void createRepository() {
-        service = new EccoService();
-        service.setRepositoryDir(path.resolve(".ecco"));
-        service.setBaseDir(path);
-        service.init();
-        new RestRepository(service, rId, name);
+        eccoService = new EccoService();
+        eccoService.setRepositoryDir(path.resolve(".ecco"));
+        eccoService.setBaseDir(path);
+        eccoService.init();
+        new RestRepository(eccoService, repositoryHandlerId, name);
     }
 
     // Commit ----------------------------------------------------------------------------------------------------------
-    public void addCommit (String message, String config, Path commitFolder, String committer) {
-        service.setBaseDir(commitFolder);
-        service.commit(message, config, committer);
+    public void addCommit(String message, String config, Path commitFolder, String committer) {
+        eccoService.setBaseDir(commitFolder);
+        eccoService.commit(message, config, committer);
     }
 
     //checkout
     public void checkout(String variantId, Path checkoutPath) {
         getRepository();
-        service.setBaseDir(checkoutPath);
-        service.checkout(service.getRepository().getVariant(variantId).getConfiguration());
+        eccoService.setBaseDir(checkoutPath);
+        eccoService.checkout(eccoService.getRepository().getVariant(variantId).getConfiguration());
     }
 
     // Variant ---------------------------------------------------------------------------------------------------------
-    public RestRepository addVariant(String name, String config, String description){
-        service.addVariant(config, name, description);
+    public RestRepository addVariant(String name, String config, String description) {
+        eccoService.addVariant(config, name, description);
         return getRepository();
     }
 
-    public RestRepository removeVariant(String variantId){
-        service.removeVariant(variantId);
+    public RestRepository removeVariant(String variantId) {
+        eccoService.removeVariant(variantId);
         return getRepository();
     }
 
     public RestRepository variantSetNameDescription(String variantId, String name, String description) {
-        Variant variant = service.getRepository().getVariant(variantId);
+        Variant variant = eccoService.getRepository().getVariant(variantId);
         variant.setName(name);
         variant.setDescription(description);
-        service.store();
+        eccoService.store();
         return getRepository();
     }
 
-    public RestRepository variantAddFeature(String variantId, String featureId){
+    public RestRepository variantAddFeature(String variantId, String featureId) {
 
-        List<FeatureRevision> list = new LinkedList<>(Arrays.stream(service.getRepository().getVariant(variantId).getConfiguration().getFeatureRevisions()).toList());
+        List<FeatureRevision> list = new LinkedList<>(Arrays.stream(eccoService
+                        .getRepository()
+                        .getVariant(variantId)
+                        .getConfiguration()
+                        .getFeatureRevisions())
+                .toList());
 
-        for(Feature f : service.getRepository().getFeature()){
+        for (Feature f : eccoService.getRepository().getFeature()) {
             if (f.getId().equals(featureId)) {
                 list.add(f.getLatestRevision());
             }
         }
 
-        service.getRepository().getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
-        service.store();
+        eccoService.getRepository()
+                .getVariant(variantId)
+                .getConfiguration()
+                .setFeatureRevisions(list.toArray(new FeatureRevision[0]));
+        eccoService.store();
         return getRepository();
     }
 
-    public RestRepository variantUpdateFeature(String variantId, String featureName, String id){
+    public RestRepository variantUpdateFeature(String variantId, String featureName, String id) {
         System.out.println("Update FeatureRevision " + featureName + " from variant " + variantId + " to Revision " + id);
 
-        FeatureRevision[] featureRevisions =  service.getRepository().getVariant(variantId).getConfiguration().getFeatureRevisions();
-        for (int i = 0; i < featureRevisions.length ; i++) {
-            if (featureRevisions[i].getFeature().getName().equals(featureName)){
-                Feature f =  service.getRepository().getFeature().stream().filter(fe -> fe.getName().equals(featureName)).findAny().orElse(null);
+        FeatureRevision[] featureRevisions = eccoService
+                .getRepository()
+                .getVariant(variantId)
+                .getConfiguration()
+                .getFeatureRevisions();
+        for (int i = 0; i < featureRevisions.length; i++) {
+            if (featureRevisions[i].getFeature().getName().equals(featureName)) {
+                Feature f = eccoService
+                        .getRepository()
+                        .getFeature()
+                        .stream()
+                        .filter(fe -> fe.getName().equals(featureName)).findAny().orElse(null);
                 if (f != null) {
                     featureRevisions[i] = f.getRevision(id);
                 }
                 break;
             }
         }
-        service.store();
+        eccoService.store();
         return getRepository();
     }
 
     public RestRepository variantRemoveFeature(String variantId, String featureName) {
-        FeatureRevision[] arr = service.getRepository().getVariant(variantId).getConfiguration().getFeatureRevisions();
+        FeatureRevision[] arr = eccoService
+                .getRepository()
+                .getVariant(variantId)
+                .getConfiguration()
+                .getFeatureRevisions();
         List<FeatureRevision> list = new LinkedList<>();
 
         for (FeatureRevision rev : arr) {
@@ -131,28 +151,42 @@ public class RepositoryHandler {
                 list.add(rev);
         }
 
-        service.getRepository().getVariant(variantId).getConfiguration().setFeatureRevisions(list.toArray(new FeatureRevision[0]));
-        service.store();
+        eccoService.getRepository()
+                .getVariant(variantId)
+                .getConfiguration()
+                .setFeatureRevisions(list.toArray(new FeatureRevision[0]));
+        eccoService.store();
         return getRepository();
     }
 
     // Feature ---------------------------------------------------------------------------------------------------------
     public RestRepository setFeatureDescription(String featureId, String description) {
-        service.getRepository().getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().ifPresent(x -> x.setDescription(description));
-        service.store();
+        eccoService.getRepository()
+                .getFeatures()
+                .stream()
+                .filter(x -> x.getId().equals(featureId))
+                .findAny().ifPresent(x -> x.setDescription(description));
+        eccoService.store();
         return getRepository();
     }
 
     public RestRepository setFeatureRevisionDescription(String featureId, String revisionId, String description) {
-        service.getRepository().getFeatures().stream().filter(x -> x.getId().equals(featureId)).findAny().get().getRevision(revisionId).setDescription(description);
-        service.store();
+        eccoService
+                .getRepository()
+                .getFeatures()
+                .stream()
+                .filter(x -> x.getId().equals(featureId))
+                .findAny()
+                .get()
+                .getRevision(revisionId).setDescription(description);
+        eccoService.store();
         return getRepository();
     }
 
     public void fork(RepositoryHandler origRepo, final String disabledFeatures) {
-        if(origRepo.service == null) {
+        if (origRepo.eccoService == null) {
             origRepo.getRepository();
         }
-        service.forkAlreadyOpen(origRepo.service, disabledFeatures);
+        eccoService.forkAlreadyOpen(origRepo.eccoService, disabledFeatures);
     }
 }

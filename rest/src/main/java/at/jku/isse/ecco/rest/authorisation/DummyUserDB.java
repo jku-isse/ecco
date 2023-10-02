@@ -14,8 +14,6 @@ enum Role {
  * Change usage also in @class AuthenticationProviderUserPassword
  */
 public class DummyUserDB {
-
-
     List<User> users = new ArrayList<>();
 
     public DummyUserDB() {
@@ -29,6 +27,4 @@ public class DummyUserDB {
     public User findUser(String name) {
         return users.stream().filter(x -> x.getName().equals(name)).findFirst().orElse(null);
     }
-
-
 }

@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+    id 'antlr'
+}
+
+ecco.adapter = true
+
+generateGrammarSource {
+    outputDirectory = new File("${project.projectDir}/src/main/java/at/jku/isse/ecco/adapter/golang/antlr".toString())
+    arguments += ['-package', 'at.jku.isse.ecco.adapter.golang.antlr']
+}
+
+generateTestGrammarSource {
+    outputDirectory = new File("${project.projectDir}/src/test/java/at/jku/isse/ecco/adapter/golang/antlr".toString())
+    arguments += ['-package', 'at.jku.isse.ecco.adapter.golang.antlr']
+}
+
+dependencies {
+    antlr "org.antlr:antlr4:4.13.1"
+
+    implementation project(':ecco-base')
+    implementation project(':ecco-service')
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "org.mockito:mockito-core:5.5.0"
+}
+
+test {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}

@@ -2,9 +2,8 @@ package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.feature.Feature;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,7 +62,7 @@ public class BugzillaTest {
 		}
 	};
 
-	@Test(groups = {"integration", "base", "service", "bugzilla"})
+	@Test
 	public void Bugzilla_Test() throws IOException {
 
 		// create new repository
@@ -166,12 +165,12 @@ public class BugzillaTest {
 	}
 
 
-	@BeforeTest(alwaysRun = true)
+	@BeforeEach
 	public void beforeTest() throws IOException {
 		System.out.println("BEFORE");
 	}
 
-	@AfterTest(alwaysRun = true)
+	@AfterEach
 	public void afterTest() {
 		System.out.println("AFTER");
 	}

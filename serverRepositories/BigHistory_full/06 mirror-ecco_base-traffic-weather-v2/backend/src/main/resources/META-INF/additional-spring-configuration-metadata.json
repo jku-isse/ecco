@@ -1,9 +1,0 @@
-{
-  "properties": [
-    {
-      "name": "openWeatherMap.API",
-      "type": "java.lang.String",
-      "description": "Defines the API key that is used for retrieving the weather data from openweathermap.org."
-    }
-  ]
-}

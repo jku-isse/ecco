@@ -12,14 +12,12 @@ import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import org.eclipse.collections.impl.factory.Maps;
-//import org.springframework.stereotype.Component;
 
 import java.util.*;
 
 /**
  * Memory implementation of {@link Repository}.
  */
-//@Component
 public final class MemRepository implements Repository, Repository.Op {
 
 	public static final long serialVersionUID = 1L;
@@ -34,12 +32,10 @@ public final class MemRepository implements Repository, Repository.Op {
 	public MemRepository() {
 		this.features = Maps.mutable.empty();
 		this.associations = new ArrayList<>();
-		//this.variants = new ArrayList<>();
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
 	}
-
 
 	@Override
 	public Collection<Feature> getFeatures() {
@@ -49,7 +45,6 @@ public final class MemRepository implements Repository, Repository.Op {
 	public Collection<Feature> getMemFeatures() {
 		return Collections.unmodifiableCollection(this.features.values());
 	}
-
 
 	@Override
 	public Collection<Association.Op> getAssociations() {
@@ -68,6 +63,7 @@ public final class MemRepository implements Repository, Repository.Op {
 				return v;
 			}
 		}
+
 		return null;
 	}
 
@@ -124,7 +120,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		return Collections.unmodifiableCollection(this.modules.get(order).values());
 	}
 
-
 	@Override
 	public MemFeature getFeature(String id) {
 		return this.features.get(id);
@@ -156,9 +151,10 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public void addVariant(Variant variant) {
-		if(variants == null) {		//TODO TBE check again why needed
+		if(variants == null) {
 			variants = new ArrayList<>();
 		}
+
 		this.variants.add(variant);
 	}
 

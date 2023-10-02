@@ -172,18 +172,16 @@ public class CommitsView extends BorderPane implements EccoListener {
 				for (Association association : newValue.getCommit().getAssociations()) {
 					rootNode.addOrigNode(association.getRootNode());
 				}
-				artifactDetailView.showTree(ArtifactDetailView.findBestArtifact(artifactDetailView, rootNode));
+				artifactDetailView.showTree(ArtifactDetailView.findNodeWithArtifactViewerRec(artifactDetailView, rootNode));
 			}
 		});
 
 		// add to split pane
 		splitPane.getItems().addAll(commitsTable, detailView);
 
-		service.addListener(this);
+		Platform.runLater(() -> statusChangedEvent(service));
 
-		if (!service.isInitialized()) {
-			this.setDisable(true);
-		}
+		service.addListener(this);
 	}
 
 	@Override

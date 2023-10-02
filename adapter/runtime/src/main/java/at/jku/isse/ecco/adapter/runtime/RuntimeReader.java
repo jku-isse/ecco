@@ -9,7 +9,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
-import com.github.javaparser.JavaParser;
+import com.github.javaparser.*;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
@@ -94,7 +94,7 @@ public class RuntimeReader implements ArtifactReader<Path, Set<Node.Op>> {
                     String[] lines = fileContent.split("\\r?\\n");
 
                     long localStartTime = System.currentTimeMillis();
-                    CompilationUnit cu = JavaParser.parse(fileContent);
+                    CompilationUnit cu = StaticJavaParser.parse(fileContent);
                     totalJavaParserTime += (System.currentTimeMillis() - localStartTime);
 
                     // package name

@@ -1,28 +1,18 @@
 package at.jku.isse.ecco.web.rest.resource;
 
-import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
-import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.composition.LazyCompositionRootNode;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.web.rest.EccoApplication;
-import at.jku.isse.ecco.web.rest.dto.ArtifactsGraphDTO;
+import at.jku.isse.ecco.adapter.dispatch.*;
+import at.jku.isse.ecco.composition.*;
+import at.jku.isse.ecco.core.*;
+import at.jku.isse.ecco.service.*;
+import at.jku.isse.ecco.web.rest.*;
+import at.jku.isse.ecco.web.rest.dto.*;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.*;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Application;
-import javax.ws.rs.core.Configuration;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Path("/graph")
 public class GraphsResource {
-
 	@Context
 	private Application application;
 
@@ -34,35 +24,30 @@ public class GraphsResource {
 	@Path("/artifacts")
 	@Produces(MediaType.APPLICATION_JSON)
 	public ArtifactsGraphDTO getArtifactsGraph(@QueryParam("maxChildren") int maxChildren) {
-/*		if (!(this.application instanceof EccoApplication))
+		if (!(this.application instanceof EccoApplication)) {
 			throw new RuntimeException("No or wrong application object injected.");
+		}
 
-		EccoService eccoService = ((EccoApplication) this.application).getEccoService();
-		this.service = eccoService;*/
-
-		throw new RuntimeException("No or wrong application object injected.");
+		updateGraph(((EccoApplication) this.application).getEccoService());
+		return graph;
 
 	}
 
-
-	private EccoService service;
 	private ArtifactsGraphDTO graph;
 
-	private void updateGraph() {
-		this.graph = new ArtifactsGraphDTO();
-
-		this.maxSuccessorsCount = 0;
-		this.maxDepth = 0;
-
-		// traverse trees and add nodes
+	private void updateGraph(EccoService eccoService) {
 		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
-		for (Association association : this.service.getRepository().getAssociations()) {
+		graph = new ArtifactsGraphDTO();
+		maxSuccessorsCount = 0;
+		maxDepth = 0;
+
+		for (Association association : eccoService.getRepository().getAssociations()) {
 			compRootNode.addOrigNode(association.getRootNode());
 		}
-		this.traverseTree(compRootNode, 0);
 
-		this.graph.setMaxNumArtifacts(this.maxSuccessorsCount);
-		this.graph.setMaxDepth(this.maxDepth);
+		traverseTree(compRootNode, 0);
+		graph.setMaxNumArtifacts(maxSuccessorsCount);
+		graph.setMaxDepth(maxDepth);
 	}
 
 

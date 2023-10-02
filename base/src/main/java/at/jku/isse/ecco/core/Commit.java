@@ -2,7 +2,6 @@ package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Collection;
 import java.util.Date;
@@ -29,7 +28,7 @@ public interface Commit extends Persistable {
 
 	public String getUsername();
 
-	public void setCommitMessage(String message);
+	public void setCommitMessage(String commitMessage);
 
 	public String getCommitMessage();
 

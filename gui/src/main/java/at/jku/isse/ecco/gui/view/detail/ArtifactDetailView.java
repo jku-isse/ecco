@@ -1,123 +1,210 @@
 package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.adapter.ArtifactViewer;
+import at.jku.isse.ecco.adapter.AssociationInfo;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
-import javafx.geometry.Orientation;
-import javafx.scene.control.Label;
-import javafx.scene.control.SplitPane;
-import javafx.scene.control.TextArea;
+import javafx.application.Platform;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
-public class ArtifactDetailView extends BorderPane {
+public class ArtifactDetailView extends BorderPane implements EccoListener {
 
-	private EccoService service;
+	private final EccoService service;
+	private final TabPane detailsTabPane;
+	private final HashMap<String, Tab> openDetailsTabs = new HashMap<>();
 
 	private boolean initialized;
+	private Collection<AssociationInfo> associationInfos = null;
+	private PartialOrderGraphView partialOrderGraphView;
 
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
+	@Inject
+	private Set<AssociationInfoArtifactViewer> associationInfoArtifactViewers;
 
-	private PartialOrderGraphView partialOrderGraphView;
 
 	public ArtifactDetailView(EccoService service) {
 		this.service = service;
+		service.addListener(this);
+
+		detailsTabPane = new TabPane();
+		setCenter(detailsTabPane);
 	}
 
+	public void reset() {
+		if (null != partialOrderGraphView) {
+			partialOrderGraphView.closeGraph();
+			partialOrderGraphView = null;
+		}
+		detailsTabPane.getTabs().clear();
+		openDetailsTabs.clear();
+	}
 
 	public void showTree(Node node) {
-		SplitPane splitPane = new SplitPane();
-		splitPane.setOrientation(Orientation.HORIZONTAL);
-		this.setCenter(splitPane);
+		assert node != null;
 
-		SplitPane detailsSplitPane = new SplitPane();
-		detailsSplitPane.setOrientation(Orientation.VERTICAL);
-		splitPane.getItems().add(detailsSplitPane);
+		updateInfoTab(node);
+		updatePartialOrderGraphTab(node);
+
+		//long tm = System.nanoTime();
+		updateArtifactViewerTabs(node);
+		//System.out.println("\nArtifactDetailsView:showTree->updateArtifactViewerTabs: " + ((System.nanoTime() - tm)/1000000) + "ms");
+	}
+
+	private void updateInfoTab(Node node) {
+		Tab t;
+		if (openDetailsTabs.containsKey("info")) {
+			t = openDetailsTabs.get("info");
+		} else {
+			t = new Tab("Info");
+			t.setClosable(false);
+			openDetailsTabs.put("info", t);
+			detailsTabPane.getTabs().add(0, t);
+		}
 
 		// TODO: show some general info
-		HBox detailView = new HBox(new Label("Detail View"));
-		detailsSplitPane.getItems().add(detailView);
+		t.setContent(new Label("Detail View\n" + node.toString()));
+	}
 
+	private void updatePartialOrderGraphTab(Node node) {
 		// if node is an ordered node display its sequence graph
-		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
-			this.partialOrderGraphView = new PartialOrderGraphView();
-			detailsSplitPane.getItems().add(this.partialOrderGraphView);
-			this.partialOrderGraphView.showGraph(node.getArtifact().getSequenceGraph());
+		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
+			if (null == partialOrderGraphView) { partialOrderGraphView = new PartialOrderGraphView(); }
+
+			Thread th = new Thread(() -> {
+				PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
+				Platform.runLater(() -> partialOrderGraphView.showGraph(pog));
+			});
+			th.start();
+
+			if (!openDetailsTabs.containsKey("pog")) {
+				Tab t = new Tab("Graph");
+				t.setClosable(false);
+				t.setTooltip(new Tooltip("Partial order graph"));
+				t.setContent(partialOrderGraphView);
+				openDetailsTabs.put("pog", t);
+				detailsTabPane.getTabs().add(1, t);
+			}
+
+		} else if (openDetailsTabs.containsKey("pog")) {
+			detailsTabPane.getTabs().remove(openDetailsTabs.get("pog"));
+			openDetailsTabs.remove("pog");
+		}
+	}
+
+	private void updateArtifactViewerTabs(Node node) {
+		List<? extends ArtifactViewer> viewers = getArtifactViewers(node);
+		List<String> tabKeysToRemove = openDetailsTabs.keySet().stream()
+				.filter(k -> k.startsWith("AV_"))
+				.collect(Collectors.toList());
+
+		for (ArtifactViewer v : viewers) {
+			String key = "AV_" + v.getClass().toString();
+			tabKeysToRemove.remove(key);
+
+			Tab t;
+			if (openDetailsTabs.containsKey(key)) {
+				t = openDetailsTabs.get(key);
+			} else {
+				t = new Tab(v.getClass().getSimpleName());
+				t.setClosable(false);
+				openDetailsTabs.put(key, t);
+				detailsTabPane.getTabs().add(t);
+			}
+
+			try {
+				if (v instanceof AssociationInfoArtifactViewer) {
+					((AssociationInfoArtifactViewer)v).setAssociationInfos(associationInfos);
+				}
+				v.showTree(node);
+				t.setContent((Pane) v);
+
+			} catch (Exception ex) {
+				TextArea exceptionTextArea = new TextArea();
+				exceptionTextArea.setEditable(false);
+
+				StringWriter sw = new StringWriter();
+				PrintWriter pw = new PrintWriter(sw);
+				ex.printStackTrace(pw);
+				String exceptionText = sw.toString();
+
+				exceptionTextArea.setText(exceptionText);
+				t.setContent(exceptionTextArea);
+			}
 		}
 
+		for (String key : tabKeysToRemove) {
+			detailsTabPane.getTabs().remove(openDetailsTabs.get(key));
+			openDetailsTabs.remove(key);
+		}
+	}
 
-		if (!this.initialized && this.service.isInitialized()) {
-			this.service.getInjector().injectMembers(this);
-
-			this.initialized = true;
+	/**
+	 * Checks for injected {@link ArtifactViewer}s or {@link AssociationInfoArtifactViewer}s with matching plugin id
+	 * and adds them to resulting list if the viewer is an instance of {@link Pane}.
+	 * @param node The node to find {@link ArtifactViewer}s for.
+	 * @return A list of matching {@link ArtifactViewer}s or an empty list if there are no matches,
+	 * or the service is not initialized.
+	 */
+	private List<ArtifactViewer> getArtifactViewers(Node node) {
+		LinkedList<ArtifactViewer> viewers = new LinkedList<>();
+		if (service.isInitialized()) {
+			if (!initialized) {
+				service.getInjector().injectMembers(this);
+				initialized = true;
+			}
+		} else {
+			initialized = false;
+			return viewers;
 		}
 
-		if (this.initialized) {
-			// select artifact viewer
-
-			ArtifactViewer artifactViewer = getArtifactViewer(node);
-
-			// if an artifact viewer was found display it
-			if (artifactViewer != null && artifactViewer instanceof Pane) {
-				try {
-					splitPane.getItems().add((Pane) artifactViewer);
-					artifactViewer.showTree(node);
-				} catch (Exception ex) {
-					TextArea exceptionTextArea = new TextArea();
-					exceptionTextArea.setEditable(false);
-
-					StringWriter sw = new StringWriter();
-					PrintWriter pw = new PrintWriter(sw);
-					ex.printStackTrace(pw);
-					String exceptionText = sw.toString();
-
-					exceptionTextArea.setText(exceptionText);
-					splitPane.getItems().add(exceptionTextArea);
+		String pluginId = getPluginId(node);
+		if (artifactViewers != null) {
+			for (ArtifactViewer tempArtifactViewer : artifactViewers) {
+				if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
+					if (tempArtifactViewer.getPluginId().equals(pluginId)) {
+						viewers.add(tempArtifactViewer);
+					}
 				}
 			}
 		}
 
-	}
-
-
-	private ArtifactViewer getArtifactViewer(Node node) {
-		if (!this.initialized && this.service.isInitialized()) {
-			this.service.getInjector().injectMembers(this);
-
-			this.initialized = true;
-		}
-
-		ArtifactViewer artifactViewer = null;
-		for (ArtifactViewer tempArtifactViewer : artifactViewers) {
-			if (tempArtifactViewer.getPluginId() != null && tempArtifactViewer instanceof Pane) {
-				String pluginId = getPluginId(node);
-				if (tempArtifactViewer.getPluginId().equals(pluginId))
-					artifactViewer = tempArtifactViewer;
+		if (associationInfoArtifactViewers != null) {
+			for (AssociationInfoArtifactViewer tempAssInfoArtifactViewer : associationInfoArtifactViewers) {
+				if (tempAssInfoArtifactViewer.getPluginId() != null && tempAssInfoArtifactViewer instanceof Pane) {
+					if (tempAssInfoArtifactViewer.getPluginId().equals(pluginId)) {
+						viewers.add(tempAssInfoArtifactViewer);
+					}
+				}
 			}
 		}
-		return artifactViewer;
+
+		return viewers;
 	}
 
-	public static Node findBestArtifact(ArtifactDetailView artifactDetailView, Node node) {
-		Node bestNode = null;
+	public static Node findNodeWithArtifactViewerRec(ArtifactDetailView artifactDetailView, Node node) {
 		for (Node n : node.getChildren()) {
-			if (artifactDetailView.getArtifactViewer(n) != null) {
-				bestNode = n;
-				break;
+			if (artifactDetailView.getArtifactViewers(n).size() > 0) {
+				return n;
 			} else {
-				bestNode = findBestArtifact(artifactDetailView, n);
+				return findNodeWithArtifactViewerRec(artifactDetailView, n);
 			}
 		}
-		return bestNode;
+		return null;
 	}
 
 
@@ -139,4 +226,24 @@ public class ArtifactDetailView extends BorderPane {
 		}
 	}
 
+	@Override
+	public void statusChangedEvent(EccoService service) {
+		if (!service.isInitialized()) {
+			initialized = false;
+			Platform.runLater(this::reset);
+		}
+	}
+
+	public void setAssociationInfo(Collection<AssociationInfoImpl> associationInfos) {
+		this.associationInfos = associationInfos == null ? null :
+				associationInfos.stream()
+				.map(aii -> (AssociationInfo)aii)
+				.collect(Collectors.toCollection(ArrayList::new));
+
+		if (associationInfoArtifactViewers != null) {
+			for (AssociationInfoArtifactViewer v : associationInfoArtifactViewers) {
+				v.setAssociationInfos(this.associationInfos);
+			}
+		}
+	}
 }

@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.dao.Persistable;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Represents a revision of a feature.
@@ -13,7 +12,6 @@ public interface FeatureRevision extends Persistable {
 	 *
 	 * @return The feature belonging to this version.
 	 */
-	@JsonIgnore
 	public Feature getFeature();
 
 

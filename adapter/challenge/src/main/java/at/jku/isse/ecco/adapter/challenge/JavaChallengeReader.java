@@ -9,7 +9,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
-import com.github.javaparser.JavaParser;
+import com.github.javaparser.*;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.*;
@@ -89,7 +89,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 				long localStartTime = System.currentTimeMillis();
 				//CompilationUnit cu = JavaParser.parse(resolvedPath);
-				CompilationUnit cu = JavaParser.parse(fileContent);
+				CompilationUnit cu = StaticJavaParser.parse(fileContent);
 				totalJavaParserTime += (System.currentTimeMillis() - localStartTime);
 
 				// package name
@@ -158,7 +158,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 				long localStartTime = System.currentTimeMillis();
 				//CompilationUnit cu = JavaParser.parse(resolvedPath);
-				CompilationUnit cu = JavaParser.parse(fileContent);
+				CompilationUnit cu = StaticJavaParser.parse(fileContent);
 				totalJavaParserTime += (System.currentTimeMillis() - localStartTime);
 
 				// package name
