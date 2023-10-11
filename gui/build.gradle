@@ -9,24 +9,6 @@ application {
 	applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 }
 
-//run {
-//	doFirst {
-//		jvmArgs = [
-//				'--module-path', classpath.asPath,
-//				'--add-modules="javafx.controls,javafx.swing"'
-//		]
-//	}
-//}
-
-//compileJava {
-//	doFirst {
-//		options.compilerArgs = [
-//				'--module-path', classpath.asPath,
-//				'--add-modules', 'javafx.controls,javafx.swing'
-//		]
-//	}
-//}
-
 javafx {
 	version = "16"
 	modules = [ 'javafx.controls' ]
