@@ -61,7 +61,6 @@ subprojects {
 		integrationTestCompile.extendsFrom implementation
 		integrationTestRuntimeOnly.extendsFrom runtimeOnly
 
-		//integrationTestCompile.extendsFrom testCompile
 		integrationTestImplementation.extendsFrom testImplementation
 		integrationTestRuntime.extendsFrom testRuntime
 	}
