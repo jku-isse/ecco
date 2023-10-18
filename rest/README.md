@@ -14,8 +14,8 @@ mirconaut-cli.yml contains the config for possible CLI usage.
 ## API Documentation
 
 This server provides an OpenAPI documentation as well as a Swagger UI.
-After the server has started, it is accessible via http://localhost:8080/swagger-ui.
-The raw OpenAPI documentation can be accessed via http://localhost:8080/swagger/ecco-restservice-0.0.1.yml.
+After the server has started, it is accessible via http://localhost:8081/swagger-ui.
+The raw OpenAPI documentation can be accessed via http://localhost:8081/swagger/ecco-restservice-0.0.1.yml.
 
 ## Additional documentation
 

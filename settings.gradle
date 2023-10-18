@@ -12,6 +12,7 @@ include 'adapter-text'
 include 'adapter-image'
 include 'adapter-challenge'
 include 'adapter-java'
+include 'adapter-python'
 include 'adapter-cpp'
 include 'adapter-runtime'
 include 'adapter-golang'
@@ -28,6 +29,7 @@ project(':adapter-text').projectDir = file('adapter/text')
 project(':adapter-image').projectDir = file('adapter/image')
 project(':adapter-challenge').projectDir = file('adapter/challenge')
 project(':adapter-java').projectDir = file('adapter/java')
+project(':adapter-python').projectDir = file('adapter/python')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
 project(':adapter-golang').projectDir = file('adapter/golang')
