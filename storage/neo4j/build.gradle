@@ -8,7 +8,7 @@ dependencies {
     compile project(':ecco-service')
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j
-    compile group: 'org.neo4j', name: 'neo4j', version: '5.12.0'
+    compile group: 'org.neo4j', name: 'neo4j', version: '5.13.0'
 
     // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-core
     compile group: 'org.neo4j', name: 'neo4j-ogm-core', version: '4.0.8'
