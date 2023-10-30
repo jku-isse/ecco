@@ -16,7 +16,6 @@ include 'adapter-python'
 include 'adapter-cpp'
 include 'adapter-runtime'
 include 'adapter-golang'
-include 'adapter-designspace'
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
@@ -33,6 +32,5 @@ project(':adapter-python').projectDir = file('adapter/python')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
 project(':adapter-golang').projectDir = file('adapter/golang')
-project(':adapter-designspace').projectDir = file('adapter/designspace')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }

@@ -5,8 +5,17 @@ plugins {
 ecco.adapter = true
 
 javafx {
-	version = "16"
-	modules = [ 'javafx.controls' ]
+	version = "21.0.1"
+	modules = [ 'javafx.controls', 'javafx.fxml' ]
+}
+
+jar {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	from {
+		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+	} {
+		exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+	}
 }
 
 dependencies {
