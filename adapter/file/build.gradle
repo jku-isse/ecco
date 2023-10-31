@@ -1,28 +1,32 @@
 plugins {
-	id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 ecco.adapter = true
 
 javafx {
-	version = "21.0.1"
-	modules = [ 'javafx.controls', 'javafx.fxml' ]
+    version = "21.0.1"
+    modules = ['javafx.controls', 'javafx.fxml']
 }
 
 jar {
-	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-	from {
-		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-	} {
-		exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-	}
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    } {
+        exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    }
+
+    configure {
+        dependsOn(":ecco-base:jar", ":ecco-service:jar")
+    }
 }
 
 dependencies {
-	implementation project(':ecco-service')
+    implementation project(':ecco-service')
 }
 
 ospackage {
-	requires('ecco-base', version, EQUAL)
-	requires('ecco-service', version, EQUAL)
+    requires('ecco-base', version, EQUAL)
+    requires('ecco-service', version, EQUAL)
 }
