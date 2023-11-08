@@ -1,6 +1,6 @@
 
 dependencies {
-	implementation group: 'commons-io', name: 'commons-io', version: '2.14.0'
+	implementation group: 'commons-io', name: 'commons-io', version: '2.15.0'
 	// https://mvnrepository.com/artifact/com.bpodgursky/jbool_expressions
 	implementation group: 'com.bpodgursky', name: 'jbool_expressions', version: '1.24'
 
