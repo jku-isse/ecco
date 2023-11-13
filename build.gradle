@@ -35,7 +35,7 @@ subprojects {
 	}
 
 	dependencies {
-		testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+		testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
 	}
 
 	jar {
@@ -58,7 +58,9 @@ subprojects {
 	}
 
 	configurations {
-		integrationTestCompile.extendsFrom testCompile
+		integrationTestCompile.extendsFrom implementation
+		integrationTestRuntimeOnly.extendsFrom runtimeOnly
+
 		integrationTestImplementation.extendsFrom testImplementation
 		integrationTestRuntime.extendsFrom testRuntime
 	}
@@ -74,14 +76,12 @@ subprojects {
 	task integrationTest(type: Test, group: 'verification', description: 'Runs the integration tests.') {
 		useJUnitPlatform()
 		classpath = sourceSets.integrationTest.runtimeClasspath
+		testClassesDirs = sourceSets.integrationTest.output.classesDirs
 		outputs.upToDateWhen { false }
 
 		filter {
 			exclude("**/test/**")
 		}
-	}
-	integrationTest.onlyIf {
-		new File(getProjectDir(), 'src/integrationTest/resources/testng.xml').exists()
 	}
 	check.dependsOn -= integrationTest
 
@@ -166,21 +166,21 @@ subprojects {
 			}
 
 			from({
-				def temp = project.configurations.runtimeClasspath;
+				def temp = project.configurations.runtimeClasspath
 
 				project.configurations.findAll { it.name.equals("runtimeClasspath") }.collectMany {
 					it.allDependencies
 				}.findAll { it instanceof ProjectDependency }.collect {
 					(it as ProjectDependency).dependencyProject.configurations.runtimeClasspath
-				}.each { temp = temp - it };
+				}.each { temp = temp - it }
 
 				project.configurations.findAll { it.name.equals("runtimeClasspath") }.collectMany {
 					it.allDependencies
 				}.findAll { it instanceof ProjectDependency }.collect { (it as ProjectDependency).dependencyProject.jar.outputs.files }.each {
-					temp = temp - it;
-				};
+					temp = temp - it
+				}
 
-				return temp;
+				return temp
 			}) {
 				addParentDirs false
 				into 'ecco/lib/'
@@ -237,9 +237,9 @@ subprojects {
 
 	task depTest {
 		def temp = project.configurations.runtimeOnly
-		project.configurations.findAll { it.name.equals("runtimeOnly"); }.collectMany { it.allDependencies }.findAll {
+		project.configurations.findAll { it.name.equals("runtimeOnly") }.collectMany { it.allDependencies }.findAll {
 			it instanceof ProjectDependency
-		}.collect { it.dependencyProject.jar.outputs.files }.each { println it };
+		}.collect { it.dependencyProject.jar.outputs.files }.each { println it }
 	}
 }
 
