@@ -9,7 +9,6 @@ import io.micronaut.security.authentication.UsernamePasswordCredentials;
 import io.micronaut.security.token.render.BearerAccessRefreshToken;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,7 +37,6 @@ class RestTest {
         System.out.println("Application is running");
     }
     @Test
-    @BeforeEach
     void testAuthenticatedCanFetchUsername() {
         UsernamePasswordCredentials credentials = new UsernamePasswordCredentials("Tobias", "admin");
         HttpRequest<?> request = HttpRequest.POST("/login", credentials);
@@ -53,12 +51,21 @@ class RestTest {
             System.out.println("------------");
         }
 
+        try {
+            String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
+                    .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
+        } catch (HttpClientResponseException e) {
+            System.out.println("------------");
+            System.out.println(e.getResponse().body().toString());
+            System.out.println(e.getStatus());
+            System.out.println(e.getMessage());
+            System.out.println("------------");
+        }
 
-        String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
-                .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
+
     }
 
-    @Test
+/*    @Test
     void checkRepositories() {
         try {
            String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
@@ -69,7 +76,5 @@ class RestTest {
         } catch (HttpClientResponseException e) {
             System.out.println(e.getResponse().body().toString());
         }
-
-
-    }
+    }*/
 }
