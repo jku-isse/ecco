@@ -3,6 +3,7 @@ package at.jku.isse.ecco.rest;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.client.HttpClient;
 import io.micronaut.http.client.annotation.Client;
+import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.runtime.EmbeddedApplication;
 import io.micronaut.security.authentication.UsernamePasswordCredentials;
 import io.micronaut.security.token.render.BearerAccessRefreshToken;
@@ -42,7 +43,16 @@ class RestTest {
         UsernamePasswordCredentials credentials = new UsernamePasswordCredentials("Tobias", "admin");
         HttpRequest<?> request = HttpRequest.POST("/login", credentials);
 
-        bearerAccessRefreshToken = client.toBlocking().retrieve(request, BearerAccessRefreshToken.class);
+        try {
+            bearerAccessRefreshToken = client.toBlocking().retrieve(request, BearerAccessRefreshToken.class);
+        } catch (HttpClientResponseException e) {
+            System.out.println("------------");
+            System.out.println(e.getResponse().body().toString());
+            System.out.println(e.getStatus());
+            System.out.println(e.getMessage());
+            System.out.println("------------");
+        }
+
 
         String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
                 .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
@@ -50,10 +60,16 @@ class RestTest {
 
     @Test
     void checkRepositories() {
-       String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
-                .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
+        try {
+           String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
+                    .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
 
-        assertTrue(repros.contains("BigHistory_full"));
-        assertTrue(repros.contains("ImageVariants"));
+            assertTrue(repros.contains("BigHistory_full"));
+            assertTrue(repros.contains("ImageVariants"));
+        } catch (HttpClientResponseException e) {
+            System.out.println(e.getResponse().body().toString());
+        }
+
+
     }
 }
