@@ -5,6 +5,6 @@ dependencies {
 
 	implementation project(':ecco-service')
 
-	testImplementation group: 'com.opencsv', name: 'opencsv', version: '5.8'
+	testImplementation group: 'com.opencsv', name: 'opencsv', version: '5.9'
 	testImplementation group: 'io.github.java-diff-utils', name: 'java-diff-utils', version: '4.12'
 }
