@@ -46,21 +46,23 @@ class RestTest {
             System.out.println("TBE: returned from login without failure");
         } catch (HttpClientResponseException e) {
             System.out.println("------------");
-            //System.out.println(e.getResponse().body().toString());
             System.out.println(e.getStatus());
             System.out.println(e.getMessage());
             System.out.println("------------");
+            throw e;
         }
 
         try {
             String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
                     .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
+            assertTrue(repros.contains("BigHistory_full"));
+            assertTrue(repros.contains("ImageVariants"));
             System.out.println("TBE: returned from all repositories without failure");
         } catch (HttpClientResponseException e) {
-            System.out.println("------------");
-            //System.out.println(e.getResponse().body().toString());
+            System.out.println("-----TBE-------");
             System.out.println(e.getStatus());
             System.out.println(e.getMessage());
+            System.out.println(e.getResponse().body().toString());
             System.out.println("------------");
         }
 
@@ -76,7 +78,12 @@ class RestTest {
             assertTrue(repros.contains("BigHistory_full"));
             assertTrue(repros.contains("ImageVariants"));
         } catch (HttpClientResponseException e) {
+            System.out.println("-----TBE-------");
+            System.out.println(e.getStatus());
+            System.out.println(e.getMessage());
             System.out.println(e.getResponse().body().toString());
+            System.out.println("------------");
+
         }
     }*/
 }
