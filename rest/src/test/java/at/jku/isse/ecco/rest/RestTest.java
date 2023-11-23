@@ -43,9 +43,10 @@ class RestTest {
 
         try {
             bearerAccessRefreshToken = client.toBlocking().retrieve(request, BearerAccessRefreshToken.class);
+            System.out.println("TBE: returned from login without failure");
         } catch (HttpClientResponseException e) {
             System.out.println("------------");
-            System.out.println(e.getResponse().body().toString());
+            //System.out.println(e.getResponse().body().toString());
             System.out.println(e.getStatus());
             System.out.println(e.getMessage());
             System.out.println("------------");
@@ -54,9 +55,10 @@ class RestTest {
         try {
             String repros = client.toBlocking().retrieve(HttpRequest.GET("/api/repository/all")
                     .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
+            System.out.println("TBE: returned from all repositories without failure");
         } catch (HttpClientResponseException e) {
             System.out.println("------------");
-            System.out.println(e.getResponse().body().toString());
+            //System.out.println(e.getResponse().body().toString());
             System.out.println(e.getStatus());
             System.out.println(e.getMessage());
             System.out.println("------------");
