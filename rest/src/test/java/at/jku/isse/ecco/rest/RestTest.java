@@ -27,13 +27,13 @@ class RestTest {
     BearerAccessRefreshToken bearerAccessRefreshToken;
 
     @Test
-    void test() {
+    void TestsAreRunning() {
         System.out.println("Rest-Test is accessed");
     }
 
 
     @Test
-    void testItWorks() {
+    void serverIsRunning() {
         assertTrue(application.isRunning());
         System.out.println("Application is running");
     }
@@ -63,6 +63,23 @@ class RestTest {
             assertTrue(repros.contains("BigHistory_full"));
             assertTrue(repros.contains("ImageVariants"));
             System.out.println("TBE: returned from all repositories without failure");
+        } catch (HttpClientResponseException e) {
+            System.out.println("-----TBE-------");
+            System.out.println(e.getStatus());
+            System.out.println(e.getMessage());
+            System.out.println(e.getResponse().body().toString());
+            System.out.println("------------");
+        }
+    }
+
+    @Test
+    void createNewRepo() {
+        String NEW_REPO = "newTestRepro";
+        try {
+            String repros = client.toBlocking().retrieve(HttpRequest.PUT("/api/repository/" + NEW_REPO, null)
+                    .header("Authorization", "Bearer " + bearerAccessRefreshToken.getAccessToken()), String.class);
+            assertTrue(repros.contains(NEW_REPO));
+            System.out.println("TBE: returned all repos including the new one");
         } catch (HttpClientResponseException e) {
             System.out.println("-----TBE-------");
             System.out.println(e.getStatus());
