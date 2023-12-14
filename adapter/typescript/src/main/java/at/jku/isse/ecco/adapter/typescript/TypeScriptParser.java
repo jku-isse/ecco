@@ -19,18 +19,22 @@ import java.util.stream.Collectors;
 
 public class TypeScriptParser {
 
-    private static String SCRIPT_PATH = "../adapter/typescript/src/main/resources/script/parse.js";
+    private static final String SCRIPT_PATH = "../adapter/typescript/src/main/resources/script/parse.js";
+    private static final String NODE_MODULE_PATH = "../adapter/typescript/src/main/resources/script/node_modules/typescript";
 
-    public HashMap<String,Object> parse(Path path) throws FileNotFoundException {
-        HashMap<String,Object> res;
-        var read  = new BufferedReader(new FileReader(path.toFile()));
-        File codeFile = Path.of(JavetOSUtils.WORKING_DIRECTORY)
-                .resolve(SCRIPT_PATH).toFile();
+    public HashMap<String, Object> parse(Path path) throws FileNotFoundException {
+        HashMap<String, Object> res;
+        var read = new BufferedReader(new FileReader(path.toFile()));
+        Path cwd = Path.of(JavetOSUtils.WORKING_DIRECTORY);
+        File codeFile = cwd.resolve(SCRIPT_PATH).toFile();
+        var nodePath = cwd.resolve(NODE_MODULE_PATH).toString();
         var fileContent = read.lines().collect(Collectors.joining("\n"));
         try (NodeRuntime v8Runtime = V8Host.getNodeInstance().createV8Runtime()) {
-            v8Runtime.getGlobalObject().set("t",fileContent);
-            V8Value x = v8Runtime.getExecutor(codeFile).execute();
-            res = v8Runtime.getExecutor("sf").executeObject();
+            v8Runtime.getGlobalObject().set("fileContent", fileContent);
+            v8Runtime.getGlobalObject().set("nodePath", nodePath);
+            try (V8Value x = v8Runtime.getExecutor(codeFile).execute()) {
+                res = v8Runtime.getExecutor("sf").executeObject();
+            }
         } catch (JavetException e) {
             throw new RuntimeException(e);
         }

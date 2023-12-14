@@ -22,13 +22,13 @@ public class TypeScriptModule extends AbstractModule {
 		// }).to(TextWriter.class);
 
 		final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<ArtifactReader<Path, Set<Node.Op>>>() {
-				});
+                new TypeLiteral<>() {
+                });
 		readerMultibinder.addBinding().to(TypeScriptReader.class);
 
 		final Multibinder<ArtifactWriter<Set<Node>, Path>> writerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {
-				});
+                new TypeLiteral<>() {
+                });
 		writerMultibinder.addBinding().to(TypeScriptWriter.class);
 
 	}

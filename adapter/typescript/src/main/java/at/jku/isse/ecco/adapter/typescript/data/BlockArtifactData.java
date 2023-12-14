@@ -1,20 +1,16 @@
 package at.jku.isse.ecco.adapter.typescript.data;
 
-import at.jku.isse.ecco.artifact.ArtifactData;
-
 import java.util.Objects;
 
-public class BlockArtifactData implements ArtifactData {
+public class BlockArtifactData extends AbstractArtifactData {
 
-	private String block;
+	private final String block;
+
 
 	public BlockArtifactData(String block) {
 		this.block = block;
 	}
 
-	public String getBlock() {
-		return this.block;
-	}
 
 	@Override
 	public String toString() {
@@ -36,11 +32,8 @@ public class BlockArtifactData implements ArtifactData {
 			return false;
 		BlockArtifactData other = (BlockArtifactData) obj;
 		if (block == null) {
-			if (other.block != null)
-				return false;
-		} else if (!block.equals(other.block))
-			return false;
-		return true;
-	}
+            return other.block == null;
+		} else return block.equals(other.block);
+    }
 
 }

@@ -4,9 +4,9 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Objects;
 
-public class IfBlockArtifactData implements ArtifactData {
+public class IfBlockArtifactData extends AbstractArtifactData {
 
-	private String block;
+	private final String block;
 
 	public IfBlockArtifactData(String block) {
 		this.block = block;

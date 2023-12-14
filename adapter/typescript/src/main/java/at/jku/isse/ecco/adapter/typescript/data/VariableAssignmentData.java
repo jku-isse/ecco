@@ -4,7 +4,7 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Objects;
 
-public class VariableAssignmentData implements ArtifactData {
+public class VariableAssignmentData extends AbstractArtifactData {
     private String id;
 
     public VariableAssignmentData(String name) {

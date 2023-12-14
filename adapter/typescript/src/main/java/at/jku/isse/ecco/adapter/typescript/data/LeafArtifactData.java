@@ -4,11 +4,11 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Objects;
 
-public class LineArtifactData implements ArtifactData {
+public class LeafArtifactData extends AbstractArtifactData {
 
 	private String line;
 
-	public LineArtifactData(String line) {
+	public LeafArtifactData(String line) {
 		this.line = line;
 	}
 
@@ -34,7 +34,7 @@ public class LineArtifactData implements ArtifactData {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		LineArtifactData other = (LineArtifactData) obj;
+		LeafArtifactData other = (LeafArtifactData) obj;
 		if (line == null) {
 			if (other.line != null)
 				return false;

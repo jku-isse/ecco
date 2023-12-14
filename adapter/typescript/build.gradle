@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id("com.github.node-gradle.node") version "7.0.1"
 }
 ecco.adapter = true
 group = 'at.jku.isse.ecco'
