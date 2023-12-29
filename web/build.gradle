@@ -9,7 +9,7 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 }
 
 dependencies {
-	testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.9'
+	testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.10'
 	implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.10'
 
 	implementation group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '3.1.5'
