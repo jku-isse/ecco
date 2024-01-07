@@ -29,7 +29,7 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-api', version: '2.0.10'
 
     // https://mvnrepository.com/artifact/uk.co.jemos.podam/podam
-    testCompile group: 'uk.co.jemos.podam', name: 'podam', version: '8.0.0.RELEASE'
+    testCompile group: 'uk.co.jemos.podam', name: 'podam', version: '8.0.1.RELEASE'
 
     // This scala import is necessary to make Neo4J storage plugin work
     // Issue: https://github.com/neo4j/neo4j/issues/8832
