@@ -28,25 +28,6 @@ jobs:
         distribution: oracle
         cache: gradle
 
-    - name: Install Protoc
-      run: |
-        curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip"
-        sudo unzip protoc-3.3.0-linux-x86_64.zip -d /usr/
-
-    - name: Cache local Maven repository
-      uses: actions/cache@v3
-      with:
-        path: ~/.m2/repository
-        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-maven-
-
-    - name: Install SDK to local maven repository
-      run: |
-        pushd sdk
-        mvn -Dmaven.test.failure.ignore=true  clean install
-        popd
-
     - name: Setup Gradle
       uses: gradle/gradle-build-action@982da8e78c05368c70dac0351bb82647a9e9a5d2 # v2.11.1
 
