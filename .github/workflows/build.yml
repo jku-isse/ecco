@@ -21,14 +21,6 @@ jobs:
       with:
         path: main
 
-    - name: Checkout DesignSpace SDK
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      with:
-        repository: meik99/DesignSpace-4.0-Java-SDK.git
-        token: ${{ secrets.SDK_TOKEN }}
-        ref: main
-        path: sdk
-
     - name: Setup JDK 20
       uses: actions/setup-java@0ab4596768b603586c0de567f2430c30f5b0d2b0 # v3.13.0
       with:
