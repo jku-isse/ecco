@@ -12,9 +12,10 @@ micronaut:
         mapping: /swagger-ui/**
 
   server:
-    port: 8081
+    port: ${PORT:8081}
     cors:
       enabled: true
+    context-path: ${CONTEXT_PATH:/}
 
   security:
     authentication: bearer

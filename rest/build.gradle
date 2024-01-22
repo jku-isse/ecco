@@ -72,4 +72,4 @@ micronaut {
     }
 }
 
-run.dependsOn += build
+//run.dependsOn += build
