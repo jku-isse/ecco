@@ -16,10 +16,7 @@ public class TypeScriptModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		// bind(new TypeLiteral<ArtifactReader<File, Set<Node>>>() {
-		// }).to(TextReader.class);
-		// bind(new TypeLiteral<ArtifactWriter<Set<Node>, File[]>>() {
-		// }).to(TextWriter.class);
+
 
 		final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
                 new TypeLiteral<>() {

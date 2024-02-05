@@ -5,7 +5,7 @@ plugins {
 ecco.adapter = true
 group = 'at.jku.isse.ecco'
 version = '0.1.9'
-
+npmInstall
 
 repositories {
     mavenCentral()
@@ -19,13 +19,18 @@ dependencies {
     implementation group: 'com.caoccao.javet', name: 'javet-macos', version: '2.1.2'
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'junit:junit:4.13.1'
 }
 
 ospackage {
     requires('ecco-base', version, EQUAL)
     requires('ecco-service', version, EQUAL)
 }
-
+node {
+    download = false
+    nodeProjectDir = file("${project.projectDir}/src/main/resources/script")
+}
 test {
     useJUnitPlatform()
 }
+build.dependsOn npmInstall

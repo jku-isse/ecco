@@ -7,17 +7,36 @@ import com.caoccao.javet.interop.V8Runtime;
 import com.caoccao.javet.utils.JavetOSUtils;
 import com.caoccao.javet.values.V8Value;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.*;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class TypeScriptParser {
+    static File codeFile;
+
+    static {
+        InputStream inputStream = TypeScriptParser.class.getClassLoader().getResourceAsStream("script/parse.js");
+        if (inputStream == null) {
+            System.out.println("Could not find resource");
+        }
+        //Resource stream to codeFile
+        Path outputPath = Path.of("parse.js");
+        try (OutputStream outputStream = new FileOutputStream(outputPath.toFile())) {
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, length);
+            }
+            codeFile = outputPath.toFile();
+        } catch (IOException e) {
+            System.out.println("Error writing to file");
+            e.printStackTrace();
+        }
+    }
 
     private static final String SCRIPT_PATH = "../adapter/typescript/src/main/resources/script/parse.js";
     private static final String NODE_MODULE_PATH = "../adapter/typescript/src/main/resources/script/node_modules/typescript";

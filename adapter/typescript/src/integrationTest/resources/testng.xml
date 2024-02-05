@@ -1,19 +1,14 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
 
-<suite name="Text Module Integration Test" verbose="1">
-	<test name="TextModuleTest">
-		<classes>
-			<class name="at.jku.isse.ecco.adapter.text.test.TextModuleTest"/>
-		</classes>
-	</test>
-	<test name="Text">
+<suite name="Adapter Integration Test" verbose="1">
+	<test name="TypeScript Adapter">
 		<groups>
 			<run>
 				<include name="integration"/>
 			</run>
 		</groups>
 		<packages>
-			<package name="at.jku.isse.ecco.text.test"/>
+			<package name="at.jku.isse.ecco.adapter.typescript.test"/>
 		</packages>
 	</test>
 </suite>

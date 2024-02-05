@@ -1,10 +1,9 @@
-package at.jku.isse.ecco.adapter.text.test;
+package at.jku.isse.ecco.adapter.typescript.test;
 
 import at.jku.isse.ecco.adapter.typescript.TypeScriptReader;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.testng.annotations.Test;
-
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,9 +24,9 @@ public class AdapterTest {
 	}
 
 	private static final Path BASE_DIR = DATA_DIR.resolve("input");
-	private static final Path[] FILES = new Path[]{Paths.get("file.txt")};
+	private static final Path[] FILES = new Path[]{Paths.get("parse.js")};
 
-	@Test(groups = {"integration", "java"})
+	@Test(groups = {"integration"})
 	public void Java_Adapter_Test() {
 		TypeScriptReader reader = new TypeScriptReader(new MemEntityFactory());
 

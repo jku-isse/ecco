@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.text.test;
+package at.jku.isse.ecco.adapter.typescript.test;
 
 import at.jku.isse.ecco.adapter.text.TextReader;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;

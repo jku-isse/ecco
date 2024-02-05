@@ -39,7 +39,7 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     static {
         prioritizedPatterns = new HashMap<>();
-        prioritizedPatterns.put(1, new String[]{"**.ts"});//, "**.c", "**.h", "**.cpp", "**.hpp"});
+        prioritizedPatterns.put(1, new String[]{"**.ts"});
     }
 
     @Override
@@ -52,6 +52,7 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
         return this.read(Paths.get("."), input);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         Set<Node.Op> nodes = new HashSet<>();
@@ -62,7 +63,6 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
             nodes.add(pluginNode);
             try {
                 HashMap<String, Object> br = new TypeScriptParser().parse(resolvedPath);
-                int i = 0;
                 ArrayList<HashMap<String, Object>> stat = (ArrayList<HashMap<String, Object>>) br.get("statements");
                 for (HashMap<String, Object> stringObjectHashMap : stat) {
                     pluginNode.addChild(makeNode(stringObjectHashMap));
@@ -175,8 +175,7 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 node = this.entityFactory.createOrderedNode(fun);
                 node.addChild(this.makeNode(body));
                 break;
-            case "ForStatement" :
-            case "WhileStatement" :
+            case "ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement" :
                 HashMap<String, Object> statement = (HashMap<String,Object>) currNode.get("statement");
                 text = getLeadingText(currNode,statement);
                 Artifact.Op<LoopArtifactData> fLoop = this.entityFactory.createArtifact(new LoopArtifactData(text));
@@ -236,7 +235,7 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
 
-    private Collection<ReadListener> listeners = new ArrayList<>();
+    private final Collection<ReadListener> listeners = new ArrayList<>();
 
     @Override
     public void addListener(ReadListener listener) {
