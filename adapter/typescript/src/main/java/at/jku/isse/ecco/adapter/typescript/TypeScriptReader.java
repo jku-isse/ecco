@@ -90,28 +90,33 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 HashMap<String,Object> declarationList = (HashMap<String, Object>) currNode.get("declarationList");
                 ArrayList<HashMap<String,Object>> decls = (ArrayList<HashMap<String, Object>>) declarationList.get("declarations");
                 text = getLeadingText(currNode,decls.get(0));
-                var varData = new VariableAssignmentData(text);
-                Artifact.Op<VariableAssignmentData> varArtifact = this.entityFactory.createArtifact(varData);
-                Node.Op varNode = this.entityFactory.createOrderedNode(varArtifact);
-                decls.forEach(x -> varNode.addChild(this.makeNode(x)));
-                node = varNode;
-                varData.setTrailingComment(getTrailingText(currNode,decls.get(decls.size()-1)));
-                break;
-            case "VariableDeclaration":
-                var init = (HashMap<String,Object>) currNode.get("initializer");
-                if (!init.get("kind").equals("ArrowFunction")){
-                    Artifact.Op<LeafArtifactData> line = this.entityFactory.createArtifact(new LeafArtifactData((String) currNode.get("nodeText")));
-                    node = this.entityFactory.createOrderedNode(line);
-                } else {
-                    var name = this.getLeadingText(currNode,init);
-                    var body = (HashMap<String,Object>) init.get("body");
-                    int parStart = (Integer) init.get("pos");
-                    int kidStart = (Integer) body.get("pos");
-                    var arrowParameters = ((String) init.get("fullText")).substring(0,kidStart-parStart);
-                    Artifact.Op<ArrowFunctionArtifactData> arrow = this.entityFactory.createArtifact(new ArrowFunctionArtifactData(name + arrowParameters));
-                    node = this.entityFactory.createOrderedNode(arrow);
-                    node.addChild(makeNode(body));
+                StringBuilder sb = new StringBuilder(text);
+                for (HashMap<String, Object> decl : decls){
+                    HashMap<String, Object> name = (HashMap<String, Object>) decl.get("name");
+                    sb.append((String) name.get("escapedText"));
                 }
+                var variable = new VariableAssignmentData(text);
+                variable.setId(sb.toString());
+                Artifact.Op<VariableAssignmentData> vData = this.entityFactory.createArtifact(variable);
+                Node.Op vNode = this.entityFactory.createNode(vData);
+                for (HashMap<String, Object> decl : decls) {
+                    var init = (HashMap<String,Object>) decl.get("initializer");
+                    if (!init.get("kind").equals("ArrowFunction")){
+                        Artifact.Op<LeafArtifactData> line = this.entityFactory.createArtifact(new LeafArtifactData((String) decl.get("nodeText")));
+                        node = this.entityFactory.createOrderedNode(line);
+                    } else {
+                        var name = this.getLeadingText(decl,init);
+                        var body = (HashMap<String,Object>) init.get("body");
+                        int parStart = (Integer) init.get("pos");
+                        int kidStart = (Integer) body.get("pos");
+                        var arrowParameters = ((String) init.get("fullText")).substring(0,kidStart-parStart);
+                        Artifact.Op<ArrowFunctionArtifactData> arrow = this.entityFactory.createArtifact(new ArrowFunctionArtifactData(name + arrowParameters));
+                        node = this.entityFactory.createOrderedNode(arrow);
+                        node.addChild(makeNode(body));
+                    }
+                    vNode.addChild(node);
+                }
+                node = vNode;
                 break;
             case "EnumDeclaration":
                 var eMembers = (ArrayList<HashMap<String,Object>>) currNode.get("members");

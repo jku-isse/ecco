@@ -49,6 +49,7 @@ public class TypeScriptParser {
         var nodePath = cwd.resolve(NODE_MODULE_PATH).toString();
         var fileContent = read.lines().collect(Collectors.joining("\n"));
         try (NodeRuntime v8Runtime = V8Host.getNodeInstance().createV8Runtime()) {
+            v8Runtime.getConverter().getConfig().setMaxDepth(1000);
             v8Runtime.getGlobalObject().set("fileContent", fileContent);
             v8Runtime.getGlobalObject().set("nodePath", nodePath);
             try (V8Value x = v8Runtime.getExecutor(codeFile).execute()) {

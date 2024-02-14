@@ -59,6 +59,7 @@ public class TypeScriptWriter implements ArtifactWriter<Set<Node>, Path> {
             node.getChildren().forEach(x -> writeNodes(sb, x));
         } else if (data instanceof VariableAssignmentData v) {
             sb.append(v);
+            sb.append(" ");
             node.getChildren().forEach(x -> {
                 writeNodes(sb, x);
                 sb.append(",");

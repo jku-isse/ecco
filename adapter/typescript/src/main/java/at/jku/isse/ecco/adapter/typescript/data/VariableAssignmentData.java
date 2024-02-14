@@ -5,10 +5,10 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import java.util.Objects;
 
 public class VariableAssignmentData extends AbstractArtifactData {
-    private String id;
+    private String id, leadingText;
 
     public VariableAssignmentData(String name) {
-        this.id = name;
+        this.leadingText = name;
     }
 
     public String getId() {
@@ -19,9 +19,13 @@ public class VariableAssignmentData extends AbstractArtifactData {
         this.id = name;
     }
 
+    public String getLeadingText() {
+        return leadingText;
+    }
+
     @Override
     public String toString() {
-        return this.id;
+        return this.getLeadingText();
     }
 
     @Override
