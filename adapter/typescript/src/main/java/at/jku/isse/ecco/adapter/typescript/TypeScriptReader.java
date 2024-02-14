@@ -173,11 +173,17 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 members.forEach(x -> finalNode1.addChild(this.makeNode(x)));
                 node = finalNode1;
                 break;
-            case "FunctionDeclaration":
+            case "MethodDeclaration","FunctionDeclaration":
                 HashMap<String, Object> body = (HashMap<String,Object>) currNode.get("body");
                 text = getLeadingText(currNode,body);
                 Artifact.Op<FunctionArtifactData> fun = this.entityFactory.createArtifact(new FunctionArtifactData(text));
                 node = this.entityFactory.createOrderedNode(fun);
+                ArrayList<HashMap<String,Object>> modifiers = (ArrayList<HashMap<String, Object>>) currNode.get("modifiers");
+                if (modifiers != null) {
+                    if (modifiers.stream().anyMatch(x -> x.get("nodeText").equals("abstract"))) {
+                        break;
+                    }
+                }
                 node.addChild(this.makeNode(body));
                 break;
             case "ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement" :

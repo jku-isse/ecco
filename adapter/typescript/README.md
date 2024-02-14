@@ -35,6 +35,7 @@ The TypeScript reader can resolve the following language features:
 - For of loops
 - For in loops
 - Class Declarations
+- Method Declarations
 - Enums
 - Switch Statements
 - If Statements

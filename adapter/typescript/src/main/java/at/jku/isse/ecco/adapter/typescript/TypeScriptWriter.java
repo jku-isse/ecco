@@ -12,8 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.logging.Logger;
+
 
 public class TypeScriptWriter implements ArtifactWriter<Set<Node>, Path> {
+
+    private static final Logger LOGGER = Logger.getLogger(TypeScriptWriter.class.getName());
 
     @Override
     public String getPluginId() {
@@ -40,7 +44,7 @@ public class TypeScriptWriter implements ArtifactWriter<Set<Node>, Path> {
             try (BufferedWriter writer = Files.newBufferedWriter(base.resolve(((PluginArtifactData) fileNode.getArtifact().getData()).getFileName()), StandardCharsets.UTF_8)) {
                 writer.write(sb.toString());
             } catch (IOException x) {
-                System.err.format("IOException: %s%n", x);
+                LOGGER.severe("IOException: " + x);
             }
             output.add(base.resolve(rootData.getPath()));
         }
