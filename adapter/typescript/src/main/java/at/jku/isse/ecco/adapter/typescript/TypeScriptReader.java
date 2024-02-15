@@ -118,6 +118,22 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 }
                 node = vNode;
                 break;
+            case "PropertyDeclaration":
+                var init = (HashMap<String,Object>) currNode.get("initializer");
+                if (init == null || !init.get("kind").equals("ArrowFunction")){
+                    Artifact.Op<LeafArtifactData> line = this.entityFactory.createArtifact(new LeafArtifactData((String) currNode.get("nodeText")));
+                    node = this.entityFactory.createOrderedNode(line);
+                } else {
+                    var name = this.getLeadingText(currNode,init);
+                    var body = (HashMap<String,Object>) init.get("body");
+                    int parStart = (Integer) init.get("pos");
+                    int kidStart = (Integer) body.get("pos");
+                    var arrowParameters = ((String) init.get("fullText")).substring(0,kidStart-parStart);
+                    Artifact.Op<ArrowFunctionArtifactData> arrow = this.entityFactory.createArtifact(new ArrowFunctionArtifactData(name + arrowParameters));
+                    node = this.entityFactory.createOrderedNode(arrow);
+                    node.addChild(makeNode(body));
+                }
+                break;
             case "EnumDeclaration":
                 var eMembers = (ArrayList<HashMap<String,Object>>) currNode.get("members");
                 text = !eMembers.isEmpty() ? this.getLeadingText(currNode,eMembers.get(0)) : this.getLeadingText(currNode,null);

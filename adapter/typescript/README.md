@@ -41,6 +41,7 @@ The TypeScript reader can resolve the following language features:
 - If Statements
 - Functions
 - Arrow functions assigned to variables
+- Arrow functions as properties of objects
 
 Any other statement is treated atomically and ends up as a leaf in the tree.
 
@@ -54,8 +55,8 @@ are not included in the hash code but stored as separate information. The writer
 information and trailing trivia together to form the original source code for each node in the ECCO tree.
 
 ## Limitations
-
-White space and comments follow the logic of the TypeScript compiler and are associated with the node directly after it.
+- The Reader is depended on the TypeScript compiler producing an AST. If the compiler fails to parse the input file the reader will fail as well.
+- White space and comments follow the logic of the TypeScript compiler and are associated with the node directly after it.
 If features are added or removed this may interfere with the formatting of the document for that reason.
-Features that are hidden in some lambda that that is passed to a function won't be resolved.
-Newer versions of the typescript compiler might need adjustments in the parsing of the kinds.
+- Features that are hidden in some lambda that that is passed to a function won't be resolved.
+- Newer versions of the typescript compiler might need adjustments in the parsing of the kinds.
