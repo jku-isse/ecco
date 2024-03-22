@@ -63,7 +63,7 @@ java {
 }
 
 micronaut {
-    version = "4.3.0"
+    version = "4.3.7"
     runtime("netty")
     testRuntime("junit5")
     processing {
