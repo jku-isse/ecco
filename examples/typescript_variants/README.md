@@ -11,7 +11,7 @@ can include all three shapes or just a subset of them.
 
 ## shapes2
 Similar to the `shapes` example, but with a different implementation that splits the classes into separate files. There is
-also a `App` class that uses the `Shape` classes to draw them on a canvas. The `App` class also has a property that
+also a `App` class that uses the `Shape` classes. The `App` class also has a property that
 demonstrates the ability of the reader to resolve a switch statement based on the features of the variants.
 
 ## AoC1
