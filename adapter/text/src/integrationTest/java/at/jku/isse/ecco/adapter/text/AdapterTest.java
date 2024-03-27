@@ -1,6 +1,5 @@
-package at.jku.isse.ecco.adapter.typescript.test;
+package at.jku.isse.ecco.adapter.text;
 
-import at.jku.isse.ecco.adapter.text.TextReader;
 import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.testng.annotations.Test;

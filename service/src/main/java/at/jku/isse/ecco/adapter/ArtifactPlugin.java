@@ -28,7 +28,6 @@ public abstract class ArtifactPlugin {
 		List<ArtifactPlugin> plugins = new ArrayList<>();
 
 		for (final ArtifactPlugin plugin : loader) {
-			System.out.println(plugin);
 			plugins.add(plugin);
 		}
 
