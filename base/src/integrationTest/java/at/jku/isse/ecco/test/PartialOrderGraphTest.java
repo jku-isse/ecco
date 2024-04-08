@@ -1,32 +1,26 @@
 package at.jku.isse.ecco.test;
 
-import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.pog.PartialOrderGraph;
-import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
-import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraph;
-import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraphNode;
-import javafx.scene.Scene;
-import org.graphstream.graph.Graph;
+import at.jku.isse.ecco.artifact.*;
+import at.jku.isse.ecco.pog.*;
+import at.jku.isse.ecco.storage.mem.artifact.*;
+import at.jku.isse.ecco.storage.mem.pog.*;
+import javafx.scene.*;
 import org.graphstream.graph.Node;
-import org.graphstream.graph.implementations.SingleGraph;
-import org.graphstream.ui.fx_viewer.FxViewPanel;
-import org.graphstream.ui.fx_viewer.FxViewer;
-import org.graphstream.ui.javafx.FxGraphRenderer;
-import org.graphstream.ui.layout.Layout;
-import org.graphstream.ui.layout.springbox.implementations.SpringBox;
-import org.graphstream.ui.view.Viewer;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.graphstream.graph.*;
+import org.graphstream.graph.implementations.*;
+import org.graphstream.ui.fx_viewer.*;
+import org.graphstream.ui.javafx.*;
+import org.graphstream.ui.layout.*;
+import org.graphstream.ui.layout.springbox.implementations.*;
+import org.graphstream.ui.view.*;
+import org.junit.jupiter.api.*;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
+import java.io.*;
+import java.net.*;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
 public class PartialOrderGraphTest {
 
@@ -43,7 +37,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void SequenceTest5() throws IOException {
 		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s5\\1.txt"));
 		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s5\\2.txt"));
@@ -72,7 +66,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void MergeTest6() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("2"), A("3"), A("5"), A("6"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("4"), A("3"), A("5"), A("6"));
@@ -97,7 +91,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void SequenceTest4() throws IOException {
 		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s4simple\\1.txt"));
 		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s4simple\\2.txt"));
@@ -128,7 +122,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void MergeTest5() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("3"), A("4"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("3"), A("L"), A("C"), A("D"), A("L2"), A("4"));
@@ -152,7 +146,7 @@ public class PartialOrderGraphTest {
 		pog1.merge(artifacts4);
 	}
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void MergeTest4() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("3"), A("L"), A("L"), A("S"), A("4"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("3"), A("L"), A("A"), A("B"), A("L"), A("L"), A("C"), A("D"), A("L"), A("S"), A("4"));
@@ -177,7 +171,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void SequenceTest3() throws IOException {
 		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s3\\1.txt"));
 		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s3\\2.txt"));
@@ -209,7 +203,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void ComplexMergeTest() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("10"), A("3"));
@@ -261,7 +255,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void OnlyOneTest() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"));
@@ -285,7 +279,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void EmptyTest() {
 		List<Artifact.Op<?>> artifacts1 = Collections.emptyList();
 		List<Artifact.Op<?>> artifacts2 = Collections.emptyList();
@@ -309,7 +303,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void CycleTest() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("2"), A("3"), A("4"), A("5"), A("6"), A("7"), A("8"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("2"), A("3"), A("X"), A("4"), A("5"), A("6"), A("Y"), A("7"), A("8"));
@@ -334,7 +328,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void YetAnotherTest3() throws IOException {
 		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s2\\1.txt"));
 		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("s2\\2.txt"));
@@ -361,7 +355,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void YetAnotherTest2() throws IOException {
 		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("yetanothersequence\\1.txt"));
 		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("yetanothersequence\\2.txt"));
@@ -401,7 +395,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void YetAnotherTest() throws IOException {
 		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("othersequence\\1.java"));
 		List<String> lines2 = Files.readAllLines(DATA_DIR.resolve("othersequence\\2.java"));
@@ -418,7 +412,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void AnotherTest() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("2"), A("3"), A("4"), A("5"), A("6"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("2"), A("3"), A("4"), A("5"), A("7"), A("8"), A("6"));
@@ -439,7 +433,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void CloneTest() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("10"), A("3"));
@@ -460,7 +454,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog", "ppu"})
+	@Test
 	public void PPU_Test() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("A"), A("B"), A("C"), A("D"), A("E"), A("F"), A("G"), A("H"), A("I"), A("J"), A("K"), A("L"), A("M"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("A"), A("H"), A("I"), A("J"), A("K"), A("L"), A("N"), A("O"), A("F"), A("B"), A("C"), A("M"));
@@ -483,7 +477,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void SequenceGraphs_Full() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("10"), A("3"));
@@ -515,7 +509,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void MergeTest3() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("10"), A("3"));
@@ -546,7 +540,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void MergeTest2() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
 		List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("10"), A("3"));
@@ -577,7 +571,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void MergeTest1() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("8"), A("2"), A("7"));
 
@@ -589,7 +583,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void AlignTest() {
 		List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("12"), A("22"), A("3"));
 
@@ -632,7 +626,7 @@ public class PartialOrderGraphTest {
 	}
 
 
-	@Test(groups = {"unit", "base", "pog"})
+	@Test
 	public void ShowGraphAndPrintAllOrdersTest() {
 		// create pog
 		MemPartialOrderGraph pog1 = new MemPartialOrderGraph();
@@ -764,17 +758,17 @@ public class PartialOrderGraphTest {
 		return artifact;
 	}
 
-	@BeforeClass
+	@BeforeAll
 	public void setup() throws InterruptedException {
 		JavaFxLauncher.initialize();
 	}
 
-	@BeforeTest(alwaysRun = true)
+	@BeforeEach
 	public void beforeTest() {
 		System.out.println("BEFORE");
 	}
 
-	@AfterTest(alwaysRun = true)
+	@BeforeEach
 	public void afterTest() {
 		System.out.println("AFTER");
 	}

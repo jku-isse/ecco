@@ -10,10 +10,7 @@ import at.jku.isse.ecco.web.rest.EccoApplication;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotAllowedException;
-import javax.ws.rs.NotFoundException;
+import jakarta.ws.rs.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -43,7 +40,7 @@ public class OperationRepository extends AbstractRepository {
      * ein Fehler geworfen werden, der besagt, dass das Repo unter diesem Verzechnis nicht existiert
      *
      * Umformung der Plugins im Bezug auf die Namen und der Beschreibungen ist nötig, da Jackson nicht weiß, wie er aus der Klasse ein JSON Object machen soll...
-     * Error aus einem Test-Request:No serializer found for class at.jku.isse.ecco.adapter.file.FileModule and no properties discovered to create BeanSerializer (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS) (through reference chain: at.jku.isse.ecco.web.domain.model.OpenOperationResponse["artifactPlugins"]->java.util.ArrayList[0]->at.jku.isse.ecco.adapter.file.FilePlugin["module"])
+     * Error aus einem Test-Request:No serializer found for class at.jku.isse.ecco.adapter.file.FileModule and no properties discovered to create BeanSerializer (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS) (through reference chain: at.jku.isse.ecco.web.domain.model.OpenOperationResponse["artifactPlugins"]-&gt;java.util.ArrayList[0]-&gt;at.jku.isse.ecco.adapter.file.FilePlugin["module"])
      *
      *
      * @param baseDirectory Das Verzeichnis, dass zum Ecco-Repo zeigt oder zeigen soll,

@@ -828,7 +828,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
             return super.visit(node);
         final Node.Op labeledStatementNode = newNode.apply(artifactFromSimpleNode(node));
         parentEccoNode.addChild(labeledStatementNode);
-        TODO(node); // needs testing
+        //TODO(node); // needs testing
         return super.visit(node);
     }
 
@@ -1305,7 +1305,7 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
             visit((EnumDeclaration) declaration);
         else
             throw new IllegalStateException("Subclass not expected!");
-        TODO(node); // need example of this
+        //TODO(node); // need example of this
         return super.visit(node);
     }
 
@@ -1381,6 +1381,9 @@ public class Jdt2JavaAstVisitor extends SingleJDTNodeAstVisitor {
 
             Expression initializer = fragment.getInitializer();
             String name = fragment.getName().toString();
+            for(int i=0; i<fragment.getExtraDimensions(); i++){
+                name+="[]";
+            }
 
             JavaTreeArtifactData data = new JavaTreeArtifactData();
             data.setType(FIELD_DECLARATION);

@@ -1,30 +1,24 @@
 package at.jku.isse.ecco.test;
 
-import at.jku.isse.ecco.EccoException;
-import org.testng.annotations.Test;
+import at.jku.isse.ecco.*;
+import org.junit.jupiter.api.*;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.*;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.util.UUID;
+import java.nio.channels.*;
+import java.nio.file.*;
+import java.util.*;
 
 public class Tests {
 
-	@Test(groups = {"unit", "base", "uuid"})
+	@Test
 	public void UUID_Test() {
 		UUID id = UUID.randomUUID();
 		System.out.println("ID: " + id.toString());
 		System.out.println("HASH: " + id.hashCode());
 	}
 
-	@Test(groups = {"unit", "base", "pathmatcher"})
+	@Test
 	public void PathMatcher_Test() throws IOException {
 		PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:testfolder/testfile.txt");
 
@@ -35,7 +29,7 @@ public class Tests {
 		System.out.println(path2 + ": " + pm.matches(path2));
 	}
 
-	@Test(groups = {"unit", "base", "pathmatcher"})
+	@Test
 	public void PathMatcher_Test2() throws IOException {
 		PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:**");
 
@@ -47,7 +41,7 @@ public class Tests {
 	}
 
 
-	@Test(groups = {"unit", "base", "server"})
+	@Test
 	public void Server_Test() {
 		boolean shutdown = false;
 
@@ -84,7 +78,7 @@ public class Tests {
 		}
 	}
 
-	@Test(groups = {"unit", "base", "client"})
+	@Test
 	public void Client_Test() throws MalformedURLException, URISyntaxException {
 		URI uri = new URI("ecco://localhost");
 		System.out.println("URI: " + uri.getQuery());

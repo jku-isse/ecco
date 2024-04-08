@@ -134,7 +134,7 @@ public class VariantsView extends BorderPane implements EccoListener {
 
                 if (!selectedVariants.isEmpty()) {
                     for (Variant variant : selectedVariants) {
-                        VariantsView.this.service.removeVariant(variant.getConfiguration(), VariantsView.this.service);
+                        VariantsView.this.service.removeVariant(variant.getConfiguration());
                     }
 
                 }

@@ -10,7 +10,7 @@ import java.net.URI;
 public class EccoWebServer {
 
 	// Base URI the Grizzly HTTP server will listen on
-	private static final URI BASE_URI = URI.create("http://localhost:8080/rest/api");
+	private static final URI BASE_URI = URI.create("http://0.0.0.0:8081/rest/api");
 
 	public static void main(String[] args) throws IOException, InterruptedException {
 		final EccoApplication eccoApplication = new EccoApplication();

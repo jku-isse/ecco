@@ -8,19 +8,14 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 	classpath = sourceSets.test.runtimeClasspath
 }
 
-//apply plugin: 'base'
-//apply plugin: 'java'
-//apply plugin: 'war'
-//apply plugin: 'jetty'
-
 dependencies {
-	testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.30'
-	implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
-	implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.1.1'
-	implementation group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '2.31'
-	implementation group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '2.31'
-	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.31'
-	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.31'
+	testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.10'
+	implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.10'
+
+	implementation group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '3.1.5'
+	implementation group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '3.1.5'
+	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '3.1.5'
+	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '3.1.5'
 
 	implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
 
@@ -31,61 +26,3 @@ dependencies {
 	testImplementation project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-image')
 }
-
-//sourceSets {
-//	main {
-//		resources {
-//			srcDir 'src/main/webapp'
-//			exclude 'WEB-INF'
-//		}
-//	}
-//}
-
-//public class TsCompileTask extends DefaultTask {
-//
-//	@InputFiles
-//	Set<File> source = [] as Set;
-//
-//	@OutputDirectory
-//	File outputDir;
-//
-//	@TaskAction
-//	void compile() {
-//		println "Compiling TypeScript files..."
-//		project.exec {
-//			executable = "tsc"
-//			List<File> files = source.collect { File source ->
-//				if (!source.isDirectory())
-//					return source
-//				return project.fileTree(source) {
-//					include "**/*.ts"
-//				}.files
-//			}.flatten()
-//
-//			args "--outDir"
-//			args outputDir.toString()
-//			args files
-//		}
-//	}
-//}
-//
-//task tsCompile(type: TsCompileTask) {
-//	source += file("src/main/ts")
-//	outputDir = file("$buildDir/ts")
-//}
-//
-//war {
-////	into("ts") {
-////		from tsCompile.outputs
-////	}
-//}
-//
-//jar {
-////	into("web") {
-////		from "src/main/webapp"
-////		exclude 'WEB-INF'
-////	}
-////	into("web/ts") {
-////		from tsCompile.outputs
-////	}
-//}

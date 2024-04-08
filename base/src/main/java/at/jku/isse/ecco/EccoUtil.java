@@ -90,11 +90,11 @@ public class EccoUtil {
 			artifact2.setSequenceNumber(artifact.getSequenceNumber());
 
 			// sequence graph
-			if (artifact.getSequenceGraph() != null && firstMatch) {
-				PartialOrderGraph.Op sequenceGraph = artifact.getSequenceGraph();
+			if (artifact.getPartialOrderGraph() != null && firstMatch) {
+				PartialOrderGraph.Op sequenceGraph = artifact.getPartialOrderGraph();
 				PartialOrderGraph.Op sequenceGraph2 = artifact2.createSequenceGraph();
 
-				artifact2.setSequenceGraph(sequenceGraph2);
+				artifact2.setPartialOrderGraph(sequenceGraph2);
 
 				// copy sequence graph
 				sequenceGraph2.copy(sequenceGraph);
@@ -128,7 +128,6 @@ public class EccoUtil {
 		for (Node.Op childNode : node.getChildren()) {
 			Node.Op childNode2 = EccoUtil.deepCopyTreeRec(childNode, entityFactory);
 			node2.addChild(childNode2);
-			//childNode2.setParent(node2); // not necessary
 		}
 
 		return node2;

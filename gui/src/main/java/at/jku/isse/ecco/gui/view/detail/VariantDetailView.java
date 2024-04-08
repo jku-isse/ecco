@@ -76,7 +76,7 @@ public class VariantDetailView extends BorderPane {
 						Platform.runLater(() -> {
 							String configuration = variantConfiguration.getText();
 							Configuration config = VariantDetailView.this.service.parseConfigurationString(configuration);
-							VariantDetailView.this.service.removeVariant(config,VariantDetailView.this.service);
+							VariantDetailView.this.service.removeVariant(config);
 						});
 						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;

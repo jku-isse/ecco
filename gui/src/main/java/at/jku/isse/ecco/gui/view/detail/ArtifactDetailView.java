@@ -4,7 +4,7 @@ import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfo;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.gui.view.ArtifactsView;
+import at.jku.isse.ecco.gui.view.artifacts.AssociationInfoImpl;
 import at.jku.isse.ecco.gui.view.graph.PartialOrderGraphView;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
@@ -82,11 +82,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 
 	private void updatePartialOrderGraphTab(Node node) {
 		// if node is an ordered node display its sequence graph
-		if (node.getArtifact() != null && node.getArtifact().getSequenceGraph() != null) {
+		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
 			if (null == partialOrderGraphView) { partialOrderGraphView = new PartialOrderGraphView(); }
 
 			Thread th = new Thread(() -> {
-				PartialOrderGraph pog = node.getArtifact().getSequenceGraph();
+				PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
 				Platform.runLater(() -> partialOrderGraphView.showGraph(pog));
 			});
 			th.start();
@@ -234,7 +234,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		}
 	}
 
-	public void setAssociationInfo(Collection<ArtifactsView.AssociationInfoImpl> associationInfos) {
+	public void setAssociationInfo(Collection<AssociationInfoImpl> associationInfos) {
 		this.associationInfos = associationInfos == null ? null :
 				associationInfos.stream()
 				.map(aii -> (AssociationInfo)aii)

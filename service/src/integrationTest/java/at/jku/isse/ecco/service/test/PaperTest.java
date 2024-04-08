@@ -5,9 +5,8 @@ import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -20,7 +19,7 @@ public class PaperTest {
 	private Path inputDir = Paths.get("C:\\Users\\user\\Bitbucket\\vcs_features_paper\\journal_extension\\illustrations\\ecco");
 
 
-	@Test(groups = {"integration", "base", "service", "bugzilla"})
+	@Test
 	public void Paper_Test() throws IOException {
 
 		// create new repository
@@ -90,12 +89,12 @@ public class PaperTest {
 	}
 
 
-	@BeforeTest(alwaysRun = true)
+	@BeforeEach
 	public void beforeTest() throws IOException {
 		System.out.println("BEFORE");
 	}
 
-	@AfterTest(alwaysRun = true)
+	@AfterEach
 	public void afterTest() {
 		System.out.println("AFTER");
 	}

@@ -1,14 +1,13 @@
 package at.jku.isse.ecco.adapter.text.test;
 
-import at.jku.isse.ecco.adapter.text.TextReader;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
-import at.jku.isse.ecco.tree.Node;
-import org.testng.annotations.Test;
+import at.jku.isse.ecco.adapter.text.*;
+import at.jku.isse.ecco.storage.mem.dao.*;
+import at.jku.isse.ecco.tree.*;
+import org.junit.jupiter.api.*;
 
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Set;
+import java.net.*;
+import java.nio.file.*;
+import java.util.*;
 
 public class AdapterTest {
 
@@ -27,7 +26,7 @@ public class AdapterTest {
 	private static final Path BASE_DIR = DATA_DIR.resolve("input");
 	private static final Path[] FILES = new Path[]{Paths.get("file.txt")};
 
-	@Test(groups = {"integration", "java"})
+	@Test
 	public void Java_Adapter_Test() {
 		TextReader reader = new TextReader(new MemEntityFactory());
 

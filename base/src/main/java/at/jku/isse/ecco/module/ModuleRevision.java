@@ -15,7 +15,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  */
 public interface ModuleRevision extends Persistable {
-
 	/**
 	 * Returns a direct reference to the instance of the array of positive feature revisions in this module revision.
 	 * DO NOT MODIFY THIS ARRAY!!!
@@ -23,7 +22,7 @@ public interface ModuleRevision extends Persistable {
 	 *
 	 * @return The array of positive feature revisions in this module revision.
 	 */
-	public FeatureRevision[] getPos();
+	FeatureRevision[] getPos();
 
 	/**
 	 * Returns a direct reference to the instance of the array of negative features in this module revision.
@@ -32,10 +31,10 @@ public interface ModuleRevision extends Persistable {
 	 *
 	 * @return The array of negative features in this module revision.
 	 */
-	public Feature[] getNeg();
+	Feature[] getNeg();
 
 
-	public default void verify(FeatureRevision[] pos, Feature[] neg) {
+	default void verify(FeatureRevision[] pos, Feature[] neg) {
 		checkNotNull(pos);
 		checkNotNull(neg);
 
@@ -67,19 +66,18 @@ public interface ModuleRevision extends Persistable {
 	}
 
 
-	public int getCount();
+	int getCount();
 
-	public void setCount(int count);
+	void setCount(int count);
 
-	public void incCount();
+	void incCount();
 
-	public void incCount(int count);
+	void incCount(int count);
+
+	Module getModule();
 
 
-	public Module getModule();
-
-
-	public default int getOrder() {
+	default int getOrder() {
 		return this.getPos().length + this.getNeg().length - 1;
 	}
 
@@ -90,7 +88,7 @@ public interface ModuleRevision extends Persistable {
 	 * @param configuration The configuration to check against.
 	 * @return True if this module is contained (i.e. holds) in the given configuration.
 	 */
-	public default boolean holds(Configuration configuration) {
+	default boolean holds(Configuration configuration) {
 		// check if all positive features revisiosn of the module are contained in the configuration
 		for (FeatureRevision featureRevision : this.getPos()) {
 			boolean found = false;
@@ -113,7 +111,7 @@ public interface ModuleRevision extends Persistable {
 		return true;
 	}
 
-	public default boolean implies(ModuleRevision other) {
+	default boolean implies(ModuleRevision other) {
 		// check that all positive features of this are contained in other
 		for (FeatureRevision thisFeatureRevision : this.getPos()) {
 			boolean found = false;
@@ -139,13 +137,13 @@ public interface ModuleRevision extends Persistable {
 
 
 	@Override
-	public int hashCode();
+	int hashCode();
 
 	@Override
-	public boolean equals(Object object);
+	boolean equals(Object object);
 
 
-	public default String getModuleRevisionString() {
+	default String getModuleRevisionString() {
 		String moduleRevisionString = Arrays.stream(this.getPos()).map(FeatureRevision::toString).collect(Collectors.joining(", "));
 		if (this.getNeg().length > 0)
 			moduleRevisionString += ", " + Arrays.stream(this.getNeg()).map(feature -> "!" + feature.toString()).collect(Collectors.joining(", "));
@@ -154,6 +152,6 @@ public interface ModuleRevision extends Persistable {
 	}
 
 	@Override
-	public String toString();
+	String toString();
 
 }
