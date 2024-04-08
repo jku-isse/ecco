@@ -25,17 +25,18 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
+	runtimeOnly project(':ecco-adapter-typescript')
 	runtimeOnly project(':ecco-adapter-golang')
 	runtimeOnly project(':ecco-adapter-python')
-
+  
 	testRuntimeOnly project(':ecco-adapter-golang')
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
 	testRuntimeOnly project(':ecco-adapter-image')
 	testRuntimeOnly project(':ecco-adapter-challenge')
 	testRuntimeOnly project(':ecco-adapter-cpp')
+	testRuntimeOnly project(':ecco-adapter-typescript')
 	testRuntimeOnly project(':ecco-adapter-runtime')
-}
 
 ospackage {
 	summary 'GUI (Graphical User Interface) for ECCO.'
