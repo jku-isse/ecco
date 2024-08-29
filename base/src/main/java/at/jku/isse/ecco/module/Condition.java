@@ -2,44 +2,40 @@ package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
+import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
+import org.logicng.io.parsers.ParserException;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- *
- */
+
 public interface Condition extends Persistable {
 
-	public enum TYPE {
+	enum TYPE {
 		AND, OR
 	}
 
-	public TYPE getType();
+	TYPE getType();
 
-	public void setType(TYPE type);
+	void setType(TYPE type);
 
+	Map<Module, Collection<ModuleRevision>> getModules();
 
-	public Map<Module, Collection<ModuleRevision>> getModules();
-
-	public default void addModule(Module module) {
+	default void addModule(Module module) {
 		this.getModules().computeIfAbsent(module, k -> new ArrayList<>());
 	}
 
-	public default void addModuleRevision(ModuleRevision moduleRevision) {
+	default void addModuleRevision(ModuleRevision moduleRevision) {
 		Collection<ModuleRevision> moduleRevisions = this.getModules().computeIfAbsent(moduleRevision.getModule(), k -> new ArrayList<>());
 		moduleRevisions.add(moduleRevision);
 	}
 
-
-	public default boolean contains(Module module) {
+	default boolean contains(Module module) {
 		return this.getModules().containsKey(module);
 	}
 
-	public default boolean contains(ModuleRevision moduleRevision) {
+	default boolean contains(ModuleRevision moduleRevision) {
 		Collection<ModuleRevision> moduleRevisions = this.getModules().get(moduleRevision.getModule());
 		if (moduleRevisions == null)
 			return false;
@@ -54,7 +50,7 @@ public interface Condition extends Persistable {
 	 * @param configuration The configuration against which the presence condition should be checked.
 	 * @return True if the presence condition holds for configuration, false otherwise.
 	 */
-	public default boolean holds(Configuration configuration) {
+	default boolean holds(Configuration configuration) {
 		for (Map.Entry<Module, Collection<ModuleRevision>> entry : this.getModules().entrySet()) {
 			// if the module holds check if also a concrete revision holds
 			if (entry.getKey().holds(configuration) && entry.getValue() != null) {
@@ -67,6 +63,41 @@ public interface Condition extends Persistable {
 		return false;
 	}
 
+	default String toLogicString(){
+		// Condition is true if one module-revision-formula is true for every module
+		FormulaFactory formulaFactory = new FormulaFactory();
+		Map<Module, Collection<ModuleRevision>> moduleMap = this.getModules();
+
+		// if a module-revision holds, the respective module holds as well
+		// and(or(all module-revision-conditions related to the same module))
+		Collection<Formula> moduleFormulas = new LinkedList<>();
+		for (Collection<ModuleRevision> moduleRevisions : moduleMap.values()) {
+
+			Collection<Formula> moduleRevisionFormulas = moduleRevisions.stream()
+					.map(ModuleRevision::getConditionString)
+					.map(s -> this.parseString(formulaFactory, s))
+					.collect(Collectors.toList());
+			moduleFormulas.add(formulaFactory.or(moduleRevisionFormulas));
+		}
+
+		Formula conditionFormula;
+		if (this.getType().equals(TYPE.AND)){
+			conditionFormula = formulaFactory.and(moduleFormulas);
+		} else {
+			conditionFormula = formulaFactory.or(moduleFormulas);
+		}
+
+		return conditionFormula.toString();
+	}
+
+	private Formula parseString(FormulaFactory formulaFactory, String string){
+		try{
+			return formulaFactory.parse(string);
+		} catch (ParserException e){
+			throw new RuntimeException("Formula-String in module-revision could not be parsed: " + e.getMessage());
+		}
+	}
+
 	/**
 	 * Checks if this condition implies other condition.
 	 * This means every module in this must be implied by at least one module in other.
@@ -74,7 +105,7 @@ public interface Condition extends Persistable {
 	 * @param other The other condition.
 	 * @return True if this condition implies the other condition, false otherwise.
 	 */
-	public default boolean implies(Condition other) {
+	default boolean implies(Condition other) {
 		for (Map.Entry<Module, Collection<ModuleRevision>> otherEntry : other.getModules().entrySet()) {
 			for (ModuleRevision otherModuleRevision : otherEntry.getValue()) {
 				boolean implied = false;
@@ -100,30 +131,30 @@ public interface Condition extends Persistable {
 	}
 
 
-	public default String getModuleConditionString() {
+	default String getModuleConditionString() {
 		return this.getModules().keySet().stream().sorted(Comparator.comparingInt(Module::getOrder)).map(Module::toString).collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
-	public default String getModuleRevisionConditionString() {
+	default String getModuleRevisionConditionString() {
 		return this.getModules().entrySet().stream().sorted(Comparator.comparingInt(e -> e.getKey().getOrder())).map(entry -> "[" + entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining("/")) + "]").collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
-	public default String getSimpleModuleConditionString() {
+	default String getSimpleModuleConditionString() {
 		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
 		int minOrder = modules.isEmpty() ? 0 : modules.keySet().stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
 		return modules.keySet().stream().filter(module -> module.getOrder() <= minOrder).map(Module::toString).collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
-	public default String getSimpleModuleRevisionConditionString() {
+	default String getSimpleModuleRevisionConditionString() {
 		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
 		int minOrder = modules.isEmpty() ? 0 : modules.keySet().stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
 		return modules.entrySet().stream().filter(entry -> entry.getKey().getOrder() <= minOrder).map(entry -> "[" + entry.getValue().stream().map(ModuleRevision::toString).collect(Collectors.joining(",")) + "]").collect(Collectors.joining(" " + this.getType().toString() + " "));
 	}
 
 	@Override
-	public String toString();
+	String toString();
 	
-	public default String getPreprocessorConditionString() {
+	default String getPreprocessorConditionString() {
 		Map<Module, Collection<ModuleRevision>> modules = this.getModules();
 		return modules.keySet().stream().map(Module::getPreprocessorModuleString).collect(Collectors.joining((this.getType() == TYPE.AND ? " && " : " || ")));
 	}

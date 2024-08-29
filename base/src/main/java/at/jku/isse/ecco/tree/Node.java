@@ -3,12 +3,11 @@ package at.jku.isse.ecco.tree;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.util.Location;
 import at.jku.isse.ecco.util.Trees;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -37,8 +36,9 @@ public interface Node extends Persistable {
 
 	public default void traverse(NodeVisitor visitor) {
 		visitor.visit(this);
-
-		for (Node child : this.getChildren()) {
+		List<? extends Node> children = this.getChildren();
+		if (children == null) { return; }
+		for (Node child : children) {
 			child.traverse(visitor);
 		}
 	}
@@ -82,6 +82,14 @@ public interface Node extends Persistable {
 	 * @return The parent.
 	 */
 	public Node getParent();
+
+	default Node getRoot(){
+		if (this.getParent() == null){
+			return this;
+		} else {
+			return this.getParent().getRoot();
+		}
+	}
 
 	/**
 	 * Returns whether this node is unique or not.
@@ -251,6 +259,8 @@ public interface Node extends Persistable {
 		@Override
 		public List<? extends Op> getChildren();
 
+		void setChildren(List<Op> children);
+
 		/**
 		 * Adds a new child node to this node.
 		 *
@@ -264,6 +274,8 @@ public interface Node extends Persistable {
 		 * @param children List of child nodes to be added.
 		 */
 		public void addChildren(Op... children);
+
+		void addChildWithoutNumberUpdate(Op child);
 
 		/**
 		 * Removes the given child from the node.
@@ -340,6 +352,75 @@ public interface Node extends Persistable {
 			Trees.checkConsistency(this);
 		}
 
-	}
+		default Op copyTree(){
+			Op copy = copyTreeDownwards();
+			if (!(this instanceof RootNode)) {
+				Op parentCopy = copyTreeUpwards();
+				if (!(parentCopy == null)){ parentCopy.addChild(copy); }
+			}
+			return copy;
+		}
 
+		Op copySingleNode();
+
+		/**
+		 * Create a copy of the node that also includes a copy of the feature trace.
+		 * @return
+		 */
+		Op copySingleNodeCompletely();
+
+		default Op createCopyWithStolenTrace(){
+			Op copy = this.copySingleNode();
+			FeatureTrace featureTrace = this.getFeatureTrace();
+			copy.setFeatureTrace(featureTrace);
+			featureTrace.setNode(copy);
+			this.removeFeatureTrace();
+			return copy;
+		}
+
+		default Op copyTreeDownwards(){
+			// copy this node and all descendants
+			Op node = this.copySingleNode();
+			for (Op child : this.getChildren()){
+				node.addChild(child.copyTreeDownwards());
+			}
+			return node;
+		}
+
+		default Op copyTreeUpwards(){
+			// copy the parent of this node as well as all ancestors and siblings
+			Op parent = this.getParent();
+			if (parent == null) { return parent; }
+			Op parentCopy = parent.copySingleNode();
+			for (Node.Op node : parent.getChildren()){
+				if (node != this){
+					parentCopy.addChild(node.copySingleNode());
+				}
+			}
+			if(parent instanceof RootNode){ return parentCopy; }
+			Op grandParentCopy = parent.copyTreeUpwards();
+			if (!(grandParentCopy == null)){ grandParentCopy.addChild(parentCopy); }
+			return parentCopy;
+		}
+
+		default Node.Op createPathSkeleton(){
+			return Trees.createSkeletonPath(this);
+		}
+
+		Node.Op getEqualChild(Node.Op template);
+
+		FeatureTrace getFeatureTrace();
+
+		void setFeatureTrace(FeatureTrace featureTrace);
+
+		void removeFeatureTrace();
+
+		Location getLocation();
+
+		void setLocation(Location location);
+
+		int getNumberOfChildren();
+
+		void updateNumberOfChildren();
+	}
 }

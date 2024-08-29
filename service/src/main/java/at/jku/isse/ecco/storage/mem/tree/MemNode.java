@@ -3,12 +3,13 @@ package at.jku.isse.ecco.storage.mem.tree;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Location;
 import org.eclipse.collections.impl.factory.Maps;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -19,12 +20,86 @@ public class MemNode implements Node, Node.Op {
 
 	private boolean unique = true;
 
-	private final List<Op> children = new ArrayList<>();
+	private transient List<Op> children = new ArrayList<>();
+
+	private Integer numberOfChildren = 0;
 
 	private Artifact.Op<?> artifact = null;
 
-	private Op parent = null;
+	private transient Op parent = null;
 
+	private FeatureTrace featureTrace;
+
+	private Location location;
+
+	public Op copySingleNode(){
+		Node.Op newNode = new MemNode(this.artifact);
+		newNode.setUnique(this.unique);
+		newNode.setLocation(this.location);
+		return newNode;
+	}
+
+	@Override
+	public Op copySingleNodeCompletely() {
+		MemNode.Op newNode = new MemNode(this.artifact);
+		newNode.setLocation(this.location);
+		if (this.featureTrace != null) {
+			newNode.getFeatureTrace().setUserCondition(this.featureTrace.getUserConditionString());
+			newNode.getFeatureTrace().setDiffCondition(this.featureTrace.getDiffConditionString());
+		}
+		return newNode;
+	}
+
+	@Override
+	public Op getEqualChild(Op template) {
+		Collection<Node.Op> children = this.getChildren();
+		for (Node.Op child : children){
+			if (child.getArtifact().equals(template.getArtifact())){
+				return child;
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public void updateNumberOfChildren(){
+		this.numberOfChildren = this.children.size();
+	}
+
+	@Override
+	public FeatureTrace getFeatureTrace() {
+		return this.featureTrace;
+	}
+
+	@Override
+	public void setFeatureTrace(FeatureTrace featureTrace) {
+		this.featureTrace = featureTrace;
+	}
+
+	@Override
+	public void removeFeatureTrace() {
+		this.featureTrace = new MemFeatureTrace(this);
+	}
+
+	@Override
+	public Location getLocation() {
+		return this.location;
+	}
+
+	@Override
+	public void setLocation(Location location){
+		this.location = location;
+	}
+
+	@Override
+	public int getNumberOfChildren() {
+		if (this.children == null && this.numberOfChildren == null){
+			return 0;
+		} else if (this.numberOfChildren == null){
+			return 0;
+		}
+		return this.numberOfChildren;
+	}
 
 	@Deprecated
 	public MemNode() {
@@ -32,6 +107,7 @@ public class MemNode implements Node, Node.Op {
 
 	public MemNode(Artifact.Op<?> artifact) {
 		this.artifact = artifact;
+		this.featureTrace = new MemFeatureTrace(this);
 	}
 
 
@@ -92,7 +168,13 @@ public class MemNode implements Node, Node.Op {
 
 	@Override
 	public void addChild(Op child) {
+		this.addChildWithoutNumberUpdate(child);
+		this.numberOfChildren = this.children.size();
+	}
+
+	public void addChildWithoutNumberUpdate(Op child){
 		checkNotNull(child);
+		if (this.children == null){ this.children = new ArrayList<>(); }
 
 		if (this.getArtifact() != null && !this.getArtifact().isOrdered() && this.children.contains(child))
 			throw new EccoException("An equivalent child is already contained. If multiple equivalent children are allowed use an ordered node.");
@@ -123,6 +205,10 @@ public class MemNode implements Node, Node.Op {
 		return this.children;
 	}
 
+	@Override
+	public void setChildren(List<Op> children) {
+		this.children = children;
+	}
 
 	@Override
 	public int hashCode() {

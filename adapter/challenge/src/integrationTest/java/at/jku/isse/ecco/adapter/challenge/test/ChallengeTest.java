@@ -20,39 +20,55 @@ import java.util.stream.*;
 
 public class ChallengeTest {
 
-	// set this path to where the argouml challenge benchmark is located
 	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");
-	//private static final Path BENCHMARK_DIR = Paths.get("D:\\ArgoUMLSPLBenchmark");
-
-	// set this path to where the results should be stored
 	private static final Path OUTPUT_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\results");
-	//private static final Path OUTPUT_DIR = Paths.get("D:\\results");
+	// set this path to a concrete scenario if you only want to run a specific one
+	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioAllVariants");
+	// set this path to where the results for a specific scenario should go
+	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("ScenarioAllVariants");
+
+	// boolean of whether to include of-combination of modules (just use and-combination)
+	private static final boolean NO_OR = false;
+	private static final boolean USE_ONLY_MIN_ORDER = true;
+	private static final int MAX_ORDER = 1;
+
+	@BeforeEach
+	public void beforeTest() {
+		System.out.println("BEFORE");
+
+		Logger logger = Logger.getLogger("at.jku.isse.ecco");
+		logger.setLevel(Level.ALL);
+		for (Handler handler : logger.getHandlers())
+			logger.removeHandler(handler);
+		ConsoleHandler handler = new ConsoleHandler();
+		handler.setLevel(Level.ALL);
+		handler.setFormatter(new SimpleFormatter());
+		logger.addHandler(handler);
+		logger.setUseParentHandlers(false);
+		logger.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
+	}
+
+	@AfterEach
+	public void afterTest() {
+		System.out.println("AFTER");
+	}
 
 	/**
 	 * Creates repository and computes results and stores them in OUTPUT_DIR for every scenario in BENCHMARK_DIR.
 	 */
 	@Test
 	public void Do_All_Scenarios() throws IOException {
-		// collect all scenario folders
 		List<Path> scenarioDirs = Files.list(BENCHMARK_DIR.resolve("scenarios")).filter(path -> Files.isDirectory(path)).collect(Collectors.toList());
 
 		for (Path scenarioDir : scenarioDirs) {
 			Path scenarioOutputDir = OUTPUT_DIR.resolve(scenarioDir.getFileName());
 			Files.createDirectory(scenarioOutputDir);
-			// create the repository for the scenario
 			this.createRepo(scenarioDir, scenarioOutputDir);
-			// compute the results for the scenario
 			this.computeResults(scenarioOutputDir);
-			// compute the metrics from the results
-			MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), scenarioOutputDir);
+			// TODO: restore old metrics-calculation
+			// MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), scenarioOutputDir);
 		}
 	}
-
-
-	// set this path to a concrete scenario if you only want to run a specific one
-	private static final Path SCENARIO_DIR = BENCHMARK_DIR.resolve("scenarios\\ScenarioAllVariants");
-	// set this path to where the results for a specific scenario should go
-	private static final Path SCENARIO_OUTPUT_DIR = OUTPUT_DIR.resolve("ScenarioAllVariants");
 
 	/**
 	 * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.
@@ -72,35 +88,13 @@ public class ChallengeTest {
 
 	@Test
 	public void Compute_Metrics() {
-		MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), SCENARIO_OUTPUT_DIR);
+		// TODO: restore old metrics-calculation
+		// MetricsCalculation.computeMetrics(BENCHMARK_DIR.resolve("groundTruth"), SCENARIO_OUTPUT_DIR);
 	}
-
-
-	@BeforeEach
-	public void beforeTest() {
-		System.out.println("BEFORE");
-
-		// configure logger
-		Logger logger = Logger.getLogger("at.jku.isse.ecco");
-		logger.setLevel(Level.ALL);
-		for (Handler handler : logger.getHandlers())
-			logger.removeHandler(handler);
-		ConsoleHandler handler = new ConsoleHandler();
-		handler.setLevel(Level.ALL);
-		handler.setFormatter(new SimpleFormatter());
-		logger.addHandler(handler);
-		logger.setUseParentHandlers(false);
-		logger.info("Logging to: " + Arrays.stream(logger.getHandlers()).map(Object::toString).collect(Collectors.joining(", ")));
-	}
-
-	@AfterEach
-	public void afterTest() {
-		System.out.println("AFTER");
-	}
-
 
 	private void createRepo(Path scenarioDir, Path scenarioOutputDir) throws IOException {
-		// create new repository
+		// creates repo and commit all variants
+
 		EccoService service = new EccoService();
 		service.setRepositoryDir(scenarioOutputDir.resolve("repo"));
 		service.init();
@@ -114,13 +108,6 @@ public class ChallengeTest {
 		int counter = 0;
 		Collection<Path> variantsDirs = Files.list(variantsDir).collect(Collectors.toList());
 		for (Path variantDir : variantsDirs) {
-//			// this is to avoid overheating of my laptop for large scenarios
-//			try {
-//				Thread.sleep(20000);
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-
 			long before = System.currentTimeMillis();
 
 			System.out.println("COUNT: " + counter);
@@ -146,17 +133,11 @@ public class ChallengeTest {
 			System.out.println("TIME: " + runtime + "ms");
 		}
 
-		// close repository
 		service.close();
 		System.out.println("Repository closed.");
 
 		Files.write(scenarioOutputDir.resolve("time.txt"), runtimes.stream().map(Object::toString).collect(Collectors.toList()));
 	}
-
-
-	private static final boolean NO_OR = false;
-	private static final boolean USE_ONLY_MIN_ORDER = true;
-	private static final int MAX_ORDER = 1;
 
 	private void computeResults(Path scenarioOutputDir) throws IOException {
 		// open repository
@@ -165,6 +146,8 @@ public class ChallengeTest {
 		service.open();
 		System.out.println("Repository opened.");
 
+		// outer map is filename + inner map
+		// inner map is result string + boolean (is result a refinement?)
 		Map<String, Map<String, Boolean>> results = new HashMap<>();
 
 		// for every association create results file with name of minimal to string
@@ -181,11 +164,13 @@ public class ChallengeTest {
 			System.out.println("LONG: " + condition.getModuleConditionString());
 			System.out.println("SHORT: " + condition.getSimpleModuleConditionString());
 
-			// compute modules
+			// get all min-modules of association with order <= minOrder
 			Collection<Module> modules = condition.getModules().keySet();
+			// I think minOrder was introduced for the case that there are no modules left if you enforce MAX_ORDERS
 			int minOrder = modules.isEmpty() ? 0 : modules.stream().min((m1, m2) -> m1.getOrder() - m2.getOrder()).get().getOrder();
 			Collection<Module> minModules = modules.stream().filter(module -> module.getOrder() <= minOrder).collect(Collectors.toList());
 
+			// exclude the association if or-conditions should be ignored
 			if (NO_OR && condition.getType() == Condition.TYPE.OR && minModules.size() > 1)
 				continue;
 
@@ -363,12 +348,10 @@ public class ChallengeTest {
 			}
 		}
 
-
 		for (Node childNode : node.getChildren()) {
 			this.computeString(childNode, sb, lines, currentClassName);
 		}
 	}
-
 
 	@Test
 	public void Analyze_Differences() throws IOException {
@@ -416,6 +399,4 @@ public class ChallengeTest {
 			onlyGTEntries.forEach(System.out::println);
 		}
 	}
-
-
 }

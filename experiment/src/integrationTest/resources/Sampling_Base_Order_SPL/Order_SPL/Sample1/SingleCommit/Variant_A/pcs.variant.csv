@@ -1,0 +1,2 @@
+Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
+main.c;True;FEATUREA;FEATUREA;artifact;2;2

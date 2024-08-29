@@ -5,7 +5,9 @@ import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.counter.MemAssociationCounter;
+import at.jku.isse.ecco.storage.mem.featuretrace.DiffConditionVisitor;
 import at.jku.isse.ecco.storage.mem.module.MemCondition;
+import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**
@@ -78,6 +80,19 @@ public class MemAssociation implements Association, Association.Op {
 	@Override
 	public void setVisible(boolean visible) {
 		this.visible = visible;
+	}
+
+	@Override
+	public Node.Op getTraceTree() {
+		Condition condition = this.computeCondition();
+		String conditionFormulaString = condition.toLogicString();
+		Node.Op treeCopy = this.getRootNode().copyTree();
+		treeCopy.setUnique(false);
+
+		DiffConditionVisitor visitor = new DiffConditionVisitor(conditionFormulaString);
+		treeCopy.traverse(visitor);
+
+		return treeCopy;
 	}
 
 

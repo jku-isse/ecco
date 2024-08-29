@@ -1,0 +1,15 @@
+Path;File Condition;Block Condition;Presence Condition;start;end
+argouml-app\src\org\argouml\application\Main.java;True;True;True;1;992
+argouml-app\src\org\argouml\application\Main.java;True;COGNITIVE;COGNITIVE;56;63
+argouml-app\src\org\argouml\application\Main.java;True;ACTIVITYDIAGRAM;ACTIVITYDIAGRAM;84;87
+argouml-app\src\org\argouml\application\Main.java;True;DEPLOYMENTDIAGRAM;DEPLOYMENTDIAGRAM;92;95
+argouml-app\src\org\argouml\application\Main.java;True;SEQUENCEDIAGRAM;SEQUENCEDIAGRAM;98;101
+argouml-app\src\org\argouml\application\Main.java;True;COGNITIVE;COGNITIVE;232;237
+argouml-app\src\org\argouml\application\Main.java;True;COGNITIVE;COGNITIVE;296;310
+argouml-app\src\org\argouml\application\Main.java;True;ACTIVITYDIAGRAM;ACTIVITYDIAGRAM;427;430
+argouml-app\src\org\argouml\application\Main.java;True;DEPLOYMENTDIAGRAM;DEPLOYMENTDIAGRAM;435;438
+argouml-app\src\org\argouml\application\Main.java;True;SEQUENCEDIAGRAM;SEQUENCEDIAGRAM;441;444
+argouml-app\src\org\argouml\application\Main.java;True;COGNITIVE;COGNITIVE;453;457
+argouml-app\src\org\argouml\application\Main.java;True;COGNITIVE;COGNITIVE;501;505
+argouml-app\src\org\argouml\application\Main.java;True;COGNITIVE;COGNITIVE;543;547
+argouml-app\src\org\argouml\application\Main.java;True;COGNITIVE;COGNITIVE;850;852

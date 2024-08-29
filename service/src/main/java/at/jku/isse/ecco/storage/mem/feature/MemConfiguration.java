@@ -17,6 +17,8 @@ public class MemConfiguration implements Configuration {
 
 	private FeatureRevision[] featureRevisions;
 
+	private String originalConfigString;
+
 	public MemConfiguration(FeatureRevision[] featureRevisions) {
 		checkNotNull(featureRevisions);
 		this.featureRevisions = featureRevisions;
@@ -30,6 +32,16 @@ public class MemConfiguration implements Configuration {
 	@Override
 	public Configuration getConfiguration() {
 		return this;
+	}
+
+	@Override
+	public void setOriginalConfigString(String originalConfigString) {
+		this.originalConfigString = originalConfigString;
+	}
+
+	@Override
+	public String getOriginalConfigString() {
+		return this.originalConfigString;
 	}
 
 	@Override

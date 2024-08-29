@@ -2,6 +2,7 @@ package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.adapter.text.LineArtifactData;
 import at.jku.isse.ecco.core.Checkout;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashSet;
 
 public class PaperTest {
 
@@ -69,7 +72,8 @@ public class PaperTest {
 
 	private String printRepository(Repository repo) {
 		Repository.Op repoOp = (Repository.Op) repo;
-		Checkout checkout = repoOp.compose(repoOp.getAssociations(), true);
+		Collection<FeatureTrace> emptyCollection = new HashSet<>();
+		Checkout checkout = repoOp.compose(repoOp.getAssociations(), true, emptyCollection, emptyCollection);
 		StringBuilder sb = new StringBuilder();
 		sb.append("-------------\n");
 		this.visitTree(checkout.getNode(), sb);

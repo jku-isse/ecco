@@ -165,7 +165,6 @@ public interface PartialOrderGraph extends Persistable {
 
 			@Override
 			public int hashCode() {
-
 				return Objects.hash(counters);
 			}
 		}
@@ -187,6 +186,8 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
+		//private
+		Cell ZERO_CELL = new Cell();
 
 		//private
 		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
@@ -198,17 +199,261 @@ public interface PartialOrderGraph extends Persistable {
 			leftState.counters.put(this.getTail(), 0);
 			State rightState = new State();
 			rightState.counters.put(other.getTail(), 0);
-			this.alignMemoizedBacktrackingRec(leftState, rightState, matrix);
-			//System.out.println(matrix.size());
-			IntObjectMap<Node.Op> result = this.backtrackingRec(leftState, rightState, matrix);
+			//this.alignMemoizedBacktrackingRec(leftState, rightState, matrix);
+			this.alignMemoizedBacktrackingIter(leftState, rightState, matrix);
+
+			//IntObjectMap<Node.Op> result = this.backtrackingRec(leftState, rightState, matrix);
+			IntObjectMap<Node.Op> result = this.backtrackingIter(leftState, rightState, matrix);
 
 			// set sequence number of matched artifacts
 			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
 			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
 		}
 
-		//private
-		Cell ZERO_CELL = new Cell();
+
+		// (ugly) transformation from recursive method to iterative method due to StackOverflows
+		class AlignMemoizedBacktrackingState {
+			public int position;
+
+			// method variables
+			public State leftState;
+			public State rightState;
+			public Pair pair;
+			public Cell value;
+			public State newLeftState;
+			public State newRightState;
+			public boolean matchFound;
+			public Map.Entry<Node.Op, Integer> rightEntry;
+			public Node.Op rightNode;
+			public Map.Entry<Node.Op, Integer> leftEntry;
+			public Node.Op leftNode;
+			public Artifact.Op leftArtifact;
+			public Artifact.Op rightArtifact;
+			public Cell previousValue;
+			public Cell localBest;
+			public Set<Map.Entry<Node.Op, Integer>> loop3Todo;
+			public Set<Map.Entry<Node.Op, Integer>> loop4Todo;
+
+			public AlignMemoizedBacktrackingState(State leftState, State rightState){
+				this.leftState = leftState;
+				this.rightState = rightState;
+				this.position = 0;
+			}
+		}
+
+		default Cell alignMemoizedBacktrackingIter(State leftState, State rightState, Map<Pair, Cell> matrix) {
+			// transformation of the recursive method to an iterative method (because of stack overflow)
+			// basically, the method imitates what the compiler would do in the stack
+			// a loop represents a method call
+			AlignMemoizedBacktrackingState methodState = new AlignMemoizedBacktrackingState(leftState, rightState);
+			Stack<AlignMemoizedBacktrackingState> methodStack = new Stack<>();
+			methodStack.push(methodState);
+			Cell lastResult = null;
+			while (!methodStack.empty()) {
+				methodState = methodStack.pop();
+
+				if (methodState.position == 0){
+					methodState.pair = new Pair(methodState.leftState, methodState.rightState);
+					methodState.value = matrix.get(methodState.pair);
+					if (methodState.value == null) {
+						// compute value
+						if (methodState.leftState.isEnd() || methodState.rightState.isEnd()) {
+							// if we reached the head of either of the two pogs
+							methodState.value = this.ZERO_CELL;
+						} else if (methodState.leftState.isStart() && methodState.rightState.isStart()) {
+							// if we are at the tail of both of the two pogs
+							methodState.newLeftState = new State(methodState.leftState);
+							for (Node.Op node : methodState.leftState.counters.keySet())
+								methodState.newLeftState.advance(node);
+							methodState.newRightState = new State(methodState.rightState);
+							for (Node.Op node : methodState.rightState.counters.keySet())
+								methodState.newRightState.advance(node);
+
+							methodState.position = 1;
+							methodStack.push(methodState);
+							methodStack.push(new AlignMemoizedBacktrackingState(methodState.newLeftState, methodState.newRightState));
+							// position 1
+							// value = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
+							continue;
+						} else {
+							// find matches
+							methodState.matchFound = false;
+							for (Map.Entry<Node.Op, Integer> rightEntry : methodState.rightState.counters.entrySet()) {
+								methodState.rightEntry = rightEntry;
+								methodState.rightNode = methodState.rightEntry.getKey();
+								if (methodState.rightEntry.getValue() == methodState.rightNode.getNext().size()) {
+									for (Map.Entry<Node.Op, Integer> leftEntry : methodState.leftState.counters.entrySet()) {
+										methodState.leftEntry = leftEntry;
+										methodState.leftNode = methodState.leftEntry.getKey();
+										if (leftEntry.getValue() == methodState.leftNode.getNext().size()) {
+											methodState.leftArtifact = methodState.leftNode.getArtifact();
+											methodState.rightArtifact = methodState.rightNode.getArtifact();
+											if (methodState.leftArtifact != null && methodState.leftArtifact.getData() != null && methodState.rightArtifact != null && methodState.leftArtifact.getData().equals(methodState.rightArtifact.getData())) {
+												methodState.newLeftState = new State(methodState.leftState);
+												methodState.newLeftState.advance(methodState.leftNode);
+												methodState.newRightState = new State(methodState.rightState);
+												methodState.newRightState.advance(methodState.rightNode);
+
+												methodState.position = 2;
+												methodStack.push(methodState);
+												methodStack.push(new AlignMemoizedBacktrackingState(methodState.newLeftState, methodState.newRightState));
+												// position 2
+												// previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
+
+												methodState.matchFound = true;
+												break;
+											}
+										}
+									}
+								}
+								if (methodState.matchFound)
+									break;
+							}
+
+							if (methodState.matchFound){
+								continue;
+							} else {
+								boolean continueLoop = false;
+								// if there is not a single match recurse previous of all left and right nodes
+								methodState.localBest = null;
+								methodState.loop3Todo = new HashSet<>(methodState.leftState.counters.entrySet());
+								for (Map.Entry<Node.Op, Integer> leftEntry : methodState.leftState.counters.entrySet()) {
+									methodState.loop3Todo.remove(leftEntry);
+									methodState.leftEntry = leftEntry;
+									methodState.leftNode = methodState.leftEntry.getKey();
+									if (methodState.leftEntry.getValue() == methodState.leftNode.getNext().size()) {
+										methodState.newLeftState = new State(methodState.leftState);
+										methodState.newLeftState.advance(methodState.leftNode);
+
+										methodState.position = 3;
+										methodStack.push(methodState);
+										methodStack.push(new AlignMemoizedBacktrackingState(methodState.newLeftState, methodState.rightState));
+										// position 3
+										// previousValue = this.alignMemoizedBacktrackingRec(newLeftState, rightState, matrix);
+										continueLoop = true;
+										break;
+									}
+								}
+								if (continueLoop) { continue; }
+								methodState.loop4Todo = new HashSet<>(methodState.rightState.counters.entrySet());
+								for (Map.Entry<Node.Op, Integer> rightEntry : methodState.rightState.counters.entrySet()) {
+									methodState.loop4Todo.remove(rightEntry);
+									methodState.rightEntry = rightEntry;
+									methodState.rightNode = methodState.rightEntry.getKey();
+									if (methodState.rightEntry.getValue() == methodState.rightNode.getNext().size()) {
+										methodState.newRightState = new State(methodState.rightState);
+										methodState.newRightState.advance(methodState.rightNode);
+
+										methodState.position = 4;
+										methodStack.push(methodState);
+										methodStack.push(new AlignMemoizedBacktrackingState(methodState.leftState, methodState.newRightState));
+										// position 4
+										// previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
+										continueLoop = true;
+										break;
+									}
+								}
+								if (continueLoop) { continue; }
+								if (methodState.value == null || methodState.localBest != null && !methodState.value.isBetterThan(methodState.localBest))
+									methodState.value = methodState.localBest;
+							}
+						}
+						matrix.put(methodState.pair, methodState.value);
+					}
+					lastResult = methodState.value;
+				} else if (methodState.position == 1){
+					methodState.value = lastResult;
+					matrix.put(methodState.pair, methodState.value);
+					lastResult = methodState.value;
+				} else if (methodState.position == 2){
+					methodState.previousValue = lastResult;
+					methodState.value = new Cell(methodState.previousValue);
+					methodState.value.score += 1;
+					matrix.put(methodState.pair, methodState.value);
+					lastResult = methodState.value;
+				} else if (methodState.position == 3){
+					methodState.previousValue = lastResult;
+
+					if (methodState.localBest == null || methodState.previousValue.isBetterThan(methodState.localBest)) {
+						methodState.localBest = methodState.previousValue;
+					}
+
+					boolean continueLoop = false;
+					for (Map.Entry<Node.Op, Integer> leftEntry : methodState.loop3Todo) {
+						methodState.loop3Todo.remove(leftEntry);
+						methodState.leftEntry = leftEntry;
+						methodState.leftNode = methodState.leftEntry.getKey();
+						if (methodState.leftEntry.getValue() == methodState.leftNode.getNext().size()) {
+							methodState.newLeftState = new State(methodState.leftState);
+							methodState.newLeftState.advance(methodState.leftNode);
+
+							methodState.position = 3;
+							methodStack.push(methodState);
+							methodStack.push(new AlignMemoizedBacktrackingState(methodState.newLeftState, methodState.rightState));
+							// position 3
+							// previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
+							continueLoop = true;
+							break;
+						}
+					}
+					if (continueLoop) { continue; }
+					methodState.loop4Todo = new HashSet<>(methodState.rightState.counters.entrySet());
+					for (Map.Entry<Node.Op, Integer> rightEntry : methodState.rightState.counters.entrySet()) {
+						methodState.loop4Todo.remove(rightEntry);
+						methodState.rightEntry = rightEntry;
+						methodState.rightNode = methodState.rightEntry.getKey();
+						if (methodState.rightEntry.getValue() == methodState.rightNode.getNext().size()) {
+							methodState.newRightState = new State(methodState.rightState);
+							methodState.newRightState.advance(methodState.rightNode);
+
+							methodState.position = 4;
+							methodStack.push(methodState);
+							methodStack.push(new AlignMemoizedBacktrackingState(methodState.leftState, methodState.newRightState));
+							// position 4
+							// previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
+							continueLoop = true;
+							break;
+						}
+					}
+					if (continueLoop) { continue; }
+					if (methodState.value == null || methodState.localBest != null && !methodState.value.isBetterThan(methodState.localBest))
+						methodState.value = methodState.localBest;
+					matrix.put(methodState.pair, methodState.value);
+					lastResult = methodState.value;
+				} else if (methodState.position == 4){
+					methodState.previousValue = lastResult;
+
+					if (methodState.localBest == null || methodState.previousValue.isBetterThan(methodState.localBest)) {
+						methodState.localBest = methodState.previousValue;
+					}
+					boolean continueLoop = false;
+					for (Map.Entry<Node.Op, Integer> rightEntry : methodState.loop4Todo) {
+						methodState.loop4Todo.remove(rightEntry);
+						methodState.rightEntry = rightEntry;
+						methodState.rightNode = methodState.rightEntry.getKey();
+						if (methodState.rightEntry.getValue() == methodState.rightNode.getNext().size()) {
+							methodState.newRightState = new State(methodState.rightState);
+							methodState.newRightState.advance(methodState.rightNode);
+
+							methodState.position = 4;
+							methodStack.push(methodState);
+							methodStack.push(new AlignMemoizedBacktrackingState(methodState.leftState, methodState.newRightState));
+							// position 4
+							// previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
+							continueLoop = true;
+							break;
+						}
+					}
+					if (continueLoop) { continue; }
+					if (methodState.value == null || methodState.localBest != null && !methodState.value.isBetterThan(methodState.localBest))
+						methodState.value = methodState.localBest;
+					matrix.put(methodState.pair, methodState.value);
+					lastResult = methodState.value;
+				}
+			}
+			return lastResult;
+		}
+
 
 		//private
 		default Cell alignMemoizedBacktrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
@@ -240,8 +485,6 @@ public interface PartialOrderGraph extends Persistable {
 								if (leftEntry.getValue() == leftNode.getNext().size()) {
 									Artifact.Op leftArtifact = leftNode.getArtifact();
 									Artifact.Op rightArtifact = rightNode.getArtifact();
-//									Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
-//									if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 									if (leftArtifact != null && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
 										State newLeftState = new State(leftState);
 										newLeftState.advance(leftNode);
@@ -254,19 +497,6 @@ public interface PartialOrderGraph extends Persistable {
 										value.score += 1;
 										matchFound = true;
 										break;
-
-//										Association.Op leftAssociation = null;
-//										if (leftArtifact.getContainingNode() != null)
-//											leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
-//										if (leftAssociation == null || leftAssociation.isVisible()) {
-//											// if left association was visible we increase the score by 2 and do not explore skips
-//											value.score += 2;
-//											matchFound = true;
-//											break;
-//										} else {
-//											// if left association was not visible we increase the score only by 1 and also explore skips
-//											value.score += 1;
-//										}
 									}
 								}
 							}
@@ -311,6 +541,157 @@ public interface PartialOrderGraph extends Persistable {
 				matrix.put(pair, value);
 			}
 			return value;
+		}
+
+
+		// (ugly) iterative backtracking implementation
+
+		class BacktrackingState {
+			public int position = 0;
+			public MutableIntObjectMap<Node.Op> result;
+			public Set<Map.Entry<Node.Op, Integer>> rightEntriesTodo;
+			public Set<Map.Entry<Node.Op, Integer>> leftEntriesTodo;
+
+
+			// method variables
+			public State leftState;
+			public State rightState;
+			public Map.Entry<Node.Op, Integer> rightEntry;
+			public Node.Op rightNode;
+			public Map.Entry<Node.Op, Integer> leftEntry;
+			public Node.Op leftNode;
+			public Artifact.Op leftArtifact;
+			public Artifact.Op rightArtifact;
+			public State newLeftState;
+			public State newRightState;
+			public Pair pair;
+			public Cell value;
+
+			public BacktrackingState(State leftState, State rightState){
+				this.leftState = leftState;
+				this.rightState = rightState;
+			}
+		}
+
+		default MutableIntObjectMap<Node.Op> backtrackingIter(State leftState, State rightState, Map<Pair, Cell> matrix){
+			// transformation of the recursive method to an iterative method (because of stack overflow)
+			// basically, the method imitates what the compiler would do in the stack
+			// a loop represents a method call
+			BacktrackingState methodState = new BacktrackingState(leftState, rightState);
+			Stack<BacktrackingState> methodStack = new Stack<>();
+			methodStack.push(methodState);
+			MutableIntObjectMap<Node.Op> lastResult = null;
+
+			while (!methodStack.isEmpty()) {
+				methodState = methodStack.pop();
+
+				if (methodState.position == 0) {
+					if (methodState.leftState.isEnd() || methodState.rightState.isEnd()) {
+						// if we reached the head of either of the two pogs: do nothing
+						lastResult = IntObjectMaps.mutable.empty();
+					} else if (methodState.leftState.isStart() && methodState.rightState.isStart()) {
+						// if we are at the tail of both of the two pogs
+						State newLeftState = new State(methodState.leftState);
+						for (Node.Op node : methodState.leftState.counters.keySet())
+							newLeftState.advance(node);
+						State newRightState = new State(methodState.rightState);
+						for (Node.Op node : methodState.rightState.counters.keySet())
+							newRightState.advance(node);
+						methodStack.push(new BacktrackingState(newLeftState, newRightState));
+					} else {
+						// find matches
+						boolean nextMethodLoop = false;
+						methodState.rightEntriesTodo = new HashSet<>(methodState.rightState.counters.entrySet());
+						for (Map.Entry<Node.Op, Integer> rightEntry : methodState.rightState.counters.entrySet()) {
+							methodState.rightEntriesTodo.remove(rightEntry);
+							methodState.rightEntry = rightEntry;
+							methodState.rightNode = methodState.rightEntry.getKey();
+							if (methodState.rightEntry.getValue() == methodState.rightNode.getNext().size()) {
+								methodState.leftEntriesTodo = new HashSet<>(methodState.leftState.counters.entrySet());
+								for (Map.Entry<Node.Op, Integer> leftEntry : methodState.leftState.counters.entrySet()) {
+									methodState.leftEntriesTodo.remove(leftEntry);
+									methodState.leftEntry = leftEntry;
+									methodState.leftNode = methodState.leftEntry.getKey();
+									if (methodState.leftEntry.getValue() == methodState.leftNode.getNext().size()) {
+										methodState.leftArtifact = methodState.leftNode.getArtifact();
+										methodState.rightArtifact = methodState.rightNode.getArtifact();
+										if (methodState.leftArtifact != null && methodState.leftArtifact.getData() != null && methodState.rightArtifact != null && methodState.leftArtifact.getData().equals(methodState.rightArtifact.getData())) {
+											methodState.newLeftState = new State(methodState.leftState);
+											methodState.newLeftState.advance(methodState.leftNode);
+											methodState.newRightState = new State(methodState.rightState);
+											methodState.newRightState.advance(methodState.rightNode);
+
+											methodState.pair = new Pair(methodState.newLeftState, methodState.newRightState);
+											methodState.value = matrix.get(methodState.pair);
+											if (methodState.value == null) {
+												System.out.println("WARNING: No cell value at this position in sparse matrix during match. This should not happen!");
+											} else {
+												methodState.position = 1;
+												methodStack.push(methodState);
+												methodStack.push(new BacktrackingState(methodState.newLeftState, methodState.newRightState));
+												// position 1
+												//methodState.returnedAlignment = this.backtrackingRec(newLeftState, newRightState, matrix);
+												nextMethodLoop = true;
+												break;
+											}
+										}
+									}
+								}
+								if (nextMethodLoop) {
+									break;
+								}
+							}
+						}
+						if (nextMethodLoop) {
+							continue;
+						}
+
+						// if there is not a single match recurse previous of all left and right nodes
+						State bestLeftState = null;
+						State bestRightState = null;
+						Cell currentBest = null;
+						for (Map.Entry<Node.Op, Integer> leftEntry : methodState.leftState.counters.entrySet()) {
+							Node.Op leftNode = leftEntry.getKey();
+							if (leftEntry.getValue() == leftNode.getNext().size()) {
+								State newLeftState = new State(methodState.leftState);
+								newLeftState.advance(leftNode);
+
+								Pair pair = new Pair(newLeftState, methodState.rightState);
+								Cell value = matrix.get(pair);
+								if (value == null) {
+									System.out.println("WARNING: No cell value at this position in sparse matrix. This should not happen!");
+								} else if (currentBest == null || value.isBetterThan(currentBest)) {
+									currentBest = value;
+									bestLeftState = newLeftState;
+									bestRightState = methodState.rightState;
+								}
+							}
+						}
+						for (Map.Entry<Node.Op, Integer> rightEntry : methodState.rightState.counters.entrySet()) {
+							Node.Op rightNode = rightEntry.getKey();
+							if (rightEntry.getValue() == rightNode.getNext().size()) {
+								State newRightState = new State(methodState.rightState);
+								newRightState.advance(rightNode);
+
+								Pair pair = new Pair(methodState.leftState, newRightState);
+								Cell value = matrix.get(pair);
+								if (value == null) {
+									System.out.println("WARNING: No cell value at this position in sparse matrix. This should not happen!");
+								} else if (currentBest == null || value.isBetterThan(currentBest)) {
+									currentBest = value;
+									bestLeftState = methodState.leftState;
+									bestRightState = newRightState;
+								}
+							}
+						}
+						methodStack.push(new BacktrackingState(bestLeftState, bestRightState));
+					}
+				} else if (methodState.position == 1){
+					lastResult.put(methodState.leftNode.getArtifact().getSequenceNumber(), methodState.rightNode);
+				}
+			}
+
+			return lastResult;
 		}
 
 		//private
@@ -890,5 +1271,12 @@ public interface PartialOrderGraph extends Persistable {
 
 		}
 	}
+
+
+
+
+
+
+
 
 }

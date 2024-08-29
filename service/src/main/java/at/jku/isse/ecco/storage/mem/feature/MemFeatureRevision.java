@@ -47,6 +47,14 @@ public class MemFeatureRevision implements FeatureRevision {
 	}
 
 	@Override
+	public String getLogicLiteralRepresentation() {
+		// don't use "." and "-" in order to make it parsable by logicNG
+		String featureName = this.getFeature().getName();
+		String sanitizedId = this.id.replace("-", "_");
+		return featureName + "_" + sanitizedId;
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (!(o instanceof MemFeatureRevision)) return false;

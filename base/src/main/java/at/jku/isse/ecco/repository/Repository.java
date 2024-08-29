@@ -12,6 +12,8 @@ import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.featuretrace.evaluation.UserAdditionEvaluation;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.EmptyModule;
 import at.jku.isse.ecco.module.Module;
@@ -59,10 +61,14 @@ public interface Repository extends Persistable {
 
 	void addCommit(Commit commit);
 
+	Collection<FeatureTrace> getFeatureTraces();
+
 	/**
 	 * Private repository interface.
 	 */
 	interface Op extends Repository {
+
+		void mergeFeatureTraceTree(Node.Op root);
 
 		@Override
 		Collection<? extends Feature> getFeatures();
@@ -116,6 +122,32 @@ public interface Repository extends Persistable {
 
 		EntityFactory getEntityFactory();
 
+		Node.Op fuseAssociationsWithFeatureTraces();
+
+		void removeFeatureTracePercentage(int percentage);
+
+		default Collection<FeatureRevision> addFeatureRevisions(FeatureRevision[] featureRevisions){
+			Collection<FeatureRevision> repoFeatureRevisions = new ArrayList<>();
+			for (FeatureRevision featureRevision : featureRevisions) {
+				Feature feature = featureRevision.getFeature();
+				// get/add feature from/to repository
+				Feature repoFeature = this.getFeature(feature.getId());
+				if (repoFeature == null) {
+					repoFeature = this.addFeature(feature.getId(), feature.getName());
+					repoFeature.setDescription(feature.getDescription());
+
+					this.addNegativeFeatureModules(repoFeature);
+				}
+				// get/add feature revision from/to repository
+				FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureRevision.getId());
+				if (repoFeatureRevision == null) {
+					repoFeatureRevision = repoFeature.addRevision(featureRevision.getId());
+					repoFeatureRevision.setDescription(featureRevision.getDescription());
+				}
+				repoFeatureRevisions.add(repoFeatureRevision);
+			}
+			return repoFeatureRevisions;
+		}
 
 		/**
 		 * Retrieves the module instance with given positive and negative features from the repository.
@@ -236,28 +268,8 @@ public interface Repository extends Persistable {
 		 */
 		default Collection<FeatureRevision> addConfigurationFeatures(Configuration configuration) {
 			checkNotNull(configuration);
-
 			// add new features and feature revisions from configuration to this repository
-			Collection<FeatureRevision> repoFeatureRevisions = new ArrayList<>();
-			for (FeatureRevision featureRevision : configuration.getFeatureRevisions()) {
-				Feature feature = featureRevision.getFeature();
-				// get/add feature from/to repository
-				Feature repoFeature = this.getFeature(feature.getId());
-				if (repoFeature == null) {
-					repoFeature = this.addFeature(feature.getId(), feature.getName());
-					repoFeature.setDescription(feature.getDescription());
-
-					this.addNegativeFeatureModules(repoFeature);
-				}
-				// get/add feature revision from/to repository
-				FeatureRevision repoFeatureRevision = repoFeature.getRevision(featureRevision.getId());
-				if (repoFeatureRevision == null) {
-					repoFeatureRevision = repoFeature.addRevision(featureRevision.getId());
-					repoFeatureRevision.setDescription(featureRevision.getDescription());
-				}
-				repoFeatureRevisions.add(repoFeatureRevision);
-			}
-			return repoFeatureRevisions;
+			return this.addFeatureRevisions(configuration.getFeatureRevisions());
 		}
 
 		/**
@@ -645,7 +657,17 @@ public interface Repository extends Persistable {
 				}
 			}
 
-			Checkout checkout = this.compose(selectedAssociations, lazy);
+			Collection<FeatureTrace> featureTraceAdditions = new HashSet<>();
+			Collection<FeatureTrace> featureTraceSubtractions = new HashSet<>();
+			for (FeatureTrace featureTrace : this.getFeatureTraces()){
+				if (featureTrace.holds(configuration, new UserAdditionEvaluation())){
+					featureTraceAdditions.add(featureTrace);
+				} else {
+					featureTraceSubtractions.add(featureTrace);
+				}
+			}
+
+			Checkout checkout = this.compose(selectedAssociations, lazy, featureTraceAdditions, featureTraceSubtractions);
 			checkout.setConfiguration(configuration);
 
 			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
@@ -693,7 +715,8 @@ public interface Repository extends Persistable {
 		}
 
 
-		default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {
+		default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy,
+								 Collection<FeatureTrace> featureTraceAdditions, Collection<FeatureTrace> featureTraceSubtractions) {
 			Node compRootNode;
 			Collection<Artifact<?>> orderWarnings;
 			if (lazy) {
@@ -701,6 +724,16 @@ public interface Repository extends Persistable {
 
 				for (Association.Op association : selectedAssociations) {
 					lazyCompRootNode.addOrigNode(association.getRootNode());
+				}
+
+				// add artifacts of applicable feature traces
+				for (FeatureTrace featureTrace : featureTraceAdditions){
+					lazyCompRootNode.addOrigNode(featureTrace.getNode().getRoot());
+				}
+
+				// remove artifacts to be removed according to feature traces
+				for (FeatureTrace featureTrace : featureTraceSubtractions){
+					lazyCompRootNode.addUnwantedNode(featureTrace.getNode().getRoot());
 				}
 
 				orderWarnings = lazyCompRootNode.getOrderSelector().getUncertainOrders();
@@ -1289,6 +1322,7 @@ public interface Repository extends Persistable {
 			throw new UnsupportedOperationException("Not yet implemented.");
 		}
 
+		Node.Op getFeatureTree();
 	}
 
 

@@ -3,7 +3,8 @@ package at.jku.isse.ecco.test;
 import at.jku.isse.ecco.artifact.*;
 import at.jku.isse.ecco.pog.*;
 import at.jku.isse.ecco.storage.mem.artifact.*;
-import at.jku.isse.ecco.storage.mem.pog.*;
+import at.jku.isse.ecco.storage.mem.pog.fullfledged.MemPartialOrderGraph;
+import at.jku.isse.ecco.storage.mem.pog.fullfledged.MemPartialOrderGraphNode;
 import javafx.scene.*;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.*;
@@ -85,7 +86,7 @@ public class PartialOrderGraphTest {
 
 		pog1.merge(artifacts3);
 
-		displayPOG(pog1);
+		//displayPOG(pog1);
 
 		pog1.merge(artifacts3);
 	}
@@ -758,6 +759,7 @@ public class PartialOrderGraphTest {
 		return artifact;
 	}
 
+	/*
 	@BeforeAll
 	public void setup() throws InterruptedException {
 		JavaFxLauncher.initialize();
@@ -772,6 +774,7 @@ public class PartialOrderGraphTest {
 	public void afterTest() {
 		System.out.println("AFTER");
 	}
+	 */
 
 }
 

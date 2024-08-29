@@ -18,6 +18,8 @@ dependencies {
 
 	implementation 'com.github.javaparser:javaparser-core:3.25.8'
 
+	implementation 'org.logicng:logicng:2.4.0'
+
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-text')

@@ -10,14 +10,17 @@ import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.repository.*;
 import at.jku.isse.ecco.service.listener.*;
+import at.jku.isse.ecco.service.utils.ConfigInsertionVisitor;
 import at.jku.isse.ecco.storage.*;
 import at.jku.isse.ecco.storage.mem.core.*;
 import at.jku.isse.ecco.storage.mem.dao.*;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.*;
+import at.jku.isse.ecco.util.Trees;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.*;
+import org.logicng.formulas.FormulaFactory;
 
 import java.io.*;
 import java.net.*;
@@ -54,6 +57,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public static final Path CONFIG_FILE_NAME = Paths.get(".config");
     public static final Path WARNINGS_FILE_NAME = Paths.get(".warnings");
     public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
+    public static final Path VEVOS_FILE = Paths.get("pcs.variant.csv");
 
 
     private final Properties properties = new Properties();
@@ -677,7 +681,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         checkNotNull(configurationString);
 
         if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
-            throw new EccoException("Invalid configuration string provided.");
+            throw new EccoException("Invalid configuration string provided: " + configurationString);
 
         if (configurationString.isEmpty()) {
             return this.entityFactory.createConfiguration(new FeatureRevision[0]);
@@ -729,6 +733,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
 
             Configuration configuration = this.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
+            configuration.setOriginalConfigString(configurationString);
 
             this.transactionStrategy.end();
 
@@ -760,7 +765,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 feature = this.entityFactory.createFeature(UUID.randomUUID().toString(), featureName);
             } else if (features.size() == 1) {
                 feature = features.iterator().next();
-                feature = this.entityFactory.createFeature(feature.getId(), feature.getName());
             } else {
                 throw new EccoException("Feature name is not unique. Use feature id instead.");
             }
@@ -1552,8 +1556,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-            Set<Node.Op> nodes = readFiles();
             Repository.Op repository = this.repositoryDao.load();
+            repository.addFeatureRevisions(configuration.getFeatureRevisions());
+            Set<Node.Op> nodes = readFiles();
+
+            nodes.forEach(Trees::sequence);
+
+            ConfigInsertionVisitor visitor = new ConfigInsertionVisitor(configuration);
+            nodes.forEach(node -> node.traverse(visitor));
+
+            List<Node.Op> featureTraceTrees = nodes.stream().map(Trees::extractFeatureTraceTree).toList();
+            featureTraceTrees.forEach(node -> {
+                        Node.Op root = this.entityFactory.createRootNode();
+                        root.addChild(node);
+                        repository.mergeFeatureTraceTree(root);
+            });
 
             ArrayList<Variant> variants = repository.getVariants();
 
@@ -2009,17 +2026,17 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         checkNotNull(paths);
         checkArgument(!paths.isEmpty());
 
-        Set<Node.Op> nodes = this.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[0]));
-
-        RootNode.Op rootNode = this.entityFactory.createRootNode();
-        for (Node.Op node : nodes) {
-            rootNode.addChild(node);
-        }
-
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
             Repository.Op repository = this.repositoryDao.load();
+
+            Set<Node.Op> nodes = this.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[0]));
+
+            RootNode.Op rootNode = this.entityFactory.createRootNode();
+            for (Node.Op node : nodes) {
+                rootNode.addChild(node);
+            }
 
             repository.map(rootNode);
 

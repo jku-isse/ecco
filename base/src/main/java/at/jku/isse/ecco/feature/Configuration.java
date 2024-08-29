@@ -6,6 +6,9 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
+import org.logicng.datastructures.Assignment;
+import org.logicng.formulas.FormulaFactory;
+import org.logicng.formulas.Literal;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,6 +39,10 @@ public interface Configuration extends Persistable {
     FeatureRevision[] getFeatureRevisions();
 
     Configuration getConfiguration();
+
+    void setOriginalConfigString(String originalConfigString);
+
+    String getOriginalConfigString();
 
     void setFeatureRevisions(FeatureRevision[] featureRevisions);
 
@@ -161,6 +168,18 @@ public interface Configuration extends Persistable {
         return true;
     }
 
+    default Assignment toAssignment(FormulaFactory factory){
+        Assignment assignment = new Assignment();
+        for (FeatureRevision featureRevision: this.getFeatureRevisions()){
+            // the specific revision is true
+            String literalString = featureRevision.getFeature().getName() + "." + featureRevision.getId();
+            literalString = literalString.replace(".", "_");
+            literalString = literalString.replace("-", "_");
+            Literal revisionLiteral = factory.literal(literalString, true);
+            assignment.addLiteral(revisionLiteral);
+        }
+        return assignment;
+    }
 
     @Override
     int hashCode();
