@@ -69,10 +69,9 @@ public interface Condition extends Persistable {
 		Map<Module, Collection<ModuleRevision>> moduleMap = this.getModules();
 
 		// if a module-revision holds, the respective module holds as well
-		// and(or(all module-revision-conditions related to the same module))
+		// or(or(all module-revision-conditions related to the same module))
 		Collection<Formula> moduleFormulas = new LinkedList<>();
 		for (Collection<ModuleRevision> moduleRevisions : moduleMap.values()) {
-
 			Collection<Formula> moduleRevisionFormulas = moduleRevisions.stream()
 					.map(ModuleRevision::getConditionString)
 					.map(s -> this.parseString(formulaFactory, s))
@@ -81,12 +80,7 @@ public interface Condition extends Persistable {
 		}
 
 		Formula conditionFormula;
-		if (this.getType().equals(TYPE.AND)){
-			conditionFormula = formulaFactory.and(moduleFormulas);
-		} else {
-			conditionFormula = formulaFactory.or(moduleFormulas);
-		}
-
+		conditionFormula = formulaFactory.or(moduleFormulas);
 		return conditionFormula.toString();
 	}
 

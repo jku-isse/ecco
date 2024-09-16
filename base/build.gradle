@@ -20,12 +20,14 @@ dependencies {
 
 	implementation 'org.logicng:logicng:2.4.0'
 
-	testImplementation project(':ecco-adapter-file')
+	testImplementation project(':ecco-adapter-c')
+	//testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-python')
 	testImplementation project(':ecco-adapter-java')
 
+	testImplementation 'commons-io:commons-io:2.15.1'
 	testImplementation 'org.graphstream:gs-core:2.0'
 	testImplementation 'org.graphstream:gs-algo:2.0'
 	testImplementation 'org.graphstream:gs-ui-javafx:2.0'

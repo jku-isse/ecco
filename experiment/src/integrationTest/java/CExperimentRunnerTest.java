@@ -195,17 +195,18 @@ public class CExperimentRunnerTest {
         // 10 x 4 = 40 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
         assertEquals(40, atomicResults);
-        // BASE     tp:    fp:    tn:10  fn:
+        // BASE     tp:    fp:10  tn:    fn:
         // A        tp:10  fp:    tn:    fn:
-        // B        tp:    fp:    tn:5   fn:5
+        // B        tp:5   fp:5   tn:    fn:
         // A && B   tp:10  fp:    tn:    fn:
-        //          tp:20  fp:    tn:15  fn:5
-        assertEquals(20, result.getTp());
-        assertEquals(15, result.getTn());
-        assertEquals(5, result.getFn());
-        assertEquals(1.0, result.getPrecision());
-        assertEquals(0.8, result.getRecall());
-        assertEquals(0.888888888888889, result.getF1());
+        //          tp:25  fp:15  tn:0   fn:0
+        assertEquals(25, result.getTp());
+        assertEquals(15, result.getFp());
+        assertEquals(0, result.getTn());
+        assertEquals(0, result.getFn());
+        assertEquals(0.625, result.getPrecision());
+        assertEquals(1.0, result.getRecall());
+        assertEquals(((2 * (1.0 * 0.625)) / (1.0 + 0.625)), result.getF1());
     }
 
 
@@ -235,17 +236,16 @@ public class CExperimentRunnerTest {
         // 20 x 4 = 80 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
         assertEquals(80, atomicResults);
-        // BASE     tp:    fp:    tn:20  fn:
-        // A        tp:    fp:    tn:10  fn:10
-        // B        tp:    fp:    tn:10  fn:10
+        // BASE     tp:    fp:20  tn:    fn:
+        // A        tp:10  fp:10  tn:    fn:
+        // B        tp:10  fp:10  tn:    fn:
         // A && B   tp:20  fp:    tn:    fn:
-        //          tp:20  fp:    tn:40  fn:20
-        assertEquals(20, result.getTp());
-        assertEquals(40, result.getTn());
-        assertEquals(20, result.getFn());
-        assertEquals(1.0, result.getPrecision());
-        assertEquals(0.5, result.getRecall());
-        assertEquals(0.6666666666666666, result.getF1());
+        //          tp:40  fp:40  tn:0  fn:0
+        assertEquals(40, result.getTp());
+        assertEquals(40, result.getFp());
+        assertEquals(0.5, result.getPrecision());
+        assertEquals(1.0, result.getRecall());
+        assertEquals(((2 * (1.0 * 0.5)) / (1.0 + 0.5)), result.getF1());
     }
 
 
@@ -275,18 +275,18 @@ public class CExperimentRunnerTest {
         // 15 x 4 = 60 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
         assertEquals(60, atomicResults);
-        // BASE     tp:    fp:    tn:10  fn:5
-        // A        tp:    fp:    tn:10  fn:5
+        // BASE     tp:5   fp:10  tn:    fn:
+        // A        tp:5   fp:10  tn:    fn:
         // B        tp:15  fp:    tn:    fn:
         // A && B   tp:10  fp:5   tn:    fn:
-        //          tp:25  fp:5   tn:20  fn:10
-        assertEquals(25, result.getTp());
-        assertEquals(5, result.getFp());
-        assertEquals(20, result.getTn());
-        assertEquals(10, result.getFn());
-        assertEquals(0.8333333333333334, result.getPrecision());
-        assertEquals(0.7142857142857143, result.getRecall());
-        assertEquals(0.7692307692307692, result.getF1());
+        //          tp:35  fp:25  tn:0  fn:0
+        assertEquals(35, result.getTp());
+        assertEquals(25, result.getFp());
+        assertEquals(0, result.getTn());
+        assertEquals(0, result.getFn());
+        assertEquals(35.0 / 60.0, result.getPrecision());
+        assertEquals(1.0, result.getRecall());
+        assertEquals(((2 * (1.0 * (35.0 / 60.0))) / (1.0 + (35.0 / 60.0))), result.getF1());
     }
 
 
