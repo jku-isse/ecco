@@ -63,7 +63,7 @@ public class PartialOrderGraphTest {
 //		pog1.merge(artifacts5);
 //		pog1.merge(artifacts6);
 
-		displayPOG(pog1);
+		//displayPOG(pog1);
 	}
 
 
@@ -82,12 +82,8 @@ public class PartialOrderGraphTest {
 		for (Artifact.Op<?> artifact : artifacts3) {
 			System.out.println(artifact + " [" + artifact.getSequenceNumber() + "]");
 		}
-		System.out.println();
 
 		pog1.merge(artifacts3);
-
-		//displayPOG(pog1);
-
 		pog1.merge(artifacts3);
 	}
 

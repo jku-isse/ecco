@@ -120,6 +120,30 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
+		class NodePair {
+			public Node.Op leftNode;
+			public Node.Op rightNode;
+
+			public NodePair(Node.Op leftNode, Node.Op rightNode){
+				this.leftNode = leftNode;
+				this.rightNode = rightNode;
+			}
+
+			@Override
+			public boolean equals(Object o){
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				NodePair nodePair = (NodePair) o;
+				return Objects.equals(this.leftNode, nodePair.leftNode) &&
+						Objects.equals(this.rightNode, nodePair.rightNode);
+			}
+
+			@Override
+			public int hashCode() {
+				return Objects.hash(this.leftNode, this.rightNode);
+			}
+		}
+
 		//private
 		class State {
 			public Map<Node.Op, Integer> counters;
@@ -191,6 +215,30 @@ public interface PartialOrderGraph extends Persistable {
 
 		//private
 		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
+            /*
+			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
+			Map<Pair, Cell> matrix = Maps.mutable.empty();
+
+			// recursive memoized lcs
+			State leftState = new State();
+			leftState.counters.put(this.getTail(), 0);
+			State rightState = new State();
+			rightState.counters.put(other.getTail(), 0);
+			//this.alignMemoizedBacktrackingRec(leftState, rightState, matrix);
+			this.alignMemoizedBacktrackingIter(leftState, rightState, matrix);
+
+			//IntObjectMap<Node.Op> result = this.backtrackingRec(leftState, rightState, matrix);
+			IntObjectMap<Node.Op> result = this.backtrackingIter(leftState, rightState, matrix);
+			 */
+
+			IntObjectMap<Node.Op> result = this.iterativeLcsAlignment(other);
+
+			// set sequence number of matched artifacts
+			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
+			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
+		}
+
+		default void alignMemoizedBacktrackingOld(PartialOrderGraph.Op other) {
 			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
 			Map<Pair, Cell> matrix = Maps.mutable.empty();
 
@@ -1205,6 +1253,68 @@ public interface PartialOrderGraph extends Persistable {
 			return orders;
 		}
 
+
+		default MutableIntObjectMap<Node.Op> iterativeLcsAlignment(PartialOrderGraph.Op other){
+			Map<NodePair, MutableIntObjectMap<Node.Op>> lcsMapping = new HashMap<>();
+			List<Node.Op> thisNodes = this.collectNodes();
+			List<Node.Op> otherNodes = other.collectNodes();
+			Node.Op lastThisNode = null;
+			Node.Op lastOtherNode = null;
+			MutableIntObjectMap<Node.Op> sequenceNumberMap = IntObjectMaps.mutable.empty();
+			for (Node.Op thisNode : thisNodes) {
+				if (thisNode.getPrevious().isEmpty() || thisNode.getNext().isEmpty()){ continue; }
+				for (Node.Op otherNode : otherNodes) {
+					if (otherNode.getPrevious().isEmpty() || otherNode.getNext().isEmpty()){ continue; }
+					sequenceNumberMap = this.lcsStep(thisNode, otherNode, lastThisNode, lastOtherNode, lcsMapping);
+					lastOtherNode = otherNode;
+				}
+				lastThisNode = thisNode;
+			}
+			return sequenceNumberMap;
+		}
+
+		private MutableIntObjectMap<Node.Op> lcsStep(Node.Op thisNode, Node.Op otherNode, Node.Op lastThisNode, Node.Op lastOtherNode, Map<NodePair, MutableIntObjectMap<Node.Op>> lcsMapping){
+			Artifact<?> thisArtifact = thisNode.getArtifact();
+			Artifact<?> otherArtifact = otherNode.getArtifact();
+			if (thisArtifact != null && thisArtifact.getData() != null && otherArtifact != null && thisArtifact.getData().equals(otherArtifact.getData())){
+				return this.lcsMatchStep(thisNode, otherNode, lastThisNode, lastOtherNode, lcsMapping);
+			} else {
+				return this.lcsNonMatchStep(thisNode, otherNode, lastThisNode, lastOtherNode, lcsMapping);
+			}
+		}
+
+		private MutableIntObjectMap<Node.Op> lcsMatchStep(Node.Op thisNode, Node.Op otherNode, Node.Op lastThisNode, Node.Op lastOtherNode, Map<NodePair, MutableIntObjectMap<Node.Op>> lcsMapping){
+			MutableIntObjectMap<Node.Op> sequenceNumberMap;
+			NodePair currentPair = new NodePair(thisNode, otherNode);
+			if (lastThisNode == null && lastOtherNode == null){
+				sequenceNumberMap = IntObjectMaps.mutable.empty();
+			} else {
+				sequenceNumberMap = IntObjectMaps.mutable.ofAll(lcsMapping.get(new NodePair(lastThisNode, lastOtherNode)));
+			}
+			sequenceNumberMap.put(thisNode.getArtifact().getSequenceNumber(), otherNode);
+			lcsMapping.put(currentPair, sequenceNumberMap);
+			return sequenceNumberMap;
+		}
+
+		private MutableIntObjectMap<Node.Op> lcsNonMatchStep(Node.Op thisNode, Node.Op otherNode, Node.Op lastThisNode, Node.Op lastOtherNode, Map<NodePair, MutableIntObjectMap<Node.Op>> lcsMapping) {
+			MutableIntObjectMap<Node.Op> sequenceNumberMap;
+			NodePair lastThisCurrentOtherPair = new NodePair(lastThisNode, otherNode);
+			NodePair currentThisLastOtherPair = new NodePair(thisNode, lastOtherNode);
+			NodePair currentPair = new NodePair(thisNode, otherNode);
+			MutableIntObjectMap<Node.Op> lastThisCurrentOtherMap = lcsMapping.get(lastThisCurrentOtherPair);
+			MutableIntObjectMap<Node.Op> currentThisLastOtherMap = lcsMapping.get(currentThisLastOtherPair);
+
+			if (lastThisCurrentOtherMap == null && currentThisLastOtherMap == null) {
+				sequenceNumberMap = IntObjectMaps.mutable.empty();
+			} else if (currentThisLastOtherMap == null || (lastThisCurrentOtherMap != null && lastThisCurrentOtherMap.size() > currentThisLastOtherMap.size())) {
+				sequenceNumberMap = IntObjectMaps.mutable.ofAll(lastThisCurrentOtherMap);
+			} else {
+				sequenceNumberMap = IntObjectMaps.mutable.ofAll(currentThisLastOtherMap);
+			}
+			lcsMapping.put(currentPair, sequenceNumberMap);
+			return sequenceNumberMap;
+		}
+
 	}
 
 
@@ -1269,14 +1379,47 @@ public interface PartialOrderGraph extends Persistable {
 				void visit(Node.Op node);
 			}
 
+			// compare node itself as well as previous and next nodes
+			boolean equalsCompletely(Object o);
+
 		}
 	}
 
+	// compares nodes using equals()
+	// does account for different number of occurrences in collections
+	static boolean nodeCollectionsAreEqual(Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection){
+		if (leftCollection == null && rightCollection == null){ return true; }
+		if (leftCollection == null){ return false; }
+		if (rightCollection == null){ return false; }
+		boolean allLeftNodesInBothListSameTimes = leftCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimes(n, leftCollection, rightCollection));
+		boolean allRightNodesInBothListSameTimes = rightCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimes(n, leftCollection, rightCollection));
+		return allLeftNodesInBothListSameTimes && allRightNodesInBothListSameTimes;
+	}
 
+	// Compares occurrence of node in collections. When comparing two nodes, previous and next nodes are not compared.
+	private static boolean nodeOccursSameNumberOfTimes(Node.Op node, Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection) {
+		assert node != null;
+		long numOfLeftNodes = leftCollection.stream().filter(node::equals).count();
+		long numOfRightNodes = rightCollection.stream().filter(node::equals).count();
+		return numOfLeftNodes == numOfRightNodes;
+	}
 
+	// compares nodes using equalsCompletely()
+	// does account for different number of occurrences in collections
+	static boolean nodeCollectionsAreCompletelyEqual(Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection){
+		if (leftCollection == null && rightCollection == null){ return true; }
+		if (leftCollection == null){ return false; }
+		if (rightCollection == null){ return false; }
+		boolean allLeftNodesInBothListSameTimes = leftCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimesCompletely(n, leftCollection, rightCollection));
+		boolean allRightNodesInBothListSameTimes = rightCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimesCompletely(n, leftCollection, rightCollection));
+		return allLeftNodesInBothListSameTimes && allRightNodesInBothListSameTimes;
+	}
 
-
-
-
-
+	// Compares occurrence of node in collections. When comparing two nodes, previous and next nodes are also compared.
+	private static boolean nodeOccursSameNumberOfTimesCompletely(Node.Op node, Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection){
+		assert node != null;
+		long numOfLeftNodes = leftCollection.stream().filter(node::equalsCompletely).count();
+		long numOfRightNodes = rightCollection.stream().filter(node::equalsCompletely).count();
+		return numOfLeftNodes == numOfRightNodes;
+	}
 }

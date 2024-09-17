@@ -134,4 +134,13 @@ public class MemPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 		return new MemPartialOrderGraph();
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		MemPartialOrderGraph memPartialOrderGraph = (MemPartialOrderGraph) o;
+		List<Node.Op> thisNodes = this.collectNodes();
+		List<Node.Op> otherNodes = memPartialOrderGraph.collectNodes();
+		return PartialOrderGraph.nodeCollectionsAreCompletelyEqual(thisNodes, otherNodes);
+	}
 }

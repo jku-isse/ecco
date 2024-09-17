@@ -4,10 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class MemPartialOrderGraphNode implements PartialOrderGraph.Node, PartialOrderGraph.Node.Op {
 
@@ -68,6 +65,7 @@ public class MemPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	public void addNext(PartialOrderGraph.Node.Op node){
 		this.next.add(node);
 	}
+
 	@Override
 	public Collection<Op> getPrevious() {
 		return this.previous;
@@ -114,6 +112,23 @@ public class MemPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	@Override
 	public int hashCode(){
 		return Objects.hash(this.artifact);
+	}
+
+	@Override
+	public boolean equalsCompletely(Object o){
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		MemPartialOrderGraphNode node = (MemPartialOrderGraphNode) o;
+		if (!this.equals(node)) {
+			return false;
+		}
+		if (!PartialOrderGraph.nodeCollectionsAreEqual(this.getPrevious(), node.getPrevious())){
+			return false;
+		}
+		if (!PartialOrderGraph.nodeCollectionsAreEqual(this.getNext(), node.getNext())){
+			return false;
+		}
+		return true;
 	}
 
 }
