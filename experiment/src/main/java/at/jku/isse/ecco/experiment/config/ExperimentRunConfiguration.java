@@ -69,6 +69,12 @@ public class ExperimentRunConfiguration{
         return this.features;
     }
 
+    public List<String> getFeaturesIncludingBase(){
+        List<String> literalsIncludingBase = new LinkedList<>(this.features);
+        literalsIncludingBase.add("BASE");
+        return literalsIncludingBase;
+    }
+
     public List<String> getVariantConfigurations(){
         return this.variantConfigurations;
     }

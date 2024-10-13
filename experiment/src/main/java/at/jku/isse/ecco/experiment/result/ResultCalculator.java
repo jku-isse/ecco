@@ -22,7 +22,7 @@ public class ResultCalculator {
 
     public void calculateMetrics(Node.Op mainTree){
         FormulaFactory formulaFactory = new FormulaFactory();
-        Collection<Assignment> assignments = AssignmentPowerset.getAssignmentPowerset(formulaFactory, this.config.getFeatures());
+        Collection<Assignment> assignments = AssignmentPowerset.getAssignmentPowerset(formulaFactory, this.config.getFeaturesIncludingBase());
         EvaluationVisitor visitor = new EvaluationVisitor(formulaFactory, assignments, this.config.getVariantsDir(), this.config.getEvaluationStrategy());
         mainTree.traverse(visitor);
         Collection<NodeResult> nodeResults = visitor.getResults();

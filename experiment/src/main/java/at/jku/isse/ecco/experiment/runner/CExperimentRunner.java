@@ -43,24 +43,15 @@ public class CExperimentRunner implements ExperimentRunner {
         this.repository.removeFeatureTracePercentage(100 - this.config.getFeatureTracePercentage());
         this.mistakeCreator.createMistakePercentage(this.repository, this.config.getMistakePercentage());
         Node.Op mainTree = this.repository.fuseAssociationsWithFeatureTraces();
-        this.baseCleanup(mainTree);
         this.literalNameCleanup(mainTree);
         ResultCalculator metricsCalculator = new ResultCalculator(this.config, this.persister);
         metricsCalculator.calculateMetrics(mainTree);
     }
 
-    private void baseCleanup(Node.Op node){
-        Feature baseFeature = this.repository.getFeaturesByName("BASE").iterator().next();
-        FeatureRevision baseFeatureRevision = baseFeature.getLatestRevision();
-        String baseFeatureName = baseFeatureRevision.getLogicLiteralRepresentation();
-        BaseCleanUpVisitor visitor = new BaseCleanUpVisitor(baseFeatureName);
-        node.traverse(visitor);
-    }
-
     private void literalNameCleanup(Node.Op node){
         // necessary for when there are features in the ground-truth without revision-ID
         Map<String, String> literalNameMap = new HashMap<>();
-        for (String groundTruthName : this.config.getFeatures()){
+        for (String groundTruthName : this.config.getFeaturesIncludingBase()){
             Collection<Feature> features = this.repository.getFeaturesByName(groundTruthName);
             if (features.size() != 0){
                 String repoName = features.iterator().next().getLatestRevision().getLogicLiteralRepresentation();
