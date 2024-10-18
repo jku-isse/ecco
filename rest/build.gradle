@@ -28,7 +28,7 @@ dependencies {
     implementation("io.micronaut.reactor:micronaut-reactor")
     implementation("io.micronaut.security:micronaut-security-jwt")
 
-    annotationProcessor("io.micronaut.openapi:micronaut-openapi:6.5.1")
+    annotationProcessor("io.micronaut.openapi:micronaut-openapi:6.13.0")
     implementation("io.swagger.core.v3:swagger-annotations")
 
     runtimeOnly("ch.qos.logback:logback-classic")
