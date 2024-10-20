@@ -61,7 +61,7 @@ public class CExperimentRunnerTest {
     @Test
     public void perfectScoreWhenAllVariantsAreCommitted() {
         DummyConfiguration dummyConfiguration = new DummyConfiguration();
-        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentage(0);
         dummyConfiguration.setMistakePercentage(0);
@@ -109,7 +109,7 @@ public class CExperimentRunnerTest {
     @Test
     public void mistakesDontChangeResultForZeroPercentMistakes() {
         DummyConfiguration dummyConfiguration = new DummyConfiguration();
-        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentage(0);
         dummyConfiguration.setMistakePercentage(0);
@@ -133,7 +133,7 @@ public class CExperimentRunnerTest {
     @Test
     public void experimentCreatesTheCorrectNumberOfAtomicResults() {
         DummyConfiguration dummyConfiguration = new DummyConfiguration();
-        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentage(100);
         dummyConfiguration.setMistakePercentage(0);
@@ -152,20 +152,13 @@ public class CExperimentRunnerTest {
         assertEquals(1, persister.getResults().size());
         assertEquals(1.0, result.getF1());
 
-        // number of artifacts: 10 + 3 + 3 + 3 + 3 + 3 lines ==> 25 Artifacts (that are not BASE-Artifacts)
-        // 2 Features ==> 4 Combinations
-        // 25 x 4 = 100 atomic results
+        // number of artifacts: 10 lines
+        // 2 + 1 Features ==> 8 Combinations
+        // 10 x 8 = 80 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(100, atomicResults);
-        // 6 artifacts per condition
-        // A        positive: 2; negative: 2
-        // B        positive: 2; negative: 2
-        // A || B   positive: 3; negative: 1
-        // A && B   positive: 1; negative: 3
-        // ~A       positive: 2; negative: 2
-        // positive: 60; negative: 60
-        assertEquals(50, result.getTp());
-        assertEquals(50, result.getTn());
+        assertEquals(80, atomicResults);
+        assertEquals(40, result.getTp());
+        assertEquals(40, result.getTn());
     }
 
 
@@ -191,22 +184,29 @@ public class CExperimentRunnerTest {
         assertEquals(1, persister.getResults().size());
 
         // number of artifacts: 4 + 6 lines ==> 10 Artifacts (that are not BASE-Artifacts)
-        // 2 Features ==> 4 Combinations
-        // 10 x 4 = 40 atomic results
+        // 2 Features (+ BASE) ==> 8 Combinations
+        // 10 x 8 = 80 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(40, atomicResults);
-        // BASE     tp:    fp:10  tn:    fn:
-        // A        tp:10  fp:    tn:    fn:
-        // B        tp:5   fp:5   tn:    fn:
-        // A && B   tp:10  fp:    tn:    fn:
-        //          tp:25  fp:15  tn:0   fn:0
-        assertEquals(25, result.getTp());
+        assertEquals(80, atomicResults);
+        // one variant with the features BASE and A will be committed.
+        // all artifacts will therefore have the condition "A || BASE".
+
+        // (none)           tp:    fp:    tn:10  fn:
+        // BASE             tp:    fp:10  tn:    fn:
+        // A                tp:10  fp:    tn:    fn:
+        // B                tp:    fp:    tn:5   fn:5
+        // A && B           tp:10  fp:    tn:    fn:
+        // BASE && A        tp:10  fp:    tn:    fn:
+        // BASE && B        tp:5   fp:5   tn:    fn:
+        // BASE && A && B   tp:10  fp:    tn:    fn:
+        //                  tp:45  fp:15  tn:15  fn:5
+        assertEquals(45, result.getTp());
         assertEquals(15, result.getFp());
-        assertEquals(0, result.getTn());
-        assertEquals(0, result.getFn());
-        assertEquals(0.625, result.getPrecision());
-        assertEquals(1.0, result.getRecall());
-        assertEquals(((2 * (1.0 * 0.625)) / (1.0 + 0.625)), result.getF1());
+        assertEquals(15, result.getTn());
+        assertEquals(5, result.getFn());
+        assertEquals(0.75, result.getPrecision());
+        assertEquals(0.9, result.getRecall());
+        assertEquals(((2 * (0.9 * 0.75)) / (0.9 + 0.75)), result.getF1());
     }
 
 
@@ -232,20 +232,26 @@ public class CExperimentRunnerTest {
         assertEquals(1, persister.getResults().size());
 
         // number of artifacts: 8 + 12 lines ==> 20 Artifacts (that are not BASE-Artifacts)
-        // 2 Features ==> 4 Combinations
-        // 20 x 4 = 80 atomic results
+        // 2 + 1 Features ==> 8 Combinations
+        // 20 x 8 = 160 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(80, atomicResults);
-        // BASE     tp:    fp:20  tn:    fn:
-        // A        tp:10  fp:10  tn:    fn:
-        // B        tp:10  fp:10  tn:    fn:
-        // A && B   tp:20  fp:    tn:    fn:
-        //          tp:40  fp:40  tn:0  fn:0
-        assertEquals(40, result.getTp());
-        assertEquals(40, result.getFp());
-        assertEquals(0.5, result.getPrecision());
+        assertEquals(160, atomicResults);
+
+        // (none)           tp:    fp:    tn:20  fn:
+        // BASE             tp:    fp:20  tn:    fn:
+        // A                tp:10  fp:10  tn:    fn:
+        // B                tp:10  fp:10  tn:    fn:
+        // A && B           tp:20  fp:    tn:    fn:
+        // BASE && A        tp:10  fp:10  tn:    fn:
+        // BASE && B        tp:10  fp:10  tn:    fn:
+        // BASE && A && B   tp:20  fp:    tn:    fn:
+        //                  tp:80  fp:60  tn:20  fn:
+        assertEquals(80, result.getTp());
+        assertEquals(60, result.getFp());
+        assertEquals(20, result.getTn());
+        assertEquals(80.0 / (80 + 60), result.getPrecision());
         assertEquals(1.0, result.getRecall());
-        assertEquals(((2 * (1.0 * 0.5)) / (1.0 + 0.5)), result.getF1());
+        assertEquals(((2 * ((80.0 / (80 + 60)) * 1.0)) / ((80.0 / (80 + 60)) + 1.0)), result.getF1());
     }
 
 
@@ -270,23 +276,25 @@ public class CExperimentRunnerTest {
         Result result= persister.getResults().iterator().next();
         assertEquals(1, persister.getResults().size());
 
-        // number of artifacts: 6 + 9 lines ==> 20 Artifacts (that are not BASE-Artifacts) (B, ~A, A||B)
-        // 2 Features ==> 4 Combinations
-        // 15 x 4 = 60 atomic results
+        // number of artifacts: 6 + 9 lines ==> 15 Artifacts (that are not BASE-Artifacts) (B, ~A, A||B)
+        // 2 + 1 Features ==> 8 Combinations
+        // 15 x 8 = 120 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(60, atomicResults);
-        // BASE     tp:5   fp:10  tn:    fn:
-        // A        tp:5   fp:10  tn:    fn:
-        // B        tp:15  fp:    tn:    fn:
-        // A && B   tp:10  fp:5   tn:    fn:
-        //          tp:35  fp:25  tn:0  fn:0
-        assertEquals(35, result.getTp());
-        assertEquals(25, result.getFp());
-        assertEquals(0, result.getTn());
-        assertEquals(0, result.getFn());
-        assertEquals(35.0 / 60.0, result.getPrecision());
-        assertEquals(1.0, result.getRecall());
-        assertEquals(((2 * (1.0 * (35.0 / 60.0))) / (1.0 + (35.0 / 60.0))), result.getF1());
+        assertEquals(120, atomicResults);
+
+        // (none)           tp:    fp:    tn:10  fn:5
+        // BASE             tp:5   fp:10  tn:    fn:
+        // A                tp:    fp:    tn:10  fn:5
+        // B                tp:15  fp:    tn:    fn:
+        // A && B           tp:10  fp:5   tn:    fn:
+        // BASE && A        tp:5   fp:10  tn:    fn:
+        // BASE && B        tp:15  fp:    tn:    fn:
+        // BASE && A && B   tp:10  fp:5   tn:    fn:
+        //                  tp:60  fp:30  tn:20  fn:10
+        assertEquals(60, result.getTp());
+        assertEquals(30, result.getFp());
+        assertEquals(20, result.getTn());
+        assertEquals(10, result.getFn());
     }
 
 
@@ -312,20 +320,24 @@ public class CExperimentRunnerTest {
         assertEquals(1, persister.getResults().size());
 
         // number of artifacts: 5 Artifacts (that are not BASE-Artifacts) (~A)
-        // 2 Features ==> 4 Combinations
-        // 5 x 4 = 20 atomic results
+        // 2 + 1 Features ==> 8 Combinations
+        // 5 x 8 = 40 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(20, atomicResults);
-        // BASE     tp:5   fp:    tn:    fn:
-        // A        tp:    fp:5   tn:    fn:
-        // B        tp:5   fp:    tn:    fn:
-        // A && B   tp:    fp:5   tn:    fn:
-        //          tp:10  fp:10  tn:    fn:
+        assertEquals(40, atomicResults);
+
+        // (none)           tp:    fp:    tn:    fn:5
+        // BASE             tp:5   fp:    tn:    fn:
+        // A                tp:    fp:    tn:5   fn:
+        // B                tp:    fp:    tn:    fn:5
+        // A && B           tp:    fp:    tn:5   fn:
+        // BASE && A        tp:    fp:5   tn:    fn:
+        // BASE && B        tp:5   fp:    tn:    fn:
+        // BASE && A && B   tp:    fp:5   tn:    fn:
+        //                  tp:10  fp:10  tn:10  fn:10
         assertEquals(10, result.getTp());
         assertEquals(10, result.getFp());
-        assertEquals(0.5, result.getPrecision());
-        assertEquals(1.0, result.getRecall());
-        assertEquals(0.6666666666666666, result.getF1());
+        assertEquals(10, result.getTn());
+        assertEquals(10, result.getFn());
     }
 
 
@@ -351,17 +363,12 @@ public class CExperimentRunnerTest {
         assertEquals(1, persister.getResults().size());
 
         // number of artifacts: 5 Artifacts (that are not BASE-Artifacts) (~A)
-        // 2 Features ==> 4 Combinations
-        // 5 x 4 = 20 atomic results
+        // 2 + 1 Features ==> 8 Combinations
+        // 5 x 8 = 40 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(20, atomicResults);
-        // BASE     tp:5   fp:    tn:    fn:
-        // A        tp:    fp:    tn:5   fn:
-        // B        tp:5   fp:    tn:    fn:
-        // A && B   tp:    fp:    tn:5   fn:
-        //          tp:10  fp:    tn:10  fn:
-        assertEquals(10, result.getTp());
-        assertEquals(10, result.getTn());
+        assertEquals(40, atomicResults);
+        assertEquals(20, result.getTp());
+        assertEquals(20, result.getTn());
         assertEquals(1.0, result.getPrecision());
         assertEquals(1.0, result.getRecall());
         assertEquals(1.0, result.getF1());
@@ -390,18 +397,15 @@ public class CExperimentRunnerTest {
         Result result= persister.getResults().iterator().next();
         assertEquals(1, persister.getResults().size());
 
-        // number of artifacts: 25 Artifacts (that are not BASE-Artifacts) (~A)
-        // 2 Features ==> 4 Combinations
-        // 25 x 4 = 100 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(100, atomicResults);
+        assertEquals(200, atomicResults);
         assertTrue(result.getF1() < 1.0);
     }
 
     @Test
     public void mistakesWorsenResultUsingConjugator() {
         DummyConfiguration dummyConfiguration = new DummyConfiguration();
-        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentage(100);
         dummyConfiguration.setMistakePercentage(50);
@@ -419,18 +423,15 @@ public class CExperimentRunnerTest {
         Result result= persister.getResults().iterator().next();
         assertEquals(1, persister.getResults().size());
 
-        // number of artifacts: 25 Artifacts (that are not BASE-Artifacts) (~A)
-        // 2 Features ==> 4 Combinations
-        // 25 x 4 = 100 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(100, atomicResults);
+        assertEquals(80, atomicResults);
         assertTrue(result.getF1() < 1.0);
     }
 
     @Test
     public void mistakesWorsenResultUsingFeatureSwitcher() {
         DummyConfiguration dummyConfiguration = new DummyConfiguration();
-        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentage(100);
         dummyConfiguration.setMistakePercentage(50);
@@ -448,11 +449,8 @@ public class CExperimentRunnerTest {
         Result result= persister.getResults().iterator().next();
         assertEquals(1, persister.getResults().size());
 
-        // number of artifacts: 25 Artifacts (that are not BASE-Artifacts) (~A)
-        // 2 Features ==> 4 Combinations
-        // 25 x 4 = 100 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(100, atomicResults);
+        assertEquals(80, atomicResults);
         assertTrue(result.getF1() < 1.0);
     }
 
@@ -477,11 +475,8 @@ public class CExperimentRunnerTest {
         Result result= persister.getResults().iterator().next();
         assertEquals(1, persister.getResults().size());
 
-        // number of artifacts: 25 Artifacts (that are not BASE-Artifacts) (~A)
-        // 2 Features ==> 4 Combinations
-        // 25 x 4 = 100 atomic results
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
-        assertEquals(100, atomicResults);
+        assertEquals(200, atomicResults);
         assertTrue(result.getF1() < 1.0);
     }
 
