@@ -3,11 +3,10 @@ package at.jku.isse.ecco.pog;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.util.Permutation;
 import org.eclipse.collections.api.map.primitive.IntObjectMap;
 import org.eclipse.collections.api.map.primitive.MutableIntIntMap;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
-import org.eclipse.collections.api.set.primitive.MutableIntSet;
-import org.eclipse.collections.impl.factory.Maps;
 import org.eclipse.collections.impl.factory.primitive.IntObjectMaps;
 import org.eclipse.collections.impl.map.mutable.primitive.IntIntHashMap;
 
@@ -64,6 +63,71 @@ public interface PartialOrderGraph extends Persistable {
 
 			return nodes;
 		}
+
+		default Node.Op[][] collectNodeSequencings() {
+			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
+			stack.push(this.getHead());
+
+			List<List<Node.Op>> sequencings = new LinkedList<>();
+			this.extendNodeSequencings(new LinkedList<>(), sequencings, counters, stack);
+
+			Node.Op[][] sequencingsArray = new Node.Op[sequencings.size()][];
+			Iterator<List<Node.Op>> pathIterator = sequencings.iterator();
+			for (int i = 0; i < sequencings.size(); i++){
+				List<Node.Op> path = pathIterator.next();
+				Node.Op[] pathArray = new Node.Op[path.size()];
+				path.toArray(pathArray);
+				sequencingsArray[i] = pathArray;
+			}
+			return sequencingsArray;
+		}
+
+		default void extendNodeSequencings(List<Node.Op> nodes,
+														  List<List<Node.Op>> sequencings,
+														  Map<PartialOrderGraph.Node.Op, Integer> counters,
+														  Stack<PartialOrderGraph.Node.Op> stack){
+			while (!stack.isEmpty()) {
+				Node.Op node = stack.pop();
+				if (!node.getNext().isEmpty() && !node.getPrevious().isEmpty()) {
+					nodes.add(node);
+				}
+
+				Collection<Node.Op> nextNodes = (Collection<Node.Op>) node.getNext();
+				if (nextNodes.size() > 1){
+					Collection<List<Node.Op>> permutations = Permutation.generatePermutations(nextNodes);
+					Iterator<List<Node.Op>> iterator = permutations.iterator();
+					List<Node.Op> firstPermutation = iterator.next();
+
+					while(iterator.hasNext()){
+						List<Node.Op> permutation = iterator.next();
+						Stack<PartialOrderGraph.Node.Op> newStack = (Stack<Node.Op>) stack.clone();
+						Map<PartialOrderGraph.Node.Op, Integer> newCounters = new HashMap<>(counters);
+						List<Node.Op> newNodes = new LinkedList<>(nodes);
+						this.sequenceChildNodes(permutation, newCounters, newStack);
+						this.extendNodeSequencings(newNodes, sequencings, newCounters, newStack);
+					}
+				}
+
+				this.sequenceChildNodes(nextNodes, counters, stack);
+			}
+			sequencings.add(nodes);
+		}
+
+		default void sequenceChildNodes(Collection<Node.Op> childNodes,
+										Map<PartialOrderGraph.Node.Op, Integer> counters,
+										Stack<PartialOrderGraph.Node.Op> stack){
+			for (Node.Op child : childNodes) {
+				counters.putIfAbsent(child, 0);
+				int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+				// check if all parents of the node have been processed
+				if (counter >= child.getPrevious().size()) {
+					counters.remove(child);
+					stack.push(child);
+				}
+			}
+		}
+
 
 		Node.Op createNode(Artifact.Op<?> artifact);
 
@@ -526,17 +590,25 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
-		default MutableIntObjectMap<Node.Op> iterativeLcsAlignment(PartialOrderGraph.Op other){
-			List<Node.Op> thisNodes = this.collectNodes();
-			thisNodes.remove(thisNodes.size() - 1); // remove tail
-			thisNodes.remove(0); // remove head
-			List<Node.Op> otherNodes = other.collectNodes();
-			otherNodes.remove(otherNodes.size() - 1); // remove tail
-			otherNodes.remove(0); // remove head
-			Node.Op[] thisNodesArray = new Node.Op[thisNodes.size()];
-			thisNodes.toArray(thisNodesArray);
-			Node.Op[] otherNodesArray = new Node.Op[otherNodes.size()];
-			otherNodes.toArray(otherNodesArray);
+		default MutableIntObjectMap<Node.Op> iterativeLcsAlignment(PartialOrderGraph.Op other) {
+			Node.Op[][] thisPaths = this.collectNodeSequencings();
+			Node.Op[][] otherPaths = other.collectNodeSequencings();
+
+			Collection<MutableIntObjectMap<Node.Op>> alignmentResults = new LinkedList<>();
+
+			for (Node.Op[] thisPath : thisPaths){
+				for (Node.Op[] otherPath : otherPaths){
+					alignmentResults.add(this.alignPaths(thisPath, otherPath));
+				}
+			}
+
+			return alignmentResults.stream()
+					.max(Comparator.comparingInt(MutableIntObjectMap::size))
+					.orElseThrow(NoSuchElementException::new);
+		}
+
+
+		default MutableIntObjectMap<Node.Op> alignPaths(Node.Op[] thisNodesArray, Node.Op[] otherNodesArray){
 
 			if (thisNodesArray.length == 0 || otherNodesArray.length == 0){
 				return IntObjectMaps.mutable.empty();
@@ -578,8 +650,8 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 		private void lcsStep(Node.Op[] thisNodesArray, Node.Op[] otherNodesArray,
-													 int thisIndex, int otherIndex,
-													 MutableIntIntMap[] lastColumn, MutableIntIntMap[] currentColumn){
+							 int thisIndex, int otherIndex,
+							 MutableIntIntMap[] lastColumn, MutableIntIntMap[] currentColumn){
 			Node.Op thisNode = thisNodesArray[thisIndex];
 			Node.Op otherNode = otherNodesArray[otherIndex];
 			Artifact<?> thisArtifact = thisNode.getArtifact();
