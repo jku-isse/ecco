@@ -7,7 +7,6 @@ import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.tree.*;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.feature.*;
-import at.jku.isse.ecco.experiment.utils.BaseCleanUpVisitor;
 import at.jku.isse.ecco.experiment.utils.LiteralCleanUpVisitor;
 
 import java.util.*;
