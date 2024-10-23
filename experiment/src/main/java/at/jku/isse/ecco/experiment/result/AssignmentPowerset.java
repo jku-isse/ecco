@@ -18,6 +18,9 @@ public class AssignmentPowerset {
         for (Literal literal : literals){
             assignments = doubleWithAddedLiteral(assignments, literal);
         }
+        for (Assignment assignment : assignments){
+            assignment.addLiteral(factory.literal("BASE", true));
+        }
         return assignments;
     }
 
