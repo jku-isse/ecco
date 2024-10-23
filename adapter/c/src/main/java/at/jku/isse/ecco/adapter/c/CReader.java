@@ -60,8 +60,7 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
             VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(path);
             Node.Op pluginNode = addPluginNode(nodes, path);
             Path absolutePath = base.resolve(path);
-            Node.Op node = this.parseFile(absolutePath, fileConditionContainer, path);
-            pluginNode.addChild(node);
+            this.parseFile(pluginNode, absolutePath, fileConditionContainer, path);
             nodes.add(pluginNode);
         }
         return nodes;
@@ -69,21 +68,21 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     private Node.Op addPluginNode(Set<Node.Op> nodes, Path path){
         Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-        Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
+        Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
         nodes.add(pluginNode);
         return pluginNode;
     }
 
-    private Node.Op parseFile(Path absolutePath, VevosFileConditionContainer fileConditionContainer, Path relPath){
+    private void parseFile(Node.Op pluginNode, Path absolutePath, VevosFileConditionContainer fileConditionContainer, Path relPath){
         try {
             List<String> lineList = Files.readAllLines(absolutePath);
             String[] lines = lineList.toArray(new String[0]);
-            CEccoVisitor translator = new CEccoVisitor(lines, this.entityFactory, fileConditionContainer, relPath);
+            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath);
             CParser parser = this.createParser(absolutePath);
             // in order to suppress log output
             parser.removeErrorListeners();
             ParseTree tree = parser.translationUnit();
-            return translator.translate(tree);
+            translator.translate(tree);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

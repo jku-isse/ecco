@@ -1,5 +1,4 @@
 import at.jku.isse.ecco.adapter.c.CWriter;
-import at.jku.isse.ecco.adapter.c.data.AbstractArtifactData;
 import at.jku.isse.ecco.adapter.c.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -109,12 +108,9 @@ public class CWriterIntegrationTest {
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId", testFilePath));
         Node.Op pluginNode = factory.createNode(pluginArtifact);
 
-        Artifact.Op<AbstractArtifactData> orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        Node.Op orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode.addChild(orderedNode);
         Artifact.Op<LineArtifactData> lineArtifact = factory.createArtifact(new LineArtifactData("single test line;"));
         Node.Op node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode.addChild(node);
 
         // write tree
         CWriter writer = new CWriter();
@@ -140,15 +136,12 @@ public class CWriterIntegrationTest {
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId", testFilePath));
         Node.Op pluginNode = factory.createNode(pluginArtifact);
 
-        Artifact.Op<AbstractArtifactData> orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        Node.Op orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode.addChild(orderedNode);
         Artifact.Op<LineArtifactData> lineArtifact = factory.createArtifact(new LineArtifactData("first test line;"));
         Node.Op node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode.addChild(node);
         lineArtifact = factory.createArtifact(new LineArtifactData("second test line;"));
         node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode.addChild(node);
 
         // write tree
         CWriter writer = new CWriter();
@@ -174,13 +167,9 @@ public class CWriterIntegrationTest {
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId", testFilePath));
         Node.Op pluginNode = factory.createNode(pluginArtifact);
 
-        Artifact.Op<AbstractArtifactData> orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        Node.Op orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode.addChild(orderedNode);
-
         Artifact.Op<FunctionArtifactData> functionArtifact = factory.createArtifact(new FunctionArtifactData("voidfeatureA()"));
         Node.Op functionNode = factory.createNode(functionArtifact);
-        orderedNode.addChild(functionNode);
+        pluginNode.addChild(functionNode);
 
         Artifact.Op<LineArtifactData> lineArtifact = factory.createArtifact(new LineArtifactData("void featureA() {"));
         Node.Op node = factory.createNode(lineArtifact);
@@ -217,17 +206,13 @@ public class CWriterIntegrationTest {
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId", testFilePath));
         Node.Op pluginNode = factory.createNode(pluginArtifact);
 
-        Artifact.Op<AbstractArtifactData> orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        Node.Op orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode.addChild(orderedNode);
-
         Artifact.Op<LineArtifactData> lineArtifact = factory.createArtifact(new LineArtifactData("first simple test line;"));
         Node.Op node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode.addChild(node);
 
         Artifact.Op<FunctionArtifactData> functionArtifact = factory.createArtifact(new FunctionArtifactData("voidfeatureA()"));
         Node.Op functionNode = factory.createNode(functionArtifact);
-        orderedNode.addChild(functionNode);
+        pluginNode.addChild(functionNode);
 
         lineArtifact = factory.createArtifact(new LineArtifactData("void featureA() {"));
         node = factory.createNode(lineArtifact);
@@ -241,7 +226,7 @@ public class CWriterIntegrationTest {
 
         lineArtifact = factory.createArtifact(new LineArtifactData("second simple test line;"));
         node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode.addChild(node);
 
         // write tree
         CWriter writer = new CWriter();
@@ -270,23 +255,17 @@ public class CWriterIntegrationTest {
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId1", testFilePath1));
         Node.Op pluginNode1 = factory.createNode(pluginArtifact);
 
-        Artifact.Op<AbstractArtifactData> orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        Node.Op orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode1.addChild(orderedNode);
         Artifact.Op<LineArtifactData> lineArtifact = factory.createArtifact(new LineArtifactData("single test line;"));
         Node.Op node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode1.addChild(node);
 
         Path testFilePath2 = getTestFolderSubpath("testFile2.c");
         pluginArtifact = factory.createArtifact(new PluginArtifactData("testId2", testFilePath2));
         Node.Op pluginNode2 = factory.createNode(pluginArtifact);
 
-        orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode2.addChild(orderedNode);
         lineArtifact = factory.createArtifact(new LineArtifactData("single test line;"));
         node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode2.addChild(node);
 
         // write tree
         CWriter writer = new CWriter();
@@ -317,23 +296,17 @@ public class CWriterIntegrationTest {
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId1", testFilePath1));
         Node.Op pluginNode1 = factory.createNode(pluginArtifact);
 
-        Artifact.Op<AbstractArtifactData> orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        Node.Op orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode1.addChild(orderedNode);
         Artifact.Op<LineArtifactData> lineArtifact = factory.createArtifact(new LineArtifactData("single test line;"));
         Node.Op node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode1.addChild(node);
 
         Path testFilePath2 = getTestFolderSubpath("testFile2.c");
         pluginArtifact = factory.createArtifact(new PluginArtifactData("testId2", testFilePath2));
         Node.Op pluginNode2 = factory.createNode(pluginArtifact);
 
-        orderedArtifact = factory.createArtifact(new AbstractArtifactData("Ordering Artifact"));
-        orderedNode = factory.createOrderedNode(orderedArtifact);
-        pluginNode2.addChild(orderedNode);
         lineArtifact = factory.createArtifact(new LineArtifactData("single test line;"));
         node = factory.createNode(lineArtifact);
-        orderedNode.addChild(node);
+        pluginNode2.addChild(node);
 
         CWriter writer = new CWriter();
         Set<Node> nodeSet = new HashSet<>();

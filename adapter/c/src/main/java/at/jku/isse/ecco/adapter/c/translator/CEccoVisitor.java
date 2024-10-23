@@ -10,20 +10,24 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
 
 
 public class CEccoVisitor extends CBaseVisitor<Node.Op> {
 
+    private Node.Op pluginNode;
     private String[] codeLines;
     private EntityFactory entityFactory;
     private Collection<CParser.FunctionDefinitionContext> functionDefinitionContexts;
     private VevosFileConditionContainer fileConditionContainer;
     private Path path;
 
-    public CEccoVisitor(String[] codeLines,
+    public CEccoVisitor(Node.Op pluginNode,
+                        String[] codeLines,
                         EntityFactory entityFactory,
                         VevosFileConditionContainer fileConditionContainer,
                         Path path){
+        this.pluginNode = pluginNode;
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.functionDefinitionContexts = new LinkedList<>();
@@ -44,7 +48,8 @@ public class CEccoVisitor extends CBaseVisitor<Node.Op> {
         CEccoTranslator translator = new CEccoTranslator(
                 this.codeLines, this.entityFactory, this.fileConditionContainer, this.path);
         this.collectFunctions(translator);
-        return translator.createProgramNode();
+        translator.addChildrenToPluginNode(this.pluginNode);
+        return this.pluginNode;
     }
 
     private void collectFunctions(CEccoTranslator programStructure){

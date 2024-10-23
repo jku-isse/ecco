@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.adapter.c.translator;
 
-import at.jku.isse.ecco.adapter.c.data.AbstractArtifactData;
 import at.jku.isse.ecco.adapter.c.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -37,27 +36,20 @@ public class CEccoTranslator {
         this.functionStructures.add(new FunctionStructure(start, end, functionSignature));
     }
 
-    public Node.Op createProgramNode(){
+    public void addChildrenToPluginNode(Node.Op pluginNode){
         this.sortFunctionStructures();
-
-        // this node is necessary to make the functions and lines ordered
-        AbstractArtifactData artifactData = new AbstractArtifactData("Ordering Artifact");
-        Node.Op orderingNode = this.entityFactory.createOrderedNode(artifactData);
-
 
         int startLine = 1;
         for(FunctionStructure functionStructure : this.functionStructures){
-            this.addLineNodes(orderingNode, startLine, functionStructure.startLine() - 1);
+            this.addLineNodes(pluginNode, startLine, functionStructure.startLine() - 1);
             Node.Op functionNode = this.createFunctionNode(functionStructure);
-            orderingNode.addChild(functionNode);
+            pluginNode.addChild(functionNode);
             startLine = functionStructure.endLine() + 1;
         }
 
         if (this.functionStructures.size() > 0) {
-            this.addLineNodes(orderingNode, startLine, this.codeLines.length);
+            this.addLineNodes(pluginNode, startLine, this.codeLines.length);
         }
-
-        return orderingNode;
     }
 
     private void sortFunctionStructures(){
@@ -101,22 +93,6 @@ public class CEccoTranslator {
         Node.Op node = this.entityFactory.createNode(artifact);
         node.setLocation(location);
         return node;
-    }
-
-    private Node.Op createOrderedNodeWithLocation(Artifact.Op artifact, Location location){
-        Node.Op node = this.entityFactory.createOrderedNode(artifact);
-        node.setLocation(location);
-        return node;
-    }
-
-    private void checkForFeatureTrace(FunctionStructure functionStructure, Node.Op node){
-        if (this.fileConditionContainer == null){ return; }
-        Collection<VevosCondition> matchingConditions = this.fileConditionContainer.getMatchingPresenceConditions(
-                functionStructure.startLine(), functionStructure.endLine());
-        for(VevosCondition condition : matchingConditions){
-            FeatureTrace nodeTrace = node.getFeatureTrace();
-            nodeTrace.buildUserConditionConjunction(condition.getConditionString());
-        }
     }
 
     private void checkForFeatureTrace(int lineNumber, Node.Op node){

@@ -40,12 +40,7 @@ public class CWriter implements ArtifactWriter<Set<Node>, Path> {
             Path outputPath = base.resolve(pluginArtifactData.getPath());
             output.add(outputPath);
 
-            List<?> fileNodeChildren = fileNode.getChildren();
-            if (fileNodeChildren.size() != 1){
-                throw new EccoException("Expected ordered node beneath plugin node.");
-            }
-            Node orderedNode = (Node) fileNodeChildren.iterator().next();
-            this.writeCFile(outputPath, orderedNode);
+            this.writeCFile(outputPath, fileNode);
         }
 
         return output.toArray(new Path[0]);

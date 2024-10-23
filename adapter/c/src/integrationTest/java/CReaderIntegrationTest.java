@@ -1,5 +1,4 @@
 import at.jku.isse.ecco.adapter.c.CReader;
-import at.jku.isse.ecco.adapter.c.data.AbstractArtifactData;
 import at.jku.isse.ecco.adapter.c.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -49,32 +48,23 @@ public class CReaderIntegrationTest {
         assertEquals(1, nodes.size());
         Node.Op resultPluginNode = nodes.iterator().next();
         List<Node.Op> pluginNodeChildren = (List<Node.Op>) resultPluginNode.getChildren();
-        assertEquals(1, pluginNodeChildren.size());
 
-        Node.Op orderingNode = pluginNodeChildren.iterator().next();
-        Artifact<?> orderingArtifact = orderingNode.getArtifact();
-        assertTrue(orderingArtifact.isOrdered());
-        ArtifactData orderingArtifactData = orderingArtifact.getData();
-        assertTrue(orderingArtifactData instanceof AbstractArtifactData);
-        assertEquals("Ordering Artifact", ((AbstractArtifactData) orderingArtifactData).getId());
+        assertEquals(11, resultPluginNode.getNumberOfChildren());
+        checkLineNode(pluginNodeChildren.get(0), "#include <stdio.h>");
+        checkLineNode(pluginNodeChildren.get(1), "int main({");
+        checkLineNode(pluginNodeChildren.get(2), "    printf(\"Base Product\\n\");");
+        checkLineNode(pluginNodeChildren.get(3), "    // Feature A");
+        checkUserCondition(pluginNodeChildren.get(3), "FEATUREA");
+        checkLineNode(pluginNodeChildren.get(4), "    featureA();");
+        checkUserCondition(pluginNodeChildren.get(4), "FEATUREA");
+        checkLineNode(pluginNodeChildren.get(5), "    // Feature A || B");
+        checkUserCondition(pluginNodeChildren.get(5), "(FEATUREA | FEATUREB)");
+        checkLineNode(pluginNodeChildren.get(6), "    featureAOrB();");
+        checkUserCondition(pluginNodeChildren.get(6), "(FEATUREA | FEATUREB)");
+        checkLineNode(pluginNodeChildren.get(7), "    return 0;");
+        checkLineNode(pluginNodeChildren.get(8), "}");
 
-        assertEquals(11, orderingNode.getNumberOfChildren());
-        List<Node.Op> firstLevelNodes = (List<Node.Op>) orderingNode.getChildren();
-        checkLineNode(firstLevelNodes.get(0), "#include <stdio.h>");
-        checkLineNode(firstLevelNodes.get(1), "int main({");
-        checkLineNode(firstLevelNodes.get(2), "    printf(\"Base Product\\n\");");
-        checkLineNode(firstLevelNodes.get(3), "    // Feature A");
-        checkUserCondition(firstLevelNodes.get(3), "FEATUREA");
-        checkLineNode(firstLevelNodes.get(4), "    featureA();");
-        checkUserCondition(firstLevelNodes.get(4), "FEATUREA");
-        checkLineNode(firstLevelNodes.get(5), "    // Feature A || B");
-        checkUserCondition(firstLevelNodes.get(5), "(FEATUREA | FEATUREB)");
-        checkLineNode(firstLevelNodes.get(6), "    featureAOrB();");
-        checkUserCondition(firstLevelNodes.get(6), "(FEATUREA | FEATUREB)");
-        checkLineNode(firstLevelNodes.get(7), "    return 0;");
-        checkLineNode(firstLevelNodes.get(8), "}");
-
-        Node.Op functionNode = firstLevelNodes.get(9);
+        Node.Op functionNode = pluginNodeChildren.get(9);
         checkFunctionNode(functionNode, "voidfeatureA()");
         assertEquals(3, functionNode.getNumberOfChildren());
         List<Node.Op> functionLines = (List<Node.Op>) functionNode.getChildren();
@@ -85,7 +75,7 @@ public class CReaderIntegrationTest {
         checkLineNode(functionLines.get(2), "}");
         checkUserCondition(functionLines.get(2), "FEATUREA");
 
-        functionNode = firstLevelNodes.get(10);
+        functionNode = pluginNodeChildren.get(10);
         checkFunctionNode(functionNode, "voidfeatureAOrB()");
         assertEquals(3, functionNode.getNumberOfChildren());
         functionLines = (List<Node.Op>) functionNode.getChildren();
@@ -110,20 +100,11 @@ public class CReaderIntegrationTest {
 
     private void testSimpleFile(Node.Op pluginNode){
         List<Node.Op> pluginNodeChildren = (List<Node.Op>) pluginNode.getChildren();
-        assertEquals(1, pluginNodeChildren.size());
 
-        Node.Op orderingNode = pluginNodeChildren.iterator().next();
-        Artifact<?> orderingArtifact = orderingNode.getArtifact();
-        assertTrue(orderingArtifact.isOrdered());
-        ArtifactData orderingArtifactData = orderingArtifact.getData();
-        assertTrue(orderingArtifactData instanceof AbstractArtifactData);
-        assertEquals("Ordering Artifact", ((AbstractArtifactData) orderingArtifactData).getId());
+        assertEquals(4, pluginNodeChildren.size());
+        checkLineNode(pluginNodeChildren.get(0), "#include <stdio.h>");
 
-        assertEquals(4, orderingNode.getNumberOfChildren());
-        List<Node.Op> firstLevelNodes = (List<Node.Op>) orderingNode.getChildren();
-        checkLineNode(firstLevelNodes.get(0), "#include <stdio.h>");
-
-        Node.Op functionNode = firstLevelNodes.get(1);
+        Node.Op functionNode = pluginNodeChildren.get(1);
         checkFunctionNode(functionNode, "intmain()");
         assertEquals(8, functionNode.getNumberOfChildren());
         List<Node.Op> functionLines = (List<Node.Op>) functionNode.getChildren();
@@ -140,7 +121,7 @@ public class CReaderIntegrationTest {
         checkLineNode(functionLines.get(6), "    return 0;");
         checkLineNode(functionLines.get(7), "}");
 
-        functionNode = firstLevelNodes.get(2);
+        functionNode = pluginNodeChildren.get(2);
         checkFunctionNode(functionNode, "voidfeatureA()");
         assertEquals(3, functionNode.getNumberOfChildren());
         functionLines = (List<Node.Op>) functionNode.getChildren();
@@ -151,7 +132,7 @@ public class CReaderIntegrationTest {
         checkLineNode(functionLines.get(2), "}");
         checkUserCondition(functionLines.get(2), "FEATUREA");
 
-        functionNode = firstLevelNodes.get(3);
+        functionNode = pluginNodeChildren.get(3);
         checkFunctionNode(functionNode, "voidfeatureAOrB()");
         assertEquals(3, functionNode.getNumberOfChildren());
         functionLines = (List<Node.Op>) functionNode.getChildren();
