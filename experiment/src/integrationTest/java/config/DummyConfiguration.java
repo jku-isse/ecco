@@ -18,7 +18,7 @@ public class DummyConfiguration {
     private Path vevosGroundTruthDatasetPath;
     private Path variantsDir;
     private Integer numberOfVariants;
-    private Integer featureTracePercentage;
+    private Integer[] featureTracePercentages;
     private Integer mistakePercentage;
     private EvaluationStrategy evaluationStrategy;
     private String mistakeStrategy;
@@ -32,7 +32,7 @@ public class DummyConfiguration {
         this.vevosSplRepositoryBasePath = Paths.get("");
         this.variantsDir = ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit");
         this.numberOfVariants = 1;
-        this.featureTracePercentage = 0;
+        this.featureTracePercentages = new Integer[]{0};
         this.mistakePercentage = 0;
         this.evaluationStrategy = new DiffBasedEvaluation();
         this.mistakeStrategy = "DiffBasedEvaluation";
@@ -47,7 +47,7 @@ public class DummyConfiguration {
                 this.vevosGroundTruthDatasetPath,
                 this.variantsDir,
                 this.numberOfVariants,
-                this.featureTracePercentage,
+                this.featureTracePercentages,
                 this.mistakePercentage,
                 this.evaluationStrategy,
                 this.mistakeStrategy);
@@ -61,7 +61,7 @@ public class DummyConfiguration {
     public Path getVevosGroundTruthDatasetPath() {return vevosGroundTruthDatasetPath;}
     public Path getVariantsDir() {return variantsDir;}
     public Integer getNumberOfVariants() {return numberOfVariants;}
-    public Integer getFeatureTracePercentage() {return featureTracePercentage;}
+    public Integer[] getFeatureTracePercentages() {return featureTracePercentages;}
     public Integer getMistakePercentage() {return mistakePercentage;}
     public EvaluationStrategy getEvaluationStrategy() {return evaluationStrategy;}
     public String getMistakeStrategy() {return mistakeStrategy;}
@@ -74,7 +74,7 @@ public class DummyConfiguration {
     public void setVevosGroundTruthDatasetPath(Path vevosGroundTruthDatasetPath) {this.vevosGroundTruthDatasetPath = vevosGroundTruthDatasetPath;}
     public void setVariantsDir(Path variantsDir) {this.variantsDir = variantsDir;}
     public void setNumberOfVariants(Integer numberOfVariants) {this.numberOfVariants = numberOfVariants;}
-    public void setFeatureTracePercentage(Integer featureTracePercentage) {this.featureTracePercentage = featureTracePercentage;}
+    public void setFeatureTracePercentages(Integer[] featureTracePercentages) {this.featureTracePercentages = featureTracePercentages;}
     public void setMistakePercentage(Integer mistakePercentage) {this.mistakePercentage = mistakePercentage;}
     public void setEvaluationStrategy(EvaluationStrategy evaluationStrategy) {this.evaluationStrategy = evaluationStrategy;}
     public void setMistakeStrategy(String mistakeStrategy) {this.mistakeStrategy = mistakeStrategy;}

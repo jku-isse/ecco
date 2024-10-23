@@ -93,9 +93,10 @@ public class ExperimentConfiguration{
 
     private void createExperimentRunConfigurations(){
         List<ExperimentRunConfiguration> runConfigurations = new LinkedList<>();
+        Integer[] featureTracePercentages = new Integer[this.featureTracePercentages.size()];
+        this.featureTracePercentages.toArray(featureTracePercentages);
         for (String repositoryName : this.repositoryNames){
             for (int numberOfVariants : this.numbersOfVariants){
-                for (int featureTracePercentage : this.featureTracePercentages){
                     for (int mistakePercentage : this.mistakePercentages){
                         for (EvaluationStrategy evaluationStrategy : this.evaluationStrategies){
                             for (String mistakeStrategy : this.mistakeStrategies){
@@ -108,14 +109,13 @@ public class ExperimentConfiguration{
                                         this.vevosGroundTruthDatasetPath,
                                         this.variantsDir,
                                         numberOfVariants,
-                                        featureTracePercentage,
+                                        featureTracePercentages,
                                         mistakePercentage,
                                         evaluationStrategy,
                                         mistakeStrategy));
                             }
                         }
                     }
-                }
             }
         }
         this.runConfigurations = runConfigurations;

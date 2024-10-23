@@ -28,7 +28,7 @@ public class ResultDatabasePersister implements ResultPersister{
     }
 
     @Override
-    public void persist(Result result, ExperimentRunConfiguration config) {
+    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage) {
         String sql = "INSERT INTO results (repository, numberOfVariants, variantConfigurations, " +
                 "numberOfSampledFeatures, sampledFeatures, featureTracePercentage, mistakePercentage, " +
                 "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -44,7 +44,7 @@ public class ResultDatabasePersister implements ResultPersister{
             pstmt.setString(3, variantConfigurations);
             pstmt.setInt(4, config.getFeatures().size());
             pstmt.setString(5, String.join(", ", config.getFeatures()));
-            pstmt.setInt(6, config.getFeatureTracePercentage());
+            pstmt.setInt(6, featureTracePercentage);
             pstmt.setInt(7, config.getMistakePercentage());
             pstmt.setString(8, config.getEvaluationStrategy().getStrategyName());
             pstmt.setString(9, config.getMistakeStrategy());

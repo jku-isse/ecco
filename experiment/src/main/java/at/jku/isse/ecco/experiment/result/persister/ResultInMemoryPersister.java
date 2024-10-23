@@ -21,7 +21,7 @@ public class ResultInMemoryPersister implements ResultPersister {
     }
 
     @Override
-    public void persist(Result result, ExperimentRunConfiguration config) {
+    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage) {
         this.results.add(result);
     }
 }

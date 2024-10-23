@@ -14,10 +14,12 @@ import java.util.stream.Collectors;
 public class ResultCalculator {
     private final ResultPersister resultPersister;
     private final ExperimentRunConfiguration config;
+    private final int featureTracePercentage;
 
-    public ResultCalculator(ExperimentRunConfiguration config, ResultPersister resultPersister){
+    public ResultCalculator(ExperimentRunConfiguration config, int featureTracePercentage, ResultPersister resultPersister){
         this.config = config;
         this.resultPersister = resultPersister;
+        this.featureTracePercentage = featureTracePercentage;
     }
 
     public void calculateMetrics(Node.Op mainTree){
@@ -28,6 +30,6 @@ public class ResultCalculator {
         Collection<NodeResult> nodeResults = visitor.getResults();
         Collection<Result> results = nodeResults.stream().map(NodeResult::getResult).collect(Collectors.toList());
         Result overallResult = Result.overallResult(results);
-        this.resultPersister.persist(overallResult, this.config);
+        this.resultPersister.persist(overallResult, this.config, featureTracePercentage);
     }
 }

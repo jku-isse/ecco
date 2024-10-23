@@ -5,5 +5,5 @@ import at.jku.isse.ecco.experiment.result.Result;
 
 
 public interface ResultPersister {
-    void persist(Result result, ExperimentRunConfiguration config);
+    void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage);
 }

@@ -17,7 +17,7 @@ public class ResultFilePersister implements ResultPersister {
     }
 
     @Override
-    public void persist(Result result, ExperimentRunConfiguration config) {
+    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage) {
         String resultStart = "TP; FP; TN; FN; Precision; Recall; F1\n";
         String resultEnd = String.format("%d, %d, %d, %d, %f, %f, %f",
                 result.getTp(), result.getFp(), result.getTn(), result.getFn(), result.getPrecision(), result.getRecall(), result.getF1());

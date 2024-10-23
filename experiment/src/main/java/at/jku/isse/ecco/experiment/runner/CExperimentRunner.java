@@ -22,7 +22,6 @@ public class CExperimentRunner implements ExperimentRunner {
         this.config = config;
         this.repository = repository;
         this.persister = persister;
-
         this.mistakeCreator = new MistakeCreator(this.createMistakeStrategy(config.getMistakeStrategy(), config.getFeatures()));
     }
 
@@ -39,12 +38,15 @@ public class CExperimentRunner implements ExperimentRunner {
 
 
     public void runExperiment(){
-        this.repository.removeFeatureTracePercentage(100 - this.config.getFeatureTracePercentage());
-        this.mistakeCreator.createMistakePercentage(this.repository, this.config.getMistakePercentage());
-        Node.Op mainTree = this.repository.fuseAssociationsWithFeatureTraces();
-        this.literalNameCleanup(mainTree);
-        ResultCalculator metricsCalculator = new ResultCalculator(this.config, this.persister);
-        metricsCalculator.calculateMetrics(mainTree);
+        // todo: remove feature trace percentage from main tree instead of repository?
+        for (int featureTracePercentage : this.config.getFeatureTracePercentages()){
+            this.repository.removeFeatureTracePercentage(100 - featureTracePercentage);
+            this.mistakeCreator.createMistakePercentage(this.repository, this.config.getMistakePercentage());
+            Node.Op mainTree = this.repository.fuseAssociationsWithFeatureTraces();
+            this.literalNameCleanup(mainTree);
+            ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister);
+            metricsCalculator.calculateMetrics(mainTree);
+        }
     }
 
     private void literalNameCleanup(Node.Op node){
@@ -65,7 +67,7 @@ public class CExperimentRunner implements ExperimentRunner {
         System.out.println(
                 "Running experiment with following settings:\n" +
                         "Strategy: " + this.config.getEvaluationStrategy().getStrategyName() + "\n" +
-                        "Feature Trace Percentage: " + this.config.getFeatureTracePercentage() + "\n" +
+                        "Feature Trace Percentages: " + this.config.getFeatureTracePercentages() + "\n" +
                         "Mistake Percentage: " + this.config.getMistakePercentage() + "\n" +
                         "Mistake Strategy: " + this.mistakeCreator.getMistakeStrategy().getClass().getSimpleName()
         );

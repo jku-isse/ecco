@@ -19,7 +19,7 @@ public class ExperimentRunConfiguration{
     private final Path vevosGroundTruthDatasetPath;
     private final Path variantsDir;
     private final Integer numberOfVariants;
-    private final Integer featureTracePercentage;
+    private final Integer[] featureTracePercentages;
     private final Integer mistakePercentage;
     private final EvaluationStrategy evaluationStrategy;
     private final String mistakeStrategy;
@@ -35,7 +35,7 @@ public class ExperimentRunConfiguration{
                                       Path vevosGroundTruthDatasetPath,
                                       Path variantsDir,
                                       Integer numberOfVariants,
-                                      Integer featureTracePercentage,
+                                      Integer[] featureTracePercentages,
                                       Integer mistakePercentage,
                                       EvaluationStrategy evaluationStrategy,
                                       String mistakeStrategy){
@@ -47,7 +47,7 @@ public class ExperimentRunConfiguration{
         this.vevosGroundTruthDatasetPath = vevosGroundTruthDatasetPath.resolve(repositoryName);
         this.variantsDir = variantsDir;
         this.numberOfVariants = numberOfVariants;
-        this.featureTracePercentage = featureTracePercentage;
+        this.featureTracePercentages = featureTracePercentages;
         this.mistakePercentage = mistakePercentage;
         this.evaluationStrategy = evaluationStrategy;
         this.mistakeStrategy = mistakeStrategy;
@@ -119,8 +119,8 @@ public class ExperimentRunConfiguration{
         return numberOfVariants;
     }
 
-    public int getFeatureTracePercentage() {
-        return featureTracePercentage;
+    public Integer[] getFeatureTracePercentages() {
+        return featureTracePercentages;
     }
 
     public int getMistakePercentage() {
@@ -149,7 +149,7 @@ public class ExperimentRunConfiguration{
                 "Path to Vevos Ground Truth: " + this.vevosGroundTruthDatasetPath + "\n" +
                 "Path to Sampled Variants: " + this.variantsDir + "\n" +
                 "Number of Variants: " + this.numberOfVariants + "\n" +
-                "Feature Trace Percentage: " + this.featureTracePercentage + "\n" +
+                "Feature Trace Percentages: " + this.featureTracePercentages + "\n" +
                 "Mistake Percentage: " + this.mistakePercentage + "\n" +
                 "Evaluation Strategy: " + this.evaluationStrategy + "\n" +
                 "Mistake Strategy: " + this.mistakeStrategy + "\n";
