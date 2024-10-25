@@ -124,8 +124,6 @@ public interface Repository extends Persistable {
 
 		Node.Op fuseAssociationsWithFeatureTraces();
 
-		void removeFeatureTracePercentage(int percentage);
-
 		default Collection<FeatureRevision> addFeatureRevisions(FeatureRevision[] featureRevisions){
 			Collection<FeatureRevision> repoFeatureRevisions = new ArrayList<>();
 			for (FeatureRevision featureRevision : featureRevisions) {

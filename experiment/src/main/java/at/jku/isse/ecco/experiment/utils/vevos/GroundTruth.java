@@ -38,7 +38,7 @@ public class GroundTruth {
 
     public Formula getCondition(Location location, FormulaFactory formulaFactory){
         VevosConditionHandler handler = this.handlerMap.get(location.getConfigurationString());
-        VevosFileConditionContainer conditionContainer = handler.getFileSpecificPresenceConditions(location.getFilePath().toAbsolutePath());
+        VevosFileConditionContainer conditionContainer = handler.getFileSpecificPresenceConditions(location.getFilePath());
         Collection<VevosCondition> conditions = conditionContainer.getMatchingPresenceConditions(location.getStartLine(), location.getEndLine());
         if (conditions.size() == 0){
             return formulaFactory.constant(true);

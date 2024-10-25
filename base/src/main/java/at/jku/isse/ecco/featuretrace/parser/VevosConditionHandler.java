@@ -3,7 +3,6 @@ package at.jku.isse.ecco.featuretrace.parser;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Files;
-import java.security.KeyException;
 import java.util.*;
 
 
@@ -49,21 +48,33 @@ public class VevosConditionHandler {
     }
 
     private void addConditionToMap(VevosCondition condition){
-        List<VevosCondition> conditions = this.fileConditionsMap.get(condition.getFilePath().toAbsolutePath());
+        List<VevosCondition> conditions = this.fileConditionsMap.get(condition.getFilePath());
         if (conditions == null){
             List<VevosCondition> newConditionList = new LinkedList<>();
             newConditionList.add(condition);
-            this.fileConditionsMap.put(condition.getFilePath().toAbsolutePath(), newConditionList);
+            this.fileConditionsMap.put(condition.getFilePath(), newConditionList);
         } else {
             conditions.add(condition);
         }
     }
 
     public VevosFileConditionContainer getFileSpecificPresenceConditions(Path filePath){
-        List<VevosCondition> conditions = this.fileConditionsMap.get(filePath.toAbsolutePath());
+        List<VevosCondition> conditions = this.fileConditionsMap.get(filePath);
         if (conditions == null){
             conditions = new LinkedList<>();
         }
         return new VevosFileConditionContainer(conditions);
+    }
+
+    public Map<Path, List<VevosCondition>> getFileConditionsMap(){ return this.fileConditionsMap; };
+
+    public int getNumberOfConditionedCodeLines(){
+        int sum = 0;
+        for (List<VevosCondition> conditionList : this.fileConditionsMap.values()){
+            for (VevosCondition condition : conditionList){
+                sum += condition.getEndLine() - (condition.getStartLine() - 1);
+            }
+        }
+        return sum;
     }
 }

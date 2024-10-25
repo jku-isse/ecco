@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.security.Provider;
+import java.util.Iterator;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -199,6 +200,44 @@ public class CExperimentRunnerTest {
         assertEquals(25, result.getTp());
         assertEquals(15, result.getFp());
         assertEquals(0, result.getTn());
+        assertEquals(0, result.getFn());
+    }
+
+    @Test
+    public void featureARepoCreatesCorrectForMultipleFtPercentagesResults() {
+        DummyConfiguration dummyConfiguration = new DummyConfiguration();
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_2/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setNumberOfVariants(1);
+        dummyConfiguration.setFeatureTracePercentages(new Integer[]{0, 100});
+        dummyConfiguration.setMistakePercentage(0);
+        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
+        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
+        config.pickVariants();
+
+        Repository.Op repo = prepareRepository(config);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        runner.runExperiment();
+
+        assertEquals(2, persister.getResults().size());
+
+        Iterator<Result> iterator = persister.getResults().iterator();
+        Result result= iterator.next();
+        int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
+        assertEquals(40, atomicResults);
+        assertEquals(25, result.getTp());
+        assertEquals(15, result.getFp());
+        assertEquals(0, result.getTn());
+        assertEquals(0, result.getFn());
+
+        result= iterator.next();
+        atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
+        assertEquals(40, atomicResults);
+        assertEquals(25, result.getTp());
+        assertEquals(0, result.getFp());
+        assertEquals(15, result.getTn());
         assertEquals(0, result.getFn());
     }
 

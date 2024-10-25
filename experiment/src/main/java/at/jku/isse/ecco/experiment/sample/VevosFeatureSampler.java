@@ -4,6 +4,8 @@ import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.utils.DirUtils;
 import at.jku.isse.ecco.experiment.utils.FeatureUtils;
 import at.jku.isse.ecco.experiment.utils.vevos.ConfigTransformer;
+import at.jku.isse.ecco.experiment.utils.vevos.VevosUtils;
+
 import de.ovgu.featureide.fm.core.base.IFeatureModel;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.tinylog.Logger;
@@ -36,9 +38,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 
 public class VevosFeatureSampler {
@@ -58,6 +58,7 @@ public class VevosFeatureSampler {
             List<String> features = List.of(ConfigTransformer.gatherConfigFeatures(this.config.getVariantsDir().resolve("configs"), this.config.getMaxVariantFeatures()));
             boolean allValid = features.stream().map(FeatureUtils::featureNameIsValid).reduce(true, (a, b) -> a && b);
             if (allValid){
+                VevosUtils.sanitizeVevosFiles(this.config.getVariantsDir(), features);
                 return;
             } else {
                 Logger.error("VEVOS Sampling failed to sample features with valid names: " + features);

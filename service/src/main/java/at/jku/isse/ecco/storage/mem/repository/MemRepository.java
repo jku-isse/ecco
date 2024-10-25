@@ -226,26 +226,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		return mainTree;
 	}
 
-
-	@Override
-	public void removeFeatureTracePercentage(int percentage) {
-		if (percentage < 0 || percentage > 100){
-			throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
-		}
-		Collection<FeatureTrace> traces = this.getFeatureTraces();
-		int noOfRemovals = (traces.size() * percentage) / 100;
-		List<FeatureTrace> featureTraceList = new ArrayList<>(traces);
-		Collections.shuffle(featureTraceList);
-		Iterator<FeatureTrace> iterator = featureTraceList.stream().iterator();
-		for (int i = 1; i <= noOfRemovals; i++){
-			FeatureTrace trace = iterator.next();
-			Node.Op traceNode = (Node.Op) trace.getNode();
-			traceNode.removeFeatureTrace();
-			// todo: remove node if it's a leaf? (and all nodes on path to new leaf?)
-		}
-	}
-
-
 	private void SyncRepositoryWithFeatureTrace(FeatureTrace featureTrace){
 		// replace condition-features with feature-revisions
 		// add missing features / feature-revisions

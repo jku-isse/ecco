@@ -23,7 +23,7 @@ public class ExperimentConfiguration{
     private final List<String> mistakeStrategies;
     private List<ExperimentRunConfiguration> runConfigurations;
 
-    public ExperimentConfiguration(String configurationPath) {
+    public ExperimentConfiguration(String configurationPath, Path variantBasePath) {
         Properties config = PropertyUtils.loadProperties(configurationPath);
         this.repositoryNames = PropertyUtils.loadStringList(config, "repositoryNames");
         this.numberOfRuns = PropertyUtils.loadInteger(config, "numberOfRuns");
@@ -37,7 +37,7 @@ public class ExperimentConfiguration{
         this.evaluationStrategies = this.loadEvaluationStrategies(config);
         this.mistakeStrategies = PropertyUtils.loadStringList(config, "mistakeStrategies");
 
-        this.variantsDir = ResourceUtils.getResourceFolderPath("sample");
+        this.variantsDir = variantBasePath;
 
         this.createExperimentRunConfigurations();
     }

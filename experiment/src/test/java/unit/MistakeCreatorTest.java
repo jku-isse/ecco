@@ -579,11 +579,6 @@ public class MistakeCreatorTest {
         }
 
         @Override
-        public void removeFeatureTracePercentage(int percentage) {
-
-        }
-
-        @Override
         public Module getModule(Feature[] pos, Feature[] neg) {
             return null;
         }

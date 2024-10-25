@@ -1,19 +1,20 @@
 package at.jku.isse.ecco.experiment.utils.vevos;
 
+import at.jku.isse.ecco.featuretrace.parser.VevosCondition;
 import org.apache.commons.collections4.CollectionUtils;
 import at.jku.isse.ecco.experiment.utils.DirUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class VevosUtils {
+
+    public static final String VEVOS_FILENAME = "pcs.variant.csv";
 
     public static Path getVariantPath(Path variantsBasePath, String configString) {
         // a config-element may be a feature or a feature-revision
@@ -69,5 +70,31 @@ public class VevosUtils {
             extendedPaths.add(samplePath.resolve(subPaths.iterator().next()));
         }
         return extendedPaths;
+    }
+
+    public static void sanitizeVevosFiles(Path variantsBasePath, List<String> features){
+        List<Path> variantPaths = VevosUtils.getVariantFolders(variantsBasePath);
+        for (Path variantPath : variantPaths){
+            Path vevosFilePath = variantPath.resolve(VEVOS_FILENAME);
+            sanitizeVevosFile(vevosFilePath, features);
+        }
+    }
+
+    private static void sanitizeVevosFile(Path vevosFilePath, List<String> features) {
+        try {
+            List<String> lines = Files.readAllLines(vevosFilePath);
+            List<String> newLines = new LinkedList<>();
+            newLines.add(lines.remove(0));
+            for (String line : lines){
+                VevosCondition vevosCondition = new VevosCondition(line);
+                String presenceCondition = vevosCondition.getConditionString();
+                if (features.stream().anyMatch(presenceCondition::contains)){
+                    newLines.add(line);
+                }
+            }
+            Files.write(vevosFilePath, newLines, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to sanitize VEVOS file: " + e.getMessage());
+        }
     }
 }
