@@ -3,6 +3,10 @@ package at.jku.isse.ecco.experiment.utils.vevos;
 import at.jku.isse.ecco.featuretrace.parser.VevosCondition;
 import org.apache.commons.collections4.CollectionUtils;
 import at.jku.isse.ecco.experiment.utils.DirUtils;
+import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
+import org.logicng.formulas.Literal;
+import org.logicng.io.parsers.ParserException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -88,7 +92,7 @@ public class VevosUtils {
             for (String line : lines){
                 VevosCondition vevosCondition = new VevosCondition(line);
                 String presenceCondition = vevosCondition.getConditionString();
-                if (features.stream().anyMatch(presenceCondition::contains)){
+                if (conditionIsRelevant(features, presenceCondition)){
                     newLines.add(line);
                 }
             }
@@ -97,4 +101,18 @@ public class VevosUtils {
             throw new RuntimeException("Unable to sanitize VEVOS file: " + e.getMessage());
         }
     }
+
+    private static boolean conditionIsRelevant(List<String> features, String condition) {
+        try {
+            FormulaFactory formulaFactory = new FormulaFactory();
+            Formula conditionFormula = formulaFactory.parse(condition);
+            Collection<Literal> literals = conditionFormula.literals();
+            List<String> literalNames = literals.stream().map(Literal::name).toList();
+            return features.stream().anyMatch(f -> literalNames.stream().anyMatch(ln -> ln.equals(f)));
+        } catch (ParserException e){
+            throw new RuntimeException("Condition could not be parsed: " + e.getMessage());
+        }
+    }
+
+
 }

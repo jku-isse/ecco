@@ -35,9 +35,10 @@ public class VevosSamplingTest {
 
         Path vevosFile1Path = destinationDirectoryPath.resolve("Variant_A/" + VevosUtils.VEVOS_FILENAME);
         List<String> lines1 = Files.readAllLines(vevosFile1Path);
-        assertEquals(2, lines1.size());
+        assertEquals(3, lines1.size());
         assertEquals("Path;File Condition;Block Condition;Presence Condition;Line Type;start;end", lines1.get(0));
         assertEquals("main.c;True;FEATUREA;FEATUREA;artifact;2;2", lines1.get(1));
+        assertEquals("main.c;True;(FEATUREA || NONRELAVENT);(FEATUREA || NONRELAVENT);artifact;2;2", lines1.get(2));
 
         Path vevosFile2Path = destinationDirectoryPath.resolve("Variant_B/" + VevosUtils.VEVOS_FILENAME);
         List<String> lines2 = Files.readAllLines(vevosFile2Path);
