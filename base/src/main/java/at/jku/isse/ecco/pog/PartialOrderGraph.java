@@ -622,9 +622,9 @@ public interface PartialOrderGraph extends Persistable {
 			// instead, only two arrays are used.
 
 			// This array represents the last column.
-			// Every index has a mapping of sequence-numbers to nodes of the other pof (the index of the node in the array)
+			// Every index has a mapping of sequence-numbers to nodes of the other pog (the index of the node in the array)
 			MutableIntIntMap[] lastColumn;
-			MutableIntIntMap[] currentColumn = new IntIntHashMap[otherNodesArray.length - 2];
+			MutableIntIntMap[] currentColumn = new IntIntHashMap[otherNodesArray.length];
 			int currentColumnNumber = 0;
 
 			for (int i = 0; i < thisNodesArray.length; i++) {
