@@ -38,8 +38,8 @@ public class CEccoTranslator {
 
     public void addChildrenToPluginNode(Node.Op pluginNode){
         this.sortFunctionStructures();
-
         int startLine = 1;
+
         for(FunctionStructure functionStructure : this.functionStructures){
             this.addLineNodes(pluginNode, startLine, functionStructure.startLine() - 1);
             Node.Op functionNode = this.createFunctionNode(functionStructure);
@@ -47,9 +47,7 @@ public class CEccoTranslator {
             startLine = functionStructure.endLine() + 1;
         }
 
-        if (this.functionStructures.size() > 0) {
-            this.addLineNodes(pluginNode, startLine, this.codeLines.length);
-        }
+        this.addLineNodes(pluginNode, startLine, this.codeLines.length);
     }
 
     private void sortFunctionStructures(){

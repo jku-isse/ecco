@@ -35,6 +35,20 @@ public class CReaderIntegrationTest {
     }
 
     @Test
+    public void readHeaderFileTest() throws URISyntaxException {
+        String relativeResourceFolderPath = "C_SPL/header_file";
+        URI resourceFolderUri = Objects.requireNonNull(getClass().getClassLoader().getResource(relativeResourceFolderPath)).toURI();
+        String resourceFolderPathString = Paths.get(resourceFolderUri).toString();
+        Path resourceFolderPath = Paths.get(resourceFolderPathString);
+
+        Set<Node.Op> nodes = readFolder(resourceFolderPath);
+
+        assertEquals(1, nodes.size());
+        Node.Op resultPluginNode = nodes.iterator().next();
+        testHeaderFile(resultPluginNode);
+    }
+
+    @Test
     public void testGrammarBugHandling() throws URISyntaxException {
         // a buggy function will not be added as function node but as multiple line nodes
 
@@ -142,6 +156,26 @@ public class CReaderIntegrationTest {
         checkUserCondition(functionLines.get(1), "(FEATUREA | FEATUREB)");
         checkLineNode(functionLines.get(2), "}");
         checkUserCondition(functionLines.get(2), "(FEATUREA | FEATUREB)");
+    }
+
+
+    private void testHeaderFile(Node.Op pluginNode){
+        List<Node.Op> pluginNodeChildren = (List<Node.Op>) pluginNode.getChildren();
+
+        assertEquals(13, pluginNodeChildren.size());
+        checkLineNode(pluginNodeChildren.get(0), "#define WPU_PER_DCM (1200.0 / 2.54)");
+        checkLineNode(pluginNodeChildren.get(1), "typedef struct");
+        checkLineNode(pluginNodeChildren.get(2), "{");
+        checkLineNode(pluginNodeChildren.get(3), "  guchar  fid[4];");
+        checkLineNode(pluginNodeChildren.get(4), "  guint32 DataOffset;");
+        checkLineNode(pluginNodeChildren.get(5), "  guint8  ProductType;");
+        checkLineNode(pluginNodeChildren.get(6), "  guint8  FileType;");
+        checkLineNode(pluginNodeChildren.get(7), "  guint8  MajorVersion;");
+        checkLineNode(pluginNodeChildren.get(8), "  guint8  MinorVersion;");
+        checkLineNode(pluginNodeChildren.get(9), "  guint16 EncryptionKey;");
+        checkLineNode(pluginNodeChildren.get(10), "  guint16 Reserved;");
+        checkLineNode(pluginNodeChildren.get(11), "}");
+        checkLineNode(pluginNodeChildren.get(12), "WPGFileHead;");
     }
 
     private Set<Node.Op> readFolder(Path folderPath){
