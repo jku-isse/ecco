@@ -2,6 +2,7 @@ package at.jku.isse.ecco.experiment.result.persister;
 
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.result.Result;
+import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -28,7 +29,8 @@ public class ResultDatabasePersister implements ResultPersister{
     }
 
     @Override
-    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage) {
+    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
+                        EvaluationStrategy evaluationStrategy, String mistakeStrategy) {
         String sql = "INSERT INTO results (repository, numberOfVariants, variantConfigurations, " +
                 "numberOfSampledFeatures, sampledFeatures, featureTracePercentage, mistakePercentage, " +
                 "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -45,9 +47,9 @@ public class ResultDatabasePersister implements ResultPersister{
             pstmt.setInt(4, config.getFeatures().size());
             pstmt.setString(5, String.join(", ", config.getFeatures()));
             pstmt.setInt(6, featureTracePercentage);
-            pstmt.setInt(7, config.getMistakePercentage());
-            pstmt.setString(8, config.getEvaluationStrategy().getStrategyName());
-            pstmt.setString(9, config.getMistakeStrategy());
+            pstmt.setInt(7, mistakePercentage);
+            pstmt.setString(8, evaluationStrategy.getStrategyName());
+            pstmt.setString(9, mistakeStrategy);
             pstmt.setInt(10, result.getTp());
             pstmt.setInt(11, result.getFp());
             pstmt.setInt(12, result.getTn());

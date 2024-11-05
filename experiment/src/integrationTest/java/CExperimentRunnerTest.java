@@ -10,6 +10,7 @@ import at.jku.isse.ecco.experiment.utils.DirUtils;
 import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.utils.ServiceUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.DiffBasedEvaluation;
+import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.featuretrace.evaluation.UserBasedEvaluation;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 import java.security.Provider;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -44,9 +47,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("ConditionSwapper");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"ConditionSwapper"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -65,9 +70,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{0});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -89,9 +96,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -113,9 +122,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{0});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -137,9 +148,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -169,9 +182,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_2/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(1);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{0});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -209,9 +224,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_2/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(1);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{0, 100});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -248,9 +265,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_3/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(1);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{0});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -287,9 +306,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_4/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(1);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -326,9 +347,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_5/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(1);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{0});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new DiffBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new DiffBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -365,9 +388,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_5/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(1);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(0);
-        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -397,9 +422,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(50);
-        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("ConditionSwapper");
+        dummyConfiguration.setMistakePercentages(new Integer[]{50});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"ConditionSwapper"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -423,9 +450,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(50);
-        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("Conjugator");
+        dummyConfiguration.setMistakePercentages(new Integer[]{50});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"Conjugator"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -449,9 +478,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(50);
-        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("FeatureSwitcher");
+        dummyConfiguration.setMistakePercentages(new Integer[]{50});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 
@@ -475,9 +506,11 @@ public class CExperimentRunnerTest {
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(4);
         dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
-        dummyConfiguration.setMistakePercentage(40);
-        dummyConfiguration.setEvaluationStrategy(new UserBasedEvaluation());
-        dummyConfiguration.setMistakeStrategy("OperatorSwapper");
+        dummyConfiguration.setMistakePercentages(new Integer[]{40});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"OperatorSwapper"});
         ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
         config.pickVariants();
 

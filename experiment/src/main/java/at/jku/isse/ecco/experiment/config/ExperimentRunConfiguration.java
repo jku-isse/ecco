@@ -20,9 +20,9 @@ public class ExperimentRunConfiguration{
     private final Path variantsDir;
     private final Integer numberOfVariants;
     private final Integer[] featureTracePercentages;
-    private final Integer mistakePercentage;
-    private final EvaluationStrategy evaluationStrategy;
-    private final String mistakeStrategy;
+    private final Integer[] mistakePercentages;
+    private final List<EvaluationStrategy> evaluationStrategies;
+    private final String[] mistakeStrategies;
     private List<Path> variantPicks;
     private List<String> features;
     private List<String> variantConfigurations;
@@ -36,9 +36,9 @@ public class ExperimentRunConfiguration{
                                       Path variantsDir,
                                       Integer numberOfVariants,
                                       Integer[] featureTracePercentages,
-                                      Integer mistakePercentage,
-                                      EvaluationStrategy evaluationStrategy,
-                                      String mistakeStrategy){
+                                      Integer[] mistakePercentages,
+                                      List<EvaluationStrategy> evaluationStrategies,
+                                      String[] mistakeStrategies){
         this.repositoryName = repositoryName;
         this.numberOfRuns = numberOfRuns;
         this.minVariantFeatures = minVariantFeatures;
@@ -48,9 +48,9 @@ public class ExperimentRunConfiguration{
         this.variantsDir = variantsDir;
         this.numberOfVariants = numberOfVariants;
         this.featureTracePercentages = featureTracePercentages;
-        this.mistakePercentage = mistakePercentage;
-        this.evaluationStrategy = evaluationStrategy;
-        this.mistakeStrategy = mistakeStrategy;
+        this.mistakePercentages = mistakePercentages;
+        this.evaluationStrategies = evaluationStrategies;
+        this.mistakeStrategies = mistakeStrategies;
     }
 
     public void pickVariants(){
@@ -123,16 +123,16 @@ public class ExperimentRunConfiguration{
         return featureTracePercentages;
     }
 
-    public int getMistakePercentage() {
-        return mistakePercentage;
+    public Integer[] getMistakePercentages() {
+        return mistakePercentages;
     }
 
-    public EvaluationStrategy getEvaluationStrategy() {
-        return evaluationStrategy;
+    public List<EvaluationStrategy> getEvaluationStrategies() {
+        return evaluationStrategies;
     }
 
-    public String getMistakeStrategy() {
-        return mistakeStrategy;
+    public String[] getMistakeStrategies() {
+        return mistakeStrategies;
     }
 
     public List<Path> getVariantPicks() {
@@ -150,9 +150,9 @@ public class ExperimentRunConfiguration{
                 "Path to Sampled Variants: " + this.variantsDir + "\n" +
                 "Number of Variants: " + this.numberOfVariants + "\n" +
                 "Feature Trace Percentages: " + this.featureTracePercentages + "\n" +
-                "Mistake Percentage: " + this.mistakePercentage + "\n" +
-                "Evaluation Strategy: " + this.evaluationStrategy + "\n" +
-                "Mistake Strategy: " + this.mistakeStrategy + "\n";
+                "Mistake Percentages: " + this.mistakePercentages + "\n" +
+                "Evaluation Strategies: " + this.evaluationStrategies + "\n" +
+                "Mistake Strategies: " + this.mistakeStrategies + "\n";
 
         if (this.variantPicks != null){
             description += "Variant Picks: " + this.variantPicks + "\n" +

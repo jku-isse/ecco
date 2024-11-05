@@ -2,6 +2,7 @@ package at.jku.isse.ecco.experiment.result.persister;
 
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.result.Result;
+import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +18,8 @@ public class ResultFilePersister implements ResultPersister {
     }
 
     @Override
-    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage) {
+    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
+                        EvaluationStrategy evaluationStrategy, String mistakeStrategy) {
         String resultStart = "TP; FP; TN; FN; Precision; Recall; F1\n";
         String resultEnd = String.format("%d, %d, %d, %d, %f, %f, %f",
                 result.getTp(), result.getFp(), result.getTn(), result.getFn(), result.getPrecision(), result.getRecall(), result.getF1());

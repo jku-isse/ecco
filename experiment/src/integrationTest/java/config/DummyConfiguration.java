@@ -7,6 +7,8 @@ import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedList;
+import java.util.List;
 
 public class DummyConfiguration {
 
@@ -19,9 +21,9 @@ public class DummyConfiguration {
     private Path variantsDir;
     private Integer numberOfVariants;
     private Integer[] featureTracePercentages;
-    private Integer mistakePercentage;
-    private EvaluationStrategy evaluationStrategy;
-    private String mistakeStrategy;
+    private Integer[] mistakePercentages;
+    private List<EvaluationStrategy> evaluationStrategies;
+    private String[] mistakeStrategies;
 
     public DummyConfiguration(){
         this.repositoryName = "";
@@ -33,9 +35,10 @@ public class DummyConfiguration {
         this.variantsDir = ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit");
         this.numberOfVariants = 1;
         this.featureTracePercentages = new Integer[]{0};
-        this.mistakePercentage = 0;
-        this.evaluationStrategy = new DiffBasedEvaluation();
-        this.mistakeStrategy = "DiffBasedEvaluation";
+        this.mistakePercentages = new Integer[]{0};
+        this.evaluationStrategies = new LinkedList<>();
+        this.evaluationStrategies.add(new DiffBasedEvaluation());
+        this.mistakeStrategies = new String[]{"DiffBasedEvaluation"};
     }
 
     public ExperimentRunConfiguration createRunConfiguration(){
@@ -48,9 +51,9 @@ public class DummyConfiguration {
                 this.variantsDir,
                 this.numberOfVariants,
                 this.featureTracePercentages,
-                this.mistakePercentage,
-                this.evaluationStrategy,
-                this.mistakeStrategy);
+                this.mistakePercentages,
+                this.evaluationStrategies,
+                this.mistakeStrategies);
     }
 
     public String getRepositoryName() {return repositoryName;}
@@ -62,9 +65,9 @@ public class DummyConfiguration {
     public Path getVariantsDir() {return variantsDir;}
     public Integer getNumberOfVariants() {return numberOfVariants;}
     public Integer[] getFeatureTracePercentages() {return featureTracePercentages;}
-    public Integer getMistakePercentage() {return mistakePercentage;}
-    public EvaluationStrategy getEvaluationStrategy() {return evaluationStrategy;}
-    public String getMistakeStrategy() {return mistakeStrategy;}
+    public Integer[] getMistakePercentages() {return mistakePercentages;}
+    public List<EvaluationStrategy> getEvaluationStrategies() {return evaluationStrategies;}
+    public String[] getMistakeStrategies() {return mistakeStrategies;}
 
     public void setRepositoryName(String repositoryName) {this.repositoryName = repositoryName;}
     public void setNumberOfRuns(int numberOfRuns) {this.numberOfRuns = numberOfRuns;}
@@ -75,7 +78,7 @@ public class DummyConfiguration {
     public void setVariantsDir(Path variantsDir) {this.variantsDir = variantsDir;}
     public void setNumberOfVariants(Integer numberOfVariants) {this.numberOfVariants = numberOfVariants;}
     public void setFeatureTracePercentages(Integer[] featureTracePercentages) {this.featureTracePercentages = featureTracePercentages;}
-    public void setMistakePercentage(Integer mistakePercentage) {this.mistakePercentage = mistakePercentage;}
-    public void setEvaluationStrategy(EvaluationStrategy evaluationStrategy) {this.evaluationStrategy = evaluationStrategy;}
-    public void setMistakeStrategy(String mistakeStrategy) {this.mistakeStrategy = mistakeStrategy;}
+    public void setMistakePercentages(Integer[] mistakePercentages) {this.mistakePercentages = mistakePercentages;}
+    public void setEvaluationStrategies(List<EvaluationStrategy> evaluationStrategies) {this.evaluationStrategies = evaluationStrategies;}
+    public void setMistakeStrategies(String[] mistakeStrategies) {this.mistakeStrategies = mistakeStrategies;}
 }

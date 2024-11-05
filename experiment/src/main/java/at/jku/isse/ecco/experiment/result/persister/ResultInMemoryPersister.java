@@ -2,6 +2,7 @@ package at.jku.isse.ecco.experiment.result.persister;
 
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.result.Result;
+import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -21,7 +22,8 @@ public class ResultInMemoryPersister implements ResultPersister {
     }
 
     @Override
-    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage) {
+    public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
+                        EvaluationStrategy evaluationStrategy, String mistakeStrategy) {
         this.results.add(result);
     }
 }

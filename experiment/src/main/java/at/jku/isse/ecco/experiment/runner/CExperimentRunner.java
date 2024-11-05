@@ -5,6 +5,7 @@ import at.jku.isse.ecco.experiment.mistake.*;
 import at.jku.isse.ecco.experiment.result.ResultCalculator;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.tree.*;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.feature.*;
@@ -15,7 +16,6 @@ import java.util.*;
 
 public class CExperimentRunner implements ExperimentRunner {
     private final ExperimentRunConfiguration config;
-    private final MistakeCreator mistakeCreator;
     private final Repository.Op repository;
     private final ResultPersister persister;
 
@@ -23,7 +23,6 @@ public class CExperimentRunner implements ExperimentRunner {
         this.config = config;
         this.repository = repository;
         this.persister = persister;
-        this.mistakeCreator = new MistakeCreator(this.createMistakeStrategy(config.getMistakeStrategy(), config.getFeatures()));
     }
 
     private MistakeStrategy createMistakeStrategy(String type, List<String> features){
@@ -37,17 +36,48 @@ public class CExperimentRunner implements ExperimentRunner {
         };
     }
 
-
     public void runExperiment(){
-        for (int featureTracePercentage : this.config.getFeatureTracePercentages()){
-            Collection<FeatureTrace> initialTraces = this.removeFeatureTracePercentage(this.repository, 100 - featureTracePercentage);
-            this.mistakeCreator.createMistakePercentage(this.repository, this.config.getMistakePercentage());
-            Node.Op mainTree = this.repository.fuseAssociationsWithFeatureTraces();
-            this.literalNameCleanup(mainTree);
-            ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister);
-            metricsCalculator.calculateMetrics(mainTree);
-            this.restoreFeatureTraces(initialTraces);
+        this.iterateEvaluationStrategies();
+    }
+
+    private void iterateEvaluationStrategies(){
+        for (EvaluationStrategy evaluationStrategy : this.config.getEvaluationStrategies()){
+            this.iterateFeatureTracePercentages(evaluationStrategy);
         }
+    }
+
+    private void iterateFeatureTracePercentages(EvaluationStrategy evaluationStrategy){
+        for (int featureTracePercentage : this.config.getFeatureTracePercentages()){
+            this.iterateMistakePercentages(evaluationStrategy, featureTracePercentage);
+        }
+    }
+
+    private void iterateMistakePercentages(EvaluationStrategy evaluationStrategy, int featureTracePercentage){
+        for (int mistakePercentage : this.config.getMistakePercentages()){
+            this.iterateMistakeStrategies(evaluationStrategy, featureTracePercentage, mistakePercentage);
+        }
+    }
+
+    private void iterateMistakeStrategies(EvaluationStrategy evaluationStrategy, int featureTracePercentage, int mistakePercentage){
+        for (String mistakeStrategy : this.config.getMistakeStrategies()){
+            this.performExperimentIteration(evaluationStrategy, featureTracePercentage, mistakePercentage, mistakeStrategy);
+        }
+    }
+
+    private void performExperimentIteration(EvaluationStrategy evaluationStrategy, int featureTracePercentage, int mistakePercentage, String mistakeStrategy){
+        MistakeCreator mistakeCreator = new MistakeCreator(this.createMistakeStrategy(mistakeStrategy, config.getFeatures()));
+        Collection<FeatureTrace> initialTraces = this.removeFeatureTracePercentage(this.repository, 100 - featureTracePercentage);
+        try {
+            mistakeCreator.createMistakePercentage(this.repository, mistakePercentage);
+        } catch(Exception e){
+            System.out.println("Mistake creation failed!");
+            return;
+        }
+        Node.Op mainTree = this.repository.fuseAssociationsWithFeatureTraces();
+        this.literalNameCleanup(mainTree);
+        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
+        metricsCalculator.calculateMetrics(mainTree);
+        this.restoreFeatureTraces(initialTraces);
     }
 
     private void literalNameCleanup(Node.Op node){
@@ -86,15 +116,5 @@ public class CExperimentRunner implements ExperimentRunner {
             Node.Op node = (Node.Op) featureTrace.getNode();
             node.setFeatureTrace(featureTrace);
         }
-    }
-
-    private void printExperimentMessage(){
-        System.out.println(
-                "Running experiment with following settings:\n" +
-                        "Strategy: " + this.config.getEvaluationStrategy().getStrategyName() + "\n" +
-                        "Feature Trace Percentages: " + this.config.getFeatureTracePercentages() + "\n" +
-                        "Mistake Percentage: " + this.config.getMistakePercentage() + "\n" +
-                        "Mistake Strategy: " + this.mistakeCreator.getMistakeStrategy().getClass().getSimpleName()
-        );
     }
 }

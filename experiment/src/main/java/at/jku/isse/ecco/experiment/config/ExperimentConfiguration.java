@@ -95,27 +95,26 @@ public class ExperimentConfiguration{
         List<ExperimentRunConfiguration> runConfigurations = new LinkedList<>();
         Integer[] featureTracePercentages = new Integer[this.featureTracePercentages.size()];
         this.featureTracePercentages.toArray(featureTracePercentages);
+        Integer[] mistakePercentages = new Integer[this.mistakePercentages.size()];
+        this.mistakePercentages.toArray(mistakePercentages);
+        String[] mistakeStrategies = new String[this.mistakeStrategies.size()];
+        this.mistakeStrategies.toArray(mistakeStrategies);
+
         for (String repositoryName : this.repositoryNames){
-            for (int numberOfVariants : this.numbersOfVariants){
-                    for (int mistakePercentage : this.mistakePercentages){
-                        for (EvaluationStrategy evaluationStrategy : this.evaluationStrategies){
-                            for (String mistakeStrategy : this.mistakeStrategies){
-                                runConfigurations.add(new ExperimentRunConfiguration(
-                                        repositoryName,
-                                        this.numberOfRuns,
-                                        this.minVariantFeatures,
-                                        this.maxVariantFeatures,
-                                        this.vevosSplRepositoryBasePath,
-                                        this.vevosGroundTruthDatasetPath,
-                                        this.variantsDir,
-                                        numberOfVariants,
-                                        featureTracePercentages,
-                                        mistakePercentage,
-                                        evaluationStrategy,
-                                        mistakeStrategy));
-                            }
-                        }
-                    }
+            for (int numberOfVariants : this.numbersOfVariants) {
+                runConfigurations.add(new ExperimentRunConfiguration(
+                        repositoryName,
+                        this.numberOfRuns,
+                        this.minVariantFeatures,
+                        this.maxVariantFeatures,
+                        this.vevosSplRepositoryBasePath,
+                        this.vevosGroundTruthDatasetPath,
+                        this.variantsDir,
+                        numberOfVariants,
+                        featureTracePercentages,
+                        mistakePercentages,
+                        evaluationStrategies,
+                        mistakeStrategies));
             }
         }
         this.runConfigurations = runConfigurations;
