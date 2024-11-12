@@ -76,6 +76,25 @@ public class VevosUtils {
         return extendedPaths;
     }
 
+    public static void sanitizeVevosConfigFiles(Path variantsBasePath) {
+        // vevos sometimes uses single pipes in feature-names, which can confuse logic parsers
+        try (Stream<Path> stream = Files.list(variantsBasePath.resolve("configs"))) {
+            stream.forEach(VevosUtils::sanitizeVevosConfigFile);
+        }catch (IOException e){
+            throw new RuntimeException("Configs files could not be sanitized: " + e.getMessage());
+        }
+    }
+
+    private static void sanitizeVevosConfigFile(Path configFile){
+        try {
+            List<String> lines = Files.readAllLines(configFile);
+            List<String> newLines = lines.stream().map(line -> line.replaceAll("(?<!\\|)\\|(?!\\|)", "OR")).toList();
+            Files.write(configFile, newLines, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to sanitize config file " + configFile + ": " + e.getMessage());
+        }
+    }
+
     public static void sanitizeVevosFiles(Path variantsBasePath, List<String> features){
         List<Path> variantPaths = VevosUtils.getVariantFolders(variantsBasePath);
         for (Path variantPath : variantPaths){
@@ -90,9 +109,11 @@ public class VevosUtils {
             List<String> newLines = new LinkedList<>();
             newLines.add(lines.remove(0));
             for (String line : lines){
+                line = line.replaceAll("(?<!\\|)\\|(?!\\|)", "OR");
                 VevosCondition vevosCondition = new VevosCondition(line);
                 String presenceCondition = vevosCondition.getConditionString();
                 if (conditionIsRelevant(features, presenceCondition)){
+                    // vevos sometimes uses single pipes in feature-names, which can confuse logic parsers
                     newLines.add(line);
                 }
             }
@@ -113,6 +134,5 @@ public class VevosUtils {
             throw new RuntimeException("Condition could not be parsed: " + e.getMessage());
         }
     }
-
 
 }

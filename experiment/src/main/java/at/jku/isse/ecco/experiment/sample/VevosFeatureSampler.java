@@ -44,7 +44,6 @@ import java.util.*;
 public class VevosFeatureSampler {
 
     private final int NUMBER_OF_VARIANTS_TO_GENERATE = 50;
-    private final int SAMPLE_ATTEMPTS = 3;
     private final ExperimentRunConfiguration config;
 
     public VevosFeatureSampler(ExperimentRunConfiguration config){
@@ -53,21 +52,9 @@ public class VevosFeatureSampler {
     }
 
     public void sample() throws Resources.ResourceIOException, IOException {
-        for (int i = 1; i <= this.SAMPLE_ATTEMPTS; i++){
-            this.sampleAttempt();
-            List<String> features = List.of(ConfigTransformer.gatherConfigFeatures(this.config.getVariantsDir().resolve("configs"), this.config.getMaxVariantFeatures()));
-            boolean allValid = features.stream().map(FeatureUtils::featureNameIsValid).reduce(true, (a, b) -> a && b);
-            if (allValid){
-                VevosUtils.sanitizeVevosFiles(this.config.getVariantsDir(), features);
-                return;
-            } else {
-                Logger.error("VEVOS Sampling failed to sample features with valid names: " + features);
-                Logger.info(String.format("Attempting sampling after invalid sample (try number %d)...", i + 1));
-                this.cleanUp();
-            }
-        }
-        Logger.error("VEVOS Sampling failed 5 times in a row to sample features with valid names!");
-        throw new RuntimeException("VEVOS Sampling failed 5 times in a row to sample features with valid names!");
+        this.sampleAttempt();
+        List<String> features = List.of(ConfigTransformer.gatherConfigFeatures(this.config.getVariantsDir().resolve("configs"), this.config.getMaxVariantFeatures()));
+        VevosUtils.sanitizeVevosFiles(this.config.getVariantsDir(), features);
     }
 
     public void sampleAttempt() throws Resources.ResourceIOException, IOException {
@@ -153,6 +140,7 @@ public class VevosFeatureSampler {
             }
         }
 
+        VevosUtils.sanitizeVevosConfigFiles(this.config.getVariantsDir());
         ConfigTransformer.transformConfigurations(this.config.getVariantsDir());
     }
 

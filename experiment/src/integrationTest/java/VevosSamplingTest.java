@@ -31,19 +31,39 @@ public class VevosSamplingTest {
         List<String> features = new LinkedList<>();
         features.add("FEATUREA");
         features.add("FEATUREB");
+        features.add("TeORst");
+        features.add("TestOR");
+        features.add("OR");
         VevosUtils.sanitizeVevosFiles(destinationDirectoryPath, features);
 
         Path vevosFile1Path = destinationDirectoryPath.resolve("Variant_A/" + VevosUtils.VEVOS_FILENAME);
         List<String> lines1 = Files.readAllLines(vevosFile1Path);
         assertEquals(3, lines1.size());
         assertEquals("Path;File Condition;Block Condition;Presence Condition;Line Type;start;end", lines1.get(0));
-        assertEquals("main.c;True;FEATUREA;FEATUREA;artifact;2;2", lines1.get(1));
-        assertEquals("main.c;True;(FEATUREA || NONRELAVENT);(FEATUREA || NONRELAVENT);artifact;2;2", lines1.get(2));
+        assertEquals("main.c;True;(FEATUREA && TestOR);(FEATUREA && TestOR);artifact;2;2", lines1.get(1));
+        assertEquals("main.c;True;(FEATUREA || NONRELAVENT || TeORst);(FEATUREA || NONRELAVENT || TeORst);artifact;2;2", lines1.get(2));
 
         Path vevosFile2Path = destinationDirectoryPath.resolve("Variant_B/" + VevosUtils.VEVOS_FILENAME);
         List<String> lines2 = Files.readAllLines(vevosFile2Path);
         assertEquals(2, lines2.size());
         assertEquals("Path;File Condition;Block Condition;Presence Condition;Line Type;start;end", lines2.get(0));
-        assertEquals("main.c;True;(FEATUREB && NONRELEVANT);(FEATUREB && NONRELEVANT);artifact;4;4", lines2.get(1));
+        assertEquals("main.c;True;(FEATUREB && NONRELEVANT && OR);(FEATUREB && NONRELEVANT && OR);artifact;4;4", lines2.get(1));
+
+
+        VevosUtils.sanitizeVevosConfigFiles(destinationDirectoryPath);
+
+        Path configFile1Path = destinationDirectoryPath.resolve("configs/Variant_A.config");
+        List<String> lines3 = Files.readAllLines(configFile1Path);
+        assertEquals(3, lines3.size());
+        assertEquals("TeORst", lines3.get(0));
+        assertEquals("FEATUREA", lines3.get(1));
+        assertEquals("TestOR", lines3.get(2));
+
+        Path configFile2Path = destinationDirectoryPath.resolve("configs/Variant_B.config");
+        List<String> lines4 = Files.readAllLines(configFile2Path);
+        assertEquals(2, lines4.size());
+        assertEquals("FEATUREB", lines4.get(0));
+        assertEquals("OR", lines4.get(1));
     }
+
 }
