@@ -4,6 +4,7 @@ import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.mistake.*;
 import at.jku.isse.ecco.experiment.result.ResultCalculator;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
+import at.jku.isse.ecco.experiment.utils.picker.MemoryListPicker;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.tree.*;
@@ -18,11 +19,16 @@ public class CExperimentRunner implements ExperimentRunner {
     private final ExperimentRunConfiguration config;
     private final Repository.Op repository;
     private final ResultPersister persister;
+    private final MemoryListPicker<FeatureTrace> listPicker;
 
-    public CExperimentRunner(ExperimentRunConfiguration config, Repository.Op repository, ResultPersister persister){
+    public CExperimentRunner(ExperimentRunConfiguration config,
+                             Repository.Op repository,
+                             ResultPersister persister,
+                             MemoryListPicker<FeatureTrace> listPicker){
         this.config = config;
         this.repository = repository;
         this.persister = persister;
+        this.listPicker = listPicker;
     }
 
     private MistakeStrategy createMistakeStrategy(String type, List<String> features){
@@ -78,6 +84,7 @@ public class CExperimentRunner implements ExperimentRunner {
         ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
         metricsCalculator.calculateMetrics(mainTree);
         this.restoreFeatureTraces(initialTraces);
+        mistakeCreator.restoreOriginalConditions();
     }
 
     private void literalNameCleanup(Node.Op node){
@@ -99,15 +106,8 @@ public class CExperimentRunner implements ExperimentRunner {
             throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
         }
         Collection<FeatureTrace> traces = repo.getFeatureTraces();
-        int noOfRemovals = (traces.size() * percentage) / 100;
-        List<FeatureTrace> featureTraceList = new ArrayList<>(traces);
-        Collections.shuffle(featureTraceList);
-        Iterator<FeatureTrace> iterator = featureTraceList.stream().iterator();
-        for (int i = 1; i <= noOfRemovals; i++){
-            FeatureTrace trace = iterator.next();
-            Node.Op traceNode = (Node.Op) trace.getNode();
-            traceNode.removeFeatureTrace();
-        }
+        List<FeatureTrace> tracesToBeRemoved = this.listPicker.pickPercentage(traces, percentage);
+        tracesToBeRemoved.forEach(trace -> ((Node.Op) trace.getNode()).removeFeatureTrace());
         return traces;
     }
 

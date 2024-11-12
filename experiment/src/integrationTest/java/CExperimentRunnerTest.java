@@ -1,3 +1,5 @@
+import at.jku.isse.ecco.experiment.Experiment;
+import at.jku.isse.ecco.experiment.featureTracePicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.Result;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.result.persister.ResultDatabasePersister;
@@ -17,9 +19,11 @@ import at.jku.isse.ecco.service.EccoService;
 import config.DummyConfiguration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import utils.DatabaseResultUtils;
 
 import java.nio.file.Path;
 import java.security.Provider;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -58,7 +62,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         assertFalse(persister.getResults().isEmpty());
@@ -81,7 +85,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -107,7 +111,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -133,7 +137,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -159,7 +163,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -193,7 +197,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -235,7 +239,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         assertEquals(2, persister.getResults().size());
@@ -276,7 +280,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -317,7 +321,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -358,7 +362,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -399,7 +403,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -433,7 +437,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -461,7 +465,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -489,7 +493,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -517,7 +521,7 @@ public class CExperimentRunnerTest {
         Repository.Op repo = prepareRepository(config);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunner runner = new CExperimentRunner(config, repo, persister);
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -526,6 +530,59 @@ public class CExperimentRunnerTest {
         int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
         assertEquals(100, atomicResults);
         assertTrue(result.getF1() < 1.0);
+    }
+
+    @Test
+    public void hundredPercentMistakesMustNotCreateNodeResultsWithPerfectScore(){
+        DummyConfiguration dummyConfiguration = new DummyConfiguration();
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("test_sample"));
+        dummyConfiguration.setNumberOfVariants(3);
+        dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
+        dummyConfiguration.setMistakePercentages(new Integer[]{100});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
+        ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
+        config.pickVariants();
+
+        Repository.Op repo = prepareRepository(config);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
+        runner.runExperiment();
+
+        for (Result result : persister.getResults()) {
+            for (Result underlyingResult : result.getUnderlyingResults()){
+                assertNotEquals(0, underlyingResult.getFn() + underlyingResult.getFp());
+            }
+        }
+    }
+
+    @Test
+    public void mistakesMustNotPersist(){
+        DummyConfiguration dummyConfiguration = new DummyConfiguration();
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_6/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setNumberOfVariants(4);
+        dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
+        dummyConfiguration.setMistakePercentages(new Integer[]{100, 0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
+        ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
+        config.pickVariants();
+
+        Repository.Op repo = prepareRepository(config);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
+        runner.runExperiment();
+
+        Collection<Result> results= persister.getResults();
+        Iterator<Result> resultIterator = results.iterator();
+        assertTrue(resultIterator.next().getF1() < 1.0);
+        assertEquals(1.0, resultIterator.next().getF1());
     }
 
     /*

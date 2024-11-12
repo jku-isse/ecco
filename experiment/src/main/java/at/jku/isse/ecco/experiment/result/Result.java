@@ -12,6 +12,7 @@ public class Result {
     private double precision;
     private double recall;
     private double f1;
+    private Collection<Result> underlyingResults;
 
     public int getTp(){ return this.tp; }
     public int getFp(){ return this.fp; }
@@ -20,6 +21,7 @@ public class Result {
     public double getPrecision(){ return this.precision;}
     public double getRecall(){ return this.recall; }
     public double getF1(){ return this.f1; }
+    public Collection<Result> getUnderlyingResults(){return this.underlyingResults;}
 
     public void incTP(){this.tp++;}
     public void incFP(){this.fp++;}
@@ -34,6 +36,7 @@ public class Result {
 
     public static Result overallResult(Collection<Result> results){
         Result overallResult = new Result();
+        overallResult.underlyingResults = results;
         results.forEach(result -> overallResult.tp += result.tp);
         results.forEach(result -> overallResult.fp += result.fp);
         results.forEach(result -> overallResult.tn += result.tn);

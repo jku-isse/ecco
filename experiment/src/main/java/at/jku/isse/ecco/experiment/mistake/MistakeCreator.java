@@ -9,11 +9,14 @@ public class MistakeCreator {
 
     private final MistakeStrategy mistakeStrategy;
 
+    private Map<FeatureTrace, String> originalConditions;
+
     public MistakeCreator(MistakeStrategy mistakeStrategy) {
         this.mistakeStrategy = mistakeStrategy;
     }
 
     public void createMistakePercentage(Repository.Op repository, int percentage){
+        this.originalConditions = new HashMap<>();
         this.mistakeStrategy.init(repository);
         if (percentage < 0 || percentage > 100){
             throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
@@ -29,9 +32,19 @@ public class MistakeCreator {
                 throw new RuntimeException("Failed to create enough mistakes!");
             }
             FeatureTrace trace = iterator.next();
+            String originalCondition = trace.getUserConditionString();
             if (!this.attemptMistake(trace)){
                 attempts++;
+            } else {
+                this.originalConditions.put(trace, originalCondition);
             }
+        }
+    }
+
+    public void restoreOriginalConditions(){
+        for (FeatureTrace trace : this.originalConditions.keySet()){
+            String originalCondition = this.originalConditions.get(trace);
+            trace.setUserCondition(originalCondition);
         }
     }
 

@@ -2,6 +2,7 @@ package at.jku.isse.ecco.experiment;
 
 import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
+import at.jku.isse.ecco.experiment.featureTracePicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.persister.ResultDatabasePersister;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.runner.CExperimentRunner;
@@ -64,7 +65,7 @@ public class Experiment {
                 trainer.train();
                 String databasePath = ResourceUtils.getResourceFolderPathAsString("database");
                 ResultPersister persister = new ResultDatabasePersister(databasePath);
-                ExperimentRunner runner = new CExperimentRunner(config, trainer.getRepository(), persister);
+                ExperimentRunner runner = new CExperimentRunner(config, trainer.getRepository(), persister, new RandomFeatureTracePicker());
                 runner.runExperiment();
             } catch (Exception e) {
                 e.printStackTrace();
