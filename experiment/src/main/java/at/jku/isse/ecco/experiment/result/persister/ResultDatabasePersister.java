@@ -12,10 +12,11 @@ import java.sql.*;
 
 public class ResultDatabasePersister implements ResultPersister{
     private final String databaseURL;
+    private final static String SQLITE_URL_PREFIX = "jdbc:sqlite:";
 
     public ResultDatabasePersister(String databaseFolderPath){
         Path databaseFullPath = (Paths.get(databaseFolderPath)).resolve("results.db");
-        this.databaseURL = "jdbc:sqlite:" + databaseFullPath;
+        this.databaseURL = SQLITE_URL_PREFIX + databaseFullPath;
 
         if (!this.databaseExists(databaseFullPath.toString())){
             this.createDatabase();
@@ -59,7 +60,7 @@ public class ResultDatabasePersister implements ResultPersister{
             pstmt.setDouble(16, result.getF1());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Entering data to database failed: " + e.getMessage());
         }
     }
 
@@ -84,26 +85,19 @@ public class ResultDatabasePersister implements ResultPersister{
                 + "	f1 DOUBLE NOT NULL"
                 + ");";
 
-
-
         try (Connection conn = DriverManager.getConnection(this.databaseURL)){
             Statement stmt = conn.createStatement();
             stmt.execute(sql);
         } catch (SQLException e) {
-            throw new RuntimeException(e);
-            // TODO: log the string in case there is a problem!
+            throw new RuntimeException("Creating result table in database failed: " + e.getMessage());
         }
     }
 
     private void createDatabase() {
-        try (var conn = DriverManager.getConnection(this.databaseURL)) {
-            if (conn != null) {
-                var meta = conn.getMetaData();
-                System.out.println("The driver name is " + meta.getDriverName());
-                System.out.println("A new database has been created.");
-            }
+        try {
+            DriverManager.getConnection(this.databaseURL);
         } catch (SQLException e) {
-            System.err.println(e.getMessage());
+            throw new RuntimeException("Creation of sqlite database failed: " + e.getMessage());
         }
     }
 }
