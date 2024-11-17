@@ -20,21 +20,21 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public interface Node extends Persistable {
 
 	@Override
-	public int hashCode();
+	int hashCode();
 
 	@Override
-	public boolean equals(Object obj);
+	boolean equals(Object obj);
 
 
-	public default String getNodeString() {
+	default String getNodeString() {
 		return Objects.toString(this.getArtifact());
 	}
 
 	@Override
-	public String toString();
+	String toString();
 
 
-	public default void traverse(NodeVisitor visitor) {
+	default void traverse(NodeVisitor visitor) {
 		visitor.visit(this);
 		List<? extends Node> children = this.getChildren();
 		if (children == null) { return; }
@@ -43,7 +43,7 @@ public interface Node extends Persistable {
 		}
 	}
 
-	public interface NodeVisitor {
+	interface NodeVisitor {
 		public void visit(Node node);
 	}
 
@@ -60,28 +60,28 @@ public interface Node extends Persistable {
 	 *
 	 * @return True if the node is unique, false otherwise.
 	 */
-	public boolean isAtomic();
+	boolean isAtomic();
 
 	/**
 	 * Returns the association that contains this node.
 	 *
 	 * @return The association that contains this node.
 	 */
-	public Association getContainingAssociation();
+	Association getContainingAssociation();
 
 	/**
 	 * Returns the artifact stored in the node.
 	 *
 	 * @return The stored artifact.
 	 */
-	public Artifact<?> getArtifact();
+	Artifact<?> getArtifact();
 
 	/**
 	 * Returns the parent node.
 	 *
 	 * @return The parent.
 	 */
-	public Node getParent();
+	Node getParent();
 
 	default Node getRoot(){
 		if (this.getParent() == null){
@@ -96,14 +96,14 @@ public interface Node extends Persistable {
 	 *
 	 * @return True if the node is unique, false otherwise.
 	 */
-	public boolean isUnique();
+	boolean isUnique();
 
 	/**
 	 * Returns all children of this node.
 	 *
 	 * @return all children
 	 */
-	public List<? extends Node> getChildren();
+	List<? extends Node> getChildren();
 
 
 	/**
@@ -111,7 +111,7 @@ public interface Node extends Persistable {
 	 *
 	 * @return The number of artifacts contained in the tree.
 	 */
-	public default int countArtifacts() {
+	default int countArtifacts() {
 		return Trees.countArtifacts(this);
 	}
 
@@ -120,7 +120,7 @@ public interface Node extends Persistable {
 	 *
 	 * @return The depth of the tree.
 	 */
-	public default int computeDepth() {
+	default int computeDepth() {
 		return Trees.computeDepth(this);
 	}
 
@@ -129,14 +129,14 @@ public interface Node extends Persistable {
 	 *
 	 * @return A map containing the number of artifacts (value) per depth (key).
 	 */
-	public default Map<Integer, Integer> countArtifactsPerDepth() {
+	default Map<Integer, Integer> countArtifactsPerDepth() {
 		return Trees.countArtifactsPerDepth(this);
 	}
 
 	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#print(Node)}
 	 */
-	public default void print() {
+	default void print() {
 		Trees.print(this);
 	}
 
@@ -148,7 +148,7 @@ public interface Node extends Persistable {
 	 *
 	 * @return The properties map of this artifact.
 	 */
-	public Map<String, Object> getProperties();
+	Map<String, Object> getProperties();
 
 
 	/**
@@ -159,7 +159,7 @@ public interface Node extends Persistable {
 	 * @param <T>  The type of the property.
 	 * @return An optional which contains the actual property or nothing.
 	 */
-	public default <T> Optional<T> getProperty(final String name) {
+	default <T> Optional<T> getProperty(final String name) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
 
@@ -185,7 +185,7 @@ public interface Node extends Persistable {
 	 * @param property The object to be added as a property of the given name.
 	 * @param <T>      The type of the property to be added.
 	 */
-	public default <T> void putProperty(final String name, final T property) {
+	default <T> void putProperty(final String name, final T property) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
 		checkNotNull(property);
@@ -198,7 +198,7 @@ public interface Node extends Persistable {
 	 *
 	 * @param name of the property that should be removed
 	 */
-	public default void removeProperty(String name) {
+	default void removeProperty(String name) {
 		checkNotNull(name);
 
 		this.getProperties().remove(name);
@@ -208,9 +208,9 @@ public interface Node extends Persistable {
 	/**
 	 * Private interface for node operands that are used internally and not passed outside.
 	 */
-	public interface Op extends Node {
+	interface Op extends Node {
 
-		public default void traverse(NodeVisitor visitor) {
+		default void traverse(NodeVisitor visitor) {
 			visitor.visit(this);
 
 			for (Node.Op child : this.getChildren()) {
@@ -218,46 +218,46 @@ public interface Node extends Persistable {
 			}
 		}
 
-		public interface NodeVisitor {
+		interface NodeVisitor {
 			public void visit(Node.Op node);
 		}
 
 
-		public Association.Op getContainingAssociation();
+		Association.Op getContainingAssociation();
 
 		/**
 		 * Sets the node to be unique or not.
 		 *
 		 * @param unique Whether the node is unique or not.
 		 */
-		public void setUnique(boolean unique);
+		void setUnique(boolean unique);
 
 		@Override
-		public Artifact.Op<?> getArtifact();
+		Artifact.Op<?> getArtifact();
 
 		/**
 		 * Sets the artifact that should be stored in the node.
 		 *
 		 * @param artifact that should be stored in the node
 		 */
-		public void setArtifact(Artifact.Op<?> artifact);
+		void setArtifact(Artifact.Op<?> artifact);
 
 		/**
 		 * Returns the parent node.
 		 *
 		 * @return The parent.
 		 */
-		public Op getParent();
+		Op getParent();
 
 		/**
 		 * Sets the parent of the node.
 		 *
 		 * @param parent the parent of the node
 		 */
-		public void setParent(Node.Op parent);
+		void setParent(Node.Op parent);
 
 		@Override
-		public List<? extends Op> getChildren();
+		List<? extends Op> getChildren();
 
 		void setChildren(List<Op> children);
 
@@ -266,14 +266,14 @@ public interface Node extends Persistable {
 		 *
 		 * @param child Child node to be added.
 		 */
-		public void addChild(Op child);
+		void addChild(Op child);
 
 		/**
 		 * Adds a list of children to this node.
 		 *
 		 * @param children List of child nodes to be added.
 		 */
-		public void addChildren(Op... children);
+		void addChildren(Op... children);
 
 		void addChildWithoutNumberUpdate(Op child);
 
@@ -282,7 +282,7 @@ public interface Node extends Persistable {
 		 *
 		 * @param child Child node that is to be removed.
 		 */
-		public void removeChild(Op child);
+		void removeChild(Op child);
 
 
 		/**
@@ -291,7 +291,7 @@ public interface Node extends Persistable {
 		 * @param artifact The artifact to set for this node.
 		 * @return The new node instance.
 		 */
-		public Op createNode(Artifact.Op<?> artifact);
+		Op createNode(Artifact.Op<?> artifact);
 
 
 		/**
@@ -299,7 +299,7 @@ public interface Node extends Persistable {
 		 *
 		 * @return The list of artifacts.
 		 */
-		public default List<? extends Artifact.Op<?>> getChildrenArtifacts() {
+		default List<? extends Artifact.Op<?>> getChildrenArtifacts() {
 			return this.getChildren().stream().map((Function<at.jku.isse.ecco.tree.Node.Op, ? extends Artifact.Op<?>>) at.jku.isse.ecco.tree.Node.Op::getArtifact).collect(Collectors.toList());
 		}
 
@@ -309,7 +309,7 @@ public interface Node extends Persistable {
 		 *
 		 * @param node The other node to slice with this one.
 		 */
-		public default void slice(Op node) {
+		default void slice(Op node) {
 			Trees.slice(this, node);
 		}
 
@@ -318,21 +318,21 @@ public interface Node extends Persistable {
 		 *
 		 * @param node The other node to merge with this one.
 		 */
-		public default void merge(Op node) {
+		default void merge(Op node) {
 			Trees.merge(this, node);
 		}
 
 		/**
 		 * See {@link at.jku.isse.ecco.util.Trees#sequence(Node.Op)}
 		 */
-		public default void sequence() {
+		default void sequence() {
 			Trees.sequence(this);
 		}
 
 		/**
 		 * See {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}
 		 */
-		public default void updateArtifactReferences() {
+		default void updateArtifactReferences() {
 			Trees.updateArtifactReferences(this);
 		}
 
@@ -341,14 +341,14 @@ public interface Node extends Persistable {
 		 *
 		 * @return The tree containing the marked nodes of this tree.
 		 */
-		public default Node extractMarked() {
+		default Node extractMarked() {
 			return Trees.extractMarked(this);
 		}
 
 		/**
 		 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Node.Op)}
 		 */
-		public default void checkConsistency() {
+		default void checkConsistency() {
 			Trees.checkConsistency(this);
 		}
 
