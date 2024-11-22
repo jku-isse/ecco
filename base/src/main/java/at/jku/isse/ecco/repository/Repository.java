@@ -13,7 +13,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
-import at.jku.isse.ecco.featuretrace.evaluation.UserAdditionEvaluation;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.EmptyModule;
 import at.jku.isse.ecco.module.Module;
@@ -68,8 +67,6 @@ public interface Repository extends Persistable {
 	 */
 	interface Op extends Repository {
 
-		void mergeFeatureTraceTree(Node.Op root);
-
 		@Override
 		Collection<? extends Feature> getFeatures();
 
@@ -90,9 +87,6 @@ public interface Repository extends Persistable {
 		 * @return The collection of modules.
 		 */
 		Collection<? extends Module> getModules(int order);
-
-
-		// TODO: document these! make clear where a check is performed for "already existing" or "null" etc.
 
 		/**
 		 * Retrieves the feature stored in this repository with the given id. If no such feature exists in this repository, null is returned.
@@ -122,7 +116,13 @@ public interface Repository extends Persistable {
 
 		EntityFactory getEntityFactory();
 
-		Node.Op fuseAssociationsWithFeatureTraces();
+		default void setDiffConditions(){
+			this.getAssociations().forEach(Association.Op::setDiffConditions);
+		}
+
+		void buildMainTree();
+
+		Node.Op getMainTree();
 
 		default Collection<FeatureRevision> addFeatureRevisions(FeatureRevision[] featureRevisions){
 			Collection<FeatureRevision> repoFeatureRevisions = new ArrayList<>();
@@ -165,36 +165,6 @@ public interface Repository extends Persistable {
 		 * @return The module instance that was added to the repository.
 		 */
 		Module addModule(Feature[] pos, Feature[] neg);
-
-
-//		/**
-//		 * Checks if a module revision with given positive feature revisions and negative features is contained in the repository.
-//		 *
-//		 * @param pos
-//		 * @param neg
-//		 * @return
-//		 */
-//		public boolean containsModuleRevision(FeatureRevision[] pos, Feature[] neg);
-//
-//		/**
-//		 * Retrieves the module revision instance with given positive feature revisions and negative features from the repository.
-//		 *
-//		 * @param pos
-//		 * @param neg
-//		 * @return The module revision or null if it does not exist.
-//		 */
-//		public ModuleRevision getModuleRevision(FeatureRevision[] pos, Feature[] neg);
-//
-//		/**
-//		 * Checks if the given module revision already exists and throws an exception if it does.
-//		 * If such a module revision does not already exist it is created.
-//		 * If the corresponding module does not already exist it is created.
-//		 *
-//		 * @param pos
-//		 * @param neg
-//		 * @return The module instance that was added to the repository.
-//		 */
-//		public ModuleRevision addModuleRevision(FeatureRevision[] pos, Feature[] neg);
 
 
 		/**
@@ -467,7 +437,6 @@ public interface Repository extends Persistable {
 		 */
 		default void extract(Association.Op association, Commit commit) {
 			checkNotNull(association);
-
 			Trees.checkConsistency(association.getRootNode());
 
 			Collection<? extends Association.Op> originalAssociations = this.getAssociations();
@@ -478,7 +447,7 @@ public interface Repository extends Persistable {
 			// slice new association with every original association
 			for (Association.Op origA : originalAssociations) {
 				// ASSOCIATION
-				// slice the associations. the order matters here! the "left" association's featuers and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
+				// slice the associations. the order matters here! the "left" association's features and artifacts are maintained. the "right" association's features and artifacts are replaced by the "left" association's.
 				Association.Op intA = this.getEntityFactory().createAssociation();
 				intA.setId(UUID.randomUUID().toString());
 
@@ -490,8 +459,8 @@ public interface Repository extends Persistable {
 				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
 					toAdd.add(intA);
 
-					commit.addAssociation(intA);		// add association to new commit
-					for (Commit c : getCommits()) {		// updates associations in previous commits
+					commit.addAssociation(intA);        // add association to new commit
+					for (Commit c : getCommits()) {        // updates associations in previous commits
 						if (c.containsAssociation(origA)) {
 							c.addAssociation(intA);
 						}
@@ -508,8 +477,8 @@ public interface Repository extends Persistable {
 				} else {
 					toRemove.add(origA);
 
-					commit.deleteAssociation(origA);			// delete association from new commit		//TODO can there even be any?
-					for (Commit c : getCommits()) {				// updates associations in previous commits
+					commit.deleteAssociation(origA);            // delete association from new commit
+					for (Commit c : getCommits()) {                // updates associations in previous commits
 						if (c.containsAssociation(origA)) {
 							c.deleteAssociation(origA);
 						}
@@ -646,6 +615,7 @@ public interface Repository extends Persistable {
 		}
 
 		default Checkout compose(Configuration configuration, boolean lazy) {
+			// todo: get missing and surplus from mainTree?
 			checkNotNull(configuration);
 
 			Set<Association.Op> selectedAssociations = new HashSet<>();
@@ -655,17 +625,7 @@ public interface Repository extends Persistable {
 				}
 			}
 
-			Collection<FeatureTrace> featureTraceAdditions = new HashSet<>();
-			Collection<FeatureTrace> featureTraceSubtractions = new HashSet<>();
-			for (FeatureTrace featureTrace : this.getFeatureTraces()){
-				if (featureTrace.holds(configuration, new UserAdditionEvaluation())){
-					featureTraceAdditions.add(featureTrace);
-				} else {
-					featureTraceSubtractions.add(featureTrace);
-				}
-			}
-
-			Checkout checkout = this.compose(selectedAssociations, lazy, featureTraceAdditions, featureTraceSubtractions);
+			Checkout checkout = this.compose(selectedAssociations, lazy);
 			checkout.setConfiguration(configuration);
 
 			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
@@ -713,29 +673,22 @@ public interface Repository extends Persistable {
 		}
 
 
-		default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy,
-								 Collection<FeatureTrace> featureTraceAdditions, Collection<FeatureTrace> featureTraceSubtractions) {
+		default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {
 			Node compRootNode;
 			Collection<Artifact<?>> orderWarnings;
 			if (lazy) {
 				LazyCompositionRootNode lazyCompRootNode = new LazyCompositionRootNode();
 
+				// todo: turn nodes unique / not unique depending on configuration
+				lazyCompRootNode.addOrigNode(this.getMainTree());
+
+				/*
 				for (Association.Op association : selectedAssociations) {
 					lazyCompRootNode.addOrigNode(association.getRootNode());
 				}
-
-				// add artifacts of applicable feature traces
-				for (FeatureTrace featureTrace : featureTraceAdditions){
-					lazyCompRootNode.addOrigNode(featureTrace.getNode().getRoot());
-				}
-
-				// remove artifacts to be removed according to feature traces
-				for (FeatureTrace featureTrace : featureTraceSubtractions){
-					lazyCompRootNode.addUnwantedNode(featureTrace.getNode().getRoot());
-				}
+				 */
 
 				orderWarnings = lazyCompRootNode.getOrderSelector().getUncertainOrders();
-
 				compRootNode = lazyCompRootNode;
 			} else {
 				// TODO: non-lazy composition and computation of order warnings!
@@ -1319,8 +1272,6 @@ public interface Repository extends Persistable {
 			// TODO
 			throw new UnsupportedOperationException("Not yet implemented.");
 		}
-
-		Node.Op getFeatureTree();
 	}
 
 

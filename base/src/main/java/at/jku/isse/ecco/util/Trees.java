@@ -24,16 +24,13 @@ public class Trees {
 	 * @param right The right (new) node.
 	 * @return The created intersection node.
 	 */
-	//public static <T extends Node.Op> T slice(T left, T right) throws EccoException {
 	public static Node.Op slice(Node.Op left, Node.Op right) {
 		if (!left.equals(right))
 			throw new EccoException("Intersection of non-equal nodes is not allowed!");
 
-
 		if (left.getArtifact() != null && right.getArtifact() != null) {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getPartialOrderGraph() != right.getArtifact().getPartialOrderGraph()) {
-					//throw new EccoException("Sequence Graphs did not match!");
 					left.getArtifact().getPartialOrderGraph().merge(right.getArtifact().getPartialOrderGraph());
 					right.getArtifact().setPartialOrderGraph(left.getArtifact().getPartialOrderGraph());
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
@@ -49,7 +46,6 @@ public class Trees {
 					throw new EccoException("Left node was not sequenced but right node was!");
 				}
 			}
-
 
 			if (left.getArtifact().isAtomic()) {
 				Trees.matchAtomicArtifacts(left, right);
@@ -79,7 +75,6 @@ public class Trees {
 			}
 		}
 
-
 		Node.Op intersection = left.createNode(left.getArtifact());
 		if (left.isUnique() && right.isUnique()) {
 			intersection.setUnique(true);
@@ -88,36 +83,31 @@ public class Trees {
 
 			if (intersection.getArtifact() != null)
 				intersection.getArtifact().setContainingNode(intersection);
+
+			intersection.combineUserTrace(left);
+			intersection.combineUserTrace(right);
+			left.removeUserTrace();
+			right.removeUserTrace();
 		} else {
 			intersection.setUnique(false);
 		}
 
-//		if (intersection.getArtifact() != null && intersection.getArtifact().isAtomic()) {
-//			return intersection;
-//		}
-
-
 		Iterator<? extends Node.Op> leftChildrenIterator = left.getChildren().iterator();
 		while (leftChildrenIterator.hasNext()) {
 			Node.Op leftChild = leftChildrenIterator.next();
-
 			int ri = right.getChildren().indexOf(leftChild);
 			if (ri == -1)
 				continue;
 
 			Node.Op rightChild = right.getChildren().get(ri);
-
 			Node.Op intersectionChild = slice(leftChild, rightChild);
-
 			if (intersectionChild != null && (intersectionChild.isUnique() || (!intersectionChild.getChildren().isEmpty() && !intersectionChild.isAtomic()))) {
 				intersection.addChild(intersectionChild);
 			}
 
 			if (intersectionChild != null && intersectionChild.isAtomic()) { // left child becomes the intersection child
 				intersectionChild.setParent(intersection);
-
 				rightChild.setParent(null);
-
 				leftChildrenIterator.remove();
 				right.getChildren().remove(rightChild);
 			} else {
@@ -132,7 +122,6 @@ public class Trees {
 				}
 			}
 		}
-
 
 		return intersection;
 	}

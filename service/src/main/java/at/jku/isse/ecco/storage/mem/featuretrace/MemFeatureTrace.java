@@ -50,6 +50,11 @@ public class MemFeatureTrace implements FeatureTrace {
     }
 
     @Override
+    public void removeUserCondition(){
+        this.userCondition = null;
+    }
+
+    @Override
     public void addDiffCondition(String diffCondition){
         this.diffCondition = this.combineConditions(this.diffCondition, diffCondition);
     }
@@ -60,7 +65,12 @@ public class MemFeatureTrace implements FeatureTrace {
         if (currentCondition == null){
             return newCondition;
         } else {
-            Formula currentFormula = this.parseString(currentCondition);
+            Formula currentFormula = null;
+            try {
+                currentFormula = this.parseString(currentCondition);
+            } catch(RuntimeException e){
+                System.out.println("?");
+            }
             Formula newFormula = this.parseString(newCondition);
             Formula combinedFormula = this.formulaFactory.or(currentFormula, newFormula);
             return combinedFormula.toString();

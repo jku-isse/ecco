@@ -6,6 +6,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Location;
 import org.eclipse.collections.impl.factory.Maps;
 
@@ -78,7 +79,26 @@ public class MemNode implements Node, Node.Op {
 
 	@Override
 	public void removeFeatureTrace() {
+		if (this.featureTrace == null){
+			return;
+		}
 		this.featureTrace = new MemFeatureTrace(this);
+	}
+
+	@Override
+	public void removeUserTrace() {
+		if (this.featureTrace == null){
+			return;
+		}
+		this.featureTrace.removeUserCondition();
+	}
+
+	@Override
+	public void combineUserTrace(Node.Op other){
+		if (this.featureTrace == null || other.getFeatureTrace() == null) {
+			return;
+		}
+		this.featureTrace.addUserCondition(other.getFeatureTrace().getUserConditionString());
 	}
 
 	@Override
@@ -113,7 +133,10 @@ public class MemNode implements Node, Node.Op {
 
 	@Override
 	public Op createNode(Artifact.Op<?> artifact) {
-		return new MemNode(artifact);
+		// todo: was necessary for experiment
+		Node.Op node = new MemNode(artifact);
+		node.setLocation(this.location);
+		return node;
 	}
 
 

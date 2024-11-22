@@ -7,6 +7,7 @@ import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.utils.picker.MemoryListPicker;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
+import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
 import at.jku.isse.ecco.tree.*;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.feature.*;
@@ -79,7 +80,7 @@ public class CExperimentRunner implements ExperimentRunner {
             System.out.println("Mistake creation failed!");
             return;
         }
-        Node.Op mainTree = this.repository.fuseAssociationsWithFeatureTraces();
+        Node.Op mainTree = this.repository.getMainTree();
         this.literalNameCleanup(mainTree);
         ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
         metricsCalculator.calculateMetrics(mainTree);
@@ -107,7 +108,13 @@ public class CExperimentRunner implements ExperimentRunner {
         }
         Collection<FeatureTrace> traces = repo.getFeatureTraces();
         List<FeatureTrace> tracesToBeRemoved = this.listPicker.pickPercentage(traces, percentage);
-        tracesToBeRemoved.forEach(trace -> ((Node.Op) trace.getNode()).removeFeatureTrace());
+        //tracesToBeRemoved.forEach(trace -> ((Node.Op) trace.getNode()).removeFeatureTrace());
+        for (FeatureTrace featureTrace : tracesToBeRemoved){
+            FeatureTrace newTrace = new MemFeatureTrace(featureTrace.getNode());
+            newTrace.setDiffCondition(featureTrace.getDiffConditionString());
+            Node.Op node = (Node.Op) featureTrace.getNode();
+            node.setFeatureTrace(newTrace);
+        }
         return traces;
     }
 

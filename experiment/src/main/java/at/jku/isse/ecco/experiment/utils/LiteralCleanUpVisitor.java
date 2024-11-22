@@ -22,6 +22,10 @@ public class LiteralCleanUpVisitor implements Node.Op.NodeVisitor {
     }
 
     private void replaceLiteralName(FeatureTrace trace, String groundTruthName){
+        if (trace == null){
+            return;
+        }
+
         String repoName = this.literalNameMap.get(groundTruthName);
         String diffCondition = trace.getDiffConditionString();
         String userCondition = trace.getUserConditionString();

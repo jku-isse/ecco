@@ -219,7 +219,7 @@ public interface Node extends Persistable {
 		}
 
 		interface NodeVisitor {
-			public void visit(Node.Op node);
+			void visit(Node.Op node);
 		}
 
 
@@ -414,6 +414,10 @@ public interface Node extends Persistable {
 		void setFeatureTrace(FeatureTrace featureTrace);
 
 		void removeFeatureTrace();
+
+		void combineUserTrace(Node.Op other);
+
+		void removeUserTrace();
 
 		Location getLocation();
 

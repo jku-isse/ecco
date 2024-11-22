@@ -7,7 +7,6 @@ import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
@@ -16,10 +15,7 @@ import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
-import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
-import org.logicng.formulas.Literal;
-import org.logicng.io.parsers.ParserException;
 
 import java.util.*;
 
@@ -36,7 +32,7 @@ public final class MemRepository implements Repository, Repository.Op {
 	private List<Map<MemModule, MemModule>> modules;
 	private Collection<Commit> commits;
 	private int maxOrder;
-	private Node.Op featureTraceTree;
+	private Node.Op mainTree;
 	private transient FormulaFactory formulaFactory = new FormulaFactory();
 
 
@@ -46,11 +42,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
-	}
-
-	@Override
-	public void mergeFeatureTraceTree(Node.Op root) {
-		this.featureTraceTree = Trees.treeFusion(this.featureTraceTree, root);
 	}
 
 	@Override
@@ -212,42 +203,18 @@ public final class MemRepository implements Repository, Repository.Op {
 	}
 
 	@Override
-	public Node.Op fuseAssociationsWithFeatureTraces() {
-		// todo: overwrite copySingleNodeCompletely in MemRootNode
-
-		Node.Op mainTree = this.featureTraceTree.copySingleNodeCompletely();
-		Trees.treeFusion(mainTree, this.featureTraceTree);
-
-		for (Association.Op association : this.associations){
-			Node.Op associationTree = association.getTraceTree();
-			Trees.treeFusion(mainTree, associationTree);
+	public void buildMainTree() {
+		Node.Op mainTree = null;
+		for (Association association : this.getAssociations()){
+			mainTree = Trees.treeFusion(mainTree, (Node.Op) association.getRootNode());
 		}
-
-		return mainTree;
+		this.mainTree = mainTree;
 	}
 
-	private void SyncRepositoryWithFeatureTrace(FeatureTrace featureTrace){
-		// replace condition-features with feature-revisions
-		// add missing features / feature-revisions
-
-		// iterate through literals
-		// feature-revision -> add to repo if missing
-		// feature 	-> add to repo if missing (create first revision)
-		// 			-> replace literal with feature-revision (latest)
-
-		Formula userCondition = this.parseFormulaString(featureTrace.getUserConditionString());
-		Collection<Literal> literals = userCondition.literals();
-		for (Literal literal : literals){
-			String literalName = literal.name();
-			if (literalName.contains("_")){
-				String featureRevisionName = literalName.replaceFirst("_", ".");
-				featureRevisionName = featureRevisionName.replace("_", "-");
-				this.addFeatureRevisionIfMissing(featureRevisionName);
-			} else {
-				this.SyncRepoWithFeature(featureTrace, literalName);
-			}
-		}
-	}
+	 @Override
+	 public Node.Op getMainTree(){
+		return this.mainTree;
+	 }
 
 	private void addFeatureRevisionIfMissing(String featureRevisionName){
 		// add feature if missing, add revision if missing
@@ -269,32 +236,6 @@ public final class MemRepository implements Repository, Repository.Op {
 		if (features.size() != 0) { return features.iterator().next(); }
 		String id = UUID.randomUUID().toString();
 		return this.addFeature(id, featureName);
-	}
-
-	private void SyncRepoWithFeature(FeatureTrace featureTrace, String featureName) {
-		String userCondition = featureTrace.getUserConditionString();
-		Feature feature = this.addFeatureIfMissing(featureName);
-		FeatureRevision latestRevision = feature.getLatestRevision();
-		String revisionName;
-		String newFeatureRevision;
-		if (latestRevision == null) {
-			revisionName = UUID.randomUUID().toString();
-			newFeatureRevision = featureName + "." + revisionName;
-			this.addFeatureRevisionIfMissing(featureName + "." + revisionName);
-		} else {
-			revisionName = latestRevision.getId();
-			newFeatureRevision = featureName + "." + revisionName;
-		}
-		userCondition = userCondition.replace(featureName, newFeatureRevision);
-		featureTrace.setUserCondition(userCondition);
-	}
-
-	private Formula parseFormulaString(String string){
-		try{
-			return this.formulaFactory.parse(string);
-		} catch (ParserException e){
-			throw new RuntimeException("Formula String could not be parsed: " + string + ": " + e.getMessage());
-		}
 	}
 
 	@Override
@@ -322,14 +263,9 @@ public final class MemRepository implements Repository, Repository.Op {
 	}
 
 	@Override
-	public Node.Op getFeatureTree() {
-		return this.featureTraceTree;
-	}
-
-	@Override
 	public Collection<FeatureTrace> getFeatureTraces(){
 		FeatureTraceCollectorVisitor collectorVisitor = new FeatureTraceCollectorVisitor();
-		this.featureTraceTree.traverse(collectorVisitor);
+		this.mainTree.traverse(collectorVisitor);
 		return collectorVisitor.getFeatureTraces();
 	}
 }

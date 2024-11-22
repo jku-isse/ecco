@@ -21,6 +21,8 @@ public interface FeatureTrace extends Persistable {
 
     void addUserCondition(String userCondition);
 
+    void removeUserCondition();
+
     void addDiffCondition(String diffCondition);
 
     void buildUserConditionConjunction(String newCondition);

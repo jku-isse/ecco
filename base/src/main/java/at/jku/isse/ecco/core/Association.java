@@ -8,6 +8,7 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.tree.DiffConditionVisitor;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -168,7 +169,14 @@ public interface Association extends Persistable {
 			this.addObservation(moduleRevision, 1);
 		}
 
-		Node.Op getTraceTree();
+		default Node.Op copyTree() {
+			return this.getRootNode().copyTree();
+		}
+
+		default void setDiffConditions(){
+			DiffConditionVisitor visitor = new DiffConditionVisitor(this);
+			this.getRootNode().traverse(visitor);
+		}
 	}
 
 }

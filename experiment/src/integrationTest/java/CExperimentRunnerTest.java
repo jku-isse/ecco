@@ -385,9 +385,8 @@ public class CExperimentRunnerTest {
         assertEquals(0, result.getFn());
     }
 
-
     @Test
-    public void allFeatureTracesCreatePerfektScoreDespiteFlawedDiffConditions() {
+    public void allFeatureTracesCreatePerfectScoreDespiteFlawedDiffConditions() {
     DummyConfiguration dummyConfiguration = new DummyConfiguration();
         dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_5/C_SPL/Sample1/SingleCommit"));
         dummyConfiguration.setNumberOfVariants(1);

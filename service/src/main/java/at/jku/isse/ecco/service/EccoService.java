@@ -1560,22 +1560,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
             Set<Node.Op> nodes = readFiles();
 
-            nodes.forEach(Trees::sequence);
-
+            // necessary for experiment in order to find ground truth
             ConfigInsertionVisitor visitor = new ConfigInsertionVisitor(configuration);
             nodes.forEach(node -> node.traverse(visitor));
-
-            List<Node.Op> featureTraceTrees = nodes.stream().map(Trees::extractFeatureTraceTree).toList();
-            featureTraceTrees.forEach(node -> {
-                        Node.Op root = this.entityFactory.createRootNode();
-                        root.addChild(node);
-                        repository.mergeFeatureTraceTree(root);
-            });
 
             ArrayList<Variant> variants = repository.getVariants();
 
             long extractTime = System.currentTimeMillis();
             Commit commit = repository.extract(configuration, nodes, committer);
+            repository.setDiffConditions();
+            repository.buildMainTree();
             extractTime = System.currentTimeMillis() - extractTime;
 
             //storing new variant
@@ -1605,7 +1599,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             return commit;
         } catch (Exception e) {
             this.transactionStrategy.rollback();
-
             throw new EccoException("Error during commit.", e);
         }
     }
@@ -1871,6 +1864,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
 
+
     // CHECKOUT ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
@@ -1881,9 +1875,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     private synchronized Checkout compose(Configuration configuration) {
         this.checkInitialized();
-
         checkNotNull(configuration);
-
         Repository.Op repository = this.repositoryDao.load();
         return repository.compose(configuration);
     }

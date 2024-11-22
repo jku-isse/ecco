@@ -410,6 +410,11 @@ public class MistakeCreatorTest {
         }
 
         @Override
+        public void removeUserCondition() {
+
+        }
+
+        @Override
         public void addDiffCondition(String diffCondition) {
 
         }
@@ -499,11 +504,6 @@ public class MistakeCreatorTest {
         }
 
         @Override
-        public void mergeFeatureTraceTree(Node.Op root) {
-
-        }
-
-        @Override
         public Collection<? extends Feature> getFeatures() {
             return null;
         }
@@ -574,7 +574,12 @@ public class MistakeCreatorTest {
         }
 
         @Override
-        public Node.Op fuseAssociationsWithFeatureTraces() {
+        public void buildMainTree() {
+
+        }
+
+        @Override
+        public Node.Op getMainTree() {
             return null;
         }
 
@@ -585,11 +590,6 @@ public class MistakeCreatorTest {
 
         @Override
         public Module addModule(Feature[] pos, Feature[] neg) {
-            return null;
-        }
-
-        @Override
-        public Node.Op getFeatureTree() {
             return null;
         }
     }
