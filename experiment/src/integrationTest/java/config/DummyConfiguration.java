@@ -24,6 +24,7 @@ public class DummyConfiguration {
     private Integer[] mistakePercentages;
     private List<EvaluationStrategy> evaluationStrategies;
     private String[] mistakeStrategies;
+    private boolean boosting = false;
 
     public DummyConfiguration(){
         this.repositoryName = "";
@@ -53,8 +54,11 @@ public class DummyConfiguration {
                 this.featureTracePercentages,
                 this.mistakePercentages,
                 this.evaluationStrategies,
-                this.mistakeStrategies);
+                this.mistakeStrategies,
+                this.boosting);
     }
+
+    public void enableBoosting(){ this.boosting = true; }
 
     public String getRepositoryName() {return repositoryName;}
     public int getNumberOfRuns() {return numberOfRuns;}

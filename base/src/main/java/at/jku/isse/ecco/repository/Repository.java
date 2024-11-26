@@ -13,6 +13,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.EmptyModule;
 import at.jku.isse.ecco.module.Module;
@@ -61,6 +62,8 @@ public interface Repository extends Persistable {
 	void addCommit(Commit commit);
 
 	Collection<FeatureTrace> getFeatureTraces();
+
+	void setMaintreeBuildingStrategy(MainTreeBuildingStrategy mainTreeBuildingStrategy);
 
 	/**
 	 * Private repository interface.

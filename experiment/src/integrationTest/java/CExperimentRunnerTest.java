@@ -1,8 +1,7 @@
-import at.jku.isse.ecco.experiment.Experiment;
 import at.jku.isse.ecco.experiment.featureTracePicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.Result;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
-import at.jku.isse.ecco.experiment.result.persister.ResultDatabasePersister;
+
 import at.jku.isse.ecco.experiment.result.persister.ResultInMemoryPersister;
 import at.jku.isse.ecco.experiment.runner.CExperimentRunner;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunner;
@@ -10,19 +9,15 @@ import at.jku.isse.ecco.experiment.trainer.EccoCRepoTrainer;
 import at.jku.isse.ecco.experiment.trainer.EccoTrainer;
 import at.jku.isse.ecco.experiment.utils.DirUtils;
 import at.jku.isse.ecco.experiment.utils.ResourceUtils;
-import at.jku.isse.ecco.experiment.utils.ServiceUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.DiffBasedEvaluation;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.featuretrace.evaluation.UserBasedEvaluation;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.service.EccoService;
 import config.DummyConfiguration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import utils.DatabaseResultUtils;
 
 import java.nio.file.Path;
-import java.security.Provider;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -262,7 +257,6 @@ public class CExperimentRunnerTest {
         assertEquals(0, result.getFn());
     }
 
-
     @Test
     public void featureABRepoCreatesCorrectResults() {
         DummyConfiguration dummyConfiguration = new DummyConfiguration();
@@ -302,7 +296,6 @@ public class CExperimentRunnerTest {
         assertEquals(0, result.getTn());
         assertEquals(0, result.getFn());
     }
-
 
     @Test
     public void featureBRepoCreatesCorrectResults() {
@@ -582,6 +575,122 @@ public class CExperimentRunnerTest {
         Iterator<Result> resultIterator = results.iterator();
         assertTrue(resultIterator.next().getF1() < 1.0);
         assertEquals(1.0, resultIterator.next().getF1());
+    }
+
+    @Test
+    public void testSample1WithBoosting(){
+        DummyConfiguration dummyConfiguration = new DummyConfiguration();
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_1/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setNumberOfVariants(4);
+        dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
+        dummyConfiguration.enableBoosting();
+        ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
+        config.pickVariants();
+
+        Repository.Op repo = prepareRepository(config);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
+        runner.runExperiment();
+
+        Result result= persister.getResults().iterator().next();
+        assertEquals(1, persister.getResults().size());
+        assertEquals(1.0, result.getF1());
+        assertEquals(50, result.getTp());
+        assertEquals(50, result.getTn());
+        assertEquals(0, result.getFn());
+        assertEquals(0, result.getFp());
+    }
+
+    @Test
+    public void testSample2WithBoosting(){
+        DummyConfiguration dummyConfiguration = new DummyConfiguration();
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_2/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setNumberOfVariants(1);
+        dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
+        dummyConfiguration.enableBoosting();
+        ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
+        config.pickVariants();
+
+        Repository.Op repo = prepareRepository(config);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
+        runner.runExperiment();
+
+        Result result= persister.getResults().iterator().next();
+        int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
+        assertEquals(40, atomicResults);
+        assertEquals(25, result.getTp());
+        assertEquals(0, result.getFp());
+        assertEquals(15, result.getTn());
+        assertEquals(0, result.getFn());
+    }
+
+    @Test
+    public void testSample5WithBoosting(){
+        DummyConfiguration dummyConfiguration = new DummyConfiguration();
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_5/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setNumberOfVariants(1);
+        dummyConfiguration.setFeatureTracePercentages(new Integer[]{100});
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
+        dummyConfiguration.enableBoosting();
+        ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
+        config.pickVariants();
+
+        Repository.Op repo = prepareRepository(config);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
+        runner.runExperiment();
+
+        Result result= persister.getResults().iterator().next();
+        int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
+        assertEquals(20, atomicResults);
+        assertEquals(10, result.getTp());
+        assertEquals(10, result.getTn());
+    }
+
+    @Test
+    public void boostingCreatesPerfectScoreTest(){
+        DummyConfiguration dummyConfiguration = new DummyConfiguration();
+        dummyConfiguration.setVariantsDir(ResourceUtils.getResourceFolderPath("Sampling_Base_5/C_SPL/Sample1/SingleCommit"));
+        dummyConfiguration.setNumberOfVariants(1);
+        dummyConfiguration.setFeatureTracePercentages(new Integer[]{50});
+        dummyConfiguration.setMistakePercentages(new Integer[]{0});
+        List<EvaluationStrategy> evalStrategies = new LinkedList<>();
+        evalStrategies.add(new UserBasedEvaluation());
+        dummyConfiguration.setEvaluationStrategies(evalStrategies);
+        dummyConfiguration.setMistakeStrategies(new String[]{"FeatureSwitcher"});
+        dummyConfiguration.enableBoosting();
+        ExperimentRunConfiguration config = dummyConfiguration.createRunConfiguration();
+        config.pickVariants();
+
+        Repository.Op repo = prepareRepository(config);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunner runner = new CExperimentRunner(config, repo, persister, new RandomFeatureTracePicker());
+        runner.runExperiment();
+
+        Result result= persister.getResults().iterator().next();
+        int atomicResults = result.getFn() + result.getFp() + result.getTp() + result.getTn();
+        assertEquals(20, atomicResults);
+        assertEquals(10, result.getTp());
+        assertEquals(10, result.getTn());
     }
 
     /*

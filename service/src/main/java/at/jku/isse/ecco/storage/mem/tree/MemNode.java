@@ -33,14 +33,18 @@ public class MemNode implements Node, Node.Op {
 
 	private Location location;
 
-	public Op copySingleNode(){
+	@Override
+	public Op copySingleNode(boolean copyFeatureTrace){
+		if (copyFeatureTrace){
+			return copySingleNodeCompletely();
+		}
+
 		Node.Op newNode = new MemNode(this.artifact);
 		newNode.setUnique(this.unique);
 		newNode.setLocation(this.location);
 		return newNode;
 	}
 
-	@Override
 	public Op copySingleNodeCompletely() {
 		MemNode.Op newNode = new MemNode(this.artifact);
 		newNode.setLocation(this.location);
@@ -75,14 +79,6 @@ public class MemNode implements Node, Node.Op {
 	@Override
 	public void setFeatureTrace(FeatureTrace featureTrace) {
 		this.featureTrace = featureTrace;
-	}
-
-	@Override
-	public void removeFeatureTrace() {
-		if (this.featureTrace == null){
-			return;
-		}
-		this.featureTrace = new MemFeatureTrace(this);
 	}
 
 	@Override

@@ -15,15 +15,14 @@ public class MistakeCreator {
         this.mistakeStrategy = mistakeStrategy;
     }
 
-    public void createMistakePercentage(Repository.Op repository, int percentage){
+    public void createMistakePercentage(Repository.Op repository, Collection<FeatureTrace> featureTraces, int percentage){
         this.originalConditions = new HashMap<>();
         this.mistakeStrategy.init(repository);
         if (percentage < 0 || percentage > 100){
             throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
         }
-        Collection<FeatureTrace> traces = repository.getFeatureTraces();
-        int noOfMistakes = (traces.size() * percentage) / 100;
-        List<FeatureTrace> featureTraceList = new ArrayList<>(traces);
+        int noOfMistakes = (featureTraces.size() * percentage) / 100;
+        List<FeatureTrace> featureTraceList = new ArrayList<>(featureTraces);
         Collections.shuffle(featureTraceList);
         Iterator<FeatureTrace> iterator = featureTraceList.stream().iterator();
         int attempts = noOfMistakes;
@@ -46,10 +45,6 @@ public class MistakeCreator {
             String originalCondition = this.originalConditions.get(trace);
             trace.setUserCondition(originalCondition);
         }
-    }
-
-    public MistakeStrategy getMistakeStrategy(){
-        return this.mistakeStrategy;
     }
 
     private boolean attemptMistake(FeatureTrace trace){

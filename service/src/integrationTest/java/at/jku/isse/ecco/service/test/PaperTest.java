@@ -72,8 +72,7 @@ public class PaperTest {
 
 	private String printRepository(Repository repo) {
 		Repository.Op repoOp = (Repository.Op) repo;
-		Collection<FeatureTrace> emptyCollection = new HashSet<>();
-		Checkout checkout = repoOp.compose(repoOp.getAssociations(), true, emptyCollection, emptyCollection);
+		Checkout checkout = repoOp.compose(repoOp.getAssociations(), true);
 		StringBuilder sb = new StringBuilder();
 		sb.append("-------------\n");
 		this.visitTree(checkout.getNode(), sb);

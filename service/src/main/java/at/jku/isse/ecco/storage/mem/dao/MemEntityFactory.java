@@ -8,6 +8,8 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.maintree.AssociationMerger;
+import at.jku.isse.ecco.maintree.BoostedAssociationMerger;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
 import at.jku.isse.ecco.storage.mem.core.MemAssociation;
@@ -15,6 +17,8 @@ import at.jku.isse.ecco.storage.mem.core.MemCommit;
 import at.jku.isse.ecco.storage.mem.core.MemRemote;
 import at.jku.isse.ecco.storage.mem.feature.MemConfiguration;
 import at.jku.isse.ecco.storage.mem.feature.MemFeature;
+import at.jku.isse.ecco.storage.mem.maintree.MemAssociationMerger;
+import at.jku.isse.ecco.storage.mem.maintree.MemBoostedAssociationMerger;
 import at.jku.isse.ecco.storage.mem.repository.MemRepository;
 import at.jku.isse.ecco.storage.mem.tree.MemNode;
 import at.jku.isse.ecco.storage.mem.tree.MemRootNode;
@@ -130,4 +134,13 @@ public class MemEntityFactory implements EntityFactory {
 		return this.createOrderedNode(this.createArtifact(artifactData));
 	}
 
+	@Override
+	public BoostedAssociationMerger createBoostedAssociationMerger() {
+		return new MemBoostedAssociationMerger();
+	}
+
+	@Override
+	public AssociationMerger createAssociationMerger() {
+		return new MemAssociationMerger();
+	}
 }

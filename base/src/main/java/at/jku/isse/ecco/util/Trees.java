@@ -298,43 +298,6 @@ public class Trees {
 			}
 
 			node.getArtifact().updateArtifactReferences();
-
-//			// update "uses" artifact references
-//			for (ArtifactReference uses : node.getArtifact().getUses()) {
-//				if (uses.getSource() != node.getArtifact())
-//					throw new EccoException("Source of uses artifact reference must be identical to artifact.");
-//
-//				if (uses.getTarget().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-//					Artifact replacingArtifact = uses.getTarget().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
-//					if (replacingArtifact != null) {
-//						uses.setTarget(replacingArtifact);
-//						if (!replacingArtifact.getUsedBy().contains(uses)) {
-//							replacingArtifact.addUsedBy(uses);
-//						}
-//					}
-//				}
-//			}
-//
-//			// update "used by" artifact references
-//			for (ArtifactReference usedBy : node.getArtifact().getUsedBy()) {
-//				if (usedBy.getTarget() != node.getArtifact())
-//					throw new EccoException("Target of usedBy artifact reference must be identical to artifact.");
-//
-//				if (usedBy.getSource().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-//					Artifact replacingArtifact = usedBy.getSource().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
-//					if (replacingArtifact != null) {
-//						usedBy.setSource(replacingArtifact);
-//						if (!replacingArtifact.getUses().contains(usedBy)) {
-//							replacingArtifact.addUses(usedBy);
-//						}
-//					}
-//				}
-//			}
-//
-//			// update sequence graph symbols (which are artifacts)
-//			if (node.getArtifact().getPartialOrderGraph() != null) {
-//				node.getArtifact().getPartialOrderGraph().updateArtifactReferences();
-//			}
 		}
 
 		// traverse into children
@@ -513,7 +476,6 @@ public class Trees {
 			}
 		}
 
-
 		for (Node.Op leftChild : left.getChildren()) {
 			int ri = right.getChildren().indexOf(leftChild);
 			if (ri == -1)
@@ -523,15 +485,6 @@ public class Trees {
 
 			Trees.map(leftChild, rightChild);
 		}
-
-
-//		if (left.getArtifact() != null && right.getArtifact() != null) {
-//			if (left.getArtifact().isOrdered()) {
-//				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
-//					right.getChildren().forEach((Node.Op n) -> n.getArtifact().setSequenceNumber(PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER));
-//				}
-//			}
-//		}
 	}
 
 	private static void mapAtomicArtifacts(Node.Op left, Node.Op right) {
@@ -738,7 +691,7 @@ public class Trees {
 		// create a copy of the path from the node to the root
 		// copy of given node will include feature trace
 		// other copies will not
-		Node.Op newNode = node.copySingleNodeCompletely();
+		Node.Op newNode = node.copySingleNode(true);
 		if (node.getParent() == null) {
 			return newNode;
 		} else {
@@ -751,7 +704,7 @@ public class Trees {
 	public static Node.Op createShallowSkeletonPath(Node.Op node){
 		// create a copy of the path from the node to the root
 		// copied nodes will not include feature traces
-		Node.Op newNode = node.copySingleNode();
+		Node.Op newNode = node.copySingleNode(false);
 		if (node.getParent() == null) {
 			return newNode;
 		} else {
@@ -764,7 +717,7 @@ public class Trees {
 	public static Node.Op treeFusion(Node.Op mainTree, Node.Op fusionNode){
 		if (fusionNode == null){ return mainTree; }
 		// new node will contain pog because same artifact is set in new node and pog is set in artifact
-		if (mainTree == null){ mainTree = fusionNode.copySingleNode(); }
+		if (mainTree == null){ mainTree = fusionNode.copySingleNode(false); }
 		if (!Objects.equals(mainTree.getArtifact(), fusionNode.getArtifact())) {
 			throw new EccoException("Fusing feature trace (sub-)trees with different root nodes is not possible.");
 		}
@@ -773,7 +726,7 @@ public class Trees {
 		for (Node.Op child : fusionNode.getChildren()) {
 			Node.Op mainChild = mainTree.getEqualChild(child);
 			if (mainChild == null) {
-				Node.Op newChild = child.copySingleNode();
+				Node.Op newChild = child.copySingleNode(false);
 				newChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
 				newChild.setUnique(child.isUnique());
 				mainTree.addChild(newChild);
@@ -787,45 +740,5 @@ public class Trees {
 		}
 
 		return mainTree;
-	}
-
-	/**
-	 * Copy the whole tree and move all user-based feature traces from the original to the copy.
-	 * @param root the root node of the tree to be copied.
-	 * @return the root node of the created copy.
-	 */
-	public static Node.Op createCopyWithStolenTraces(Node.Op root){
-		Node.Op copy = root.createCopyWithStolenTrace();
-		for (Node.Op child : root.getChildren()){
-			copy.addChild(createCopyWithStolenTraces(child));
-		}
-		return copy;
-	}
-
-	/**
-	 * remove all tree-trunks, that contain no user-based feature traces.
-	 * @param root the root of the tree to be trimmed
-	 */
-	public static void removeTracelessTrunks(Node.Op root){
-		List<Node.Op> toRemove = new LinkedList<>();
-		for (Node.Op child : root.getChildren()){
-			removeTracelessTrunks(child);
-			if (child.getChildren().isEmpty() && !child.getFeatureTrace().containsUserCondition()){
-				toRemove.add(child);
-			}
-		}
-		toRemove.forEach(root::removeChild);
-	}
-
-	/**
-	 * Create a copy of the tree that contains only nodes with user-based feature traces (and all nodes holding the tree together).
-	 * User-Based feature traces are moved to the copy (and removed in the original).
-	 * @param root
-	 * @return
-	 */
-	public static Node.Op extractFeatureTraceTree(Node.Op root){
-		Node.Op copy = createCopyWithStolenTraces(root);
-		removeTracelessTrunks(copy);
-		return copy;
 	}
 }

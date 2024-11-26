@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.storage.mem.repository;
 
-import at.jku.isse.ecco.util.Trees;
+import at.jku.isse.ecco.storage.mem.maintree.MemAssociationMerger;
+import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
@@ -34,6 +35,7 @@ public final class MemRepository implements Repository, Repository.Op {
 	private int maxOrder;
 	private Node.Op mainTree;
 	private transient FormulaFactory formulaFactory = new FormulaFactory();
+	private MainTreeBuildingStrategy mainTreeBuildingStrategy;
 
 
 	public MemRepository() {
@@ -42,6 +44,8 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
+		// todo: use guice for configuration of default merger
+		this.mainTreeBuildingStrategy = new MemAssociationMerger();
 	}
 
 	@Override
@@ -204,11 +208,7 @@ public final class MemRepository implements Repository, Repository.Op {
 
 	@Override
 	public void buildMainTree() {
-		Node.Op mainTree = null;
-		for (Association association : this.getAssociations()){
-			mainTree = Trees.treeFusion(mainTree, (Node.Op) association.getRootNode());
-		}
-		this.mainTree = mainTree;
+		this.mainTree = this.mainTreeBuildingStrategy.buildMainTree(this.getAssociations());
 	}
 
 	 @Override
@@ -267,5 +267,10 @@ public final class MemRepository implements Repository, Repository.Op {
 		FeatureTraceCollectorVisitor collectorVisitor = new FeatureTraceCollectorVisitor();
 		this.mainTree.traverse(collectorVisitor);
 		return collectorVisitor.getFeatureTraces();
+	}
+
+	@Override
+	public void setMaintreeBuildingStrategy(MainTreeBuildingStrategy mainTreeBuildingStrategy){
+		this.mainTreeBuildingStrategy = mainTreeBuildingStrategy;
 	}
 }

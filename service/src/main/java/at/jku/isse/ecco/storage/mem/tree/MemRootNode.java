@@ -90,7 +90,7 @@ public class MemRootNode extends MemNode implements RootNode, RootNode.Op {
 	}
 
 	@Override
-	public Node.Op copySingleNode(){
+	public Node.Op copySingleNode(boolean copyFeatureTrace){
 		MemRootNode newNode = new MemRootNode();
 		return newNode;
 	}

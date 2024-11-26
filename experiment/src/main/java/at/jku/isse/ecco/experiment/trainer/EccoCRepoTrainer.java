@@ -18,10 +18,12 @@ public class EccoCRepoTrainer implements EccoTrainer {
     private final Path repositoryPath;
     private final List<Path> variantPicks;
     private EccoService eccoService;
+    private boolean boosting;
 
     public EccoCRepoTrainer(ExperimentRunConfiguration config){
         this.repositoryPath = Paths.get(ResourceUtils.getResourceFolderPathAsString("repo"));
         this.variantPicks = config.getVariantPicks();
+        this.boosting = config.booleanEnabled();
     }
 
     @Override
@@ -30,6 +32,11 @@ public class EccoCRepoTrainer implements EccoTrainer {
             Logger.info("Creating ECCO repository...");
             DirUtils.createDir(this.repositoryPath);
             this.eccoService = ServiceUtils.createEccoService(this.repositoryPath);
+
+            if (this.boosting){
+                this.eccoService.enableFeatureTraceBoosting();
+            }
+
             Logger.info("Committing picked variants...");
             this.commitVariantPicks();
         } catch (Exception e){

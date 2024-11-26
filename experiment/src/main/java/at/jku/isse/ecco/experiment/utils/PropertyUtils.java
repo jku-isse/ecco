@@ -25,6 +25,10 @@ public class PropertyUtils {
         return Integer.parseInt(properties.getProperty(propertyName));
     }
 
+    public static boolean loadBoolean(Properties properties, String propertyName){
+        return Boolean.parseBoolean(properties.getProperty(propertyName));
+    }
+
     public static Path loadPath(Properties properties, String propertyName){
         return Paths.get(properties.getProperty(propertyName));
     }

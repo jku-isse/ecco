@@ -5,9 +5,7 @@ import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.counter.MemAssociationCounter;
-import at.jku.isse.ecco.tree.DiffConditionVisitor;
 import at.jku.isse.ecco.storage.mem.module.MemCondition;
-import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**

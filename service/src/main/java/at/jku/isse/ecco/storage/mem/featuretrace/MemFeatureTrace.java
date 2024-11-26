@@ -65,12 +65,7 @@ public class MemFeatureTrace implements FeatureTrace {
         if (currentCondition == null){
             return newCondition;
         } else {
-            Formula currentFormula = null;
-            try {
-                currentFormula = this.parseString(currentCondition);
-            } catch(RuntimeException e){
-                System.out.println("?");
-            }
+            Formula currentFormula = this.parseString(currentCondition);
             Formula newFormula = this.parseString(newCondition);
             Formula combinedFormula = this.formulaFactory.or(currentFormula, newFormula);
             return combinedFormula.toString();

@@ -40,7 +40,7 @@ public class TreesTest {
 	@Test
 	public void testCopy(){
 		Node.Op tree = NodeUtil.createTestTree1();
-		Node.Op copyTree = tree.copyTree();
+		Node.Op copyTree = tree.copyTree(false);
 		assertTrue(Trees.equals(tree, copyTree));
 	}
 
@@ -48,7 +48,7 @@ public class TreesTest {
 	public void testCopyWithMiddleNode(){
 		Node.Op tree = NodeUtil.createTestTree1();
 		Node.Op middleNode = tree.getChildren().get(0).getChildren().get(1);
-		Node.Op copyMiddleNode = middleNode.copyTree();
+		Node.Op copyMiddleNode = middleNode.copyTree(false);
 		Node.Op copyRoot = copyMiddleNode;
 		while (!(copyRoot instanceof RootNode)){
 			copyRoot = copyRoot.getParent();

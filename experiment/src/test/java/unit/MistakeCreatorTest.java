@@ -10,6 +10,7 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
+import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
@@ -273,7 +274,7 @@ public class MistakeCreatorTest {
         String[] features = {"A", "B"};
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
-        mistakeCreator.createMistakePercentage(repo, 40);
+        mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 40);
 
         Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getUserConditionString).toList();
         int unchanged = (int) conditions.stream().filter(s -> s.equals("A")).count();
@@ -299,7 +300,7 @@ public class MistakeCreatorTest {
         String[] features = {"A", "B"};
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
-        mistakeCreator.createMistakePercentage(repo, 70);
+        mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 70);
 
         Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getUserConditionString).toList();
         int unchanged = (int) conditions.stream().filter(s -> s.equals("A")).count();
@@ -325,7 +326,7 @@ public class MistakeCreatorTest {
         String[] features = {"A"};
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
-        assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, 20));
+        assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 20));
     }
 
     @Test
@@ -345,7 +346,7 @@ public class MistakeCreatorTest {
         String[] features = {"A"};
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
-        assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, -20));
+        assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), -20));
     }
 
     @Test
@@ -365,7 +366,7 @@ public class MistakeCreatorTest {
         String[] features = {"A"};
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
-        assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, 150));
+        assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 150));
     }
 
     static class MockFeatureTrace implements FeatureTrace {
@@ -501,6 +502,11 @@ public class MistakeCreatorTest {
         @Override
         public Collection<FeatureTrace> getFeatureTraces() {
             return this.traces;
+        }
+
+        @Override
+        public void setMaintreeBuildingStrategy(MainTreeBuildingStrategy mainTreeBuildingStrategy) {
+
         }
 
         @Override

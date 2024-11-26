@@ -352,53 +352,38 @@ public interface Node extends Persistable {
 			Trees.checkConsistency(this);
 		}
 
-		default Op copyTree(){
-			Op copy = copyTreeDownwards();
+		default Op copyTree(boolean copyFeatureTraces){
+			Op copy = copyTreeDownwards(copyFeatureTraces);
 			if (!(this instanceof RootNode)) {
-				Op parentCopy = copyTreeUpwards();
+				Op parentCopy = copyTreeUpwards(copyFeatureTraces);
 				if (!(parentCopy == null)){ parentCopy.addChild(copy); }
 			}
 			return copy;
 		}
 
-		Op copySingleNode();
+		Op copySingleNode(boolean copyFeatureTrace);
 
-		/**
-		 * Create a copy of the node that also includes a copy of the feature trace.
-		 * @return
-		 */
-		Op copySingleNodeCompletely();
-
-		default Op createCopyWithStolenTrace(){
-			Op copy = this.copySingleNode();
-			FeatureTrace featureTrace = this.getFeatureTrace();
-			copy.setFeatureTrace(featureTrace);
-			featureTrace.setNode(copy);
-			this.removeFeatureTrace();
-			return copy;
-		}
-
-		default Op copyTreeDownwards(){
+		default Op copyTreeDownwards(boolean copyFeatureTraces){
 			// copy this node and all descendants
-			Op node = this.copySingleNode();
+			Op node = this.copySingleNode(copyFeatureTraces);
 			for (Op child : this.getChildren()){
-				node.addChild(child.copyTreeDownwards());
+				node.addChild(child.copyTreeDownwards(copyFeatureTraces));
 			}
 			return node;
 		}
 
-		default Op copyTreeUpwards(){
+		default Op copyTreeUpwards(boolean copyFeatureTraces){
 			// copy the parent of this node as well as all ancestors and siblings
 			Op parent = this.getParent();
 			if (parent == null) { return parent; }
-			Op parentCopy = parent.copySingleNode();
+			Op parentCopy = this.copySingleNode(copyFeatureTraces);
 			for (Node.Op node : parent.getChildren()){
 				if (node != this){
-					parentCopy.addChild(node.copySingleNode());
+					parentCopy.addChild(node.copySingleNode(copyFeatureTraces));
 				}
 			}
 			if(parent instanceof RootNode){ return parentCopy; }
-			Op grandParentCopy = parent.copyTreeUpwards();
+			Op grandParentCopy = parent.copyTreeUpwards(copyFeatureTraces);
 			if (!(grandParentCopy == null)){ grandParentCopy.addChild(parentCopy); }
 			return parentCopy;
 		}
@@ -412,8 +397,6 @@ public interface Node extends Persistable {
 		FeatureTrace getFeatureTrace();
 
 		void setFeatureTrace(FeatureTrace featureTrace);
-
-		void removeFeatureTrace();
 
 		void combineUserTrace(Node.Op other);
 

@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.experiment.config;
 
 import at.jku.isse.ecco.experiment.utils.PropertyUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 
 import java.lang.reflect.InvocationTargetException;
@@ -22,6 +21,7 @@ public class ExperimentConfiguration{
     private final List<EvaluationStrategy> evaluationStrategies;
     private final List<String> mistakeStrategies;
     private List<ExperimentRunConfiguration> runConfigurations;
+    private boolean boosting;
 
     public ExperimentConfiguration(String configurationPath, Path variantBasePath) {
         Properties config = PropertyUtils.loadProperties(configurationPath);
@@ -36,6 +36,7 @@ public class ExperimentConfiguration{
         this.mistakePercentages = PropertyUtils.loadIntegerList(config, "mistakePercentages");
         this.evaluationStrategies = this.loadEvaluationStrategies(config);
         this.mistakeStrategies = PropertyUtils.loadStringList(config, "mistakeStrategies");
+        this.boosting = PropertyUtils.loadBoolean(config, "boosting");
 
         this.variantsDir = variantBasePath;
 
@@ -53,7 +54,8 @@ public class ExperimentConfiguration{
                                  List<Integer> featureTracePercentages,
                                  List<Integer> mistakePercentages,
                                  List<EvaluationStrategy> evaluationStrategies,
-                                 List<String> mistakeStrategies){
+                                 List<String> mistakeStrategies,
+                                   boolean boosting){
         this.repositoryNames = repositoryNames;
         this.numberOfRuns = numberOfRuns;
         this.minVariantFeatures = minVariantFeatures;
@@ -67,6 +69,7 @@ public class ExperimentConfiguration{
         this.mistakeStrategies = mistakeStrategies;
         this.evaluationStrategies = evaluationStrategies;
         this.createExperimentRunConfigurations();
+        this.boosting = boosting;
     }
 
     private List<EvaluationStrategy> loadEvaluationStrategies(Properties properties){
@@ -114,7 +117,8 @@ public class ExperimentConfiguration{
                         featureTracePercentages,
                         mistakePercentages,
                         evaluationStrategies,
-                        mistakeStrategies));
+                        mistakeStrategies,
+                        this.boosting));
             }
         }
         this.runConfigurations = runConfigurations;

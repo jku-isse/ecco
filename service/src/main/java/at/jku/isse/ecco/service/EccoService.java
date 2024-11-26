@@ -7,6 +7,8 @@ import at.jku.isse.ecco.artifact.*;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.dao.*;
 import at.jku.isse.ecco.feature.*;
+import at.jku.isse.ecco.maintree.AssociationMerger;
+import at.jku.isse.ecco.maintree.BoostedAssociationMerger;
 import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.repository.*;
 import at.jku.isse.ecco.service.listener.*;
@@ -1866,6 +1868,29 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 
     // CHECKOUT ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    public void enableFeatureTraceBoosting(){
+        this.checkInitialized();
+        try {
+            BoostedAssociationMerger merger = this.entityFactory.createBoostedAssociationMerger();
+            this.getRepository().setMaintreeBuildingStrategy(merger);
+        } catch (EccoException e) {
+            this.transactionStrategy.rollback();
+            throw new EccoException("Error while enabling feature trace boosting.", e);
+        }
+    }
+
+    public void disableFeatureTraceBoosting(){
+        this.checkInitialized();
+        try {
+            AssociationMerger merger = this.entityFactory.createAssociationMerger();
+            this.getRepository().setMaintreeBuildingStrategy(merger);
+        } catch (EccoException e) {
+            this.transactionStrategy.rollback();
+            throw new EccoException("Error while disabling feature trace boosting.", e);
+        }
+    }
 
     /**
      * Composes checkout with given configuration.

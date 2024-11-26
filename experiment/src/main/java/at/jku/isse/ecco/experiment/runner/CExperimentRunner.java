@@ -5,6 +5,7 @@ import at.jku.isse.ecco.experiment.mistake.*;
 import at.jku.isse.ecco.experiment.result.ResultCalculator;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.utils.picker.MemoryListPicker;
+import at.jku.isse.ecco.experiment.utils.tracecollector.FeatureTraceCollector;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
@@ -73,19 +74,25 @@ public class CExperimentRunner implements ExperimentRunner {
 
     private void performExperimentIteration(EvaluationStrategy evaluationStrategy, int featureTracePercentage, int mistakePercentage, String mistakeStrategy){
         MistakeCreator mistakeCreator = new MistakeCreator(this.createMistakeStrategy(mistakeStrategy, config.getFeatures()));
-        Collection<FeatureTrace> initialTraces = this.removeFeatureTracePercentage(this.repository, 100 - featureTracePercentage);
+
+        FeatureTraceCollector collector = new FeatureTraceCollector();
+        collector.collectAssociationTraces(this.repository);
+        Collection<FeatureTrace> allProactiveTraces = collector.getFeatureTraces();
+        Collection<FeatureTrace> remainingTraces = this.removeFeatureTracePercentage(allProactiveTraces, 100 - featureTracePercentage);
+
         try {
-            mistakeCreator.createMistakePercentage(this.repository, mistakePercentage);
+            mistakeCreator.createMistakePercentage(this.repository, remainingTraces, mistakePercentage);
         } catch(Exception e){
             System.out.println("Mistake creation failed!");
             return;
         }
+        this.repository.buildMainTree();
         Node.Op mainTree = this.repository.getMainTree();
         this.literalNameCleanup(mainTree);
         ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
         metricsCalculator.calculateMetrics(mainTree);
-        this.restoreFeatureTraces(initialTraces);
         mistakeCreator.restoreOriginalConditions();
+        this.restoreFeatureTraces(allProactiveTraces);
     }
 
     private void literalNameCleanup(Node.Op node){
@@ -102,20 +109,20 @@ public class CExperimentRunner implements ExperimentRunner {
         node.traverse(visitor);
     }
 
-    private Collection<FeatureTrace> removeFeatureTracePercentage(Repository.Op repo, int percentage) {
+    private Collection<FeatureTrace> removeFeatureTracePercentage(Collection<FeatureTrace> allProactiveTraces, int percentage) {
         if (percentage < 0 || percentage > 100){
             throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
         }
-        Collection<FeatureTrace> traces = repo.getFeatureTraces();
-        List<FeatureTrace> tracesToBeRemoved = this.listPicker.pickPercentage(traces, percentage);
-        //tracesToBeRemoved.forEach(trace -> ((Node.Op) trace.getNode()).removeFeatureTrace());
+        List<FeatureTrace> tracesToBeRemoved = this.listPicker.pickPercentage(allProactiveTraces, percentage);
+        List<FeatureTrace> remainingTraces = new LinkedList<>(allProactiveTraces);
+        remainingTraces.removeAll(tracesToBeRemoved);
         for (FeatureTrace featureTrace : tracesToBeRemoved){
             FeatureTrace newTrace = new MemFeatureTrace(featureTrace.getNode());
             newTrace.setDiffCondition(featureTrace.getDiffConditionString());
             Node.Op node = (Node.Op) featureTrace.getNode();
             node.setFeatureTrace(newTrace);
         }
-        return traces;
+        return remainingTraces;
     }
 
     private void restoreFeatureTraces(Collection<FeatureTrace> traces){
