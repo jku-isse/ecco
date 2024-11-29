@@ -14,16 +14,16 @@ import java.nio.file.Paths;
 import java.util.List;
 
 
-public class EccoCRepoTrainer implements EccoTrainer {
+public class EccoRepoTrainer implements EccoTrainerInterface {
     private final Path repositoryPath;
     private final List<Path> variantPicks;
     private EccoService eccoService;
     private boolean boosting;
 
-    public EccoCRepoTrainer(ExperimentRunConfiguration config){
+    public EccoRepoTrainer(ExperimentRunConfiguration config){
         this.repositoryPath = Paths.get(ResourceUtils.getResourceFolderPathAsString("repo"));
         this.variantPicks = config.getVariantPicks();
-        this.boosting = config.booleanEnabled();
+        this.boosting = config.boostingEnabled();
     }
 
     @Override

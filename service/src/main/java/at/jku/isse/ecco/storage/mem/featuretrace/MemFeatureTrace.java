@@ -153,8 +153,7 @@ public class MemFeatureTrace implements FeatureTrace {
 
         if (this.node == null){
             if (memFeatureTrace.node != null) { return false; }
-            // the whole tree must be the same in the current implementation
-        } else if (!(Trees.equals(this.node.getRoot(), memFeatureTrace.node.getRoot()))) { return false; }
+        } else if (!this.node.equals(memFeatureTrace.node)) { return false; }
 
         if (this.userCondition == null){
             if (memFeatureTrace.userCondition != null) { return false; }

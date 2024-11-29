@@ -118,10 +118,6 @@ public class ExperimentRunConfiguration{
         return variantsDir;
     }
 
-    public int getNumberOfVariants() {
-        return numberOfVariants;
-    }
-
     public Integer[] getFeatureTracePercentages() {
         return featureTracePercentages;
     }
@@ -141,7 +137,7 @@ public class ExperimentRunConfiguration{
     public List<Path> getVariantPicks() {
         return variantPicks;
     }
-    public boolean booleanEnabled(){ return this.boosting; }
+    public boolean boostingEnabled(){ return this.boosting; }
 
     public String toString(){
         String description = "Experiment Run Configuration:\n" +
