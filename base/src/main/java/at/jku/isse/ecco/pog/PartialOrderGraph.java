@@ -475,6 +475,14 @@ public interface PartialOrderGraph extends Persistable {
 				current = current.addChild(other.createNode(artifact));
 			}
 			current.addChild(other.getTail()); // finish at tail
+
+			if (artifacts.size() > 0) {
+				// remove link between head and tail
+				Node.Op head = other.getHead();
+				Node.Op tail = other.getTail();
+				head.removeChild(tail);
+			}
+
 			return other;
 		}
 
