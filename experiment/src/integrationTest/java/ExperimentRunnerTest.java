@@ -1,8 +1,11 @@
+import at.jku.isse.ecco.experiment.Experiment;
+import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
 import at.jku.isse.ecco.experiment.featureTracePicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.Result;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 
 import at.jku.isse.ecco.experiment.result.persister.ResultInMemoryPersister;
+import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunner;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunnerInterface;
 import at.jku.isse.ecco.experiment.trainer.EccoRepoTrainer;
@@ -54,6 +57,17 @@ public class ExperimentRunnerTest {
     }
 
     @Test
+    public void longRuntimeTest() {
+        ResultPersister persister = new ResultInMemoryPersister();
+        Experiment experiment = new Experiment(false, persister);
+
+        String configPath = ResourceUtils.getResourceFolderPathAsString("configs/long_runtime.properties");
+        Path variantBasePath = ResourceUtils.getResourceFolderPath("sample_long_runtime");
+        ExperimentConfiguration experimentConfig = new ExperimentConfiguration(configPath, variantBasePath);
+        experiment.runExperiment(experimentConfig);
+    }
+
+    @Test
     public void experimentRunsWithoutException() {
         // mock run config
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
@@ -79,6 +93,33 @@ public class ExperimentRunnerTest {
         ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
         runner.runExperiment();
         assertFalse(persister.getResults().isEmpty());
+    }
+
+    @Test
+    public void mistakesCanBeBoosted() {
+        // mock run config
+        Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_7");
+        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{5});
+        when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
+        when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
+        when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
+        when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
+        when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{100});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA, FEATUREB"));
+        List<Path> variantPicks = new LinkedList<>();
+        variantPicks.add(variantBasePath.resolve("Variant_AB"));
+        when(runConfig.getVariantPicks()).thenReturn(variantPicks);
+
+        Repository.Op repo = prepareRepository(runConfig);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        runner.runExperiment();
+        Result result= persister.getResults().iterator().next();
+        assertEquals(1, persister.getResults().size());
+        assertEquals(0.75, result.getF1());
     }
 
     @Test
@@ -1162,3 +1203,4 @@ public class ExperimentRunnerTest {
         assertTrue(result.getF1() < 1.0);
     }
 }
+
