@@ -26,6 +26,7 @@ public class ExperimentRunConfiguration{
     private List<Path> variantPicks;
     private List<String> features;
     private List<String> variantConfigurations;
+
     private boolean boosting;
     
     public ExperimentRunConfiguration(String repositoryName,

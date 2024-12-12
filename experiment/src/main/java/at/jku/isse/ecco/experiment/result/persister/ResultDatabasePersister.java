@@ -34,7 +34,7 @@ public class ResultDatabasePersister implements ResultPersister{
                         EvaluationStrategy evaluationStrategy, String mistakeStrategy) {
         String sql = "INSERT INTO results (repository, numberOfVariants, variantConfigurations, " +
                 "numberOfSampledFeatures, sampledFeatures, featureTracePercentage, mistakePercentage, " +
-                "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1, boost) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         String variantConfigurations = String.join("; ",
                 config.getVariantConfigurations());
@@ -58,6 +58,8 @@ public class ResultDatabasePersister implements ResultPersister{
             pstmt.setDouble(14, result.getPrecision());
             pstmt.setDouble(15, result.getRecall());
             pstmt.setDouble(16, result.getF1());
+            int boost = config.boostingEnabled() ? 1 : 0;
+            pstmt.setInt(17, boost);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Entering data to database failed: " + e.getMessage());
@@ -82,7 +84,8 @@ public class ResultDatabasePersister implements ResultPersister{
                 + " fn INTEGER NOT NULL,"
                 + "	precision DOUBLE NOT NULL,"
                 + "	recall DOUBLE NOT NULL,"
-                + "	f1 DOUBLE NOT NULL"
+                + "	f1 DOUBLE NOT NULL,"
+                + " boost INTEGER NOT NULL"
                 + ");";
 
         try (Connection conn = DriverManager.getConnection(this.databaseURL)){
