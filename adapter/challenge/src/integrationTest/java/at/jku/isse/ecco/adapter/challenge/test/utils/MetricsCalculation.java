@@ -1,4 +1,6 @@
-package at.jku.isse.ecco.adapter.challenge.test;
+package at.jku.isse.ecco.adapter.challenge.test.utils;
+
+import at.jku.isse.ecco.adapter.challenge.test.utils.FileUtils;
 
 import java.io.File;
 import java.nio.file.Path;

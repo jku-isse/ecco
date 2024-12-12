@@ -56,6 +56,7 @@ public class ChallengeTest {
 	/**
 	 * Creates repository and computes results and stores them in OUTPUT_DIR for every scenario in BENCHMARK_DIR.
 	 */
+	@Disabled("Hardcoded paths not applicable.")
 	@Test
 	public void Do_All_Scenarios() throws IOException {
 		List<Path> scenarioDirs = Files.list(BENCHMARK_DIR.resolve("scenarios")).filter(path -> Files.isDirectory(path)).collect(Collectors.toList());
@@ -73,6 +74,7 @@ public class ChallengeTest {
 	/**
 	 * Creates repository in SCENARIO_OUTPUT_DIR for specific scenario in SCENARIO_DIR.
 	 */
+	@Disabled("Hardcoded paths not applicable.")
 	@Test
 	public void Create_Repo() throws IOException {
 		this.createRepo(SCENARIO_DIR, SCENARIO_OUTPUT_DIR);
@@ -81,11 +83,13 @@ public class ChallengeTest {
 	/**
 	 * Computes results from repository stored in SCENARIO_OUTPUT_DIR and stores them in SCENARIO_OUTPUT_DIR.
 	 */
+	@Disabled("Hardcoded paths not applicable.")
 	@Test
 	public void Compute_Results() throws IOException {
 		this.computeResults(SCENARIO_OUTPUT_DIR);
 	}
 
+	@Disabled("Hardcoded paths not applicable.")
 	@Test
 	public void Compute_Metrics() {
 		// TODO: restore old metrics-calculation
@@ -271,10 +275,7 @@ public class ChallengeTest {
 	private boolean checkNonMethodDescendants(Node node) {
 		// get the node data and see if it exists
 		if (node.getArtifact() != null && node.getArtifact().getData() != null) {
-			// see if the node is an import or variable declaration child
-			//if (node.getArtifact().getData() instanceof ImportArtifactData || node.getArtifact().getData() instanceof FieldArtifactData) {
-			//if (!(node.getArtifact().getData() instanceof MethodArtifactData)) {
-			if (node.getArtifact().getData() instanceof ImportArtifactData || node.getArtifact().getData() instanceof FieldArtifactData || node.getArtifact().getData() instanceof LineArtifactData) {
+			if (node.getArtifact().getData() instanceof ImportArtifactData || node.getArtifact().getData() instanceof LineArtifactData) {
 				return true;
 			}
 		}
@@ -353,6 +354,7 @@ public class ChallengeTest {
 		}
 	}
 
+	@Disabled("Hardcoded paths not applicable.")
 	@Test
 	public void Analyze_Differences() throws IOException {
 		Path GT_PATH = BENCHMARK_DIR.resolve("groundTruth");

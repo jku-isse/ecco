@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.challenge.test;
+package at.jku.isse.ecco.adapter.challenge.test.utils;
 
 import java.io.*;
 import java.nio.file.Files;
