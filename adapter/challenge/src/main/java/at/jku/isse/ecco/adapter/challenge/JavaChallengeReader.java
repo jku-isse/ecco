@@ -4,7 +4,6 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.challenge.data.*;
 import at.jku.isse.ecco.featuretrace.parser.VevosConditionHandler;
-import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -26,14 +25,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
-
-	protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
 
 	private final EntityFactory entityFactory;
 
@@ -71,74 +67,70 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 	public Set<Node.Op> read(Path base, Path[] input) {
 		VevosConditionHandler vevosConditionHandler = new VevosConditionHandler(base);
 		Set<Node.Op> nodes = new HashSet<>();
-
-		long totalJavaParserTime = 0;
-
 		for (Path path : input) {
-			VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(path);
-
-			Path resolvedPath = base.resolve(path);
-
-			// create plugin artifact/node
-			Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-			Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
-			nodes.add(pluginNode);
-
-			try {
-				// read raw file contents
-				String fileContent = new String(Files.readAllBytes(resolvedPath), StandardCharsets.UTF_8);
-				String[] lines = fileContent.split("\\r?\\n");
-
-				long localStartTime = System.currentTimeMillis();
-				CompilationUnit cu = StaticJavaParser.parse(fileContent);
-				totalJavaParserTime += (System.currentTimeMillis() - localStartTime);
-
-				// package name
-				String packageName = "";
-				if (cu.getPackageDeclaration().isPresent())
-					packageName = cu.getPackageDeclaration().get().getName().toString();
-
-				for (TypeDeclaration<?> typeDeclaration : cu.getTypes()) {
-					// create class artifact/node
-					String className = typeDeclaration.getName().toString();
-					Artifact.Op<ClassArtifactData> classArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className));
-
-					Location location = new Location(typeDeclaration.getRange().get().begin.line,
-							typeDeclaration.getRange().get().begin.line, path);
-					Node.Op classNode = this.createNodeWithLocation(classArtifact, location);
-					pluginNode.addChild(classNode);
-					this.checkForFeatureTrace(typeDeclaration, fileConditionContainer, classNode);
-
-					// imports
-					Artifact.Op<AbstractArtifactData> importsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("IMPORTS"));
-					Node.Op importsGroupNode = this.entityFactory.createNode(importsGroupArtifact);
-					classNode.addChild(importsGroupNode);
-					for (ImportDeclaration importDeclaration : cu.getImports()) {
-						String importName = "import " + importDeclaration.getName().asString();
-						Artifact.Op<ImportArtifactData> importArtifact = this.entityFactory.createArtifact(new ImportArtifactData(importName));
-
-						location = new Location(importDeclaration.getRange().get().begin.line,
-								importDeclaration.getRange().get().begin.line, path);
-						Node.Op importNode = this.createNodeWithLocation(importArtifact, location);
-
-						importsGroupNode.addChild(importNode);
-						this.checkForFeatureTrace(importDeclaration, fileConditionContainer, importNode);
-					}
-					ArrayList<String> methods =  new ArrayList<>();
-					this.addClassChildren(typeDeclaration, classNode, lines, methods, fileConditionContainer, path);
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-				throw new EccoException("Error parsing java file.", e);
-			}
+			nodes.addAll(this.read(base, path, vevosConditionHandler));
 		}
-
-		LOGGER.fine(JavaParser.class + ".parse(): " + totalJavaParserTime + "ms");
 		return nodes;
 	}
 
-	public Set<Node.Op> read(Path base, Path[] input, ArrayList<String> methods) {
-		return null;
+	public Set<Node.Op> read(Path basePath, Path relativePath, VevosConditionHandler vevosConditionHandler) {
+		Set<Node.Op> nodes = new HashSet<>();
+		VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(relativePath);
+		Path resolvedPath = basePath.resolve(relativePath);
+
+		// create plugin artifact/node
+		Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), relativePath));
+		Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
+		nodes.add(pluginNode);
+
+		try {
+			// read raw file contents
+			String fileContent = new String(Files.readAllBytes(resolvedPath), StandardCharsets.UTF_8);
+			String[] lines = fileContent.split("\\r?\\n");
+
+			CompilationUnit cu = StaticJavaParser.parse(fileContent);
+
+			// package name
+			String packageName = "";
+			if (cu.getPackageDeclaration().isPresent()) {
+				packageName = cu.getPackageDeclaration().get().getName().toString();
+			}
+
+			for (TypeDeclaration<?> typeDeclaration : cu.getTypes()) {
+				// create class artifact/node
+				String className = typeDeclaration.getName().toString();
+				Artifact.Op<ClassArtifactData> classArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className));
+
+				Location location = new Location(typeDeclaration.getRange().get().begin.line,
+						typeDeclaration.getRange().get().begin.line, relativePath);
+				Node.Op classNode = this.createNodeWithLocation(classArtifact, location);
+				pluginNode.addChild(classNode);
+				this.checkForFeatureTrace(typeDeclaration, fileConditionContainer, classNode);
+
+				// imports
+				Artifact.Op<AbstractArtifactData> importsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("IMPORTS"));
+				Node.Op importsGroupNode = this.entityFactory.createNode(importsGroupArtifact);
+				classNode.addChild(importsGroupNode);
+				for (ImportDeclaration importDeclaration : cu.getImports()) {
+					String importName = "import " + importDeclaration.getName().asString();
+					Artifact.Op<ImportArtifactData> importArtifact = this.entityFactory.createArtifact(new ImportArtifactData(importName));
+
+					location = new Location(importDeclaration.getRange().get().begin.line,
+							importDeclaration.getRange().get().begin.line, relativePath);
+					Node.Op importNode = this.createNodeWithLocation(importArtifact, location);
+
+					importsGroupNode.addChild(importNode);
+					this.checkForFeatureTrace(importDeclaration, fileConditionContainer, importNode);
+				}
+				ArrayList<String> methods =  new ArrayList<>();
+				this.addClassChildren(typeDeclaration, classNode, lines, methods, fileConditionContainer, relativePath);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new EccoException("Error parsing java file.", e);
+		}
+
+		return nodes;
 	}
 
 	private void addClassChildren(TypeDeclaration<?> typeDeclaration,
@@ -194,7 +186,6 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			else if (node instanceof FieldDeclaration) {
 				int beginLine = node.getRange().get().begin.line;
 				int endLine = node.getRange().get().end.line;
-				String line;
 				int i = beginLine - 1;
 				while (i < endLine) {
 					int lineNumber = i + 1;
