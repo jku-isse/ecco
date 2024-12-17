@@ -35,6 +35,7 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
 
     private MistakeStrategy createMistakeStrategy(String type, List<String> features){
         return switch (type) {
+            case "NoMistaker" -> new NoMistaker();
             case "ConditionSwapper" -> new ConditionSwapper();
             case "Conjugator" -> new Conjugator(features);
             case "FeatureSwitcher" -> new FeatureSwitcher(features);
@@ -67,7 +68,12 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
     }
 
     private void iterateMistakeStrategies(EvaluationStrategy evaluationStrategy, int featureTracePercentage, int mistakePercentage){
-        for (String mistakeStrategy : this.config.getMistakeStrategies()){
+        if (mistakePercentage > 0) {
+            for (String mistakeStrategy : this.config.getMistakeStrategies()) {
+                this.performExperimentIteration(evaluationStrategy, featureTracePercentage, mistakePercentage, mistakeStrategy);
+            }
+        } else {
+            String mistakeStrategy = "NoMistaker";
             this.performExperimentIteration(evaluationStrategy, featureTracePercentage, mistakePercentage, mistakeStrategy);
         }
     }
