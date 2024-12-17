@@ -140,6 +140,10 @@ public class ExperimentRunConfiguration{
     }
     public boolean boostingEnabled(){ return this.boosting; }
 
+    public void setBoosting(boolean boosting){
+        this.boosting = boosting;
+    }
+
     public String toString(){
         String description = "Experiment Run Configuration:\n" +
                 "Repository: " + this.repositoryName + "\n" +

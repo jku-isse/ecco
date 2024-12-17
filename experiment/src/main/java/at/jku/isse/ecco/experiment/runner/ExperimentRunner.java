@@ -9,6 +9,8 @@ import at.jku.isse.ecco.experiment.utils.tracecollector.FeatureTraceCollector;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
+import at.jku.isse.ecco.storage.mem.maintree.MemAssociationMerger;
+import at.jku.isse.ecco.storage.mem.maintree.MemBoostedAssociationMerger;
 import at.jku.isse.ecco.tree.*;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.feature.*;
@@ -92,11 +94,25 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
             System.out.println("Mistake creation failed!");
             return;
         }
+
+        // perform without boost
+        this.config.setBoosting(false);
+        this.repository.setMaintreeBuildingStrategy(new MemAssociationMerger());
         this.repository.buildMainTree();
         Node.Op mainTree = this.repository.getMainTree();
         this.literalNameCleanup(mainTree);
         ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
         metricsCalculator.calculateMetrics(mainTree);
+
+        // perform with boost
+        this.config.setBoosting(true);
+        this.repository.setMaintreeBuildingStrategy(new MemBoostedAssociationMerger());
+        this.repository.buildMainTree();
+        mainTree = this.repository.getMainTree();
+        this.literalNameCleanup(mainTree);
+        metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
+        metricsCalculator.calculateMetrics(mainTree);
+
         mistakeCreator.restoreOriginalConditions();
         this.restoreFeatureTraces(allProactiveTraces);
     }
