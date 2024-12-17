@@ -4,7 +4,7 @@ TestClassA.java;True;FEATUREX;FEATUREX;artifact;3;4
 TestClassA.java;True;FEATUREX;FEATUREX;artifact;8;12
 TestClassA.java;True;FEATUREX;FEATUREX;artifact;14;15
 TestClassA.java;True;FEATUREX;FEATUREX;artifact;17;20
-TestClassA.java;True;FEATUREX;(FEATUREX && FEATUREY};artifact;23;24
+TestClassA.java;True;FEATUREX;(FEATUREX && FEATUREY);artifact;23;24
 TestClassA.java;True;FEATUREX;FEATUREX;artifact;25;25
 TestClassA.java;True;FEATUREX;FEATUREX;artifact;28;30
 TestClassA.java;True;FEATUREX;FEATUREX;artifact;32;34
@@ -12,7 +12,7 @@ TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;3;5
 TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;9;10
 TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;12;14
 TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;16;19
-TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;21;30
+TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;21;32
 TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;23;23
 TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;25;27
 TestClassB.java;True;FEATUREZ;FEATUREZ;artifact;29;31

@@ -102,7 +102,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Artifact.Op<ClassArtifactData> classArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className));
 
 				Location location = new Location(typeDeclaration.getRange().get().begin.line,
-						typeDeclaration.getRange().get().begin.line, relativePath);
+						typeDeclaration.getRange().get().end.line, relativePath);
 				Node.Op classNode = this.createNodeWithLocation(classArtifact, location);
 				pluginNode.addChild(classNode);
 				this.checkForFeatureTrace(typeDeclaration, fileConditionContainer, classNode);
@@ -116,7 +116,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					Artifact.Op<ImportArtifactData> importArtifact = this.entityFactory.createArtifact(new ImportArtifactData(importName));
 
 					location = new Location(importDeclaration.getRange().get().begin.line,
-							importDeclaration.getRange().get().begin.line, relativePath);
+							importDeclaration.getRange().get().end.line, relativePath);
 					Node.Op importNode = this.createNodeWithLocation(importArtifact, location);
 
 					importsGroupNode.addChild(importNode);
@@ -157,8 +157,8 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 			if (node instanceof ClassOrInterfaceDeclaration) {
 				Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(classNode.toString() + "." + ((ClassOrInterfaceDeclaration) node).getName().toString()));
 
-				Location location = new Location(typeDeclaration.getRange().get().begin.line,
-						typeDeclaration.getRange().get().begin.line, path);
+				Location location = new Location(node.getRange().get().begin.line,
+						node.getRange().get().end.line, path);
 				Node.Op nestedClassNode = this.createNodeWithLocation(nestedClassArtifact, location);
 
 				classNode.addChild(nestedClassNode);
@@ -174,7 +174,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					String trimmedLine = lines[i].trim();
 					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-						Location location = new Location(beginLine, endLine, path);
+						Location location = new Location(i + 1, i + 1, path);
 						Node.Op lineNode = this.createNodeWithLocation(lineArtifact, location);
 						enumsGroupNode.addChild(lineNode);
 						this.checkForFeatureTrace(i + 1, fileConditionContainer, lineNode);
