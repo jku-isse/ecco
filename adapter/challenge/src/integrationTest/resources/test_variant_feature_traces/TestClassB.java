@@ -26,6 +26,8 @@ public class TestClassB {
             System.out.println("constructor inner class");
         }
 
-        private void innerClassMethod(boolean booleanArgument){ System.out.println("inner class method"); }
+        private void innerClassMethod(boolean booleanArgument){
+            System.out.println("inner class method");
+        }
     }
 }
