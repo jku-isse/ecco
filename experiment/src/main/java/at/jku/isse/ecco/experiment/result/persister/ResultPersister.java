@@ -7,5 +7,5 @@ import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 
 public interface ResultPersister {
     void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
-                 EvaluationStrategy evaluationStrategy, String mistakeStrategy);
+                 EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting);
 }

@@ -31,7 +31,7 @@ public class ResultDatabasePersister implements ResultPersister{
 
     @Override
     public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
-                        EvaluationStrategy evaluationStrategy, String mistakeStrategy) {
+                        EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting) {
         String sql = "INSERT INTO results (repository, numberOfVariants, variantConfigurations, " +
                 "numberOfSampledFeatures, sampledFeatures, featureTracePercentage, mistakePercentage, " +
                 "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1, boost) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -58,7 +58,7 @@ public class ResultDatabasePersister implements ResultPersister{
             pstmt.setDouble(14, result.getPrecision());
             pstmt.setDouble(15, result.getRecall());
             pstmt.setDouble(16, result.getF1());
-            int boost = config.boostingEnabled() ? 1 : 0;
+            int boost = boosting ? 1 : 0;
             pstmt.setInt(17, boost);
             pstmt.executeUpdate();
         } catch (SQLException e) {

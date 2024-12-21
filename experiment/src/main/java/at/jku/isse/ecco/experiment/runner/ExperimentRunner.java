@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.experiment.runner;
 
+import at.jku.isse.ecco.experiment.config.Boosting;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.mistake.*;
 import at.jku.isse.ecco.experiment.result.ResultCalculator;
@@ -95,23 +96,29 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
             return;
         }
 
+        Boosting boosting = this.config.getBoosting();
+        Node.Op mainTree;
+        ResultCalculator metricsCalculator;
+
         // perform without boost
-        this.config.setBoosting(false);
-        this.repository.setMaintreeBuildingStrategy(new MemAssociationMerger());
-        this.repository.buildMainTree();
-        Node.Op mainTree = this.repository.getMainTree();
-        this.literalNameCleanup(mainTree);
-        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
-        metricsCalculator.calculateMetrics(mainTree);
+        if (boosting.equals(Boosting.DISABLED) || boosting.equals(Boosting.BOTH)) {
+            this.repository.setMaintreeBuildingStrategy(new MemAssociationMerger());
+            this.repository.buildMainTree();
+            mainTree = this.repository.getMainTree();
+            this.literalNameCleanup(mainTree);
+            metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, false);
+            metricsCalculator.calculateMetrics(mainTree);
+        }
 
         // perform with boost
-        this.config.setBoosting(true);
-        this.repository.setMaintreeBuildingStrategy(new MemBoostedAssociationMerger());
-        this.repository.buildMainTree();
-        mainTree = this.repository.getMainTree();
-        this.literalNameCleanup(mainTree);
-        metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy);
-        metricsCalculator.calculateMetrics(mainTree);
+        if (boosting.equals(Boosting.ENABLED) || boosting.equals(Boosting.BOTH)) {
+            this.repository.setMaintreeBuildingStrategy(new MemBoostedAssociationMerger());
+            this.repository.buildMainTree();
+            mainTree = this.repository.getMainTree();
+            this.literalNameCleanup(mainTree);
+            metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, true);
+            metricsCalculator.calculateMetrics(mainTree);
+        }
 
         mistakeCreator.restoreOriginalConditions();
         this.restoreFeatureTraces(allProactiveTraces);

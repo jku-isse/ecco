@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class ExperimentConfiguration{
+
     private final List<String> repositoryNames;
     private final int numberOfRuns;
     private final int minVariantFeatures;
@@ -21,7 +22,9 @@ public class ExperimentConfiguration{
     private final List<EvaluationStrategy> evaluationStrategies;
     private final List<String> mistakeStrategies;
     private List<ExperimentRunConfiguration> runConfigurations;
-    private boolean boosting;
+
+
+    private final Boosting boosting;
 
     public ExperimentConfiguration(String configurationPath, Path variantBasePath) {
         Properties config = PropertyUtils.loadProperties(configurationPath);
@@ -36,7 +39,8 @@ public class ExperimentConfiguration{
         this.mistakePercentages = PropertyUtils.loadIntegerList(config, "mistakePercentages");
         this.evaluationStrategies = this.loadEvaluationStrategies(config);
         this.mistakeStrategies = PropertyUtils.loadStringList(config, "mistakeStrategies");
-        this.boosting = PropertyUtils.loadBoolean(config, "boosting");
+
+        this.boosting = Boosting.valueOf(config.getProperty("boosting"));
 
         this.variantsDir = variantBasePath;
 
@@ -55,7 +59,7 @@ public class ExperimentConfiguration{
                                  List<Integer> mistakePercentages,
                                  List<EvaluationStrategy> evaluationStrategies,
                                  List<String> mistakeStrategies,
-                                   boolean boosting){
+                                   Boosting boosting){
         this.repositoryNames = repositoryNames;
         this.numberOfRuns = numberOfRuns;
         this.minVariantFeatures = minVariantFeatures;

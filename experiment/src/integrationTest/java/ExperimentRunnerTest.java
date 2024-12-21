@@ -1,11 +1,9 @@
-import at.jku.isse.ecco.experiment.Experiment;
-import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
+import at.jku.isse.ecco.experiment.config.Boosting;
 import at.jku.isse.ecco.experiment.featureTracePicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.Result;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 
 import at.jku.isse.ecco.experiment.result.persister.ResultInMemoryPersister;
-import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunner;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunnerInterface;
 import at.jku.isse.ecco.experiment.trainer.EccoRepoTrainer;
@@ -57,22 +55,11 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void longRuntimeTest() {
-        ResultPersister persister = new ResultInMemoryPersister();
-        Experiment experiment = new Experiment(false, persister);
-
-        String configPath = ResourceUtils.getResourceFolderPathAsString("configs/long_runtime.properties");
-        Path variantBasePath = ResourceUtils.getResourceFolderPath("sample_long_runtime");
-        ExperimentConfiguration experimentConfig = new ExperimentConfiguration(configPath, variantBasePath);
-        experiment.runExperiment(experimentConfig);
-    }
-
-    @Test
     public void experimentRunsWithoutException() {
         // mock run config
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
@@ -100,7 +87,7 @@ public class ExperimentRunnerTest {
         // mock run config
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_7");
         EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{5});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
@@ -126,7 +113,7 @@ public class ExperimentRunnerTest {
     public void experimentWithBoostRunsWithoutException(){
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
@@ -151,7 +138,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void perfectScoreWhenAllVariantsAreCommitted() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -182,7 +169,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void perfectScoreWithBoostWhenAllVariantsAreCommitted() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -213,7 +200,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void using100PercentFeatureTracesResultsInPerfectScore() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
@@ -244,7 +231,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void using100PercentFeatureTracesAndBoostResultsInPerfectScore() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
@@ -275,7 +262,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesDontChangeResultForZeroPercentMistakes() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -306,7 +293,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesDontChangeResultForZeroPercentMistakesAndBoost() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -338,7 +325,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void experimentCreatesTheCorrectNumberOfAtomicResults() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -377,7 +364,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void experimentCreatesTheCorrectNumberOfAtomicResultsWithBoost() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -417,7 +404,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureARepoCreatesCorrectResults() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
@@ -462,7 +449,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureARepoCreatesCorrectResultsWithBoost() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
@@ -507,7 +494,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureARepoCreatesCorrectForMultipleFtPercentagesResults() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0, 100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
@@ -550,7 +537,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureARepoCreatesCorrectForMultipleFtPercentagesResultsWithBoost() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0, 100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
@@ -593,7 +580,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureABRepoCreatesCorrectResults() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_3");
@@ -636,7 +623,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureABRepoCreatesCorrectResultsWithBoost() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_3");
@@ -679,7 +666,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureBRepoCreatesCorrectResults() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_4");
@@ -722,7 +709,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureBRepoCreatesCorrectResultsWithBoost() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_4");
@@ -765,7 +752,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureBASERepoCreatesCorrectResults() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
@@ -808,7 +795,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void featureBASERepoCreatesCorrectResultsWithBoost() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
@@ -851,7 +838,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void allFeatureTracesCreatePerfectScoreDespiteFlawedDiffConditions() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
@@ -886,7 +873,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void allFeatureTracesAndBoostCreatePerfectScoreDespiteFlawedDiffConditions() {
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
@@ -921,7 +908,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesWorsenResultUsingConditionSwapper() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
@@ -955,7 +942,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesWorsenResultUsingConjugator() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -989,7 +976,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesWorsenResultUsingFeatureSwitcher() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -1023,7 +1010,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesWorsenResultUsingOperatorSwapper() {
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
@@ -1057,7 +1044,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesMustNotPersist(){
-        when(runConfig.boostingEnabled()).thenReturn(false);
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -1089,7 +1076,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void mistakesMustNotPersistWithBoost(){
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
@@ -1121,7 +1108,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void boostingCreatesPerfectScoreTest(){
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{50});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
@@ -1151,7 +1138,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void boostingDoesNotHappenForContradictingTraces(){
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{50});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
@@ -1178,7 +1165,7 @@ public class ExperimentRunnerTest {
 
     @Test
     public void boostingDoesNotHappenBecauseOfMistake(){
-        when(runConfig.boostingEnabled()).thenReturn(true);
+        when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{40});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");

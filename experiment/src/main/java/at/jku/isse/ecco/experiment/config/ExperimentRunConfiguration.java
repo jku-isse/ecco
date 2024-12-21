@@ -27,7 +27,7 @@ public class ExperimentRunConfiguration{
     private List<String> features;
     private List<String> variantConfigurations;
 
-    private boolean boosting;
+    private Boosting boosting;
     
     public ExperimentRunConfiguration(String repositoryName,
                                       int numberOfRuns,
@@ -41,7 +41,7 @@ public class ExperimentRunConfiguration{
                                       Integer[] mistakePercentages,
                                       List<EvaluationStrategy> evaluationStrategies,
                                       String[] mistakeStrategies,
-                                      boolean boosting){
+                                      Boosting boosting){
         this.repositoryName = repositoryName;
         this.numberOfRuns = numberOfRuns;
         this.minVariantFeatures = minVariantFeatures;
@@ -138,11 +138,7 @@ public class ExperimentRunConfiguration{
     public List<Path> getVariantPicks() {
         return variantPicks;
     }
-    public boolean boostingEnabled(){ return this.boosting; }
-
-    public void setBoosting(boolean boosting){
-        this.boosting = boosting;
-    }
+    public Boosting getBoosting(){ return this.boosting; }
 
     public String toString(){
         String description = "Experiment Run Configuration:\n" +
