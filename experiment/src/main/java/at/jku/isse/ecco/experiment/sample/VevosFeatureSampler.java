@@ -140,6 +140,11 @@ public class VevosFeatureSampler {
             }
         }
 
+        // ArgoUML adds "Root" to every configuration
+        // However, the experiment accounts for such a feature with it's own, called "BASE"
+        if (this.config.getRepositoryName().equals("argouml-spl")){
+            VevosUtils.removeRootFeatureFromConfigFiles(this.config.getVariantsDir());
+        }
         VevosUtils.sanitizeVevosConfigFiles(this.config.getVariantsDir());
         ConfigTransformer.transformConfigurations(this.config.getVariantsDir());
     }

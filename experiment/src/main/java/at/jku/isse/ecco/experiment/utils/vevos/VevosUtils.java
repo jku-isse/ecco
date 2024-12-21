@@ -95,6 +95,24 @@ public class VevosUtils {
         }
     }
 
+    public static void removeRootFeatureFromConfigFiles(Path variantsBasePath){
+        try (Stream<Path> stream = Files.list(variantsBasePath.resolve("configs"))) {
+            stream.forEach(VevosUtils::removeRootFeatureFromConfigFile);
+        }catch (IOException e){
+            throw new RuntimeException("Configs files could not be sanitized: " + e.getMessage());
+        }
+    }
+
+    public static void removeRootFeatureFromConfigFile(Path configFile){
+        try {
+            List<String> lines = Files.readAllLines(configFile);
+            lines.remove("Root");
+            Files.write(configFile, lines, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to remove Root-Feature from config file " + configFile + ": " + e.getMessage());
+        }
+    }
+
     public static void sanitizeVevosFiles(Path variantsBasePath, List<String> features){
         List<Path> variantPaths = VevosUtils.getVariantFolders(variantsBasePath);
         for (Path variantPath : variantPaths){

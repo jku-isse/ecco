@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.experiment.trainer;
 
+import at.jku.isse.ecco.experiment.config.Boosting;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.utils.DirUtils;
 import at.jku.isse.ecco.experiment.utils.ResourceUtils;
@@ -18,12 +19,10 @@ public class EccoRepoTrainer implements EccoTrainerInterface {
     private final Path repositoryPath;
     private final List<Path> variantPicks;
     private EccoService eccoService;
-    private boolean boosting;
 
     public EccoRepoTrainer(ExperimentRunConfiguration config){
         this.repositoryPath = Paths.get(ResourceUtils.getResourceFolderPathAsString("repo"));
         this.variantPicks = config.getVariantPicks();
-        this.boosting = config.boostingEnabled();
     }
 
     @Override
@@ -32,10 +31,6 @@ public class EccoRepoTrainer implements EccoTrainerInterface {
             Logger.info("Creating ECCO repository...");
             DirUtils.createDir(this.repositoryPath);
             this.eccoService = ServiceUtils.createEccoService(this.repositoryPath);
-
-            if (this.boosting){
-                this.eccoService.enableFeatureTraceBoosting();
-            }
 
             Logger.info("Committing picked variants...");
             this.commitVariantPicks();
