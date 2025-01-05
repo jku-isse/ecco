@@ -34,7 +34,7 @@ public class RepositoryPreparator {
                                   GroundTruth groundTruth){
         FeatureTraceCollector collector = new FeatureTraceCollector(repository, groundTruth);
         this.allProactiveTraces = collector.getFeatureTraces();
-        this.remainingProactiveTraces = this.removeFeatureTracePercentage(allProactiveTraces, 100 - featureTracePercentage);
+        this.remainingProactiveTraces = this.keepFeatureTracePercentage(allProactiveTraces, featureTracePercentage);
         this.mistakeCreator.createMistakePercentage(repository, this.remainingProactiveTraces, mistakePercentage);
     }
 
@@ -43,13 +43,13 @@ public class RepositoryPreparator {
         this.restoreFeatureTraces(allProactiveTraces);
     }
 
-    private Collection<FeatureTrace> removeFeatureTracePercentage(Collection<FeatureTrace> allProactiveTraces, int percentage) {
+    private Collection<FeatureTrace> keepFeatureTracePercentage(Collection<FeatureTrace> allProactiveTraces, int percentage) {
         if (percentage < 0 || percentage > 100){
             throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
         }
-        List<FeatureTrace> tracesToBeRemoved = this.listPicker.pickPercentage(allProactiveTraces, percentage);
-        List<FeatureTrace> remainingTraces = new LinkedList<>(allProactiveTraces);
-        remainingTraces.removeAll(tracesToBeRemoved);
+        List<FeatureTrace> remainingTraces = this.listPicker.pickPercentage(allProactiveTraces, percentage);
+        List<FeatureTrace> tracesToBeRemoved = new LinkedList<>(allProactiveTraces);
+        tracesToBeRemoved.removeAll(remainingTraces);
         for (FeatureTrace featureTrace : tracesToBeRemoved){
             FeatureTrace newTrace = new MemFeatureTrace(featureTrace.getNode());
             newTrace.setDiffCondition(featureTrace.getDiffConditionString());

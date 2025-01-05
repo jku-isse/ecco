@@ -5,11 +5,11 @@ import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.mistake.*;
 import at.jku.isse.ecco.experiment.result.ResultCalculator;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
-import at.jku.isse.ecco.experiment.utils.picker.MemoryListPicker;
-import at.jku.isse.ecco.experiment.utils.tracecollector.FeatureTraceCollector;
+import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
+import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
-import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
+import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.storage.mem.maintree.MemAssociationMerger;
 import at.jku.isse.ecco.storage.mem.maintree.MemBoostedAssociationMerger;
 import at.jku.isse.ecco.tree.*;
@@ -25,6 +25,8 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
     private final Repository.Op repository;
     private final ResultPersister persister;
     private final MemoryListPicker<FeatureTrace> listPicker;
+    private MainTreeBuildingStrategy boostedBuildingStrategy;
+    private MainTreeBuildingStrategy nonBoostedBuildingStrategy;
 
     public ExperimentRunner(ExperimentRunConfiguration config,
                             Repository.Op repository,
@@ -34,6 +36,16 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
         this.repository = repository;
         this.persister = persister;
         this.listPicker = listPicker;
+        this.nonBoostedBuildingStrategy = new MemAssociationMerger();
+        this.boostedBuildingStrategy = new MemBoostedAssociationMerger();
+    }
+
+    public void setBoostedBuildingStrategy(MainTreeBuildingStrategy boostedBuildingStrategy){
+        this.boostedBuildingStrategy = boostedBuildingStrategy;
+    }
+
+    public void setNonBoostedBuildingStrategy(MainTreeBuildingStrategy nonBoostedBuildingStrategy) {
+        this.nonBoostedBuildingStrategy = nonBoostedBuildingStrategy;
     }
 
     private MistakeStrategy createMistakeStrategy(String type, List<String> features){
@@ -83,45 +95,39 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
 
     private void performExperimentIteration(EvaluationStrategy evaluationStrategy, int featureTracePercentage, int mistakePercentage, String mistakeStrategy){
         MistakeCreator mistakeCreator = new MistakeCreator(this.createMistakeStrategy(mistakeStrategy, config.getFeatures()));
+        RepositoryPreparator repositoryPreparator = new RepositoryPreparator(mistakeCreator, this.listPicker);
+        GroundTruth groundTruth = new GroundTruth(this.config.getVariantsDir());
 
-        FeatureTraceCollector collector = new FeatureTraceCollector();
-        collector.collectAssociationTraces(this.repository);
-        Collection<FeatureTrace> allProactiveTraces = collector.getFeatureTraces();
-        Collection<FeatureTrace> remainingTraces = this.removeFeatureTracePercentage(allProactiveTraces, 100 - featureTracePercentage);
-
-        try {
-            mistakeCreator.createMistakePercentage(this.repository, remainingTraces, mistakePercentage);
-        } catch(Exception e){
-            System.out.println("Mistake creation failed!");
-            return;
-        }
+        repositoryPreparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
 
         Boosting boosting = this.config.getBoosting();
-        Node.Op mainTree;
-        ResultCalculator metricsCalculator;
 
         // perform without boost
         if (boosting.equals(Boosting.DISABLED) || boosting.equals(Boosting.BOTH)) {
-            this.repository.setMaintreeBuildingStrategy(new MemAssociationMerger());
-            this.repository.buildMainTree();
-            mainTree = this.repository.getMainTree();
-            this.literalNameCleanup(mainTree);
-            metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, false);
-            metricsCalculator.calculateMetrics(mainTree);
+            this.repository.setMaintreeBuildingStrategy(this.nonBoostedBuildingStrategy);
+            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, false, groundTruth);
         }
 
         // perform with boost
         if (boosting.equals(Boosting.ENABLED) || boosting.equals(Boosting.BOTH)) {
-            this.repository.setMaintreeBuildingStrategy(new MemBoostedAssociationMerger());
-            this.repository.buildMainTree();
-            mainTree = this.repository.getMainTree();
-            this.literalNameCleanup(mainTree);
-            metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, true);
-            metricsCalculator.calculateMetrics(mainTree);
+            this.repository.setMaintreeBuildingStrategy(this.boostedBuildingStrategy);
+            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, true, groundTruth);
         }
 
-        mistakeCreator.restoreOriginalConditions();
-        this.restoreFeatureTraces(allProactiveTraces);
+        repositoryPreparator.undoPreparation();
+    }
+
+    private void evaluateMainTree(int featureTracePercentage,
+                                  EvaluationStrategy evaluationStrategy,
+                                  int mistakePercentage,
+                                  String mistakeStrategy,
+                                  boolean boosting,
+                                  GroundTruth groundTruth){
+        this.repository.buildMainTree();
+        Node.Op mainTree = this.repository.getMainTree();
+        this.literalNameCleanup(mainTree);
+        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, boosting, groundTruth);
+        metricsCalculator.calculateMetrics(mainTree);
     }
 
     private void literalNameCleanup(Node.Op node){
@@ -136,28 +142,5 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
         }
         LiteralCleanUpVisitor visitor = new LiteralCleanUpVisitor(literalNameMap);
         node.traverse(visitor);
-    }
-
-    private Collection<FeatureTrace> removeFeatureTracePercentage(Collection<FeatureTrace> allProactiveTraces, int percentage) {
-        if (percentage < 0 || percentage > 100){
-            throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
-        }
-        List<FeatureTrace> tracesToBeRemoved = this.listPicker.pickPercentage(allProactiveTraces, percentage);
-        List<FeatureTrace> remainingTraces = new LinkedList<>(allProactiveTraces);
-        remainingTraces.removeAll(tracesToBeRemoved);
-        for (FeatureTrace featureTrace : tracesToBeRemoved){
-            FeatureTrace newTrace = new MemFeatureTrace(featureTrace.getNode());
-            newTrace.setDiffCondition(featureTrace.getDiffConditionString());
-            Node.Op node = (Node.Op) featureTrace.getNode();
-            node.setFeatureTrace(newTrace);
-        }
-        return remainingTraces;
-    }
-
-    private void restoreFeatureTraces(Collection<FeatureTrace> traces){
-        for (FeatureTrace featureTrace: traces){
-            Node.Op node = (Node.Op) featureTrace.getNode();
-            node.setFeatureTrace(featureTrace);
-        }
     }
 }
