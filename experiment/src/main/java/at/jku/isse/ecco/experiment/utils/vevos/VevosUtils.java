@@ -153,4 +153,18 @@ public class VevosUtils {
         }
     }
 
+    public static List<String> getSampleFeatures(Path samplePath){
+        try {
+            Set<String> features = new HashSet<>();
+            Path configFolderPath = samplePath.resolve("configs");
+            List<Path> configFilePaths = DirUtils.getFilesInFolder(configFolderPath);
+            for (Path configFilePath : configFilePaths) {
+                features.addAll(Files.readAllLines(configFilePath));
+            }
+            return new ArrayList<>(features);
+        } catch (IOException e){
+            throw new RuntimeException(e);
+        }
+    }
+
 }

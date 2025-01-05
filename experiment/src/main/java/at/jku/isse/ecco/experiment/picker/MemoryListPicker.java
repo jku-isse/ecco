@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.experiment.utils.picker;
+package at.jku.isse.ecco.experiment.picker;
 
 import java.util.List;
 

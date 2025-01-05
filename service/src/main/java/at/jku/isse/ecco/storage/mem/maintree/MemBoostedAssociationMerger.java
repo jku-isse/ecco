@@ -9,8 +9,12 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 
 import java.util.Collection;
+import java.util.logging.Logger;
+
 
 public class MemBoostedAssociationMerger implements BoostedAssociationMerger, Persistable {
+
+    private static final Logger LOGGER = Logger.getLogger(MemBoostedAssociationMerger.class.getName());
 
     @Override
     public Node.Op buildMainTree(Collection<Association.Op> associations) {
@@ -28,7 +32,11 @@ public class MemBoostedAssociationMerger implements BoostedAssociationMerger, Pe
 
         BoostConditionVisitor boostConditionVisitor = new BoostConditionVisitor();
         associationTreeCopy.traverse(boostConditionVisitor);
-        if (boostConditionVisitor.isBoostPossible()){
+
+        boolean boostPossible = boostConditionVisitor.isBoostPossible();
+        LOGGER.fine("Association " + association + " can be boosted: " + boostPossible);
+
+        if (boostPossible){
             BoostVisitor boostVisitor = new BoostVisitor(boostConditionVisitor.getBoostCondition());
             associationTreeCopy.traverse(boostVisitor);
         }

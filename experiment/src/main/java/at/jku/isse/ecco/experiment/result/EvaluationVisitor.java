@@ -9,7 +9,6 @@ import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedList;
 
@@ -24,12 +23,12 @@ public class EvaluationVisitor implements Node.Op.NodeVisitor {
 
     public EvaluationVisitor(FormulaFactory formulaFactory,
                              Collection<Assignment> assignments,
-                             Path groundTruths,
+                             GroundTruth groundTruth,
                              EvaluationStrategy evaluationStrategy) {
         this.formulaFactory = formulaFactory;
         this.assignments = assignments;
         this.evaluationStrategy = evaluationStrategy;
-        this.groundTruth = new GroundTruth(groundTruths);
+        this.groundTruth = groundTruth;
     }
 
     @Override

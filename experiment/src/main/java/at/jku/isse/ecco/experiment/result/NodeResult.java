@@ -40,4 +40,8 @@ public class NodeResult {
     public void computeMetrics(){
         this.result.computeMetrics();
     }
+
+    public Node.Op getNode(){
+        return this.node;
+    }
 }

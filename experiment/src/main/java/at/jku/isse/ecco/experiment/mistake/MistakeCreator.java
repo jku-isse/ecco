@@ -55,4 +55,8 @@ public class MistakeCreator {
             return false;
         }
     }
+
+    public Collection<FeatureTrace> getFaultyTraces(){
+        return this.originalConditions.keySet();
+    }
 }

@@ -40,6 +40,26 @@ public class CounterVisitor implements Node.Op.NodeVisitor {
         }
     }
 
+    public int getNodeCount() {
+        return nodeCount;
+    }
+
+    public int getSomeConditionCount() {
+        return someConditionCount;
+    }
+
+    public int getDiffConditionCount() {
+        return diffConditionCount;
+    }
+
+    public int getUserConditionCount() {
+        return userConditionCount;
+    }
+
+    public int getLocationCount() {
+        return locationCount;
+    }
+
     public void printEverything(){
         System.out.println(
                 "NodeCount: " + this.nodeCount + "\n"

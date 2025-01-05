@@ -1,5 +1,5 @@
 import at.jku.isse.ecco.experiment.config.Boosting;
-import at.jku.isse.ecco.experiment.featureTracePicker.RandomFeatureTracePicker;
+import at.jku.isse.ecco.experiment.picker.featuretracepicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.Result;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 

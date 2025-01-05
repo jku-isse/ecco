@@ -1,6 +1,6 @@
-package at.jku.isse.ecco.experiment.featureTracePicker;
+package at.jku.isse.ecco.experiment.picker.featuretracepicker;
 
-import at.jku.isse.ecco.experiment.utils.picker.MemoryListPicker;
+import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 
 import java.util.ArrayList;
@@ -11,7 +11,6 @@ import java.util.List;
 public class RandomFeatureTracePicker implements MemoryListPicker<FeatureTrace> {
 
     private List<FeatureTrace> source;
-    private List<FeatureTrace> pick;
 
     @Override
     public List<FeatureTrace> pickPercentage(Collection<FeatureTrace> source, int percentage) {
@@ -24,8 +23,7 @@ public class RandomFeatureTracePicker implements MemoryListPicker<FeatureTrace> 
         List<FeatureTrace> featureTraceList = new ArrayList<>(source);
         this.source = featureTraceList;
         Collections.shuffle(featureTraceList);
-        this.pick = featureTraceList.subList(0, numberOfPicks);
-        return this.pick;
+        return featureTraceList.subList(0, numberOfPicks);
     }
 
     @Override

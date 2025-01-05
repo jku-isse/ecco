@@ -2,7 +2,7 @@ package at.jku.isse.ecco.experiment;
 
 import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
-import at.jku.isse.ecco.experiment.featureTracePicker.RandomFeatureTracePicker;
+import at.jku.isse.ecco.experiment.picker.featuretracepicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.persister.ResultDatabasePersister;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunner;
