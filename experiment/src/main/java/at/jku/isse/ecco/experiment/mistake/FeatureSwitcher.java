@@ -47,6 +47,6 @@ public class FeatureSwitcher implements MistakeStrategy {
 
     @Override
     public String toString(){
-        return "ConditionSwapper (Features: " + this.features + ")";
+        return "FeatureSwitcher (Features: " + this.features + ")";
     }
 }
