@@ -31,6 +31,7 @@ public class ExperimentRunnerTest {
     @Mock
     ExperimentRunConfiguration runConfig;
 
+
     @BeforeEach
     public void setup() {
         MockitoAnnotations.initMocks(this);
@@ -88,7 +89,7 @@ public class ExperimentRunnerTest {
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_7");
         EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
-        when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{5});
+        when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{10});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
