@@ -20,9 +20,9 @@ public class FeatureTraceCollector implements  Node.Op.NodeVisitor{
     private FormulaFactory formulaFactory;
 
     public FeatureTraceCollector(Repository.Op repository, GroundTruth groundTruth){
-        this.collectAssociationTraces(repository);
         this.groundTruth = groundTruth;
         this.formulaFactory = new FormulaFactory();
+        this.collectAssociationTraces(repository);
     }
 
     @Override
