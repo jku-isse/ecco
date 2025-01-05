@@ -2,6 +2,7 @@ package at.jku.isse.ecco.experiment.mistake;
 
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
+import org.tinylog.Logger;
 
 import java.util.*;
 
@@ -15,7 +16,9 @@ public class MistakeCreator {
         this.mistakeStrategy = mistakeStrategy;
     }
 
-    public void createMistakePercentage(Repository.Op repository, Collection<FeatureTrace> featureTraces, int percentage){
+    public int createMistakePercentage(Repository.Op repository, Collection<FeatureTrace> featureTraces, int percentage){
+        // return the number of mistakes that are missing to reach the given percentage
+        int mistakesCreated = 0;
         this.originalConditions = new HashMap<>();
         this.mistakeStrategy.init(repository);
         if (percentage < 0 || percentage > 100){
@@ -26,9 +29,11 @@ public class MistakeCreator {
         Collections.shuffle(featureTraceList);
         Iterator<FeatureTrace> iterator = featureTraceList.stream().iterator();
         int attempts = noOfMistakes;
+
         for (int i = 1; i <= attempts; i++){
             if (!iterator.hasNext()){
-                throw new RuntimeException("Failed to create enough mistakes!");
+                Logger.info("Failed to create enough mistakes!");
+                return noOfMistakes - mistakesCreated;
             }
             FeatureTrace trace = iterator.next();
             String originalCondition = trace.getUserConditionString();
@@ -36,8 +41,10 @@ public class MistakeCreator {
                 attempts++;
             } else {
                 this.originalConditions.put(trace, originalCondition);
+                mistakesCreated++;
             }
         }
+        return 0;
     }
 
     public void restoreOriginalConditions(){

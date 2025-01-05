@@ -22,10 +22,11 @@ public class ResultCalculator {
     private final EvaluationStrategy evaluationStrategy;
     private final boolean boosting;
     private GroundTruth groundTruth;
+    private int numberOfMissingMistakes;
 
     public ResultCalculator(ExperimentRunConfiguration config, int featureTracePercentage, ResultPersister resultPersister,
                             EvaluationStrategy evaluationStrategy, int mistakePercentage, String mistakeStrategy, boolean boosting,
-                            GroundTruth groundTruth){
+                            GroundTruth groundTruth, int numberOfMissingMistakes){
         this.config = config;
         this.resultPersister = resultPersister;
         this.featureTracePercentage = featureTracePercentage;
@@ -34,6 +35,7 @@ public class ResultCalculator {
         this.mistakeStrategy = mistakeStrategy;
         this.boosting = boosting;
         this.groundTruth = groundTruth;
+        this.numberOfMissingMistakes = numberOfMissingMistakes;
     }
 
     public void calculateMetrics(Node.Op mainTree){
@@ -44,6 +46,6 @@ public class ResultCalculator {
         Collection<NodeResult> nodeResults = visitor.getResults();
         Collection<Result> results = nodeResults.stream().map(NodeResult::getResult).collect(Collectors.toList());
         Result overallResult = Result.overallResult(results);
-        this.resultPersister.persist(overallResult, this.config, featureTracePercentage, mistakePercentage, evaluationStrategy, mistakeStrategy, this.boosting);
+        this.resultPersister.persist(overallResult, this.config, featureTracePercentage, mistakePercentage, evaluationStrategy, mistakeStrategy, this.boosting, this.numberOfMissingMistakes);
     }
 }

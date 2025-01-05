@@ -31,10 +31,10 @@ public class ResultDatabasePersister implements ResultPersister{
 
     @Override
     public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
-                        EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting) {
+                        EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting, int numberOfMissingMistakes) {
         String sql = "INSERT INTO results (repository, numberOfVariants, variantConfigurations, " +
                 "numberOfSampledFeatures, sampledFeatures, featureTracePercentage, mistakePercentage, " +
-                "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1, boost) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1, boost, missingMistakes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         String variantConfigurations = String.join("; ",
                 config.getVariantConfigurations());
@@ -58,6 +58,7 @@ public class ResultDatabasePersister implements ResultPersister{
             pstmt.setDouble(14, result.getPrecision());
             pstmt.setDouble(15, result.getRecall());
             pstmt.setDouble(16, result.getF1());
+            pstmt.setInt(17, numberOfMissingMistakes);
             int boost = boosting ? 1 : 0;
             pstmt.setInt(17, boost);
             pstmt.executeUpdate();
@@ -86,7 +87,7 @@ public class ResultDatabasePersister implements ResultPersister{
                 + "	recall DOUBLE NOT NULL,"
                 + "	f1 DOUBLE NOT NULL,"
                 + " boost INTEGER NOT NULL"
-                + ");";
+                + "missingMistakes INTEGER NOT NULL);";
 
         try (Connection conn = DriverManager.getConnection(this.databaseURL)){
             Statement stmt = conn.createStatement();

@@ -11,16 +11,14 @@ import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
-import java.util.logging.Logger;
 
 public class RepositoryPreparator {
-
-    private static final Logger logger = Logger.getLogger(RepositoryPreparator.class.getName());
 
     private MistakeCreator mistakeCreator;
     private ListPicker<FeatureTrace> listPicker;
     private Collection<FeatureTrace> allProactiveTraces;
     private Collection<FeatureTrace> remainingProactiveTraces;
+    private int numberOfMissingMistakes;
 
     public RepositoryPreparator(MistakeCreator mistakeCreator,
                                 MemoryListPicker<FeatureTrace> listPicker){
@@ -35,7 +33,7 @@ public class RepositoryPreparator {
         FeatureTraceCollector collector = new FeatureTraceCollector(repository, groundTruth);
         this.allProactiveTraces = collector.getFeatureTraces();
         this.remainingProactiveTraces = this.keepFeatureTracePercentage(allProactiveTraces, featureTracePercentage);
-        this.mistakeCreator.createMistakePercentage(repository, this.remainingProactiveTraces, mistakePercentage);
+        this.numberOfMissingMistakes = this.mistakeCreator.createMistakePercentage(repository, this.remainingProactiveTraces, mistakePercentage);
     }
 
     public void undoPreparation(){
@@ -74,4 +72,7 @@ public class RepositoryPreparator {
         return this.remainingProactiveTraces;
     }
 
+    public int getNumberOfMissingMistakes(){
+        return this.numberOfMissingMistakes;
+    }
 }

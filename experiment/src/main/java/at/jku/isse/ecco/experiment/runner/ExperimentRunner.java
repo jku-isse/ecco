@@ -99,19 +99,20 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
         GroundTruth groundTruth = new GroundTruth(this.config.getVariantsDir());
 
         repositoryPreparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
+        int numberOfMissingMistakes = repositoryPreparator.getNumberOfMissingMistakes();
 
         Boosting boosting = this.config.getBoosting();
 
         // perform without boost
         if (boosting.equals(Boosting.DISABLED) || boosting.equals(Boosting.BOTH)) {
             this.repository.setMaintreeBuildingStrategy(this.nonBoostedBuildingStrategy);
-            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, false, groundTruth);
+            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, false, groundTruth, numberOfMissingMistakes);
         }
 
         // perform with boost
         if (boosting.equals(Boosting.ENABLED) || boosting.equals(Boosting.BOTH)) {
             this.repository.setMaintreeBuildingStrategy(this.boostedBuildingStrategy);
-            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, true, groundTruth);
+            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, true, groundTruth, numberOfMissingMistakes);
         }
 
         repositoryPreparator.undoPreparation();
@@ -122,11 +123,12 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
                                   int mistakePercentage,
                                   String mistakeStrategy,
                                   boolean boosting,
-                                  GroundTruth groundTruth){
+                                  GroundTruth groundTruth,
+                                  int numberOfMissingMistakes){
         this.repository.buildMainTree();
         Node.Op mainTree = this.repository.getMainTree();
         this.literalNameCleanup(mainTree);
-        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, boosting, groundTruth);
+        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, boosting, groundTruth, numberOfMissingMistakes);
         metricsCalculator.calculateMetrics(mainTree);
     }
 
