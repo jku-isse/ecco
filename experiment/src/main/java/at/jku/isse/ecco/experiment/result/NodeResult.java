@@ -4,6 +4,7 @@ import at.jku.isse.ecco.tree.Node;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Formula;
 
+import java.util.Collection;
 
 public class NodeResult {
 
@@ -19,18 +20,8 @@ public class NodeResult {
         this.groundTruth = groundTruth;
     }
 
-    public void updateResult(Assignment assignment){
-        boolean result = this.resultCondition.evaluate(assignment);
-        boolean truth = this.groundTruth.evaluate(assignment);
-        if (result && truth){
-            this.result.incTP();
-        } else if (result && !truth) {
-            this.result.incFP();
-        } else if (!result && !truth) {
-            this.result.incTN();
-        } else if (!result && truth) {
-            this.result.incFN();
-        }
+    public void updateResult(Collection<Assignment> assignments){
+        this.result.updateResult(this.resultCondition, this.groundTruth, assignments);
     }
 
     public Result getResult(){

@@ -52,7 +52,7 @@ public class EvaluationVisitor implements Node.Op.NodeVisitor {
 
     private void createResult(Node.Op node, Formula resultCondition, Formula groundTruth){
         NodeResult nodeResult = new NodeResult(node, resultCondition, groundTruth);
-        this.assignments.forEach(nodeResult::updateResult);
+        nodeResult.updateResult(this.assignments);
         this.results.add(nodeResult);
     }
 

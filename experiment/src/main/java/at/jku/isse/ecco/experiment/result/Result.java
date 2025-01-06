@@ -1,5 +1,8 @@
 package at.jku.isse.ecco.experiment.result;
 
+import org.logicng.datastructures.Assignment;
+import org.logicng.formulas.Formula;
+
 import java.util.Collection;
 
 
@@ -13,6 +16,24 @@ public class Result {
     private double recall;
     private double f1;
     private Collection<Result> underlyingResults;
+
+    public void updateResult(Formula formula, Formula groundTruth, Collection<Assignment> assignments){
+        assignments.forEach(assignment -> this.updateResult(formula, groundTruth, assignment));
+    }
+
+    public void updateResult(Formula formula, Formula groundTruth, Assignment assignment){
+        boolean result = formula.evaluate(assignment);
+        boolean truth = groundTruth.evaluate(assignment);
+        if (result && truth){
+            this.incTP();
+        } else if (result && !truth) {
+            this.incFP();
+        } else if (!result && !truth) {
+            this.incTN();
+        } else if (!result && truth) {
+            this.incFN();
+        }
+    }
 
     public int getTp(){ return this.tp; }
     public int getFp(){ return this.fp; }
@@ -31,7 +52,11 @@ public class Result {
     public void computeMetrics(){
         this.precision = (double) tp / (tp + fp);
         this.recall = (double) tp / (tp + fn);
-        this.f1 = 2.0 * ((precision * recall) / (precision + recall));
+        if (this.precision == 0 && this.recall == 0){
+            this.f1 = 0;
+        } else {
+            this.f1 = 2.0 * ((precision * recall) / (precision + recall));
+        }
     }
 
     public static Result overallResult(Collection<Result> results){
