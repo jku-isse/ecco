@@ -86,8 +86,8 @@ public class ResultDatabasePersister implements ResultPersister{
                 + "	precision DOUBLE NOT NULL,"
                 + "	recall DOUBLE NOT NULL,"
                 + "	f1 DOUBLE NOT NULL,"
-                + " boost INTEGER NOT NULL"
-                + "missingMistakes INTEGER NOT NULL);";
+                + " boost INTEGER NOT NULL,"
+                + " missingMistakes INTEGER NOT NULL);";
 
         try (Connection conn = DriverManager.getConnection(this.databaseURL)){
             Statement stmt = conn.createStatement();
