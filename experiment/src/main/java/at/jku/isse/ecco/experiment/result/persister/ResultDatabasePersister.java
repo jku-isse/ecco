@@ -58,9 +58,9 @@ public class ResultDatabasePersister implements ResultPersister{
             pstmt.setDouble(14, result.getPrecision());
             pstmt.setDouble(15, result.getRecall());
             pstmt.setDouble(16, result.getF1());
-            pstmt.setInt(17, numberOfMissingMistakes);
             int boost = boosting ? 1 : 0;
             pstmt.setInt(17, boost);
+            pstmt.setInt(18, numberOfMissingMistakes);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Entering data to database failed: " + e.getMessage());
