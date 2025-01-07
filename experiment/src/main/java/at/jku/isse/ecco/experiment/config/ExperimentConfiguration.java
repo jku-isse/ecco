@@ -37,7 +37,7 @@ public class ExperimentConfiguration{
         this.numbersOfVariants = PropertyUtils.loadIntegerList(config, "numbersOfVariants");
         this.featureTracePercentages = PropertyUtils.loadIntegerList(config, "featureTracePercentages");
         this.mistakePercentages = PropertyUtils.loadIntegerList(config, "mistakePercentages");
-        this.evaluationStrategies = this.loadEvaluationStrategies(config);
+        this.evaluationStrategies = this.loadInstances(config, "evaluationStrategies", EvaluationStrategy.class);
         this.mistakeStrategies = PropertyUtils.loadStringList(config, "mistakeStrategies");
 
         this.boosting = Boosting.valueOf(config.getProperty("boosting"));
@@ -76,19 +76,22 @@ public class ExperimentConfiguration{
         this.boosting = boosting;
     }
 
-    private List<EvaluationStrategy> loadEvaluationStrategies(Properties properties){
-        List<EvaluationStrategy> instances = new ArrayList<>();
+    private <T> List<T> loadInstances(Properties properties, String propertyName, Class<T> expectedType) {
+        List<T> instances = new ArrayList<>();
         try {
-            String classNames = properties.getProperty("evaluationStrategies");
-            if (classNames == null) { throw new RuntimeException("evaluationStrategies not found in properties file."); }
+            String classNames = properties.getProperty(propertyName);
+            if (classNames == null) {
+                throw new RuntimeException(propertyName + " not found in properties file.");
+            }
             String[] classArray = classNames.split(",");
             for (String className : classArray) {
                 Class<?> clazz = Class.forName(className.trim());
-                if (EvaluationStrategy.class.isAssignableFrom(clazz)) {
-                    EvaluationStrategy instance = (EvaluationStrategy) clazz.getDeclaredConstructor().newInstance();
+                if (expectedType.isAssignableFrom(clazz)) {
+                    @SuppressWarnings("unchecked")
+                    T instance = (T) clazz.getDeclaredConstructor().newInstance();
                     instances.add(instance);
                 } else {
-                    throw new RuntimeException(className + " is no subtype of EvaluationStrategy.");
+                    throw new RuntimeException(className + " is no subtype of " + expectedType.getName());
                 }
             }
         } catch (InvocationTargetException | ClassNotFoundException | InstantiationException |
@@ -97,6 +100,7 @@ public class ExperimentConfiguration{
         }
         return instances;
     }
+
 
     private void createExperimentRunConfigurations(){
         List<ExperimentRunConfiguration> runConfigurations = new LinkedList<>();
