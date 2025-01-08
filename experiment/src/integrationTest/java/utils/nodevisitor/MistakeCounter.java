@@ -1,4 +1,4 @@
-package nodevisitor;
+package utils.nodevisitor;
 
 import at.jku.isse.ecco.experiment.mistake.MistakeCreator;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;

@@ -1,4 +1,4 @@
-package nodevisitor;
+package utils.nodevisitor;
 
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.tree.Node;
