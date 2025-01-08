@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.experiment.picker.featuretracepicker;
 
+import at.jku.isse.ecco.experiment.picker.FeatureTraceMemoryListPicker;
 import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 
@@ -8,7 +9,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public class RandomFeatureTracePicker implements MemoryListPicker<FeatureTrace> {
+public class RandomFeatureTracePicker implements FeatureTraceMemoryListPicker {
 
     private List<FeatureTrace> source;
 

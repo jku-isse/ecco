@@ -3,11 +3,11 @@ package at.jku.isse.ecco.experiment.runner;
 import at.jku.isse.ecco.experiment.config.Boosting;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.mistake.*;
+import at.jku.isse.ecco.experiment.picker.FeatureTraceMemoryListPicker;
+import at.jku.isse.ecco.experiment.picker.featuretracepicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.ResultCalculator;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
-import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
-import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.storage.mem.maintree.MemAssociationMerger;
@@ -21,21 +21,30 @@ import java.util.*;
 
 
 public class ExperimentRunner implements ExperimentRunnerInterface {
+
+    // todo: refactor (too many fields)
     private final ExperimentRunConfiguration config;
     private final Repository.Op repository;
     private final ResultPersister persister;
-    private final MemoryListPicker<FeatureTrace> listPicker;
     private MainTreeBuildingStrategy boostedBuildingStrategy;
     private MainTreeBuildingStrategy nonBoostedBuildingStrategy;
 
+
+    private EvaluationStrategy evaluationStrategy;
+    private int featureTracePercentage;
+    private int mistakePercentage;
+    private String mistakeStrategyName;
+    private Boosting boosting;
+    private FeatureTraceMemoryListPicker listPicker;
+
+
+
     public ExperimentRunner(ExperimentRunConfiguration config,
                             Repository.Op repository,
-                            ResultPersister persister,
-                            MemoryListPicker<FeatureTrace> listPicker){
+                            ResultPersister persister){
         this.config = config;
         this.repository = repository;
         this.persister = persister;
-        this.listPicker = listPicker;
         this.nonBoostedBuildingStrategy = new MemAssociationMerger();
         this.boostedBuildingStrategy = new MemBoostedAssociationMerger();
     }
@@ -61,74 +70,85 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
     }
 
     public void runExperiment(){
-        this.iterateEvaluationStrategies();
+        this.iterateFeatureTraceListPickers();
+    }
+
+    private void iterateFeatureTraceListPickers(){
+        List<FeatureTraceMemoryListPicker> listPickers = this.config.getListPickers();
+        if (listPickers.isEmpty()){
+            listPickers.add(new RandomFeatureTracePicker());
+        }
+
+        for (FeatureTraceMemoryListPicker listPicker : listPickers){
+            this.listPicker = listPicker;
+            this.iterateEvaluationStrategies();
+        }
     }
 
     private void iterateEvaluationStrategies(){
         for (EvaluationStrategy evaluationStrategy : this.config.getEvaluationStrategies()){
-            this.iterateFeatureTracePercentages(evaluationStrategy);
+            this.evaluationStrategy = evaluationStrategy;
+            this.iterateFeatureTracePercentages();
         }
     }
 
-    private void iterateFeatureTracePercentages(EvaluationStrategy evaluationStrategy){
+    private void iterateFeatureTracePercentages(){
         for (int featureTracePercentage : this.config.getFeatureTracePercentages()){
-            this.iterateMistakePercentages(evaluationStrategy, featureTracePercentage);
+            this.featureTracePercentage = featureTracePercentage;
+            this.iterateMistakePercentages();
         }
     }
 
-    private void iterateMistakePercentages(EvaluationStrategy evaluationStrategy, int featureTracePercentage){
+    private void iterateMistakePercentages(){
         for (int mistakePercentage : this.config.getMistakePercentages()){
-            this.iterateMistakeStrategies(evaluationStrategy, featureTracePercentage, mistakePercentage);
+            this.mistakePercentage = mistakePercentage;
+            this.iterateMistakeStrategies();
         }
     }
 
-    private void iterateMistakeStrategies(EvaluationStrategy evaluationStrategy, int featureTracePercentage, int mistakePercentage){
+    private void iterateMistakeStrategies(){
         if (mistakePercentage > 0) {
             for (String mistakeStrategy : this.config.getMistakeStrategies()) {
-                this.performExperimentIteration(evaluationStrategy, featureTracePercentage, mistakePercentage, mistakeStrategy);
+                this.mistakeStrategyName = mistakeStrategy;
+                this.performExperimentIteration();
             }
         } else {
-            String mistakeStrategy = "NoMistaker";
-            this.performExperimentIteration(evaluationStrategy, featureTracePercentage, mistakePercentage, mistakeStrategy);
+            this.mistakeStrategyName = "NoMistaker";
+            this.performExperimentIteration();
         }
     }
 
-    private void performExperimentIteration(EvaluationStrategy evaluationStrategy, int featureTracePercentage, int mistakePercentage, String mistakeStrategy){
-        MistakeCreator mistakeCreator = new MistakeCreator(this.createMistakeStrategy(mistakeStrategy, config.getFeatures()));
+    private void performExperimentIteration(){
+        MistakeCreator mistakeCreator = new MistakeCreator(this.createMistakeStrategy(this.mistakeStrategyName, config.getFeatures()));
         RepositoryPreparator repositoryPreparator = new RepositoryPreparator(mistakeCreator, this.listPicker);
         GroundTruth groundTruth = new GroundTruth(this.config.getVariantsDir());
 
         repositoryPreparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
         int numberOfMissingMistakes = repositoryPreparator.getNumberOfMissingMistakes();
 
-        Boosting boosting = this.config.getBoosting();
+        this.boosting = this.config.getBoosting();
 
         // perform without boost
         if (boosting.equals(Boosting.DISABLED) || boosting.equals(Boosting.BOTH)) {
             this.repository.setMaintreeBuildingStrategy(this.nonBoostedBuildingStrategy);
-            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, false, groundTruth, numberOfMissingMistakes);
+            this.evaluateMainTree(false, groundTruth, numberOfMissingMistakes);
         }
 
         // perform with boost
         if (boosting.equals(Boosting.ENABLED) || boosting.equals(Boosting.BOTH)) {
             this.repository.setMaintreeBuildingStrategy(this.boostedBuildingStrategy);
-            this.evaluateMainTree(featureTracePercentage, evaluationStrategy, mistakePercentage, mistakeStrategy, true, groundTruth, numberOfMissingMistakes);
+            this.evaluateMainTree(true, groundTruth, numberOfMissingMistakes);
         }
 
         repositoryPreparator.undoPreparation();
     }
 
-    private void evaluateMainTree(int featureTracePercentage,
-                                  EvaluationStrategy evaluationStrategy,
-                                  int mistakePercentage,
-                                  String mistakeStrategy,
-                                  boolean boosting,
-                                  GroundTruth groundTruth,
-                                  int numberOfMissingMistakes){
+    private void evaluateMainTree(boolean boost, GroundTruth groundTruth, int numberOfMissingMistakes){
         this.repository.buildMainTree();
         Node.Op mainTree = this.repository.getMainTree();
         this.literalNameCleanup(mainTree);
-        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategy, boosting, groundTruth, numberOfMissingMistakes);
+        // todo: refactor (too many parameters)
+        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategyName, boost, groundTruth, numberOfMissingMistakes);
         metricsCalculator.calculateMetrics(mainTree);
     }
 

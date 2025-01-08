@@ -78,7 +78,7 @@ public class ExperimentRunnerTest {
         
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
         assertFalse(persister.getResults().isEmpty());
     }
@@ -103,7 +103,7 @@ public class ExperimentRunnerTest {
 
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
         Result result= persister.getResults().iterator().next();
         assertEquals(1, persister.getResults().size());
@@ -132,7 +132,7 @@ public class ExperimentRunnerTest {
         
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
         assertFalse(persister.getResults().isEmpty());
     }
@@ -160,7 +160,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -191,7 +191,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -222,7 +222,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -253,7 +253,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -284,7 +284,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -315,7 +315,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -347,7 +347,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -386,7 +386,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -423,7 +423,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -468,7 +468,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -513,7 +513,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         assertEquals(2, persister.getResults().size());
@@ -556,7 +556,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         assertEquals(2, persister.getResults().size());
@@ -599,7 +599,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -642,7 +642,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -685,7 +685,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -728,7 +728,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -771,7 +771,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -814,7 +814,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -857,7 +857,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -892,7 +892,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -930,7 +930,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -964,7 +964,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -998,7 +998,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -1032,7 +1032,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -1066,7 +1066,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Collection<Result> results= persister.getResults();
@@ -1098,7 +1098,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Collection<Result> results= persister.getResults();
@@ -1127,7 +1127,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result= persister.getResults().iterator().next();
@@ -1157,7 +1157,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result = persister.getResults().iterator().next();
@@ -1184,7 +1184,7 @@ public class ExperimentRunnerTest {
         Repository.Op repo = prepareRepository(runConfig);
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
 
-        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister, new RandomFeatureTracePicker());
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
         runner.runExperiment();
 
         Result result = persister.getResults().iterator().next();

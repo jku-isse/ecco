@@ -62,7 +62,7 @@ public class Experiment {
                 config.pickVariants();
                 trainer = new EccoRepoTrainer(config);
                 trainer.train();
-                ExperimentRunnerInterface runner = new ExperimentRunner(config, trainer.getRepository(), this.resultPersister, new RandomFeatureTracePicker());
+                ExperimentRunnerInterface runner = new ExperimentRunner(config, trainer.getRepository(), this.resultPersister);
                 runner.runExperiment();
             } catch (Exception e) {
                 e.printStackTrace();

@@ -1,13 +1,14 @@
 package at.jku.isse.ecco.experiment.picker.featuretracepicker;
 
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.experiment.picker.FeatureTraceMemoryListPicker;
 import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class SingleAssociationTracePicker implements MemoryListPicker<FeatureTrace> {
+public class SingleAssociationTracePicker implements FeatureTraceMemoryListPicker {
 
     private List<FeatureTrace> source;
 

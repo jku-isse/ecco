@@ -1,6 +1,10 @@
 package at.jku.isse.ecco.experiment.config;
 
+import at.jku.isse.ecco.experiment.picker.FeatureTraceMemoryListPicker;
+import at.jku.isse.ecco.experiment.picker.ListPicker;
+import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.experiment.utils.PropertyUtils;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 
 import java.lang.reflect.InvocationTargetException;
@@ -22,6 +26,7 @@ public class ExperimentConfiguration{
     private final List<EvaluationStrategy> evaluationStrategies;
     private final List<String> mistakeStrategies;
     private List<ExperimentRunConfiguration> runConfigurations;
+    private List<FeatureTraceMemoryListPicker> tracePickers;
 
 
     private final Boosting boosting;
@@ -39,6 +44,7 @@ public class ExperimentConfiguration{
         this.mistakePercentages = PropertyUtils.loadIntegerList(config, "mistakePercentages");
         this.evaluationStrategies = this.loadInstances(config, "evaluationStrategies", EvaluationStrategy.class);
         this.mistakeStrategies = PropertyUtils.loadStringList(config, "mistakeStrategies");
+        this.tracePickers = this.loadInstances(config, "tracePickers", FeatureTraceMemoryListPicker.class);
 
         this.boosting = Boosting.valueOf(config.getProperty("boosting"));
 
@@ -102,6 +108,7 @@ public class ExperimentConfiguration{
     }
 
 
+
     private void createExperimentRunConfigurations(){
         List<ExperimentRunConfiguration> runConfigurations = new LinkedList<>();
         Integer[] featureTracePercentages = new Integer[this.featureTracePercentages.size()];
@@ -126,7 +133,8 @@ public class ExperimentConfiguration{
                         mistakePercentages,
                         evaluationStrategies,
                         mistakeStrategies,
-                        this.boosting));
+                        this.boosting,
+                        this.tracePickers));
             }
         }
         this.runConfigurations = runConfigurations;

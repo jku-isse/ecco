@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.experiment.config;
 
+import at.jku.isse.ecco.experiment.picker.FeatureTraceMemoryListPicker;
 import at.jku.isse.ecco.experiment.utils.vevos.ConfigTransformer;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.experiment.utils.vevos.VevosUtils;
@@ -26,6 +27,7 @@ public class ExperimentRunConfiguration{
     private List<Path> variantPicks;
     private List<String> features;
     private List<String> variantConfigurations;
+    private List<FeatureTraceMemoryListPicker> listPickers;
 
     private Boosting boosting;
     
@@ -41,7 +43,8 @@ public class ExperimentRunConfiguration{
                                       Integer[] mistakePercentages,
                                       List<EvaluationStrategy> evaluationStrategies,
                                       String[] mistakeStrategies,
-                                      Boosting boosting){
+                                      Boosting boosting,
+                                      List<FeatureTraceMemoryListPicker> listPickers){
         this.repositoryName = repositoryName;
         this.numberOfRuns = numberOfRuns;
         this.minVariantFeatures = minVariantFeatures;
@@ -55,6 +58,7 @@ public class ExperimentRunConfiguration{
         this.evaluationStrategies = evaluationStrategies;
         this.mistakeStrategies = mistakeStrategies;
         this.boosting = boosting;
+        this.listPickers = listPickers;
     }
 
     public void pickVariants(){
@@ -138,7 +142,12 @@ public class ExperimentRunConfiguration{
     public List<Path> getVariantPicks() {
         return variantPicks;
     }
+
     public Boosting getBoosting(){ return this.boosting; }
+
+    public List<FeatureTraceMemoryListPicker> getListPickers(){
+        return this.listPickers;
+    }
 
     public String toString(){
         String description = "Experiment Run Configuration:\n" +
