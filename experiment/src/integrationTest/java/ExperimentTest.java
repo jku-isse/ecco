@@ -42,15 +42,16 @@ public class ExperimentTest {
     }
 
     @Test
-    public void testSpl2Test(){
-        String databasePath = ResourceUtils.getResourceFolderPathAsString("database");
-        ResultPersister persister = new ResultDatabasePersister(databasePath);
+    public void configurationCreatesCorrectNumberOfResults() {
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
         Experiment experiment = new Experiment(false, persister);
 
         String configPath = ResourceUtils.getResourceFolderPathAsString("configs/test_config2.properties");
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(configPath, variantBasePath);
         experiment.runExperiment(experimentConfig);
+
+        assertEquals(42, persister.getResults().size());
     }
 
     @Test
@@ -64,13 +65,6 @@ public class ExperimentTest {
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(configPath, variantBasePath);
         experiment.runExperiment(experimentConfig);
         assertTrue(DatabaseResultUtils.checkF1OfSingleResult(1.0));
-    }
-
-    @Test
-    public void compareArtefactNumbersOfVevosAndRepository(){
-        Path variantFolderPath = ResourceUtils.getResourceFolderPath("test_variant_openvpn/Variant9");
-        int conditionedCodeLines = AnalyzeVariantUtils.getNumberOfConditionedCodeLines(variantFolderPath);
-        System.out.println(conditionedCodeLines);
     }
 
     @Test

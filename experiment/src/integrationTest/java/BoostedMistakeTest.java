@@ -17,8 +17,8 @@ import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.maintree.MemBoostedAssociationMerger;
-import nodevisitor.EvaluatableNodeCounter;
-import nodevisitor.MistakeCounter;
+import utils.nodevisitor.EvaluatableNodeCounter;
+import utils.nodevisitor.MistakeCounter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.variantsync.vevos.simulation.io.Resources;
@@ -72,8 +72,8 @@ public class BoostedMistakeTest {
     public void boostedMistakesDisableBoosting() throws Resources.ResourceIOException, IOException {
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(this.configPath, this.variantBasePath);
         ExperimentRunConfiguration runConfig = experimentConfig.getNextRunConfiguration();
-        VevosFeatureSampler sampler = new VevosFeatureSampler(runConfig);
-        sampler.sample();
+        VevosFeatureSampler sampler = new VevosFeatureSampler();
+        sampler.sample(runConfig, 50);
         runConfig.pickVariants();
         EccoRepoTrainer trainer = new EccoRepoTrainer(runConfig);
         trainer.train();
@@ -97,8 +97,8 @@ public class BoostedMistakeTest {
     public void nonConflictingMistakesGetBoosted() throws Resources.ResourceIOException, IOException {
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(this.configPath, this.variantBasePath);
         ExperimentRunConfiguration runConfig = experimentConfig.getNextRunConfiguration();
-        VevosFeatureSampler sampler = new VevosFeatureSampler(runConfig);
-        sampler.sample();
+        VevosFeatureSampler sampler = new VevosFeatureSampler();
+        sampler.sample(runConfig, 50);
         runConfig.pickVariants();
         EccoRepoTrainer trainer = new EccoRepoTrainer(runConfig);
         trainer.train();

@@ -51,4 +51,56 @@ public class DirUtils {
             throw new RuntimeException(e);
         }
     }
+
+    public static boolean compareFolders(File folder1, File folder2) throws IOException {
+        // Check if both inputs are directories
+        if (!folder1.isDirectory() || !folder2.isDirectory()) {
+            throw new IllegalArgumentException("Both inputs must be directories.");
+        }
+
+        // List files in both folders
+        File[] files1 = folder1.listFiles();
+        File[] files2 = folder2.listFiles();
+
+        // Check for null (e.g., permission issues)
+        if (files1 == null || files2 == null) {
+            return false;
+        }
+
+        // Check if the number of files/subdirectories match
+        if (files1.length != files2.length) {
+            return false;
+        }
+
+        // Sort files by name for deterministic comparison
+        java.util.Arrays.sort(files1, (a, b) -> a.getName().compareTo(b.getName()));
+        java.util.Arrays.sort(files2, (a, b) -> a.getName().compareTo(b.getName()));
+
+        for (int i = 0; i < files1.length; i++) {
+            File file1 = files1[i];
+            File file2 = files2[i];
+
+            // Check if file names match
+            if (!file1.getName().equals(file2.getName())) {
+                return false;
+            }
+
+            // Recursively compare subdirectories
+            if (file1.isDirectory() && file2.isDirectory()) {
+                if (!compareFolders(file1, file2)) {
+                    return false;
+                }
+            } else if (file1.isFile() && file2.isFile()) {
+                // Compare file contents
+                if (!(Files.mismatch(file1.toPath(), file2.toPath()) == -1)) {
+                    return false;
+                }
+            } else {
+                // One is a file, the other is a directory
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

@@ -2,7 +2,6 @@ package at.jku.isse.ecco.experiment.sample;
 
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.FeatureUtils;
 import at.jku.isse.ecco.experiment.utils.vevos.ConfigTransformer;
 import at.jku.isse.ecco.experiment.utils.vevos.VevosUtils;
 
@@ -14,6 +13,7 @@ import org.variantsync.functjonal.Result;
 import org.variantsync.functjonal.list.NonEmptyList;
 import org.variantsync.vevos.simulation.VEVOS;
 import org.variantsync.vevos.simulation.feature.Variant;
+import org.variantsync.vevos.simulation.feature.config.SimpleConfiguration;
 import org.variantsync.vevos.simulation.feature.sampling.Sample;
 import org.variantsync.vevos.simulation.feature.sampling.Sampler;
 import org.variantsync.vevos.simulation.feature.sampling.SimpleSampler;
@@ -21,7 +21,7 @@ import org.variantsync.vevos.simulation.io.Resources;
 import org.variantsync.vevos.simulation.repository.BusyboxRepository;
 import org.variantsync.vevos.simulation.repository.SPLRepository;
 import org.variantsync.vevos.simulation.util.io.CaseSensitivePath;
-import org.variantsync.vevos.simulation.variability.EvolutionStep;
+import org.variantsync.vevos.simulation.util.names.NumericNameGenerator;
 import org.variantsync.vevos.simulation.variability.SPLCommit;
 import org.variantsync.vevos.simulation.variability.VariabilityDataset;
 import org.variantsync.vevos.simulation.variability.VariabilityHistory;
@@ -39,41 +39,31 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class VevosFeatureSampler {
 
-    private final int NUMBER_OF_VARIANTS_TO_GENERATE = 50;
-    private final ExperimentRunConfiguration config;
+    // todo: refactor
 
-    public VevosFeatureSampler(ExperimentRunConfiguration config){
-        this.config = config;
+    private ExperimentRunConfiguration config;
+
+    public VevosFeatureSampler(){
         VEVOS.Initialize();
     }
 
-    public void sample() throws Resources.ResourceIOException, IOException {
-        this.sampleAttempt();
-        List<String> features = List.of(ConfigTransformer.gatherConfigFeatures(this.config.getVariantsDir().resolve("configs"), this.config.getMaxVariantFeatures()));
-        VevosUtils.sanitizeVevosFiles(this.config.getVariantsDir(), features);
+    public void sample(ExperimentRunConfiguration config, int noVariants) throws Resources.ResourceIOException, IOException {
+        Logger.info("Sampling variants...");
+        this.config = config;
+        this.sample(noVariants);
     }
 
-    public void sampleAttempt() throws Resources.ResourceIOException, IOException {
+    private void sample(int noVariants) throws Resources.ResourceIOException, IOException {
         VariabilityDataset dataset = Resources.Instance().load(VariabilityDataset.class,
                 this.config.getVevosGroundTruthDatasetPath());
-        Set<EvolutionStep<SPLCommit>> evolutionSteps = dataset.getEvolutionSteps();
-
-        Logger.info("The dataset contains " + dataset.getSuccessCommits().size()
-                + " commits for which the variability extraction succeeded.");
-        Logger.info("The dataset contains " + dataset.getErrorCommits().size()
-                + " commits for which the variability extraction failed.");
-        Logger.info("The dataset contains " + dataset.getEmptyCommits().size()
-                + " commits for which there is no ground truth.");
-        Logger.info("The dataset contains " + dataset.getPartialSuccessCommits().size()
-                + " commits that for which the file presence conditions are missing.");
-        Logger.info("The dataset contains " + evolutionSteps.size() + " usable pairs of commits.");
 
         VariabilityHistory history = dataset.getVariabilityHistory(new LongestNonOverlappingSequences());
-        Sampler variantsSampler = SimpleSampler.CreateRandomSampler(NUMBER_OF_VARIANTS_TO_GENERATE, config.getMinVariantFeatures(), config.getMaxVariantFeatures());
+        Sampler variantsSampler = SimpleSampler.CreateRandomSampler(noVariants, config.getMinVariantFeatures(), config.getMaxVariantFeatures());
         SPLRepository splRepository = new SPLRepository(config.getVevosSplRepositoryBasePath());
         NonEmptyList<SPLCommit> subhistory = history.commitSequences().iterator().next();
         SPLCommit splCommit = subhistory.iterator().next();
@@ -101,34 +91,7 @@ public class VevosFeatureSampler {
         Files.createDirectories(configsPath);
 
         for (Variant variant : variants) {
-            Path variantDir = config.getVariantsDir().resolve(variant.getName());
-            CaseSensitivePath caseSensitiveVariantDir = CaseSensitivePath.of(variantDir.toString());
-            CaseSensitivePath caseSensitiveSplRepositoryPath = CaseSensitivePath.of(config.getVevosSplRepositoryBasePath().toString());
-
-            Result<GroundTruth, Exception> result = pcs.generateVariant(variant,
-                    caseSensitiveSplRepositoryPath, caseSensitiveVariantDir, generationOptions);
-
-            if (!result.isSuccess()) {
-                throw new RuntimeException("Error upon generation of variant " + variant.getName()
-                                + " at SPL commit " + splCommit.id() + "!", result.getFailure());
-            }
-
-            GroundTruth groundTruth = result.getSuccess();
-            Artefact presenceConditionsOfVariant = groundTruth.variant();
-            Resources.Instance().write(Artefact.class, presenceConditionsOfVariant,
-                    variantDir.resolve("pcs.variant.csv"));
-
-            try {
-                String configFileName = variant.getName() + ".config";
-                Path configFilePath = configsPath.resolve(configFileName);
-                File configFile = new File(configFilePath.toUri());
-                FileWriter fileWriter = new FileWriter(configFile);
-                PrintWriter printWriter = new PrintWriter(fileWriter);
-                printWriter.print(variant.getConfiguration().toString());
-                printWriter.close();
-            } catch (IOException e){
-                throw new RuntimeException(e.getMessage());
-            }
+            this.createVariant(variant, config.getVariantsDir(), pcs, generationOptions, configsPath, config.getVevosSplRepositoryBasePath());
         }
 
         if (splRepository instanceof BusyboxRepository b) {
@@ -145,8 +108,75 @@ public class VevosFeatureSampler {
         if (this.config.getRepositoryName().equals("argouml-spl")){
             VevosUtils.removeRootFeatureFromConfigFiles(this.config.getVariantsDir());
         }
-        VevosUtils.sanitizeVevosConfigFiles(this.config.getVariantsDir());
-        ConfigTransformer.transformConfigurations(this.config.getVariantsDir());
+
+        List<String> features = List.of(ConfigTransformer.gatherConfigFeatures(this.config.getVariantsDir().resolve("configs"), this.config.getMaxVariantFeatures()));
+        eccoSampleExperimentPreparation(this.config.getVariantsDir(), features);
+    }
+
+    /**
+     *
+     * @param variantConfigurations List of List of feature-names. Each List of feature-names represents the
+     *                              configuration of a variant to be created.
+     */
+    public void createSampleVariants(Path vevosGroundTruthBasePath, String repository, Path sampleBasePath,
+                                     List<List<String>> variantConfigurations) throws Resources.ResourceIOException, IOException {
+        Path vevosGroundTruthPath = vevosGroundTruthBasePath.resolve(repository);
+        Path vevosSplRepositoryPath = vevosGroundTruthBasePath.resolve("REPOS").resolve(repository);
+        Path configsPath = sampleBasePath.resolve("configs");
+
+        VariabilityDataset dataset = Resources.Instance().load(VariabilityDataset.class, vevosGroundTruthPath);
+        VariabilityHistory history = dataset.getVariabilityHistory(new LongestNonOverlappingSequences());
+        NonEmptyList<SPLCommit> subhistory = history.commitSequences().iterator().next();
+        SPLCommit splCommit = subhistory.iterator().next();
+        Lazy<Optional<Artefact>> loadPresenceConditions = splCommit.presenceConditionsFallback();
+        Artefact pcs = loadPresenceConditions.run().orElseThrow();
+        NumericNameGenerator nameGenerator = new NumericNameGenerator("Variant");
+        ArtefactFilter<SourceCodeFile> artefactFilter = ArtefactFilter.KeepAll();
+        VariantGenerationOptions generationOptions = VariantGenerationOptions.ExitOnError(false, artefactFilter);
+        final AtomicInteger variantNo = new AtomicInteger();
+
+        Files.createDirectories(configsPath);
+
+        for (List<String> featureNames : variantConfigurations){
+            Variant variant = new Variant(nameGenerator.getNameAtIndex(variantNo.getAndIncrement()), new SimpleConfiguration(featureNames));
+            this.createVariant(variant, sampleBasePath, pcs, generationOptions, configsPath, vevosSplRepositoryPath);
+        }
+
+        Set<String> features = new HashSet<>();
+        variantConfigurations.forEach(features::addAll);
+        this.eccoSampleExperimentPreparation(sampleBasePath, features.stream().toList());
+    }
+
+    private void createVariant(Variant variant, Path sampleBasePath, Artefact pcs, VariantGenerationOptions generationOptions, Path configsPath, Path vevosSplRepositoryPath) throws Resources.ResourceIOException, IOException {
+        Path variantPath = sampleBasePath.resolve(variant.getName());
+        CaseSensitivePath caseSensitiveVariantDir = CaseSensitivePath.of(variantPath.toString());
+        CaseSensitivePath caseSensitiveSplRepositoryPath = CaseSensitivePath.of(vevosSplRepositoryPath.toString());
+
+        Result<GroundTruth, Exception> result = pcs.generateVariant(variant,
+                caseSensitiveSplRepositoryPath, caseSensitiveVariantDir, generationOptions);
+
+        if (!result.isSuccess()) {
+            throw new RuntimeException("Error upon generation of variant " + variant.getName());
+        }
+
+        GroundTruth groundTruth = result.getSuccess();
+        Artefact presenceConditionsOfVariant = groundTruth.variant();
+        Resources.Instance().write(Artefact.class, presenceConditionsOfVariant,
+                variantPath.resolve("pcs.variant.csv"));
+
+        String configFileName = variant.getName() + ".config";
+        Path configFilePath = configsPath.resolve(configFileName);
+        File configFile = new File(configFilePath.toUri());
+        FileWriter fileWriter = new FileWriter(configFile);
+        PrintWriter printWriter = new PrintWriter(fileWriter);
+        printWriter.print(variant.getConfiguration().toString());
+        printWriter.close();
+    }
+
+    private void eccoSampleExperimentPreparation(Path sampleBasePath, List<String> featuresWithoutBase){
+        VevosUtils.sanitizeVevosConfigFiles(sampleBasePath);
+        ConfigTransformer.transformConfigurations(sampleBasePath);
+        VevosUtils.sanitizeVevosFiles(sampleBasePath, featuresWithoutBase);
     }
 
     public void cleanUp(){

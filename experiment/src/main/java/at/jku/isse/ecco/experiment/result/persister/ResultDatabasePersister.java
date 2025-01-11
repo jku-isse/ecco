@@ -36,8 +36,7 @@ public class ResultDatabasePersister implements ResultPersister{
                 "numberOfSampledFeatures, sampledFeatures, featureTracePercentage, mistakePercentage, " +
                 "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1, boost, missingMistakes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-        String variantConfigurations = String.join("; ",
-                config.getVariantConfigurations());
+        String variantConfigurations = String.join("; ", config.getVariantConfigurations());
 
         try (Connection conn = DriverManager.getConnection(this.databaseURL);
             PreparedStatement pstmt = conn.prepareStatement(sql)){
