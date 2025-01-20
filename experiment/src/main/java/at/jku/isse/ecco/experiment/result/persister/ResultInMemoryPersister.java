@@ -23,7 +23,8 @@ public class ResultInMemoryPersister implements ResultPersister {
 
     @Override
     public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
-                        EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting, int numberOfMissingMistakes) {
+                        EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting, int numberOfMissingMistakes,
+                        String listPicker) {
         this.results.add(result);
     }
 }

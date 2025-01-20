@@ -148,7 +148,7 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
         Node.Op mainTree = this.repository.getMainTree();
         this.literalNameCleanup(mainTree);
         // todo: refactor (too many parameters)
-        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategyName, boost, groundTruth, numberOfMissingMistakes);
+        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategyName, boost, groundTruth, numberOfMissingMistakes, this.listPicker);
         metricsCalculator.calculateMetrics(mainTree);
     }
 

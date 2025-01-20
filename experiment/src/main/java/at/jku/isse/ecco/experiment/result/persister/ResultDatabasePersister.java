@@ -31,10 +31,10 @@ public class ResultDatabasePersister implements ResultPersister{
 
     @Override
     public void persist(Result result, ExperimentRunConfiguration config, int featureTracePercentage, int mistakePercentage,
-                        EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting, int numberOfMissingMistakes) {
+                        EvaluationStrategy evaluationStrategy, String mistakeStrategy, boolean boosting, int numberOfMissingMistakes, String listPicker) {
         String sql = "INSERT INTO results (repository, numberOfVariants, variantConfigurations, " +
                 "numberOfSampledFeatures, sampledFeatures, featureTracePercentage, mistakePercentage, " +
-                "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1, boost, missingMistakes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                "evaluationStrategy, mistakeType, tp, fp, tn, fn, precision, recall, f1, boost, missingMistakes, ftPicker) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         String variantConfigurations = String.join("; ", config.getVariantConfigurations());
 
@@ -60,6 +60,8 @@ public class ResultDatabasePersister implements ResultPersister{
             int boost = boosting ? 1 : 0;
             pstmt.setInt(17, boost);
             pstmt.setInt(18, numberOfMissingMistakes);
+            pstmt.setString(19, listPicker);
+
             pstmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Entering data to database failed: " + e.getMessage());
@@ -86,7 +88,8 @@ public class ResultDatabasePersister implements ResultPersister{
                 + "	recall DOUBLE NOT NULL,"
                 + "	f1 DOUBLE NOT NULL,"
                 + " boost INTEGER NOT NULL,"
-                + " missingMistakes INTEGER NOT NULL);";
+                + " missingMistakes INTEGER NOT NULL,"
+                + " ftPicker TEXT NOT NULL);";
 
         try (Connection conn = DriverManager.getConnection(this.databaseURL)){
             Statement stmt = conn.createStatement();

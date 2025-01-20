@@ -149,6 +149,10 @@ public class ExperimentRunConfiguration{
         return this.listPickers;
     }
 
+    public void setFeatures(List<String> features){
+        this.features = features;
+    }
+
     public String toString(){
         String description = "Experiment Run Configuration:\n" +
                 "Repository: " + this.repositoryName + "\n" +

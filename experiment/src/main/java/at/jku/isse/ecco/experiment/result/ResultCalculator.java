@@ -2,6 +2,7 @@ package at.jku.isse.ecco.experiment.result;
 
 
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
+import at.jku.isse.ecco.experiment.picker.FeatureTraceMemoryListPicker;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
@@ -23,10 +24,12 @@ public class ResultCalculator {
     private final boolean boosting;
     private GroundTruth groundTruth;
     private int numberOfMissingMistakes;
+    private FeatureTraceMemoryListPicker listPicker;
+
 
     public ResultCalculator(ExperimentRunConfiguration config, int featureTracePercentage, ResultPersister resultPersister,
                             EvaluationStrategy evaluationStrategy, int mistakePercentage, String mistakeStrategy, boolean boosting,
-                            GroundTruth groundTruth, int numberOfMissingMistakes){
+                            GroundTruth groundTruth, int numberOfMissingMistakes, FeatureTraceMemoryListPicker listPicker){
         this.config = config;
         this.resultPersister = resultPersister;
         this.featureTracePercentage = featureTracePercentage;
@@ -36,6 +39,7 @@ public class ResultCalculator {
         this.boosting = boosting;
         this.groundTruth = groundTruth;
         this.numberOfMissingMistakes = numberOfMissingMistakes;
+        this.listPicker = listPicker;
     }
 
     public void calculateMetrics(Node.Op mainTree){
@@ -46,6 +50,6 @@ public class ResultCalculator {
         Collection<NodeResult> nodeResults = visitor.getResults();
         Collection<Result> results = nodeResults.stream().map(NodeResult::getResult).collect(Collectors.toList());
         Result overallResult = Result.overallResult(results);
-        this.resultPersister.persist(overallResult, this.config, featureTracePercentage, mistakePercentage, evaluationStrategy, mistakeStrategy, this.boosting, this.numberOfMissingMistakes);
+        this.resultPersister.persist(overallResult, this.config, featureTracePercentage, mistakePercentage, evaluationStrategy, mistakeStrategy, this.boosting, this.numberOfMissingMistakes, this.listPicker.getClass().getName());
     }
 }
