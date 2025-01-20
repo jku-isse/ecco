@@ -1,11 +1,10 @@
 package at.jku.isse.ecco.experiment.mistake;
 
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
-import at.jku.isse.ecco.repository.Repository;
 
-public class OperatorSwapper implements MistakeStrategy {
+public class OperatorSwapper extends MistakeStrategy {
     @Override
-    public void createMistake(FeatureTrace trace) {
+    public String createNewMistake(FeatureTrace trace) {
         try {
             String oldCondition = trace.getUserConditionString();
             String newCondition;
@@ -17,13 +16,11 @@ public class OperatorSwapper implements MistakeStrategy {
                 throw new RuntimeException("Featuretrace contains no Operator.");
             }
             trace.setUserCondition(newCondition);
+            return newCondition;
         } catch (Exception e){
             throw new RuntimeException("OperatorSwapper failed to create mistake.");
         }
     }
-
-    @Override
-    public void init(Repository.Op repository) {}
 
     @Override
     public String toString(){

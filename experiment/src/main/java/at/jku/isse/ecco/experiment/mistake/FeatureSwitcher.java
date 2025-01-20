@@ -3,7 +3,6 @@ package at.jku.isse.ecco.experiment.mistake;
 import at.jku.isse.ecco.experiment.utils.CollectionUtils;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
-import at.jku.isse.ecco.repository.Repository;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 
@@ -11,7 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class FeatureSwitcher implements MistakeStrategy {
+public class FeatureSwitcher extends MistakeStrategy {
 
     private final List<String> features;
 
@@ -22,7 +21,7 @@ public class FeatureSwitcher implements MistakeStrategy {
     }
 
     @Override
-    public void createMistake(FeatureTrace trace){
+    public String createNewMistake(FeatureTrace trace){
         try {
             String userConditionString = trace.getUserConditionString();
             Formula userCondition = LogicUtils.parseString(this.formulaFactory, userConditionString);
@@ -36,14 +35,13 @@ public class FeatureSwitcher implements MistakeStrategy {
                 throw new RuntimeException("There are no features that are not already used in the condition.");
             }
             String randomFeature = CollectionUtils.getRandom(otherFeatures);
-            trace.setUserCondition(userConditionString.replace(oldFeature, randomFeature));
+            String newCondition = userConditionString.replace(oldFeature, randomFeature);
+            trace.setUserCondition(newCondition);
+            return newCondition;
         } catch (Exception e){
             throw new RuntimeException("FeatureSwitcher failed to create mistake.");
         }
     }
-
-    @Override
-    public void init(Repository.Op repository) {}
 
     @Override
     public String toString(){

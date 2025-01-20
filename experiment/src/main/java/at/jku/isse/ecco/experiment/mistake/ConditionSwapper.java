@@ -7,13 +7,13 @@ import at.jku.isse.ecco.repository.Repository;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-public class ConditionSwapper implements MistakeStrategy {
+public class ConditionSwapper extends MistakeStrategy {
 
     Collection<String> originalConditions;
     boolean initFlag = false;
 
     @Override
-    public void createMistake(FeatureTrace trace) {
+    public String createNewMistake(FeatureTrace trace) {
         try {
             if (!this.initFlag){
                 throw new RuntimeException("init() not called before creating a mistake in ConditionSwapper.");
@@ -25,6 +25,7 @@ public class ConditionSwapper implements MistakeStrategy {
             }
             String newCondition = CollectionUtils.getRandom(differentConditions);
             trace.setUserCondition(newCondition);
+            return newCondition;
         } catch (Exception e){
             throw new RuntimeException("ConditionSwapper failed to create mistake.");
         }

@@ -3,7 +3,6 @@ package at.jku.isse.ecco.experiment.mistake;
 import at.jku.isse.ecco.experiment.utils.CollectionUtils;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
-import at.jku.isse.ecco.repository.Repository;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 
@@ -11,18 +10,18 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class Conjugator implements MistakeStrategy {
+public class Conjugator extends MistakeStrategy {
 
-    private List<String> features;
+    private final List<String> features;
 
-    private FormulaFactory formulaFactory = new FormulaFactory();
+    private final FormulaFactory formulaFactory = new FormulaFactory();
 
     public Conjugator(List<String> features){
         this.features = features;
     }
 
     @Override
-    public void createMistake(FeatureTrace trace) {
+    public String createNewMistake(FeatureTrace trace) {
         try {
             String userConditionString = trace.getUserConditionString();
             Formula userCondition = LogicUtils.parseString(this.formulaFactory, userConditionString);
@@ -33,14 +32,13 @@ public class Conjugator implements MistakeStrategy {
             }
             String randomFeature = CollectionUtils.getRandom(otherFeatures);
             Formula featureFormula = LogicUtils.parseString(this.formulaFactory, randomFeature);
-            trace.setUserCondition(this.formulaFactory.and(userCondition, featureFormula).toString());
+            String newCondition = this.formulaFactory.and(userCondition, featureFormula).toString();
+            trace.setUserCondition(newCondition);
+            return newCondition;
         } catch (Exception e){
             throw new RuntimeException("Conjugator failed to make mistake.");
         }
     }
-
-    @Override
-    public void init(Repository.Op repository) {}
 
     @Override
     public String toString(){
