@@ -14,10 +14,11 @@ import java.util.*;
 
 public class RepositoryPreparator {
 
-    private MistakeCreator mistakeCreator;
-    private ListPicker<FeatureTrace> listPicker;
+    private final MistakeCreator mistakeCreator;
+    private final ListPicker<FeatureTrace> listPicker;
     private Collection<FeatureTrace> allProactiveTraces;
-    private Collection<FeatureTrace> remainingProactiveTraces;
+    private Collection<FeatureTrace> nonEvaluableProactiveTraces;
+    
     private int numberOfMissingMistakes;
 
     public RepositoryPreparator(MistakeCreator mistakeCreator,
@@ -32,13 +33,16 @@ public class RepositoryPreparator {
                                   GroundTruth groundTruth){
         FeatureTraceCollector collector = new FeatureTraceCollector(repository, groundTruth);
         this.allProactiveTraces = collector.getFeatureTraces();
-        this.remainingProactiveTraces = this.keepFeatureTracePercentage(allProactiveTraces, featureTracePercentage);
-        this.numberOfMissingMistakes = this.mistakeCreator.createMistakePercentage(repository, this.remainingProactiveTraces, mistakePercentage);
+        Collection<FeatureTrace> evaluableProactiveTraces = collector.getEvaluableTraces();
+        this.nonEvaluableProactiveTraces = collector.getNonEvaluableTraces();
+        Collection<FeatureTrace> keptProactiveTraces = this.keepFeatureTracePercentage(evaluableProactiveTraces, featureTracePercentage);
+        this.numberOfMissingMistakes = this.mistakeCreator.createMistakePercentage(repository, keptProactiveTraces, mistakePercentage);
+        this.removeNonEvaluableTraces();
     }
 
     public void undoPreparation(){
         this.mistakeCreator.restoreOriginalConditions();
-        this.restoreFeatureTraces(allProactiveTraces);
+        this.restoreFeatureTraces(this.allProactiveTraces);
     }
 
     private Collection<FeatureTrace> keepFeatureTracePercentage(Collection<FeatureTrace> allProactiveTraces, int percentage) {
@@ -48,13 +52,19 @@ public class RepositoryPreparator {
         List<FeatureTrace> remainingTraces = this.listPicker.pickPercentage(allProactiveTraces, percentage);
         List<FeatureTrace> tracesToBeRemoved = new LinkedList<>(allProactiveTraces);
         tracesToBeRemoved.removeAll(remainingTraces);
-        for (FeatureTrace featureTrace : tracesToBeRemoved){
-            FeatureTrace newTrace = new MemFeatureTrace(featureTrace.getNode());
-            newTrace.setDiffCondition(featureTrace.getDiffConditionString());
-            Node.Op node = (Node.Op) featureTrace.getNode();
-            node.setFeatureTrace(newTrace);
-        }
+        tracesToBeRemoved.forEach(this::removeTrace);
         return remainingTraces;
+    }
+
+    private void removeNonEvaluableTraces(){
+        this.nonEvaluableProactiveTraces.forEach(this::removeTrace);
+    }
+
+    private void removeTrace(FeatureTrace trace){
+        FeatureTrace newTrace = new MemFeatureTrace(trace.getNode());
+        newTrace.setDiffCondition(trace.getDiffConditionString());
+        Node.Op node = (Node.Op) trace.getNode();
+        node.setFeatureTrace(newTrace);
     }
 
     private void restoreFeatureTraces(Collection<FeatureTrace> traces){
@@ -62,14 +72,6 @@ public class RepositoryPreparator {
             Node.Op node = (Node.Op) featureTrace.getNode();
             node.setFeatureTrace(featureTrace);
         }
-    }
-
-    public Collection<FeatureTrace> getAllProactiveTraces(){
-        return this.allProactiveTraces;
-    }
-
-    public Collection<FeatureTrace> getRemainingProactiveTraces(){
-        return this.remainingProactiveTraces;
     }
 
     public int getNumberOfMissingMistakes(){

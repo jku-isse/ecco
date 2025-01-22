@@ -54,7 +54,7 @@ public class SingleAssociationTracePickerTest {
         GroundTruth groundTruth = new GroundTruth(groundTruthPath);
 
         FeatureTraceCollector collector = new FeatureTraceCollector(repository, groundTruth);
-        Collection<FeatureTrace> featureTraces = collector.getFeatureTraces();
+        Collection<FeatureTrace> featureTraces = collector.getEvaluableTraces();
 
         SingleAssociationTracePicker picker = new SingleAssociationTracePicker();
         Collection<FeatureTrace> pickedTraces = picker.pickPercentage(featureTraces, 100);

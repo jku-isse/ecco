@@ -13,11 +13,12 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-public class FeatureTraceCollector implements  Node.Op.NodeVisitor{
+public class FeatureTraceCollector implements Node.Op.NodeVisitor {
 
-    private List<FeatureTrace> featureTraces = new LinkedList<>();
-    private GroundTruth groundTruth;
-    private FormulaFactory formulaFactory;
+    private final List<FeatureTrace> featureTraces = new LinkedList<>();
+    private final List<FeatureTrace> evaluableTraces = new LinkedList<>();
+    private final GroundTruth groundTruth;
+    private final FormulaFactory formulaFactory;
 
     public FeatureTraceCollector(Repository.Op repository, GroundTruth groundTruth){
         this.groundTruth = groundTruth;
@@ -27,19 +28,31 @@ public class FeatureTraceCollector implements  Node.Op.NodeVisitor{
 
     @Override
     public void visit(Node.Op node) {
-        if (!node.isUnique()){ return; }
-        Location location = node.getLocation();
-        if (location == null){ return; }
-
-        // handle corner case of ECCO switching up equal nodes with different traces
-        Formula groundTruthFormula = this.groundTruth.getCondition(location, this.formulaFactory);
-        if (groundTruthFormula.toString().equals("$true")){ return; }
-
-        FeatureTrace featureTrace = node.getFeatureTrace();
-        if (featureTrace == null) { throw new RuntimeException("Node with location has no feature trace."); }
-        if (featureTrace.containsUserCondition()) {
-            this.featureTraces.add(featureTrace);
+        if (this.nodeIsValid(node)) {
+            this.featureTraces.add(node.getFeatureTrace());
+        } else {
+            return;
         }
+
+        if (this.nodeIsEvaluable(node)){
+            this.evaluableTraces.add(node.getFeatureTrace());
+        }
+    }
+
+    private boolean nodeIsValid(Node.Op node){
+        if (!node.isUnique()){ return false; }
+        FeatureTrace featureTrace = node.getFeatureTrace();
+        if (featureTrace == null) { return false; }
+        if (!featureTrace.containsUserCondition()) {return false;}
+        return true;
+    }
+
+    private boolean nodeIsEvaluable(Node.Op node){
+        Location location = node.getLocation();
+        if (location == null){ return false; }
+        Formula groundTruthFormula = this.groundTruth.getCondition(location, this.formulaFactory);
+        if (groundTruthFormula.toString().equals("$true")){ return false; }
+        return true;
     }
 
     private void collectAssociationTraces(Repository.Op repository){
@@ -51,5 +64,13 @@ public class FeatureTraceCollector implements  Node.Op.NodeVisitor{
 
     public List<FeatureTrace> getFeatureTraces(){
         return this.featureTraces;
+    }
+
+    public List<FeatureTrace> getEvaluableTraces(){
+        return this.evaluableTraces;
+    }
+
+    public List<FeatureTrace> getNonEvaluableTraces(){
+        return this.featureTraces.stream().filter(trace -> !this.evaluableTraces.contains(trace)).toList();
     }
 }
