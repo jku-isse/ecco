@@ -1190,5 +1190,33 @@ public class ExperimentRunnerTest {
         Result result = persister.getResults().iterator().next();
         assertTrue(result.getF1() < 1.0);
     }
+
+    @Test
+    public void correctNumberOfExperimentsRun(){
+        // should only run mistake% == 0 for ft% = 0
+        // should only run NoMistaker for mistake% = 0
+        when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
+        when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0, 50, 100});
+        when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
+        Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
+        when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
+        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
+        when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
+        when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0, 50, 100});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher", "ConditionSwapper"});
+        when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
+        List<Path> variantPicks = new LinkedList<>();
+        variantPicks.add(variantBasePath.resolve("Variant_Null"));
+        when(runConfig.getVariantPicks()).thenReturn(variantPicks);
+
+        Repository.Op repo = prepareRepository(runConfig);
+        ResultInMemoryPersister persister = new ResultInMemoryPersister();
+
+        ExperimentRunnerInterface runner = new ExperimentRunner(runConfig, repo, persister);
+        runner.runExperiment();
+
+        assertEquals(11, persister.getResults().size());
+    }
 }
 

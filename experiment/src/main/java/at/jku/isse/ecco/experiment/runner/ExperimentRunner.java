@@ -100,21 +100,26 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
     }
 
     private void iterateMistakePercentages(){
-        for (int mistakePercentage : this.config.getMistakePercentages()){
-            this.mistakePercentage = mistakePercentage;
+        if (featureTracePercentage == 0){
+            this.mistakePercentage = 0;
             this.iterateMistakeStrategies();
+        } else {
+            for (int mistakePercentage : this.config.getMistakePercentages()){
+                this.mistakePercentage = mistakePercentage;
+                this.iterateMistakeStrategies();
+            }
         }
     }
 
     private void iterateMistakeStrategies(){
-        if (mistakePercentage > 0) {
+        if (mistakePercentage == 0){
+            this.mistakeStrategyName = "NoMistaker";
+            this.performExperimentIteration();
+        } else {
             for (String mistakeStrategy : this.config.getMistakeStrategies()) {
                 this.mistakeStrategyName = mistakeStrategy;
                 this.performExperimentIteration();
             }
-        } else {
-            this.mistakeStrategyName = "NoMistaker";
-            this.performExperimentIteration();
         }
     }
 
