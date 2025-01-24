@@ -1,7 +1,9 @@
 package at.jku.isse.ecco.experiment.sample;
 
+import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.utils.DirUtils;
+import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.utils.vevos.ConfigTransformer;
 import at.jku.isse.ecco.experiment.utils.vevos.VevosUtils;
 
@@ -38,6 +40,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -58,12 +61,20 @@ public class VevosFeatureSampler {
         this.sample(noVariants);
     }
 
-    private void sample(int noVariants) throws Resources.ResourceIOException, IOException {
-        VariabilityDataset dataset = Resources.Instance().load(VariabilityDataset.class,
-                this.config.getVevosGroundTruthDatasetPath());
+    private void sampleAllVariants(ExperimentRunConfiguration config) throws Resources.ResourceIOException, IOException {
+        this.config = config;
+        Sampler completeSampler = new CompleteSampler();
+        this.sample(completeSampler);
+    }
 
-        VariabilityHistory history = dataset.getVariabilityHistory(new LongestNonOverlappingSequences());
+    private void sample(int noVariants) throws Resources.ResourceIOException, IOException {
         Sampler variantsSampler = SimpleSampler.CreateRandomSampler(noVariants, config.getMinVariantFeatures(), config.getMaxVariantFeatures());
+        this.sample(variantsSampler);
+    }
+
+    private void sample(Sampler sampler) throws IOException, Resources.ResourceIOException {
+        VariabilityDataset dataset = Resources.Instance().load(VariabilityDataset.class, this.config.getVevosGroundTruthDatasetPath());
+        VariabilityHistory history = dataset.getVariabilityHistory(new LongestNonOverlappingSequences());
         SPLRepository splRepository = new SPLRepository(config.getVevosSplRepositoryBasePath());
         NonEmptyList<SPLCommit> subhistory = history.commitSequences().iterator().next();
         SPLCommit splCommit = subhistory.iterator().next();
@@ -76,7 +87,7 @@ public class VevosFeatureSampler {
         Lazy<Optional<Artefact>> loadPresenceConditions = splCommit.presenceConditionsFallback();
         Artefact pcs = loadPresenceConditions.run().orElseThrow();
         IFeatureModel featureModel = loadFeatureModel.run().orElseThrow();
-        Sample variants = variantsSampler.sample(featureModel);
+        Sample variants = sampler.sample(featureModel);
         ArtefactFilter<SourceCodeFile> artefactFilter = ArtefactFilter.KeepAll();
         VariantGenerationOptions generationOptions = VariantGenerationOptions.ExitOnError(false, artefactFilter);
 
