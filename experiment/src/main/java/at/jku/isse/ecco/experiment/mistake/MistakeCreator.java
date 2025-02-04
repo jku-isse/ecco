@@ -19,7 +19,7 @@ public class MistakeCreator {
     public int createMistakePercentage(Repository.Op repository, Collection<FeatureTrace> featureTraces, int percentage){
         // return the number of mistakes that are missing to reach the given percentage
         int mistakesCreated = 0;
-        this.originalConditions = new HashMap<>();
+        this.originalConditions = new IdentityHashMap<>();
         this.mistakeStrategy.init(repository);
         if (percentage < 0 || percentage > 100){
             throw new RuntimeException(String.format("Percentage of feature traces is invalid (%d).", percentage));
