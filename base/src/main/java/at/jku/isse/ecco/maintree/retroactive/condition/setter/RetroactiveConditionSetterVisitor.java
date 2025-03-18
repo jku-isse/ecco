@@ -1,18 +1,18 @@
-package at.jku.isse.ecco.maintree;
+package at.jku.isse.ecco.maintree.retroactive.condition.setter;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
-public class DiffConditionVisitor implements Node.Op.NodeVisitor{
+public class RetroactiveConditionSetterVisitor implements Node.Op.NodeVisitor{
 
     String diffConditionString;
 
-    public DiffConditionVisitor(String diffConditionString){
+    public RetroactiveConditionSetterVisitor(String diffConditionString){
         this.diffConditionString = diffConditionString;
     }
 
-    public DiffConditionVisitor(Association association){
+    public RetroactiveConditionSetterVisitor(Association association){
         this.diffConditionString = association.computeCondition().toLogicString();
     }
 
