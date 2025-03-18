@@ -1,7 +1,8 @@
 package at.jku.isse.ecco.experiment.utils.vevos;
 
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
 import org.apache.commons.io.FilenameUtils;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,15 +20,15 @@ import java.util.stream.Stream;
  */
 public class ConfigTransformer {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws DirectoryException {
         //final Path VARIANTS_BASE_PATH = Paths.get("C:\\Users\\Bernhard\\Work\\Projects\\ArgoUML_Challenge\\ScenarioAllVariants");
         //final Path sampleBasePath = Paths.get("C:\\Users\\Berni\\Desktop\\Project\\Tools\\VEVOS_Simulation_Sampling\\simulated_variants\\openvpn");
         final Path sampleBasePath = Paths.get("C:\\Users\\Berni\\Desktop\\Project\\Tools\\VEVOS_Simulation_Sampling\\simulated_variants\\test");
         iterateSamplings(sampleBasePath);
     }
 
-    public static void iterateSamplings(Path sampleBasePath){
-        List<Path> samplePaths = DirUtils.getSubDirectoryPaths(sampleBasePath);
+    public static void iterateSamplings(Path sampleBasePath) throws DirectoryException {
+        List<Path> samplePaths = DirectoryUtils.getSubDirectoryPaths(sampleBasePath);
         List<Path> resolvedSamplePaths = VevosUtils.extendSamplePathsByCommitFolder(samplePaths);
         resolvedSamplePaths.forEach(ConfigTransformer::transformConfigurations);
     }

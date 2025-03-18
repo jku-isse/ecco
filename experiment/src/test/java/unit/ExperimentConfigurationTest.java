@@ -2,7 +2,8 @@ package unit;
 
 import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -15,14 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ExperimentConfigurationTest {
 
     @Test
-    public void propertiesFileCanBeRead(){
+    public void propertiesFileCanBeRead() throws ResourceException {
         String propertiesFilePath = ResourceUtils.getResourceFolderPathAsString("configuration/test_experiment.properties");
         Path variantBasePath = ResourceUtils.getResourceFolderPath("sample");
         ExperimentConfiguration config = new ExperimentConfiguration(propertiesFilePath, variantBasePath);
     }
 
     @Test
-    public void numbersOfVariantsAreIterated(){
+    public void numbersOfVariantsAreIterated() throws ResourceException {
         String propertiesFilePath = ResourceUtils.getResourceFolderPathAsString("configuration/test_experiment.properties");
         Path variantBasePath = ResourceUtils.getResourceFolderPath("sample");
         ExperimentConfiguration config = new ExperimentConfiguration(propertiesFilePath, variantBasePath);

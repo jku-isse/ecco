@@ -1,12 +1,11 @@
 package at.jku.isse.ecco.experiment.sample;
 
-import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.utils.vevos.ConfigTransformer;
 import at.jku.isse.ecco.experiment.utils.vevos.VevosUtils;
 
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
 import de.ovgu.featureide.fm.core.base.IFeatureModel;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.tinylog.Logger;
@@ -40,7 +39,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -191,8 +189,11 @@ public class VevosFeatureSampler {
     }
 
     public void cleanUp(){
-        DirUtils.deleteDir(this.config.getVariantsDir());
-        DirUtils.createDir(this.config.getVariantsDir());
+        try {
+            DirectoryUtils.deleteAndCreateFolder(this.config.getVariantsDir());
+        } catch (DirectoryException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 

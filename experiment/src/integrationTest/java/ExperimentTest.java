@@ -4,10 +4,10 @@ import at.jku.isse.ecco.experiment.result.Result;
 import at.jku.isse.ecco.experiment.result.persister.ResultDatabasePersister;
 import at.jku.isse.ecco.experiment.result.persister.ResultInMemoryPersister;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import utils.AnalyzeVariantUtils;
 import utils.DatabaseResultUtils;
 
 import java.io.IOException;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ExperimentTest {
 
     @BeforeEach
-    public void cleanUpDatabase() throws IOException {
+    public void cleanUpDatabase() throws IOException, ResourceException {
         if (DatabaseResultUtils.databaseExists()) {
             Path databasePath = ResourceUtils.getResourceFolderPath("database/results.db");
             Files.delete(databasePath);
@@ -30,7 +30,7 @@ public class ExperimentTest {
     }
 
     @Test
-    public void experimentRunsWithoutException() {
+    public void experimentRunsWithoutException() throws ResourceException {
         String databasePath = ResourceUtils.getResourceFolderPathAsString("database");
         ResultPersister persister = new ResultDatabasePersister(databasePath);
         Experiment experiment = new Experiment(false, persister);
@@ -42,7 +42,7 @@ public class ExperimentTest {
     }
 
     @Test
-    public void configurationCreatesCorrectNumberOfResults() {
+    public void configurationCreatesCorrectNumberOfResults() throws ResourceException {
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
         Experiment experiment = new Experiment(false, persister);
 
@@ -55,7 +55,7 @@ public class ExperimentTest {
     }
 
     @Test
-    public void openVpnHasPerfectScoreFor100PercentFeatureTracesTest(){
+    public void openVpnHasPerfectScoreFor100PercentFeatureTracesTest() throws ResourceException {
         String databasePath = ResourceUtils.getResourceFolderPathAsString("database");
         ResultPersister persister = new ResultDatabasePersister(databasePath);
         Experiment experiment = new Experiment(false, persister);
@@ -68,7 +68,7 @@ public class ExperimentTest {
     }
 
     @Test
-    public void conjugatorCreatesFixedResults(){
+    public void conjugatorCreatesFixedResults() throws ResourceException {
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
         Experiment experiment = new Experiment(true, persister);
 

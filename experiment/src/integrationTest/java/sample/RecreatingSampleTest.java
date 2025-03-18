@@ -2,9 +2,11 @@ package sample;
 
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.sample.VevosFeatureSampler;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.utils.vevos.VevosUtils;
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,9 +16,9 @@ import org.variantsync.vevos.simulation.io.Resources;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,12 +40,15 @@ public class RecreatingSampleTest {
     Path creationSamplePath = resourceBasePath.resolve("sample_creation");
     Path recreationSamplePath = resourceBasePath.resolve("sample_recreation");
 
+    public RecreatingSampleTest() throws ResourceException {
+    }
+
 
     @BeforeEach
-    public void setup() {
+    public void setup() throws IOException {
         MockitoAnnotations.initMocks(this);
-        DirUtils.createDir(this.creationSamplePath);
-        DirUtils.createDir(this.recreationSamplePath);
+        Files.createDirectories(this.creationSamplePath);
+        Files.createDirectories(this.recreationSamplePath);
         when(runConfig.getMinVariantFeatures()).thenReturn(5);
         when(runConfig.getMaxVariantFeatures()).thenReturn(10);
         when(runConfig.getVariantsDir()).thenReturn(this.creationSamplePath);
@@ -53,9 +58,9 @@ public class RecreatingSampleTest {
     }
 
     @AfterEach
-    public void teardown(){
-        DirUtils.deleteDir(this.creationSamplePath);
-        DirUtils.deleteDir(this.recreationSamplePath);
+    public void teardown() throws DirectoryException {
+        DirectoryUtils.deleteFolderIfItExists(this.creationSamplePath);
+        DirectoryUtils.deleteFolderIfItExists(this.recreationSamplePath);
     }
 
     @Test
@@ -84,6 +89,6 @@ public class RecreatingSampleTest {
         File recreationFolder = new File(recreationSamplePath.toUri());
 
         // compare original with recreation
-        assertTrue(DirUtils.compareFolders(creationFolder, recreationFolder));
+        assertTrue(DirectoryUtils.foldersAreEqual(creationFolder.toPath(), recreationFolder.toPath()));
     }
 }

@@ -1,6 +1,8 @@
 package utils;
 
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
+
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -9,20 +11,20 @@ import java.sql.SQLException;
 
 public class DatabaseResultUtils {
 
-    private static String getDatabaseURL(){
+    private static String getDatabaseURL() throws ResourceException {
         Path databaseFolderPath = ResourceUtils.getResourceFolderPath("database");
         Path databasePath = databaseFolderPath.resolve("results.db");
         return "jdbc:sqlite:" + databasePath;
     }
 
-    public static boolean databaseExists(){
+    public static boolean databaseExists() throws ResourceException {
         Path databaseFolderPath = ResourceUtils.getResourceFolderPath("database");
         Path databasePath = databaseFolderPath.resolve("results.db");
         File databaseFile = new File(databasePath.toString());
         return databaseFile.exists() && databaseFile.isFile();
     }
 
-    public static boolean checkNumberOfResults(int results){
+    public static boolean checkNumberOfResults(int results) throws ResourceException {
         String url = getDatabaseURL();
         var sql = "SELECT COUNT(*) AS total_rows FROM results";
 
@@ -40,7 +42,7 @@ public class DatabaseResultUtils {
         }
     }
 
-    public static boolean checkF1OfSingleResult(double f1){
+    public static boolean checkF1OfSingleResult(double f1) throws ResourceException {
         String url = getDatabaseURL();
         var sql = "SELECT f1 FROM results";
 

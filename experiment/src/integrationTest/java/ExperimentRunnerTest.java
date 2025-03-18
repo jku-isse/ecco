@@ -1,5 +1,4 @@
 import at.jku.isse.ecco.experiment.config.Boosting;
-import at.jku.isse.ecco.experiment.picker.featuretracepicker.RandomFeatureTracePicker;
 import at.jku.isse.ecco.experiment.result.Result;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 
@@ -8,18 +7,22 @@ import at.jku.isse.ecco.experiment.runner.ExperimentRunner;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunnerInterface;
 import at.jku.isse.ecco.experiment.trainer.EccoRepoTrainer;
 import at.jku.isse.ecco.experiment.trainer.EccoTrainerInterface;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.DiffBasedEvaluation;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.featuretrace.evaluation.UserBasedEvaluation;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -43,20 +46,25 @@ public class ExperimentRunnerTest {
     }
 
     @AfterEach
-    public void deleteRepo(){
+    public void deleteRepo() throws ResourceException {
         Path repoPath = ResourceUtils.getResourceFolderPath("repo");
-        DirUtils.deleteDir(repoPath);
-        DirUtils.createDir(repoPath);
+
+        try{
+            DirectoryUtils.deleteFolderIfItExists(repoPath);
+            Files.createDirectories(repoPath);
+        } catch (DirectoryException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private static Repository.Op prepareRepository(ExperimentRunConfiguration config){
+    private static Repository.Op prepareRepository(ExperimentRunConfiguration config) throws ResourceException {
         EccoTrainerInterface trainer = new EccoRepoTrainer(config);
         trainer.train();
         return trainer.getRepository();
     }
 
     @Test
-    public void experimentRunsWithoutException() {
+    public void experimentRunsWithoutException() throws ResourceException {
         // mock run config
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
@@ -84,7 +92,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesCanBeBoosted() {
+    public void mistakesCanBeBoosted() throws ResourceException {
         // mock run config
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_7");
         EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
@@ -111,7 +119,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void experimentWithBoostRunsWithoutException(){
+    public void experimentWithBoostRunsWithoutException() throws ResourceException {
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
@@ -138,7 +146,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void perfectScoreWhenAllVariantsAreCommitted() {
+    public void perfectScoreWhenAllVariantsAreCommitted() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -169,7 +177,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void perfectScoreWithBoostWhenAllVariantsAreCommitted() {
+    public void perfectScoreWithBoostWhenAllVariantsAreCommitted() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -200,7 +208,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void using100PercentFeatureTracesResultsInPerfectScore() {
+    public void using100PercentFeatureTracesResultsInPerfectScore() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -231,7 +239,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void using100PercentFeatureTracesAndBoostResultsInPerfectScore() {
+    public void using100PercentFeatureTracesAndBoostResultsInPerfectScore() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -262,7 +270,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesDontChangeResultForZeroPercentMistakes() {
+    public void mistakesDontChangeResultForZeroPercentMistakes() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -293,7 +301,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesDontChangeResultForZeroPercentMistakesAndBoost() {
+    public void mistakesDontChangeResultForZeroPercentMistakesAndBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -325,7 +333,7 @@ public class ExperimentRunnerTest {
 
 
     @Test
-    public void experimentCreatesTheCorrectNumberOfAtomicResults() {
+    public void experimentCreatesTheCorrectNumberOfAtomicResults() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -364,7 +372,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void experimentCreatesTheCorrectNumberOfAtomicResultsWithBoost() {
+    public void experimentCreatesTheCorrectNumberOfAtomicResultsWithBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -404,7 +412,7 @@ public class ExperimentRunnerTest {
 
 
     @Test
-    public void featureARepoCreatesCorrectResults() {
+    public void featureARepoCreatesCorrectResults() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -449,7 +457,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureARepoCreatesCorrectResultsWithBoost() {
+    public void featureARepoCreatesCorrectResultsWithBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -494,7 +502,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureARepoCreatesCorrectForMultipleFtPercentagesResults() {
+    public void featureARepoCreatesCorrectForMultipleFtPercentagesResults() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0, 100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -537,7 +545,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureARepoCreatesCorrectForMultipleFtPercentagesResultsWithBoost() {
+    public void featureARepoCreatesCorrectForMultipleFtPercentagesResultsWithBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0, 100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -580,7 +588,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureABRepoCreatesCorrectResults() {
+    public void featureABRepoCreatesCorrectResults() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -623,7 +631,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureABRepoCreatesCorrectResultsWithBoost() {
+    public void featureABRepoCreatesCorrectResultsWithBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -666,7 +674,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureBRepoCreatesCorrectResults() {
+    public void featureBRepoCreatesCorrectResults() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -709,7 +717,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureBRepoCreatesCorrectResultsWithBoost() {
+    public void featureBRepoCreatesCorrectResultsWithBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -752,7 +760,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureBASERepoCreatesCorrectResults() {
+    public void featureBASERepoCreatesCorrectResults() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -795,7 +803,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void featureBASERepoCreatesCorrectResultsWithBoost() {
+    public void featureBASERepoCreatesCorrectResultsWithBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -838,7 +846,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void allFeatureTracesCreatePerfectScoreDespiteFlawedDiffConditions() {
+    public void allFeatureTracesCreatePerfectScoreDespiteFlawedDiffConditions() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -873,7 +881,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void allFeatureTracesAndBoostCreatePerfectScoreDespiteFlawedDiffConditions() {
+    public void allFeatureTracesAndBoostCreatePerfectScoreDespiteFlawedDiffConditions() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -908,7 +916,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingConditionSwapper() {
+    public void mistakesWorsenResultUsingConditionSwapper() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -942,7 +950,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingConjugator() {
+    public void mistakesWorsenResultUsingConjugator() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -976,7 +984,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingFeatureSwitcher() {
+    public void mistakesWorsenResultUsingFeatureSwitcher() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1010,7 +1018,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingOperatorSwapper() {
+    public void mistakesWorsenResultUsingOperatorSwapper() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1044,7 +1052,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesMustNotPersist(){
+    public void mistakesMustNotPersist() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1076,7 +1084,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesMustNotPersistWithBoost(){
+    public void mistakesMustNotPersistWithBoost() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1108,7 +1116,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void boostingCreatesPerfectScoreTest(){
+    public void boostingCreatesPerfectScoreTest() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{50});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1138,7 +1146,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void boostingDoesNotHappenForContradictingTraces(){
+    public void boostingDoesNotHappenForContradictingTraces() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{50});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1165,7 +1173,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void boostingDoesNotHappenBecauseOfMistake(){
+    public void boostingDoesNotHappenBecauseOfMistake() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{40});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1192,7 +1200,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void correctNumberOfExperimentsRun(){
+    public void correctNumberOfExperimentsRun() throws ResourceException {
         // should only run mistake% == 0 for ft% = 0
         // should only run NoMistaker for mistake% = 0
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);

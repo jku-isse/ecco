@@ -14,6 +14,7 @@ dependencies {
     implementation project(path: ':ecco-adapter-c')
     implementation project(path: ':ecco-base')
     implementation project(path: ':ecco-service')
+    implementation project(':ecco-util')
 
     implementation files('src/main/resources/lib/simulation-2.0.0-jar-with-dependencies.jar')
 

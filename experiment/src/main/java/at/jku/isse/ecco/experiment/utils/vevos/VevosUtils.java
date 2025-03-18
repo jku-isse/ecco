@@ -1,8 +1,9 @@
 package at.jku.isse.ecco.experiment.utils.vevos;
 
 import at.jku.isse.ecco.featuretrace.parser.VevosCondition;
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
 import org.apache.commons.collections4.CollectionUtils;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.formulas.Literal;
@@ -64,10 +65,10 @@ public class VevosUtils {
         return Arrays.stream(configElements).sorted().collect(Collectors.toList());
     }
 
-    public static List<Path> extendSamplePathsByCommitFolder(List<Path> samplePaths){
+    public static List<Path> extendSamplePathsByCommitFolder(List<Path> samplePaths) throws DirectoryException {
         List<Path> extendedPaths = new LinkedList<>();
         for (Path samplePath : samplePaths){
-            List<Path> subPaths = DirUtils.getSubDirectoryPaths(samplePath);
+            List<Path> subPaths = DirectoryUtils.getSubDirectoryPaths(samplePath);
             if (subPaths.size() != 1){
                 throw new RuntimeException("More than one commit-has subfolder for variant: " + samplePath);
             }
@@ -152,19 +153,4 @@ public class VevosUtils {
             throw new RuntimeException("Condition could not be parsed: " + e.getMessage());
         }
     }
-
-    public static List<String> getSampleFeatures(Path samplePath){
-        try {
-            Set<String> features = new HashSet<>();
-            Path configFolderPath = samplePath.resolve("configs");
-            List<Path> configFilePaths = DirUtils.getFilesInFolder(configFolderPath);
-            for (Path configFilePath : configFilePaths) {
-                features.addAll(Files.readAllLines(configFilePath));
-            }
-            return new ArrayList<>(features);
-        } catch (IOException e){
-            throw new RuntimeException(e);
-        }
-    }
-
 }

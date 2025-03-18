@@ -3,8 +3,6 @@ package picker;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.experiment.picker.featuretracepicker.SingleAssociationTracePicker;
 import at.jku.isse.ecco.experiment.utils.CounterVisitor;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.utils.ServiceUtils;
 import at.jku.isse.ecco.experiment.utils.tracecollector.FeatureTraceCollector;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
@@ -12,6 +10,10 @@ import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,13 +30,16 @@ public class SingleAssociationTracePickerTest {
 
     private final Path repositoryPath = ResourceUtils.getResourceFolderPath("repo");
 
+    public SingleAssociationTracePickerTest() throws ResourceException {
+    }
+
     @BeforeEach
-    public void deleteExistingRepository(){
-        DirUtils.deleteAndCreateDir(this.repositoryPath);
+    public void deleteExistingRepository() throws DirectoryException {
+        DirectoryUtils.deleteAndCreateFolder(this.repositoryPath);
     }
 
     @Test
-    public void pickerPicksNumberEqualToAssociationNumber(){
+    public void pickerPicksNumberEqualToAssociationNumber() throws ResourceException {
         Path repositoryPath = ResourceUtils.getResourceFolderPath("repo");
         EccoService eccoService = ServiceUtils.createEccoService(repositoryPath);
 

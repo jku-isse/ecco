@@ -1,15 +1,18 @@
 package at.jku.isse.ecco.experiment.trainer;
 
-import at.jku.isse.ecco.experiment.config.Boosting;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 
 import at.jku.isse.ecco.experiment.utils.ServiceUtils;
 
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.tinylog.Logger;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -20,7 +23,7 @@ public class EccoRepoTrainer implements EccoTrainerInterface {
     private final List<Path> variantPicks;
     private EccoService eccoService;
 
-    public EccoRepoTrainer(ExperimentRunConfiguration config){
+    public EccoRepoTrainer(ExperimentRunConfiguration config) throws ResourceException {
         this.repositoryPath = Paths.get(ResourceUtils.getResourceFolderPathAsString("repo"));
         this.variantPicks = config.getVariantPicks();
     }
@@ -29,7 +32,7 @@ public class EccoRepoTrainer implements EccoTrainerInterface {
     public void train(){
         try{
             Logger.info("Creating ECCO repository...");
-            DirUtils.createDir(this.repositoryPath);
+            Files.createDirectories(this.repositoryPath);
             this.eccoService = ServiceUtils.createEccoService(this.repositoryPath);
 
             Logger.info("Committing picked variants...");
@@ -62,7 +65,11 @@ public class EccoRepoTrainer implements EccoTrainerInterface {
     @Override
     public void cleanUp() {
         if (this.eccoService != null){ this.eccoService.close(); }
-        DirUtils.deleteDir(this.repositoryPath.resolve(".ecco").toAbsolutePath());
+        try {
+            DirectoryUtils.deleteFolderIfItExists(this.repositoryPath.resolve(".ecco").toAbsolutePath());
+        } catch (DirectoryException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 

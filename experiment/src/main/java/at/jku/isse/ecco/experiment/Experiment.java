@@ -11,7 +11,8 @@ import at.jku.isse.ecco.experiment.runner.ExperimentRunnerInterface;
 import at.jku.isse.ecco.experiment.sample.VevosFeatureSampler;
 import at.jku.isse.ecco.experiment.trainer.EccoTrainerInterface;
 import at.jku.isse.ecco.experiment.trainer.EccoRepoTrainer;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.variantsync.vevos.simulation.io.Resources.ResourceIOException;
 import org.tinylog.Logger;
 
@@ -31,7 +32,7 @@ public class Experiment {
         this.resultPersister = resultPersister;
     }
 
-    public static void main(String[] args) throws ResourceIOException, IOException, URISyntaxException {
+    public static void main(String[] args) throws ResourceIOException, IOException, URISyntaxException, ResourceException {
         /*String databasePath = ResourceUtils.getResourceFolderPathAsString("database");
         ResultPersister persister = new ResultDatabasePersister(databasePath);
         Experiment experiment = new Experiment(false, persister);
@@ -82,7 +83,7 @@ public class Experiment {
             EccoTrainerInterface trainer = null;
             try {
                 if (this.sample) {
-                    sampler.sample(config, 3);
+                    sampler.sample(config, 50);
                 }
                 config.pickVariants();
                 trainer = new EccoRepoTrainer(config);

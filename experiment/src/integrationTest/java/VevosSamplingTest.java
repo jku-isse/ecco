@@ -1,5 +1,6 @@
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.utils.vevos.VevosUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class VevosSamplingTest {
 
     @Test
-    public void sanitizeVevosFileTest() throws IOException {
+    public void sanitizeVevosFileTest() throws IOException, ResourceException {
         Path sourceDirectoryPath = ResourceUtils.getResourceFolderPath("Variants_To_Be_Sanitized");
         Path destinationDirectoryPath = sourceDirectoryPath.resolve("../Sanitation_Folder");
         String sourceDirectoryLocation = sourceDirectoryPath.toString();

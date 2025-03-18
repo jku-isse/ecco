@@ -5,12 +5,14 @@ import at.jku.isse.ecco.experiment.picker.featuretracepicker.RandomFeatureTraceP
 import at.jku.isse.ecco.experiment.runner.RepositoryPreparator;
 import at.jku.isse.ecco.experiment.trainer.EccoRepoTrainer;
 import at.jku.isse.ecco.experiment.trainer.EccoTrainerInterface;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,7 @@ public class RepositoryPreparatorTest {
 
 
     @BeforeEach
-    public void setup() {
+    public void setup() throws ResourceException {
         MockitoAnnotations.initMocks(this);
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         List<Path> variantPicks = new LinkedList<>();
@@ -68,10 +70,9 @@ public class RepositoryPreparatorTest {
     }
 
     @AfterEach
-    public void deleteRepo(){
+    public void deleteRepo() throws DirectoryException, ResourceException {
         Path repoPath = ResourceUtils.getResourceFolderPath("repo");
-        DirUtils.deleteDir(repoPath);
-        DirUtils.createDir(repoPath);
+        DirectoryUtils.deleteAndCreateFolder(repoPath);
     }
 
     private void checkTraces(){

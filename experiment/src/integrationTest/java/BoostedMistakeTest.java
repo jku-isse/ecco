@@ -10,13 +10,15 @@ import at.jku.isse.ecco.experiment.runner.RepositoryPreparator;
 import at.jku.isse.ecco.experiment.sample.VevosFeatureSampler;
 import at.jku.isse.ecco.experiment.trainer.EccoRepoTrainer;
 import at.jku.isse.ecco.experiment.utils.CounterVisitor;
-import at.jku.isse.ecco.experiment.utils.DirUtils;
-import at.jku.isse.ecco.experiment.utils.ResourceUtils;
 import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.mem.maintree.MemBoostedAssociationMerger;
+import at.jku.isse.ecco.util.directory.DirectoryException;
+import at.jku.isse.ecco.util.directory.DirectoryUtils;
+import at.jku.isse.ecco.util.resource.ResourceException;
+import at.jku.isse.ecco.util.resource.ResourceUtils;
 import utils.nodevisitor.EvaluatableNodeCounter;
 import utils.nodevisitor.MistakeCounter;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +38,9 @@ public class BoostedMistakeTest {
     private final Path variantBasePath = ResourceUtils.getResourceFolderPath("sample");
     private final Path repoPath = ResourceUtils.getResourceFolderPath("repo");
 
+    public BoostedMistakeTest() throws ResourceException {
+    }
+
 
     @BeforeEach
     public void setLoggerLevel(){
@@ -47,9 +52,9 @@ public class BoostedMistakeTest {
     }
 
     @BeforeEach
-    public void deleteResources(){
-        DirUtils.deleteAndCreateDir(this.variantBasePath);
-        DirUtils.deleteAndCreateDir(this.repoPath);
+    public void deleteResources() throws DirectoryException {
+        DirectoryUtils.deleteAndCreateFolder(this.variantBasePath);
+        DirectoryUtils.deleteAndCreateFolder(this.repoPath);
     }
 
     private void analyzeAssociations(Collection<Association.Op> associations, MistakeCreator mistakeCreator){
@@ -69,7 +74,7 @@ public class BoostedMistakeTest {
     }
 
     @Test
-    public void boostedMistakesDisableBoosting() throws Resources.ResourceIOException, IOException {
+    public void boostedMistakesDisableBoosting() throws Resources.ResourceIOException, IOException, ResourceException {
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(this.configPath, this.variantBasePath);
         ExperimentRunConfiguration runConfig = experimentConfig.getNextRunConfiguration();
         VevosFeatureSampler sampler = new VevosFeatureSampler();
@@ -94,7 +99,7 @@ public class BoostedMistakeTest {
     }
 
     @Test
-    public void nonConflictingMistakesGetBoosted() throws Resources.ResourceIOException, IOException {
+    public void nonConflictingMistakesGetBoosted() throws Resources.ResourceIOException, IOException, ResourceException {
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(this.configPath, this.variantBasePath);
         ExperimentRunConfiguration runConfig = experimentConfig.getNextRunConfiguration();
         VevosFeatureSampler sampler = new VevosFeatureSampler();
