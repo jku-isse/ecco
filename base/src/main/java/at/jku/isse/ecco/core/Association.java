@@ -8,7 +8,7 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.maintree.DiffConditionVisitor;
+import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**
@@ -169,7 +169,7 @@ public interface Association extends Persistable {
 		}
 
 		default void setDiffConditions(){
-			DiffConditionVisitor visitor = new DiffConditionVisitor(this);
+			RetroactiveConditionSetterVisitor visitor = new RetroactiveConditionSetterVisitor(this);
 			this.getRootNode().traverse(visitor);
 		}
 	}
