@@ -43,7 +43,7 @@ public class FeatureTraceCollector implements Node.Op.NodeVisitor {
         if (!node.isUnique()){ return false; }
         FeatureTrace featureTrace = node.getFeatureTrace();
         if (featureTrace == null) { return false; }
-        if (!featureTrace.containsUserCondition()) {return false;}
+        if (!featureTrace.containsProactiveCondition()) {return false;}
         return true;
     }
 

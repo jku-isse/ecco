@@ -72,7 +72,7 @@ public class MistakeCreatorTest {
         conditionSwapper.init(repo);
 
         conditionSwapper.createMistake(trace1);
-        assertNotEquals("A & B", trace1.getUserConditionString());
+        assertNotEquals("A & B", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class MistakeCreatorTest {
         Conjugator conjugator = new Conjugator(List.of(features));
         conjugator.init(null);
         conjugator.createMistake(trace1);
-        assertEquals("A & B & C", trace1.getUserConditionString());
+        assertEquals("A & B & C", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -117,7 +117,7 @@ public class MistakeCreatorTest {
         Conjugator conjugator = new Conjugator(List.of(features));
         conjugator.init(null);
         conjugator.createMistake(trace1);
-        assertEquals("(A | B) & C", trace1.getUserConditionString());
+        assertEquals("(A | B) & C", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -126,7 +126,7 @@ public class MistakeCreatorTest {
         String[] features = {"A", "B"};
         Conjugator conjugator = new Conjugator(List.of(features));
         conjugator.createMistake(trace1);
-        assertEquals("~A & B", trace1.getUserConditionString());
+        assertEquals("~A & B", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -145,7 +145,7 @@ public class MistakeCreatorTest {
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         featureSwitcher.init(null);
         featureSwitcher.createMistake(trace1);
-        assertEquals("B", trace1.getUserConditionString());
+        assertEquals("B", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -155,7 +155,7 @@ public class MistakeCreatorTest {
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         featureSwitcher.init(null);
         featureSwitcher.createMistake(trace1);
-        assertEquals("~B", trace1.getUserConditionString());
+        assertEquals("~B", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -164,7 +164,7 @@ public class MistakeCreatorTest {
         String[] features = {"A", "B", "C"};
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         featureSwitcher.createMistake(trace1);
-        assertTrue(trace1.getUserConditionString().equals("C & B") || trace1.getUserConditionString().equals("A & C"));
+        assertTrue(trace1.getProactiveConditionString().equals("C & B") || trace1.getProactiveConditionString().equals("A & C"));
     }
 
     @Test
@@ -189,7 +189,7 @@ public class MistakeCreatorTest {
         OperatorSwapper operatorSwapper = new OperatorSwapper();
         operatorSwapper.init(null);
         operatorSwapper.createMistake(trace1);
-        assertEquals("A | B", trace1.getUserConditionString());
+        assertEquals("A | B", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -198,7 +198,7 @@ public class MistakeCreatorTest {
         OperatorSwapper operatorSwapper = new OperatorSwapper();
         operatorSwapper.init(null);
         operatorSwapper.createMistake(trace1);
-        assertEquals("A & B", trace1.getUserConditionString());
+        assertEquals("A & B", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -206,7 +206,7 @@ public class MistakeCreatorTest {
         MockFeatureTrace trace1 = new MockFeatureTrace("A | B | C");
         OperatorSwapper operatorSwapper = new OperatorSwapper();
         operatorSwapper.createMistake(trace1);
-        assertEquals("A & B | C", trace1.getUserConditionString());
+        assertEquals("A & B | C", trace1.getProactiveConditionString());
     }
 
     @Test
@@ -222,7 +222,7 @@ public class MistakeCreatorTest {
         Unconjugator unconjugator = new Unconjugator();
         unconjugator.init(null);
         unconjugator.createMistake(trace1);
-        assertTrue(trace1.getUserConditionString().equals("A & $true") || trace1.getUserConditionString().equals("$true & B"));
+        assertTrue(trace1.getProactiveConditionString().equals("A & $true") || trace1.getProactiveConditionString().equals("$true & B"));
     }
 
     @Test
@@ -230,7 +230,7 @@ public class MistakeCreatorTest {
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
         Unconjugator unconjugator = new Unconjugator();
         unconjugator.createMistake(trace1);
-        assertTrue(trace1.getUserConditionString().equals("A & $true") || trace1.getUserConditionString().equals("$true & B"));
+        assertTrue(trace1.getProactiveConditionString().equals("A & $true") || trace1.getProactiveConditionString().equals("$true & B"));
     }
 
     @Test
@@ -276,7 +276,7 @@ public class MistakeCreatorTest {
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
         mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 40);
 
-        Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getUserConditionString).toList();
+        Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getProactiveConditionString).toList();
         int unchanged = (int) conditions.stream().filter(s -> s.equals("A")).count();
         int changed = (int) conditions.stream().filter(s -> s.equals("B")).count();
         assertEquals(3, unchanged);
@@ -302,7 +302,7 @@ public class MistakeCreatorTest {
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
         mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 70);
 
-        Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getUserConditionString).toList();
+        Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getProactiveConditionString).toList();
         int unchanged = (int) conditions.stream().filter(s -> s.equals("A")).count();
         int changed = (int) conditions.stream().filter(s -> s.equals("B")).count();
         assertEquals(2, unchanged);
@@ -370,9 +370,9 @@ public class MistakeCreatorTest {
     }
 
     static class MockFeatureTrace implements FeatureTrace {
-        private String userCondition;
-        public MockFeatureTrace(String userCondition){
-            this.userCondition = userCondition;
+        private String proactiveCondition;
+        public MockFeatureTrace(String proactiveCondition){
+            this.proactiveCondition = proactiveCondition;
         }
 
         @Override
@@ -391,47 +391,47 @@ public class MistakeCreatorTest {
         }
 
         @Override
-        public boolean containsUserCondition() {
+        public boolean containsProactiveCondition() {
             return false;
         }
 
         @Override
-        public void setDiffCondition(String diffConditionString) {
+        public void setRetroactiveCondition(String retroactiveConditionString) {
 
         }
 
         @Override
-        public void setUserCondition(String userConditionString) {
-            this.userCondition = userConditionString;
+        public void setProactiveCondition(String proactiveConditionString) {
+            this.proactiveCondition = proactiveConditionString;
         }
 
         @Override
-        public void addUserCondition(String userCondition) {
-
-        }
-
-        @Override
-        public void removeUserCondition() {
+        public void addProactiveCondition(String proactiveCondition) {
 
         }
 
         @Override
-        public void addDiffCondition(String diffCondition) {
+        public void removeProactiveCondition() {
 
         }
 
         @Override
-        public void buildUserConditionConjunction(String newCondition) {
+        public void addRetroactiveCondition(String retroactiveCondition) {
 
         }
 
         @Override
-        public String getUserConditionString() {
-            return this.userCondition;
+        public void buildProactiveConditionConjunction(String newCondition) {
+
         }
 
         @Override
-        public String getDiffConditionString() {
+        public String getProactiveConditionString() {
+            return this.proactiveCondition;
+        }
+
+        @Override
+        public String getRetroactiveConditionString() {
             return null;
         }
 

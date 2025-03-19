@@ -1570,7 +1570,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             long extractTime = System.currentTimeMillis();
             Commit commit = repository.extract(configuration, nodes, committer);
-            repository.setDiffConditions();
+            repository.setRetroactiveConditions();
             repository.buildMainTree();
             extractTime = System.currentTimeMillis() - extractTime;
 
@@ -1966,6 +1966,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         Set<Node> nodes = compareArtifacts(checkout);
         this.writer.write(this.baseDir, nodes);
 
+        // TODO: check if rest of method is affected by code change to compose
         // write config file into base directory
         Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
         if (Files.exists(configFile)) {

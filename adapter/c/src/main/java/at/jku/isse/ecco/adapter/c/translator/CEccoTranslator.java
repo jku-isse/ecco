@@ -98,7 +98,7 @@ public class CEccoTranslator {
         Collection<VevosCondition> matchingConditions = this.fileConditionContainer.getMatchingPresenceConditions(lineNumber, lineNumber);
         for(VevosCondition condition : matchingConditions){
             FeatureTrace nodeTrace = node.getFeatureTrace();
-            nodeTrace.buildUserConditionConjunction(condition.getConditionString());
+            nodeTrace.buildProactiveConditionConjunction(condition.getConditionString());
         }
     }
 }

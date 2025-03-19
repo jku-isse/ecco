@@ -16,7 +16,7 @@ public class BoostConditionVisitor implements Node.Op.NodeVisitor {
         if (featureTrace == null){
             return;
         }
-        String userCondition = featureTrace.getUserConditionString();
+        String userCondition = featureTrace.getProactiveConditionString();
         if (userCondition == null){
             return;
         } else if (this.conditionCandidate == null) {

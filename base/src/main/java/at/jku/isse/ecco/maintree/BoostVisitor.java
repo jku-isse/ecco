@@ -15,7 +15,7 @@ public class BoostVisitor implements Node.Op.NodeVisitor{
     public void visit(Node.Op node) {
         FeatureTrace featureTrace = node.getFeatureTrace();
         if (featureTrace != null && node.isUnique()){
-            node.getFeatureTrace().addUserCondition(boostCondition);
+            node.getFeatureTrace().addProactiveCondition(boostCondition);
         }
     }
 }

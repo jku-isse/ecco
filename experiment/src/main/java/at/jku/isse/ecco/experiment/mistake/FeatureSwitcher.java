@@ -23,7 +23,7 @@ public class FeatureSwitcher extends MistakeStrategy {
     @Override
     public String createNewMistake(FeatureTrace trace){
         try {
-            String userConditionString = trace.getUserConditionString();
+            String userConditionString = trace.getProactiveConditionString();
             Formula userCondition = LogicUtils.parseString(this.formulaFactory, userConditionString);
             Collection<String> variables = userCondition.variables().stream().map(Formula::toString).collect(Collectors.toSet());
             if (variables.isEmpty()){
@@ -36,7 +36,7 @@ public class FeatureSwitcher extends MistakeStrategy {
             }
             String randomFeature = CollectionUtils.getRandom(otherFeatures);
             String newCondition = userConditionString.replace(oldFeature, randomFeature);
-            trace.setUserCondition(newCondition);
+            trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
             throw new RuntimeException("FeatureSwitcher failed to create mistake.");

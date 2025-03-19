@@ -7,9 +7,9 @@ import at.jku.isse.ecco.experiment.runner.ExperimentRunner;
 import at.jku.isse.ecco.experiment.runner.ExperimentRunnerInterface;
 import at.jku.isse.ecco.experiment.trainer.EccoRepoTrainer;
 import at.jku.isse.ecco.experiment.trainer.EccoTrainerInterface;
-import at.jku.isse.ecco.featuretrace.evaluation.DiffBasedEvaluation;
+import at.jku.isse.ecco.featuretrace.evaluation.RetroactiveBasedEvaluation;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
-import at.jku.isse.ecco.featuretrace.evaluation.UserBasedEvaluation;
+import at.jku.isse.ecco.featuretrace.evaluation.ProactiveBasedEvaluation;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.util.directory.DirectoryException;
 import at.jku.isse.ecco.util.directory.DirectoryUtils;
@@ -67,7 +67,7 @@ public class ExperimentRunnerTest {
     public void experimentRunsWithoutException() throws ResourceException {
         // mock run config
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -95,7 +95,7 @@ public class ExperimentRunnerTest {
     public void mistakesCanBeBoosted() throws ResourceException {
         // mock run config
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_7");
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{10});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -121,7 +121,7 @@ public class ExperimentRunnerTest {
     @Test
     public void experimentWithBoostRunsWithoutException() throws ResourceException {
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -152,7 +152,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -183,7 +183,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -214,7 +214,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -245,7 +245,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -276,7 +276,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -307,7 +307,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -339,7 +339,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -378,7 +378,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -418,7 +418,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -463,7 +463,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -508,7 +508,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -551,7 +551,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -594,7 +594,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_3");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -637,7 +637,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_3");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -680,7 +680,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_4");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -723,7 +723,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_4");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -766,7 +766,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -809,7 +809,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new DiffBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new RetroactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -846,13 +846,13 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void allFeatureTracesCreatePerfectScoreDespiteFlawedDiffConditions() throws ResourceException {
+    public void allFeatureTracesCreatePerfectScoreDespiteFlawedRetroactiveConditions() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -881,13 +881,13 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void allFeatureTracesAndBoostCreatePerfectScoreDespiteFlawedDiffConditions() throws ResourceException {
+    public void allFeatureTracesAndBoostCreatePerfectScoreDespiteFlawedRetroactiveConditions() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.ENABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -922,7 +922,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
@@ -956,7 +956,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
@@ -990,7 +990,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
@@ -1024,7 +1024,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_1");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{40});
@@ -1058,7 +1058,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{100, 0});
@@ -1090,7 +1090,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_6");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{100, 0});
@@ -1122,7 +1122,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -1152,7 +1152,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_2");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
@@ -1179,7 +1179,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
@@ -1208,7 +1208,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
         Path variantBasePath = ResourceUtils.getResourceFolderPath("Sampling_Base_5");
         when(runConfig.getVariantsDir()).thenReturn(variantBasePath);
-        EvaluationStrategy evaluationStrategy = new UserBasedEvaluation();
+        EvaluationStrategy evaluationStrategy = new ProactiveBasedEvaluation();
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0, 50, 100});

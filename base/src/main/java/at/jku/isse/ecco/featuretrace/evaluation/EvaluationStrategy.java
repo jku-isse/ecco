@@ -8,10 +8,10 @@ public interface EvaluationStrategy {
     FormulaFactory formulaFactory = new FormulaFactory();
 
     boolean holds(Configuration configuration,
-                  String userCondition,
-                  String diffCondition);
+                  String proactiveCondition,
+                  String retroactiveCondition);
 
-    String getOverallConditionString(String userCondition, String diffCondition);
+    String getOverallConditionString(String proactiveCondition, String retroactiveCondition);
 
     String getStrategyName();
 }

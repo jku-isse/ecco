@@ -36,7 +36,7 @@ public class MistakeCreator {
                 return noOfMistakes - mistakesCreated;
             }
             FeatureTrace trace = iterator.next();
-            String originalCondition = trace.getUserConditionString();
+            String originalCondition = trace.getProactiveConditionString();
             if (!this.attemptMistake(trace)){
                 attempts++;
             } else {
@@ -50,7 +50,7 @@ public class MistakeCreator {
     public void restoreOriginalConditions(){
         for (FeatureTrace trace : this.originalConditions.keySet()){
             String originalCondition = this.originalConditions.get(trace);
-            trace.setUserCondition(originalCondition);
+            trace.setProactiveCondition(originalCondition);
         }
     }
 

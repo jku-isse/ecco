@@ -23,7 +23,7 @@ public class Conjugator extends MistakeStrategy {
     @Override
     public String createNewMistake(FeatureTrace trace) {
         try {
-            String userConditionString = trace.getUserConditionString();
+            String userConditionString = trace.getProactiveConditionString();
             Formula userCondition = LogicUtils.parseString(this.formulaFactory, userConditionString);
             Collection<String> variables = userCondition.variables().stream().map(Formula::toString).collect(Collectors.toSet());
             Collection<String> otherFeatures = this.features.stream().filter(f -> !variables.contains(f)).collect(Collectors.toSet());
@@ -33,7 +33,7 @@ public class Conjugator extends MistakeStrategy {
             String randomFeature = CollectionUtils.getRandom(otherFeatures);
             Formula featureFormula = LogicUtils.parseString(this.formulaFactory, randomFeature);
             String newCondition = this.formulaFactory.and(userCondition, featureFormula).toString();
-            trace.setUserCondition(newCondition);
+            trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
             throw new RuntimeException("Conjugator failed to make mistake.");

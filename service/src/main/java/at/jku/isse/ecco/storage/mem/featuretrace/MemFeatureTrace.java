@@ -4,7 +4,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.tree.Node;
-import at.jku.isse.ecco.util.Trees;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.io.parsers.ParserException;
@@ -13,8 +12,8 @@ import java.util.Objects;
 
 public class MemFeatureTrace implements FeatureTrace {
     private Node node;
-    private String userCondition;
-    private String diffCondition;
+    private String proactiveCondition;
+    private String retroactiveCondition;
     private final transient FormulaFactory formulaFactory;
 
 
@@ -25,7 +24,7 @@ public class MemFeatureTrace implements FeatureTrace {
 
     @Override
     public boolean holds(Configuration configuration, EvaluationStrategy evaluationStrategy){
-        return evaluationStrategy.holds(configuration, this.userCondition, this.diffCondition);
+        return evaluationStrategy.holds(configuration, this.proactiveCondition, this.retroactiveCondition);
     }
 
     @Override
@@ -39,24 +38,24 @@ public class MemFeatureTrace implements FeatureTrace {
     }
 
     @Override
-    public boolean containsUserCondition() {
-        return (this.userCondition != null);
+    public boolean containsProactiveCondition() {
+        return (this.proactiveCondition != null);
     }
 
     @Override
-    public void addUserCondition(String userCondition){
-        if (userCondition == null){ return; }
-        this.userCondition = this.combineConditions(this.userCondition, userCondition);
+    public void addProactiveCondition(String proactiveCondition){
+        if (proactiveCondition == null){ return; }
+        this.proactiveCondition = this.combineConditions(this.proactiveCondition, proactiveCondition);
     }
 
     @Override
-    public void removeUserCondition(){
-        this.userCondition = null;
+    public void removeProactiveCondition(){
+        this.proactiveCondition = null;
     }
 
     @Override
-    public void addDiffCondition(String diffCondition){
-        this.diffCondition = this.combineConditions(this.diffCondition, diffCondition);
+    public void addRetroactiveCondition(String retroactiveCondition){
+        this.retroactiveCondition = this.combineConditions(this.retroactiveCondition, retroactiveCondition);
     }
 
     private String combineConditions(String currentCondition, String newCondition){
@@ -73,27 +72,27 @@ public class MemFeatureTrace implements FeatureTrace {
     }
 
     @Override
-    public void buildUserConditionConjunction(String userCondition) {
-        if (userCondition == null) { return; }
-        userCondition = this.sanitizeFormulaString(userCondition);
-        if (this.userCondition == null){
-            this.userCondition = userCondition;
+    public void buildProactiveConditionConjunction(String proactiveCondition) {
+        if (proactiveCondition == null) { return; }
+        proactiveCondition = this.sanitizeFormulaString(proactiveCondition);
+        if (this.proactiveCondition == null){
+            this.proactiveCondition = proactiveCondition;
         } else {
-            Formula currentCondition = this.parseString(this.userCondition);
-            Formula additionalCondition = this.parseString(userCondition);
+            Formula currentCondition = this.parseString(this.proactiveCondition);
+            Formula additionalCondition = this.parseString(proactiveCondition);
             Formula newCondition = this.formulaFactory.and(currentCondition, additionalCondition);
-            this.userCondition = newCondition.toString();
+            this.proactiveCondition = newCondition.toString();
         }
     }
 
     @Override
-    public String getUserConditionString() {
-        return this.userCondition;
+    public String getProactiveConditionString() {
+        return this.proactiveCondition;
     }
 
     @Override
-    public String getDiffConditionString() {
-        return this.diffCondition;
+    public String getRetroactiveConditionString() {
+        return this.retroactiveCondition;
     }
 
     @Override
@@ -102,16 +101,16 @@ public class MemFeatureTrace implements FeatureTrace {
             throw new RuntimeException("Cannot fuse MemFeatureTrace with non-MemFeatureTrace.");
         }
         MemFeatureTrace memFeatureTrace = (MemFeatureTrace) featureTrace;
-        this.addDiffCondition(memFeatureTrace.diffCondition);
-        this.addUserCondition(memFeatureTrace.userCondition);
+        this.addRetroactiveCondition(memFeatureTrace.retroactiveCondition);
+        this.addProactiveCondition(memFeatureTrace.proactiveCondition);
     }
 
     @Override
     public String getOverallConditionString(EvaluationStrategy evaluationStrategy) {
-        if (this.diffCondition == null && this.userCondition == null){
-            throw new RuntimeException("Neither diff-based nor user-based condition exists.");
+        if (this.retroactiveCondition == null && this.proactiveCondition == null){
+            throw new RuntimeException("Neither retroactive nor proactive condition exists.");
         } else  {
-            return evaluationStrategy.getOverallConditionString(this.userCondition, this.diffCondition);
+            return evaluationStrategy.getOverallConditionString(this.proactiveCondition, this.retroactiveCondition);
         }
     }
 
@@ -124,14 +123,14 @@ public class MemFeatureTrace implements FeatureTrace {
     }
 
     @Override
-    public void setDiffCondition(String diffConditionString) {
-        this.diffCondition = diffConditionString;
+    public void setRetroactiveCondition(String retroactiveConditionString) {
+        this.retroactiveCondition = retroactiveConditionString;
     }
 
     @Override
-    public void setUserCondition(String userConditionString) {
-        userConditionString = this.sanitizeFormulaString(userConditionString);
-        this.userCondition = userConditionString;
+    public void setProactiveCondition(String proactiveConditionString) {
+        proactiveConditionString = this.sanitizeFormulaString(proactiveConditionString);
+        this.proactiveCondition = proactiveConditionString;
     }
 
     private String sanitizeFormulaString(String formulaString){
@@ -155,19 +154,19 @@ public class MemFeatureTrace implements FeatureTrace {
             if (memFeatureTrace.node != null) { return false; }
         } else if (!this.node.equals(memFeatureTrace.node)) { return false; }
 
-        if (this.userCondition == null){
-            if (memFeatureTrace.userCondition != null) { return false; }
-        } else if (!(this.userCondition.equals(memFeatureTrace.userCondition))) { return false; }
+        if (this.proactiveCondition == null){
+            if (memFeatureTrace.proactiveCondition != null) { return false; }
+        } else if (!(this.proactiveCondition.equals(memFeatureTrace.proactiveCondition))) { return false; }
 
-        if (this.diffCondition == null){
-            if (memFeatureTrace.diffCondition != null) { return false; }
-        } else if (!(this.diffCondition.equals(memFeatureTrace.diffCondition))) { return false; }
+        if (this.retroactiveCondition == null){
+            if (memFeatureTrace.retroactiveCondition != null) { return false; }
+        } else if (!(this.retroactiveCondition.equals(memFeatureTrace.retroactiveCondition))) { return false; }
 
         return true;
     }
 
     @Override
     public int hashCode(){
-        return Objects.hash(this.node, this.userCondition, this.diffCondition);
+        return Objects.hash(this.node, this.proactiveCondition, this.retroactiveCondition);
     }
 }

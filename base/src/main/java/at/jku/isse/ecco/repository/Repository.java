@@ -119,8 +119,8 @@ public interface Repository extends Persistable {
 
 		EntityFactory getEntityFactory();
 
-		default void setDiffConditions(){
-			this.getAssociations().forEach(Association.Op::setDiffConditions);
+		default void setRetroactiveConditions(){
+			this.getAssociations().forEach(Association.Op::setRetroactiveConditions);
 		}
 
 		void buildMainTree();
@@ -683,13 +683,13 @@ public interface Repository extends Persistable {
 				LazyCompositionRootNode lazyCompRootNode = new LazyCompositionRootNode();
 
 				// todo: turn nodes unique / not unique depending on configuration
-				lazyCompRootNode.addOrigNode(this.getMainTree());
+				//lazyCompRootNode.addOrigNode(this.getMainTree());
 
-				/*
+
 				for (Association.Op association : selectedAssociations) {
 					lazyCompRootNode.addOrigNode(association.getRootNode());
 				}
-				 */
+
 
 				orderWarnings = lazyCompRootNode.getOrderSelector().getUncertainOrders();
 				compRootNode = lazyCompRootNode;

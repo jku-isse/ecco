@@ -17,7 +17,7 @@ public class FeatureTraceCollectorVisitor implements Node.NodeVisitor {
         Node.Op nodeOp = (Node.Op) node;
         FeatureTrace featureTrace = nodeOp.getFeatureTrace();
         if (featureTrace == null) { return; }
-        if (featureTrace.containsUserCondition()) {
+        if (featureTrace.containsProactiveCondition()) {
             this.featureTraces.add(featureTrace);
         }
     }

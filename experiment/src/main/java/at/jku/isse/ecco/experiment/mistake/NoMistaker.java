@@ -6,7 +6,7 @@ import at.jku.isse.ecco.featuretrace.FeatureTrace;
 public class NoMistaker extends MistakeStrategy {
     @Override
     public String createNewMistake(FeatureTrace trace) {
-        return trace.getUserConditionString();
+        return trace.getProactiveConditionString();
     }
 
     @Override

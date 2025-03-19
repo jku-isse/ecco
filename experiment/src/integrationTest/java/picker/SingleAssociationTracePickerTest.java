@@ -68,19 +68,19 @@ public class SingleAssociationTracePickerTest {
         Set<Association> associationSet = new HashSet<>(associations);
         assertEquals(associationSet.size(), associations.size());
 
-        List<Association> associationsWithUserTraces = associations.stream().filter(this::associationContainsTracesWithUserCondition).toList();
-        assertEquals(associationsWithUserTraces.size(), pickedTraces.size());
+        List<Association> associationsWithProactiveTraces = associations.stream().filter(this::associationContainsTracesWithProactiveCondition).toList();
+        assertEquals(associationsWithProactiveTraces.size(), pickedTraces.size());
 
-        // make sure picked traces have user conditions
-        List<FeatureTrace> pickedTracesWithUserCondition = pickedTraces.stream().filter(FeatureTrace::containsUserCondition).toList();
-        assertEquals(pickedTraces.size(), pickedTracesWithUserCondition.size());
+        // make sure picked traces have Proactive conditions
+        List<FeatureTrace> pickedTracesWithProactiveCondition = pickedTraces.stream().filter(FeatureTrace::containsProactiveCondition).toList();
+        assertEquals(pickedTraces.size(), pickedTracesWithProactiveCondition.size());
     }
 
-    private boolean associationContainsTracesWithUserCondition(Association association){
+    private boolean associationContainsTracesWithProactiveCondition(Association association){
         CounterVisitor counterVisitor = new CounterVisitor();
         Node.Op node = (Node.Op) association.getRootNode();
         node.traverse(counterVisitor);
-        return counterVisitor.getUserConditionCount() > 0;
+        return counterVisitor.getProactiveConditionCount() > 0;
     }
 
     private void commitVariant(EccoService eccoService, Path variantPath){

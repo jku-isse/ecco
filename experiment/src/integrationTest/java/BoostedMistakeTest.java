@@ -61,7 +61,7 @@ public class BoostedMistakeTest {
         for (Association.Op association : associations) {
             CounterVisitor counterVisitor = new CounterVisitor();
             association.getRootNode().traverse(counterVisitor);
-            System.out.println("\nnumber of nodes with proactive feature traces in association " + association + ":" + counterVisitor.getUserConditionCount());
+            System.out.println("\nnumber of nodes with proactive feature traces in association " + association + ":" + counterVisitor.getProactiveConditionCount());
 
             MistakeCounter mistakeCounter = new MistakeCounter(mistakeCreator);
             association.getRootNode().traverse(mistakeCounter);

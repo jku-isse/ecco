@@ -14,13 +14,13 @@ public abstract class MistakeStrategy {
 
 
     public void createMistake(FeatureTrace trace){
-        String correctCondition = trace.getUserConditionString();
+        String correctCondition = trace.getProactiveConditionString();
         if (correctCondition == null){
-            throw new RuntimeException("Mistake cannot be added to nonexistent proactive user-trace.");
+            throw new RuntimeException("Mistake cannot be added to nonexistent proactive trace.");
         }
         String faultyCondition = this.mistakeMap.get(correctCondition);
         if (faultyCondition != null){
-            trace.setUserCondition(faultyCondition);
+            trace.setProactiveCondition(faultyCondition);
         } else {
             faultyCondition = this.createNewMistake(trace);
             this.mistakeMap.put(correctCondition, faultyCondition);

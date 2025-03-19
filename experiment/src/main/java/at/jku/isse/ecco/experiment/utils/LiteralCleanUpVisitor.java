@@ -27,17 +27,17 @@ public class LiteralCleanUpVisitor implements Node.Op.NodeVisitor {
         }
 
         String repoName = this.literalNameMap.get(groundTruthName);
-        String diffCondition = trace.getDiffConditionString();
-        String userCondition = trace.getUserConditionString();
+        String retroactiveCondition = trace.getRetroactiveConditionString();
+        String proactiveCondition = trace.getProactiveConditionString();
 
-        if (diffCondition != null){
-            String cleanedDiffCondition = diffCondition.replace(repoName, groundTruthName);
-            trace.setDiffCondition(cleanedDiffCondition);
+        if (retroactiveCondition != null){
+            String cleanedRetroactiveCondition = retroactiveCondition.replace(repoName, groundTruthName);
+            trace.setRetroactiveCondition(cleanedRetroactiveCondition);
         }
 
-        if (userCondition != null){
-            String cleanedUserCondition = userCondition.replace(repoName, groundTruthName);
-            trace.setUserCondition(cleanedUserCondition);
+        if (proactiveCondition != null){
+            String cleanedProactiveCondition = proactiveCondition.replace(repoName, groundTruthName);
+            trace.setProactiveCondition(cleanedProactiveCondition);
         }
     }
 }

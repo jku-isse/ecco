@@ -11,9 +11,9 @@ public class MistakeStrategyTest {
     @Test
     public void mistakeStrategyRemembersMistakes(){
         FeatureTrace firstTrace = mock(FeatureTrace.class);
-        when(firstTrace.getUserConditionString()).thenReturn("sameCondition");
+        when(firstTrace.getProactiveConditionString()).thenReturn("sameCondition");
         FeatureTrace secondTrace = mock(FeatureTrace.class);
-        when(secondTrace.getUserConditionString()).thenReturn("sameCondition");
+        when(secondTrace.getProactiveConditionString()).thenReturn("sameCondition");
 
         MistakeStrategy mistakeStrategyStub = new MistakeStrategy() {
             private int mistakesCreated = 0;
@@ -33,6 +33,6 @@ public class MistakeStrategyTest {
         mistakeStrategyStub.createMistake(firstTrace);
         mistakeStrategyStub.createMistake(secondTrace);
 
-        verify(secondTrace).setUserCondition("FirstFaultyCondition");
+        verify(secondTrace).setProactiveCondition("FirstFaultyCondition");
     }
 }

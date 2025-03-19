@@ -17,7 +17,7 @@ public class Unconjugator extends MistakeStrategy {
     @Override
     public String createNewMistake(FeatureTrace trace) {
         try {
-            String userCondition = trace.getUserConditionString();
+            String userCondition = trace.getProactiveConditionString();
             Formula conditionFormula = LogicUtils.parseString(this.formulaFactory, userCondition);
             Formula cnf = conditionFormula.cnf();
             SortedSet<Variable> variables = cnf.variables();
@@ -36,7 +36,7 @@ public class Unconjugator extends MistakeStrategy {
             Variable toBeSwitched = CollectionUtils.getRandom(variables);
             String cnfString = cnf.toString();
             String newCondition = cnfString.replace(toBeSwitched.name(), formulaFactory.verum().toString());
-            trace.setUserCondition(newCondition);
+            trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e) {
             throw new RuntimeException("Unconjugator failed to create mistake.");

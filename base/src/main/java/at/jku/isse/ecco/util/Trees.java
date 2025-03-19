@@ -84,10 +84,10 @@ public class Trees {
 			if (intersection.getArtifact() != null)
 				intersection.getArtifact().setContainingNode(intersection);
 
-			intersection.combineUserTrace(left);
-			intersection.combineUserTrace(right);
-			left.removeUserTrace();
-			right.removeUserTrace();
+			intersection.combineProactiveTrace(left);
+			intersection.combineProactiveTrace(right);
+			left.removeProactiveTrace();
+			right.removeProactiveTrace();
 		} else {
 			intersection.setUnique(false);
 		}

@@ -13,23 +13,23 @@ public interface FeatureTrace extends Persistable {
 
     void setNode(Node node);
 
-    boolean containsUserCondition();
+    boolean containsProactiveCondition();
 
-    void setDiffCondition(String diffConditionString);
+    void setRetroactiveCondition(String retroactiveConditionString);
 
-    void setUserCondition(String userConditionString);
+    void setProactiveCondition(String proactiveConditionString);
 
-    void addUserCondition(String userCondition);
+    void addProactiveCondition(String proactiveCondition);
 
-    void removeUserCondition();
+    void removeProactiveCondition();
 
-    void addDiffCondition(String diffCondition);
+    void addRetroactiveCondition(String retroactiveCondition);
 
-    void buildUserConditionConjunction(String newCondition);
+    void buildProactiveConditionConjunction(String newCondition);
 
-    String getUserConditionString();
+    String getProactiveConditionString();
 
-    String getDiffConditionString();
+    String getRetroactiveConditionString();
 
     void fuseFeatureTrace(FeatureTrace featureTrace);
 

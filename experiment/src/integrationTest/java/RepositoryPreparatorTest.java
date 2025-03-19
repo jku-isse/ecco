@@ -63,8 +63,8 @@ public class RepositoryPreparatorTest {
         this.repoTraceCopies = new ArrayList<>();
         for (FeatureTrace featureTrace : this.repoTraces){
             FeatureTrace newTrace = new MemFeatureTrace(featureTrace.getNode());
-            newTrace.setDiffCondition(featureTrace.getDiffConditionString());
-            newTrace.setUserCondition(featureTrace.getUserConditionString());
+            newTrace.setRetroactiveCondition(featureTrace.getRetroactiveConditionString());
+            newTrace.setProactiveCondition(featureTrace.getProactiveConditionString());
             this.repoTraceCopies.add(newTrace);
         }
     }

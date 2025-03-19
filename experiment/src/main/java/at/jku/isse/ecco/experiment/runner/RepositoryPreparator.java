@@ -62,7 +62,7 @@ public class RepositoryPreparator {
 
     private void removeTrace(FeatureTrace trace){
         FeatureTrace newTrace = new MemFeatureTrace(trace.getNode());
-        newTrace.setDiffCondition(trace.getDiffConditionString());
+        newTrace.setRetroactiveCondition(trace.getRetroactiveConditionString());
         Node.Op node = (Node.Op) trace.getNode();
         node.setFeatureTrace(newTrace);
     }

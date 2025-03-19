@@ -8,8 +8,8 @@ public class CounterVisitor implements Node.Op.NodeVisitor {
 
     private int nodeCount = 0;
     private int someConditionCount = 0;
-    private int diffConditionCount = 0;
-    private int userConditionCount = 0;
+    private int retroactiveConditionCount = 0;
+    private int proactiveConditionCount = 0;
     private int locationCount = 0;
 
     @Override
@@ -26,16 +26,16 @@ public class CounterVisitor implements Node.Op.NodeVisitor {
             return;
         }
 
-        if (trace.containsUserCondition()){
-            this.userConditionCount++;
+        if (trace.containsProactiveCondition()){
+            this.proactiveConditionCount++;
         }
 
-        String diffCondition = trace.getDiffConditionString();
-        if (diffCondition != null){
-            this.diffConditionCount++;
+        String retroactiveCondition = trace.getRetroactiveConditionString();
+        if (retroactiveCondition != null){
+            this.retroactiveConditionCount++;
         }
 
-        if (trace.containsUserCondition() || diffCondition != null){
+        if (trace.containsProactiveCondition() || retroactiveCondition != null){
             this.someConditionCount++;
         }
     }
@@ -48,12 +48,12 @@ public class CounterVisitor implements Node.Op.NodeVisitor {
         return someConditionCount;
     }
 
-    public int getDiffConditionCount() {
-        return diffConditionCount;
+    public int getRetroactiveConditionCount() {
+        return retroactiveConditionCount;
     }
 
-    public int getUserConditionCount() {
-        return userConditionCount;
+    public int getProactiveConditionCount() {
+        return proactiveConditionCount;
     }
 
     public int getLocationCount() {
@@ -64,8 +64,8 @@ public class CounterVisitor implements Node.Op.NodeVisitor {
         System.out.println(
                 "NodeCount: " + this.nodeCount + "\n"
                 + "SomeConditionCount: " + this.someConditionCount + "\n"
-                + "DiffConditionCount: " + this.diffConditionCount + "\n"
-                + "UserConditionCount: " + this.userConditionCount + "\n"
+                + "RetroactiveConditionCount: " + this.retroactiveConditionCount + "\n"
+                + "ProactiveConditionCount: " + this.proactiveConditionCount + "\n"
                 + "LocationCount: " + this.locationCount
         );
     }

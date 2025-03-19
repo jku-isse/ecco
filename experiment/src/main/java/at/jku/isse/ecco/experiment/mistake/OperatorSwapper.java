@@ -6,7 +6,7 @@ public class OperatorSwapper extends MistakeStrategy {
     @Override
     public String createNewMistake(FeatureTrace trace) {
         try {
-            String oldCondition = trace.getUserConditionString();
+            String oldCondition = trace.getProactiveConditionString();
             String newCondition;
             if (oldCondition.contains("|")) {
                 newCondition = oldCondition.replaceFirst("\\|", "&");
@@ -15,7 +15,7 @@ public class OperatorSwapper extends MistakeStrategy {
             } else {
                 throw new RuntimeException("Featuretrace contains no Operator.");
             }
-            trace.setUserCondition(newCondition);
+            trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
             throw new RuntimeException("OperatorSwapper failed to create mistake.");

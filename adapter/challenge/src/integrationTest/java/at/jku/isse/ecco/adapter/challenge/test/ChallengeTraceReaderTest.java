@@ -36,7 +36,7 @@ public class ChallengeTraceReaderTest {
         Path fileAPath = Paths.get("TestClassA.java");
         Node.Op fileANode = getNodeWithArtifactDataFromCollection(nodes, new PluginArtifactData("placeholderid", fileAPath));
         assertNull(fileANode.getLocation());
-        assertFalse(fileANode.getFeatureTrace().containsUserCondition());
+        assertFalse(fileANode.getFeatureTrace().containsProactiveCondition());
 
         List<Node.Op> classANodes = (List<Node.Op>) fileANode.getChildren();
         assertEquals(1, classANodes.size());
@@ -49,11 +49,11 @@ public class ChallengeTraceReaderTest {
         Path fileBPath = Paths.get("TestClassB.java");
         Node.Op fileBNode = getNodeWithArtifactDataFromCollection(nodes, new PluginArtifactData("placeholderid", fileBPath));
         assertNull(fileANode.getLocation());
-        assertFalse(fileANode.getFeatureTrace().containsUserCondition());
+        assertFalse(fileANode.getFeatureTrace().containsProactiveCondition());
         List<Node.Op> classBNodes = (List<Node.Op>) fileBNode.getChildren();
         assertEquals(1, classBNodes.size());
         Node.Op classBNode = getNodeWithArtifactDataFromCollection(classBNodes, new ClassArtifactData("org.test.TestClassB"));
-        assertFalse(fileANode.getFeatureTrace().containsUserCondition());
+        assertFalse(fileANode.getFeatureTrace().containsProactiveCondition());
         checkNodeLocation(classBNode, 7, 33);
         this.checkTestClassB(classBNode);
     }
@@ -64,22 +64,22 @@ public class ChallengeTraceReaderTest {
 
         Node.Op importGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("IMPORTS"));
         assertNull(importGroupNode.getLocation());
-        assertFalse(importGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(importGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAImports(importGroupNode);
 
         Node.Op methodsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("METHODS"));
         assertNull(methodsGroupNode.getLocation());
-        assertFalse(methodsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(methodsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAMethods(methodsGroupNode);
 
         Node.Op fieldsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("FIELDS"));
         assertNull(fieldsGroupNode.getLocation());
-        assertFalse(fieldsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(fieldsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAFields(fieldsGroupNode);
 
         Node.Op enumsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("ENUMS"));
         assertNull(enumsGroupNode.getLocation());
-        assertFalse(enumsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(enumsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAEnums(enumsGroupNode);
     }
 
@@ -186,22 +186,22 @@ public class ChallengeTraceReaderTest {
 
         Node.Op importGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("IMPORTS"));
         assertNull(importGroupNode.getLocation());
-        assertFalse(importGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(importGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBImports(importGroupNode);
 
         Node.Op methodsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("METHODS"));
         assertNull(methodsGroupNode.getLocation());
-        assertFalse(methodsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(methodsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBMethods(methodsGroupNode);
 
         Node.Op fieldsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("FIELDS"));
         assertNull(fieldsGroupNode.getLocation());
-        assertFalse(fieldsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(fieldsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBFields(fieldsGroupNode);
 
         Node.Op enumsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("ENUMS"));
         assertNull(enumsGroupNode.getLocation());
-        assertFalse(enumsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(enumsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBEnums(enumsGroupNode);
 
         Node.Op innerClassNode = getNodeWithArtifactDataFromCollection(groupNodes, new ClassArtifactData("org.test.TestClassB.InnerClass"));
@@ -274,17 +274,17 @@ public class ChallengeTraceReaderTest {
 
         Node.Op methodsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("METHODS"));
         assertNull(methodsGroupNode.getLocation());
-        assertFalse(methodsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(methodsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkInnerClassMethods(methodsGroupNode);
 
         Node.Op fieldsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("FIELDS"));
         assertNull(fieldsGroupNode.getLocation());
-        assertFalse(fieldsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(fieldsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkInnerClassFields(fieldsGroupNode);
 
         Node.Op enumsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("ENUMS"));
         assertNull(enumsGroupNode.getLocation());
-        assertFalse(enumsGroupNode.getFeatureTrace().containsUserCondition());
+        assertFalse(enumsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkInnerClassEnums(enumsGroupNode);
     }
 
@@ -336,7 +336,7 @@ public class ChallengeTraceReaderTest {
     }
 
     private static void checkNodeTrace(Node.Op node, String featureTrace){
-        String parsedTrace = node.getFeatureTrace().getUserConditionString();
+        String parsedTrace = node.getFeatureTrace().getProactiveConditionString();
         assertEquals(parsedTrace, featureTrace);
     }
 

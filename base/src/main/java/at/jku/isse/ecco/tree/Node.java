@@ -398,9 +398,9 @@ public interface Node extends Persistable {
 
 		void setFeatureTrace(FeatureTrace featureTrace);
 
-		void combineUserTrace(Node.Op other);
+		void combineProactiveTrace(Node.Op other);
 
-		void removeUserTrace();
+		void removeProactiveTrace();
 
 		Location getLocation();
 

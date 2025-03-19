@@ -17,23 +17,23 @@ public class BaseCleanUpVisitor implements Node.Op.NodeVisitor {
     @Override
     public void visit(Node.Op node) {
         FeatureTrace trace = node.getFeatureTrace();
-        String diffCondition = trace.getDiffConditionString();
-        String userCondition = trace.getUserConditionString();
+        String retroactiveCondition = trace.getRetroactiveConditionString();
+        String proactiveCondition = trace.getProactiveConditionString();
         
-        if (diffCondition != null){
-            if (diffCondition.contains("||") && diffCondition.contains(this.baseFeatureName)){
+        if (retroactiveCondition != null){
+            if (retroactiveCondition.contains("||") && retroactiveCondition.contains(this.baseFeatureName)){
                 throw new RuntimeException("seems to be possible for base to be in disjunction.");
             }
-            String cleanedDiffCondition = diffCondition.replace(this.baseFeatureName, this.TRUE_CONSTANT);
-            trace.setDiffCondition(cleanedDiffCondition);
+            String cleanedRetroactiveCondition = retroactiveCondition.replace(this.baseFeatureName, this.TRUE_CONSTANT);
+            trace.setRetroactiveCondition(cleanedRetroactiveCondition);
         }
         
-        if (userCondition != null){
-            if (userCondition.contains("||") && userCondition.contains(this.baseFeatureName)){
+        if (proactiveCondition != null){
+            if (proactiveCondition.contains("||") && proactiveCondition.contains(this.baseFeatureName)){
                 throw new RuntimeException("seems to be possible for base to be in disjunction.");
             }
-            String cleanedUserCondition = userCondition.replace(this.baseFeatureName, this.TRUE_CONSTANT);
-            trace.setUserCondition(cleanedUserCondition);
+            String cleanedProactiveCondition = proactiveCondition.replace(this.baseFeatureName, this.TRUE_CONSTANT);
+            trace.setProactiveCondition(cleanedProactiveCondition);
         }
     }
 }

@@ -26,7 +26,7 @@ public class MistakeCreatorTest {
     MistakeStrategy mistakeStrategyStub = new MistakeStrategy() {
         @Override
         protected String createNewMistake(FeatureTrace trace) {
-            trace.setUserCondition(FAULTY_CONDITION);
+            trace.setProactiveCondition(FAULTY_CONDITION);
             return FAULTY_CONDITION;
         }
     };
@@ -44,7 +44,7 @@ public class MistakeCreatorTest {
         mistakeCreator.createMistakePercentage(repositoryMock, traceCollection, 100);
         mistakeCreator.restoreOriginalConditions();
 
-        assertEquals(2, traceCollection.stream().filter(trace -> trace.getUserConditionString().equals(CORRECT_CONDITION)).toList().size());
+        assertEquals(2, traceCollection.stream().filter(trace -> trace.getProactiveConditionString().equals(CORRECT_CONDITION)).toList().size());
     }
 
     @Test
@@ -59,7 +59,7 @@ public class MistakeCreatorTest {
         mistakeCreator.createMistakePercentage(repositoryMock, traceCollection, 100);
         mistakeCreator.restoreOriginalConditions();
 
-        assertEquals(CORRECT_CONDITION, firstTrace.getUserConditionString());
-        assertEquals(DIFFERENT_CORRECT_CONDITION, secondTrace.getUserConditionString());
+        assertEquals(CORRECT_CONDITION, firstTrace.getProactiveConditionString());
+        assertEquals(DIFFERENT_CORRECT_CONDITION, secondTrace.getProactiveConditionString());
     }
 }

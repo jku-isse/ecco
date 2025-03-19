@@ -168,7 +168,7 @@ public interface Association extends Persistable {
 			this.addObservation(moduleRevision, 1);
 		}
 
-		default void setDiffConditions(){
+		default void setRetroactiveConditions(){
 			RetroactiveConditionSetterVisitor visitor = new RetroactiveConditionSetterVisitor(this);
 			this.getRootNode().traverse(visitor);
 		}

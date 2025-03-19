@@ -289,7 +289,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Collection<VevosCondition> matchingConditions = fileConditionContainer.getMatchingPresenceConditions(startLine, endLine);
 		for(VevosCondition condition : matchingConditions){
 			FeatureTrace nodeTrace = node.getFeatureTrace();
-			nodeTrace.buildUserConditionConjunction(condition.getConditionString());
+			nodeTrace.buildProactiveConditionConjunction(condition.getConditionString());
 		}
 	}
 
@@ -298,7 +298,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Collection<VevosCondition> matchingConditions = fileConditionContainer.getMatchingPresenceConditions(lineNumber, lineNumber);
 		for(VevosCondition condition : matchingConditions){
 			FeatureTrace nodeTrace = node.getFeatureTrace();
-			nodeTrace.buildUserConditionConjunction(condition.getConditionString());
+			nodeTrace.buildProactiveConditionConjunction(condition.getConditionString());
 		}
 	}
 

@@ -18,13 +18,13 @@ public class ConditionSwapper extends MistakeStrategy {
             if (!this.initFlag){
                 throw new RuntimeException("init() not called before creating a mistake in ConditionSwapper.");
             }
-            String oldCondition = trace.getUserConditionString();
+            String oldCondition = trace.getProactiveConditionString();
             Collection<String> differentConditions = this.originalConditions.stream().filter(c -> !oldCondition.equals(c)).collect(Collectors.toSet());
             if (differentConditions.size() == 0){
                 throw new RuntimeException("There are no different conditions to swap with.");
             }
             String newCondition = CollectionUtils.getRandom(differentConditions);
-            trace.setUserCondition(newCondition);
+            trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
             throw new RuntimeException("ConditionSwapper failed to create mistake.");
@@ -35,7 +35,7 @@ public class ConditionSwapper extends MistakeStrategy {
     public void init(Repository.Op repository) {
         this.initFlag = true;
         Collection<FeatureTrace> featureTraces = repository.getFeatureTraces();
-        this.originalConditions = featureTraces.stream().map(FeatureTrace::getUserConditionString).collect(Collectors.toList());
+        this.originalConditions = featureTraces.stream().map(FeatureTrace::getProactiveConditionString).collect(Collectors.toList());
     }
 
     @Override

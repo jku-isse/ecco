@@ -49,8 +49,8 @@ public class MemNode implements Node, Node.Op {
 		MemNode.Op newNode = new MemNode(this.artifact);
 		newNode.setLocation(this.location);
 		if (this.featureTrace != null) {
-			newNode.getFeatureTrace().setUserCondition(this.featureTrace.getUserConditionString());
-			newNode.getFeatureTrace().setDiffCondition(this.featureTrace.getDiffConditionString());
+			newNode.getFeatureTrace().setProactiveCondition(this.featureTrace.getProactiveConditionString());
+			newNode.getFeatureTrace().setRetroactiveCondition(this.featureTrace.getRetroactiveConditionString());
 		}
 		return newNode;
 	}
@@ -82,19 +82,19 @@ public class MemNode implements Node, Node.Op {
 	}
 
 	@Override
-	public void removeUserTrace() {
+	public void removeProactiveTrace() {
 		if (this.featureTrace == null){
 			return;
 		}
-		this.featureTrace.removeUserCondition();
+		this.featureTrace.removeProactiveCondition();
 	}
 
 	@Override
-	public void combineUserTrace(Node.Op other){
+	public void combineProactiveTrace(Node.Op other){
 		if (this.featureTrace == null || other.getFeatureTrace() == null) {
 			return;
 		}
-		this.featureTrace.addUserCondition(other.getFeatureTrace().getUserConditionString());
+		this.featureTrace.addProactiveCondition(other.getFeatureTrace().getProactiveConditionString());
 	}
 
 	@Override
