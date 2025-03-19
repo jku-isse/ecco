@@ -33,20 +33,6 @@ public interface Node extends Persistable {
 	@Override
 	String toString();
 
-	/**
-	 * Traverse the subtree with this node as its root in a depth first manner.
-	 * @param visitor
-	 */
-	default void dfTraverse(NodeVisitor visitor){
-		List<? extends Node> children = this.getChildren();
-		if (children != null) {
-			for (Node child : children) {
-				child.traverse(visitor);
-			}
-		}
-		visitor.visit(this);
-	}
-
 	default void traverse(NodeVisitor visitor) {
 		visitor.visit(this);
 		List<? extends Node> children = this.getChildren();
@@ -231,8 +217,22 @@ public interface Node extends Persistable {
 			}
 		}
 
+		/**
+		 * Traverse the subtree with this node as its root in a depth first manner.
+		 */
+		default void dfTraverse(DfNodeVisitor visitor){
+			for (Node.Op child : this.getChildren()) {
+				child.dfTraverse(visitor);
+			}
+			visitor.dfVisit(this);
+		}
+
 		interface NodeVisitor {
 			void visit(Node.Op node);
+		}
+
+		interface DfNodeVisitor {
+			void dfVisit(Node.Op node);
 		}
 
 
