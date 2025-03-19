@@ -1,7 +1,9 @@
 package at.jku.isse.ecco.storage.mem.repository;
 
+import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
+import at.jku.isse.ecco.featuretrace.evaluation.ProactiveBasedEvaluation;
 import at.jku.isse.ecco.storage.mem.maintree.MemAssociationMerger;
-import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
+import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
@@ -36,7 +38,7 @@ public final class MemRepository implements Repository, Repository.Op {
 	private Node.Op mainTree;
 	private transient FormulaFactory formulaFactory = new FormulaFactory();
 	private MainTreeBuildingStrategy mainTreeBuildingStrategy;
-
+	private EvaluationStrategy evaluationStrategy;
 
 	public MemRepository() {
 		this.features = Maps.mutable.empty();
@@ -44,8 +46,9 @@ public final class MemRepository implements Repository, Repository.Op {
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(2);
-		// todo: use guice for configuration of default merger
+		// todo: use guice for configuration of strategies
 		this.mainTreeBuildingStrategy = new MemAssociationMerger();
+		this.evaluationStrategy = new ProactiveBasedEvaluation();
 	}
 
 	@Override
@@ -272,5 +275,15 @@ public final class MemRepository implements Repository, Repository.Op {
 	@Override
 	public void setMaintreeBuildingStrategy(MainTreeBuildingStrategy mainTreeBuildingStrategy){
 		this.mainTreeBuildingStrategy = mainTreeBuildingStrategy;
+	}
+
+	@Override
+	public void setEvaluationStrategy(EvaluationStrategy evaluationStrategy) {
+		this.evaluationStrategy = evaluationStrategy;
+	}
+
+	@Override
+	public EvaluationStrategy getEvaluationStrategy() {
+		return this.evaluationStrategy;
 	}
 }

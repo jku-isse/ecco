@@ -26,7 +26,7 @@ public class MemBoostedAssociationMergerTest {
         Artifact.Op<?> firstArtifact = entityFactory.createArtifact(firstData);
         Node.Op nodeWithProactiveTrace = entityFactory.createNode(firstArtifact);
         FeatureTrace traceWithProactiveCondition = new MemFeatureTrace(nodeWithProactiveTrace);
-        traceWithProactiveCondition.setUserCondition("FeatureA");
+        traceWithProactiveCondition.setProactiveCondition("FeatureA");
         nodeWithProactiveTrace.setFeatureTrace(traceWithProactiveCondition);
 
         ArtifactData secondData = new LineArtifactData("Node without proactive feature trace");
@@ -45,8 +45,8 @@ public class MemBoostedAssociationMergerTest {
         Node.Op mainTree = merger.buildMainTree(associations);
 
         List<? extends Node.Op> mainTreeNodes = mainTree.getChildren();
-        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getUserConditionString());
-        assertEquals("FeatureA", mainTreeNodes.get(1).getFeatureTrace().getUserConditionString());
+        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getProactiveConditionString());
+        assertEquals("FeatureA", mainTreeNodes.get(1).getFeatureTrace().getProactiveConditionString());
     }
 
     @Test
@@ -57,14 +57,14 @@ public class MemBoostedAssociationMergerTest {
         Artifact.Op<?> firstArtifact = entityFactory.createArtifact(firstData);
         Node.Op nodeWithProactiveTrace = entityFactory.createNode(firstArtifact);
         FeatureTrace traceWithProactiveCondition = new MemFeatureTrace(nodeWithProactiveTrace);
-        traceWithProactiveCondition.setUserCondition("FeatureA");
+        traceWithProactiveCondition.setProactiveCondition("FeatureA");
         nodeWithProactiveTrace.setFeatureTrace(traceWithProactiveCondition);
 
         ArtifactData secondData = new LineArtifactData("Node with conflicting proactive feature trace");
         Artifact.Op<?> secondArtifact = entityFactory.createArtifact(secondData);
         Node.Op nodeWithConflictingProactiveTrace = entityFactory.createNode(secondArtifact);
         FeatureTrace traceWithConflictingProactiveCondition = new MemFeatureTrace(nodeWithConflictingProactiveTrace);
-        traceWithConflictingProactiveCondition.setUserCondition("FeatureB");
+        traceWithConflictingProactiveCondition.setProactiveCondition("FeatureB");
         nodeWithConflictingProactiveTrace.setFeatureTrace(traceWithConflictingProactiveCondition);
 
         Set<Node.Op> nodes = new HashSet<>();
@@ -79,7 +79,7 @@ public class MemBoostedAssociationMergerTest {
         Node.Op mainTree = merger.buildMainTree(associations);
 
         List<? extends Node.Op> mainTreeNodes = mainTree.getChildren();
-        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getUserConditionString());
-        assertEquals("FeatureB", mainTreeNodes.get(1).getFeatureTrace().getUserConditionString());
+        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getProactiveConditionString());
+        assertEquals("FeatureB", mainTreeNodes.get(1).getFeatureTrace().getProactiveConditionString());
     }
 }

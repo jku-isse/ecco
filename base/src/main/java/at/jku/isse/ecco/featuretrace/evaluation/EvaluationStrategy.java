@@ -1,11 +1,10 @@
 package at.jku.isse.ecco.featuretrace.evaluation;
 
 import at.jku.isse.ecco.feature.Configuration;
-import org.logicng.formulas.FormulaFactory;
 
-public interface EvaluationStrategy {
+import java.io.Serializable;
 
-    FormulaFactory formulaFactory = new FormulaFactory();
+public interface EvaluationStrategy extends Serializable {
 
     boolean holds(Configuration configuration,
                   String proactiveCondition,

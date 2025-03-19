@@ -2,9 +2,9 @@ package at.jku.isse.ecco.storage.mem.maintree;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
-import at.jku.isse.ecco.maintree.BoostConditionVisitor;
-import at.jku.isse.ecco.maintree.BoostVisitor;
-import at.jku.isse.ecco.maintree.BoostedAssociationMerger;
+import at.jku.isse.ecco.maintree.building.BoostConditionVisitor;
+import at.jku.isse.ecco.maintree.building.BoostVisitor;
+import at.jku.isse.ecco.maintree.building.BoostedAssociationMerger;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
 

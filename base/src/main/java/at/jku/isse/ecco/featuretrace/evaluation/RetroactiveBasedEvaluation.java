@@ -4,6 +4,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
 
 /**
  * The retroactive condition of a feature trace determines the overall condition.
@@ -12,6 +13,9 @@ import org.logicng.formulas.Formula;
 public class RetroactiveBasedEvaluation implements EvaluationStrategy{
 
     private final String STRATEGY_NAME = "RETROACTIVE";
+
+    private transient FormulaFactory formulaFactory = new FormulaFactory();
+
 
     @Override
     public boolean holds(Configuration configuration,

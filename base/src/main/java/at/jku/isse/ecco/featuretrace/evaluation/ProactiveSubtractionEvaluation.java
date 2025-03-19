@@ -4,6 +4,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
 
 /**
  * Represents a conjunction of retroactive and proactive condition.
@@ -13,6 +14,9 @@ import org.logicng.formulas.Formula;
 public class ProactiveSubtractionEvaluation implements EvaluationStrategy{
 
     private final String STRATEGY_NAME = "PROACTIVE-SUBTRACTION";
+
+    private transient FormulaFactory formulaFactory = new FormulaFactory();
+
 
     @Override
     public boolean holds (Configuration configuration,

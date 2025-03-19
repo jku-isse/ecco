@@ -3,6 +3,7 @@ package at.jku.isse.ecco.repository;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.composition.CheckoutComposer;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
 import at.jku.isse.ecco.counter.ModuleCounter;
@@ -13,7 +14,8 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
-import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
+import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
+import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.EmptyModule;
 import at.jku.isse.ecco.module.Module;
@@ -64,6 +66,9 @@ public interface Repository extends Persistable {
 	Collection<FeatureTrace> getFeatureTraces();
 
 	void setMaintreeBuildingStrategy(MainTreeBuildingStrategy mainTreeBuildingStrategy);
+
+	void setEvaluationStrategy(EvaluationStrategy evaluationStrategy);
+	EvaluationStrategy getEvaluationStrategy();
 
 	/**
 	 * Private repository interface.
@@ -614,11 +619,6 @@ public interface Repository extends Persistable {
 		 * @return The checkout object.
 		 */
 		default Checkout compose(Configuration configuration) {
-			return this.compose(configuration, true);
-		}
-
-		default Checkout compose(Configuration configuration, boolean lazy) {
-			// todo: get missing and surplus from mainTree?
 			checkNotNull(configuration);
 
 			Set<Association.Op> selectedAssociations = new HashSet<>();
@@ -628,13 +628,12 @@ public interface Repository extends Persistable {
 				}
 			}
 
-			Checkout checkout = this.compose(selectedAssociations, lazy);
-			checkout.setConfiguration(configuration);
+			Node.Op mainTree = this.getMainTree();
+			CheckoutComposer composer = new CheckoutComposer(configuration, this.getEvaluationStrategy());
+			Checkout checkout = composer.composeCheckout(mainTree, selectedAssociations);
 
-			//Set<ModuleRevision> desiredModules = configuration.computeModules(this.repository.getMaxOrder());
 			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
 			Set<ModuleRevision> missingModules = new HashSet<>();
-			//Set<ModuleRevision> surplusModules = new HashSet<>();
 			Map<ModuleRevision,String> surplusModules = new HashMap<>();
 
 			// compute missing
@@ -682,14 +681,9 @@ public interface Repository extends Persistable {
 			if (lazy) {
 				LazyCompositionRootNode lazyCompRootNode = new LazyCompositionRootNode();
 
-				// todo: turn nodes unique / not unique depending on configuration
-				//lazyCompRootNode.addOrigNode(this.getMainTree());
-
-
 				for (Association.Op association : selectedAssociations) {
 					lazyCompRootNode.addOrigNode(association.getRootNode());
 				}
-
 
 				orderWarnings = lazyCompRootNode.getOrderSelector().getUncertainOrders();
 				compRootNode = lazyCompRootNode;

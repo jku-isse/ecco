@@ -9,7 +9,7 @@ import at.jku.isse.ecco.experiment.result.ResultCalculator;
 import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
-import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
+import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.storage.mem.maintree.MemAssociationMerger;
 import at.jku.isse.ecco.storage.mem.maintree.MemBoostedAssociationMerger;
 import at.jku.isse.ecco.tree.*;

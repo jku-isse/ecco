@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.maintree;
+package at.jku.isse.ecco.maintree.building;
 
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.tree.Node;

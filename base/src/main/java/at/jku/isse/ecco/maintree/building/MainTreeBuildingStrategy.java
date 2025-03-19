@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.maintree;
+package at.jku.isse.ecco.maintree.building;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;

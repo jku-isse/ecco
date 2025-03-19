@@ -4,6 +4,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
 
 /**
  * The proactive condition of a feature trace determines the overall condition.
@@ -13,14 +14,18 @@ public class ProactiveBasedEvaluation implements EvaluationStrategy{
 
     private final String STRATEGY_NAME = "PROACTIVE";
 
+    private transient FormulaFactory formulaFactory = new FormulaFactory();
+
+
     @Override
     public boolean holds(Configuration configuration,
                          String proactiveCondition,
                          String retroactiveCondition) {
         Assignment assignment = configuration.toAssignment(this.formulaFactory);
-        assert(proactiveCondition != null);
-        Formula proactiveFormula = LogicUtils.parseString(this.formulaFactory, proactiveCondition);
-        return proactiveFormula.evaluate(assignment);
+        String overallConditionString = this.getOverallConditionString(proactiveCondition, retroactiveCondition);
+        Formula formula = LogicUtils.parseString(this.formulaFactory, overallConditionString);
+        boolean x = formula.evaluate(assignment);
+        return x;
     }
 
     @Override

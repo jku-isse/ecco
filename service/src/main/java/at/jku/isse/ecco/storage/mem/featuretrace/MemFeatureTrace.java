@@ -16,7 +16,6 @@ public class MemFeatureTrace implements FeatureTrace {
     private String retroactiveCondition;
     private final transient FormulaFactory formulaFactory;
 
-
     public MemFeatureTrace(Node node){
         this.node = node;
         this.formulaFactory = new FormulaFactory();

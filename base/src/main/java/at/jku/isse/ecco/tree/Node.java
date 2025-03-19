@@ -221,7 +221,9 @@ public interface Node extends Persistable {
 		 * Traverse the subtree with this node as its root in a depth first manner.
 		 */
 		default void dfTraverse(DfNodeVisitor visitor){
-			for (Node.Op child : this.getChildren()) {
+			// necessary in case child will be removed (list must not be changed during iteration)
+			List<Node.Op> children = new LinkedList<>(this.getChildren());
+			for (Node.Op child : children) {
 				child.dfTraverse(visitor);
 			}
 			visitor.dfVisit(this);

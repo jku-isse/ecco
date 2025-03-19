@@ -10,7 +10,7 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
-import at.jku.isse.ecco.maintree.MainTreeBuildingStrategy;
+import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
@@ -507,6 +507,16 @@ public class MistakeCreatorTest {
         @Override
         public void setMaintreeBuildingStrategy(MainTreeBuildingStrategy mainTreeBuildingStrategy) {
 
+        }
+
+        @Override
+        public void setEvaluationStrategy(EvaluationStrategy evaluationStrategy) {
+
+        }
+
+        @Override
+        public EvaluationStrategy getEvaluationStrategy() {
+            return null;
         }
 
         @Override
