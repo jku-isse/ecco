@@ -269,6 +269,17 @@ public interface Node extends Persistable {
 		 */
 		void setParent(Node.Op parent);
 
+		/**
+		 * Removes this node as a child from the parent.
+		 */
+		default void removeParent(){
+			Node.Op parent = this.getParent();
+			if (parent == null){
+				return;
+			}
+			parent.removeChild(this);
+		}
+
 		@Override
 		List<? extends Op> getChildren();
 
