@@ -111,165 +111,165 @@ public class RepositoryPreparatorTest {
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher1(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature1(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 0, 0);
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher2(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature2(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 0, 50);
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher3(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature3(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher4(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature4(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 0);
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher5(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature5(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 50);
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher6(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature6(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 100);
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher7(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature7(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 0);
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher8(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature8(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 50);
     }
 
     @Test
-    public void testUnchangedTracesFeatureSwitcher9(){
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+    public void testUnchangedTracesSwappedFeature9(){
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 100);
     }
 
 
 
     @Test
-    public void testUnchangedTracesConditionSwapper1(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition1(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 0, 0);
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper2(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition2(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 0, 50);
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper3(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition3(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper4(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition4(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 0);
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper5(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition5(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 50);
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper6(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition6(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 100);
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper7(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition7(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 0);
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper8(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition8(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 50);
     }
 
     @Test
-    public void testUnchangedTracesConditionSwapper9(){
-        MistakeStrategy mistakeStrategy = new ConditionSwapper();
+    public void testUnchangedTracesSwappedCondition9(){
+        MistakeStrategy mistakeStrategy = new SwappedCondition();
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 100);
     }
 
 
 
     @Test
-    public void testUnchangedTracesConjugator1(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction1(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 0, 0);
     }
 
     @Test
-    public void testUnchangedTracesConjugator2(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction2(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 0, 50);
     }
 
     @Test
-    public void testUnchangedTracesConjugator3(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction3(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
     }
 
     @Test
-    public void testUnchangedTracesConjugator4(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction4(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 0);
     }
 
     @Test
-    public void testUnchangedTracesConjugator5(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction5(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 50);
     }
 
     @Test
-    public void testUnchangedTracesConjugator6(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction6(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 50, 100);
     }
 
     @Test
-    public void testUnchangedTracesConjugator7(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction7(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 0);
     }
 
     @Test
-    public void testUnchangedTracesConjugator8(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction8(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 50);
     }
 
     @Test
-    public void testUnchangedTracesConjugator9(){
-        MistakeStrategy mistakeStrategy = new Conjugator(runConfig.getFeatures());
+    public void testUnchangedTracesErroneousConjunction9(){
+        MistakeStrategy mistakeStrategy = new ErroneousConjunction(runConfig.getFeatures());
         testUnchangedTracesAfterUndoingPreparation(mistakeStrategy, 100, 100);
     }
 }

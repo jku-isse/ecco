@@ -75,7 +75,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -103,7 +103,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{100});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_AB"));
@@ -129,7 +129,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -156,7 +156,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -187,7 +187,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -218,7 +218,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -249,7 +249,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -280,7 +280,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -311,7 +311,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -343,7 +343,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -382,7 +382,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -422,7 +422,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -467,7 +467,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -512,7 +512,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -555,7 +555,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -598,7 +598,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_AB"));
@@ -641,7 +641,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_AB"));
@@ -684,7 +684,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_B"));
@@ -727,7 +727,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_B"));
@@ -770,7 +770,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_Null"));
@@ -813,7 +813,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_Null"));
@@ -856,7 +856,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_Null"));
@@ -891,7 +891,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_Null"));
@@ -916,7 +916,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingConditionSwapper() throws ResourceException {
+    public void mistakesWorsenResultUsingSwappedCondition() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -926,7 +926,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"ConditionSwapper"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedCondition"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -950,7 +950,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingConjugator() throws ResourceException {
+    public void mistakesWorsenResultUsingErroneousConjunction() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -960,7 +960,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"Conjugator"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"ErroneousConjunction"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -984,7 +984,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingFeatureSwitcher() throws ResourceException {
+    public void mistakesWorsenResultUsingSwappedFeature() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -994,7 +994,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -1018,7 +1018,7 @@ public class ExperimentRunnerTest {
     }
 
     @Test
-    public void mistakesWorsenResultUsingOperatorSwapper() throws ResourceException {
+    public void mistakesWorsenResultUsingSwappedOperator() throws ResourceException {
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1028,7 +1028,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{40});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"OperatorSwapper"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedOperator"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -1062,7 +1062,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{100, 0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -1094,7 +1094,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{100, 0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE", "BASE, FEATUREA", "BASE, FEATUREB", "BASE, FEATUREA, FEATUREB"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -1126,7 +1126,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_Null"));
@@ -1156,7 +1156,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_A"));
@@ -1183,7 +1183,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{50});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_Null"));
@@ -1202,7 +1202,7 @@ public class ExperimentRunnerTest {
     @Test
     public void correctNumberOfExperimentsRun() throws ResourceException {
         // should only run mistake% == 0 for ft% = 0
-        // should only run NoMistaker for mistake% = 0
+        // should only run NoMistake for mistake% = 0
         when(runConfig.getBoosting()).thenReturn(Boosting.DISABLED);
         when(runConfig.getFeatureTracePercentages()).thenReturn(new Integer[]{0, 50, 100});
         when(runConfig.getFeatures()).thenReturn(List.of("FEATUREA", "FEATUREB"));
@@ -1212,7 +1212,7 @@ public class ExperimentRunnerTest {
         when(runConfig.getEvaluationStrategies()).thenReturn(List.of(evaluationStrategy));
         when(runConfig.getFeaturesIncludingBase()).thenReturn(List.of("FEATUREA", "FEATUREB", "BASE"));
         when(runConfig.getMistakePercentages()).thenReturn(new Integer[]{0, 50, 100});
-        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"FeatureSwitcher", "ConditionSwapper"});
+        when(runConfig.getMistakeStrategies()).thenReturn(new String[]{"SwappedFeature", "SwappedCondition"});
         when(runConfig.getVariantConfigurations()).thenReturn(List.of("BASE"));
         List<Path> variantPicks = new LinkedList<>();
         variantPicks.add(variantBasePath.resolve("Variant_Null"));

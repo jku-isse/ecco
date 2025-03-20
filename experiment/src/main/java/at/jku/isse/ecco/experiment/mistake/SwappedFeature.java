@@ -9,11 +9,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class FeatureSwitcher extends MistakeStrategy {
+public class SwappedFeature extends MistakeStrategy {
 
     private final List<String> features;
 
-    public FeatureSwitcher(List<String> features){
+    public SwappedFeature(List<String> features){
         this.features = features;
     }
 
@@ -36,12 +36,12 @@ public class FeatureSwitcher extends MistakeStrategy {
             trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
-            throw new RuntimeException("FeatureSwitcher failed to create mistake.");
+            throw new RuntimeException("SwappedFeature failed to create mistake.");
         }
     }
 
     @Override
     public String toString(){
-        return "FeatureSwitcher (Features: " + this.features + ")";
+        return "SwappedFeature (Features: " + this.features + ")";
     }
 }

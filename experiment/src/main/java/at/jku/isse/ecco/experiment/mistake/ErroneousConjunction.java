@@ -5,17 +5,16 @@ import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class Conjugator extends MistakeStrategy {
+public class ErroneousConjunction extends MistakeStrategy {
 
     private final List<String> features;
 
-    public Conjugator(List<String> features){
+    public ErroneousConjunction(List<String> features){
         this.features = features;
     }
 
@@ -35,12 +34,12 @@ public class Conjugator extends MistakeStrategy {
             trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
-            throw new RuntimeException("Conjugator failed to make mistake.");
+            throw new RuntimeException("ErroneousConjunction failed to make mistake.");
         }
     }
 
     @Override
     public String toString(){
-        return "ConditionSwapper (Features: " + this.features + ")";
+        return "SwappedCondition (Features: " + this.features + ")";
     }
 }

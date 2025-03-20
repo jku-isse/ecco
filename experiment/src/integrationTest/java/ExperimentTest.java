@@ -68,11 +68,11 @@ public class ExperimentTest {
     }
 
     @Test
-    public void conjugatorCreatesFixedResults() throws ResourceException {
+    public void erroneousConjunctionCreatesFixedResults() throws ResourceException {
         ResultInMemoryPersister persister = new ResultInMemoryPersister();
         Experiment experiment = new Experiment(true, persister);
 
-        String configPath = ResourceUtils.getResourceFolderPathAsString("configs/conjugator_experiment.properties");
+        String configPath = ResourceUtils.getResourceFolderPathAsString("configs/erroneous_conjunction_experiment.properties");
         Path variantBasePath = ResourceUtils.getResourceFolderPath("sample");
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(configPath, variantBasePath);
         experiment.runExperiment(experimentConfig);

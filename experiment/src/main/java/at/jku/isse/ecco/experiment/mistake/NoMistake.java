@@ -3,7 +3,7 @@ package at.jku.isse.ecco.experiment.mistake;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 
 
-public class NoMistaker extends MistakeStrategy {
+public class NoMistake extends MistakeStrategy {
     @Override
     public String createNewMistake(FeatureTrace trace) {
         return trace.getProactiveConditionString();
@@ -11,6 +11,6 @@ public class NoMistaker extends MistakeStrategy {
 
     @Override
     public String toString(){
-        return "NoMistaker";
+        return "NoMistake";
     }
 }

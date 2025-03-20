@@ -12,7 +12,7 @@ import org.logicng.io.parsers.ParserException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class ConjugatorEvaluationTest {
+public class ErroneousConjunctionEvaluationTest {
 
 
     @Test

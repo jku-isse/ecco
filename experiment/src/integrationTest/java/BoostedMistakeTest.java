@@ -2,7 +2,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.experiment.config.ExperimentConfiguration;
 import at.jku.isse.ecco.experiment.config.ExperimentRunConfiguration;
 import at.jku.isse.ecco.experiment.picker.featuretracepicker.RandomFeatureTracePicker;
-import at.jku.isse.ecco.experiment.mistake.FeatureSwitcher;
+import at.jku.isse.ecco.experiment.mistake.SwappedFeature;
 import at.jku.isse.ecco.experiment.mistake.MistakeCreator;
 import at.jku.isse.ecco.experiment.mistake.MistakeStrategy;
 import at.jku.isse.ecco.experiment.picker.featuretracepicker.SingleAssociationTracePicker;
@@ -84,7 +84,7 @@ public class BoostedMistakeTest {
         trainer.train();
         Repository.Op repo = trainer.getRepository();
 
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         MistakeCreator mistakeCreator = new MistakeCreator(mistakeStrategy);
         MemoryListPicker<FeatureTrace> listPicker = new RandomFeatureTracePicker();
         RepositoryPreparator repositoryPreparator = new RepositoryPreparator(mistakeCreator, listPicker);
@@ -109,7 +109,7 @@ public class BoostedMistakeTest {
         trainer.train();
         Repository.Op repo = trainer.getRepository();
 
-        MistakeStrategy mistakeStrategy = new FeatureSwitcher(runConfig.getFeatures());
+        MistakeStrategy mistakeStrategy = new SwappedFeature(runConfig.getFeatures());
         MistakeCreator mistakeCreator = new MistakeCreator(mistakeStrategy);
         MemoryListPicker<FeatureTrace> listPicker = new SingleAssociationTracePicker();
         RepositoryPreparator repositoryPreparator = new RepositoryPreparator(mistakeCreator, listPicker);

@@ -5,13 +5,12 @@ import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 import org.logicng.formulas.Variable;
 
 import java.util.SortedSet;
 
 
-public class Unconjugator extends MistakeStrategy {
+public class MissingConjunction extends MistakeStrategy {
 
     @Override
     public String createNewMistake(FeatureTrace trace) {
@@ -38,12 +37,12 @@ public class Unconjugator extends MistakeStrategy {
             trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e) {
-            throw new RuntimeException("Unconjugator failed to create mistake.");
+            throw new RuntimeException("MissingConjunction failed to create mistake.");
         }
     }
 
     @Override
     public String toString(){
-        return "Unconjugator";
+        return "MissingConjunction";
     }
 }

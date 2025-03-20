@@ -55,7 +55,7 @@ public class MistakeCreatorTest {
 
 
     @Test
-    public void conditionSwapperSwapsCondition(){
+    public void swappedConditionSwapsCondition(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
         MockFeatureTrace trace2 = new MockFeatureTrace("A & B");
         MockFeatureTrace trace3 = new MockFeatureTrace("A | B");
@@ -65,15 +65,15 @@ public class MistakeCreatorTest {
         traceCollection.add(trace3);
         MockRepository repo = new MockRepository(traceCollection);
 
-        ConditionSwapper conditionSwapper = new ConditionSwapper();
-        conditionSwapper.init(repo);
+        SwappedCondition swappedCondition = new SwappedCondition();
+        swappedCondition.init(repo);
 
-        conditionSwapper.createMistake(trace1);
+        swappedCondition.createMistake(trace1);
         assertNotEquals("A & B", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void conditionSwapperCantSwapIfAllConditionsAreTheSame(){
+    public void swappedConditionCantSwapIfAllConditionsAreTheSame(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
         MockFeatureTrace trace2 = new MockFeatureTrace("A & B");
         MockFeatureTrace trace3 = new MockFeatureTrace("A & B");
@@ -83,175 +83,175 @@ public class MistakeCreatorTest {
         traceCollection.add(trace3);
         MockRepository repo = new MockRepository(traceCollection);
 
-        ConditionSwapper conditionSwapper = new ConditionSwapper();
-        conditionSwapper.init(repo);
+        SwappedCondition swappedCondition = new SwappedCondition();
+        swappedCondition.init(repo);
 
-        assertThrows(RuntimeException.class, () -> conditionSwapper.createMistake(trace1));
+        assertThrows(RuntimeException.class, () -> swappedCondition.createMistake(trace1));
     }
 
     @Test
-    public void conditionSwapperThrowsExceptionWhenTryingToCreateMistakeWithoutInit(){
+    public void swappedConditionThrowsExceptionWhenTryingToCreateMistakeWithoutInit(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
-        ConditionSwapper conditionSwapper = new ConditionSwapper();
-        assertThrows(RuntimeException.class, () -> conditionSwapper.createMistake(trace1));
+        SwappedCondition swappedCondition = new SwappedCondition();
+        assertThrows(RuntimeException.class, () -> swappedCondition.createMistake(trace1));
     }
 
 
     @Test
-    public void conjugatorCreatesBiggerConjunction(){
+    public void erroneousConjunctionCreatesBiggerConjunction(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
         String[] features = {"A", "B", "C"};
-        Conjugator conjugator = new Conjugator(List.of(features));
-        conjugator.init(null);
-        conjugator.createMistake(trace1);
+        ErroneousConjunction erroneousConjunction = new ErroneousConjunction(List.of(features));
+        erroneousConjunction.init(null);
+        erroneousConjunction.createMistake(trace1);
         assertEquals("A & B & C", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void conjugatorCreatesConjunctionFromDisjunction(){
+    public void erroneousConjunctionCreatesConjunctionFromDisjunction(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A | B");
         String[] features = {"A", "B", "C"};
-        Conjugator conjugator = new Conjugator(List.of(features));
-        conjugator.init(null);
-        conjugator.createMistake(trace1);
+        ErroneousConjunction erroneousConjunction = new ErroneousConjunction(List.of(features));
+        erroneousConjunction.init(null);
+        erroneousConjunction.createMistake(trace1);
         assertEquals("(A | B) & C", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void conjugatorWorksWithoutInit(){
+    public void erroneousConjunctionWorksWithoutInit(){
         MockFeatureTrace trace1 = new MockFeatureTrace("~A");
         String[] features = {"A", "B"};
-        Conjugator conjugator = new Conjugator(List.of(features));
-        conjugator.createMistake(trace1);
+        ErroneousConjunction erroneousConjunction = new ErroneousConjunction(List.of(features));
+        erroneousConjunction.createMistake(trace1);
         assertEquals("~A & B", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void conjugatorThrowsExceptionIfThereAreNotEnoughFeatures(){
+    public void erroneousConjunctionThrowsExceptionIfThereAreNotEnoughFeatures(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A | B");
         String[] features = {"A", "B"};
-        Conjugator conjugator = new Conjugator(List.of(features));
-        conjugator.init(null);
-        assertThrows(RuntimeException.class, () -> conjugator.createMistake(trace1));
+        ErroneousConjunction erroneousConjunction = new ErroneousConjunction(List.of(features));
+        erroneousConjunction.init(null);
+        assertThrows(RuntimeException.class, () -> erroneousConjunction.createMistake(trace1));
     }
 
     @Test
-    public void featureSwitcherSwitchesFeature(){
+    public void swappedFeatureSwapsFeature(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A");
         String[] features = {"A", "B"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        featureSwitcher.init(null);
-        featureSwitcher.createMistake(trace1);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        swappedFeature.init(null);
+        swappedFeature.createMistake(trace1);
         assertEquals("B", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void featureSwitcherSwitchesFeatureInNegation(){
+    public void swappedFeatureSwapsFeatureInNegation(){
         MockFeatureTrace trace1 = new MockFeatureTrace("~A");
         String[] features = {"A", "B"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        featureSwitcher.init(null);
-        featureSwitcher.createMistake(trace1);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        swappedFeature.init(null);
+        swappedFeature.createMistake(trace1);
         assertEquals("~B", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void featureSwitcherWorksWithoutInit(){
+    public void swappedFeatureWorksWithoutInit(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
         String[] features = {"A", "B", "C"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        featureSwitcher.createMistake(trace1);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        swappedFeature.createMistake(trace1);
         assertTrue(trace1.getProactiveConditionString().equals("C & B") || trace1.getProactiveConditionString().equals("A & C"));
     }
 
     @Test
-    public void featureSwitcherThrowsExceptionIfThereAreNoOtherFeatures(){
+    public void swappedFeatureThrowsExceptionIfThereAreNoOtherFeatures(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
         String[] features = {"A", "B"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        assertThrows(RuntimeException.class, () -> featureSwitcher.createMistake(trace1));
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        assertThrows(RuntimeException.class, () -> swappedFeature.createMistake(trace1));
     }
 
     @Test
-    public void featureSwitcherThrowsExceptionIfThereAreNoFeaturesInTheCondition(){
+    public void swappedFeatureThrowsExceptionIfThereAreNoFeaturesInTheCondition(){
         MockFeatureTrace trace1 = new MockFeatureTrace("$true");
         String[] features = {"A", "B"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        assertThrows(RuntimeException.class, () -> featureSwitcher.createMistake(trace1));
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        assertThrows(RuntimeException.class, () -> swappedFeature.createMistake(trace1));
     }
 
     @Test
-    public void operatorSwapperSwapsConjunction(){
+    public void swappedOperatorSwapsConjunction(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
-        OperatorSwapper operatorSwapper = new OperatorSwapper();
-        operatorSwapper.init(null);
-        operatorSwapper.createMistake(trace1);
+        SwappedOperator swappedOperator = new SwappedOperator();
+        swappedOperator.init(null);
+        swappedOperator.createMistake(trace1);
         assertEquals("A | B", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void operatorSwapperSwapsDisjunction(){
+    public void swappedOperatorSwapsDisjunction(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A | B");
-        OperatorSwapper operatorSwapper = new OperatorSwapper();
-        operatorSwapper.init(null);
-        operatorSwapper.createMistake(trace1);
+        SwappedOperator swappedOperator = new SwappedOperator();
+        swappedOperator.init(null);
+        swappedOperator.createMistake(trace1);
         assertEquals("A & B", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void operatorSwapperWorksWithoutInit(){
+    public void swappedOperatorWorksWithoutInit(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A | B | C");
-        OperatorSwapper operatorSwapper = new OperatorSwapper();
-        operatorSwapper.createMistake(trace1);
+        SwappedOperator swappedOperator = new SwappedOperator();
+        swappedOperator.createMistake(trace1);
         assertEquals("A & B | C", trace1.getProactiveConditionString());
     }
 
     @Test
-    public void operatorSwapperThrowsExceptionWhenThereAreNoOperators(){
+    public void swappedOperatorThrowsExceptionWhenThereAreNoOperators(){
         MockFeatureTrace trace1 = new MockFeatureTrace("~A");
-        OperatorSwapper operatorSwapper = new OperatorSwapper();
-        assertThrows(RuntimeException.class, () -> operatorSwapper.createMistake(trace1));
+        SwappedOperator swappedOperator = new SwappedOperator();
+        assertThrows(RuntimeException.class, () -> swappedOperator.createMistake(trace1));
     }
 
     @Test
-    public void unconjugatorRemovesConjunction(){
+    public void missingConjunctionRemovesConjunction(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
-        Unconjugator unconjugator = new Unconjugator();
-        unconjugator.init(null);
-        unconjugator.createMistake(trace1);
+        MissingConjunction missingConjunction = new MissingConjunction();
+        missingConjunction.init(null);
+        missingConjunction.createMistake(trace1);
         assertTrue(trace1.getProactiveConditionString().equals("A & $true") || trace1.getProactiveConditionString().equals("$true & B"));
     }
 
     @Test
-    public void unconjugatorWorksWithoutInit(){
+    public void missingConjunctionWorksWithoutInit(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B");
-        Unconjugator unconjugator = new Unconjugator();
-        unconjugator.createMistake(trace1);
+        MissingConjunction missingConjunction = new MissingConjunction();
+        missingConjunction.createMistake(trace1);
         assertTrue(trace1.getProactiveConditionString().equals("A & $true") || trace1.getProactiveConditionString().equals("$true & B"));
     }
 
     @Test
-    public void unconjugatorThrowsExceptionForNegation(){
+    public void missingConjunctionThrowsExceptionForNegation(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & ~B");
-        Unconjugator unconjugator = new Unconjugator();
-        unconjugator.init(null);
-        assertThrows(RuntimeException.class, () -> unconjugator.createMistake(trace1));
+        MissingConjunction missingConjunction = new MissingConjunction();
+        missingConjunction.init(null);
+        assertThrows(RuntimeException.class, () -> missingConjunction.createMistake(trace1));
     }
 
     @Test
-    public void unconjugatorThrowsExceptionForDisjunction(){
+    public void missingConjunctionThrowsExceptionForDisjunction(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A & B | C");
-        Unconjugator unconjugator = new Unconjugator();
-        unconjugator.init(null);
-        assertThrows(RuntimeException.class, () -> unconjugator.createMistake(trace1));
+        MissingConjunction missingConjunction = new MissingConjunction();
+        missingConjunction.init(null);
+        assertThrows(RuntimeException.class, () -> missingConjunction.createMistake(trace1));
     }
 
     @Test
-    public void unconjugatorThrowsExceptionForMissingConjunction(){
+    public void missingConjunctionThrowsExceptionForMissingConjunction(){
         MockFeatureTrace trace1 = new MockFeatureTrace("A | C");
-        Unconjugator unconjugator = new Unconjugator();
-        unconjugator.init(null);
-        assertThrows(RuntimeException.class, () -> unconjugator.createMistake(trace1));
+        MissingConjunction missingConjunction = new MissingConjunction();
+        missingConjunction.init(null);
+        assertThrows(RuntimeException.class, () -> missingConjunction.createMistake(trace1));
     }
 
     @Test
@@ -269,8 +269,8 @@ public class MistakeCreatorTest {
         traceCollection.add(trace5);
         MockRepository repo = new MockRepository(traceCollection);
         String[] features = {"A", "B"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        MistakeCreator mistakeCreator = new MistakeCreator(swappedFeature);
         mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 40);
 
         Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getProactiveConditionString).toList();
@@ -295,8 +295,8 @@ public class MistakeCreatorTest {
         traceCollection.add(trace5);
         MockRepository repo = new MockRepository(traceCollection);
         String[] features = {"A", "B"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        MistakeCreator mistakeCreator = new MistakeCreator(swappedFeature);
         mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 70);
 
         Collection<String> conditions = repo.getFeatureTraces().stream().map(FeatureTrace::getProactiveConditionString).toList();
@@ -321,8 +321,8 @@ public class MistakeCreatorTest {
         traceCollection.add(trace5);
         MockRepository repo = new MockRepository(traceCollection);
         String[] features = {"A"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        MistakeCreator mistakeCreator = new MistakeCreator(swappedFeature);
         assertThrows(MistakeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 20));
     }
 
@@ -341,8 +341,8 @@ public class MistakeCreatorTest {
         traceCollection.add(trace5);
         MockRepository repo = new MockRepository(traceCollection);
         String[] features = {"A"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        MistakeCreator mistakeCreator = new MistakeCreator(swappedFeature);
         assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), -20));
     }
 
@@ -361,8 +361,8 @@ public class MistakeCreatorTest {
         traceCollection.add(trace5);
         MockRepository repo = new MockRepository(traceCollection);
         String[] features = {"A"};
-        FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
-        MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
+        SwappedFeature swappedFeature = new SwappedFeature(List.of(features));
+        MistakeCreator mistakeCreator = new MistakeCreator(swappedFeature);
         assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 150));
     }
 

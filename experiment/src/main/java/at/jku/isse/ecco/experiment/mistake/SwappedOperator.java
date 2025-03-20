@@ -2,7 +2,7 @@ package at.jku.isse.ecco.experiment.mistake;
 
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 
-public class OperatorSwapper extends MistakeStrategy {
+public class SwappedOperator extends MistakeStrategy {
     @Override
     public String createNewMistake(FeatureTrace trace) {
         try {
@@ -18,12 +18,12 @@ public class OperatorSwapper extends MistakeStrategy {
             trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
-            throw new RuntimeException("OperatorSwapper failed to create mistake.");
+            throw new RuntimeException("SwappedOperator failed to create mistake.");
         }
     }
 
     @Override
     public String toString(){
-        return "OperatorSwapper";
+        return "SwappedOperator";
     }
 }

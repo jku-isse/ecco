@@ -7,7 +7,7 @@ import at.jku.isse.ecco.repository.Repository;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-public class ConditionSwapper extends MistakeStrategy {
+public class SwappedCondition extends MistakeStrategy {
 
     Collection<String> originalConditions;
     boolean initFlag = false;
@@ -16,7 +16,7 @@ public class ConditionSwapper extends MistakeStrategy {
     public String createNewMistake(FeatureTrace trace) {
         try {
             if (!this.initFlag){
-                throw new RuntimeException("init() not called before creating a mistake in ConditionSwapper.");
+                throw new RuntimeException("init() not called before creating a mistake in SwappedCondition.");
             }
             String oldCondition = trace.getProactiveConditionString();
             Collection<String> differentConditions = this.originalConditions.stream().filter(c -> !oldCondition.equals(c)).collect(Collectors.toSet());
@@ -27,7 +27,7 @@ public class ConditionSwapper extends MistakeStrategy {
             trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e){
-            throw new RuntimeException("ConditionSwapper failed to create mistake.");
+            throw new RuntimeException("SwappedCondition failed to create mistake.");
         }
     }
 
@@ -40,7 +40,7 @@ public class ConditionSwapper extends MistakeStrategy {
 
     @Override
     public String toString(){
-        String description = "ConditionSwapper";
+        String description = "SwappedCondition";
         if (this.initFlag){
             description += " (Original Conditions: " + this.originalConditions + ")";
         }

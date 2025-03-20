@@ -59,12 +59,12 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
 
     private MistakeStrategy createMistakeStrategy(String type, List<String> features){
         return switch (type) {
-            case "NoMistaker" -> new NoMistaker();
-            case "ConditionSwapper" -> new ConditionSwapper();
-            case "Conjugator" -> new Conjugator(features);
-            case "FeatureSwitcher" -> new FeatureSwitcher(features);
-            case "OperatorSwapper" -> new OperatorSwapper();
-            case "Unconjugator" -> new Unconjugator();
+            case "NoMistake" -> new NoMistake();
+            case "SwappedCondition" -> new SwappedCondition();
+            case "ErroneousConjunction" -> new ErroneousConjunction(features);
+            case "SwappedFeature" -> new SwappedFeature(features);
+            case "SwappedOperator" -> new SwappedOperator();
+            case "MissingConjunction" -> new MissingConjunction();
             default -> throw new IllegalArgumentException("Unsupported mistake strategy type: " + type);
         };
     }
@@ -113,7 +113,7 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
 
     private void iterateMistakeStrategies(){
         if (mistakePercentage == 0){
-            this.mistakeStrategyName = "NoMistaker";
+            this.mistakeStrategyName = "NoMistake";
             this.performExperimentIteration();
         } else {
             for (String mistakeStrategy : this.config.getMistakeStrategies()) {
