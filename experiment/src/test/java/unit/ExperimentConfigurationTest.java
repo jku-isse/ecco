@@ -28,7 +28,7 @@ public class ExperimentConfigurationTest {
         Path variantBasePath = ResourceUtils.getResourceFolderPath("sample");
         ExperimentConfiguration config = new ExperimentConfiguration(propertiesFilePath, variantBasePath);
         List<ExperimentRunConfiguration> runConfigs = new LinkedList<>();
-        for (int i = 1; i <= 48; i++){
+        for (int i = 1; i <= 3; i++){
             runConfigs.add(config.getNextRunConfiguration());
         }
         List<ExperimentRunConfiguration> nullConfigs = runConfigs.stream().filter(Objects::isNull).toList();

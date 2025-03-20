@@ -16,7 +16,7 @@ public class MistakeCreator {
         this.mistakeStrategy = mistakeStrategy;
     }
 
-    public int createMistakePercentage(Repository.Op repository, Collection<FeatureTrace> featureTraces, int percentage){
+    public void createMistakePercentage(Repository.Op repository, Collection<FeatureTrace> featureTraces, int percentage){
         // return the number of mistakes that are missing to reach the given percentage
         int mistakesCreated = 0;
         this.originalConditions = new IdentityHashMap<>();
@@ -32,8 +32,8 @@ public class MistakeCreator {
 
         for (int i = 1; i <= attempts; i++){
             if (!iterator.hasNext()){
-                Logger.info("Failed to create enough mistakes!");
-                return noOfMistakes - mistakesCreated;
+                throw new MistakeException(String.format("Failed to create enough mistakes. Missing %d",
+                        noOfMistakes - mistakesCreated));
             }
             FeatureTrace trace = iterator.next();
             String originalCondition = trace.getProactiveConditionString();
@@ -44,7 +44,7 @@ public class MistakeCreator {
                 mistakesCreated++;
             }
         }
-        return 0;
+        return;
     }
 
     public void restoreOriginalConditions(){

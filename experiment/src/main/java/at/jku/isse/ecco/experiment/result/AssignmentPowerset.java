@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.experiment.result;
 
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.formulas.Literal;
@@ -10,16 +11,17 @@ import java.util.LinkedList;
 
 public class AssignmentPowerset {
 
-    public static Collection<Assignment> getAssignmentPowerset(FormulaFactory factory, Collection<String> literalStrings){
+    public static Collection<Assignment> getAssignmentPowerset(Collection<String> literalStrings){
+        FormulaFactory formulaFactory = FormulaFactoryProvider.getFormulaFactory();
         Collection<Literal> literals = literalStrings.stream().
-                map(s -> factory.literal(s, true))
+                map(s -> formulaFactory.literal(s, true))
                 .toList();
         Collection<Assignment> assignments = new LinkedList<>();
         for (Literal literal : literals){
             assignments = doubleWithAddedLiteral(assignments, literal);
         }
         for (Assignment assignment : assignments){
-            assignment.addLiteral(factory.literal("BASE", true));
+            assignment.addLiteral(formulaFactory.literal("BASE", true));
         }
         return assignments;
     }

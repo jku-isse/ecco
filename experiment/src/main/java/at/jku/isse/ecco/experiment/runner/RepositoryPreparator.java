@@ -18,8 +18,6 @@ public class RepositoryPreparator {
     private final ListPicker<FeatureTrace> listPicker;
     private Collection<FeatureTrace> allProactiveTraces;
     private Collection<FeatureTrace> nonEvaluableProactiveTraces;
-    
-    private int numberOfMissingMistakes;
 
     public RepositoryPreparator(MistakeCreator mistakeCreator,
                                 MemoryListPicker<FeatureTrace> listPicker){
@@ -36,7 +34,7 @@ public class RepositoryPreparator {
         Collection<FeatureTrace> evaluableProactiveTraces = collector.getEvaluableTraces();
         this.nonEvaluableProactiveTraces = collector.getNonEvaluableTraces();
         Collection<FeatureTrace> keptProactiveTraces = this.keepFeatureTracePercentage(evaluableProactiveTraces, featureTracePercentage);
-        this.numberOfMissingMistakes = this.mistakeCreator.createMistakePercentage(repository, keptProactiveTraces, mistakePercentage);
+        this.mistakeCreator.createMistakePercentage(repository, keptProactiveTraces, mistakePercentage);
         this.removeNonEvaluableTraces();
     }
 
@@ -72,9 +70,5 @@ public class RepositoryPreparator {
             Node.Op node = (Node.Op) featureTrace.getNode();
             node.setFeatureTrace(featureTrace);
         }
-    }
-
-    public int getNumberOfMissingMistakes(){
-        return this.numberOfMissingMistakes;
     }
 }

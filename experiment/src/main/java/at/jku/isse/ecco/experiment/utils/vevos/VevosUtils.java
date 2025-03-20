@@ -1,11 +1,11 @@
 package at.jku.isse.ecco.experiment.utils.vevos;
 
 import at.jku.isse.ecco.featuretrace.parser.VevosCondition;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.util.directory.DirectoryException;
 import at.jku.isse.ecco.util.directory.DirectoryUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 import org.logicng.formulas.Literal;
 import org.logicng.io.parsers.ParserException;
 
@@ -144,8 +144,7 @@ public class VevosUtils {
 
     private static boolean conditionIsRelevant(List<String> features, String condition) {
         try {
-            FormulaFactory formulaFactory = new FormulaFactory();
-            Formula conditionFormula = formulaFactory.parse(condition);
+            Formula conditionFormula = FormulaFactoryProvider.getFormulaFactory().parse(condition);
             Collection<Literal> literals = conditionFormula.literals();
             List<String> literalNames = literals.stream().map(Literal::name).toList();
             return features.stream().anyMatch(f -> literalNames.stream().anyMatch(ln -> ln.equals(f)));

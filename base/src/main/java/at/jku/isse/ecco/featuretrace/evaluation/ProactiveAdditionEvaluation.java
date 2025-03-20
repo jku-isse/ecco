@@ -2,6 +2,7 @@ package at.jku.isse.ecco.featuretrace.evaluation;
 
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
@@ -14,14 +15,11 @@ public class ProactiveAdditionEvaluation implements EvaluationStrategy{
 
     private final String STRATEGY_NAME = "PROACTIVE-ADDITION";
 
-    private transient FormulaFactory formulaFactory = new FormulaFactory();
-
-
     @Override
     public boolean holds (Configuration configuration,
                           String proactiveCondition,
                           String retroactiveCondition){
-        Assignment assignment = configuration.toAssignment(this.formulaFactory);
+        Assignment assignment = configuration.toAssignment();
         Formula formula = this.getOverallFormula(proactiveCondition, retroactiveCondition);
         return formula.evaluate(assignment);
     }
@@ -35,12 +33,12 @@ public class ProactiveAdditionEvaluation implements EvaluationStrategy{
     private Formula getOverallFormula(String proactiveCondition, String retroactiveCondition){
         Formula retroactiveFormula = null;
         Formula proactiveFormula = null;
-        if (retroactiveCondition != null){ retroactiveFormula = LogicUtils.parseString(this.formulaFactory, retroactiveCondition); }
-        if (proactiveCondition != null){ proactiveFormula = LogicUtils.parseString(this.formulaFactory, proactiveCondition); }
+        if (retroactiveCondition != null){ retroactiveFormula = LogicUtils.parseString(retroactiveCondition); }
+        if (proactiveCondition != null){ proactiveFormula = LogicUtils.parseString(proactiveCondition); }
 
         assert(retroactiveFormula != null || proactiveFormula != null);
         if (retroactiveFormula != null && proactiveFormula != null){
-            return this.formulaFactory.or(retroactiveFormula, proactiveFormula);
+            return FormulaFactoryProvider.getFormulaFactory().or(retroactiveFormula, proactiveFormula);
         } else if (proactiveFormula != null){
             return proactiveFormula;
         } else {

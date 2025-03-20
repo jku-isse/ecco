@@ -10,13 +10,13 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,30 +29,27 @@ public class MistakeCreatorTest {
 
     @Test
     public void formulaSyntaxTest(){
-        FormulaFactory formulaFactory = new FormulaFactory();
-
-        Formula simpleFormula = LogicUtils.parseString(formulaFactory, "A");
+        Formula simpleFormula = LogicUtils.parseString("A");
         System.out.println(simpleFormula.toString());
 
-        Formula conjunction = LogicUtils.parseString(formulaFactory, "A & B");
+        Formula conjunction = LogicUtils.parseString("A & B");
         System.out.println(conjunction.toString());
 
-        Formula disjunction = LogicUtils.parseString(formulaFactory, "A | B");
+        Formula disjunction = LogicUtils.parseString("A | B");
         System.out.println(disjunction.toString());
 
-        Formula negation = LogicUtils.parseString(formulaFactory, "~A");
+        Formula negation = LogicUtils.parseString("~A");
         System.out.println(negation.toString());
 
-        Formula tautology = LogicUtils.parseString(formulaFactory, "$true");
+        Formula tautology = LogicUtils.parseString("$true");
         System.out.println(tautology.toString());
     }
 
     @Test
     public void formulaConjunctionTest(){
-        FormulaFactory formulaFactory = new FormulaFactory();
-        Formula disjunction = LogicUtils.parseString(formulaFactory, "A | B");
-        Formula simpleFormula = LogicUtils.parseString(formulaFactory, "C");
-        Formula conjunction = formulaFactory.and(disjunction, simpleFormula);
+        Formula disjunction = LogicUtils.parseString("A | B");
+        Formula simpleFormula = LogicUtils.parseString("C");
+        Formula conjunction = FormulaFactoryProvider.getFormulaFactory().and(disjunction, simpleFormula);
         System.out.println(conjunction);
     }
 
@@ -326,7 +323,7 @@ public class MistakeCreatorTest {
         String[] features = {"A"};
         FeatureSwitcher featureSwitcher = new FeatureSwitcher(List.of(features));
         MistakeCreator mistakeCreator = new MistakeCreator(featureSwitcher);
-        assertThrows(RuntimeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 20));
+        assertThrows(MistakeException.class, () -> mistakeCreator.createMistakePercentage(repo, repo.getFeatureTraces(), 20));
     }
 
     @Test

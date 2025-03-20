@@ -2,6 +2,7 @@ package at.jku.isse.ecco.storage.mem.module;
 
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import org.logicng.formulas.Formula;
@@ -83,49 +84,49 @@ public class MemModuleRevision implements ModuleRevision {
 		//					  and
 		//					  not(disjunction of all negative features)
 
-		FormulaFactory formulaFactory = new FormulaFactory();
-		Collection<Formula> positiveFormulas = this.getFeatureRevisionFormulas(formulaFactory);
+		FormulaFactory formulaFactory = FormulaFactoryProvider.getFormulaFactory();
+		Collection<Formula> positiveFormulas = this.getFeatureRevisionFormulas();
 		Formula positiveFormula = formulaFactory.and(positiveFormulas);
-		Formula negativeFormula = this.getNegativeFormula(formulaFactory);
+		Formula negativeFormula = this.getNegativeFormula();
 
 		Formula condition = formulaFactory.and(positiveFormula, formulaFactory.not(negativeFormula));
 		return condition.toString();
 	}
 
-	private Formula getNegativeFormula(FormulaFactory formulaFactory){
-		Collection<Formula> negativeFormulas = this.getFeatureFormulas(formulaFactory);
+	private Formula getNegativeFormula(){
+		Collection<Formula> negativeFormulas = this.getFeatureFormulas();
 		if (negativeFormulas.size() == 0){
 			// negative formulas must not hold for the condition to hold
 			// -> if there are none "false" must not hold, which is always the case
-			return formulaFactory.constant(false);
+			return FormulaFactoryProvider.getFormulaFactory().constant(false);
 		} else {
-			return formulaFactory.or(negativeFormulas);
+			return FormulaFactoryProvider.getFormulaFactory().or(negativeFormulas);
 		}
 	}
 
-	private Collection<Formula> getFeatureRevisionFormulas(FormulaFactory formulaFactory){
+	private Collection<Formula> getFeatureRevisionFormulas(){
 		Collection<Formula> formulas = new LinkedList<>();
 		for (FeatureRevision featureRevision : this.pos){
 			String conditionString = featureRevision.getLogicLiteralRepresentation();
-			Formula condition = this.parseString(formulaFactory, conditionString);
+			Formula condition = this.parseString(conditionString);
 			formulas.add(condition);
 		}
 		return formulas;
 	}
 
-	private Collection<Formula> getFeatureFormulas(FormulaFactory formulaFactory){
+	private Collection<Formula> getFeatureFormulas(){
 		Collection<Formula> formulas = new LinkedList<>();
 		for (Feature feature : this.neg){
 			String conditionString = feature.getLatestRevision().getLogicLiteralRepresentation();
-			Formula condition = this.parseString(formulaFactory, conditionString);
+			Formula condition = this.parseString(conditionString);
 			formulas.add(condition);
 		}
 		return formulas;
 	}
 
-	private Formula parseString(FormulaFactory formulaFactory, String string){
+	private Formula parseString(String string){
 		try{
-			return formulaFactory.parse(string);
+			return FormulaFactoryProvider.getFormulaFactory().parse(string);
 		} catch (ParserException e){
 			throw new RuntimeException("Formula-String in module-revision could not be parsed: " + e.getMessage());
 		}

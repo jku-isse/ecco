@@ -129,31 +129,30 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
         GroundTruth groundTruth = new GroundTruth(this.config.getVariantsDir());
 
         repositoryPreparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
-        int numberOfMissingMistakes = repositoryPreparator.getNumberOfMissingMistakes();
 
         this.boosting = this.config.getBoosting();
 
         // perform without boost
         if (boosting.equals(Boosting.DISABLED) || boosting.equals(Boosting.BOTH)) {
             this.repository.setMaintreeBuildingStrategy(this.nonBoostedBuildingStrategy);
-            this.evaluateMainTree(false, groundTruth, numberOfMissingMistakes);
+            this.evaluateMainTree(false, groundTruth);
         }
 
         // perform with boost
         if (boosting.equals(Boosting.ENABLED) || boosting.equals(Boosting.BOTH)) {
             this.repository.setMaintreeBuildingStrategy(this.boostedBuildingStrategy);
-            this.evaluateMainTree(true, groundTruth, numberOfMissingMistakes);
+            this.evaluateMainTree(true, groundTruth);
         }
 
         repositoryPreparator.undoPreparation();
     }
 
-    private void evaluateMainTree(boolean boost, GroundTruth groundTruth, int numberOfMissingMistakes){
+    private void evaluateMainTree(boolean boost, GroundTruth groundTruth){
         this.repository.buildMainTree();
         Node.Op mainTree = this.repository.getMainTree();
         this.literalNameCleanup(mainTree);
         // todo: refactor (too many parameters)
-        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategyName, boost, groundTruth, numberOfMissingMistakes, this.listPicker);
+        ResultCalculator metricsCalculator = new ResultCalculator(this.config, featureTracePercentage, this.persister, evaluationStrategy, mistakePercentage, mistakeStrategyName, boost, groundTruth, this.listPicker);
         metricsCalculator.calculateMetrics(mainTree);
     }
 

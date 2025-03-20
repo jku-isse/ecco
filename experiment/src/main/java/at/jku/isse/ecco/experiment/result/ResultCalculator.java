@@ -8,7 +8,6 @@ import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.tree.Node;
 import org.logicng.datastructures.Assignment;
-import org.logicng.formulas.FormulaFactory;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -23,13 +22,12 @@ public class ResultCalculator {
     private final EvaluationStrategy evaluationStrategy;
     private final boolean boosting;
     private GroundTruth groundTruth;
-    private int numberOfMissingMistakes;
     private FeatureTraceMemoryListPicker listPicker;
 
 
     public ResultCalculator(ExperimentRunConfiguration config, int featureTracePercentage, ResultPersister resultPersister,
                             EvaluationStrategy evaluationStrategy, int mistakePercentage, String mistakeStrategy, boolean boosting,
-                            GroundTruth groundTruth, int numberOfMissingMistakes, FeatureTraceMemoryListPicker listPicker){
+                            GroundTruth groundTruth, FeatureTraceMemoryListPicker listPicker){
         this.config = config;
         this.resultPersister = resultPersister;
         this.featureTracePercentage = featureTracePercentage;
@@ -38,18 +36,16 @@ public class ResultCalculator {
         this.mistakeStrategy = mistakeStrategy;
         this.boosting = boosting;
         this.groundTruth = groundTruth;
-        this.numberOfMissingMistakes = numberOfMissingMistakes;
         this.listPicker = listPicker;
     }
 
     public void calculateMetrics(Node.Op mainTree){
-        FormulaFactory formulaFactory = new FormulaFactory();
-        Collection<Assignment> assignments = AssignmentPowerset.getAssignmentPowerset(formulaFactory, this.config.getFeatures());
-        EvaluationVisitor visitor = new EvaluationVisitor(formulaFactory, assignments, this.groundTruth, this.evaluationStrategy);
+        Collection<Assignment> assignments = AssignmentPowerset.getAssignmentPowerset(this.config.getFeatures());
+        EvaluationVisitor visitor = new EvaluationVisitor(assignments, this.groundTruth, this.evaluationStrategy);
         mainTree.traverse(visitor);
         Collection<NodeResult> nodeResults = visitor.getResults();
         Collection<Result> results = nodeResults.stream().map(NodeResult::getResult).collect(Collectors.toList());
         Result overallResult = Result.overallResult(results);
-        this.resultPersister.persist(overallResult, this.config, featureTracePercentage, mistakePercentage, evaluationStrategy, mistakeStrategy, this.boosting, this.numberOfMissingMistakes, this.listPicker.getClass().getName());
+        this.resultPersister.persist(overallResult, this.config, featureTracePercentage, mistakePercentage, evaluationStrategy, mistakeStrategy, this.boosting, this.listPicker.getClass().getName());
     }
 }

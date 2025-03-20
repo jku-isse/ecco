@@ -1,0 +1,2 @@
+#define NTLM_H
+

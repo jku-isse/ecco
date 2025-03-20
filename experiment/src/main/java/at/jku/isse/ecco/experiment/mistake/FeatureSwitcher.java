@@ -4,7 +4,6 @@ import at.jku.isse.ecco.experiment.utils.CollectionUtils;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -14,8 +13,6 @@ public class FeatureSwitcher extends MistakeStrategy {
 
     private final List<String> features;
 
-    private final FormulaFactory formulaFactory = new FormulaFactory();
-
     public FeatureSwitcher(List<String> features){
         this.features = features;
     }
@@ -24,7 +21,7 @@ public class FeatureSwitcher extends MistakeStrategy {
     public String createNewMistake(FeatureTrace trace){
         try {
             String userConditionString = trace.getProactiveConditionString();
-            Formula userCondition = LogicUtils.parseString(this.formulaFactory, userConditionString);
+            Formula userCondition = LogicUtils.parseString(userConditionString);
             Collection<String> variables = userCondition.variables().stream().map(Formula::toString).collect(Collectors.toSet());
             if (variables.isEmpty()){
                 throw new RuntimeException("There are no features to switch in the condition.");

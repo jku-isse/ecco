@@ -122,6 +122,4 @@ public class BoostedMistakeTest {
         repo.setMaintreeBuildingStrategy(new MemBoostedAssociationMerger());
         repo.buildMainTree();
     }
-
-
 }

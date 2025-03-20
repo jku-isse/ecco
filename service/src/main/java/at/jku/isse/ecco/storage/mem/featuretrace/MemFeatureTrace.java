@@ -3,9 +3,9 @@ package at.jku.isse.ecco.storage.mem.featuretrace;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.tree.Node;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 import org.logicng.io.parsers.ParserException;
 
 import java.util.Objects;
@@ -14,11 +14,9 @@ public class MemFeatureTrace implements FeatureTrace {
     private Node node;
     private String proactiveCondition;
     private String retroactiveCondition;
-    private final transient FormulaFactory formulaFactory;
 
     public MemFeatureTrace(Node node){
         this.node = node;
-        this.formulaFactory = new FormulaFactory();
     }
 
     @Override
@@ -65,7 +63,7 @@ public class MemFeatureTrace implements FeatureTrace {
         } else {
             Formula currentFormula = this.parseString(currentCondition);
             Formula newFormula = this.parseString(newCondition);
-            Formula combinedFormula = this.formulaFactory.or(currentFormula, newFormula);
+            Formula combinedFormula = FormulaFactoryProvider.getFormulaFactory().or(currentFormula, newFormula);
             return combinedFormula.toString();
         }
     }
@@ -79,7 +77,7 @@ public class MemFeatureTrace implements FeatureTrace {
         } else {
             Formula currentCondition = this.parseString(this.proactiveCondition);
             Formula additionalCondition = this.parseString(proactiveCondition);
-            Formula newCondition = this.formulaFactory.and(currentCondition, additionalCondition);
+            Formula newCondition = FormulaFactoryProvider.getFormulaFactory().and(currentCondition, additionalCondition);
             this.proactiveCondition = newCondition.toString();
         }
     }
@@ -115,7 +113,7 @@ public class MemFeatureTrace implements FeatureTrace {
 
     private Formula parseString(String string) {
         try {
-            return this.formulaFactory.parse(string);
+            return FormulaFactoryProvider.getFormulaFactory().parse(string);
         } catch (ParserException e) {
             throw new RuntimeException(e);
         }

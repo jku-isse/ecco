@@ -3,6 +3,7 @@ package at.jku.isse.ecco.experiment.mistake;
 import at.jku.isse.ecco.experiment.utils.CollectionUtils;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.formulas.Variable;
@@ -12,13 +13,11 @@ import java.util.SortedSet;
 
 public class Unconjugator extends MistakeStrategy {
 
-    private final FormulaFactory formulaFactory = new FormulaFactory();
-
     @Override
     public String createNewMistake(FeatureTrace trace) {
         try {
             String userCondition = trace.getProactiveConditionString();
-            Formula conditionFormula = LogicUtils.parseString(this.formulaFactory, userCondition);
+            Formula conditionFormula = LogicUtils.parseString(userCondition);
             Formula cnf = conditionFormula.cnf();
             SortedSet<Variable> variables = cnf.variables();
             if (variables.size() < 2) {
@@ -35,7 +34,7 @@ public class Unconjugator extends MistakeStrategy {
             }
             Variable toBeSwitched = CollectionUtils.getRandom(variables);
             String cnfString = cnf.toString();
-            String newCondition = cnfString.replace(toBeSwitched.name(), formulaFactory.verum().toString());
+            String newCondition = cnfString.replace(toBeSwitched.name(), FormulaFactoryProvider.getFormulaFactory().verum().toString());
             trace.setProactiveCondition(newCondition);
             return newCondition;
         } catch (Exception e) {

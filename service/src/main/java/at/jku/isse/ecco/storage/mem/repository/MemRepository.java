@@ -18,7 +18,6 @@ import at.jku.isse.ecco.storage.mem.feature.MemFeature;
 import at.jku.isse.ecco.storage.mem.module.MemModule;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
-import org.logicng.formulas.FormulaFactory;
 
 import java.util.*;
 
@@ -36,7 +35,6 @@ public final class MemRepository implements Repository, Repository.Op {
 	private Collection<Commit> commits;
 	private int maxOrder;
 	private Node.Op mainTree;
-	private transient FormulaFactory formulaFactory = new FormulaFactory();
 	private MainTreeBuildingStrategy mainTreeBuildingStrategy;
 	private EvaluationStrategy evaluationStrategy;
 

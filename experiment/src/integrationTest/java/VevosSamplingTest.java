@@ -66,5 +66,4 @@ public class VevosSamplingTest {
         assertEquals("FEATUREB", lines4.get(0));
         assertEquals("OR", lines4.get(1));
     }
-
 }

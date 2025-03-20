@@ -2,12 +2,12 @@ package at.jku.isse.ecco.feature;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
 import org.logicng.datastructures.Assignment;
-import org.logicng.formulas.FormulaFactory;
 import org.logicng.formulas.Literal;
 
 import java.util.*;
@@ -168,14 +168,14 @@ public interface Configuration extends Persistable {
         return true;
     }
 
-    default Assignment toAssignment(FormulaFactory factory){
+    default Assignment toAssignment(){
         Assignment assignment = new Assignment();
         for (FeatureRevision featureRevision: this.getFeatureRevisions()){
             // the specific revision is true
             String literalString = featureRevision.getFeature().getName() + "." + featureRevision.getId();
             literalString = literalString.replace(".", "_");
             literalString = literalString.replace("-", "_");
-            Literal revisionLiteral = factory.literal(literalString, true);
+            Literal revisionLiteral = FormulaFactoryProvider.getFormulaFactory().literal(literalString, true);
             assignment.addLiteral(revisionLiteral);
         }
         return assignment;

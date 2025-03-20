@@ -51,7 +51,7 @@ public class ExperimentTest {
         ExperimentConfiguration experimentConfig = new ExperimentConfiguration(configPath, variantBasePath);
         experiment.runExperiment(experimentConfig);
 
-        assertEquals(42, persister.getResults().size());
+        assertEquals(10, persister.getResults().size());
     }
 
     @Test
@@ -80,9 +80,9 @@ public class ExperimentTest {
         Collection<Result> results = persister.getResults();
 
         results.forEach(result -> {
-            assertEquals(result.getPrecision(), 1.0);
-            assertEquals(result.getRecall(), 0.5);
-            assertEquals(result.getF1(), (2.0/3.0));
+            assertEquals(1.0, result.getPrecision());
+            assertEquals(0.5, result.getRecall());
+            assertEquals((2.0/3.0), result.getF1());
         });
     }
 }

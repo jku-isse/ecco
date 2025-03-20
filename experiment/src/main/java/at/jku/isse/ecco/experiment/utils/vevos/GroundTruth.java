@@ -4,6 +4,7 @@ import at.jku.isse.ecco.featuretrace.LogicUtils;
 import at.jku.isse.ecco.featuretrace.parser.VevosCondition;
 import at.jku.isse.ecco.featuretrace.parser.VevosConditionHandler;
 import at.jku.isse.ecco.featuretrace.parser.VevosFileConditionContainer;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.util.Location;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
@@ -36,7 +37,8 @@ public class GroundTruth {
         }
     }
 
-    public Formula getCondition(Location location, FormulaFactory formulaFactory){
+    public Formula getCondition(Location location){
+        FormulaFactory formulaFactory = FormulaFactoryProvider.getFormulaFactory();
         VevosConditionHandler handler = this.handlerMap.get(location.getConfigurationString());
         VevosFileConditionContainer conditionContainer = handler.getFileSpecificPresenceConditions(location.getFilePath());
         Collection<VevosCondition> conditions = conditionContainer.getMatchingPresenceConditions(location.getStartLine(), location.getEndLine());
@@ -44,11 +46,11 @@ public class GroundTruth {
             return formulaFactory.constant(true);
         } else if (conditions.size() > 1){
             return conditions.stream()
-                    .map(vc -> LogicUtils.parseString(formulaFactory, vc.getConditionString()))
+                    .map(vc -> LogicUtils.parseString(vc.getConditionString()))
                     .reduce(formulaFactory::and).get();
         } else {
             VevosCondition condition = conditions.iterator().next();
-            return LogicUtils.parseString(formulaFactory, condition.getConditionString());
+            return LogicUtils.parseString(condition.getConditionString());
         }
     }
 }

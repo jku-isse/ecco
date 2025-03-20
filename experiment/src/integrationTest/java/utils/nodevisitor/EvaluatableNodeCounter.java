@@ -4,19 +4,16 @@ import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Location;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 
 import java.nio.file.Path;
 
 public class EvaluatableNodeCounter implements Node.Op.NodeVisitor {
 
-    private final FormulaFactory formulaFactory;
     private final GroundTruth groundTruth;
 
     private int count;
 
     public EvaluatableNodeCounter(Path groundTruths) {
-        this.formulaFactory = new FormulaFactory();
         this.groundTruth = new GroundTruth(groundTruths);
         this.count = 0;
     }
@@ -34,7 +31,7 @@ public class EvaluatableNodeCounter implements Node.Op.NodeVisitor {
     }
 
     private Formula getGroundTruth(Location location){
-        return this.groundTruth.getCondition(location, this.formulaFactory);
+        return this.groundTruth.getCondition(location);
     }
 
     public int getCount(){

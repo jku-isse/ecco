@@ -4,6 +4,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
@@ -98,20 +99,20 @@ public class ConditionToLogicTest {
         // this association is an intersection containing artifacts tracing to FeatureA
         Association.Op association = associations.stream().filter(a -> a.getCounter().getCount() == 2).findFirst().get();
 
-        FormulaFactory factory = new FormulaFactory();
+        FormulaFactory formulaFactory = FormulaFactoryProvider.getFormulaFactory();
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
-        Formula conditionFormula = factory.parse(condition.toLogicString());
+        Formula conditionFormula = formulaFactory.parse(condition.toLogicString());
 
         // create logical formula
         Collection<? extends Feature> features = repo.getFeatures();
         FeatureRevision featureRevisionBase = features.stream().filter(f -> f.getName().contains("BASE")).findFirst().get().getLatestRevision();
         FeatureRevision featureRevisionA = features.stream().filter(f -> f.getName().contains("FEATUREA")).findFirst().get().getLatestRevision();
         FeatureRevision featureRevisionB = features.stream().filter(f -> f.getName().contains("FEATUREB")).findFirst().get().getLatestRevision();
-        Literal baseLiteral = factory.literal(featureRevisionBase.getLogicLiteralRepresentation(), true);
-        Literal aLiteral = factory.literal(featureRevisionA.getLogicLiteralRepresentation(), true);
-        Literal bLiteral = factory.literal(featureRevisionB.getLogicLiteralRepresentation(), true);
+        Literal baseLiteral = formulaFactory.literal(featureRevisionBase.getLogicLiteralRepresentation(), true);
+        Literal aLiteral = formulaFactory.literal(featureRevisionA.getLogicLiteralRepresentation(), true);
+        Literal bLiteral = formulaFactory.literal(featureRevisionB.getLogicLiteralRepresentation(), true);
 
         // configuration: BASE
         // The module "BASE" was in both variants.
@@ -175,7 +176,7 @@ public class ConditionToLogicTest {
         // this association is the rest of a slicing operation where artifacts tracing to FEATUREB are contained
         Association.Op association = associations.stream().filter(a -> a.getCounter().getCount() == 1).findFirst().get();
 
-        FormulaFactory factory = new FormulaFactory();
+        FormulaFactory factory = FormulaFactoryProvider.getFormulaFactory();
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
@@ -220,7 +221,7 @@ public class ConditionToLogicTest {
         // this association is an intersection containing artifacts tracing to FeatureA
         Association.Op association = associations.stream().filter(a -> a.getCounter().getCount() == 2).findFirst().get();
 
-        FormulaFactory factory = new FormulaFactory();
+        FormulaFactory factory = FormulaFactoryProvider.getFormulaFactory();
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
@@ -268,7 +269,7 @@ public class ConditionToLogicTest {
         // there is only one assocation as the artifacts of the variants are the same
         Association.Op association = associations.iterator().next();
 
-        FormulaFactory factory = new FormulaFactory();
+        FormulaFactory factory = FormulaFactoryProvider.getFormulaFactory();
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
@@ -316,7 +317,7 @@ public class ConditionToLogicTest {
         // there is only one assocation as the artifacts of the variants are the same
         Association.Op association = associations.iterator().next();
 
-        FormulaFactory factory = new FormulaFactory();
+        FormulaFactory factory = FormulaFactoryProvider.getFormulaFactory();
 
         // create condition and condition formula
         Condition condition = association.computeCondition();

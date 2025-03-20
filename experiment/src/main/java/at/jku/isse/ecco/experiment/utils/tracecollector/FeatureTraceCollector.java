@@ -7,7 +7,6 @@ import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Location;
 import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -18,11 +17,9 @@ public class FeatureTraceCollector implements Node.Op.NodeVisitor {
     private final List<FeatureTrace> featureTraces = new LinkedList<>();
     private final List<FeatureTrace> evaluableTraces = new LinkedList<>();
     private final GroundTruth groundTruth;
-    private final FormulaFactory formulaFactory;
 
     public FeatureTraceCollector(Repository.Op repository, GroundTruth groundTruth){
         this.groundTruth = groundTruth;
-        this.formulaFactory = new FormulaFactory();
         this.collectAssociationTraces(repository);
     }
 
@@ -50,7 +47,7 @@ public class FeatureTraceCollector implements Node.Op.NodeVisitor {
     private boolean nodeIsEvaluable(Node.Op node){
         Location location = node.getLocation();
         if (location == null){ return false; }
-        Formula groundTruthFormula = this.groundTruth.getCondition(location, this.formulaFactory);
+        Formula groundTruthFormula = this.groundTruth.getCondition(location);
         if (groundTruthFormula.toString().equals("$true")){ return false; }
         return true;
     }

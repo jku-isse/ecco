@@ -2,6 +2,7 @@ package at.jku.isse.ecco.featuretrace.evaluation;
 
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.LogicUtils;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
@@ -14,23 +15,20 @@ public class RetroactiveBasedEvaluation implements EvaluationStrategy{
 
     private final String STRATEGY_NAME = "RETROACTIVE";
 
-    private transient FormulaFactory formulaFactory = new FormulaFactory();
-
-
     @Override
     public boolean holds(Configuration configuration,
                          String proactiveCondition,
                          String retroactiveCondition){
-        Assignment assignment = configuration.toAssignment(this.formulaFactory);
+        Assignment assignment = configuration.toAssignment();
         if (retroactiveCondition == null){ return false; }
-        Formula retroactiveFormula = LogicUtils.parseString(this.formulaFactory, retroactiveCondition);
+        Formula retroactiveFormula = LogicUtils.parseString(retroactiveCondition);
         return retroactiveFormula.evaluate(assignment);
     }
 
     @Override
     public String getOverallConditionString(String proactiveCondition, String retroactiveCondition) {
         if (retroactiveCondition == null){
-            Formula falseFormula = this.formulaFactory.constant(false);
+            Formula falseFormula = FormulaFactoryProvider.getFormulaFactory().constant(false);
             return falseFormula.toString();
         } else {
             return retroactiveCondition;
