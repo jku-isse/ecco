@@ -20,6 +20,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
 
+// todo: make tests independent of absolute paths
+
 public class RuntimeTest {
 
     //private Path BASE_DIR = Paths.get("C:\\Users\\gabil\\Desktop\\BonusWork\\Results\\test_jacoco2\\variants2\\ACTIVITYDIAGRAM.config\\src");

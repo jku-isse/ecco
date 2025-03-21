@@ -15,6 +15,8 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashSet;
 
+// todo: make tests independent of absolute paths
+
 public class PaperTest {
 
 	private Path outputDir = Paths.get("C:\\Users\\user\\Desktop\\vcs_paper_output");
