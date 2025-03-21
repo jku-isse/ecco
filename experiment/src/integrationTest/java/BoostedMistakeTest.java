@@ -14,7 +14,6 @@ import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.mem.maintree.MemBoostedAssociationMerger;
 import at.jku.isse.ecco.util.directory.DirectoryException;
 import at.jku.isse.ecco.util.directory.DirectoryUtils;
 import at.jku.isse.ecco.util.resource.ResourceException;

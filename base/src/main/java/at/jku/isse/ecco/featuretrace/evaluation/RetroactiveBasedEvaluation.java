@@ -13,7 +13,7 @@ import org.logicng.formulas.FormulaFactory;
  */
 public class RetroactiveBasedEvaluation implements EvaluationStrategy{
 
-    private final String STRATEGY_NAME = "RETROACTIVE";
+    public static final String STRATEGY_NAME = "RETROACTIVE";
 
     @Override
     public boolean holds(Configuration configuration,

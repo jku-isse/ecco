@@ -7,7 +7,7 @@ import at.jku.isse.ecco.experiment.utils.tracecollector.FeatureTraceCollector;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
+import at.jku.isse.ecco.storage.ser.featuretrace.SerFeatureTrace;
 import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
@@ -59,7 +59,7 @@ public class RepositoryPreparator {
     }
 
     private void removeTrace(FeatureTrace trace){
-        FeatureTrace newTrace = new MemFeatureTrace(trace.getNode());
+        FeatureTrace newTrace = new SerFeatureTrace(trace.getNode());
         newTrace.setRetroactiveCondition(trace.getRetroactiveConditionString());
         Node.Op node = (Node.Op) trace.getNode();
         node.setFeatureTrace(newTrace);

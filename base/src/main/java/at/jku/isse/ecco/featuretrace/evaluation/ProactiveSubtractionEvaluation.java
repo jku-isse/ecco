@@ -14,7 +14,7 @@ import org.logicng.formulas.FormulaFactory;
  */
 public class ProactiveSubtractionEvaluation implements EvaluationStrategy{
 
-    private final String STRATEGY_NAME = "PROACTIVE-SUBTRACTION";
+    public static final String STRATEGY_NAME = "PROACTIVE-SUBTRACTION";
 
     @Override
     public boolean holds (Configuration configuration,

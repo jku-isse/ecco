@@ -3,7 +3,7 @@ import at.jku.isse.ecco.adapter.c.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -101,7 +101,7 @@ public class CWriterIntegrationTest {
 
     @Test
     public void writeSingleLine() {
-        MemEntityFactory factory = new MemEntityFactory();
+        SerEntityFactory factory = new SerEntityFactory();
 
         // create ecco tree with some line nodes
         Path testFilePath = getTestFolderSubpath("testFile.c");
@@ -129,7 +129,7 @@ public class CWriterIntegrationTest {
 
     @Test
     public void writeMultipleLines(){
-        MemEntityFactory factory = new MemEntityFactory();
+        SerEntityFactory factory = new SerEntityFactory();
 
         // create ecco tree with some line nodes
         Path testFilePath = getTestFolderSubpath("testFile.c");
@@ -161,7 +161,7 @@ public class CWriterIntegrationTest {
 
     @Test
     public void writeFunction(){
-        MemEntityFactory factory = new MemEntityFactory();
+        SerEntityFactory factory = new SerEntityFactory();
 
         Path testFilePath = getTestFolderSubpath("testFile.c");
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId", testFilePath));
@@ -200,7 +200,7 @@ public class CWriterIntegrationTest {
 
     @Test
     public void writeFunctionsAndLines(){
-        MemEntityFactory factory = new MemEntityFactory();
+        SerEntityFactory factory = new SerEntityFactory();
 
         Path testFilePath = getTestFolderSubpath("testFile.c");
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId", testFilePath));
@@ -249,7 +249,7 @@ public class CWriterIntegrationTest {
 
     @Test
     public void writeMultipleFiles(){
-        MemEntityFactory factory = new MemEntityFactory();
+        SerEntityFactory factory = new SerEntityFactory();
 
         Path testFilePath1 = getTestFolderSubpath("testFile1.c");
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId1", testFilePath1));
@@ -290,7 +290,7 @@ public class CWriterIntegrationTest {
 
     @Test
     public void writeCreatesCorrectReturnValue(){
-        MemEntityFactory factory = new MemEntityFactory();
+        SerEntityFactory factory = new SerEntityFactory();
 
         Path testFilePath1 = getTestFolderSubpath("testFile1.c");
         Artifact.Op<PluginArtifactData> pluginArtifact = factory.createArtifact(new PluginArtifactData("testId1", testFilePath1));

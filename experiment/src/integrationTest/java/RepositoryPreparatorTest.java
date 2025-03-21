@@ -8,7 +8,7 @@ import at.jku.isse.ecco.experiment.trainer.EccoTrainerInterface;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.mem.featuretrace.MemFeatureTrace;
+import at.jku.isse.ecco.storage.ser.featuretrace.SerFeatureTrace;
 import at.jku.isse.ecco.util.directory.DirectoryException;
 import at.jku.isse.ecco.util.directory.DirectoryUtils;
 import at.jku.isse.ecco.util.resource.ResourceException;
@@ -62,7 +62,7 @@ public class RepositoryPreparatorTest {
 
         this.repoTraceCopies = new ArrayList<>();
         for (FeatureTrace featureTrace : this.repoTraces){
-            FeatureTrace newTrace = new MemFeatureTrace(featureTrace.getNode());
+            FeatureTrace newTrace = new SerFeatureTrace(featureTrace.getNode());
             newTrace.setRetroactiveCondition(featureTrace.getRetroactiveConditionString());
             newTrace.setProactiveCondition(featureTrace.getProactiveConditionString());
             this.repoTraceCopies.add(newTrace);

@@ -2,8 +2,8 @@ package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.*;
-import at.jku.isse.ecco.storage.mem.artifact.MemArtifact;
-import at.jku.isse.ecco.storage.mem.pog.MemPartialOrderGraph;
+import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
+import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraph;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -16,7 +16,7 @@ public class CollectPogPathsTest {
 
     @Test
     public void collectingFromEmptyPogReturnsSingleEmptyArrayTest(){
-        PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         PartialOrderGraph.Node.Op[][] sequencings = pog.collectNodeSequencings();
         assertEquals(1, sequencings.length);
     }
@@ -24,7 +24,7 @@ public class CollectPogPathsTest {
     @Test
     public void collectingFromPogWithSingleNodeReturnsSingleCorrectPathTest(){
         List<Artifact.Op<?>> artifacts = List.of(A("1"));
-        PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         pog.merge(artifacts);
 
         PartialOrderGraph.Node.Op[][] paths = pog.collectNodeSequencings();
@@ -36,7 +36,7 @@ public class CollectPogPathsTest {
     @Test
     public void collectingFromPogWithSequentialNodesReturnsSingleCorrectPathTest(){
         List<Artifact.Op<?>> artifacts = Arrays.asList(A("1"), A("2"));
-        PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         pog.merge(artifacts);
 
         PartialOrderGraph.Node.Op[][] paths = pog.collectNodeSequencings();
@@ -50,7 +50,7 @@ public class CollectPogPathsTest {
     public void collectingFromPogWithBranchReturnsMultiplePathsTest(){
         List<Artifact.Op<?>> artifacts1 = Arrays.asList(A("1"), A("2"));
         List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("3"));
-        PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         pog.merge(artifacts1);
         pog.merge(artifacts2);
 
@@ -73,7 +73,7 @@ public class CollectPogPathsTest {
         List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("a"), A("y"));
         List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("1"), A("b"), A("i"));
         List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("1"), A("b"), A("j"));
-        PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         pog.merge(artifacts1);
         pog.merge(artifacts2);
         pog.merge(artifacts3);
@@ -105,7 +105,7 @@ public class CollectPogPathsTest {
         List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("a"), A("j"));
         List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("1"), A("a"), A("k"));
         List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("1"), A("a"), A("l"));
-        PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         pog.merge(artifacts1);
         pog.merge(artifacts2);
         pog.merge(artifacts3);
@@ -138,7 +138,7 @@ public class CollectPogPathsTest {
         List<Artifact.Op<?>> artifacts2 = Arrays.asList(A("1"), A("a"), A("y"));
         List<Artifact.Op<?>> artifacts3 = Arrays.asList(A("1"), A("b"), A("x"));
         List<Artifact.Op<?>> artifacts4 = Arrays.asList(A("1"), A("b"), A("y"));
-        PartialOrderGraph.Op pog = new MemPartialOrderGraph();
+        PartialOrderGraph.Op pog = new SerPartialOrderGraph();
         pog.merge(artifacts1);
         pog.merge(artifacts2);
         pog.merge(artifacts3);
@@ -165,11 +165,11 @@ public class CollectPogPathsTest {
     }
 
     private Artifact.Op<?> A(String id) {
-        return new MemArtifact<>(new TestArtifactData(id));
+        return new SerArtifact<>(new TestArtifactData(id));
     }
 
     private Artifact.Op<?> A(String id, int number) {
-        Artifact.Op<?> artifact = new MemArtifact<>(new TestArtifactData(id));
+        Artifact.Op<?> artifact = new SerArtifact<>(new TestArtifactData(id));
         artifact.setSequenceNumber(number);
         return artifact;
     }

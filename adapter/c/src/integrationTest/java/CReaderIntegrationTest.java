@@ -4,7 +4,7 @@ import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
 
@@ -179,7 +179,7 @@ public class CReaderIntegrationTest {
     }
 
     private Set<Node.Op> readFolder(Path folderPath){
-        CReader reader = new CReader(new MemEntityFactory());
+        CReader reader = new CReader(new SerEntityFactory());
         Collection<Path> relativeFiles = this.getRelativeDirContent(reader, folderPath);
         Path[] relativeFileAr = relativeFiles.toArray(new Path[0]);
         return reader.read(folderPath, relativeFileAr);

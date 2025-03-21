@@ -13,7 +13,7 @@ import org.logicng.formulas.FormulaFactory;
  */
 public class ProactiveBasedEvaluation implements EvaluationStrategy{
 
-    private final String STRATEGY_NAME = "PROACTIVE";
+    public static final String STRATEGY_NAME = "PROACTIVE";
 
     @Override
     public boolean holds(Configuration configuration,

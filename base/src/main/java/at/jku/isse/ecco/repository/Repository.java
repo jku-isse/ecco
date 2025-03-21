@@ -66,6 +66,7 @@ public interface Repository extends Persistable {
 	Collection<FeatureTrace> getFeatureTraces();
 
 	void setMaintreeBuildingStrategy(MainTreeBuildingStrategy mainTreeBuildingStrategy);
+	MainTreeBuildingStrategy getMainTreeBuildingStrategy();
 
 	void setEvaluationStrategy(EvaluationStrategy evaluationStrategy);
 	EvaluationStrategy getEvaluationStrategy();

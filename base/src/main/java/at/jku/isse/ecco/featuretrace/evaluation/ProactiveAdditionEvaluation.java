@@ -13,7 +13,7 @@ import org.logicng.formulas.FormulaFactory;
  */
 public class ProactiveAdditionEvaluation implements EvaluationStrategy{
 
-    private final String STRATEGY_NAME = "PROACTIVE-ADDITION";
+    public static final String STRATEGY_NAME = "PROACTIVE-ADDITION";
 
     @Override
     public boolean holds (Configuration configuration,

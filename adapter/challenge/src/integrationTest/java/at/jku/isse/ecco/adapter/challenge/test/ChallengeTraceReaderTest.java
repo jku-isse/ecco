@@ -6,7 +6,7 @@ import at.jku.isse.ecco.adapter.challenge.test.utils.PatternUtils;
 import at.jku.isse.ecco.adapter.challenge.test.utils.ResourceUtils;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactData;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Location;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ public class ChallengeTraceReaderTest {
     @Test
     public void readerParsesTracesExampleCorrectly(){
         Path variantFolderPath = ResourceUtils.getResourceFolderPath("test_variant_feature_traces");
-        JavaChallengeReader reader = new JavaChallengeReader(new MemEntityFactory());
+        JavaChallengeReader reader = new JavaChallengeReader(new SerEntityFactory());
         Collection<Path> relativeFiles = PatternUtils.getRelativeDirContent(reader, variantFolderPath);
         Path[] relativeFileAr = relativeFiles.toArray(new Path[0]);
 

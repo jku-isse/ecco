@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.test.util;
 
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.test.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -30,7 +30,7 @@ public class NodeUtil {
      * @return Root of the tree.
      */
     public static Node.Op createTestTree1() {
-        EntityFactory ef = new MemEntityFactory();
+        EntityFactory ef = new SerEntityFactory();
 
         RootNode.Op root = ef.createRootNode();
 
@@ -75,7 +75,7 @@ public class NodeUtil {
     }
 
     public static Node.Op createTestTree2() {
-        EntityFactory ef = new MemEntityFactory();
+        EntityFactory ef = new SerEntityFactory();
 
         RootNode.Op root = ef.createRootNode();
 
