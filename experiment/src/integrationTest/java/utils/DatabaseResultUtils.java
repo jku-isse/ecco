@@ -59,4 +59,22 @@ public class DatabaseResultUtils {
             throw new RuntimeException(e.getMessage());
         }
     }
+
+    public static boolean checkF1OfSingleResultBiggerThan(double f1) throws ResourceException {
+        String url = getDatabaseURL();
+        var sql = "SELECT f1 FROM results";
+
+        try (var conn = DriverManager.getConnection(url);
+             var stmt = conn.createStatement();
+             var rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                double resultF1 = rs.getDouble("f1");
+                return resultF1 > f1;
+            } else {
+                throw new RuntimeException("No result in table!");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
 }

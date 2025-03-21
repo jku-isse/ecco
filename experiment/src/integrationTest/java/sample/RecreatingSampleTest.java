@@ -28,6 +28,8 @@ import static org.mockito.Mockito.when;
 
 public class RecreatingSampleTest {
 
+    // todo: make test independent of absolute path
+
     String REPO_NAME = "openvpn";
     Path VEVOS_GROUND_TRUTH_BASE = Paths.get("C:\\Path\\To\\VEVOS_Extraction\\ground-truth");
     Path VEVOS_GROUND_TRUTH = VEVOS_GROUND_TRUTH_BASE.resolve("openvpn");

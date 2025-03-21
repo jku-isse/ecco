@@ -32,6 +32,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+// todo: make tests independent of absolute paths
+
 public class BoostedMistakeTest {
 
     private final String configPath = ResourceUtils.getResourceFolderPathAsString("configs/boost_mistakes.properties");
