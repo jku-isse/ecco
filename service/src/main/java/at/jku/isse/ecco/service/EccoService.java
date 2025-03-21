@@ -16,7 +16,6 @@ import at.jku.isse.ecco.maintree.factory.MainTreeBuildingStrategyFactory;
 import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.repository.*;
 import at.jku.isse.ecco.service.listener.*;
-import at.jku.isse.ecco.service.utils.ConfigInsertionVisitor;
 import at.jku.isse.ecco.storage.*;
 import at.jku.isse.ecco.storage.ser.core.SerVariant;
 import at.jku.isse.ecco.tree.Node;
@@ -1538,7 +1537,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     public synchronized Commit commit(String commitMessage, Configuration configuration, String committer) {
         this.checkInitialized();
-
         checkNotNull(configuration);
 
         try {
@@ -1547,11 +1545,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             Repository.Op repository = this.repositoryDao.load();
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
             Set<Node.Op> nodes = readFiles();
-
-            // necessary for experiment in order to find ground truth
-            ConfigInsertionVisitor visitor = new ConfigInsertionVisitor(configuration);
-            nodes.forEach(node -> node.traverse(visitor));
-
             ArrayList<Variant> variants = repository.getVariants();
 
             long extractTime = System.currentTimeMillis();
@@ -1572,7 +1565,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 memVariant.setDescription(commitMessage);
                 repository.addVariant(memVariant);
             }
-
             commit.setCommitMessage(commitMessage);
 
             this.repositoryDao.store(repository);

@@ -6,6 +6,7 @@ import at.jku.isse.ecco.util.Location;
 import org.logicng.formulas.Formula;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class EvaluatableNodeCounter implements Node.Op.NodeVisitor {
 
@@ -20,10 +21,12 @@ public class EvaluatableNodeCounter implements Node.Op.NodeVisitor {
 
     @Override
     public void visit(Node.Op node) {
-        Location location = node.getLocation();
-        if (location == null){ return; }
+        Optional<Location> optionalLocation = node.getProperty("Location");
+        if (optionalLocation.isEmpty()){
+            return;
+        }
+        Location location = optionalLocation.get();
         Formula groundTruth = this.getGroundTruth(location);
-
         // ignore "BASE"-ground-truths
         if (!groundTruth.toString().equals("$true")){
             this.count++;

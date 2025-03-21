@@ -11,6 +11,7 @@ import org.logicng.formulas.Formula;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 public class FeatureTraceCollector implements Node.Op.NodeVisitor {
 
@@ -45,8 +46,9 @@ public class FeatureTraceCollector implements Node.Op.NodeVisitor {
     }
 
     private boolean nodeIsEvaluable(Node.Op node){
-        Location location = node.getLocation();
-        if (location == null){ return false; }
+        Optional<Location> optionalLocation = node.getProperty("Location");
+        if (optionalLocation.isEmpty()){ return false; }
+        Location location = optionalLocation.get();
         Formula groundTruthFormula = this.groundTruth.getCondition(location);
         if (groundTruthFormula.toString().equals("$true")){ return false; }
         return true;

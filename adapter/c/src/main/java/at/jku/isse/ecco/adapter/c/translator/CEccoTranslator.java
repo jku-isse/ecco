@@ -20,16 +20,19 @@ public class CEccoTranslator {
     private EntityFactory entityFactory;
     private VevosFileConditionContainer fileConditionContainer;
     private Path path;
+    private String configuration;
 
     public CEccoTranslator(String[] codeLines,
                            EntityFactory entityFactory,
                            VevosFileConditionContainer fileConditionContainer,
-                           Path path){
+                           Path path,
+                           String configuration){
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.functionStructures = new LinkedList<>();
         this.fileConditionContainer = fileConditionContainer;
         this.path = path;
+        this.configuration = configuration;
     }
 
     public void addFunctionStructure(int start, int end, String functionSignature){
@@ -64,12 +67,8 @@ public class CEccoTranslator {
             }
 
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-
-            // TODO: implement location as node property
-            Location location = new Location(i, i, this.path);
-            Node.Op lineNode = this.createNodeWithLocation((Artifact.Op) lineArtifactData, location);
-            //Node.Op lineNode = this.entityFactory.createNode(lineArtifactData);
-
+            Location location = new Location(i, i, this.path, this.configuration);
+            Node.Op lineNode = this.createNodeWithLocation(lineArtifactData, location);
             this.checkForFeatureTrace(i, lineNode);
             parentNode.addChild(lineNode);
         }
@@ -77,19 +76,14 @@ public class CEccoTranslator {
 
     private Node.Op createFunctionNode(FunctionStructure functionStructure){
         Artifact.Op<FunctionArtifactData> data = this.entityFactory.createArtifact(new FunctionArtifactData(functionStructure.functionSignature()));
-
-        //Location location = new Location(functionStructure.startLine(), functionStructure.endLine(), this.path);
-        //Node.Op functionNode = this.createOrderedNodeWithLocation((Artifact.Op) data, location);
         Node.Op functionNode = this.entityFactory.createOrderedNode(data);
-
         this.addLineNodes(functionNode, functionStructure.startLine(), functionStructure.endLine());
-        //this.checkForFeatureTrace(functionStructure, functionNode);
         return functionNode;
     }
 
     private Node.Op createNodeWithLocation(Artifact.Op artifact, Location location){
         Node.Op node = this.entityFactory.createNode(artifact);
-        node.setLocation(location);
+        node.putProperty("Location", location);
         return node;
     }
 

@@ -64,7 +64,7 @@ public class CWriterIntegrationTest {
     }
 
     public static Path getTestFolderPath(){
-        return getResourceFolderPath("TestFolder");
+        return getResourceFolderPath("WriterTestFolder");
     }
 
     public static Path getResourceFolderPath(String relativePath){

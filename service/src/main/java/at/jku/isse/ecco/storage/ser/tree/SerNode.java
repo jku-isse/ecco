@@ -17,18 +17,19 @@ public class SerNode implements Node, Node.Op {
 
 	public static final long serialVersionUID = 1L;
 
-
 	private boolean unique = true;
 
 	private transient List<Op> children = new ArrayList<>();
-
-	private Integer numberOfChildren = 0;
 
 	private Artifact.Op<?> artifact = null;
 
 	private transient Op parent = null;
 
 	private FeatureTrace featureTrace;
+
+	private Map<String, Object> properties = null;
+
+	private Integer numberOfChildren = 0;
 
 	private Location location;
 
@@ -40,13 +41,13 @@ public class SerNode implements Node, Node.Op {
 
 		Node.Op newNode = new SerNode(this.artifact);
 		newNode.setUnique(this.unique);
-		newNode.setLocation(this.location);
+		newNode.putProperties(this.getProperties());
 		return newNode;
 	}
 
 	public Op copySingleNodeCompletely() {
 		SerNode.Op newNode = new SerNode(this.artifact);
-		newNode.setLocation(this.location);
+		newNode.putProperties(this.getProperties());
 		if (this.featureTrace != null) {
 			newNode.getFeatureTrace().setProactiveCondition(this.featureTrace.getProactiveConditionString());
 			newNode.getFeatureTrace().setRetroactiveCondition(this.featureTrace.getRetroactiveConditionString());
@@ -97,16 +98,6 @@ public class SerNode implements Node, Node.Op {
 	}
 
 	@Override
-	public Location getLocation() {
-		return this.location;
-	}
-
-	@Override
-	public void setLocation(Location location){
-		this.location = location;
-	}
-
-	@Override
 	public int getNumberOfChildren() {
 		if (this.children == null && this.numberOfChildren == null){
 			return 0;
@@ -125,15 +116,12 @@ public class SerNode implements Node, Node.Op {
 		this.featureTrace = new SerFeatureTrace(this);
 	}
 
-
 	@Override
 	public Op createNode(Artifact.Op<?> artifact) {
-		// todo: was necessary for experiment
 		Node.Op node = new SerNode(artifact);
-		node.setLocation(this.location);
+		node.putProperties(this.getProperties());
 		return node;
 	}
-
 
 	@Override
 	public boolean isAtomic() {
@@ -143,7 +131,6 @@ public class SerNode implements Node, Node.Op {
 			return false;
 	}
 
-
 	@Override
 	public Association.Op getContainingAssociation() {
 		if (this.parent == null)
@@ -151,7 +138,6 @@ public class SerNode implements Node, Node.Op {
 		else
 			return this.parent.getContainingAssociation();
 	}
-
 
 	@Override
 	public Artifact.Op<?> getArtifact() {
@@ -217,7 +203,6 @@ public class SerNode implements Node, Node.Op {
 			throw new EccoException("Attempted to remove child that does not exist.");
 	}
 
-
 	@Override
 	public List<Op> getChildren() {
 		return this.children;
@@ -247,17 +232,6 @@ public class SerNode implements Node, Node.Op {
 		return this.getArtifact().equals(otherNode.getArtifact());
 	}
 
-
-	@Override
-	public String toString() {
-		return this.getNodeString();
-	}
-
-
-	// properties
-
-	private transient Map<String, Object> properties = null;
-
 	@Override
 	public Map<String, Object> getProperties() {
 		if (this.properties == null)
@@ -265,4 +239,8 @@ public class SerNode implements Node, Node.Op {
 		return this.properties;
 	}
 
+	@Override
+	public String toString() {
+		return this.getNodeString();
+	}
 }

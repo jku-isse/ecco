@@ -4,7 +4,6 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
-import at.jku.isse.ecco.util.Location;
 import at.jku.isse.ecco.util.Trees;
 
 import java.util.*;
@@ -151,7 +150,10 @@ public interface Node extends Persistable {
 
 
 	/**
-	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
+	 * Returns the property with the given name in form of an optional.
+	 * The optional will only contain a result if the name and the type are correct.
+	 * It is not possible to store different types with the same name as the name is the main criterion.
+	 * Thus using the same name overrides old properties.
 	 * These properties are volatile, i.e. they are not persisted!
 	 *
 	 * @param name The name of the property that should be retrieved.
@@ -178,7 +180,7 @@ public interface Node extends Persistable {
 
 	/**
 	 * Adds a new property. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
-	 * These properties are volatile, i.e. they are not persisted!
+	 * The property must be persistable.
 	 *
 	 * @param name     The name of the property.
 	 * @param property The object to be added as a property of the given name.
@@ -190,6 +192,10 @@ public interface Node extends Persistable {
 		checkNotNull(property);
 
 		this.getProperties().put(name, property);
+	}
+
+	default void putProperties(Map<String, Object> propertyMap){
+		propertyMap.forEach(this::putProperty);
 	}
 
 	/**
@@ -312,7 +318,7 @@ public interface Node extends Persistable {
 
 
 		/**
-		 * Creates a new instance of this type of node.
+		 * Creates a new instance of this type of node. The type includes the properties.
 		 *
 		 * @param artifact The artifact to set for this node.
 		 * @return The new node instance.
@@ -427,10 +433,6 @@ public interface Node extends Persistable {
 		void combineProactiveTrace(Node.Op other);
 
 		void removeProactiveTrace();
-
-		Location getLocation();
-
-		void setLocation(Location location);
 
 		int getNumberOfChildren();
 

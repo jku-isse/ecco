@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -65,15 +66,19 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	@Override
 	public Set<Node.Op> read(Path base, Path[] input) {
+		String configuration = this.getConfigurationString(base);
 		VevosConditionHandler vevosConditionHandler = new VevosConditionHandler(base);
 		Set<Node.Op> nodes = new HashSet<>();
 		for (Path path : input) {
-			nodes.addAll(this.read(base, path, vevosConditionHandler));
+			nodes.addAll(this.read(base, path, vevosConditionHandler, configuration));
 		}
 		return nodes;
 	}
 
-	public Set<Node.Op> read(Path basePath, Path relativePath, VevosConditionHandler vevosConditionHandler) {
+	public Set<Node.Op> read(Path basePath,
+							 Path relativePath,
+							 VevosConditionHandler vevosConditionHandler,
+							 String configuration) {
 		Set<Node.Op> nodes = new HashSet<>();
 		VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(relativePath);
 		Path resolvedPath = basePath.resolve(relativePath);
@@ -102,7 +107,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Artifact.Op<ClassArtifactData> classArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className));
 
 				Location location = new Location(typeDeclaration.getRange().get().begin.line,
-						typeDeclaration.getRange().get().end.line, relativePath);
+						typeDeclaration.getRange().get().end.line, relativePath, configuration);
 				Node.Op classNode = this.createNodeWithLocation(classArtifact, location);
 				pluginNode.addChild(classNode);
 				this.checkForFeatureTrace(typeDeclaration, fileConditionContainer, classNode);
@@ -116,14 +121,14 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					Artifact.Op<ImportArtifactData> importArtifact = this.entityFactory.createArtifact(new ImportArtifactData(importName));
 
 					location = new Location(importDeclaration.getRange().get().begin.line,
-							importDeclaration.getRange().get().end.line, relativePath);
+							importDeclaration.getRange().get().end.line, relativePath, configuration);
 					Node.Op importNode = this.createNodeWithLocation(importArtifact, location);
 
 					importsGroupNode.addChild(importNode);
 					this.checkForFeatureTrace(importDeclaration, fileConditionContainer, importNode);
 				}
 				ArrayList<String> methods =  new ArrayList<>();
-				this.addClassChildren(typeDeclaration, classNode, lines, methods, fileConditionContainer, relativePath);
+				this.addClassChildren(typeDeclaration, classNode, lines, methods, fileConditionContainer, relativePath, configuration);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -138,7 +143,8 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 								  String[] lines,
 								  ArrayList<String> methods,
 								  VevosFileConditionContainer fileConditionContainer,
-								  Path path) {
+								  Path path,
+								  String configuration) {
 
 		// create methods artifact/node
 		Artifact.Op<AbstractArtifactData> methodsGroupArtifact = this.entityFactory.createArtifact(new AbstractArtifactData("METHODS"));
@@ -158,12 +164,12 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Artifact.Op<ClassArtifactData> nestedClassArtifact = this.entityFactory.createArtifact(new ClassArtifactData(classNode.toString() + "." + ((ClassOrInterfaceDeclaration) node).getName().toString()));
 
 				Location location = new Location(node.getRange().get().begin.line,
-						node.getRange().get().end.line, path);
+						node.getRange().get().end.line, path, configuration);
 				Node.Op nestedClassNode = this.createNodeWithLocation(nestedClassArtifact, location);
 
 				classNode.addChild(nestedClassNode);
 				this.checkForFeatureTrace(node, fileConditionContainer, nestedClassNode);
-				addClassChildren((ClassOrInterfaceDeclaration) node, nestedClassNode, lines, methods, fileConditionContainer, path);
+				addClassChildren((ClassOrInterfaceDeclaration) node, nestedClassNode, lines, methods, fileConditionContainer, path, configuration);
 			}
 			// enumerations
 			else if (node instanceof EnumDeclaration) {
@@ -174,7 +180,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					String trimmedLine = lines[i].trim();
 					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-						Location location = new Location(i + 1, i + 1, path);
+						Location location = new Location(i + 1, i + 1, path, configuration);
 						Node.Op lineNode = this.createNodeWithLocation(lineArtifact, location);
 						enumsGroupNode.addChild(lineNode);
 						this.checkForFeatureTrace(i + 1, fileConditionContainer, lineNode);
@@ -192,7 +198,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					String trimmedLine = lines[i].trim();
 					if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 						Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-						Location location = new Location(lineNumber, lineNumber, path);
+						Location location = new Location(lineNumber, lineNumber, path, configuration);
 						Node.Op lineNode = this.createNodeWithLocation(lineArtifact, location);
 						fieldsGroupNode.addChild(lineNode);
 						this.checkForFeatureTrace(i + 1, fileConditionContainer, lineNode);
@@ -207,7 +213,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 						")";
 				methods.add(classNode.getArtifact() + " " + methodSignature);
 				Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
-				Location constructorLocation = new Location(node.getRange().get().begin.line, node.getRange().get().end.line, path);
+				Location constructorLocation = new Location(node.getRange().get().begin.line, node.getRange().get().end.line, path, configuration);
 				Node.Op methodNode = this.createOrderedNodeWithLocation(methodArtifact, constructorLocation);
 				this.checkForFeatureTrace(node, fileConditionContainer, methodNode);
 
@@ -221,7 +227,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 						String trimmedLine = lines[i].trim();
 						if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 							Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-							Location location = new Location(lineNumber, lineNumber, path);
+							Location location = new Location(lineNumber, lineNumber, path, configuration);
 							Node.Op lineNode = this.createNodeWithLocation(lineArtifact, location);
 							methodNode.addChild(lineNode);
 							this.checkForFeatureTrace(i + 1, fileConditionContainer, lineNode);
@@ -239,17 +245,17 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 					")";
 			methods.add(classNode.getArtifact() + " " + methodSignature);
 			Artifact.Op<MethodArtifactData> methodArtifact = this.entityFactory.createArtifact(new MethodArtifactData(methodSignature));
-			Location methodLocation = new Location(methodDeclaration.getRange().get().begin.line, methodDeclaration.getRange().get().end.line, path);
+			Location methodLocation = new Location(methodDeclaration.getRange().get().begin.line, methodDeclaration.getRange().get().end.line, path, configuration);
 			Node.Op methodNode = this.createOrderedNodeWithLocation(methodArtifact, methodLocation);
 			this.checkForFeatureTrace(methodDeclaration, fileConditionContainer, methodNode);
 
 			methodsGroupNode.addChild(methodNode);
-			addMethodChildren(methodDeclaration, methodNode, lines, fileConditionContainer, path);
+			addMethodChildren(methodDeclaration, methodNode, lines, fileConditionContainer, path, configuration);
 		}
 	}
 
 	private void addMethodChildren(MethodDeclaration methodDeclaration, Node.Op methodNode, String[] lines,
-								   VevosFileConditionContainer fileConditionContainer, Path path) {
+								   VevosFileConditionContainer fileConditionContainer, Path path, String configuration) {
 		// lines inside method
 		if (methodDeclaration.getBody().isPresent()) {
 			int beginLine = methodDeclaration.getBody().get().getRange().get().begin.line;
@@ -260,7 +266,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				String trimmedLine = lines[i].trim();
 				if (!trimmedLine.isEmpty() && !trimmedLine.equals("}") && !trimmedLine.equals("{")) {
 					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(lines[i]));
-					Location location = new Location(lineNumber, lineNumber, path);
+					Location location = new Location(lineNumber, lineNumber, path, configuration);
 					Node.Op lineNode = this.createNodeWithLocation(lineArtifact, location);
 					methodNode.addChild(lineNode);
 					this.checkForFeatureTrace(i + 1, fileConditionContainer, lineNode);
@@ -272,13 +278,13 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private Node.Op createNodeWithLocation(Artifact.Op artifact, Location location){
 		Node.Op node = this.entityFactory.createNode(artifact);
-		node.setLocation(location);
+		node.putProperty("Location", location);
 		return node;
 	}
 
 	private Node.Op createOrderedNodeWithLocation(Artifact.Op artifact, Location location){
 		Node.Op node = this.entityFactory.createOrderedNode(artifact);
-		node.setLocation(location);
+		node.putProperty("Location", location);
 		return node;
 	}
 
@@ -299,6 +305,20 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 		for(VevosCondition condition : matchingConditions){
 			FeatureTrace nodeTrace = node.getFeatureTrace();
 			nodeTrace.buildProactiveConditionConjunction(condition.getConditionString());
+		}
+	}
+
+	private String getConfigurationString(Path base) {
+		Path configurationPath = base.resolve(".config");
+		if (!Files.exists(configurationPath)){
+			return null;
+		}
+
+		try (Stream<String> stream = Files.lines(configurationPath)) {
+			List<String> fileLines = stream.toList();
+			return fileLines.get(0);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
 		}
 	}
 

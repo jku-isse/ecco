@@ -10,6 +10,7 @@ import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Optional;
 
 
 public class EvaluationVisitor implements Node.Op.NodeVisitor {
@@ -29,9 +30,10 @@ public class EvaluationVisitor implements Node.Op.NodeVisitor {
 
     @Override
     public void visit(Node.Op node) {
-        Location location = node.getLocation();
+        Optional<Location> optionalLocation = node.getProperty("Location");
         // ignore nodes without line numbers (like plugin-node, directories etc.)
-        if (location == null){ return; }
+        if (optionalLocation.isEmpty()){ return; }
+        Location location = optionalLocation.get();
         Formula groundTruth = this.getGroundTruth(location);
 
         // ignore "BASE"-ground-truths

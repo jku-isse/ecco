@@ -4,6 +4,8 @@ import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Location;
 
+import java.util.Optional;
+
 public class CounterVisitor implements Node.Op.NodeVisitor {
 
     private int nodeCount = 0;
@@ -16,8 +18,8 @@ public class CounterVisitor implements Node.Op.NodeVisitor {
     public void visit(Node.Op node) {
         this.nodeCount++;
 
-        Location location = node.getLocation();
-        if (location != null){
+        Optional<Location> optionalLocation = node.getProperty("Location");
+        if (optionalLocation.isPresent()){
             this.locationCount++;
         }
 

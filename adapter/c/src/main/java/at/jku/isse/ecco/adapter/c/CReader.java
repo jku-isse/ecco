@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -55,15 +56,30 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
     @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         VevosConditionHandler vevosConditionHandler = new VevosConditionHandler(base);
+        String configuration = this.getConfigurationString(base);
         Set<Node.Op> nodes = new HashSet<>();
         for (Path path : input) {
             VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(path);
             Node.Op pluginNode = addPluginNode(nodes, path);
             Path absolutePath = base.resolve(path);
-            this.parseFile(pluginNode, absolutePath, fileConditionContainer, path);
+            this.parseFile(pluginNode, absolutePath, fileConditionContainer, path, configuration);
             nodes.add(pluginNode);
         }
         return nodes;
+    }
+
+    private String getConfigurationString(Path base) {
+        Path configurationPath = base.resolve(".config");
+        if (!Files.exists(configurationPath)){
+            return null;
+        }
+
+        try (Stream<String> stream = Files.lines(configurationPath)) {
+            List<String> fileLines = stream.toList();
+            return fileLines.get(0);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Node.Op addPluginNode(Set<Node.Op> nodes, Path path){
@@ -73,11 +89,15 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
         return pluginNode;
     }
 
-    private void parseFile(Node.Op pluginNode, Path absolutePath, VevosFileConditionContainer fileConditionContainer, Path relPath){
+    private void parseFile(Node.Op pluginNode,
+                           Path absolutePath,
+                           VevosFileConditionContainer fileConditionContainer,
+                           Path relPath,
+                           String configuration){
         try {
             List<String> lineList = Files.readAllLines(absolutePath);
             String[] lines = lineList.toArray(new String[0]);
-            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath);
+            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath, configuration);
             CParser parser = this.createParser(absolutePath);
             // in order to suppress log output
             parser.removeErrorListeners();

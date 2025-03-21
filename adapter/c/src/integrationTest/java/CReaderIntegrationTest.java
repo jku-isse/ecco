@@ -217,7 +217,7 @@ public class CReaderIntegrationTest {
 
     private void checkUserCondition(Node.Op node, String conditionString){
         FeatureTrace featureTrace = node.getFeatureTrace();
-        assertEquals(conditionString, featureTrace.getUserConditionString());
+        assertEquals(conditionString, featureTrace.getProactiveConditionString());
     }
 
     private void checkFunctionNode(Node.Op node, String signature){
