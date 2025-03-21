@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.test;
+package at.jku.isse.ecco.test.util;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 

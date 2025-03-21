@@ -408,7 +408,7 @@ public interface Node extends Persistable {
 			// copy the parent of this node as well as all ancestors and siblings
 			Op parent = this.getParent();
 			if (parent == null) { return parent; }
-			Op parentCopy = this.copySingleNode(copyFeatureTraces);
+			Op parentCopy = parent.copySingleNode(copyFeatureTraces);
 			for (Node.Op node : parent.getChildren()){
 				if (node != this){
 					parentCopy.addChild(node.copySingleNode(copyFeatureTraces));

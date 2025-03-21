@@ -4,24 +4,13 @@ import at.jku.isse.ecco.artifact.*;
 import at.jku.isse.ecco.pog.*;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraph;
-import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraphNode;
-import javafx.scene.*;
-import org.graphstream.graph.Node;
-import org.graphstream.graph.*;
-import org.graphstream.graph.implementations.*;
-import org.graphstream.ui.fx_viewer.*;
-import org.graphstream.ui.javafx.*;
-import org.graphstream.ui.layout.*;
-import org.graphstream.ui.layout.springbox.implementations.*;
-import org.graphstream.ui.view.*;
+import at.jku.isse.ecco.test.util.TestArtifactData;
 import org.junit.jupiter.api.*;
 
-import java.io.*;
 import java.net.*;
 import java.nio.file.Path;
 import java.nio.file.*;
 import java.util.*;
-import java.util.stream.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -80,7 +69,7 @@ public class PartialOrderGraphTest {
 	}
 
 	@Test
-	public void testTestTest() {
+	public void mergeTest() {
 		List<Artifact.Op<?>> thisArtifacts1 = Arrays.asList(A("1"), A("2"), A("3"), A("4"), A("5"));
 		List<Artifact.Op<?>> thisArtifacts2 = Arrays.asList(A("1"), A("3"), A("2"), A("4"), A("5"));
 		PartialOrderGraph.Op thisPog = new SerPartialOrderGraph();
@@ -116,6 +105,8 @@ public class PartialOrderGraphTest {
 	}
 
 
+	// todo: don't test with prints
+	/*
 	@Test
 	public void SequenceTest5() throws IOException {
 		List<String> lines1 = Files.readAllLines(DATA_DIR.resolve("s5\\1.txt"));
@@ -815,6 +806,7 @@ public class PartialOrderGraphTest {
 			this.traversePartialOrderGraph(graph, pogChild, gsNode, nodeMap);
 		}
 	}
+	 */
 
 
 	/**

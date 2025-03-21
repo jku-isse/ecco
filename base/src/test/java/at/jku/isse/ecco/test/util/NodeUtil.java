@@ -2,7 +2,6 @@ package at.jku.isse.ecco.test.util;
 
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
-import at.jku.isse.ecco.test.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
