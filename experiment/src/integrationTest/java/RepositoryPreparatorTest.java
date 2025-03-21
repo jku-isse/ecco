@@ -102,8 +102,16 @@ public class RepositoryPreparatorTest {
         MemoryListPicker<FeatureTrace> listPicker = new RandomFeatureTracePicker();
         RepositoryPreparator preparator = new RepositoryPreparator(mistakeCreator, listPicker);
 
-        preparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
-        preparator.undoPreparation();
+        boolean undoneAlready = false;
+        try {
+            preparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
+        } catch (MistakeException e){
+            undoneAlready = true;
+        }
+
+        if (!undoneAlready) {
+            preparator.undoPreparation();
+        }
 
         this.checkTraces();
         this.repository.buildMainTree();

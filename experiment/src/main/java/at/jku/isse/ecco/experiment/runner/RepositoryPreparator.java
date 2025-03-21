@@ -35,7 +35,12 @@ public class RepositoryPreparator {
         Collection<FeatureTrace> evaluableProactiveTraces = collector.getEvaluableTraces();
         this.nonEvaluableProactiveTraces = collector.getNonEvaluableTraces();
         Collection<FeatureTrace> keptProactiveTraces = this.keepFeatureTracePercentage(evaluableProactiveTraces, featureTracePercentage);
-        this.mistakeCreator.createMistakePercentage(repository, keptProactiveTraces, mistakePercentage);
+        try {
+            this.mistakeCreator.createMistakePercentage(repository, keptProactiveTraces, mistakePercentage);
+        } catch (MistakeException e){
+            this.undoPreparation();
+            throw new MistakeException(e);
+        }
         this.removeNonEvaluableTraces();
     }
 

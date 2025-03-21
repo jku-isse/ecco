@@ -46,7 +46,6 @@ public class MistakeCreator {
                 mistakesCreated++;
             }
         }
-        return;
     }
 
     public void restoreOriginalConditions(){
