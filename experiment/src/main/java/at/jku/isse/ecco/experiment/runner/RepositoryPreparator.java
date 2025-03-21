@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.experiment.runner;
 
 import at.jku.isse.ecco.experiment.mistake.MistakeCreator;
+import at.jku.isse.ecco.experiment.mistake.MistakeException;
 import at.jku.isse.ecco.experiment.picker.ListPicker;
 import at.jku.isse.ecco.experiment.picker.MemoryListPicker;
 import at.jku.isse.ecco.experiment.utils.tracecollector.FeatureTraceCollector;
@@ -28,7 +29,7 @@ public class RepositoryPreparator {
     public void prepareRepository(Repository.Op repository,
                                   int featureTracePercentage,
                                   int mistakePercentage,
-                                  GroundTruth groundTruth){
+                                  GroundTruth groundTruth) throws MistakeException {
         FeatureTraceCollector collector = new FeatureTraceCollector(repository, groundTruth);
         this.allProactiveTraces = collector.getFeatureTraces();
         Collection<FeatureTrace> evaluableProactiveTraces = collector.getEvaluableTraces();

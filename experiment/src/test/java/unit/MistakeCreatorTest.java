@@ -507,6 +507,11 @@ public class MistakeCreatorTest {
         }
 
         @Override
+        public MainTreeBuildingStrategy getMainTreeBuildingStrategy() {
+            return null;
+        }
+
+        @Override
         public void setEvaluationStrategy(EvaluationStrategy evaluationStrategy) {
 
         }

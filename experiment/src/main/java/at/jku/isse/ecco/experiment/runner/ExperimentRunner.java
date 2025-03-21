@@ -10,11 +10,13 @@ import at.jku.isse.ecco.experiment.result.persister.ResultPersister;
 import at.jku.isse.ecco.experiment.utils.vevos.GroundTruth;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
-import at.jku.isse.ecco.storage.ser.maintree.MemAssociationMerger;
+import at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger;
+import at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger;
 import at.jku.isse.ecco.tree.*;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.experiment.utils.LiteralCleanUpVisitor;
+import org.tinylog.Logger;
 
 import java.util.*;
 
@@ -44,8 +46,8 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
         this.config = config;
         this.repository = repository;
         this.persister = persister;
-        this.nonBoostedBuildingStrategy = new MemAssociationMerger();
-        this.boostedBuildingStrategy = new MemBoostedAssociationMerger();
+        this.nonBoostedBuildingStrategy = new SerAssociationMerger();
+        this.boostedBuildingStrategy = new SerBoostedAssociationMerger();
     }
 
     public void setBoostedBuildingStrategy(MainTreeBuildingStrategy boostedBuildingStrategy){
@@ -127,7 +129,14 @@ public class ExperimentRunner implements ExperimentRunnerInterface {
         RepositoryPreparator repositoryPreparator = new RepositoryPreparator(mistakeCreator, this.listPicker);
         GroundTruth groundTruth = new GroundTruth(this.config.getVariantsDir());
 
-        repositoryPreparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
+        try {
+            repositoryPreparator.prepareRepository(this.repository, featureTracePercentage, mistakePercentage, groundTruth);
+        } catch (MistakeException e){
+            Logger.info(e.getMessage());
+            Logger.info("Attempting to run experiment iteration again.");
+            this.performExperimentIteration();
+            return;
+        }
 
         this.boosting = this.config.getBoosting();
 

@@ -16,7 +16,9 @@ public class MistakeCreator {
         this.mistakeStrategy = mistakeStrategy;
     }
 
-    public void createMistakePercentage(Repository.Op repository, Collection<FeatureTrace> featureTraces, int percentage){
+    public void createMistakePercentage(Repository.Op repository,
+                                        Collection<FeatureTrace> featureTraces,
+                                        int percentage){
         // return the number of mistakes that are missing to reach the given percentage
         int mistakesCreated = 0;
         this.originalConditions = new IdentityHashMap<>();
