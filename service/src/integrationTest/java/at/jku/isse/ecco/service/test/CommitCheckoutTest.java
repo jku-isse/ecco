@@ -89,4 +89,36 @@ public class CommitCheckoutTest {
             throw new RuntimeException(e);
         }
     }
+
+    @Test
+    public void serializeAndDeserializeTest()throws ResourceException, DirectoryException {
+        Path repositoryPath = ResourceUtils.getResourceFolderPath("repo");
+        Path variant1Path = ResourceUtils.getResourceFolderPath("input/V1");
+        Path variant2Path = ResourceUtils.getResourceFolderPath("input/V2");
+
+        try (EccoService eccoService = new EccoService()) {
+            eccoService.setRepositoryDir(repositoryPath.resolve(".ecco"));
+            eccoService.init();
+            eccoService.setBaseDir(variant1Path);
+            eccoService.commit();
+            eccoService.setBaseDir(variant2Path);
+            eccoService.commit();
+        }
+
+        try (EccoService eccoService = new EccoService()) {
+            eccoService.setRepositoryDir(repositoryPath.resolve(".ecco"));
+            eccoService.open();
+            Path checkoutFile = CHECKOUT_PATH.resolve("file.txt");
+            eccoService.setBaseDir(CHECKOUT_PATH);
+            eccoService.checkout("A.0");
+            Path variant1File = variant1Path.resolve("file.txt");
+            assertEquals(-1, Files.mismatch(variant1File, checkoutFile));
+            DirectoryUtils.deleteAndCreateFolder(CHECKOUT_PATH);
+            eccoService.checkout("A.1, B.1");
+            Path variant2File = variant2Path.resolve("file.txt");
+            assertEquals(-1, Files.mismatch(variant2File, checkoutFile));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
