@@ -1,5 +1,0 @@
-Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
-main.c;True;True;True;artifact;1;5
-main.c;True;SOMETHING;SOMETHING;artifact;2;2
-main.c;True;NONRELEVANT;NONRELEVANT;artifact;3;3
-main.c;True;(FEATUREB && NONRELEVANT && |);(FEATUREB && NONRELEVANT && |);artifact;4;4

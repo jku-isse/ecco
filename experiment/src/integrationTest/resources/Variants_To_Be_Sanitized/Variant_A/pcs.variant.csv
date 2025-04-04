@@ -1,6 +1,0 @@
-Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
-main.c;True;True;True;artifact;1;4
-main.c;True;(FEATUREA && Test|);(FEATUREA && Test|);artifact;2;2
-main.c;True;!NONRELEVANT;!NONRELEVANT;artifact;2;2
-main.c;True;(FEATUREA || NONRELAVENT || Te|st);(FEATUREA || NONRELAVENT || Te|st);artifact;2;2
-main.c;True;!DEFINED___LB__HAVE_FEATUREA__RB__;!DEFINED___LB__HAVE_FEATUREA__RB__;artifact;2;2

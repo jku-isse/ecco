@@ -1,3 +1,0 @@
-Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
-main.c;True;FEATUREB;FEATUREB;artifact;6;7
-main.c;True;FEATUREB;FEATUREB;artifact;12;14

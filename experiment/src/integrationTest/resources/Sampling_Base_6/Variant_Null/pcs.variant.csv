@@ -1,2 +1,0 @@
-Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
-main.c;True;True;True;ROOT;1;8

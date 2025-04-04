@@ -1,2 +1,0 @@
-Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
-main.c;True;(FEATUREA || FEATUREB);(FEATUREA || FEATUREB);artifact;6;7
