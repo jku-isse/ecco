@@ -215,6 +215,9 @@ public interface Node extends Persistable {
 	 */
 	interface Op extends Node {
 
+		/**
+		 * Traverse the subtree with this node as its root in a pre-order depth-first manner.
+		 */
 		default void traverse(NodeVisitor visitor) {
 			visitor.visit(this);
 
@@ -224,13 +227,13 @@ public interface Node extends Persistable {
 		}
 
 		/**
-		 * Traverse the subtree with this node as its root in a depth first manner.
+		 * Traverse the subtree with this node as its root in a post-order depth-first manner.
 		 */
-		default void dfTraverse(DfNodeVisitor visitor){
+		default void poTraverse(DfNodeVisitor visitor){
 			// necessary in case child will be removed (list must not be changed during iteration)
 			List<Node.Op> children = new LinkedList<>(this.getChildren());
 			for (Node.Op child : children) {
-				child.dfTraverse(visitor);
+				child.poTraverse(visitor);
 			}
 			visitor.dfVisit(this);
 		}

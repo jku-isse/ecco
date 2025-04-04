@@ -32,7 +32,7 @@ public class CheckoutComposer {
 
         Node.Op checkoutTree = mainTree.copyTree(true);
         NodeRemovalVisitor checkVisitor = new NodeRemovalVisitor(configuration, evaluationStrategy);
-        checkoutTree.dfTraverse(checkVisitor);
+        checkoutTree.poTraverse(checkVisitor);
         OrderSetterVisitor orderVisitor = new OrderSetterVisitor(this.orderSelector);
         checkoutTree.traverse(orderVisitor);
 
