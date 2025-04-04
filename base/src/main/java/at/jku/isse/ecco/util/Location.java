@@ -4,6 +4,8 @@ import at.jku.isse.ecco.dao.Persistable;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 
 public class Location implements Persistable {
 
@@ -17,7 +19,7 @@ public class Location implements Persistable {
         this.startLine = startLine;
         this.endLine = endLine;
         this.filePath = filePath.toString();
-        this.configurationString = configurationString;
+        this.setConfigurationString(configurationString);
     }
 
     public int getStartLine(){
@@ -37,6 +39,13 @@ public class Location implements Persistable {
     }
 
     public void setConfigurationString(String configurationString){
-        this.configurationString = configurationString;
+        this.configurationString = sortConfigurationString(configurationString);
+    }
+
+    public static String sortConfigurationString(String configString){
+        String[] configElements = configString.split(",");
+        for (int i = 0; i < configElements.length; i++){ configElements[i] = configElements[i].trim(); }
+        List<String> sortedList = Arrays.stream(configElements).sorted().toList();
+        return String.join(", ", sortedList);
     }
 }

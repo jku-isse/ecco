@@ -35,7 +35,7 @@ public class ChallengeTraceReaderTest {
         // check parsing result of TestClassA.java
         Path fileAPath = Paths.get("TestClassA.java");
         Node.Op fileANode = getNodeWithArtifactDataFromCollection(nodes, new PluginArtifactData("placeholderid", fileAPath));
-        assertNull(fileANode.getLocation());
+        assertTrue(fileANode.getProperty("Location").isEmpty());
         assertFalse(fileANode.getFeatureTrace().containsProactiveCondition());
 
         List<Node.Op> classANodes = (List<Node.Op>) fileANode.getChildren();
@@ -48,7 +48,7 @@ public class ChallengeTraceReaderTest {
         // check parsing result of TestClassB.java
         Path fileBPath = Paths.get("TestClassB.java");
         Node.Op fileBNode = getNodeWithArtifactDataFromCollection(nodes, new PluginArtifactData("placeholderid", fileBPath));
-        assertNull(fileANode.getLocation());
+        assertTrue(fileANode.getProperty("Location").isEmpty());
         assertFalse(fileANode.getFeatureTrace().containsProactiveCondition());
         List<Node.Op> classBNodes = (List<Node.Op>) fileBNode.getChildren();
         assertEquals(1, classBNodes.size());
@@ -63,22 +63,26 @@ public class ChallengeTraceReaderTest {
         assertEquals(4, groupNodes.size());
 
         Node.Op importGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("IMPORTS"));
-        assertNull(importGroupNode.getLocation());
+        assertTrue(importGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(importGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAImports(importGroupNode);
 
         Node.Op methodsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("METHODS"));
-        assertNull(methodsGroupNode.getLocation());
+        assertTrue(methodsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(methodsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAMethods(methodsGroupNode);
 
         Node.Op fieldsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("FIELDS"));
-        assertNull(fieldsGroupNode.getLocation());
+        assertTrue(fieldsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(fieldsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAFields(fieldsGroupNode);
 
         Node.Op enumsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("ENUMS"));
-        assertNull(enumsGroupNode.getLocation());
+        assertTrue(enumsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(enumsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassAEnums(enumsGroupNode);
     }
@@ -185,22 +189,26 @@ public class ChallengeTraceReaderTest {
         assertEquals(5, groupNodes.size());
 
         Node.Op importGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("IMPORTS"));
-        assertNull(importGroupNode.getLocation());
+        assertTrue(importGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(importGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBImports(importGroupNode);
 
         Node.Op methodsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("METHODS"));
-        assertNull(methodsGroupNode.getLocation());
+        assertTrue(methodsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(methodsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBMethods(methodsGroupNode);
 
         Node.Op fieldsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("FIELDS"));
-        assertNull(fieldsGroupNode.getLocation());
+        assertTrue(fieldsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(fieldsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBFields(fieldsGroupNode);
 
         Node.Op enumsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("ENUMS"));
-        assertNull(enumsGroupNode.getLocation());
+        assertTrue(enumsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(enumsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkTestClassBEnums(enumsGroupNode);
 
@@ -273,17 +281,20 @@ public class ChallengeTraceReaderTest {
         assertEquals(3, groupNodes.size());
 
         Node.Op methodsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("METHODS"));
-        assertNull(methodsGroupNode.getLocation());
+        assertTrue(methodsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(methodsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkInnerClassMethods(methodsGroupNode);
 
         Node.Op fieldsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("FIELDS"));
-        assertNull(fieldsGroupNode.getLocation());
+        assertTrue(fieldsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(fieldsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkInnerClassFields(fieldsGroupNode);
 
         Node.Op enumsGroupNode = getNodeWithArtifactDataFromCollection(groupNodes, new AbstractArtifactData("ENUMS"));
-        assertNull(enumsGroupNode.getLocation());
+        assertTrue(enumsGroupNode.getProperty("Location").isEmpty());
+
         assertFalse(enumsGroupNode.getFeatureTrace().containsProactiveCondition());
         this.checkInnerClassEnums(enumsGroupNode);
     }
@@ -341,7 +352,7 @@ public class ChallengeTraceReaderTest {
     }
 
     private static void checkNodeLocation(Node.Op node, int startLine, int endLine){
-        Location nodeLocation = node.getLocation();
+        Location nodeLocation = (Location) node.getProperty("Location").get();
         assertEquals(nodeLocation.getStartLine(), startLine);
         assertEquals(nodeLocation.getEndLine(), endLine);
     }
