@@ -14,6 +14,7 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.storage.ser.feature.SerFeature;
+import at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation;
 import at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
 import at.jku.isse.ecco.tree.Node;
@@ -28,7 +29,7 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	public static final long serialVersionUID = 1L;
 	public static final int DEFAULT_MAX_ORDER = 2;
-	public static final EvaluationStrategy DEFAULT_EVALUATION_STRATEGY = new ProactiveBasedEvaluation();
+	public static final EvaluationStrategy DEFAULT_EVALUATION_STRATEGY = new SerProactiveBasedEvaluation();
 	public static final MainTreeBuildingStrategy DEFAULT_MAIN_TREE_BUILDING_STRATEGY = new SerBoostedAssociationMerger();
 
 	private Map<String, SerFeature> features;

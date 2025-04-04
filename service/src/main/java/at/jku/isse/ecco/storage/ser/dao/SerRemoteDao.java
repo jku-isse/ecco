@@ -54,11 +54,11 @@ public class SerRemoteDao extends SerAbstractGenericDao implements RemoteDao {
 		final Database root = this.transactionStrategy.getDatabase();
 		final Map<String, SerRemote> remoteIndex = root.getRemoteIndex();
 
-		final SerRemote memEntity = (SerRemote) remote;
+		final SerRemote serEntity = (SerRemote) remote;
 
-		remoteIndex.put(memEntity.getName(), memEntity);
+		remoteIndex.put(serEntity.getName(), serEntity);
 
-		return memEntity;
+		return serEntity;
 	}
 
 	@Override
