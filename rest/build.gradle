@@ -57,10 +57,10 @@ test {
 application {
     mainClass.set("at.jku.isse.ecco.rest.Application")
 }
-java {
-    sourceCompatibility = JavaVersion.toVersion("17")
-    targetCompatibility = JavaVersion.toVersion("17")
-}
+//java {
+//    sourceCompatibility = JavaVersion.toVersion("17")
+//    targetCompatibility = JavaVersion.toVersion("17")
+//}
 
 micronaut {
     version = "4.1.0"

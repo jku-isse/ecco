@@ -1,0 +1,25 @@
+plugins {
+	id 'org.openjfx.javafxplugin' version '0.0.14'
+}
+
+ecco.adapter = true
+
+repositories {
+	mavenCentral()
+	mavenLocal()
+}
+
+dependencies {
+	compileOnly 'org.projectlombok:lombok:1.18.30'
+	annotationProcessor 'org.projectlombok:lombok:1.18.30'
+	implementation("at.jku.isse.designspace:variant:4.0") {
+		exclude group: 'org.springframework.boot'
+	}
+	implementation project(':ecco-service')
+	implementation 'org.json:json:20230227'
+}
+
+ospackage {
+	requires('ecco-base', version, EQUAL)
+	requires('ecco-service', version, EQUAL)
+}

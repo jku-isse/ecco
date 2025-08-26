@@ -17,6 +17,7 @@ include 'adapter-cpp'
 include 'adapter-runtime'
 include 'adapter-golang'
 include 'adapter-c'
+include 'adapter-ds'
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
@@ -34,5 +35,6 @@ project(':adapter-cpp').projectDir = file('adapter/cpp')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
 project(':adapter-golang').projectDir = file('adapter/golang')
 project(':adapter-c').projectDir = file('adapter/c')
+project(':adapter-ds').projectDir = file('adapter/ds')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }
