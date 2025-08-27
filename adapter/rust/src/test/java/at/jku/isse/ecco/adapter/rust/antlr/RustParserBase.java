@@ -1,3 +1,5 @@
+package at.jku.isse.ecco.adapter.rust.antlr;
+
 import org.antlr.v4.runtime.*;
 
 public abstract class RustParserBase extends Parser {

@@ -13,22 +13,14 @@ import java.util.Set;
 public class RustModule extends AbstractModule {
     @Override
     protected void configure() {
-        super.configure();
-
-        final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder =
-                Multibinder.newSetBinder(
-                        binder(),
-                        new TypeLiteral<>() {
-                        });
-
+        final Multibinder<ArtifactReader<Path, Set<Node.Op>>> readerMultibinder = Multibinder.newSetBinder(binder(),
+                new TypeLiteral<>() {
+                });
         readerMultibinder.addBinding().to(RustReader.class);
 
-        final Multibinder<ArtifactWriter<Set<Node>, Path>> writerMultibinder =
-                Multibinder.newSetBinder(
-                        binder(),
-                        new TypeLiteral<>() {
-                        });
-
+        final Multibinder<ArtifactWriter<Set<Node>, Path>> writerMultibinder = Multibinder.newSetBinder(binder(),
+                new TypeLiteral<>() {
+                });
         writerMultibinder.addBinding().to(RustWriter.class);
     }
 }

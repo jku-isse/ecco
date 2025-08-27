@@ -4,9 +4,9 @@ import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import com.google.inject.Module;
 
 public class RustPlugin extends ArtifactPlugin {
-    public static final String DESCRIPTION = "Adds support for ... artefacts";
+    public static final String DESCRIPTION = "Rust Artifact Plugin";
 
-    private final RustModule module = new RustModule();
+    private RustModule module = new RustModule();
 
     @Override
     public String getPluginId() {
@@ -20,7 +20,7 @@ public class RustPlugin extends ArtifactPlugin {
 
     @Override
     public String getName() {
-        return  RustPlugin.class.getSimpleName();
+        return "RustArtifactPlugin";
     }
 
     @Override

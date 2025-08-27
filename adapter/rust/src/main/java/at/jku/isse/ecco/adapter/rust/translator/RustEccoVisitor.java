@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.adapter.rust.translator;
 
 
-import at.jku.isse.ecco.adapter.rust.antlr.RustLexer;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -11,13 +10,14 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Optional;
 
 public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
-    private Node.Op pluginNode;
-    private String[] codeLines;
-    private EntityFactory entityFactory;
-    private Collection<RustParser.Function_Context> functionContexts;
-    private Path path;
+    private final Node.Op pluginNode;
+    private final String[] codeLines;
+    private final EntityFactory entityFactory;
+    private final Collection<RustParser.Function_Context> functionContexts;
+    private final Path path;
 
     public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path) {
         this.pluginNode = pluginNode;
@@ -26,6 +26,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         this.functionContexts = new LinkedList<>();
         this.path = path;
     }
+
+    public Node.Op translate(ParseTree tree) {
+        return tree.accept(this);
+    }
+
 
     /**
      * Visit a parse tree produced by {@link RustParser#crate}.
@@ -38,6 +43,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         for (ParseTree parseTree : ctx.item()) {
             parseTree.accept(this);
         }
+        RustEccoTranslator translator = new RustEccoTranslator(
+                this.codeLines, this.entityFactory, this.path);
         this.collectFunctions(translator);
         translator.addChildrenToPluginNode(this.pluginNode);
         return this.pluginNode;
@@ -45,7 +52,13 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     @Override
+    public Node.Op visitItem(RustParser.ItemContext ctx) {
+        return super.visitItem(ctx);
+    }
+
+    @Override
     public Node.Op visitFunction_(RustParser.Function_Context ctx) {
+
         this.functionContexts.add(ctx);
         return super.visitFunction_(ctx);
     }
@@ -71,15 +84,29 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     private boolean checkFunction(RustParser.Function_Context ctx) {
-        // return ctx.declarationSpecifiers() != null && ctx.declarator() != null;
-        // TODO not implemented
-        return true;
+        // Check if the function has a valid signature
+        return ctx.identifier() != null &&
+                ctx.KW_FN() != null; // Ensure it has a function name and the "fn" keyword
     }
 
+    // TODO handle visibility properly
+    private Optional<String> functionVisibility(RustParser.Function_Context ctx) {
+        var parent = ctx.getParent();
+        if (parent instanceof RustParser.VisItemContext) {
+            RustParser.VisItemContext visItemContext = (RustParser.VisItemContext) parent;
+            if (visItemContext.visibility() != null){
+                return Optional.of(visItemContext.visibility().getText());
+            }
+        }
+        return Optional.empty();
+    }
 
     private String getFunctionSignature(RustParser.Function_Context ctx) {
         StringBuilder sig = new StringBuilder();
-        // optional qualifiers: “pub”, “const”, “async”…
+        // visibility
+        this.functionVisibility(ctx).ifPresent(visibility -> sig.append(visibility).append(" "));
+
+        // optional qualifiers
         if (ctx.functionQualifiers() != null) {
             sig.append(ctx.functionQualifiers().getText()).append(" ");
         }
@@ -107,18 +134,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return sig.toString();
     }
 
-    private void collectFunctions(){
-//        for(CParser.FunctionDefinitionContext ctx : this.functionDefinitionContexts){
-//            if (this.checkFunction(ctx)) {
-//                String functionSignature = this.getFunctionSignature(ctx);
-//                programStructure.addFunctionStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature);
-//            }
-//        }
+    private void collectFunctions(RustEccoTranslator programStructure) {
         for (RustParser.Function_Context ctx : this.functionContexts) {
             if (this.checkFunction(ctx)) {
                 String functionSignature = this.getFunctionSignature(ctx);
-                System.out.println("Function signature: " + functionSignature);
-
+                programStructure.addFunctionStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature);
             }
         }
     }
