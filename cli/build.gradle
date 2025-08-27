@@ -11,11 +11,15 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
 	runtimeOnly project(':ecco-adapter-golang')
+    runtimeOnly project(':ecco-adapter-rust')
+
 
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-image')
-	testImplementation project(':ecco-adapter-golang')
+    testImplementation project(':ecco-adapter-golang')
+    testImplementation project(':ecco-adapter-rust')
+
 
 	testImplementation platform('org.junit:junit-bom:5.10.1')
 	testImplementation 'org.junit.jupiter:junit-jupiter'
