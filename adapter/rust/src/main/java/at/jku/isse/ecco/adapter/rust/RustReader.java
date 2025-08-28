@@ -6,6 +6,7 @@ import at.jku.isse.ecco.adapter.rust.antlr.RustLexer;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.rust.data.LineArtifactData;
+import at.jku.isse.ecco.adapter.rust.data.StructArtifactData;
 import at.jku.isse.ecco.adapter.rust.translator.RustEccoVisitor;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
@@ -157,18 +158,20 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
 //            List<Node.Op> pluginNodeChildren = (List<Node.Op>) child.getChildren();
 //            for (Node.Op node : pluginNodeChildren) {
 //                Artifact<?> artifact = node.getArtifact();
-//                if (artifact.getData() instanceof FunctionArtifactData) {
+//                var data = artifact.getData();
+//                if (data instanceof FunctionArtifactData) {
 //                    Node functionNode = node;
 //                    List<Node> lineNodeChildren = (List<Node>) functionNode.getChildren();
-//                    for (Node lineNode : lineNodeChildren){
+//                    for (Node lineNode : lineNodeChildren) {
 //                        LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
-//                        System.out.println(lineArtifactData.getLine());
+//                        System.out.println("Line: " + lineArtifactData.getLine());
 //                    }
+//                } else {
+//                    System.out.println("Other: " + data.toString());
 //                }
-//                if (artifact.getData() instanceof LineArtifactData) {
-//                    LineArtifactData lineArtifactData = (LineArtifactData) artifact.getData();
-//                    System.out.println(lineArtifactData.getLine());
-//                }
+////                } else if (data instanceof StructArtifactData) {
+////                    System.out.println("Struct: " + ((StructArtifactData) data).toString());
+////                }
 //            }
 //        }
 //    }

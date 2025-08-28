@@ -8,29 +8,31 @@ import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private final Node.Op pluginNode;
     private final String[] codeLines;
     private final EntityFactory entityFactory;
-    private final Collection<RustParser.Function_Context> functionContexts;
+    private final Collection<RustParser.OuterAttributeContext> attributeContexts = new ArrayList<>();
+    private final Collection<RustParser.Function_Context> functionContexts = new ArrayList<>();
+    private final Collection<RustParser.Struct_Context> structContexts = new ArrayList<>();
+    private final Collection<RustParser.Trait_Context> traitContexts = new ArrayList<>();
     private final Path path;
 
     public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path) {
         this.pluginNode = pluginNode;
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
-        this.functionContexts = new LinkedList<>();
         this.path = path;
     }
 
     public Node.Op translate(ParseTree tree) {
         return tree.accept(this);
     }
-
 
     /**
      * Visit a parse tree produced by {@link RustParser#crate}.
@@ -45,7 +47,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
         RustEccoTranslator translator = new RustEccoTranslator(
                 this.codeLines, this.entityFactory, this.path);
-        this.collectFunctions(translator);
+        this.collectContexts(translator);
         translator.addChildrenToPluginNode(this.pluginNode);
         return this.pluginNode;
 
@@ -58,29 +60,27 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitFunction_(RustParser.Function_Context ctx) {
-
         this.functionContexts.add(ctx);
         return super.visitFunction_(ctx);
     }
 
     @Override
-    public Node.Op visitFunctionQualifiers(RustParser.FunctionQualifiersContext ctx) {
-        return super.visitFunctionQualifiers(ctx);
+    public Node.Op visitStruct_(RustParser.Struct_Context ctx) {
+        this.structContexts.add(ctx);
+        return super.visitStruct_(ctx);
     }
 
     @Override
-    public Node.Op visitFunctionParam(RustParser.FunctionParamContext ctx) {
-        return super.visitFunctionParam(ctx);
+    public Node.Op visitTrait_(RustParser.Trait_Context ctx) {
+        this.traitContexts.add(ctx);
+        return super.visitTrait_(ctx);
     }
 
-    @Override
-    public Node.Op visitFunctionParamPattern(RustParser.FunctionParamPatternContext ctx) {
-        return super.visitFunctionParamPattern(ctx);
-    }
 
     @Override
-    public Node.Op visitFunctionReturnType(RustParser.FunctionReturnTypeContext ctx) {
-        return super.visitFunctionReturnType(ctx);
+    public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
+        this.attributeContexts.add(ctx);
+        return super.visitOuterAttribute(ctx);
     }
 
     private boolean checkFunction(RustParser.Function_Context ctx) {
@@ -94,15 +94,30 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         var parent = ctx.getParent();
         if (parent instanceof RustParser.VisItemContext) {
             RustParser.VisItemContext visItemContext = (RustParser.VisItemContext) parent;
-            if (visItemContext.visibility() != null){
+            if (visItemContext.visibility() != null) {
                 return Optional.of(visItemContext.visibility().getText());
             }
         }
         return Optional.empty();
     }
 
+    // TODO handle attributes properly
+    private Optional<String> attributes(RustParser.Function_Context ctx) {
+        var parent = ctx.getParent().getParent();
+        RustParser.ItemContext itemContext = (RustParser.ItemContext) parent;
+        if (itemContext.outerAttribute() != null) {
+            StringBuilder attrs = new StringBuilder();
+            for (RustParser.OuterAttributeContext attrCtx : itemContext.outerAttribute()) {
+                attrs.append(attrCtx.getText()).append(" ");
+            }
+            return Optional.of(attrs.toString().trim());
+        }
+        return Optional.empty();
+    }
+
     private String getFunctionSignature(RustParser.Function_Context ctx) {
         StringBuilder sig = new StringBuilder();
+
         // visibility
         this.functionVisibility(ctx).ifPresent(visibility -> sig.append(visibility).append(" "));
 
@@ -134,6 +149,20 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return sig.toString();
     }
 
+    private String getStruct(RustParser.Struct_Context ctx) {
+        return ctx.structStruct().getText();
+    }
+
+    private String getTrait(RustParser.Trait_Context ctx) {
+        return ctx.getText();
+    }
+
+    private void collectContexts(RustEccoTranslator programStructure) {
+        this.collectFunctions(programStructure);
+        this.collectStructs(programStructure);
+        this.collectTraits(programStructure);
+    }
+
     private void collectFunctions(RustEccoTranslator programStructure) {
         for (RustParser.Function_Context ctx : this.functionContexts) {
             if (this.checkFunction(ctx)) {
@@ -143,5 +172,18 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
     }
 
+    private void collectStructs(RustEccoTranslator programStructure) {
+        for (RustParser.Struct_Context ctx : this.structContexts) {
+            String content = this.getStruct(ctx);
+            programStructure.addStructStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
+        }
+    }
+
+    private void collectTraits(RustEccoTranslator programStructure) {
+        for (RustParser.Trait_Context ctx : this.traitContexts) {
+            String content = this.getTrait(ctx);
+            programStructure.addTraitStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
+        }
+    }
 
 }

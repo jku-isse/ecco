@@ -1,9 +1,15 @@
 package at.jku.isse.ecco.adapter.rust.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.util.Objects;
 
+@ToString
+@EqualsAndHashCode
+@Getter
 public class LineArtifactData implements ArtifactData {
 
     private final String line;
@@ -12,28 +18,5 @@ public class LineArtifactData implements ArtifactData {
         this.line = line;
     }
 
-    public String getLine() {
-        return this.line;
-    }
 
-    @Override
-    public String toString() {
-        return this.line;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(this.line);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null) return false;
-        if (getClass() != obj.getClass()) return false;
-        LineArtifactData other = (LineArtifactData) obj;
-        if (this.line == null) {
-            return other.line == null;
-        } else return this.line.equals(other.line);
-    }
 }

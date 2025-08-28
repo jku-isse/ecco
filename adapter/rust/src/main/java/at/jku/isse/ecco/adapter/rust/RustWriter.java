@@ -23,15 +23,15 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     private Collection<WriteListener> listeners = new ArrayList<>();
 
     /**
-     * @return 
+     * @return name of the plugin this writer belongs to
      */
     @Override
     public String getPluginId() { return RustPlugin.class.getName(); }
 
     /**
-     * @param base 
-     * @param input
-     * @return
+     * @param base base path where to write the artifacts
+     * @param input artifacts to write
+     * @return paths to the written artifacts
      */
     @Override
     public Path[] write(Path base, Set<Node> input) {
@@ -55,7 +55,7 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
 
     private void writeRustFile(Path filePath, Node orderedNode){
         try (BufferedWriter bw = Files.newBufferedWriter(filePath)) {
-            List<Node> fileNodeChildren = (List<Node>) orderedNode.getChildren();
+            List<? extends Node> fileNodeChildren = orderedNode.getChildren();
             for (Node node : fileNodeChildren){
                 Artifact<?> artifact = node.getArtifact();
                 ArtifactData artifactData = artifact.getData();
@@ -85,7 +85,7 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     private void writeFunctionNode(BufferedWriter bw, Node functionNode) throws IOException {
-        List<Node> lineNodeChildren =  (List<Node>) functionNode.getChildren();
+        List<? extends Node> lineNodeChildren =  functionNode.getChildren();
         for (Node lineNode : lineNodeChildren){
             ArtifactData artifactData = lineNode.getArtifact().getData();
             if (artifactData instanceof LineArtifactData) {
