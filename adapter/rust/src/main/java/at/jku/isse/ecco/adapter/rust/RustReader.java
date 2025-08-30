@@ -150,30 +150,30 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
 
-//    public static void main(String[] args) {
-//        RustReader reader = new RustReader(new MemEntityFactory());
-//        Path[] input = {Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/simple.rs")}; // Example path, adjust as needed
-//        Set<Node.Op> nodes = reader.read(input);
-//        for (Node.Op child : nodes) {
-//            List<Node.Op> pluginNodeChildren = (List<Node.Op>) child.getChildren();
-//            for (Node.Op node : pluginNodeChildren) {
-//                Artifact<?> artifact = node.getArtifact();
-//                var data = artifact.getData();
-//                if (data instanceof FunctionArtifactData) {
-//                    Node functionNode = node;
-//                    List<Node> lineNodeChildren = (List<Node>) functionNode.getChildren();
-//                    for (Node lineNode : lineNodeChildren) {
-//                        LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
-//                        System.out.println("Line: " + lineArtifactData.getLine());
-//                    }
-//                } else {
-//                    System.out.println("Other: " + data.toString());
+    public static void main(String[] args) {
+        RustReader reader = new RustReader(new MemEntityFactory());
+        Path[] input = {Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/simple.rs")}; // Example path, adjust as needed
+        Set<Node.Op> nodes = reader.read(input);
+        for (Node.Op child : nodes) {
+            List<Node.Op> pluginNodeChildren = (List<Node.Op>) child.getChildren();
+            for (Node.Op node : pluginNodeChildren) {
+                Artifact<?> artifact = node.getArtifact();
+                var data = artifact.getData();
+                if (data instanceof FunctionArtifactData) {
+                    Node functionNode = node;
+                    List<Node> lineNodeChildren = (List<Node>) functionNode.getChildren();
+                    for (Node lineNode : lineNodeChildren) {
+                        LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
+                        System.out.println("Line: " + lineArtifactData.getLine());
+                    }
+                } else {
+                    System.out.println("Other: " + data.toString());
+                }
+//                } else if (data instanceof StructArtifactData) {
+//                    System.out.println("Struct: " + ((StructArtifactData) data).toString());
 //                }
-////                } else if (data instanceof StructArtifactData) {
-////                    System.out.println("Struct: " + ((StructArtifactData) data).toString());
-////                }
-//            }
-//        }
-//    }
+            }
+        }
+    }
 
 }

@@ -3,8 +3,10 @@ package at.jku.isse.ecco.adapter.rust.translator;
 
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
+import at.jku.isse.ecco.adapter.rust.translator.structures.Type;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.nio.file.Path;
@@ -21,6 +23,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private final Collection<RustParser.Function_Context> functionContexts = new ArrayList<>();
     private final Collection<RustParser.Struct_Context> structContexts = new ArrayList<>();
     private final Collection<RustParser.Trait_Context> traitContexts = new ArrayList<>();
+    private final Collection<? extends ParserRuleContext> contexts = new ArrayList<>();
     private final Path path;
 
     public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path) {
@@ -50,7 +53,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         this.collectContexts(translator);
         translator.addChildrenToPluginNode(this.pluginNode);
         return this.pluginNode;
+    }
 
+    @Override
+    public Node.Op visitVisItem(RustParser.VisItemContext ctx) {
+        return super.visitVisItem(ctx);
     }
 
     @Override
@@ -165,24 +172,22 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     private void collectFunctions(RustEccoTranslator programStructure) {
         for (RustParser.Function_Context ctx : this.functionContexts) {
-            if (this.checkFunction(ctx)) {
                 String functionSignature = this.getFunctionSignature(ctx);
-                programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature);
-            }
+                programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature, Type.FUNCTION);
         }
     }
 
     private void collectStructs(RustEccoTranslator programStructure) {
         for (RustParser.Struct_Context ctx : this.structContexts) {
             String content = this.getStruct(ctx);
-            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.STRUCT);
         }
     }
 
     private void collectTraits(RustEccoTranslator programStructure) {
         for (RustParser.Trait_Context ctx : this.traitContexts) {
             String content = this.getTrait(ctx);
-            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.TRAIT);
         }
     }
 

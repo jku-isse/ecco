@@ -6,6 +6,7 @@ import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.rust.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.rust.data.LineArtifactData;
 import at.jku.isse.ecco.adapter.rust.data.StructArtifactData;
+import at.jku.isse.ecco.adapter.rust.data.TraitArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
@@ -60,18 +61,14 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
             for (Node node : fileNodeChildren){
                 Artifact<?> artifact = node.getArtifact();
                 ArtifactData artifactData = artifact.getData();
-                if (artifactData instanceof FunctionArtifactData){
-                    this.writeFunctionNode(bw, node);
-                } else if (artifactData instanceof StructArtifactData) {
-                    StructArtifactData structArtifactData = (StructArtifactData) artifactData;
-                    bw.write(structArtifactData.getStruct());
-                    bw.newLine();
-                } else if (artifactData instanceof LineArtifactData){
-                    LineArtifactData lineArtifactData = (LineArtifactData) artifactData;
+                if (List.of(FunctionArtifactData.class, StructArtifactData.class).contains(artifactData.getClass())) {
+                    this.writeNode(bw, node);
+                } else if (artifactData instanceof LineArtifactData) {
+                    LineArtifactData lineArtifactData = ((LineArtifactData) artifactData);
                     bw.write(lineArtifactData.getLine());
                     bw.newLine();
                 } else {
-                    throw new EccoException("Expected FunctionArtifactData or LineArtifactData.");
+                    throw new EccoException("Expected known artifact data, but got " + artifactData.getClass().getSimpleName() + ".");
                 }
             }
         } catch (IOException e) {
@@ -89,12 +86,12 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
         return new Path[0];
     }
 
-    private void writeFunctionNode(BufferedWriter bw, Node functionNode) throws IOException {
-        List<? extends Node> lineNodeChildren =  functionNode.getChildren();
-        for (Node lineNode : lineNodeChildren){
-            ArtifactData artifactData = lineNode.getArtifact().getData();
+    private void writeNode(BufferedWriter bw, Node node) throws IOException {
+        List<? extends Node> nodeChildren = node.getChildren();
+        for (Node childNode : nodeChildren){
+            ArtifactData artifactData = childNode.getArtifact().getData();
             if (artifactData instanceof LineArtifactData) {
-                LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
+                LineArtifactData lineArtifactData = (LineArtifactData) childNode.getArtifact().getData();
                 bw.write(lineArtifactData.getLine());
                 bw.newLine();
             } else {
@@ -102,7 +99,6 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
             }
         }
     }
-
     /**
      * @param listener 
      */

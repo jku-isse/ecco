@@ -7,6 +7,7 @@ import at.jku.isse.ecco.adapter.rust.data.TraitArtifactData;
 import at.jku.isse.ecco.adapter.rust.translator.structures.Structure;
 import at.jku.isse.ecco.adapter.rust.translator.structures.Type;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
 
@@ -29,6 +30,7 @@ public class RustEccoTranslator {
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.path = path;
+        this.structures = new ArrayList<>();
     }
 
     public void addChildrenToPluginNode(Node.Op pluginNode) {
@@ -58,26 +60,26 @@ public class RustEccoTranslator {
         }
     }
 
-    private Node.Op createFunctionNode(Structure structure) {
-        Artifact.Op<FunctionArtifactData> data = this.entityFactory.createArtifact(new FunctionArtifactData(structure.getContent()));
-        Node.Op functionNode = this.entityFactory.createOrderedNode(data);
-        this.addLineNodes(functionNode, structure.getStartLine(), structure.getEndLine());
-        return functionNode;
-    }
-
-    private Node.Op createStructNode(Structure structure) {
-        Artifact.Op<StructArtifactData> data = this.entityFactory.createArtifact(new StructArtifactData(structure.getContent()));
-        Node.Op structNode = this.entityFactory.createOrderedNode(data);
-        this.addLineNodes(structNode, structure.getStartLine(), structure.getEndLine());
-        return structNode;
-
-    }
-
-    private Node.Op createTraitNode(Structure structure) {
-        Artifact.Op<StructArtifactData> data = this.entityFactory.createArtifact(new TraitArtifactData(structure.getContent()));
-        Node.Op traitNode = this.entityFactory.createOrderedNode(data);
-        this.addLineNodes(traitNode, structure.getStartLine(), structure.getEndLine());
-        return traitNode;
+    private Node.Op createNode(Structure structure) {
+        ArtifactData data;
+        Type type = structure.getType();
+        switch (type) {
+            case FUNCTION:
+                data = new FunctionArtifactData(structure.getContent());
+                break;
+            case STRUCT:
+                data = new StructArtifactData(structure.getContent());
+                break;
+            case TRAIT:
+                data = new TraitArtifactData(structure.getContent());
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + type);
+        }
+        Artifact.Op<? extends ArtifactData> artifact = this.entityFactory.createArtifact(data);
+        Node.Op node = this.entityFactory.createOrderedNode(data);
+        this.addLineNodes(node, structure.getStartLine(), structure.getEndLine());
+        return node;
     }
 
     public void addStructure(int startLine, int endLine, String content, Type type) {
