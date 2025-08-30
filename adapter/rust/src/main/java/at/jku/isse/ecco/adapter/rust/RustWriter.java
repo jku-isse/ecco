@@ -5,6 +5,7 @@ import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.rust.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.rust.data.LineArtifactData;
+import at.jku.isse.ecco.adapter.rust.data.StructArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
@@ -61,6 +62,10 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
                 ArtifactData artifactData = artifact.getData();
                 if (artifactData instanceof FunctionArtifactData){
                     this.writeFunctionNode(bw, node);
+                } else if (artifactData instanceof StructArtifactData) {
+                    StructArtifactData structArtifactData = (StructArtifactData) artifactData;
+                    bw.write(structArtifactData.getStruct());
+                    bw.newLine();
                 } else if (artifactData instanceof LineArtifactData){
                     LineArtifactData lineArtifactData = (LineArtifactData) artifactData;
                     bw.write(lineArtifactData.getLine());

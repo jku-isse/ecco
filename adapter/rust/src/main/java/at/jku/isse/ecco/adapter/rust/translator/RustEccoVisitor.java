@@ -150,7 +150,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     private String getStruct(RustParser.Struct_Context ctx) {
-        return ctx.structStruct().getText();
+        return ctx.structStruct().identifier().getText();
     }
 
     private String getTrait(RustParser.Trait_Context ctx) {
@@ -167,7 +167,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         for (RustParser.Function_Context ctx : this.functionContexts) {
             if (this.checkFunction(ctx)) {
                 String functionSignature = this.getFunctionSignature(ctx);
-                programStructure.addFunctionStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature);
+                programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature);
             }
         }
     }
@@ -175,14 +175,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private void collectStructs(RustEccoTranslator programStructure) {
         for (RustParser.Struct_Context ctx : this.structContexts) {
             String content = this.getStruct(ctx);
-            programStructure.addStructStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
         }
     }
 
     private void collectTraits(RustEccoTranslator programStructure) {
         for (RustParser.Trait_Context ctx : this.traitContexts) {
             String content = this.getTrait(ctx);
-            programStructure.addTraitStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content);
         }
     }
 
