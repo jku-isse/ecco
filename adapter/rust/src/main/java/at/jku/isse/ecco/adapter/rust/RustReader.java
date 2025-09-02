@@ -1,19 +1,14 @@
 package at.jku.isse.ecco.adapter.rust;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.rust.antlr.RustLexer;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
-import at.jku.isse.ecco.adapter.rust.data.FunctionArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.LineArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.StructArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.TraitArtifactData;
 import at.jku.isse.ecco.adapter.rust.translator.RustEccoVisitor;
 import at.jku.isse.ecco.artifact.Artifact;
-import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import org.antlr.v4.runtime.CharStream;
@@ -83,7 +78,7 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
             ParseTree tree = parser.crate();
             translator.translate(tree);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new EccoException(e);
         }
     }
 
@@ -96,7 +91,7 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
             TokenStream tokenStream = new CommonTokenStream(lexer);
             return new RustParser(tokenStream);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read file: " + absolutePath, e);
+            throw new EccoException("Failed to read file: " + absolutePath, e);
         }
     }
 

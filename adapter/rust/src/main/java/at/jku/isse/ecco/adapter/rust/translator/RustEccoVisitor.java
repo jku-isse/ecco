@@ -106,7 +106,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     // TODO handle attributes properly
-    private Optional<String> GetOptionalAttributes(ParserRuleContext ctx) {
+    private Optional<String> getOptionalAttributes(ParserRuleContext ctx) {
         var parent = ctx.getParent().getParent();
         RustParser.ItemContext itemContext = (RustParser.ItemContext) parent;
         if (itemContext.outerAttribute() != null) {
@@ -175,7 +175,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     private void collectFunctions(RustEccoTranslator programStructure) {
         for (RustParser.Function_Context ctx : this.functionContexts) {
-            String attributes = this.GetOptionalAttributes(ctx).orElse("");
+            String attributes = this.getOptionalAttributes(ctx).orElse("");
             String functionSignature = this.getFunctionSignature(ctx);
             programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature, Type.FUNCTION, attributes);
         }
@@ -183,7 +183,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     private void collectStructs(RustEccoTranslator programStructure) {
         for (RustParser.Struct_Context ctx : this.structContexts) {
-            String attributes = this.GetOptionalAttributes(ctx).orElse("");
+            String attributes = this.getOptionalAttributes(ctx).orElse("");
             String content = this.getStruct(ctx);
             programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.STRUCT, attributes);
         }
@@ -191,7 +191,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     private void collectTraits(RustEccoTranslator programStructure) {
         for (RustParser.Trait_Context ctx : this.traitContexts) {
-            String attributes = this.GetOptionalAttributes(ctx).orElse("");
+            String attributes = this.getOptionalAttributes(ctx).orElse("");
             String content = this.getTrait(ctx);
             programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.TRAIT, attributes);
         }
@@ -199,7 +199,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     private void collectImpls(RustEccoTranslator programStructure) {
         for (RustParser.ImplementationContext ctx : this.implContexts) {
-            String attributes = this.GetOptionalAttributes(ctx).orElse("");
+            String attributes = this.getOptionalAttributes(ctx).orElse("");
             String content = this.getImpl(ctx);
             programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.TRAIT, attributes);
         }

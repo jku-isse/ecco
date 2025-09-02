@@ -78,7 +78,7 @@ public class RustEccoTranslator {
             default:
                 throw new EccoException("Unexpected value of node type: " + type);
         }
-        Optional<Node.Op> attributeNode = this.GetAttributesAndCreateNode(structure);
+        Optional<Node.Op> attributeNode = this.getAttributesAndCreateNode(structure);
 
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = this.entityFactory.createNode(item);
@@ -92,7 +92,7 @@ public class RustEccoTranslator {
         return itemNode;
     }
 
-    public Optional<Node.Op> GetAttributesAndCreateNode(Structure structure) {
+    public Optional<Node.Op> getAttributesAndCreateNode(Structure structure) {
         String attributes = structure.getAttributes();
         Artifact.Op<AttributeArtifactData> attributeArtifact = this.entityFactory.createArtifact(new AttributeArtifactData(attributes));
         return Optional.ofNullable(this.entityFactory.createOrderedNode(attributeArtifact));
