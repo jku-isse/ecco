@@ -3,10 +3,7 @@ package at.jku.isse.ecco.adapter.rust;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.FunctionArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.LineArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.StructArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.TraitArtifactData;
+import at.jku.isse.ecco.adapter.rust.data.*;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
@@ -58,49 +55,95 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     private void writeRustFile(Path filePath, Node orderedNode){
         try (BufferedWriter bw = Files.newBufferedWriter(filePath)) {
             List<? extends Node> fileNodeChildren = orderedNode.getChildren();
-            for (Node node : fileNodeChildren){
-                Artifact<?> artifact = node.getArtifact();
-                ArtifactData artifactData = artifact.getData();
-                if (List.of(FunctionArtifactData.class, StructArtifactData.class).contains(artifactData.getClass())) {
-                    this.writeNode(bw, node);
-                } else if (artifactData instanceof LineArtifactData) {
-                    LineArtifactData lineArtifactData = ((LineArtifactData) artifactData);
-                    bw.write(lineArtifactData.getLine());
-                    bw.newLine();
-                } else {
-                    throw new EccoException("Expected known artifact data, but got " + artifactData.getClass().getSimpleName() + ".");
-                }
+            for (Node childNode : fileNodeChildren) {
+                visitingNode(bw, childNode);
             }
         } catch (IOException e) {
             throw new EccoException("Could not write Rust file.", e);
         }
     }
 
+    public void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
+        var childArtifactData = childNode.getArtifact().getData();
+        if (!childNode.getChildren().isEmpty()) {
+            for (Node node : childNode.getChildren()) {
+                visitingNode(bw, node);
+            }
+
+        } else if ( childArtifactData instanceof StructArtifactData) {
+            StructArtifactData structArtifactData = (StructArtifactData) childNode.getArtifact().getData();
+            bw.write(structArtifactData.getStruct());
+            if (!childNode.getChildren().isEmpty()) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNode(bw, node);
+                }
+            }
+            bw.newLine();
+
+        } else if (childArtifactData instanceof ImplementationArtifactData) {
+            ImplementationArtifactData implementationArtifactData = (ImplementationArtifactData) childNode.getArtifact().getData();
+            bw.write(implementationArtifactData.getSignature());
+            if (!childNode.getChildren().isEmpty()) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNode(bw, node);
+                }
+            }
+            bw.newLine();
+
+        } else if ( childArtifactData instanceof TraitArtifactData) {
+            TraitArtifactData traitArtifactData = (TraitArtifactData) childNode.getArtifact().getData();
+            bw.write(traitArtifactData.getTrait());
+            if (!childNode.getChildren().isEmpty()) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNode(bw, node);
+                }
+            }
+            bw.newLine();
+
+        } else if ( childArtifactData instanceof FunctionArtifactData) {
+            FunctionArtifactData functionArtifactData = (FunctionArtifactData) childNode.getArtifact().getData();
+            bw.write(functionArtifactData.getSignature());
+            if (!childNode.getChildren().isEmpty()) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNode(bw, node);
+                }
+            }
+            bw.newLine();
+
+        } else if ( childArtifactData instanceof LineArtifactData) {
+            LineArtifactData lineArtifactData = (LineArtifactData) childNode.getArtifact().getData();
+            bw.write(lineArtifactData.getLine());
+            if (!childNode.getChildren().isEmpty()) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNode(bw, node);
+                }
+            }
+            bw.newLine();
+
+        } else if ( childArtifactData instanceof AttributeArtifactData) {
+            AttributeArtifactData attributeArtifactData = (AttributeArtifactData) childNode.getArtifact().getData();
+            bw.write(attributeArtifactData.getAttribute());
+            if (!childNode.getChildren().isEmpty()) {
+                for (Node node : childNode.getChildren()) {
+                    visitingNode(bw, node);
+                }
+            }
+            bw.newLine();
+
+        } else {
+            throw new EccoException("Expected known artifact data.");
+        }
+
+    }
 
     /**
-     * @param input 
-     * @return
      */
     @Override
     public Path[] write(Set<Node> input) {
         return new Path[0];
     }
 
-    private void writeNode(BufferedWriter bw, Node node) throws IOException {
-        List<? extends Node> nodeChildren = node.getChildren();
-        for (Node childNode : nodeChildren){
-            ArtifactData artifactData = childNode.getArtifact().getData();
-            if (artifactData instanceof LineArtifactData) {
-                LineArtifactData lineArtifactData = (LineArtifactData) childNode.getArtifact().getData();
-                bw.write(lineArtifactData.getLine());
-                bw.newLine();
-            } else {
-                throw new EccoException("Expected LineArtifactData.");
-            }
-        }
-    }
     /**
-     * @param listener 
      */
     @Override
     public void addListener(WriteListener listener) {
@@ -109,19 +152,9 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     }
 
     /**
-     * @param listener 
      */
     @Override
     public void removeListener(WriteListener listener) {
         this.listeners.remove(listener);
-    }
-
-    public static void main(String[] args) {
-        RustReader reader = new RustReader(new MemEntityFactory());
-        Path[] input = {Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/simple.rs")};
-        Set<Node.Op> nodes = reader.read(input);
-        Node first = (Node) nodes.toArray()[0];
-        RustWriter writer = new RustWriter();
-        writer.writeRustFile(Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/simple_out.rs"), first);
     }
 }

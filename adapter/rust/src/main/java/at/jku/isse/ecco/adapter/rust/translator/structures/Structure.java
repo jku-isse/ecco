@@ -8,4 +8,5 @@ public class Structure {
     private final int endLine;
     private final String content;
     private final Type type;
+    private final String attributes;
 }

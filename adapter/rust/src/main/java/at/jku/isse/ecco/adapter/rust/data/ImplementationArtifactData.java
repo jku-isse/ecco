@@ -1,16 +1,14 @@
 package at.jku.isse.ecco.adapter.rust.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
-import lombok.Data;
+import lombok.Getter;
 
-import java.util.Optional;
-
-@Data
-public class FunctionArtifactData implements ArtifactData {
-
+@Getter
+public class ImplementationArtifactData implements ArtifactData {
     private final String signature;
 
-    public FunctionArtifactData(String signature) {
+    public ImplementationArtifactData(String signature) {
         this.signature = signature;
     }
+
 }

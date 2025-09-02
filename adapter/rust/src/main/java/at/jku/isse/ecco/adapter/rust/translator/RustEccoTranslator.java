@@ -1,9 +1,7 @@
 package at.jku.isse.ecco.adapter.rust.translator;
 
-import at.jku.isse.ecco.adapter.rust.data.FunctionArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.LineArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.StructArtifactData;
-import at.jku.isse.ecco.adapter.rust.data.TraitArtifactData;
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.rust.data.*;
 import at.jku.isse.ecco.adapter.rust.translator.structures.Structure;
 import at.jku.isse.ecco.adapter.rust.translator.structures.Type;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -15,8 +13,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class RustEccoTranslator {
     private final List<Structure> structures;
@@ -39,6 +37,7 @@ public class RustEccoTranslator {
                 .sorted(Comparator.comparingInt(Structure::getStartLine))
                 .collect(Collectors.toList());
         for (Structure structure : sortedStructures) {
+            // TODO attributes are added as an lineNode for itself, meaning it gets duplicated in the function/struct/trait node
             this.addLineNodes(pluginNode, startLine, structure.getStartLine() - 1);
             Node.Op node = this.createNode(structure);
             pluginNode.addChild(node);
@@ -73,17 +72,40 @@ public class RustEccoTranslator {
             case TRAIT:
                 data = new TraitArtifactData(structure.getContent());
                 break;
+            case IMPLEMENTATION:
+                data = new ImplementationArtifactData(structure.getContent());
+                break;
             default:
-                throw new IllegalStateException("Unexpected value: " + type);
+                throw new EccoException("Unexpected value of node type: " + type);
         }
+        Optional<Node.Op> attributeNode = this.GetAttributesAndCreateNode(structure);
+
+        Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
+        Node.Op itemNode = this.entityFactory.createNode(item);
+
         Artifact.Op<? extends ArtifactData> artifact = this.entityFactory.createArtifact(data);
         Node.Op node = this.entityFactory.createOrderedNode(data);
+
+        attributeNode.ifPresent(node::addChild);
+        itemNode.addChild(node);
         this.addLineNodes(node, structure.getStartLine(), structure.getEndLine());
-        return node;
+        return itemNode;
+    }
+
+    public Optional<Node.Op> GetAttributesAndCreateNode(Structure structure) {
+        String attributes = structure.getAttributes();
+        Artifact.Op<AttributeArtifactData> attributeArtifact = this.entityFactory.createArtifact(new AttributeArtifactData(attributes));
+        return Optional.ofNullable(this.entityFactory.createOrderedNode(attributeArtifact));
     }
 
     public void addStructure(int startLine, int endLine, String content, Type type) {
-        this.structures.add(new Structure(startLine, endLine, content, type));
+        this.structures.add(new Structure(startLine, endLine, content, type, ""));
     }
+
+    public void addStructure(int startLine, int endLine, String content, Type type, String attributes) {
+        this.structures.add(new Structure(startLine, endLine, content, type, attributes));
+    }
+
+
 
 }

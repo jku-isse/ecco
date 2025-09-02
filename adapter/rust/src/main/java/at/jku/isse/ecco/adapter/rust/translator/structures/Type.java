@@ -4,5 +4,6 @@ public enum Type {
         FUNCTION,
         STRUCT,
         TRAIT,
-        ATTRIBUTE
+        ATTRIBUTE,
+        IMPLEMENTATION
 }
