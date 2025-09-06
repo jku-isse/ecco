@@ -4,7 +4,4 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import lombok.*;
 
 @Data
-public class StructArtifactData implements ArtifactData {
-    private final String struct;
-
-}
+public class StructArtifactData implements ArtifactData { }

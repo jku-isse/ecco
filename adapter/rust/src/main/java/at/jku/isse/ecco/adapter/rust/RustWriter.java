@@ -55,6 +55,9 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     private void writeRustFile(Path filePath, Node orderedNode){
         try (BufferedWriter bw = Files.newBufferedWriter(filePath)) {
             List<? extends Node> fileNodeChildren = orderedNode.getChildren();
+            if (fileNodeChildren == null || fileNodeChildren.isEmpty()) {
+                throw new EccoException("File node has no children.");
+            }
             for (Node childNode : fileNodeChildren) {
                 visitingNode(bw, childNode);
             }
@@ -65,34 +68,19 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
 
     // TODO change the way this is implemented
     public void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
-        Object data = childNode.getArtifact().getData();
+        ArtifactData childArtifactData = childNode.getArtifact().getData();
+        if (childArtifactData instanceof RustWritable) {
+            ((RustWritable) childArtifactData).write(bw);
+        }
+
         if (!childNode.getChildren().isEmpty()) {
             for (Node node : childNode.getChildren()) {
                 visitingNode(bw, node);
             }
-        } else if ( data instanceof StructArtifactData) {
-            StructArtifactData structArtifactData = (StructArtifactData) childNode.getArtifact().getData();
-            bw.write(structArtifactData.getStruct());
-        } else if (data instanceof ImplementationArtifactData) {
-            ImplementationArtifactData implementationArtifactData = (ImplementationArtifactData) childNode.getArtifact().getData();
-            bw.write(implementationArtifactData.getSignature());
-        } else if ( data instanceof TraitArtifactData) {
-            TraitArtifactData traitArtifactData = (TraitArtifactData) childNode.getArtifact().getData();
-            bw.write(traitArtifactData.getTrait());
-        } else if ( data instanceof FunctionArtifactData) {
-            FunctionArtifactData functionArtifactData = (FunctionArtifactData) childNode.getArtifact().getData();
-            bw.write(functionArtifactData.getSignature());
-        } else if ( data instanceof LineArtifactData) {
-            LineArtifactData lineArtifactData = (LineArtifactData) childNode.getArtifact().getData();
-            bw.write(lineArtifactData.getLine());
-        } else if ( data instanceof AttributeArtifactData) {
-            AttributeArtifactData attributeArtifactData = (AttributeArtifactData) childNode.getArtifact().getData();
-            bw.write(attributeArtifactData.getAttribute());
-        } else {
-            throw new EccoException("Expected known artifact data. But got: " + data.getClass());
         }
-        bw.newLine();
     }
+
+
 
     @Override
     public Path[] write(Set<Node> input) {
