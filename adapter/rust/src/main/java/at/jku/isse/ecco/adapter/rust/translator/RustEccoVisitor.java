@@ -22,6 +22,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private final Collection<RustParser.Struct_Context> structContexts = new ArrayList<>();
     private final Collection<RustParser.Trait_Context> traitContexts = new ArrayList<>();
     private final Collection<RustParser.ImplementationContext> implContexts = new ArrayList<>();
+    private final Collection<RustParser.ItemContext> itemContexts = new ArrayList<>();
     private final Path path;
 
     public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path) {
@@ -60,6 +61,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitItem(RustParser.ItemContext ctx) {
+        this.itemContexts.add(ctx);
         return super.visitItem(ctx);
     }
 
@@ -93,8 +95,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return super.visitImplementation(ctx);
     }
 
-    // TODO handle visibility like attributes for all items
-    private Optional<String> functionVisibility(RustParser.Function_Context ctx) {
+    // TODO handle inner attributes
+    @Override
+    public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
+        return super.visitInnerAttribute(ctx);
+    }
+
+    // TODO handle visibility properly
+    private Optional<String> getOptionalVisibility(ParserRuleContext ctx) {
         var parent = ctx.getParent();
         if (parent instanceof RustParser.VisItemContext) {
             RustParser.VisItemContext visItemContext = (RustParser.VisItemContext) parent;
@@ -122,9 +130,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     private String getFunctionSignature(RustParser.Function_Context ctx) {
         StringBuilder sig = new StringBuilder();
-
-        // visibility
-        this.functionVisibility(ctx).ifPresent(visibility -> sig.append(visibility).append(" "));
 
         // optional qualifiers
         if (ctx.functionQualifiers() != null) {
@@ -176,32 +181,36 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private void collectFunctions(RustEccoTranslator programStructure) {
         for (RustParser.Function_Context ctx : this.functionContexts) {
             String attributes = this.getOptionalAttributes(ctx).orElse("");
+            String publicModifier = this.getOptionalVisibility(ctx).orElse("");
             String functionSignature = this.getFunctionSignature(ctx);
-            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature, Type.FUNCTION, attributes);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), functionSignature, Type.FUNCTION, attributes, publicModifier);
         }
     }
 
     private void collectStructs(RustEccoTranslator programStructure) {
         for (RustParser.Struct_Context ctx : this.structContexts) {
             String attributes = this.getOptionalAttributes(ctx).orElse("");
+            String publicModifier = this.getOptionalVisibility(ctx).orElse("");
             String content = this.getStruct(ctx);
-            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.STRUCT, attributes);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.STRUCT, attributes, publicModifier);
         }
     }
 
     private void collectTraits(RustEccoTranslator programStructure) {
         for (RustParser.Trait_Context ctx : this.traitContexts) {
             String attributes = this.getOptionalAttributes(ctx).orElse("");
+            String publicModifier = this.getOptionalVisibility(ctx).orElse("");
             String content = this.getTrait(ctx);
-            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.TRAIT, attributes);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.TRAIT, attributes, publicModifier);
         }
     }
 
     private void collectImpls(RustEccoTranslator programStructure) {
         for (RustParser.ImplementationContext ctx : this.implContexts) {
             String attributes = this.getOptionalAttributes(ctx).orElse("");
+            String publicModifier = this.getOptionalVisibility(ctx).orElse("");
             String content = this.getImpl(ctx);
-            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.TRAIT, attributes);
+            programStructure.addStructure(ctx.start.getLine(), ctx.stop.getLine(), content, Type.TRAIT, attributes, publicModifier);
         }
     }
 

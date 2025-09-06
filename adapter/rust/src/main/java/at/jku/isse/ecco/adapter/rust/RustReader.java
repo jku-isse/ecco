@@ -9,6 +9,7 @@ import at.jku.isse.ecco.adapter.rust.translator.RustEccoVisitor;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
+import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import org.antlr.v4.runtime.CharStream;
@@ -146,16 +147,16 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
 
-//    public static void main(String[] args) {
-//        RustReader reader = new RustReader(new MemEntityFactory());
-//        Path[] input = {Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/simple.rs")}; // Example path, adjust as needed
-//        Set<Node.Op> nodes = reader.read(input);
-//        for (Node.Op child : nodes) {
-//            List<Node.Op> pluginNodeChildren = (List<Node.Op>) child.getChildren();
-//            for (Node.Op node : pluginNodeChildren) {
-//                System.out.println(node.getArtifact());
-//                node.getChildren().forEach(System.out::println);
-//            }
-//        }
-//    }
+    public static void main(String[] args) {
+        RustReader reader = new RustReader(new MemEntityFactory());
+        Path[] input = {Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/simple.rs")}; // Example path, adjust as needed
+        Set<Node.Op> nodes = reader.read(input);
+        for (Node.Op child : nodes) {
+            List<Node.Op> pluginNodeChildren = (List<Node.Op>) child.getChildren();
+            for (Node.Op node : pluginNodeChildren) {
+                System.out.println(node.getArtifact());
+                node.getChildren().forEach(System.out::println);
+            }
+        }
+    }
 }

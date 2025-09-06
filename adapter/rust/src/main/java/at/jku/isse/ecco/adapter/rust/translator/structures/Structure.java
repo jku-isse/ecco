@@ -9,4 +9,5 @@ public class Structure {
     private final String content;
     private final Type type;
     private final String attributes;
+    private final String publicModifier;
 }

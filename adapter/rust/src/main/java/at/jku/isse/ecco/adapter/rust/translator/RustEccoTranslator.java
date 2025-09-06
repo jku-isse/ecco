@@ -37,7 +37,7 @@ public class RustEccoTranslator {
                 .sorted(Comparator.comparingInt(Structure::getStartLine))
                 .collect(Collectors.toList());
         for (Structure structure : sortedStructures) {
-            // TODO attributes are added as an lineNode for itself, meaning it gets duplicated in the function/struct/trait node
+            // TODO attributes are added as an lineNode, meaning it gets duplicated in the function/struct/trait node
             this.addLineNodes(pluginNode, startLine, structure.getStartLine() - 1);
             Node.Op node = this.createNode(structure);
             pluginNode.addChild(node);
@@ -83,7 +83,6 @@ public class RustEccoTranslator {
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = this.entityFactory.createNode(item);
 
-        Artifact.Op<? extends ArtifactData> artifact = this.entityFactory.createArtifact(data);
         Node.Op node = this.entityFactory.createOrderedNode(data);
 
         attributeNode.ifPresent(node::addChild);
@@ -98,13 +97,11 @@ public class RustEccoTranslator {
         return Optional.ofNullable(this.entityFactory.createOrderedNode(attributeArtifact));
     }
 
-    public void addStructure(int startLine, int endLine, String content, Type type) {
-        this.structures.add(new Structure(startLine, endLine, content, type, ""));
+    public void addStructure(int startLine, int endLine, String content, Type type, String attributes, String publicModifier) {
+        this.structures.add(new Structure(startLine, endLine, content, type, attributes, publicModifier));
     }
 
-    public void addStructure(int startLine, int endLine, String content, Type type, String attributes) {
-        this.structures.add(new Structure(startLine, endLine, content, type, attributes));
-    }
+
 
 
 

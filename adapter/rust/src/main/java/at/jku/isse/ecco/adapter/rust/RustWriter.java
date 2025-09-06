@@ -63,96 +63,48 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
         }
     }
 
+    // TODO change the way this is implemented
     public void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
-        var childArtifactData = childNode.getArtifact().getData();
+        Object data = childNode.getArtifact().getData();
         if (!childNode.getChildren().isEmpty()) {
             for (Node node : childNode.getChildren()) {
                 visitingNode(bw, node);
             }
-
-        } else if ( childArtifactData instanceof StructArtifactData) {
+        } else if ( data instanceof StructArtifactData) {
             StructArtifactData structArtifactData = (StructArtifactData) childNode.getArtifact().getData();
             bw.write(structArtifactData.getStruct());
-            if (!childNode.getChildren().isEmpty()) {
-                for (Node node : childNode.getChildren()) {
-                    visitingNode(bw, node);
-                }
-            }
-            bw.newLine();
-
-        } else if (childArtifactData instanceof ImplementationArtifactData) {
+        } else if (data instanceof ImplementationArtifactData) {
             ImplementationArtifactData implementationArtifactData = (ImplementationArtifactData) childNode.getArtifact().getData();
             bw.write(implementationArtifactData.getSignature());
-            if (!childNode.getChildren().isEmpty()) {
-                for (Node node : childNode.getChildren()) {
-                    visitingNode(bw, node);
-                }
-            }
-            bw.newLine();
-
-        } else if ( childArtifactData instanceof TraitArtifactData) {
+        } else if ( data instanceof TraitArtifactData) {
             TraitArtifactData traitArtifactData = (TraitArtifactData) childNode.getArtifact().getData();
             bw.write(traitArtifactData.getTrait());
-            if (!childNode.getChildren().isEmpty()) {
-                for (Node node : childNode.getChildren()) {
-                    visitingNode(bw, node);
-                }
-            }
-            bw.newLine();
-
-        } else if ( childArtifactData instanceof FunctionArtifactData) {
+        } else if ( data instanceof FunctionArtifactData) {
             FunctionArtifactData functionArtifactData = (FunctionArtifactData) childNode.getArtifact().getData();
             bw.write(functionArtifactData.getSignature());
-            if (!childNode.getChildren().isEmpty()) {
-                for (Node node : childNode.getChildren()) {
-                    visitingNode(bw, node);
-                }
-            }
-            bw.newLine();
-
-        } else if ( childArtifactData instanceof LineArtifactData) {
+        } else if ( data instanceof LineArtifactData) {
             LineArtifactData lineArtifactData = (LineArtifactData) childNode.getArtifact().getData();
             bw.write(lineArtifactData.getLine());
-            if (!childNode.getChildren().isEmpty()) {
-                for (Node node : childNode.getChildren()) {
-                    visitingNode(bw, node);
-                }
-            }
-            bw.newLine();
-
-        } else if ( childArtifactData instanceof AttributeArtifactData) {
+        } else if ( data instanceof AttributeArtifactData) {
             AttributeArtifactData attributeArtifactData = (AttributeArtifactData) childNode.getArtifact().getData();
             bw.write(attributeArtifactData.getAttribute());
-            if (!childNode.getChildren().isEmpty()) {
-                for (Node node : childNode.getChildren()) {
-                    visitingNode(bw, node);
-                }
-            }
-            bw.newLine();
-
         } else {
-            throw new EccoException("Expected known artifact data.");
+            throw new EccoException("Expected known artifact data. But got: " + data.getClass());
         }
-
+        bw.newLine();
     }
 
-    /**
-     */
     @Override
     public Path[] write(Set<Node> input) {
         return new Path[0];
     }
 
-    /**
-     */
     @Override
     public void addListener(WriteListener listener) {
         this.listeners.add(listener);
 
     }
 
-    /**
-     */
     @Override
     public void removeListener(WriteListener listener) {
         this.listeners.remove(listener);
