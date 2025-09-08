@@ -113,16 +113,31 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitStruct_(RustParser.Struct_Context ctx) {
+        Artifact.Op<StructArtifactData> item = this.entityFactory.createArtifact(new StructArtifactData());
+        Node.Op node = this.entityFactory.createOrderedNode(item);
+
         int startLine = ctx.start.getLine();
         int stopLine = ctx.stop.getLine();
-        this.addLineNodes(nodeStack.peek(), startLine, stopLine);
-        return super.visitStruct_(ctx);
+        this.addLineNodes(node, startLine, stopLine);
+
+        this.nodeStack.peek().addChild(node);
+        //stopping here, no need to go deeper
+        return node;
     }
 
     // TODO handle traits
     @Override
     public Node.Op visitTrait_(RustParser.Trait_Context ctx) {
-        return super.visitTrait_(ctx);
+        Artifact.Op<TraitArtifactData> item = this.entityFactory.createArtifact(new TraitArtifactData());
+        Node.Op node = this.entityFactory.createOrderedNode(item);
+
+        int startLine = ctx.start.getLine();
+        int stopLine = ctx.stop.getLine();
+        this.addLineNodes(node, startLine, stopLine);
+        this.nodeStack.peek().addChild(node);
+
+        //Stopping here, no need to go deeper
+        return node;
     }
 
     @Override
@@ -133,20 +148,17 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return attrNode;
     }
 
+    //TODO implementation simply adds lines.
     @Override
     public Node.Op visitImplementation(RustParser.ImplementationContext ctx) {
         int startLine = ctx.start.getLine();
-        Artifact.Op<ImplementationArtifactData> item = this.entityFactory.createArtifact(new ImplementationArtifactData(this.codeLines[startLine - 1]));
-        Node.Op node = this.entityFactory.createOrderedNode(item);
         int endLine = ctx.stop.getLine();
+        Artifact.Op<ImplementationArtifactData> item = this.entityFactory.createArtifact(new ImplementationArtifactData());
+        Node.Op node = this.entityFactory.createOrderedNode(item);
+        this.addLineNodes(node, startLine, endLine);
         nodeStack.peek().addChild(node);
-        nodeStack.push(node);
-        Node.Op visited = super.visitImplementation(ctx);
-        nodeStack.pop();
 
-        Artifact.Op<LineArtifactData> endCurly = this.entityFactory.createArtifact(new LineArtifactData(this.codeLines[endLine - 1]));
-        node.addChild(this.entityFactory.createNode(endCurly));
-        return visited;
+        return node;
     }
 
     // TODO handle inner attributes
@@ -159,8 +171,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     @Override
-    public Node.Op visitTraitImpl(RustParser.TraitImplContext ctx) {
-        return super.visitTraitImpl(ctx);
+    public Node.Op visitUseDeclaration(RustParser.UseDeclarationContext ctx) {
+        int startLine = ctx.start.getLine();
+        int stopLine = ctx.stop.getLine();
+        Artifact.Op<UseDeclarationArtifactData> item = this.entityFactory.createArtifact(new UseDeclarationArtifactData());
+        Node.Op node = this.entityFactory.createOrderedNode(item);
+        this.addLineNodes(node, startLine, stopLine);
+        nodeStack.peek().addChild(node);
+        return node;
     }
 
     private String getFunctionSignature(RustParser.Function_Context ctx) {
@@ -198,6 +216,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine) {
         for (int i = startLine; i <= endLine; i++) {
+            // -1 for 0 based index
             String codeLine = this.codeLines[i - 1];
             if (codeLine.isEmpty()) {
                 continue;

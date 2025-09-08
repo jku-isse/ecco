@@ -23,4 +23,6 @@ public class LineArtifactData implements ArtifactData, RustWritable {
         bw.write(this.line);
         bw.newLine();
     }
+
+
 }
