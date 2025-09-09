@@ -1,16 +1,11 @@
 package at.jku.isse.ecco.adapter.rust.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.util.Objects;
 
-@ToString
-@EqualsAndHashCode
-@Getter
 public class LineArtifactData implements ArtifactData, RustWritable {
 
     private final String line;
@@ -24,5 +19,30 @@ public class LineArtifactData implements ArtifactData, RustWritable {
         bw.newLine();
     }
 
+    public boolean equals(final Object o) {
+        if (o == this) return true;
+        if (!(o instanceof LineArtifactData)) return false;
+        final LineArtifactData other = (LineArtifactData) o;
+        if (!other.canEqual((Object) this)) return false;
+        final Object this$line = this.getLine();
+        final Object other$line = other.getLine();
+        if (this$line == null ? other$line != null : !this$line.equals(other$line)) return false;
+        return true;
+    }
 
+    protected boolean canEqual(final Object other) {
+        return other instanceof LineArtifactData;
+    }
+
+    public int hashCode() {
+        return Objects.hash(this.line);
+    }
+
+    public String getLine() {
+        return this.line;
+    }
+
+    public String toString() {
+        return this.getLine();
+    }
 }
