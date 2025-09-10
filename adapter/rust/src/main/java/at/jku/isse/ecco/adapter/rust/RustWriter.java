@@ -69,6 +69,7 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     // TODO change the way this is implemented
     public void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
         ArtifactData childArtifactData = childNode.getArtifact().getData();
+        // childArtifactData has something to write
         if (childArtifactData instanceof RustWritable) {
             ((RustWritable) childArtifactData).write(bw);
         }
