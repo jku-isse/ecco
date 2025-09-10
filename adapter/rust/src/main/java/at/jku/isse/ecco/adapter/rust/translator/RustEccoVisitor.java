@@ -54,7 +54,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitItem(RustParser.ItemContext ctx) {
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
-        assert nodeStack.peek() != null;
         Node.Op itemNode = createArtifactNodeAndAddToParent(item, nodeStack.peek());
 
         nodeStack.push(itemNode);
@@ -91,7 +90,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         Node.Op visited = super.visitBlockExpression(ctx);
         if (ctx.RCURLYBRACE() != null) {
             Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.RCURLYBRACE().getText()));
-            assert this.nodeStack.peek() != null;
             this.nodeStack.peek().addChild(this.entityFactory.createNode(line));
         }
         nodeStack.pop();
@@ -103,8 +101,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitFunction_(RustParser.Function_Context ctx) {
         Artifact.Op<FunctionArtifactData> item = this.entityFactory.createArtifact(new FunctionArtifactData(this.getFunctionSignature(ctx)));
         Node.Op functionNode = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
-        assert this.nodeStack.peek() != null;
-        this.nodeStack.peek().addChild(functionNode);
 
         // now we decend into the function node
         this.nodeStack.push(functionNode);
