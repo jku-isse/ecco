@@ -5,6 +5,7 @@ import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
 import at.jku.isse.ecco.adapter.rust.data.*;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -53,11 +54,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitItem(RustParser.ItemContext ctx) {
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
-        Node.Op itemNode = this.entityFactory.createNode(item);
+        assert nodeStack.peek() != null;
+        Node.Op itemNode = createArtifactNodeAndAddToParent(item, nodeStack.peek());
 
-        nodeStack.peek().addChild(itemNode);
         nodeStack.push(itemNode);
-        var visit = super.visitItem(ctx);
+        Node.Op visit = super.visitItem(ctx);
         nodeStack.pop();
         return visit;
     }
@@ -68,8 +69,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         int stopLine = ctx.stop.getLine();
         this.addLineNodes(nodeStack.peek(), startLine, stopLine);
 
-        // TODO when super.visitStatements comes to a macro it goes statement -> item -> macroItem(thus adding a item artifact)
-        // going deeper in parseTree not needed here
+        // when super.visitStatements comes to a macro the tree looks like statement -> item -> macroItem(thus adding a item artifact)
+        // which means going deeper in parseTree not needed here
         return nodeStack.peek();
         // return super.visitStatements(ctx);
     }
@@ -77,7 +78,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitBlockExpression(RustParser.BlockExpressionContext ctx) {
         Artifact.Op<BlockArtifactData> item = this.entityFactory.createArtifact(new BlockArtifactData());
-        Node.Op blockNode = this.entityFactory.createOrderedNode(item);
+        Node.Op blockNode = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
         // TODO this curly brace is on a separate line, and not respecting source code
         if (ctx.LCURLYBRACE() != null) {
             Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.LCURLYBRACE().getText()));
@@ -86,11 +87,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         if (this.nodeStack.peek() == null) {
             throw new IllegalStateException("Node stack is empty, which should never happen");
         }
-        this.nodeStack.peek().addChild(blockNode);
         this.nodeStack.push(blockNode);
         Node.Op visited = super.visitBlockExpression(ctx);
         if (ctx.RCURLYBRACE() != null) {
             Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.RCURLYBRACE().getText()));
+            assert this.nodeStack.peek() != null;
             this.nodeStack.peek().addChild(this.entityFactory.createNode(line));
         }
         nodeStack.pop();
@@ -101,7 +102,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitFunction_(RustParser.Function_Context ctx) {
         Artifact.Op<FunctionArtifactData> item = this.entityFactory.createArtifact(new FunctionArtifactData(this.getFunctionSignature(ctx)));
-        Node.Op functionNode = this.entityFactory.createOrderedNode(item);
+        Node.Op functionNode = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
+        assert this.nodeStack.peek() != null;
         this.nodeStack.peek().addChild(functionNode);
 
         // now we decend into the function node
@@ -114,13 +116,12 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitStruct_(RustParser.Struct_Context ctx) {
         Artifact.Op<StructArtifactData> item = this.entityFactory.createArtifact(new StructArtifactData());
-        Node.Op node = this.entityFactory.createOrderedNode(item);
+        Node.Op node = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
 
         int startLine = ctx.start.getLine();
         int stopLine = ctx.stop.getLine();
         this.addLineNodes(node, startLine, stopLine);
 
-        this.nodeStack.peek().addChild(node);
         //stopping here, no need to go deeper
         return node;
     }
@@ -129,12 +130,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitTrait_(RustParser.Trait_Context ctx) {
         Artifact.Op<TraitArtifactData> item = this.entityFactory.createArtifact(new TraitArtifactData());
-        Node.Op node = this.entityFactory.createOrderedNode(item);
+        Node.Op node = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
 
         int startLine = ctx.start.getLine();
         int stopLine = ctx.stop.getLine();
         this.addLineNodes(node, startLine, stopLine);
-        this.nodeStack.peek().addChild(node);
 
         //Stopping here, no need to go deeper
         return node;
@@ -143,9 +143,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
         Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(ctx.getText()));
-        Node.Op attrNode = this.entityFactory.createOrderedNode(item);
-        this.nodeStack.peek().addChild(attrNode);
-        return attrNode;
+        return createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
     }
 
     //TODO implementation simply adds lines.
@@ -154,14 +152,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         int startLine = ctx.start.getLine();
         int endLine = ctx.stop.getLine();
         Artifact.Op<ImplementationArtifactData> item = this.entityFactory.createArtifact(new ImplementationArtifactData());
-        Node.Op node = this.entityFactory.createOrderedNode(item);
+        Node.Op node = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
+
         this.addLineNodes(node, startLine, endLine);
-        nodeStack.peek().addChild(node);
 
         return node;
     }
 
-    // TODO handle inner attributes
+    // TODO only adds lines
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
         int startLine = ctx.start.getLine();
@@ -175,9 +173,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         int startLine = ctx.start.getLine();
         int stopLine = ctx.stop.getLine();
         Artifact.Op<UseDeclarationArtifactData> item = this.entityFactory.createArtifact(new UseDeclarationArtifactData());
-        Node.Op node = this.entityFactory.createOrderedNode(item);
+        Node.Op node = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
         this.addLineNodes(node, startLine, stopLine);
-        nodeStack.peek().addChild(node);
         return node;
     }
 
@@ -222,18 +219,16 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
                 continue;
             }
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-            Node.Op lineNode = this.entityFactory.createNode(lineArtifactData);
-            parentNode.addChild(lineNode);
+            createArtifactNodeAndAddToParent(lineArtifactData, parentNode);
         }
     }
 
-    private void addLineNode(Node.Op parentNode, int lineNumber) {
-        String codeLine = this.codeLines[lineNumber - 1];
-        if (codeLine.isEmpty()) {
-            return;
-        }
-        Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-        Node.Op lineNode = this.entityFactory.createNode(lineArtifactData);
-        parentNode.addChild(lineNode);
+    private <T extends ArtifactData> Node.Op createArtifactNodeAndAddToParent(Artifact.Op<T> artifact, Node.Op parentNode) {
+        Node.Op node = this.entityFactory.createNode(artifact);
+        assert parentNode != null;
+        parentNode.addChild(node);
+        return node;
     }
+
+
 }
