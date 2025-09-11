@@ -139,7 +139,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
         Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(ctx.getText()));
-        return createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
+        Node.Op attrNode = this.entityFactory.createOrderedNode(item);
+        this.nodeStack.peek().addChild(attrNode);
+        return attrNode;
     }
 
     //TODO implementation simply adds lines.
@@ -182,8 +184,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             sig.append(ctx.functionQualifiers().getText()).append(" ");
         }
         // “fn” and name
-        sig.append(ctx.KW_FN().getText()).append(" ")
-                .append(ctx.identifier().getText());
+        sig.append("fn").append(" ").append(ctx.identifier().getText());
 
         // optional generics
         if (ctx.genericParams() != null) {
