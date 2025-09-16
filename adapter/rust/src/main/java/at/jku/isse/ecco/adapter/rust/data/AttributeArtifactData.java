@@ -14,11 +14,6 @@ public class AttributeArtifactData implements ArtifactData, RustWritable {
         this.attribute = attribute;
     }
 
-    /**
-     * @param bw
-     * @throws IOException
-     */
-    @Override
     public void write(BufferedWriter bw) throws IOException {
         bw.write(attribute);
         bw.newLine();

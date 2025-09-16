@@ -10,6 +10,10 @@ public class LineArtifactData implements ArtifactData, RustWritable {
 
     private final String line;
 
+    public String getLine() {
+        return line;
+    }
+
     public LineArtifactData(String line) {
         this.line = line;
     }
@@ -19,30 +23,24 @@ public class LineArtifactData implements ArtifactData, RustWritable {
         bw.newLine();
     }
 
-    public boolean equals(final Object o) {
-        if (o == this) return true;
-        if (!(o instanceof LineArtifactData)) return false;
-        final LineArtifactData other = (LineArtifactData) o;
-        if (!other.canEqual((Object) this)) return false;
-        final Object this$line = this.getLine();
-        final Object other$line = other.getLine();
-        if (this$line == null ? other$line != null : !this$line.equals(other$line)) return false;
-        return true;
+    @Override
+    public String toString() {
+        return this.line;
     }
 
-    protected boolean canEqual(final Object other) {
-        return other instanceof LineArtifactData;
-    }
-
+    @Override
     public int hashCode() {
         return Objects.hash(this.line);
     }
 
-    public String getLine() {
-        return this.line;
-    }
-
-    public String toString() {
-        return this.getLine();
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        LineArtifactData other = (LineArtifactData) obj;
+        if (this.line == null) {
+            return other.line == null;
+        } else return this.line.equals(other.line);
     }
 }

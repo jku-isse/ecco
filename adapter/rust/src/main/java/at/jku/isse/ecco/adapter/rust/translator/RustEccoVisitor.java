@@ -77,20 +77,18 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitBlockExpression(RustParser.BlockExpressionContext ctx) {
         Artifact.Op<BlockArtifactData> item = this.entityFactory.createArtifact(new BlockArtifactData());
-        Node.Op blockNode = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
+        // node is odered so the nodes are in sequence
+        Node.Op blockNode = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
         // TODO this curly brace is on a separate line, and not respecting source code
         if (ctx.LCURLYBRACE() != null) {
             Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.LCURLYBRACE().getText()));
-            blockNode.addChild(this.entityFactory.createNode(line));
-        }
-        if (this.nodeStack.peek() == null) {
-            throw new IllegalStateException("Node stack is empty, which should never happen");
+            blockNode.addChild(this.entityFactory.createOrderedNode(line));
         }
         this.nodeStack.push(blockNode);
         Node.Op visited = super.visitBlockExpression(ctx);
         if (ctx.RCURLYBRACE() != null) {
             Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.RCURLYBRACE().getText()));
-            this.nodeStack.peek().addChild(this.entityFactory.createNode(line));
+            this.nodeStack.peek().addChild(this.entityFactory.createOrderedNode(line));
         }
         nodeStack.pop();
         return visited;
@@ -99,8 +97,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitFunction_(RustParser.Function_Context ctx) {
+
         Artifact.Op<FunctionArtifactData> item = this.entityFactory.createArtifact(new FunctionArtifactData(this.getFunctionSignature(ctx)));
-        Node.Op functionNode = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
+        Node.Op functionNode = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
 
         // now we decend into the function node
         this.nodeStack.push(functionNode);
@@ -181,7 +180,10 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
         // optional qualifiers
         if (ctx.functionQualifiers() != null) {
-            sig.append(ctx.functionQualifiers().getText()).append(" ");
+            String qualifiers = (ctx.functionQualifiers().getText());
+            if (!qualifiers.isEmpty()) {
+                sig.append(qualifiers).append(" ");
+            }
         }
         // “fn” and name
         sig.append("fn").append(" ").append(ctx.identifier().getText());
@@ -216,7 +218,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
                 continue;
             }
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-            createArtifactNodeAndAddToParent(lineArtifactData, parentNode);
+            createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
         }
     }
 
@@ -227,5 +229,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
+    private <T extends ArtifactData> Node.Op createArtifactOrderedNodeAndAddToParent(Artifact.Op<T> artifact, Node.Op parentNode) {
+        Node.Op node = this.entityFactory.createOrderedNode(artifact);
+        assert parentNode != null;
+        parentNode.addChild(node);
+        return node;
+    }
 
 }
