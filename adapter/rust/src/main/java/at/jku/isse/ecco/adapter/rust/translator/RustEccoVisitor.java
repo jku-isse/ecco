@@ -153,6 +153,16 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     @Override
+    public Node.Op visitTypeAlias(RustParser.TypeAliasContext ctx) {
+        int startLine = ctx.start.getLine();
+        int stopLine = ctx.stop.getLine();
+        Artifact.Op<TypeAliasArtifactData> item = this.entityFactory.createArtifact(new TypeAliasArtifactData());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        this.addLineNodes(node, startLine, stopLine);
+        return node;
+    }
+
+    @Override
     public Node.Op visitTrait_(RustParser.Trait_Context ctx) {
         Artifact.Op<TraitArtifactData> item = this.entityFactory.createArtifact(new TraitArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
