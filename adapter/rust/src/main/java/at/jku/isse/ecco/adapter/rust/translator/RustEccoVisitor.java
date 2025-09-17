@@ -138,12 +138,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
         Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(ctx.getText()));
-        Node.Op attrNode = this.entityFactory.createOrderedNode(item);
-        this.nodeStack.peek().addChild(attrNode);
-        return attrNode;
+        return createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
     }
 
-    //TODO implementation simply adds lines.
     @Override
     public Node.Op visitImplementation(RustParser.ImplementationContext ctx) {
         int startLine = ctx.start.getLine();
@@ -156,7 +153,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
-    // TODO only adds lines
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
         int startLine = ctx.start.getLine();
