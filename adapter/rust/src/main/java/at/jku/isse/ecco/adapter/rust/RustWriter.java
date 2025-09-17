@@ -52,6 +52,12 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
         return output.toArray(new Path[0]);
     }
 
+    /**
+     * Writes a Rust file based on the provided ordered node.
+     *
+     * @param filePath    Path where the Rust file will be written.
+     * @param orderedNode Node representing the structure of the Rust file.
+     */
     private void writeRustFile(Path filePath, Node orderedNode){
         try (BufferedWriter bw = Files.newBufferedWriter(filePath)) {
             List<? extends Node> fileNodeChildren = orderedNode.getChildren();
@@ -66,7 +72,13 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
         }
     }
 
-    // TODO change the way this is implemented
+    /**
+     * Recursively visits nodes and writes their data if they implement RustWritable.
+     *
+     * @param bw        BufferedWriter to write to.
+     * @param childNode Current node being visited.
+     * @throws IOException If an I/O error occurs from the BufferedWriter.
+     */
     public void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
         ArtifactData childArtifactData = childNode.getArtifact().getData();
         // childArtifactData has something to write
@@ -80,7 +92,6 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
             }
         }
     }
-
 
 
     @Override

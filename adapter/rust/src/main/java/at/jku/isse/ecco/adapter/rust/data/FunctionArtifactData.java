@@ -14,6 +14,7 @@ public class FunctionArtifactData implements ArtifactData, RustWritable {
         this.signature = signature;
     }
 
+    @Override
     public void write(BufferedWriter bw) throws java.io.IOException {
         bw.write(this.signature);
         bw.newLine();
