@@ -56,3 +56,5 @@ mod tests {
         assert_eq!(retrieved, None);
     }
 }
+
+fn main() {}
