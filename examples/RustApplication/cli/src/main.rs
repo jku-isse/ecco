@@ -33,7 +33,7 @@ enum Commands {
 /// # Arguments
 ///
 /// * `user` - The username for which the file will be created.
-/// * `password` - The password to store in the user's file.ctx.getText()
+/// * `password` - The password to store in the user's file
 fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
     println!("Creating user: {} with password: {}", user, password);
 
