@@ -8,7 +8,6 @@ struct Args {
     cmd: Commands,
 }
 
-#[cfg(feature = "hello")]
 #[derive(Subcommand, Debug, Clone)]
 #[command(rename_all = "lowercase")]
 enum Commands {
@@ -34,7 +33,7 @@ enum Commands {
 /// # Arguments
 ///
 /// * `user` - The username for which the file will be created.
-/// * `password` - The password to store in the user's file.
+/// * `password` - The password to store in the user's file.ctx.getText()
 fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
     println!("Creating user: {} with password: {}", user, password);
 
