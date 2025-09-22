@@ -8,6 +8,7 @@ struct Args {
     cmd: Commands,
 }
 
+#[cfg(feature = "hello")]
 #[derive(Subcommand, Debug, Clone)]
 #[command(rename_all = "lowercase")]
 enum Commands {

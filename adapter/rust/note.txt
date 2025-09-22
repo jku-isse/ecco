@@ -1,0 +1,13 @@
+Ordered node is used when there can exists more of the same node at once
+
+ * There are two types of artifacts: ordered and unordered.
+ *
+ * <i>Unordered</i> artifacts do not contain a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) and therefore its children (or more accurately the children of nodes containing the unordered artifact) will not be assigned a sequence number.
+ * As a consequence of this, and because the children of an artifact must be unique, the child artifacts of an unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number (see {@link at.jku.isse.ecco.artifact.Artifact#equals(Object)}.
+ * In other words, no two child artifacts can contain equal data objects.
+ *
+ * <i>Ordered</i> artifacts are assigned a sequence graph (see {@link at.jku.isse.ecco.pog.PartialOrderGraph}) the first time they are being processed by any operation (see for example {@link at.jku.isse.ecco.util.Trees#slice(Node.Op, Node.Op)}).
+ * This process is called <i>sequencing</i> of an ordered artifact. During this process the children of the ordered artifact are assigned sequence numbers based on their order of occurrence.
+ * This assigned sequence number is used as an additional means of identifying the child artifacts. This makes it possible to have child artifacts containing equal data objects but different sequence numbers.
+ * This is for example necessary when the child artifacts represent statements in a programming language: statements are not unique, the same statement can appear multiple times in a sequence of statements, and the position of a statement in the sequence matters. This is what the sequence number is used for.
+ *

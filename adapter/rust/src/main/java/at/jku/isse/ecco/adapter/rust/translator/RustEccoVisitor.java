@@ -67,11 +67,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
         // no semicolon means module contains items
         if (ctx.SEMI() == null) {
-            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("}"));
-            moduleNode.addChild(this.entityFactory.createOrderedNode(line));
             nodeStack.push(moduleNode);
             ctx.item().forEach(item -> item.accept(this));
             nodeStack.pop();
+            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("}"));
+            moduleNode.addChild(this.entityFactory.createOrderedNode(line));
         }
         return moduleNode;
     }
@@ -138,7 +138,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return visited;
     }
 
-    //TODO missing end }
+    //TODO saw an case where } was missing, cant reproduce
     @Override
     public Node.Op visitStruct_(RustParser.Struct_Context ctx) {
         Artifact.Op<StructArtifactData> item = this.entityFactory.createArtifact(new StructArtifactData());
@@ -279,6 +279,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
     }
 
+    /**
+     * unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number.
+     *  No two child artifacts can contain equal data objects.
+     * @param artifact
+     * @param parentNode
+     * @return <T extends ArtifactData>
+     * @param <T>
+     */
     private <T extends ArtifactData> Node.Op createArtifactNodeAndAddToParent(Artifact.Op<T> artifact, Node.Op parentNode) {
         Node.Op node = this.entityFactory.createNode(artifact);
         assert parentNode != null;
@@ -286,6 +294,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
+    /**
+     * Ordered artifact are assigned sequence numbers based on their order of occurrence.
+     * This assigned sequence number is used as an additional means of identifying the child artifacts
+     * @param artifact
+     * @param parentNode
+     * @return <T extends ArtifactData>
+     * @param <T>
+     */
     private <T extends ArtifactData> Node.Op createArtifactOrderedNodeAndAddToParent(Artifact.Op<T> artifact, Node.Op parentNode) {
         Node.Op node = this.entityFactory.createOrderedNode(artifact);
         assert parentNode != null;

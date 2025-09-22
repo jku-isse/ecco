@@ -1,0 +1,10 @@
+[package]
+name = "v1"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[[bin]]
+name = "v1"
+path = "main.rs"
