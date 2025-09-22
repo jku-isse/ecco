@@ -17,11 +17,7 @@ desktop.ini
 **/*.rpm
 **/*.zip
 
-# Rust
-
-# downloaded grammar
-adapter/rust/src/main/antlr/**
-
+## Rust
 # generated parser and lexer
 adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/antlr/**
 

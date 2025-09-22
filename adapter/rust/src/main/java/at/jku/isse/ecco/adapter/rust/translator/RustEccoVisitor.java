@@ -9,6 +9,7 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.checkerframework.checker.units.qual.A;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -92,7 +93,21 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return visit;
     }
 
+    @Override
+    public Node.Op visitDocComment(RustParser.DocCommentContext ctx) {
+        Artifact.Op<DocArtifactData> doc = this.entityFactory.createArtifact(new DocArtifactData());
+        Node.Op docNode = createArtifactOrderedNodeAndAddToParent(doc, nodeStack.peek());
+        int startLine = ctx.start.getLine();
+        int stopLine = ctx.stop.getLine();
+        this.addLineNodes(docNode, startLine, stopLine);
+        return docNode;
+    }
 
+    @Override
+    public Node.Op visitComment(RustParser.CommentContext ctx) {
+        Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.getText()));
+        return createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
+    }
 
     @Override
     public Node.Op visitStatements(RustParser.StatementsContext ctx) {

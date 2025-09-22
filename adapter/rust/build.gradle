@@ -25,15 +25,6 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:4.6.1'
 }
 
-tasks.register('downloadRustGrammar', Download) {
-    src([
-            'https://raw.githubusercontent.com/antlr/grammars-v4/master/rust/RustLexer.g4',
-            'https://raw.githubusercontent.com/antlr/grammars-v4/master/rust/RustParser.g4',
-    ])
-    dest file("$projectDir/src/main/antlr/")
-    overwrite true
-}
-
 tasks.register('addPackageDeclaration') {
     def packageLine = 'package at.jku.isse.ecco.adapter.rust.antlr;\n'
     def targetFiles = [
@@ -70,10 +61,8 @@ test {
 
 generateGrammarSource {
     dependsOn downloadBaseParserBaselexer
-    // Ensure that the grammar files are downloaded before generating sources
-    dependsOn downloadRustGrammar
     outputDirectory = new File("${project.projectDir}/src/main/java/at/jku/isse/ecco/adapter/rust/antlr".toString())
-    arguments += ['-visitor', '-listener']
+    arguments += ['-visitor']
     arguments += ['-package', 'at.jku.isse.ecco.adapter.rust.antlr']
 }
 
