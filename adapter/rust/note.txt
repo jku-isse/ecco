@@ -1,5 +1,4 @@
-TODO block comment will error if they contain '*'
-TODO doc comment on code line will duplicate code line
+TODO only docComments works
 
 Ordered node is used when there can exists more of the same node at once
 

@@ -114,14 +114,14 @@ fragment UNICODE_OIDC: '\u00b7' | '\u0387' | '\u1369' ..'\u1371' | '\u19da';
 
 RAW_IDENTIFIER: 'r#' NON_KEYWORD_IDENTIFIER;
 // comments https://doc.rust-lang.org/reference/comments.html
-LINE_COMMENT: ('//' (~[/!] | '//') ~[\r\n]* | '//') ;
+LINE_COMMENT: ('//' (~[/!] | '//') ~[\r\n]* | '//') -> channel(HIDDEN);
 
 BLOCK_COMMENT:
     (
         '/*' (~[*!] | '**' | BLOCK_COMMENT_OR_DOC) (BLOCK_COMMENT_OR_DOC | ~[*])*? '*/'
         | '/**/'
         | '/***/'
-    )
+    ) -> channel(HIDDEN)
 ;
 
 INNER_LINE_DOC: '//!' ~[\n\r]* ; // isolated cr

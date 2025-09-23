@@ -33,14 +33,9 @@ options
 // entry point
 // 4
 crate
-    : comment* innerAttribute* item* EOF
+    : innerAttribute* item* EOF
     ;
 
-// Comments
-comment
-    : LINE_COMMENT
-    | BLOCK_COMMENT
-    ;
 
 // 3
 macroInvocation
@@ -143,7 +138,7 @@ macroTranscriber
 
 // 6
 item
-    : comment* outerAttribute* (visItem | macroItem)
+    : (outerAttribute* (visItem | macroItem))
     ;
 
 docComment
@@ -156,7 +151,6 @@ docComment
 visItem
     : visibility? (
         module
-        | comment
         | externCrate
         | useDeclaration
         | function_
@@ -437,7 +431,6 @@ attrInput
 // 8
 statement
     : SEMI
-    | comment
     | item
     | letStatement
     | expressionStatement

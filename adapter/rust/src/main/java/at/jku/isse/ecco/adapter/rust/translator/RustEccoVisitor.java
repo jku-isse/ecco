@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.adapter.rust.translator;
 
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
 import at.jku.isse.ecco.adapter.rust.data.*;
@@ -111,11 +112,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return docNode;
     }
 
-    @Override
-    public Node.Op visitComment(RustParser.CommentContext ctx) {
-        Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.getText()));
-        return createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
-    }
+//    @Override
+//    public Node.Op visitComment(RustParser.CommentContext ctx) {
+//        Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.getText()));
+//        return createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
+//    }
 
     @Override
     public Node.Op visitStatements(RustParser.StatementsContext ctx) {
