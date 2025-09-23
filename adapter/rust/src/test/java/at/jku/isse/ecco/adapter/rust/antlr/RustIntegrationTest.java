@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RustIntegrationTest {
-    Path testDir = Paths.get("src/test/resources/rust_examples/test_output");
+    final Path testDir = Paths.get("src/test/resources/rust_examples/test_output");
     EccoService service;
 
     @BeforeEach
@@ -34,24 +34,24 @@ public class RustIntegrationTest {
         }
     }
 
-//    @AfterEach
-//    public void cleanUp() throws Exception {
-//        service.close();
-//        if (Files.exists(testDir)) {
-//            // Delete files before directories
-//            try (Stream<Path> walk = Files.walk(testDir)) {
-//                walk.sorted((a, b) -> b.compareTo(a)) // delete children before parents
-//                        .forEach(path -> {
-//                            try {
-//                                Files.deleteIfExists(path);
-//                            } catch (IOException e) {
-//                                System.err.println("Failed to delete: " + path);
-//                            }
-//                        });
-//            }
-//        }
-//        service = null;
-//    }
+    @AfterEach
+    public void cleanUp() throws Exception {
+        service.close();
+        if (Files.exists(testDir)) {
+            // Delete files before directories
+            try (Stream<Path> walk = Files.walk(testDir)) {
+                walk.sorted((a, b) -> b.compareTo(a)) // delete children before parents
+                        .forEach(path -> {
+                            try {
+                                Files.deleteIfExists(path);
+                            } catch (IOException e) {
+                                System.err.println("Failed to delete: " + path);
+                            }
+                        });
+            }
+        }
+        service = null;
+    }
 
     public void assertFilesEqual(Path excepted, Path actual) throws Exception {
         if (!Files.exists(excepted)) {
@@ -75,7 +75,7 @@ public class RustIntegrationTest {
             }
         }
         if (!filesAreEqual) {
-            Assertions.fail("Files are not equal:\n" + diffReport.toString());
+            Assertions.fail("Files are not equal:\n" + diffReport);
         }
     }
 
@@ -91,18 +91,16 @@ public class RustIntegrationTest {
     }
 
     public void commitAllDirsFromPath(Path basePath, EccoService service) {
-        try {
-            Files.walk(basePath)
-                    .filter(Files::isDirectory)
-                    .forEach(dir -> {
-                       try {
-                            service.setBaseDir(dir);
-                            String version = dir.getFileName().toString();
-                            service.commit(version);
-                        } catch (Exception e) {
-                            System.out.println("Exception during commit of dir " + dir + ": " + e.getMessage());
-                        }
-                    });
+        try (Stream<Path> dirs = Files.walk(basePath).filter(Files::isDirectory)){
+            dirs.forEach(dir -> {
+                   try {
+                        service.setBaseDir(dir);
+                        String version = dir.getFileName().toString();
+                        service.commit(version);
+                    } catch (Exception e) {
+                        System.out.println("Exception during commit of dir " + dir + ": " + e.getMessage());
+                    }
+                });
         } catch (IOException e) {
             System.out.println("IO exception:" + e.getMessage());
         }
