@@ -116,9 +116,9 @@ public class RustIntegrationTest {
         } catch (Exception e) {
             System.out.println("Exception during checkout: " + e.getMessage());
         }
-        Path result = Paths.get("src/test/resources/rust_examples/commentTest/main.rs");
+        Path actual = Paths.get("src/test/resources/rust_examples/commentTest/main.rs");
         Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
-        assertFilesEqual(result, testOutput);
+        assertFilesEqual(actual, testOutput);
     }
 
     @Test
@@ -131,9 +131,24 @@ public class RustIntegrationTest {
         } catch (Exception e) {
             System.out.println("Exception during checkout: " + e.getMessage());
         }
-        Path result = Paths.get("src/test/resources/rust_examples/functionTest/result/main.rs");
+        Path actual = Paths.get("src/test/resources/rust_examples/functionTest/result/main.rs");
         Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
-        assertFilesEqual(result, testOutput);
+        assertFilesEqual(actual, testOutput);
+    }
+
+    @Test
+    public void struct() throws Exception {
+        // set a dir for ecco to use as base dir
+        try {
+            Path testFolder = Paths.get("src/test/resources/rust_examples/structTest/");
+            commitSingleDir(testFolder, service);
+            service.checkout("struct.1");
+        } catch (Exception e) {
+            System.out.println("Exception during checkout: " + e.getMessage());
+        }
+        Path actual = Paths.get("src/test/resources/rust_examples/structTest/main.rs");
+        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
+        assertFilesEqual(actual, testOutput);
     }
 
 }
