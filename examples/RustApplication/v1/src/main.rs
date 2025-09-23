@@ -64,7 +64,7 @@ fn run_app(args: Args) {
     match args.cmd {
         Commands::Create { user, password } => {
             if let Err(e) = create_user(&user, &password) {
-                eprintln!("Error creating user: {}", e);
+                println!("Error creating user: {}", e);
             } else {
                 println!("User {} created successfully.", user);
             }

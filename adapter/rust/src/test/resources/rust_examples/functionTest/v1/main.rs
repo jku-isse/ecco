@@ -1,8 +1,8 @@
 #[cfg(feature = "v1")]
-fn hello(str: &str) {
+fn hello(str: &str){
     println!("Hello, {} from v1", str);
 }
 
-fn main() {
+fn main(){
     hello("world");
 }

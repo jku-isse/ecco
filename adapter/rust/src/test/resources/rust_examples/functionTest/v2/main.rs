@@ -1,8 +1,8 @@
 #[cfg(feature = "v2")]
-fn farewell(str: &str) {
+fn farewell(str: &str){
     println!("Farewell, {} from v12", str);
 }
 
-fn main() {
+fn main(){
     farewell("world");
 }
