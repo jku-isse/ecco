@@ -49,6 +49,13 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
 
     @Override
+    public Node.Op visitVisibility(RustParser.VisibilityContext ctx) {
+        //create line artifacts for visibility
+        Artifact.Op<VisibilityArtifactData> line = this.entityFactory.createArtifact(new VisibilityArtifactData());
+        return createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
+    }
+
+    @Override
     public Node.Op visitModule(RustParser.ModuleContext ctx) {
         StringBuilder sig = new StringBuilder();
         if (ctx.KW_UNSAFE() != null) {
@@ -126,7 +133,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         Artifact.Op<BlockArtifactData> item = this.entityFactory.createArtifact(new BlockArtifactData());
         // node is ordered so the nodes are in sequence
         Node.Op blockNode = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-        // TODO this curly brace is on a separate line, and not respecting source code
         if (ctx.LCURLYBRACE() != null) {
             Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("{"));
             blockNode.addChild(this.entityFactory.createOrderedNode(line));
@@ -193,6 +199,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     //TODO .getText does not respect spaces
     @Override
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
+        //if the outerAttribute is a comment only visit the comment
+        if (ctx.docComment() != null) return visitDocComment(ctx.docComment());
+
         Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(ctx.getText()));
         return createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
     }
