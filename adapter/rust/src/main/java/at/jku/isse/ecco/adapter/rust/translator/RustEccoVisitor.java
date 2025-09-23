@@ -8,6 +8,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.checkerframework.checker.units.qual.A;
 
@@ -164,12 +165,12 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitStruct_(RustParser.Struct_Context ctx) {
         Artifact.Op<StructArtifactData> item = this.entityFactory.createArtifact(new StructArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-
+        int startPosition = ctx.start.getCharPositionInLine();
+        int endPosition = ctx.stop.getCharPositionInLine() + ctx.stop.getText().length();
         int startLine = ctx.start.getLine();
         int stopLine = ctx.stop.getLine();
-        this.addLineNodes(node, startLine, stopLine);
+        this.addLineNodes(node, startLine, stopLine, startPosition,  endPosition);
 
-        //stopping here, no need to go deeper
         return node;
     }
 
@@ -202,14 +203,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         //if the outerAttribute is a comment only visit the comment
         if (ctx.docComment() != null) return visitDocComment(ctx.docComment());
 
-        Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(ctx.getText()));
+        Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(getString(ctx)));
         return createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
     }
 
     //TODO .getText does not respect spaces
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
-        Artifact.Op<InnerAttributeArtifactData> item = this.entityFactory.createArtifact(new InnerAttributeArtifactData(ctx.getText()));
+        Artifact.Op<InnerAttributeArtifactData> item = this.entityFactory.createArtifact(new InnerAttributeArtifactData(getString(ctx)));
         return createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
     }
 
@@ -303,6 +304,25 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
     }
 
+    private void addLineNodes(Node.Op parentNode, int startLine, int endLine, int startPosition, int endPosition) {
+        for (int i = startLine; i <= endLine; i++) {
+            // -1 for 0 based index
+            String codeLine = this.codeLines[i - 1];
+            if (codeLine.isEmpty()) {
+                continue;
+            }
+            if (i == startLine && i == endLine) {
+                codeLine = codeLine.substring(startPosition, endPosition);
+            } else if (i == startLine) {
+                codeLine = codeLine.substring(startPosition);
+            } else if (i == endLine) {
+                codeLine = codeLine.substring(0, endPosition);
+            }
+            Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
+            createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+        }
+    }
+
     /**
      * unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number.
      *  No two child artifacts can contain equal data objects.
@@ -331,6 +351,38 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         assert parentNode != null;
         parentNode.addChild(node);
         return node;
+    }
+
+    /**
+     * Get the original source code string represented by the given parse tree context.
+     * @param ctx the parse tree context
+     * @return String of the original source code represented by the context
+     * @param <T> some type of ParserRuleContext
+     */
+    public <T extends ParserRuleContext> String getString(T ctx) {
+        int startPosition = ctx.start.getCharPositionInLine();
+        int endPosition = ctx.stop.getCharPositionInLine() + ctx.stop.getText().length();
+        int startLine = ctx.start.getLine();
+        int stopLine = ctx.stop.getLine();
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = startLine; i <= stopLine; i++) {
+            // -1 for 0 based index
+            String codeLine = this.codeLines[i - 1];
+            if (codeLine.isEmpty()) {
+                continue;
+            }
+            if (i == startLine && i == stopLine) {
+                sb.append(codeLine, startPosition, endPosition);
+            } else if (i == startLine) {
+                sb.append(codeLine.substring(startPosition)).append("\n");
+            } else if (i == stopLine) {
+                sb.append(codeLine, 0, endPosition);
+            } else {
+                sb.append(codeLine);
+            }
+        }
+        return sb.toString();
     }
 
 
