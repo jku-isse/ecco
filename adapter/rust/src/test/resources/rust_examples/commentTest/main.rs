@@ -1,8 +1,5 @@
 //! A doc comment that applies to the implicit anonymous module of this crate
 pub mod outer_module {
-    fn main() {
-        println!("Hello, world!");
-    }
     //!  - Inner line doc
     //!! - Still an inner line doc (but with a bang at the beginning)
     /*!  - Inner block doc */
