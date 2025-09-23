@@ -143,7 +143,7 @@ macroTranscriber
 
 // 6
 item
-    : docComment* outerAttribute* docComment* (visItem | macroItem)
+    : comment* outerAttribute* (visItem | macroItem)
     ;
 
 docComment
@@ -156,6 +156,7 @@ docComment
 visItem
     : visibility? (
         module
+        | comment
         | externCrate
         | useDeclaration
         | function_
@@ -275,7 +276,7 @@ structFields
     ;
 
 structField
-    : docComment* outerAttribute* visibility? identifier COLON type_
+    : outerAttribute* visibility? identifier COLON type_
     ;
 
 tupleFields
@@ -296,7 +297,7 @@ enumItems
     ;
 
 enumItem
-    : docComment* outerAttribute* visibility? identifier (
+    : outerAttribute* visibility? identifier (
         enumItemTuple
         | enumItemStruct
         | enumItemDiscriminant
@@ -402,7 +403,7 @@ forLifetimes
 
 // 6.15
 associatedItem
-    : outerAttribute* (macroInvocationSemi | visibility? ( typeAlias | constantItem | function_))
+    : (macroInvocationSemi | visibility? ( typeAlias | constantItem | function_))
     ;
 
 // 7
@@ -412,6 +413,7 @@ innerAttribute
 
 outerAttribute
     : POUND LSQUAREBRACKET attr RSQUAREBRACKET
+    | docComment
     ;
 
 attr
