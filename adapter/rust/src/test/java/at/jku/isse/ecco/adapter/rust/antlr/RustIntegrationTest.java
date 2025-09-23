@@ -34,24 +34,24 @@ public class RustIntegrationTest {
         }
     }
 
-    @AfterEach
-    public void cleanUp() throws Exception {
-        service.close();
-        if (Files.exists(testDir)) {
-            // Delete files before directories
-            try (Stream<Path> walk = Files.walk(testDir)) {
-                walk.sorted((a, b) -> b.compareTo(a)) // delete children before parents
-                        .forEach(path -> {
-                            try {
-                                Files.deleteIfExists(path);
-                            } catch (IOException e) {
-                                System.err.println("Failed to delete: " + path);
-                            }
-                        });
-            }
-        }
-        service = null;
-    }
+//    @AfterEach
+//    public void cleanUp() throws Exception {
+//        service.close();
+//        if (Files.exists(testDir)) {
+//            // Delete files before directories
+//            try (Stream<Path> walk = Files.walk(testDir)) {
+//                walk.sorted((a, b) -> b.compareTo(a)) // delete children before parents
+//                        .forEach(path -> {
+//                            try {
+//                                Files.deleteIfExists(path);
+//                            } catch (IOException e) {
+//                                System.err.println("Failed to delete: " + path);
+//                            }
+//                        });
+//            }
+//        }
+//        service = null;
+//    }
 
     public void assertFilesEqual(Path excepted, Path actual) throws Exception {
         if (!Files.exists(excepted)) {
@@ -84,6 +84,7 @@ public class RustIntegrationTest {
             service.setBaseDir(dir);
             String version = dir.getFileName().toString();
             service.commit(version);
+            System.out.println("Committed dir: " + dir);
         } catch (Exception e) {
             System.out.println("Exception during commit of dir " + dir + ": " + e.getMessage());
         }
@@ -93,6 +94,7 @@ public class RustIntegrationTest {
     public void commitAllDirsFromPath(Path basePath, EccoService service) {
         try (Stream<Path> dirs = Files.walk(basePath).filter(Files::isDirectory)){
             dirs.forEach(dir -> {
+                System.out.println("Committing dir: " + dir);
                    try {
                         service.setBaseDir(dir);
                         String version = dir.getFileName().toString();
@@ -149,6 +151,32 @@ public class RustIntegrationTest {
         Path actual = Paths.get("src/test/resources/rust_examples/structTest/main.rs");
         Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
         assertFilesEqual(actual, testOutput);
+    }
+
+    @Test
+    public void application() throws  Exception {
+        // set a dir for ecco to use as base dir
+        try {
+            String[] folders = { "v1", "v2", "v3"};
+            String testFolderStr = "src/test/resources/rust_examples/application/";
+            Path testFolder = Paths.get(testFolderStr);
+            for (String folder : folders) {
+                commitSingleDir(testFolder.resolve(folder), service);
+            }
+
+            service.checkout("create.1,get.1,getAll.1,updatePassword.1");
+            Path actual = Paths.get("src/test/resources/rust_examples/application/result/main.rs");
+            Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
+            //assertFilesEqual(actual, testOutput);
+
+
+            service.checkout("create.1,get.1,getAll.1");
+            actual = Paths.get("src/test/resources/rust_examples/application/result1/main.rs");
+            assertFilesEqual(actual, testOutput);
+        } catch (Exception e) {
+            System.out.println("Exception during checkout: " + e.getMessage());
+        }
+
     }
 
 }
