@@ -20,12 +20,6 @@ enum Commands {
         #[arg(short, long)]
         password: String,
     },
-    /// Retrieve the password for a user
-    Get {
-        /// The username whose password will be retrieved
-        #[arg(short, long)]
-        user: String,
-    },
     /// Get all users
     GetAll,
 }
@@ -37,16 +31,6 @@ fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
     let mut file = std::fs::File::create(format!("{}.txt", user))?;
     file.write_all(password.as_bytes())?;
     Ok(())
-}
-
-/// Retrieves the password for a given user from their file, if it exists.
-fn get_user_password(user: &str) -> Option<String> {
-    let file_path = format!("{}.txt", user);
-    if std::path::Path::new(&file_path).exists() {
-        let content = std::fs::read_to_string(file_path).expect("Unable to read file");
-        return Some(content);
-    }
-    None
 }
 
 /// Retrieves all users sorted
@@ -90,10 +74,6 @@ fn run_app(args: Args) {
                 println!("User {} created successfully.", user);
             }
         }
-        Commands::Get { user } => match get_user_password(&user) {
-            Some(password) => println!("Password for {}: {}", user, password),
-            _ => println!("No password found for user: {}", user),
-        },
         Commands::GetAll => {
             let users = get_all_users();
             if users.is_empty() {
@@ -132,13 +112,6 @@ mod tests {
         assert_eq!(retrieved, Some(password.to_string()));
         // Clean up after test
         let _ = fs::remove_file(format!("{}.txt", user));
-    }
-
-    #[test]
-    fn test_get_user_password_nonexistent() {
-        let user = "nonexistentuser";
-        let retrieved = get_user_password(user);
-        assert_eq!(retrieved, None);
     }
 
     #[test]
