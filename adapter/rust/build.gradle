@@ -7,7 +7,6 @@ plugins {
 
 group = 'at.jku.isse.ecco'
 version = '0.1.9'
-ecco.adapter = true
 
 
 repositories {
@@ -54,11 +53,6 @@ tasks.register('downloadBaseParserBaselexer', Download) {
 
 downloadBaseParserBaselexer.finalizedBy addPackageDeclaration
 
-
-test {
-    useJUnitPlatform()
-}
-
 generateGrammarSource {
     dependsOn downloadBaseParserBaselexer
     outputDirectory = new File("${project.projectDir}/src/main/java/at/jku/isse/ecco/adapter/rust/antlr".toString())
@@ -72,6 +66,7 @@ generateTestGrammarSource {
 }
 
 test {
+    useJUnitPlatform()
     testLogging {
         events "passed", "skipped", "failed"
     }
