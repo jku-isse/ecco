@@ -1,10 +1,12 @@
 package at.jku.isse.ecco.adapter.rust.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
+import lombok.Getter;
 
 import java.io.BufferedWriter;
 import java.util.Objects;
 
+@Getter
 public class ModuleArtifactData implements ArtifactData, RustWritable {
     private final String content;
 
@@ -16,10 +18,6 @@ public class ModuleArtifactData implements ArtifactData, RustWritable {
     public void write(BufferedWriter bw) throws java.io.IOException {
         bw.write(this.content);
         bw.newLine();
-    }
-
-    public String getContent() {
-        return this.content;
     }
 
     @Override

@@ -14,8 +14,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 public class RustIntegrationTest {
     final Path testDir = Paths.get("src/test/resources/rust_examples/test_output");
     EccoService service;

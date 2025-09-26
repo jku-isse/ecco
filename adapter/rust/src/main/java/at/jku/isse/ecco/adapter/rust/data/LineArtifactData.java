@@ -1,18 +1,16 @@
 package at.jku.isse.ecco.adapter.rust.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
+import lombok.Getter;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Objects;
 
+@Getter
 public class LineArtifactData implements ArtifactData, RustWritable {
 
     private final String line;
-
-    public String getLine() {
-        return line;
-    }
 
     public LineArtifactData(String line) {
         this.line = line;
