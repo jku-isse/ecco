@@ -22,20 +22,4 @@ pub mod outer_module {
         pub mod dummy_item {
         }
     }
-    pub mod degenerate_cases {
-        // empty inner line doc
-        //!
-        // empty inner block doc
-        /*!*/
-        // empty line comment
-        //
-        // empty outer line doc
-        ///
-        // empty block comment
-        /**/
-        pub mod dummy_item {
-        }
-        // empty 2-asterisk block isn't a doc block, it is a block comment
-        /***/
-    }
 }

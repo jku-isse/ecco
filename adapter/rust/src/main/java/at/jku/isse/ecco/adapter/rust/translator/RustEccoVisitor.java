@@ -10,6 +10,7 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.checkerframework.checker.units.qual.A;
 
@@ -57,6 +58,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
     }
 
+    // Comments in module not tracked since they are not parsed
     @Override
     public Node.Op visitModule(RustParser.ModuleContext ctx) {
         StringBuilder sig = new StringBuilder();
@@ -232,27 +234,40 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         Artifact.Op<EnumArtifactData> item = this.entityFactory.createArtifact(new EnumArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
 
-        // add all lines that are not part of enum items as line artifacts
-        ctx.children.forEach(child -> {
-            if (!(child instanceof RustParser.EnumItemsContext)) {
-                String content = this.getString(ctx);
-                Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(content));
-                createArtifactOrderedNodeAndAddToParent(lineArtifactData, node);
-            }
-        });
+        // Inside visitEnumeration
+        int enumStartLine = ctx.getStart().getLine();
+        int enumEndLine = ctx.getStop().getLine();
+        int itemsStartLine = ctx.enumItems().getStart().getLine();
+        int itemsEndLine = ctx.enumItems().getStop().getLine();
 
+        // Add lines before enumItems
+        this.addLineNodes(node, enumStartLine, itemsStartLine-1);
+
+        // Visit enumItems to add them as child nodes
         this.nodeStack.push(node);
         ctx.enumItems().enumItem().forEach(enumItemContext -> enumItemContext.accept(this));
         this.nodeStack.pop();
+
+        // Add lines after enumItems
+        this.addLineNodes(node, itemsEndLine+1, enumEndLine);
+
         return node;
+    }
+
+    @Override
+    public Node.Op visitEnumItems(RustParser.EnumItemsContext ctx) {
+        return super.visitEnumItems(ctx);
     }
 
     // TODO does not support merging two enums if they differ in something like struct fields of a item since they are only line nodes
     @Override
     public Node.Op visitEnumItem(RustParser.EnumItemContext ctx) {
-        Artifact.Op<EnumItemArtifactData> item = this.entityFactory.createArtifact(new EnumItemArtifactData());
+        // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
+        Artifact.Op<EnumItemArtifactData> item = this.entityFactory.createArtifact(new EnumItemArtifactData(ctx.identifier().getText()));
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-        this.addLineNodesFromContext(node,ctx);
+
+        this.addLineNodesFromContext(node, ctx);
+
         return node;
     }
 
@@ -288,6 +303,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         if (ctx.whereClause() != null) {
             sig.append(" ").append(ctx.whereClause().getText());
         }
+        // Add space before the function body
+        sig.append(" ");
         return sig.toString();
     }
 
@@ -303,6 +320,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
     }
 
+    /**
+     *
+     * @param parentNode
+     * @param startLine
+     * @param endLine
+     * @param startPosition
+     * @param endPosition
+     */
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine, int startPosition, int endPosition) {
         for (int i = startLine; i <= endLine; i++) {
             // -1 for 0 based index

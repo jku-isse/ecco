@@ -34,32 +34,29 @@ public class RustIntegrationTest {
         }
     }
 
-//    @AfterEach
-//    public void cleanUp() throws Exception {
-//        service.close();
-//        if (Files.exists(testDir)) {
-//            // Delete files before directories
-//            try (Stream<Path> walk = Files.walk(testDir)) {
-//                walk.sorted((a, b) -> b.compareTo(a)) // delete children before parents
-//                        .forEach(path -> {
-//                            try {
-//                                Files.deleteIfExists(path);
-//                            } catch (IOException e) {
-//                                System.err.println("Failed to delete: " + path);
-//                            }
-//                        });
-//            }
-//        }
-//        service = null;
-//    }
+    @AfterEach
+    public void cleanUp() throws Exception {
+        service.close();
+        if (Files.exists(testDir)) {
+            // Delete files before directories
+            try (Stream<Path> walk = Files.walk(testDir)) {
+                walk.sorted((a, b) -> b.compareTo(a)) // delete children before parents
+                        .forEach(path -> {
+                            try {
+                                Files.deleteIfExists(path);
+                            } catch (IOException e) {
+                                System.err.println("Failed to delete: " + path);
+                            }
+                        });
+            }
+        }
+        service = null;
+    }
 
     public void assertFilesEqual(Path excepted, Path actual) throws Exception {
-        if (!Files.exists(excepted)) {
-            throw new IllegalArgumentException("File does not exist: " + excepted);
-        }
-        if (!Files.exists(actual)) {
-            throw new IllegalArgumentException("File does not exist: " + actual);
-        }
+        if (!Files.exists(excepted)) throw new IllegalArgumentException("File does not exist: " + excepted);
+        if (!Files.exists(actual)) throw new IllegalArgumentException("File does not exist: " + actual);
+
         StringBuilder diffReport = new StringBuilder();
         boolean filesAreEqual = true;
 
@@ -74,46 +71,25 @@ public class RustIntegrationTest {
                 diffReport.append(String.format("Line %d differs:\nExpected: %s\nActual:   %s\n\n", i + 1, expectedLine, actualLine));
             }
         }
-        if (!filesAreEqual) {
-            Assertions.fail("Files are not equal:\n" + diffReport);
-        }
+        if (!filesAreEqual)  Assertions.fail("Files are not equal:\n" + diffReport);
     }
 
     public void commitSingleDir(Path dir, EccoService service) {
-        try {
             service.setBaseDir(dir);
             String version = dir.getFileName().toString();
+        try {
             service.commit(version);
-            System.out.println("Committed dir: " + dir);
         } catch (Exception e) {
             System.out.println("Exception during commit of dir " + dir + ": " + e.getMessage());
         }
         service.setBaseDir(this.testDir);
     }
 
-    public void commitAllDirsFromPath(Path basePath, EccoService service) {
-        try (Stream<Path> dirs = Files.walk(basePath).filter(Files::isDirectory)){
-            dirs.forEach(dir -> {
-                System.out.println("Committing dir: " + dir);
-                   try {
-                        service.setBaseDir(dir);
-                        String version = dir.getFileName().toString();
-                        service.commit(version);
-                    } catch (Exception e) {
-                        System.out.println("Exception during commit of dir " + dir + ": " + e.getMessage());
-                    }
-                });
-        } catch (IOException e) {
-            System.out.println("IO exception:" + e.getMessage());
-        }
-        service.setBaseDir(this.testDir);
-    }
-
     @Test
     public void comments() throws Exception {
-        try {
             Path testFolder = Paths.get("src/test/resources/rust_examples/commentTest/");
             commitSingleDir(testFolder, service);
+        try {
             service.checkout("comments.1");
         } catch (Exception e) {
             System.out.println("Exception during checkout: " + e.getMessage());
@@ -125,10 +101,11 @@ public class RustIntegrationTest {
 
     @Test
     public void functionWithOuterAttribute() throws Exception {
-        // set a dir for ecco to use as base dir
+        // Try catch for could not compute hash for file.rs
+            String[] folders = { "v1", "v2"};
+            String testFolderStr = "src/test/resources/rust_examples/functionTest/";
+            commit(folders, testFolderStr, service);
         try {
-            Path testFolder = Paths.get("src/test/resources/rust_examples/functionTest/");
-            commitAllDirsFromPath(testFolder, service);
             service.checkout("hello.1,farewell.1");
         } catch (Exception e) {
             System.out.println("Exception during checkout: " + e.getMessage());
@@ -140,10 +117,9 @@ public class RustIntegrationTest {
 
     @Test
     public void struct() throws Exception {
-        // set a dir for ecco to use as base dir
+        Path testFolder = Paths.get("src/test/resources/rust_examples/structTest/");
+        commitSingleDir(testFolder, service);
         try {
-            Path testFolder = Paths.get("src/test/resources/rust_examples/structTest/");
-            commitSingleDir(testFolder, service);
             service.checkout("struct.1");
         } catch (Exception e) {
             System.out.println("Exception during checkout: " + e.getMessage());
@@ -157,11 +133,12 @@ public class RustIntegrationTest {
     public void MergeEnumTest() throws Exception {
         String[] folders = { "v1", "v2"};
         String testFolderStr = "src/test/resources/rust_examples/MergeEnumTest/";
-        Path testFolder = Paths.get(testFolderStr);
-        for (String folder : folders) {
-            commitSingleDir(testFolder.resolve(folder), service);
+        commit(folders, testFolderStr, service);
+        try {
+            service.checkout("create.1,get.1,getAll.1,change.1");
+        } catch (Exception e) {
+            System.out.println("Exception during checkout: " + e.getMessage());
         }
-        service.checkout("create.1,get.1,getAll.1,change.1");
         Path actual = Paths.get("src/test/resources/rust_examples/MergeEnumTest/result/main.rs");
         Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
         assertFilesEqual(actual, testOutput);
@@ -169,29 +146,29 @@ public class RustIntegrationTest {
 
     @Test
     public void application() throws  Exception {
-        // set a dir for ecco to use as base dir
         try {
             String[] folders = { "v1", "v2", "v3"};
             String testFolderStr = "src/test/resources/rust_examples/application/";
-            Path testFolder = Paths.get(testFolderStr);
-            for (String folder : folders) {
-                commitSingleDir(testFolder.resolve(folder), service);
-            }
+            commit(folders, testFolderStr, service);
 
-            // TODO fails probaly because enums are only line node
-            service.checkout("create.1,get.1,getAll.1,updatePassword.1");
+            service.checkout("create.1,get.1,getAll.1,change.1,base.1");
             Path actual = Paths.get("src/test/resources/rust_examples/application/result/main.rs");
             Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
-            // assertFilesEqual(actual, testOutput);
+            assertFilesEqual(actual, testOutput);
 
-            // TODO missing result
-            // service.checkout("create.1,get.1,getAll.1");
-            // actual = Paths.get("src/test/resources/rust_examples/application/result1/main.rs");
-            // assertFilesEqual(actual, testOutput);
+            service.checkout("create.1,get.1,getAll.1,base.1");
+            actual = Paths.get("src/test/resources/rust_examples/application/result1/main.rs");
+            assertFilesEqual(actual, testOutput);
         } catch (Exception e) {
             System.out.println("Exception during checkout: " + e.getMessage());
         }
+    }
 
+    private void commit(String[] folders, String testFolderStr, EccoService service) {
+        Path testFolder = Paths.get(testFolderStr);
+        for (String folder : folders) {
+            commitSingleDir(testFolder.resolve(folder), service);
+        }
     }
 
 }
