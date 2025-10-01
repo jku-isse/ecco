@@ -185,7 +185,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
-    //TODO .getText does not respect spaces
     @Override
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
         //if the outerAttribute is a comment only visit the comment
@@ -195,7 +194,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
     }
 
-    //TODO .getText does not respect spaces
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
         Artifact.Op<InnerAttributeArtifactData> item = this.entityFactory.createArtifact(new InnerAttributeArtifactData(getString(ctx)));
@@ -256,7 +254,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return super.visitEnumItems(ctx);
     }
 
-    // TODO does not support merging two enums if they differ in something like struct fields of a item since they are only line nodes
     @Override
     public Node.Op visitEnumItem(RustParser.EnumItemContext ctx) {
         // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
@@ -288,7 +285,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // parameters
         sig.append("(");
         if (ctx.functionParameters() != null) {
-            // TODO .getText() ignores spaces and thus not writing source code properly
             sig.append(getString(ctx.functionParameters()));
         }
         sig.append(")");
