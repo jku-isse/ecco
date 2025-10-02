@@ -71,7 +71,7 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
     private String getConfigurationString(Path base) {
         Path configurationPath = base.resolve(".config");
         if (!Files.exists(configurationPath)){
-            return null;
+            return "";
         }
 
         try (Stream<String> stream = Files.lines(configurationPath)) {

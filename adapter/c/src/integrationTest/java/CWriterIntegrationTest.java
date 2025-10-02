@@ -314,8 +314,8 @@ public class CWriterIntegrationTest {
         nodeSet.add(pluginNode2);
         Path[] pathResults = writer.write(getTestFolderPath(), nodeSet);
 
-        assertEquals(getTestFolderSubpath("testFile2.c"), pathResults[0]);
-        assertEquals(getTestFolderSubpath("testFile1.c"), pathResults[1]);
+        assertEquals(getTestFolderSubpath("testFile2.c"), pathResults[1]);
+        assertEquals(getTestFolderSubpath("testFile1.c"), pathResults[0]);
     }
 
 }
