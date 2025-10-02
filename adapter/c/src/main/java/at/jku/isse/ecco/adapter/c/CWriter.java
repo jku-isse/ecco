@@ -35,7 +35,7 @@ public class CWriter implements ArtifactWriter<Set<Node>, Path> {
         for (Node fileNode : input) {
             Artifact<?> fileArtifact = fileNode.getArtifact();
             ArtifactData artifactData = fileArtifact.getData();
-            if (!(artifactData instanceof PluginArtifactData)) {
+            if (!(artifactData instanceof PluginArtifactData)){
                 throw new EccoException("Expected plugin artifact data.");
             }
             PluginArtifactData pluginArtifactData = (PluginArtifactData) artifactData;

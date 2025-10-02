@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.text.test;
 
 import at.jku.isse.ecco.adapter.text.*;
-import at.jku.isse.ecco.storage.mem.dao.*;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.*;
 import org.junit.jupiter.api.*;
 
@@ -28,7 +28,7 @@ public class AdapterTest {
 
 	@Test
 	public void Java_Adapter_Test() {
-		TextReader reader = new TextReader(new MemEntityFactory());
+		TextReader reader = new TextReader(new SerEntityFactory());
 
 		System.out.println("READ");
 		Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);

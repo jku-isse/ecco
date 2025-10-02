@@ -12,23 +12,23 @@ public interface FeatureRevision extends Persistable {
 	 *
 	 * @return The feature belonging to this version.
 	 */
-	public Feature getFeature();
+	Feature getFeature();
 
+	String getId();
 
-	public String getId();
+	String getDescription();
 
-	public String getDescription();
+	void setDescription(String description);
 
-	public void setDescription(String description);
-
-	@Override
-	public int hashCode();
+	String getLogicLiteralRepresentation();
 
 	@Override
-	public boolean equals(Object object);
+	int hashCode();
 
+	@Override
+	boolean equals(Object object);
 
-	public default String getFeatureRevisionString() {
+	default String getFeatureRevisionString() {
 		return this.getFeature().toString() + "." + this.getId().substring(0, Math.min(this.getId().length(), 7));
 	}
 
@@ -38,6 +38,6 @@ public interface FeatureRevision extends Persistable {
 	 * @return The feature revision string representing this feature revision.
 	 */
 	@Override
-	public String toString();
+	String toString();
 
 }
