@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.golang;
 
 import at.jku.isse.ecco.adapter.golang.io.MemorySourceWriter;
 import at.jku.isse.ecco.service.listener.WriteListener;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +36,7 @@ public class GoWriterTest {
         } catch (URISyntaxException e) {
             fail(e);
         }
-        Set<Node.Op> resultSet = new GoReader(new MemEntityFactory()).read(Path.of("."), new Path[]{resourcePath});
+        Set<Node.Op> resultSet = new GoReader(new SerEntityFactory()).read(Path.of("."), new Path[]{resourcePath});
         MemorySourceWriter sourceWriter = new MemorySourceWriter();
         GoWriter goWriter = new GoWriter(sourceWriter);
         Path[] returnedFiles = goWriter.write(resultSet.stream().map(nodeOp -> (Node)nodeOp).collect(Collectors.toSet()));
@@ -61,7 +61,7 @@ public class GoWriterTest {
         } catch (URISyntaxException e) {
             fail(e);
         }
-        Set<Node.Op> resultSet = new GoReader(new MemEntityFactory()).read(Path.of("."), new Path[]{resourcePath});
+        Set<Node.Op> resultSet = new GoReader(new SerEntityFactory()).read(Path.of("."), new Path[]{resourcePath});
         MemorySourceWriter sourceWriter = new MemorySourceWriter();
         GoWriter goWriter = new GoWriter(sourceWriter);
         WriteListener writeListener = mock(WriteListener.class);
@@ -82,7 +82,7 @@ public class GoWriterTest {
         } catch (URISyntaxException e) {
             fail(e);
         }
-        Set<Node.Op> resultSet = new GoReader(new MemEntityFactory()).read(Path.of("."), new Path[]{resourcePath});
+        Set<Node.Op> resultSet = new GoReader(new SerEntityFactory()).read(Path.of("."), new Path[]{resourcePath});
         MemorySourceWriter sourceWriter = new MemorySourceWriter();
         GoWriter goWriter = new GoWriter(sourceWriter);
         WriteListener writeListener = mock(WriteListener.class);

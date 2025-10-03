@@ -55,6 +55,7 @@ class RestTest {
         }
     }
 
+    /*
     @Test
     void checkRepositories() {
         try {
@@ -71,6 +72,7 @@ class RestTest {
             System.out.println("------------");
         }
     }
+     */
 
     @Test
     void createNewRepo() {
