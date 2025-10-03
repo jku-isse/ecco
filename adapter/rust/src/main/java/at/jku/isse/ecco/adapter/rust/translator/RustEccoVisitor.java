@@ -301,6 +301,12 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return sig.toString();
     }
 
+    /**
+     * Add line artifacts for each line from startLine to endLine (inclusive) to the given parent node.
+     * @param parentNode
+     * @param startLine
+     * @param endLine
+     */
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine) {
         for (int i = startLine; i <= endLine; i++) {
             // -1 for 0 based index
@@ -314,7 +320,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     /**
-     *
+     * Add line artifacts for each line from startLine to endLine (inclusive) to the given parent node.
+     * Only the part of the first and last line between startPosition and endPosition is added.
      * @param parentNode
      * @param startLine
      * @param endLine
@@ -340,7 +347,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
     }
 
-    // helper function to add all lines from a context as line artifacts to a parent node
+    /**
+     * helper function to add all lines from a context as line artifacts to a parent node
+     * @param parentNode
+     * @param ctx
+     */
     private void addLineNodesFromContext(Node.Op parentNode, ParserRuleContext ctx) {
         addLineNodes(parentNode, ctx.start.getLine(), ctx.stop.getLine());
     }
