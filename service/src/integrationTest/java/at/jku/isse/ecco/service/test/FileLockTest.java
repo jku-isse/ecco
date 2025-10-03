@@ -14,6 +14,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
 
+// todo: make tests independent of absolute paths
+
 public class FileLockTest {
 	@Test
 	public void FileLockTest2() throws IOException {

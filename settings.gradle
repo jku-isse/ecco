@@ -6,6 +6,8 @@ include 'cli'
 include 'gui'
 include 'web'
 include 'rest'
+include 'experiment'
+include 'util'
 
 include 'adapter-file'
 include 'adapter-text'
@@ -13,6 +15,7 @@ include 'adapter-image'
 include 'adapter-challenge'
 include 'adapter-java'
 include 'adapter-python'
+include 'adapter-c'
 include 'adapter-cpp'
 include 'adapter-runtime'
 include 'adapter-golang'
@@ -25,6 +28,7 @@ project(':service').projectDir = file('service')
 project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
+project(':util').projectDir = file('util')
 
 
 project(':adapter-file').projectDir = file('adapter/file')
