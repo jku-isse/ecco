@@ -32,7 +32,16 @@ options
     superClass = RustLexerBase;
 }
 
+// cfg
+KW_ANY       : 'any';
+KW_ALL       : 'all';
+KW_NOT       : 'not';
+KW_CFG       : 'cfg';
+KW_CFG_ATTR  : 'cfg_attr';
+
+
 // https://doc.rust-lang.org/reference/keywords.html strict
+
 KW_AS        : 'as';
 KW_BREAK     : 'break';
 KW_CONST     : 'const';

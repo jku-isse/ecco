@@ -127,14 +127,45 @@ macroTranscriber
     : delimTokenTree
     ;
 
-//configurationPredicate
-// : configurationOption | configurationAll | configurationAny | configurationNot ; configurationOption: identifier (
-// EQ (STRING_LITERAL | RAW_STRING_LITERAL))?; configurationAll: 'all' LPAREN configurationPredicateList? RPAREN;
-// configurationAny: 'any' LPAREN configurationPredicateList? RPAREN; configurationNot: 'not' LPAREN configurationPredicate RPAREN;
+// Configuration predicate parsing
+configurationPredicate
+    : configurationOption
+    | configurationAll
+    | configurationAny
+    | configurationNot
+    ;
 
-//configurationPredicateList
-// : configurationPredicate (COMMA configurationPredicate)* COMMA? ; cfgAttribute: 'cfg' LPAREN configurationPredicate RPAREN;
-// cfgAttrAttribute: 'cfg_attr' LPAREN configurationPredicate COMMA cfgAttrs? RPAREN; cfgAttrs: attr (COMMA attr)* COMMA?;
+configurationOption
+    : identifier (EQ (STRING_LITERAL | RAW_STRING_LITERAL))?
+    ;
+
+configurationAll
+    : KW_ALL LPAREN configurationPredicateList? RPAREN
+    ;
+
+configurationAny
+    : KW_ANY LPAREN configurationPredicateList? RPAREN
+    ;
+
+configurationNot
+    : KW_NOT LPAREN configurationPredicate RPAREN
+    ;
+
+configurationPredicateList
+    : configurationPredicate (COMMA configurationPredicate)* COMMA?
+    ;
+
+cfgAttribute
+    : KW_CFG LPAREN configurationPredicate RPAREN
+    ;
+
+cfgAttrAttribute
+    : KW_CFG_ATTR LPAREN configurationPredicate COMMA cfgAttrs? RPAREN
+    ;
+
+cfgAttrs
+    : attr (COMMA attr)* COMMA?
+    ;
 
 // 6
 item
@@ -411,7 +442,9 @@ outerAttribute
     ;
 
 attr
-    : simplePath attrInput?
+    : cfgAttribute
+    | cfgAttrAttribute
+    | simplePath attrInput?
     ;
 
 attrInput
@@ -419,14 +452,17 @@ attrInput
     | EQ literalExpression
     ; // w/o suffix
 
-//metaItem
-// : simplePath ( EQ literalExpression //w | LPAREN metaSeq RPAREN )? ; metaSeq: metaItemInner (COMMA metaItemInner)* COMMA?;
-// metaItemInner: metaItem | literalExpression; // w
+metaItem
+ : simplePath ( EQ literalExpression | LPAREN metaSeq RPAREN )? ; metaSeq: metaItemInner (COMMA metaItemInner)* COMMA?;
+ metaItemInner: metaItem | literalExpression; // w
 
-//metaWord: identifier; metaNameValueStr: identifier EQ ( STRING_LITERAL | RAW_STRING_LITERAL); metaListPaths:
-// identifier LPAREN ( simplePath (COMMA simplePath)* COMMA?)? RPAREN; metaListIdents: identifier LPAREN ( identifier (COMMA
-// identifier)* COMMA?)? RPAREN; metaListNameValueStr : identifier LPAREN (metaNameValueStr ( COMMA metaNameValueStr)* COMMA?)? RPAREN
-// ;
+metaWord
+: identifier;
+
+metaNameValueStr: identifier EQ ( STRING_LITERAL | RAW_STRING_LITERAL); metaListPaths:
+identifier LPAREN ( simplePath (COMMA simplePath)* COMMA?)? RPAREN; metaListIdents: identifier LPAREN ( identifier (COMMA
+identifier)* COMMA?)? RPAREN; metaListNameValueStr : identifier LPAREN (metaNameValueStr ( COMMA metaNameValueStr)* COMMA?)? RPAREN
+;
 
 // 8
 statement
@@ -1079,6 +1115,11 @@ identifier
     : NON_KEYWORD_IDENTIFIER
     | RAW_IDENTIFIER
     | KW_MACRORULES
+    | KW_ANY
+    | KW_ALL
+    | KW_NOT
+    | KW_CFG
+    | KW_CFG_ATTR
     ;
 
 keyword
