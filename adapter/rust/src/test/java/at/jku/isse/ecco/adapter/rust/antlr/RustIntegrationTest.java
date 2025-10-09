@@ -21,9 +21,7 @@ public class RustIntegrationTest {
     @BeforeEach
     public void setUpEcco() {
         try {
-            if (!Files.exists(testDir)) {
-                Files.createDirectories(testDir);
-            }
+            Files.createDirectories(testDir);
             service = new EccoService(testDir);
             service.setEntityFactory(new MemEntityFactory());
             service.init();

@@ -86,7 +86,7 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
         try {
             CharStream charstream = CharStreams.fromFileName(String.valueOf(absolutePath));
             RustLexer lexer = new RustLexer(charstream);
-            // in order to suppress log output like in Creader
+            // in order to suppress log output
             lexer.removeErrorListeners();
             TokenStream tokenStream = new CommonTokenStream(lexer);
             return new RustParser(tokenStream);

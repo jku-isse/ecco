@@ -9,12 +9,15 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Extractor {
@@ -26,31 +29,31 @@ public class Extractor {
         this.basePath = basePath;
     }
 
-    public void extract(Path[] input) {
-        for (Path path : input) {
-            Path absolutePath = this.basePath.resolve(path);
-            this.parseFile(absolutePath, path);
-        }
-    }
-
-//    public void createConfigFile(Set<String> features, Path path) {
-//        try (BufferedWriter writer = new BufferedWriter(
-//                new OutputStreamWriter(Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)))) {
-//            for (String feature : features) {
-//                String config = feature.split("=")[1];
-//                writer.write(config + ".1,");
-//            }
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
+//    public void extract(Path[] input) {
+//        for (Path path : input) {
+//            Path absolutePath = this.basePath.resolve(path);
+//            this.parseFile(absolutePath, path);
 //        }
 //    }
 
-    private void parseFile(Path absolutePath, Path relPath) {
+    public void createConfigFile(Set<String> features, Path path) {
+        Set<String> uniqueFeatures = features.stream()
+                .filter(f -> !f.isBlank())
+                .map(f -> f.contains("=") ? f.split("=")[1] : f)
+                .map(s -> s = s + ".1, ")
+                .collect(Collectors.toSet());
+        try {
+            Files.write(path, uniqueFeatures, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void parseFile(Path absolutePath, Path relPath, Path outputDir) {
         try {
             List<String> lineList = Files.readAllLines(absolutePath);
             String[] lines = lineList.toArray(new String[0]);
-            //Path configPath = Paths.get("adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/extractor/.config");
-            //this.createConfigFile(this.features, configPath);
+
             Visitor visitor = new Visitor(lines, features);
             RustParser parser = this.createParser(absolutePath);
             // in order to suppress log output
@@ -58,8 +61,10 @@ public class Extractor {
             ParseTree tree = parser.crate();
             visitor.visit(tree);
             List<String> nonNullLines = visitor.getNonNullCodeLines();
-            Path outputPath = Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/extractor/output").resolve(relPath);
-            this.writeToFile(outputPath, nonNullLines);
+
+            // put output in output directory
+            outputDir = outputDir.resolve(relPath);
+            this.writeToFile(outputDir, nonNullLines);
         } catch (IOException e) {
             throw new EccoException(e);
         }
@@ -69,7 +74,7 @@ public class Extractor {
         try {
             CharStream charstream = CharStreams.fromFileName(String.valueOf(absolutePath));
             RustLexer lexer = new RustLexer(charstream);
-            // in order to suppress log output like in Creader
+            // in order to suppress log output
             lexer.removeErrorListeners();
             TokenStream tokenStream = new CommonTokenStream(lexer);
             return new RustParser(tokenStream);
@@ -78,7 +83,7 @@ public class Extractor {
         }
     }
 
-    public void writeToFile(Path path, List<String> lines) {
+    private void writeToFile(Path path, List<String> lines) {
         try {
             Files.createDirectories(path.getParent());
             Files.write(path.toAbsolutePath(), lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -87,7 +92,7 @@ public class Extractor {
         }
     }
 
-    public List<Path> CollectFiles(Path sourceDir) throws IOException {
+    private List<Path> collectFiles(Path sourceDir) throws IOException {
         List<Path> fileList = new ArrayList<>();
         try (Stream<Path> walk = Files.walk(sourceDir)) {
             walk.filter(Files::isRegularFile).forEach(fileList::add);
@@ -97,26 +102,17 @@ public class Extractor {
         return fileList;
     }
 
-    public void extractFromDirectory(Path sourceDir) {
+    public void extractFromDirectory(Path sourceDir, Path outputDir) {
         try {
-            List<Path> files = CollectFiles(sourceDir);
+            Files.createDirectories(outputDir);
+            List<Path> files = collectFiles(sourceDir);
             for (Path file : files) {
                 Path relativePath = sourceDir.relativize(file);
                 Path absolutePath = this.basePath.resolve(file);
-                this.parseFile(absolutePath, relativePath);
+                this.parseFile(absolutePath, relativePath, outputDir);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-
-    public static void main(String[] args) {
-        Set<String> features = Set.of("std", "feature=std");
-        Extractor extractor = new Extractor(features, Paths.get("."));
-        Path input = Paths.get("/home/zaber/Documents/serde/serde_core");
-        extractor.extractFromDirectory(input);
-//        Path input = Paths.get("adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/extractor/main.rs");
-//        extractor.extract(new Path[]{input});
-    }
-
 }

@@ -185,6 +185,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
+    //TODO .getText does not respect spaces
     @Override
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
         //if the outerAttribute is a comment only visit the comment
@@ -194,6 +195,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
     }
 
+    //TODO .getText does not respect spaces
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
         Artifact.Op<InnerAttributeArtifactData> item = this.entityFactory.createArtifact(new InnerAttributeArtifactData(getString(ctx)));
@@ -203,7 +205,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitImplementation(RustParser.ImplementationContext ctx) {
         Artifact.Op<ImplementationArtifactData> item = this.entityFactory.createArtifact(new ImplementationArtifactData());
-        Node.Op node = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
         this.addLineNodesFromContext(node, ctx);
         return node;
     }
@@ -254,6 +256,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return super.visitEnumItems(ctx);
     }
 
+    // TODO does not support merging two enums if they differ in something like struct fields of a item since they are only line nodes
     @Override
     public Node.Op visitEnumItem(RustParser.EnumItemContext ctx) {
         // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
@@ -285,6 +288,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // parameters
         sig.append("(");
         if (ctx.functionParameters() != null) {
+            // TODO .getText() ignores spaces and thus not writing source code properly
             sig.append(getString(ctx.functionParameters()));
         }
         sig.append(")");
@@ -391,15 +395,25 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
      * @return String of the original source code represented by the context
      */
     public String getString(ParserRuleContext ctx) {
+        if (ctx == null) {
+            return "";
+        }
+
         int startPosition = ctx.start.getCharPositionInLine();
         int endPosition = ctx.stop.getCharPositionInLine() + ctx.stop.getText().length();
         int startLine = ctx.start.getLine();
         int stopLine = ctx.stop.getLine();
 
+
         StringBuilder sb = new StringBuilder();
         for (int i = startLine; i <= stopLine; i++) {
-            // -1 for 0 based index
-            String codeLine = this.codeLines[i - 1];
+            String codeLine;
+            // Handle 1 based line numbers and 0 based array index
+            if (i == 0) {
+                codeLine = this.codeLines[0];
+            } else {
+                codeLine = this.codeLines[i - 1];
+            }
             if (codeLine.isEmpty()) {
                 continue;
             }
