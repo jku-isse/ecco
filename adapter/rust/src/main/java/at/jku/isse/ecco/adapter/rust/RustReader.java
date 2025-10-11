@@ -9,7 +9,6 @@ import at.jku.isse.ecco.adapter.rust.translator.RustEccoVisitor;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import org.antlr.v4.runtime.CharStream;
@@ -23,6 +22,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Stream;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
 
@@ -33,15 +35,14 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
         prioritizedPatterns.put(Integer.MAX_VALUE, new String[]{"**.rs"});
     }
 
+
     private final EntityFactory entityFactory;
     private Collection<ReadListener> listeners = new ArrayList<>();
 
 
     @Inject
     public RustReader(EntityFactory entityFactory) {
-        if (entityFactory == null) {
-            throw new IllegalArgumentException("EntityFactory must not be null");
-        }
+        checkNotNull(entityFactory);
         this.entityFactory = entityFactory;
     }
 
@@ -61,17 +62,21 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
         for (Path path : input) {
             Node.Op pluginNode = addPluginNode(nodes, path);
             Path absolutePath = base.resolve(path);
-            this.parseFile(pluginNode, absolutePath, path);
+
+            String configuration = this.getConfigurationString(base);
+            this.parseFile(pluginNode, absolutePath, path, configuration);
             nodes.add(pluginNode);
         }
         return nodes;
     }
 
-    private void parseFile(Node.Op pluginNode, Path absolutePath, Path relPath) {
+    private void parseFile(Node.Op pluginNode, Path absolutePath, Path relPath, String configuration) {
         try {
             List<String> lineList = Files.readAllLines(absolutePath);
             String[] lines = lineList.toArray(new String[0]);
-            RustEccoVisitor translator = new RustEccoVisitor(pluginNode, lines, this.entityFactory, relPath);
+
+
+            RustEccoVisitor translator = new RustEccoVisitor(pluginNode, lines, this.entityFactory, relPath, configuration);
             RustParser parser = this.createParser(absolutePath);
             // in order to suppress log output
             parser.removeErrorListeners();
@@ -145,17 +150,17 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
         this.listeners.remove(listener);
     }
 
+    private String getConfigurationString(Path base) {
+        Path configurationPath = base.resolve(".config");
+        if (!Files.exists(configurationPath)){
+            return "";
+        }
 
-    public static void main(String[] args) {
-        RustReader reader = new RustReader(new MemEntityFactory());
-        Path[] input = {Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/simple.rs")}; // Example path, adjust as needed
-        Set<Node.Op> nodes = reader.read(input);
-        for (Node.Op child : nodes) {
-            List<Node.Op> pluginNodeChildren = (List<Node.Op>) child.getChildren();
-            for (Node.Op node : pluginNodeChildren) {
-                System.out.println(node.getArtifact());
-                node.getChildren().forEach(System.out::println);
-            }
+        try (Stream<String> stream = Files.lines(configurationPath)) {
+            List<String> fileLines = stream.toList();
+            return fileLines.get(0);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

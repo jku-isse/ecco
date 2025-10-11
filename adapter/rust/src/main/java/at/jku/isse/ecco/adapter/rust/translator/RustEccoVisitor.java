@@ -4,12 +4,16 @@ package at.jku.isse.ecco.adapter.rust.translator;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
 import at.jku.isse.ecco.adapter.rust.data.*;
+import at.jku.isse.ecco.adapter.rust.extractor.ConfigurationPredicateVisitor;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Location;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.logicng.formulas.Formula;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -20,12 +24,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private final String[] codeLines;
     private final EntityFactory entityFactory;
     private final Path path;
+    private String configuration;
 
-    public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path) {
+    public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path, String configuration) {
         this.pluginNode = pluginNode;
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.path = path;
+        this.configuration = configuration;
         nodeStack.push(pluginNode);
     }
 
@@ -94,11 +100,30 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitItem(RustParser.ItemContext ctx) {
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = createArtifactOrderedNodeAndAddToParent(item, nodeStack.peek());
-
         nodeStack.push(itemNode);
-        Node.Op visit = super.visitItem(ctx);
+
+        // process outer attributes to get condition for feature trace
+        List<Node.Op> outerAttr = ctx.outerAttribute().stream().map( attrCtx -> attrCtx.accept(this)).toList();
+        String condition = "";
+        for (Node.Op attrNode : outerAttr) {
+            if (!attrNode.getProperty("condition").isPresent()) {
+                Object conditionObj = attrNode.getProperty("condition").get();
+                if (conditionObj instanceof Formula) {
+                    Formula formula = (Formula) attrNode.getProperty("condition").get();
+                    condition = formula.toString();
+                }
+                break;
+            }
+        }
+
+        Node.Op node = super.visitItem(ctx);
+        Location location = new Location(ctx.start.getLine(), ctx.stop.getLine(), this.path, this.configuration);
+        node.putProperty("Location", location);
+        FeatureTrace nodeTrace = node.getFeatureTrace();
+        nodeTrace.buildProactiveConditionConjunction(condition);
+
         nodeStack.pop();
-        return visit;
+        return node;
     }
 
     @Override
@@ -190,9 +215,17 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
         //if the outerAttribute is a comment only visit the comment
         if (ctx.docComment() != null) return visitDocComment(ctx.docComment());
-
+        Formula condition = null;
+        RustParser.CfgAttributeContext attrCtx = ctx.attr().cfgAttribute();
+        if (attrCtx != null) {
+            ConfigurationPredicateVisitor configVisitor = new ConfigurationPredicateVisitor();
+            condition = configVisitor.visitCfgAttribute(attrCtx);
+        }
         Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(getString(ctx)));
-        return createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+
+        if (attrCtx != null) node.putProperty("condition", condition);
+        return node;
     }
 
     //TODO .getText does not respect spaces
