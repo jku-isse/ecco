@@ -100,17 +100,17 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitItem(RustParser.ItemContext ctx) {
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = createArtifactOrderedNodeAndAddToParent(item, nodeStack.peek());
+        nodeStack.push(itemNode);
 
         // process outer attributes to get condition for feature trace
         // Item can have multiple outer attributes, so we look for conditions in all of them
-        String condition = ctx.outerAttribute().stream()
+        List<String> conditions = ctx.outerAttribute().stream()
                 .map(attrCtx -> attrCtx.accept(this))
                 .map(node -> node.getProperty("condition"))
                 .flatMap(Optional::stream)
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .findFirst()
-                .orElse("");
+                .map(Object::toString)
+                .toList();
+        String condition = conditions.isEmpty() ? "" : String.join(" & ", conditions); // to handle multiple conditions on a item
 
         Location location = new Location(ctx.start.getLine(), ctx.stop.getLine(), this.path, this.configuration);
         itemNode.putProperty("Location", location);
@@ -118,7 +118,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         nodeTrace.buildProactiveConditionConjunction(condition);
 
         // visit rest of the children of RustParser.ItemContext if they are present
-        nodeStack.push(itemNode);
         if (ctx.macroItem() != null) ctx.macroItem().accept(this);
         if (ctx.visItem() != null) ctx.visItem().accept(this);
         nodeStack.pop();
@@ -311,7 +310,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             }
         }
         // “fn” and name
-        sig.append("fn").append(" ").append(ctx.identifier().getText());
+        sig.append("fn").append(" ").append(getString(ctx.identifier()));
 
         // optional generics
         if (ctx.genericParams() != null) {
@@ -320,13 +319,12 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // parameters
         sig.append("(");
         if (ctx.functionParameters() != null) {
-            // TODO .getText() ignores spaces and thus not writing source code properly
             sig.append(getString(ctx.functionParameters()));
         }
         sig.append(")");
         // optional return type
         if (ctx.functionReturnType() != null) {
-            sig.append(" ").append(ctx.functionReturnType().getText());
+            sig.append(" ").append(getString(ctx.functionReturnType()));
         }
         // optional where‐clause
         if (ctx.whereClause() != null) {
