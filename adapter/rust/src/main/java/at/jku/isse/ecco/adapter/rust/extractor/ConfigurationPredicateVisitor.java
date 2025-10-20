@@ -2,11 +2,12 @@ package at.jku.isse.ecco.adapter.rust.extractor;
 
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 
 public class ConfigurationPredicateVisitor extends RustParserBaseVisitor<Formula> {
-    private final FormulaFactory f = new FormulaFactory();
+    private final FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
     @Override
     public Formula visitCfgAttribute(RustParser.CfgAttributeContext ctx) {
