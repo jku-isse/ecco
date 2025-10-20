@@ -20,6 +20,7 @@ dependencies {
 
 
     implementation project(':ecco-base')
+    implementation project(':ecco-logic')
     implementation project(':ecco-service')
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
