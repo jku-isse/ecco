@@ -40,10 +40,10 @@ public class ConfigurationPredicateVisitor extends RustParserBaseVisitor<Formula
                     ctx.RAW_STRING_LITERAL().getText();
             // Remove quotes
             value = value.substring(1, value.length() - 1);
-            return f.variable(featureName + "=" + value);
+            return f.variable("#" + featureName + "_" + value);
         } else {
             // Handle simple feature case
-            return f.variable(featureName);
+            return f.variable("#" + featureName);
         }
     }
 
