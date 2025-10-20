@@ -100,30 +100,29 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitItem(RustParser.ItemContext ctx) {
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = createArtifactOrderedNodeAndAddToParent(item, nodeStack.peek());
-        nodeStack.push(itemNode);
 
         // process outer attributes to get condition for feature trace
-        List<Node.Op> outerAttr = ctx.outerAttribute().stream().map( attrCtx -> attrCtx.accept(this)).toList();
-        String condition = "";
-        for (Node.Op attrNode : outerAttr) {
-            if (!attrNode.getProperty("condition").isPresent()) {
-                Object conditionObj = attrNode.getProperty("condition").get();
-                if (conditionObj instanceof Formula) {
-                    Formula formula = (Formula) attrNode.getProperty("condition").get();
-                    condition = formula.toString();
-                }
-                break;
-            }
-        }
+        // Item can have multiple outer attributes, so we look for conditions in all of them
+        String condition = ctx.outerAttribute().stream()
+                .map(attrCtx -> attrCtx.accept(this))
+                .map(node -> node.getProperty("condition"))
+                .flatMap(Optional::stream)
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .findFirst()
+                .orElse("");
 
-        Node.Op node = super.visitItem(ctx);
         Location location = new Location(ctx.start.getLine(), ctx.stop.getLine(), this.path, this.configuration);
-        node.putProperty("Location", location);
-        FeatureTrace nodeTrace = node.getFeatureTrace();
+        itemNode.putProperty("Location", location);
+        FeatureTrace nodeTrace = itemNode.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
 
+        // visit rest of the children of RustParser.ItemContext if they are present
+        nodeStack.push(itemNode);
+        if (ctx.macroItem() != null) ctx.macroItem().accept(this);
+        if (ctx.visItem() != null) ctx.visItem().accept(this);
         nodeStack.pop();
-        return node;
+        return itemNode;
     }
 
     @Override
@@ -224,7 +223,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(getString(ctx)));
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
 
-        if (attrCtx != null) node.putProperty("condition", condition);
+        if (attrCtx != null) node.putProperty("condition", condition.toString());
         return node;
     }
 
