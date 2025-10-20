@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.storage.ser.featuretrace.evaluation;
 
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.featuretrace.LogicUtils;
+import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.ProactiveSubtractionEvaluation;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.datastructures.Assignment;

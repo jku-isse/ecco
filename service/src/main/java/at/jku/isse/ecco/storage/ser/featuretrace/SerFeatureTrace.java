@@ -6,9 +6,10 @@ import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.tree.Node;
 import org.logicng.formulas.Formula;
-import org.logicng.io.parsers.ParserException;
 
 import java.util.Objects;
+
+import static at.jku.isse.ecco.logic.LogicUtils.parseString;
 
 public class SerFeatureTrace implements FeatureTrace {
     private Node node;
@@ -61,8 +62,8 @@ public class SerFeatureTrace implements FeatureTrace {
         if (currentCondition == null){
             return newCondition;
         } else {
-            Formula currentFormula = this.parseString(currentCondition);
-            Formula newFormula = this.parseString(newCondition);
+            Formula currentFormula = parseString(currentCondition);
+            Formula newFormula = parseString(newCondition);
             Formula combinedFormula = FormulaFactoryProvider.getFormulaFactory().or(currentFormula, newFormula);
             return combinedFormula.toString();
         }
@@ -75,8 +76,8 @@ public class SerFeatureTrace implements FeatureTrace {
         if (this.proactiveCondition == null){
             this.proactiveCondition = proactiveCondition;
         } else {
-            Formula currentCondition = this.parseString(this.proactiveCondition);
-            Formula additionalCondition = this.parseString(proactiveCondition);
+            Formula currentCondition = parseString(this.proactiveCondition);
+            Formula additionalCondition = parseString(proactiveCondition);
             Formula newCondition = FormulaFactoryProvider.getFormulaFactory().and(currentCondition, additionalCondition);
             this.proactiveCondition = newCondition.toString();
         }
@@ -108,14 +109,6 @@ public class SerFeatureTrace implements FeatureTrace {
             throw new RuntimeException("Neither retroactive nor proactive condition exists.");
         } else  {
             return evaluationStrategy.getOverallConditionString(this.proactiveCondition, this.retroactiveCondition);
-        }
-    }
-
-    private Formula parseString(String string) {
-        try {
-            return FormulaFactoryProvider.getFormulaFactory().parse(string);
-        } catch (ParserException e) {
-            throw new RuntimeException(e);
         }
     }
 

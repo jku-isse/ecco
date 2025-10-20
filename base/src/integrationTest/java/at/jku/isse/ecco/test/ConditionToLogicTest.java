@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Objects;
 
+import static at.jku.isse.ecco.logic.LogicUtils.parseString;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -103,7 +104,7 @@ public class ConditionToLogicTest {
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
-        Formula conditionFormula = formulaFactory.parse(condition.toLogicString());
+        Formula conditionFormula = parseString(condition.toLogicString());
 
         // create logical formula
         Collection<? extends Feature> features = repo.getFeatures();
@@ -180,7 +181,7 @@ public class ConditionToLogicTest {
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
-        Formula conditionFormula = factory.parse(condition.toLogicString());
+        Formula conditionFormula = parseString(condition.toLogicString());
 
         // create logical formula
         Collection<? extends Feature> features = repo.getFeatures();
@@ -225,7 +226,7 @@ public class ConditionToLogicTest {
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
-        Formula conditionFormula = factory.parse(condition.toLogicString());
+        Formula conditionFormula = parseString(condition.toLogicString());
 
         // create logical formula
         Collection<? extends Feature> features = repo.getFeatures();
@@ -273,7 +274,7 @@ public class ConditionToLogicTest {
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
-        Formula conditionFormula = factory.parse(condition.toLogicString());
+        Formula conditionFormula = parseString(condition.toLogicString());
 
         // create logical formula
         Collection<? extends Feature> features = repo.getFeatures();
@@ -321,7 +322,7 @@ public class ConditionToLogicTest {
 
         // create condition and condition formula
         Condition condition = association.computeCondition();
-        Formula conditionFormula = factory.parse(condition.toLogicString());
+        Formula conditionFormula = parseString(condition.toLogicString());
 
         // create logical formula
         Collection<? extends Feature> features = repo.getFeatures();

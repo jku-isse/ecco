@@ -1,4 +1,4 @@
-// Generated from .\ecco\adapter\c\src\main\resources\grammar\C.g4 by ANTLR 4.9.3
+// Generated from C:/Projects/ECCO/ecco/adapter/c/src/main/resources/grammar/C.g4 by ANTLR 4.13.2
 package at.jku.isse.ecco.adapter.c.parser.generated;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -10,7 +10,20 @@ import org.antlr.v4.runtime.tree.TerminalNode;
  * which can be extended to create a listener which only needs to handle a subset
  * of the available methods.
  */
+@SuppressWarnings("CheckReturnValue")
 public class CBaseListener implements CListener {
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterCompilationUnit(CParser.CompilationUnitContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCompilationUnit(CParser.CompilationUnitContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -1007,18 +1020,6 @@ public class CBaseListener implements CListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitJumpStatement(CParser.JumpStatementContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterCompilationUnit(CParser.CompilationUnitContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitCompilationUnit(CParser.CompilationUnitContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
