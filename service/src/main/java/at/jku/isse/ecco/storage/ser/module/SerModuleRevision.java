@@ -12,6 +12,7 @@ import org.logicng.io.parsers.ParserException;
 import java.util.Collection;
 import java.util.LinkedList;
 
+import static at.jku.isse.ecco.logic.LogicUtils.parseString;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -108,7 +109,7 @@ public class SerModuleRevision implements ModuleRevision {
 		Collection<Formula> formulas = new LinkedList<>();
 		for (FeatureRevision featureRevision : this.pos){
 			String conditionString = featureRevision.getLogicLiteralRepresentation();
-			Formula condition = this.parseString(conditionString);
+			Formula condition = parseString(conditionString);
 			formulas.add(condition);
 		}
 		return formulas;
@@ -118,18 +119,10 @@ public class SerModuleRevision implements ModuleRevision {
 		Collection<Formula> formulas = new LinkedList<>();
 		for (Feature feature : this.neg){
 			String conditionString = feature.getLatestRevision().getLogicLiteralRepresentation();
-			Formula condition = this.parseString(conditionString);
+			Formula condition = parseString(conditionString);
 			formulas.add(condition);
 		}
 		return formulas;
-	}
-
-	private Formula parseString(String string){
-		try{
-			return FormulaFactoryProvider.getFormulaFactory().parse(string);
-		} catch (ParserException e){
-			throw new RuntimeException("Formula-String in module-revision could not be parsed: " + e.getMessage());
-		}
 	}
 
 	@Override

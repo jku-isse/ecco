@@ -1,4 +1,4 @@
-// Generated from .\ecco\adapter\c\src\main\resources\grammar\C.g4 by ANTLR 4.9.3
+// Generated from C:/Projects/ECCO/ecco/adapter/c/src/main/resources/grammar/C.g4 by ANTLR 4.13.2
 package at.jku.isse.ecco.adapter.c.parser.generated;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
@@ -7,6 +7,16 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
  * {@link CParser}.
  */
 public interface CListener extends ParseTreeListener {
+	/**
+	 * Enter a parse tree produced by {@link CParser#compilationUnit}.
+	 * @param ctx the parse tree
+	 */
+	void enterCompilationUnit(CParser.CompilationUnitContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link CParser#compilationUnit}.
+	 * @param ctx the parse tree
+	 */
+	void exitCompilationUnit(CParser.CompilationUnitContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link CParser#primaryExpression}.
 	 * @param ctx the parse tree
@@ -837,16 +847,6 @@ public interface CListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitJumpStatement(CParser.JumpStatementContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link CParser#compilationUnit}.
-	 * @param ctx the parse tree
-	 */
-	void enterCompilationUnit(CParser.CompilationUnitContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link CParser#compilationUnit}.
-	 * @param ctx the parse tree
-	 */
-	void exitCompilationUnit(CParser.CompilationUnitContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link CParser#translationUnit}.
 	 * @param ctx the parse tree

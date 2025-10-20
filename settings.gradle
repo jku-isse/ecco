@@ -8,6 +8,7 @@ include 'web'
 include 'rest'
 include 'experiment'
 include 'util'
+include 'logic'
 
 include 'adapter-file'
 include 'adapter-text'
@@ -29,6 +30,7 @@ project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
 project(':util').projectDir = file('util')
+project(':logic').projectDir = file('logic')
 
 
 project(':adapter-file').projectDir = file('adapter/file')
