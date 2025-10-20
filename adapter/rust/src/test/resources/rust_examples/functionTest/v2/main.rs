@@ -4,5 +4,6 @@ fn farewell(str: &str){
 }
 
 fn main(){
+    #[cfg(feature = "v2")]
     farewell("world");
 }

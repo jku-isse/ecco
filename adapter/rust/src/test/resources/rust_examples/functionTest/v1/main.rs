@@ -4,5 +4,6 @@ fn hello(str: &str){
 }
 
 fn main(){
+    #[cfg(feature = "v1")]
     hello("world");
 }

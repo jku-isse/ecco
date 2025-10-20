@@ -1,13 +1,11 @@
 use clap::{Parser, Subcommand};
 use std::io::Write;
-
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Args {
     #[command(subcommand)]
     cmd: Commands,
 }
-
 #[derive(Subcommand, Debug, Clone)]
 #[command(rename_all = "lowercase")]
 enum Commands {
@@ -36,7 +34,6 @@ enum Commands {
         password: String,
     },
 }
-
 /// Creates a new user file and writes the provided password to it.
 fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
     println!("Creating user: {} with password: {}", user, password);
@@ -45,7 +42,6 @@ fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
     file.write_all(password.as_bytes())?;
     Ok(())
 }
-
 /// Retrieves the password for a given user from their file, if it exists.
 fn get_user_password(user: &str) -> Option<String> {
     let file_path = format!("{}.txt", user);
@@ -55,7 +51,6 @@ fn get_user_password(user: &str) -> Option<String> {
     }
     None
 }
-
 /// Changes the password for an existing user.
 fn change_password(user: &str, new_password: &str) -> Result<bool, std::io::Error> {
     let file_path = format!("{}.txt", user);
@@ -71,7 +66,6 @@ fn change_password(user: &str, new_password: &str) -> Result<bool, std::io::Erro
 
     Ok(true)
 }
-
 fn run_app(args: Args) {
     match args.cmd {
         Commands::Create { user, password } => {
@@ -84,7 +78,7 @@ fn run_app(args: Args) {
         Commands::Get { user } => match get_user_password(&user) {
             Some(password) => println!("Password for {}: {}", user, password),
             _ => println!("No password found for user: {}", user),
-        },
+        }
         Commands::Change { user, password } => {
             match change_password(&user, &password) {
                 Ok(true) => println!("Password for user {} changed successfully.", user),
@@ -129,27 +123,22 @@ mod tests {
     }
 
     #[test]
-    fn test_get_all_users() {
-        // Create a few test users
-        let users = ["user1", "user2", "user3"];
-        let password = "testpass";
-
-        // Create test users
-        for user in &users {
-            let _ = create_user(user, password);
-        }
-
-        // Get all users
-        let found_users = get_all_users();
-
-        // Verify all test users are found (note: this might find other .txt files too)
-        for user in &users {
-            assert!(found_users.contains(&user.to_string()));
-        }
-
+    fn test_change_password() {
+        let user = "testuser";
+        let old_password = "oldpassword";
+        let new_password = "newpassword";
+        // Clean up before test
+        let _ = fs::remove_file(format!("{}.txt", user));
+        // Create user
+        let _ = create_user(user, old_password);
+        // Change password
+        let change_result = change_password(user, new_password);
+        assert!(change_result.is_ok());
+        assert_eq!(change_result.unwrap(), true);
+        // Retrieve new password
+        let retrieved = get_user_password(user);
+        assert_eq!(retrieved, Some(new_password.to_string()));
         // Clean up after test
-        for user in &users {
-            let _ = fs::remove_file(format!("{}.txt", user));
-        }
+        let _ = fs::remove_file(format!("{}.txt", user));
     }
 }

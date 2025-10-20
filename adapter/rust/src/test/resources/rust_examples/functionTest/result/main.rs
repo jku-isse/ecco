@@ -7,6 +7,8 @@ fn hello(str: &str) {
     println!("Hello, {} from v1", str);
 }
 fn main() {
+    #[cfg(feature = "v2")]
     farewell("world");
+    #[cfg(feature = "v1")]
     hello("world");
 }

@@ -26,6 +26,30 @@ enum Commands {
         #[arg(short, long)]
         user: String,
     },
+    /// Change the password for an existing user
+    Change {
+        /// The username whose password will be changed
+        #[arg(short, long)]
+        user: String,
+        /// The new password for the user
+        #[arg(short, long)]
+        password: String,
+    },
+}
+/// Changes the password for an existing user.
+fn change_password(user: &str, new_password: &str) -> Result<bool, std::io::Error> {
+    let file_path = format!("{}.txt", user);
+
+    // Check if user exists
+    if !std::path::Path::new(&file_path).exists() {
+        return Ok(false); // User doesn't exist
+    }
+
+    // Write new password to the file
+    let mut file = std::fs::File::create(&file_path)?;
+    file.write_all(new_password.as_bytes())?;
+
+    Ok(true)
 }
 /// Creates a new user file and writes the provided password to it.
 ///
@@ -106,7 +130,14 @@ fn run_app(args: Args) {
         Commands::Get { user } => match get_user_password(&user) {
             Some(password) => println!("Password for {}: {}", user, password),
             _ => println!("No password found for user: {}", user),
-        },
+        }
+        Commands::Change { user, password } => {
+            match change_password(&user, &password) {
+                Ok(true) => println!("Password for user {} changed successfully.", user),
+                Ok(false) => println!("User {} does not exist.", user),
+                Err(e) => println!("Error changing password: {}", e),
+            }
+        }
     }
 }
 fn main() {
@@ -115,8 +146,8 @@ fn main() {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::fs;
+use super::*;
+use std::fs;
 #[test]
 fn test_create_user_and_get_password() {
         let user = "testuser";
@@ -155,5 +186,24 @@ fn test_get_user_password_nonexistent() {
         let user = "nonexistentuser";
         let retrieved = get_user_password(user);
         assert_eq!(retrieved, None);
+}
+#[test]
+fn test_change_password() {
+    let user = "testuser";
+    let old_password = "oldpassword";
+    let new_password = "newpassword";
+    // Clean up before test
+    let _ = fs::remove_file(format!("{}.txt", user));
+    // Create user
+    let _ = create_user(user, old_password);
+    // Change password
+    let change_result = change_password(user, new_password);
+    assert!(change_result.is_ok());
+    assert_eq!(change_result.unwrap(), true);
+    // Retrieve new password
+    let retrieved = get_user_password(user);
+    assert_eq!(retrieved, Some(new_password.to_string()));
+    // Clean up after test
+    let _ = fs::remove_file(format!("{}.txt", user));
 }
 }
