@@ -9,9 +9,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,13 +27,12 @@ public class Extractor {
         this.basePath = basePath;
     }
 
-//    public void extract(Path[] input) {
-//        for (Path path : input) {
-//            Path absolutePath = this.basePath.resolve(path);
-//            this.parseFile(absolutePath, path);
-//        }
-//    }
-
+    /** Create a config file listing the features with format:
+     * serde.1
+     * tokio.1
+     * @param features
+     * @param path
+     */
     public void createConfigFile(Set<String> features, Path path) {
         Set<String> uniqueFeatures = features.stream()
                 .filter(f -> !f.isBlank())
@@ -60,13 +57,15 @@ public class Extractor {
             parser.removeErrorListeners();
             ParseTree tree = parser.crate();
             visitor.visit(tree);
+
+            // Visitor.visit sets all unused lines to null
             List<String> nonNullLines = visitor.getNonNullCodeLines();
 
             // put output in output directory
             outputDir = outputDir.resolve(relPath);
             this.writeToFile(outputDir, nonNullLines);
         } catch (IOException e) {
-            throw new EccoException(e);
+            throw new EccoException("Failed to read file: " + absolutePath, e);
         }
     }
 
@@ -93,15 +92,19 @@ public class Extractor {
     }
 
     private List<Path> collectFiles(Path sourceDir) throws IOException {
-        List<Path> fileList = new ArrayList<>();
+        List<Path> fileList;
         try (Stream<Path> walk = Files.walk(sourceDir)) {
-            walk.filter(Files::isRegularFile).forEach(fileList::add);
+            fileList = walk.filter(Files::isRegularFile).filter(p -> p.toString().endsWith(".rs")).toList();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("could not collect files" + e);
         }
         return fileList;
     }
 
+    /** Extract source code from sourceDir to outputDir based on the features
+     * @param sourceDir
+     * @param outputDir
+     */
     public void extractFromDirectory(Path sourceDir, Path outputDir) {
         try {
             Files.createDirectories(outputDir);
@@ -114,5 +117,38 @@ public class Extractor {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // Extract using features listed in a feature file
+    // Feature files has format csvconf like "serde",True \n
+    // @TODO feature = "value" not yet supported
+    public static Set<String> getFeaturesFromFile(Path sourceDir, Path featureFile) {
+        try {
+            List<String> featureLines = Files.readAllLines(featureFile);
+            Set<String> featuresFromFile = new HashSet<>();
+            for (String line : featureLines) {
+                String[] parts = line.split(",");
+                if (parts.length != 2) {
+                    throw new IllegalArgumentException("Invalid feature line: " + line);
+                }
+                if (parts[1].trim().equalsIgnoreCase("True")) {
+                    featuresFromFile.add(parts[0].trim().replaceAll("\"" , ""));
+                }
+            }
+            return featuresFromFile;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public static void main(String[] args) {
+//        Set<String> features = Set.of("std", "feature=std");
+//        Extractor extractor = new Extractor(features, Paths.get("."));
+//        Path input = Paths.get("/home/zaber/Documents/bachelor/serde/serde_core");
+//        String lastFolder = input.getFileName().toString();
+//        Path output = Paths.get("adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/extractor").resolve(lastFolder + "_output");
+//        extractor.extractFromDirectory(input, output);
+//        extractor.createConfigFile(features, output.resolve(".config"));
     }
 }
