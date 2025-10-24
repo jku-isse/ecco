@@ -34,17 +34,21 @@ public class Extractor {
      * @param path
      */
     public void createConfigFile(Set<String> features, Path path) {
-        Set<String> uniqueFeatures = features.stream()
+        String uniqueFeatures = features.stream()
                 .filter(f -> !f.isBlank())
                 .map(f -> f.contains("=") ? f.split("=")[1] : f)
-                .map(s -> s = s + ".1, ")
-                .collect(Collectors.toSet());
+                .map(s -> s = s + ".1")
+                .distinct()
+                .collect(Collectors.joining(", "));
         try {
-            Files.write(path, uniqueFeatures, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, uniqueFeatures, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+
+
 
     private void parseFile(Path absolutePath, Path relPath, Path outputDir) {
         try {
@@ -53,6 +57,7 @@ public class Extractor {
 
             Visitor visitor = new Visitor(lines, features);
             RustParser parser = this.createParser(absolutePath);
+
             // in order to suppress log output
             parser.removeErrorListeners();
             ParseTree tree = parser.crate();
@@ -109,11 +114,11 @@ public class Extractor {
         try {
             Files.createDirectories(outputDir);
             List<Path> files = collectFiles(sourceDir);
-            for (Path file : files) {
+            files.parallelStream().forEach(file -> {
                 Path relativePath = sourceDir.relativize(file);
                 Path absolutePath = this.basePath.resolve(file);
                 this.parseFile(absolutePath, relativePath, outputDir);
-            }
+            });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -121,7 +126,6 @@ public class Extractor {
 
     // Extract using features listed in a feature file
     // Feature files has format csvconf like "serde",True \n
-    // @TODO feature = "value" not yet supported
     public static Set<String> getFeaturesFromFile(Path sourceDir, Path featureFile) {
         try {
             List<String> featureLines = Files.readAllLines(featureFile);

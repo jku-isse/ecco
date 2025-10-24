@@ -33,8 +33,8 @@ public class ConfigurationPredicateVisitor extends RustParserBaseVisitor<Formula
         String featureName = ctx.identifier().getText();
         String value = null;
 
+        // Handle feature = "value" case
         if (ctx.EQ() != null) {
-            // Handle feature = "value" case
             value = ctx.STRING_LITERAL() != null ?
                     ctx.STRING_LITERAL().getText() :
                     ctx.RAW_STRING_LITERAL().getText();

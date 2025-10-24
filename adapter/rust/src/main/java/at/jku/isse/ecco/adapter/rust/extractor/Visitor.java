@@ -2,6 +2,7 @@ package at.jku.isse.ecco.adapter.rust.extractor;
 
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.logicng.datastructures.Assignment;
@@ -17,7 +18,7 @@ import java.util.*;
 public class Visitor extends RustParserBaseVisitor<Object> {
     private final String[] codeLines;
     private final ConfigurationPredicateVisitor configVisitor = new ConfigurationPredicateVisitor();
-    private final FormulaFactory formulaFactory = new FormulaFactory();
+    private final FormulaFactory formulaFactory = FormulaFactoryProvider.getFormulaFactory();
     private final Assignment assignment = new Assignment();
 
     public List<String> getNonNullCodeLines(){
@@ -28,7 +29,8 @@ public class Visitor extends RustParserBaseVisitor<Object> {
         this.codeLines = codeLines;
         // Initialize assignment with provided features
         for (String feature : features) {
-            Variable variable = this.formulaFactory.variable(feature);
+            String featureVar = "#feature_" + feature;
+            Variable variable = this.formulaFactory.variable(featureVar);
             this.assignment.addLiteral(variable);
         }
     }
@@ -50,7 +52,8 @@ public class Visitor extends RustParserBaseVisitor<Object> {
         if (!isFeatureUsed) {
             removeLinesForUnusedFeature(ctx);
         }
-        return super.visitCfgAttribute(ctx);
+        // Dont need deeper traversal
+        return null;
     }
 
     // Find the parent item or statement to determine the range of lines to remove
