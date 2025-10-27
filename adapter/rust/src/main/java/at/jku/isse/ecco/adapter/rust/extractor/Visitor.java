@@ -21,8 +21,8 @@ public class Visitor extends RustParserBaseVisitor<Object> {
     private final FormulaFactory formulaFactory = FormulaFactoryProvider.getFormulaFactory();
     private final Assignment assignment = new Assignment();
 
-    public List<String> getNonNullCodeLines(){
-        return Arrays.stream(codeLines).filter(Objects::nonNull).toList();
+    public String[] getNonNullCodeLines(){
+        return Arrays.stream(codeLines).filter(Objects::nonNull).toArray(String[]::new);
     }
 
     public Visitor(String[] codeLines, Set<String> features) {
