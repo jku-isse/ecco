@@ -14,7 +14,6 @@ import com.google.inject.Inject;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
@@ -22,13 +21,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
-
     private static final Map<Integer, String[]> prioritizedPatterns;
 
     static {
@@ -37,44 +38,13 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     private final EntityFactory entityFactory;
-    private Collection<ReadListener> listeners = new ArrayList<>();
-
-    private RustParser rustParser;
+    private final Collection<ReadListener> listeners = new ArrayList<>();
 
     @Inject
     public RustReader(EntityFactory entityFactory) {
         checkNotNull(entityFactory);
         this.entityFactory = entityFactory;
     }
-
-    public static class ParserBundle {
-        RustLexer lexer;
-        RustParser parser;
-        CommonTokenStream tokens;
-
-        void ensureInitialized(CharStream cs) {
-            if (lexer == null) {
-                lexer = new RustLexer(cs);
-                lexer.removeErrorListeners();
-                tokens = new CommonTokenStream(lexer);
-                parser = new RustParser(tokens);
-                parser.removeErrorListeners();
-            } else {
-                // Reuse existing instances but replace their input sources and reset state
-                lexer.setInputStream(cs);
-                tokens.setTokenSource(lexer); // BufferedTokenStream / CommonTokenStream
-                tokens.seek(0);
-                parser.setTokenStream(tokens);
-                parser.reset();              // reset parser state
-            }
-        }
-    }
-
-    private static final ThreadLocal<ParserBundle> PARSER_BUNDLE =
-            ThreadLocal.withInitial(ParserBundle::new);
-
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
-
 
     @Override
     public String getPluginId() {
@@ -86,30 +56,40 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
         return Collections.unmodifiableMap(prioritizedPatterns);
     }
 
+    /**
+     * Reads Rust source files from the specified base path and input paths,
+     * and returns a set of Node representing the parsed source code.
+     *
+     * @param base  Base directory path
+     * @param input Array of input file paths relative to the base path
+     * @return A set of Nodes representing Rust source code
+     */
     @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         Set<Node.Op> nodes = Collections.synchronizedSet(new HashSet<>());
         List<Future<?>> futures = new ArrayList<>();
-        for (Path path : input) {
-            futures.add(executor.submit(() -> {
-                Node.Op pluginNode = addPluginNode(nodes, path);
-                Path absolutePath = base.resolve(path);
-                CharStream cs;
-                try {
-                    cs = CharStreams.fromPath(absolutePath);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                ParserBundle bundle = PARSER_BUNDLE.get();
-                bundle.ensureInitialized(cs);
-                ParseTree tree = bundle.parser.crate();
+        String configuration = getConfigurationString(base);
 
-                String fileText = cs.toString();
-                String[] lines = fileText.split("\n", -1);
-                String configuration = getConfigurationString(base);
-                RustEccoVisitor translator = new RustEccoVisitor(pluginNode, lines, this.entityFactory, path, configuration);
-                translator.translate(tree);
-            }));
+        // process each file in parallel
+        for (Path path : input) {
+            try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                futures.add(executor.submit(() -> {
+                    Path absolutePath = base.resolve(path);
+                    CharStream cs;
+                    try {
+                        cs = CharStreams.fromPath(absolutePath);
+                    } catch (IOException e) {
+                        throw new EccoException("Failed to read file: " + absolutePath, e);
+                    }
+                    ParseTree tree = createParseTree(cs);
+
+                    String fileText = cs.toString();
+                    String[] lines = fileText.split("\n", -1);
+                    Node.Op pluginNode = addPluginNode(nodes, path);
+                    RustEccoVisitor translator = new RustEccoVisitor(pluginNode, lines, this.entityFactory, path, configuration);
+                    translator.translate(tree);
+                }));
+            }
         }
         // wait for all tasks to finish
         for (Future<?> f : futures) {
@@ -126,26 +106,51 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
         return nodes;
     }
 
-    private RustParser createParser(Path absolutePath) {
-        try {
-            CharStream charstream = CharStreams.fromFileName(String.valueOf(absolutePath));
-            RustLexer lexer = new RustLexer(charstream);
-            // in order to suppress log output
-            lexer.removeErrorListeners();
-            TokenStream tokenStream = new CommonTokenStream(lexer);
-            return new RustParser(tokenStream);
+    /**
+     * Read configuration string from .config file in base directory
+     *
+     * @param base Base directory path
+     * @return Configuration string, or empty string if no .config file exists
+     */
+    private String getConfigurationString(Path base) {
+        Path configurationPath = base.resolve(".config");
+        if (!Files.exists(configurationPath)) {
+            return "";
+        }
+        try (Stream<String> stream = Files.lines(configurationPath)) {
+            return stream.findFirst().orElse("");
         } catch (IOException e) {
-            throw new EccoException("Failed to read file: " + absolutePath, e);
+            throw new EccoException("Failed to read configuration file: " + configurationPath, e);
         }
     }
 
+    /**
+     * Create a parse tree from a CharStream
+     *
+     * @param cs CharStream of Rust source code
+     * @return ParseTree representing the Rust source code
+     */
+    private ParseTree createParseTree(CharStream cs) {
+        RustLexer lexer = new RustLexer(cs);
+        lexer.removeErrorListeners();
+        RustParser parser = new RustParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        return parser.crate();
+    }
+
+    /**
+     * Adds a plugin node for the given path to the set of nodes.
+     *
+     * @param nodes Set of Node operands to add the plugin node to
+     * @param path  Path of the file being processed
+     * @return The created plugin Node operand
+     */
     private Node.Op addPluginNode(Set<Node.Op> nodes, Path path) {
         Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
         Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
         nodes.add(pluginNode);
         return pluginNode;
     }
-
 
     /**
      * @param input Paths to input files relative to current working directory
@@ -187,19 +192,5 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
             throw new IllegalArgumentException("Listener must not be null");
         }
         this.listeners.remove(listener);
-    }
-
-    private String getConfigurationString(Path base) {
-        Path configurationPath = base.resolve(".config");
-        if (!Files.exists(configurationPath)){
-            return "";
-        }
-
-        try (Stream<String> stream = Files.lines(configurationPath)) {
-            List<String> fileLines = stream.toList();
-            return fileLines.get(0);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }
