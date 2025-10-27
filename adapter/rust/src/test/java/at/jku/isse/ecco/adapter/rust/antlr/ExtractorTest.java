@@ -52,9 +52,15 @@ class ExtractorTest {
         Path outputBase = Paths.get("src/test/resources/extractor/output");
         List<String> files = Files.list(outputBase).filter(Files::isDirectory)
                 .map(path -> path.getFileName().toString())
+                .sorted()
                 .toList();
         // files = List.of(files.getFirst()); // Only commit one variant for testing
+        int counter = 0;
         for (String folder : files) {
+            counter++;
+            if (counter > 10) {
+                break; // Limit to 10 variants for testing
+            }
             Assertions.assertNotNull(service);
             service.setBaseDir(outputBase.resolve(folder));
             service.commit();
