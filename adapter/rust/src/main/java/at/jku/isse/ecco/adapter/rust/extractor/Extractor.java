@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -48,23 +49,43 @@ public class Extractor {
         }
     }
 
+    private static class ParserBundle {
+        RustLexer lexer;
+        RustParser parser;
+        CommonTokenStream tokens;
+    }
+
+    private static final ThreadLocal<ParserBundle> PARSER_BUNDLE = ThreadLocal.withInitial(ParserBundle::new);
 
 
     private void parseFile(Path absolutePath, Path relPath, Path outputDir) {
-        try {
-            List<String> lineList = Files.readAllLines(absolutePath);
-            String[] lines = lineList.toArray(new String[0]);
+        try (Reader reader = Files.newBufferedReader(absolutePath)) {
+            ParserBundle bundle = PARSER_BUNDLE.get();
+            CharStream cs = CharStreams.fromReader(reader);
+
+            if (bundle.lexer == null) {
+                bundle.lexer = new RustLexer(cs);
+                bundle.lexer.removeErrorListeners();
+                bundle.tokens = new CommonTokenStream(bundle.lexer);
+                bundle.parser = new RustParser(bundle.tokens);
+                bundle.parser.removeErrorListeners();
+            } else {
+                bundle.lexer.setInputStream(cs);
+                bundle.tokens.setTokenSource(bundle.lexer);
+                bundle.tokens.seek(0);
+                bundle.parser.setTokenStream(bundle.tokens);
+                bundle.parser.reset();
+            }
+            String fileText = cs.toString();
+            String[] lines = fileText.split("\n", -1);
+
+            ParseTree tree = bundle.parser.crate();
 
             Visitor visitor = new Visitor(lines, features);
-            RustParser parser = this.createParser(absolutePath);
-
-            // in order to suppress log output
-            parser.removeErrorListeners();
-            ParseTree tree = parser.crate();
             visitor.visit(tree);
 
             // Visitor.visit sets all unused lines to null
-            List<String> nonNullLines = visitor.getNonNullCodeLines();
+            String[] nonNullLines = visitor.getNonNullCodeLines();
 
             // put output in output directory
             outputDir = outputDir.resolve(relPath);
@@ -74,23 +95,10 @@ public class Extractor {
         }
     }
 
-    private RustParser createParser(Path absolutePath) {
-        try {
-            CharStream charstream = CharStreams.fromFileName(String.valueOf(absolutePath));
-            RustLexer lexer = new RustLexer(charstream);
-            // in order to suppress log output
-            lexer.removeErrorListeners();
-            TokenStream tokenStream = new CommonTokenStream(lexer);
-            return new RustParser(tokenStream);
-        } catch (IOException e) {
-            throw new EccoException("Failed to read file: " + absolutePath, e);
-        }
-    }
-
-    private void writeToFile(Path path, List<String> lines) {
+    private void writeToFile(Path path, String[] lines) {
         try {
             Files.createDirectories(path.getParent());
-            Files.write(path.toAbsolutePath(), lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.write(path.toAbsolutePath(), Arrays.asList(lines), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -144,6 +152,9 @@ public class Extractor {
             throw new RuntimeException(e);
         }
     }
+
+
+
 
 
     public static void main(String[] args) {

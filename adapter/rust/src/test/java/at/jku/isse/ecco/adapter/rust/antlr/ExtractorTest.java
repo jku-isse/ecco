@@ -20,7 +20,7 @@ class ExtractorTest {
     @Test
     void testExtractor() {
         Path input = Paths.get("src/test/resources/extractor/serde");
-        Path featureDir = Paths.get("src/test/resources/extractor/test");
+        Path featureDir = Paths.get("src/test/resources/extractor/featureLists");
         try (Stream<Path> files = Files.list(featureDir)) {
             files.filter(Files::isRegularFile).forEach(featureFile -> {
                 String featureFileName = featureFile.getFileName().toString();
