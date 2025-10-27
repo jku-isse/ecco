@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -35,16 +36,45 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
         prioritizedPatterns.put(Integer.MAX_VALUE, new String[]{"**.rs"});
     }
 
-
     private final EntityFactory entityFactory;
     private Collection<ReadListener> listeners = new ArrayList<>();
 
+    private RustParser rustParser;
 
     @Inject
     public RustReader(EntityFactory entityFactory) {
         checkNotNull(entityFactory);
         this.entityFactory = entityFactory;
     }
+
+    public static class ParserBundle {
+        RustLexer lexer;
+        RustParser parser;
+        CommonTokenStream tokens;
+
+        void ensureInitialized(CharStream cs) {
+            if (lexer == null) {
+                lexer = new RustLexer(cs);
+                lexer.removeErrorListeners();
+                tokens = new CommonTokenStream(lexer);
+                parser = new RustParser(tokens);
+                parser.removeErrorListeners();
+            } else {
+                // Reuse existing instances but replace their input sources and reset state
+                lexer.setInputStream(cs);
+                tokens.setTokenSource(lexer); // BufferedTokenStream / CommonTokenStream
+                tokens.seek(0);
+                parser.setTokenStream(tokens);
+                parser.reset();              // reset parser state
+            }
+        }
+    }
+
+    private static final ThreadLocal<ParserBundle> PARSER_BUNDLE =
+            ThreadLocal.withInitial(ParserBundle::new);
+
+    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+
 
     @Override
     public String getPluginId() {
@@ -58,33 +88,42 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     @Override
     public Set<Node.Op> read(Path base, Path[] input) {
-        Set<Node.Op> nodes = new HashSet<>();
+        Set<Node.Op> nodes = Collections.synchronizedSet(new HashSet<>());
+        List<Future<?>> futures = new ArrayList<>();
         for (Path path : input) {
-            Node.Op pluginNode = addPluginNode(nodes, path);
-            Path absolutePath = base.resolve(path);
+            futures.add(executor.submit(() -> {
+                Node.Op pluginNode = addPluginNode(nodes, path);
+                Path absolutePath = base.resolve(path);
+                CharStream cs;
+                try {
+                    cs = CharStreams.fromPath(absolutePath);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                ParserBundle bundle = PARSER_BUNDLE.get();
+                bundle.ensureInitialized(cs);
+                ParseTree tree = bundle.parser.crate();
 
-            String configuration = this.getConfigurationString(base);
-            this.parseFile(pluginNode, absolutePath, path, configuration);
-            nodes.add(pluginNode);
+                String fileText = cs.toString();
+                String[] lines = fileText.split("\n", -1);
+                String configuration = getConfigurationString(base);
+                RustEccoVisitor translator = new RustEccoVisitor(pluginNode, lines, this.entityFactory, path, configuration);
+                translator.translate(tree);
+            }));
         }
+        // wait for all tasks to finish
+        for (Future<?> f : futures) {
+            try {
+                f.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new EccoException("Parsing interrupted", e);
+            } catch (ExecutionException e) {
+                throw new EccoException("Failed to parse file", e);
+            }
+        }
+
         return nodes;
-    }
-
-    private void parseFile(Node.Op pluginNode, Path absolutePath, Path relPath, String configuration) {
-        try {
-            List<String> lineList = Files.readAllLines(absolutePath);
-            String[] lines = lineList.toArray(new String[0]);
-
-
-            RustEccoVisitor translator = new RustEccoVisitor(pluginNode, lines, this.entityFactory, relPath, configuration);
-            RustParser parser = this.createParser(absolutePath);
-            // in order to suppress log output
-            parser.removeErrorListeners();
-            ParseTree tree = parser.crate();
-            translator.translate(tree);
-        } catch (IOException e) {
-            throw new EccoException(e);
-        }
     }
 
     private RustParser createParser(Path absolutePath) {
