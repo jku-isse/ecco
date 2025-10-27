@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.adapter.rust.translator;
 
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
 import at.jku.isse.ecco.adapter.rust.data.*;
@@ -13,6 +14,7 @@ import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Location;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.Token;
 import org.logicng.formulas.Formula;
 
 import java.nio.file.Path;
@@ -112,7 +114,21 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
                 .toList();
         String condition = conditions.isEmpty() ? "" : String.join(" & ", conditions); // to handle multiple conditions on a item
 
-        Location location = new Location(ctx.start.getLine(), ctx.stop.getLine(), this.path, this.configuration);
+        Token stop = ctx.stop;
+        // stop can be null in some cases, e.g., for macro items without a proper ending
+        if (stop == null) {
+            if (ctx.macroItem() != null) {
+                stop = ctx.macroItem().stop;
+            } else if (ctx.visItem() != null) {
+                stop = ctx.visItem().stop;
+            }
+        }
+        // if still null throw exception
+        if (stop == null) {
+            throw new EccoException("Cannot determine end of ItemContext at " + ctx.start.getLine() + " in " + this.path + "\n with text: " + ctx.getText());
+        }
+
+        Location location = new Location(ctx.start.getLine(), stop.getLine(), this.path, this.configuration);
         itemNode.putProperty("Location", location);
         FeatureTrace nodeTrace = itemNode.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
@@ -208,11 +224,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
-    //TODO .getText does not respect spaces
     @Override
     public Node.Op visitOuterAttribute(RustParser.OuterAttributeContext ctx) {
         //if the outerAttribute is a comment only visit the comment
         if (ctx.docComment() != null) return visitDocComment(ctx.docComment());
+
         Formula condition = null;
         RustParser.CfgAttributeContext attrCtx = ctx.attr().cfgAttribute();
         if (attrCtx != null) {
@@ -226,7 +242,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
-    //TODO .getText does not respect spaces
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
         Artifact.Op<InnerAttributeArtifactData> item = this.entityFactory.createArtifact(new InnerAttributeArtifactData(getString(ctx)));
@@ -265,6 +280,12 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // Inside visitEnumeration
         int enumStartLine = ctx.getStart().getLine();
         int enumEndLine = ctx.getStop().getLine();
+
+        if (ctx.enumItems() == null) {
+            // No enum items, add all lines of the enum
+            this.addLineNodes(node, enumStartLine, enumEndLine);
+            return node;
+        }
         int itemsStartLine = ctx.enumItems().getStart().getLine();
         int itemsEndLine = ctx.enumItems().getStop().getLine();
 
@@ -291,7 +312,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitEnumItem(RustParser.EnumItemContext ctx) {
         // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
-        Artifact.Op<EnumItemArtifactData> item = this.entityFactory.createArtifact(new EnumItemArtifactData(ctx.identifier().getText()));
+        Artifact.Op<EnumItemArtifactData> item = this.entityFactory.createArtifact(new EnumItemArtifactData(getString(ctx.identifier())));
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
 
         this.addLineNodesFromContext(node, ctx);
@@ -304,10 +325,12 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
         // optional qualifiers
         if (ctx.functionQualifiers() != null) {
-            String qualifiers = (getString(ctx.functionQualifiers()));
-            if (!qualifiers.isEmpty()) {
-                sig.append(qualifiers).append(" ");
-            }
+            var qualifiers = ctx.functionQualifiers();
+            if (qualifiers.KW_CONST() != null) sig.append("const ");
+            if (qualifiers.KW_ASYNC() != null) sig.append("async ");
+            if (qualifiers.KW_UNSAFE() != null) sig.append("unsafe ");
+            if (qualifiers.KW_EXTERN() != null) sig.append("extern ");
+            if (qualifiers.abi() != null) sig.append(getString(qualifiers.abi())).append(" ");
         }
         // “fn” and name
         sig.append("fn").append(" ").append(getString(ctx.identifier()));
@@ -328,7 +351,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
         // optional where‐clause
         if (ctx.whereClause() != null) {
-            sig.append(" ").append(ctx.whereClause().getText());
+            sig.append(" ").append(getString(ctx.whereClause()));
         }
         // Add space before the function body
         sig.append(" ");
@@ -459,8 +482,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
         return sb.toString();
     }
-
-
 
 
 
