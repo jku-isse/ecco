@@ -47,9 +47,15 @@ public class Visitor extends RustParserBaseVisitor<Object> {
     public Object visitCfgAttribute(RustParser.CfgAttributeContext ctx) {
         Formula formula = this.configVisitor.visitCfgAttribute(ctx);
         boolean isFeatureUsed = formula.evaluate(this.assignment);
-        // System.out.println("CFG Attribute: " + ctx.getText() + " -> " + formula + " -> " + isFeatureUsed);
         // If the feature is not used, remove the corresponding lines from codeLines
         if (!isFeatureUsed) {
+            // check if we are inside a macro
+            ParserRuleContext parent = ctx.getParent();
+            if (parent instanceof RustParser.ItemContext itemCtx) {
+                if (itemCtx.macroItem() != null) {
+                    return null; // Do not remove anything inside macros
+                }
+            }
             removeLinesForUnusedFeature(ctx);
         }
         // Dont need deeper traversal
@@ -59,25 +65,46 @@ public class Visitor extends RustParserBaseVisitor<Object> {
     // Find the parent item or statement to determine the range of lines to remove
     private void removeLinesForUnusedFeature(ParseTree ctx) {
         // Find the parent item or statement to determine the range of lines to remove
-        ParseTree parent = ctx.getParent();
-        while (parent != null
-                && !(parent instanceof RustParser.ItemContext)
-                && !(parent instanceof RustParser.StatementContext)) {
-            parent = parent.getParent();
-        }
-        ParserRuleContext itemCtx;
-        if (parent instanceof RustParser.ItemContext) {
-            itemCtx = (RustParser.ItemContext) parent;
-        } else if (parent instanceof RustParser.StatementContext) {
-            itemCtx = (RustParser.StatementContext) parent;
-        } else {
-            throw new IllegalStateException(ctx.getText() + " has no parent item or statement.");
-        }
-        int startLine = itemCtx.getStart().getLine()-1;
-        int endLine = itemCtx.getStop().getLine()-1;
-        for (int i = startLine; i <= endLine; i++) {
-            this.codeLines[i] = null;
+        ParseTree targetParent = findRemovalTarget(ctx);
+        if (targetParent instanceof ParserRuleContext itemCtx) {
+            removeLines(itemCtx);
         }
     }
 
+    private ParseTree findRemovalTarget(ParseTree ctx) {
+        ParseTree current = ctx;
+        // skip attributes
+        while ((current instanceof RustParser.OuterAttributeContext ||
+                current instanceof RustParser.InnerAttributeContext)) {
+            current = current.getParent();
+        }
+
+        // now find the next item or statement or expression
+        while (current != null &&
+                !(current instanceof RustParser.ItemContext) &&
+                !(current instanceof RustParser.StatementContext) &&
+                !(current instanceof RustParser.ExpressionContext)) {
+            current = current.getParent();
+        }
+        return current;
+    }
+
+    private void removeLines(ParserRuleContext ctx) {
+        int startLine = ctx.getStart().getLine() - 1;
+        int endLine = ctx.getStop().getLine() - 1;
+        for (int i = startLine; i <= endLine; i++) {
+            this.codeLines[i] = null;
+        }
+
+        //@TODO hack to remove trailling }
+        for (int i = endLine + 1; i < this.codeLines.length; i++) {
+            if (this.codeLines[i] != null) {
+                String trimmed = this.codeLines[i].trim();
+                if (trimmed.equals("}") || trimmed.equals("};")) {
+                    this.codeLines[i] = null;
+                }
+                break; // Stop after first non-null line
+            }
+        }
+    }
 }

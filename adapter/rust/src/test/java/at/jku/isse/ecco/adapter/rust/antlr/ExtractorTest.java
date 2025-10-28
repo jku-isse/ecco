@@ -26,7 +26,7 @@ class ExtractorTest {
                 String featureFileName = featureFile.getFileName().toString();
                 String lastFolder = input.getFileName().toString();
                 Path output = Paths.get("src/test/resources/extractor/output")
-                        .resolve(lastFolder + "_output_" + featureFileName.replace(".csvconf", ""));
+                        .resolve(lastFolder + featureFileName.replace(".csvconf", ""));
                 Set<String> features = getFeaturesFromFile(input, featureFile);
                 Extractor extractor = new Extractor(features, Paths.get("."));
                 extractor.extractFromDirectory(input, output);
@@ -56,13 +56,7 @@ class ExtractorTest {
                 .map(path -> path.getFileName().toString())
                 .sorted()
                 .toList();
-        // files = List.of(files.getFirst()); // Only commit one variant for testing
-        int counter = 0;
         for (String folder : files) {
-            counter++;
-            if (counter > 10) {
-                break; // Limit to 10 variants for testing
-            }
             Assertions.assertNotNull(service);
             service.setBaseDir(outputBase.resolve(folder));
             service.commit();

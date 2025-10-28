@@ -107,9 +107,11 @@ public class Extractor {
     private List<Path> collectFiles(Path sourceDir) throws IOException {
         List<Path> fileList;
         try (Stream<Path> walk = Files.walk(sourceDir)) {
-            fileList = walk.filter(Files::isRegularFile).filter(p -> p.toString().endsWith(".rs")).toList();
+            fileList = walk.filter(Files::isRegularFile)
+                    .filter(p -> p.toString().endsWith(".rs") || p.toString().endsWith("Cargo.toml")) // only .rs and Cargo.toml files
+                    .toList();
         } catch (IOException e) {
-            throw new RuntimeException("could not collect files" + e);
+            throw new RuntimeException("could not collect files from path " + sourceDir + e);
         }
         return fileList;
     }
