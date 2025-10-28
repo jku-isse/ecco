@@ -50,6 +50,8 @@ class ExtractorTest {
             System.out.println("Exception during ECCO setup: " + e.getMessage());
         }
         Path outputBase = Paths.get("src/test/resources/extractor/output");
+        Files.createDirectories(outputBase);
+
         List<String> files = Files.list(outputBase).filter(Files::isDirectory)
                 .map(path -> path.getFileName().toString())
                 .sorted()
