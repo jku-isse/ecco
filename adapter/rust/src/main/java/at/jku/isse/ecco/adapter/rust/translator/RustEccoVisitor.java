@@ -59,8 +59,10 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitVisibility(RustParser.VisibilityContext ctx) {
         //create line artifacts for visibility
+        //does not create LineNodes because writing pub is handled by RustWriter
         Artifact.Op<VisibilityArtifactData> line = this.entityFactory.createArtifact(new VisibilityArtifactData());
-        return createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
+        createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
+        return null;
     }
 
     // Comments in module not tracked since they are not parsed
@@ -137,6 +139,15 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     @Override
+    public Node.Op visitConstantItem(RustParser.ConstantItemContext ctx) {
+        Artifact.Op<ConstantArtifactData> item = this.entityFactory.createArtifact(new ConstantArtifactData());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        this.addLineNodesFromContext(node, ctx);
+        return node;
+    }
+
+
+    @Override
     public Node.Op visitDocComment(RustParser.DocCommentContext ctx) {
         Artifact.Op<DocArtifactData> doc = this.entityFactory.createArtifact(new DocArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(doc, nodeStack.peek());
@@ -188,12 +199,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitStruct_(RustParser.Struct_Context ctx) {
         Artifact.Op<StructArtifactData> item = this.entityFactory.createArtifact(new StructArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-        int startPosition = ctx.start.getCharPositionInLine();
-        int endPosition = ctx.stop.getCharPositionInLine() + ctx.stop.getText().length();
-        int startLine = ctx.start.getLine();
-        int stopLine = ctx.stop.getLine();
-        this.addLineNodes(node, startLine, stopLine, startPosition,  endPosition);
-
+        this.addLineNodesFromContext(node, ctx);
         return node;
     }
 
@@ -305,6 +311,31 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
+    @Override
+    public Node.Op visitMacroInvocationSemi(RustParser.MacroInvocationSemiContext ctx) {
+        Artifact.Op<MacroInvocationArtifactData> item = this.entityFactory.createArtifact(new MacroInvocationArtifactData());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        int startLine = ctx.getStart().getLine();
+        int endLine = ctx.getStop().getLine();
+
+        // @TODO takes the whole line, could be improved to only take the macro invocation part
+        this.addLineNodes(node, startLine, endLine);
+        return node;
+    }
+
+    // Content of a MacroItems is TokenTrees which are not further parsed, so we just add the whole macro as line artifacts
+    // Which means conditionals inside macros are not handled
+    @Override
+    public Node.Op visitMacroRulesDefinition(RustParser.MacroRulesDefinitionContext ctx) {
+        String identifier = ctx.identifier().getText();
+        Artifact.Op<MacroRulesArtifactData> item = this.entityFactory.createArtifact(new MacroRulesArtifactData(identifier));
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        this.addLineNodesFromContext(node, ctx);
+
+        return node;
+
+    }
+
     /** Get the function signature as a string from the given Function_Context
      * @param ctx the Function_Context to extract the signature from
      * @return String representing the function signature
@@ -376,20 +407,35 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
      * @param endPosition
      */
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine, int startPosition, int endPosition) {
+        if (startLine == endLine) {
+            // Single line
+            String codeLine = this.codeLines[startLine - 1];
+            if (!codeLine.isEmpty()) {
+                String extractedLine = codeLine.substring(startPosition, Math.min(endPosition, codeLine.length()));
+                Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(extractedLine));
+                createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+            }
+            return;
+        }
+
         for (int i = startLine; i <= endLine; i++) {
             // -1 for 0 based index
             String codeLine = this.codeLines[i - 1];
             if (codeLine.isEmpty()) {
                 continue;
             }
-            if (i == startLine && i == endLine) {
-                codeLine = codeLine.substring(startPosition, endPosition);
-            } else if (i == startLine) {
-                codeLine = codeLine.substring(startPosition);
+            String extractedLine;
+            if (i == startLine) {
+                // First line
+                extractedLine = codeLine.substring(startPosition);
             } else if (i == endLine) {
-                codeLine = codeLine.substring(0, endPosition);
+                // Last line
+                extractedLine = codeLine.substring(0, Math.min(endPosition, codeLine.length()));
+            } else {
+                // Middle lines
+                extractedLine = codeLine;
             }
-            Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
+            Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(extractedLine));
             createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
         }
     }
@@ -400,7 +446,12 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
      * @param ctx
      */
     private void addLineNodesFromContext(Node.Op parentNode, ParserRuleContext ctx) {
-        addLineNodes(parentNode, ctx.start.getLine(), ctx.stop.getLine());
+        int startLine = ctx.start.getLine();
+        int stopLine = ctx.stop.getLine();
+        int startPos = ctx.start.getCharPositionInLine();
+        int stopPos = ctx.stop.getCharPositionInLine() + ctx.stop.getText().length();
+
+        this.addLineNodes(parentNode, startLine, stopLine, startPos, stopPos);
     }
 
     /**
@@ -447,6 +498,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         int startLine = ctx.start.getLine();
         int stopLine = ctx.stop.getLine();
 
+        if (startLine == stopLine) {
+            return this.codeLines[startLine - 1].substring(startPosition, endPosition);
+        }
 
         StringBuilder sb = new StringBuilder();
         for (int i = startLine; i <= stopLine; i++) {
@@ -456,13 +510,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             if (codeLine.isEmpty()) {
                 continue;
             }
-            if (i == startLine && i == stopLine) {
-                sb.append(codeLine, startPosition, endPosition);
-            } else if (i == startLine) {
+            if (i == startLine) {
+                // first Line
                 sb.append(codeLine.substring(startPosition)).append("\n");
             } else if (i == stopLine) {
-                sb.append(codeLine, 0, endPosition);
+                // last Line
+                sb.append(codeLine, 0, Math.min(endPosition, codeLine.length()));
             } else {
+                // Middle line
                 sb.append(codeLine);
             }
         }

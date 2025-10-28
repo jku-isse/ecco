@@ -79,9 +79,10 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
      */
     public void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
         ArtifactData childArtifactData = childNode.getArtifact().getData();
+        // Special handling for VisibilityArtifactData
         if (childArtifactData instanceof VisibilityArtifactData) {
-            // Special handling for VisibilityArtifactData
             bw.write("pub ");
+            return; // Dont visit children of visibility node
         }
 
         // childArtifactData has something to write
@@ -89,6 +90,7 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
             ((RustWritable) childArtifactData).write(bw);
         }
 
+        // Visit children
         if (!childNode.getChildren().isEmpty()) {
             for (Node node : childNode.getChildren()) {
                 visitingNode(bw, node);
