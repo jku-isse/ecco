@@ -1,8 +1,9 @@
 "serde",True
 "alloc",True
+"serde_core",True
 "default",False
-"derive",True
-"rc",False
-"serde_derive",True
 "std",False
+"derive",True
+"serde_derive",True
+"rc",False
 "unstable",False

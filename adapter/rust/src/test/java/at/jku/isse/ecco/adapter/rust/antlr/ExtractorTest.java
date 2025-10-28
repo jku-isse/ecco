@@ -19,14 +19,14 @@ import static at.jku.isse.ecco.adapter.rust.extractor.Extractor.getFeaturesFromF
 class ExtractorTest {
     @Test
     void testExtractor() {
-        Path input = Paths.get("src/test/resources/extractor/serde");
+        Path input = Paths.get("src/test/resources/extractor/serde-1.0.228");
         Path featureDir = Paths.get("src/test/resources/extractor/featureLists");
         try (Stream<Path> files = Files.list(featureDir)) {
             files.filter(Files::isRegularFile).forEach(featureFile -> {
                 String featureFileName = featureFile.getFileName().toString();
                 String lastFolder = input.getFileName().toString();
                 Path output = Paths.get("src/test/resources/extractor/output")
-                        .resolve(lastFolder + "_output_" + featureFileName.replace(".csv", ""));
+                        .resolve(lastFolder + "_output_" + featureFileName.replace(".csvconf", ""));
                 Set<String> features = getFeaturesFromFile(input, featureFile);
                 Extractor extractor = new Extractor(features, Paths.get("."));
                 extractor.extractFromDirectory(input, output);
