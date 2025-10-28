@@ -26,7 +26,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private final String[] codeLines;
     private final EntityFactory entityFactory;
     private final Path path;
-    private String configuration;
+    private final String configuration;
 
     public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path, String configuration) {
         this.pluginNode = pluginNode;
@@ -74,6 +74,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
                 .append(getString(ctx.identifier()))
                 .append(" ");
         if (ctx.SEMI() != null) {
+            // module is just a declaration
             sig.append(";");
         } else {
             //module contains something
@@ -94,11 +95,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     @Override
-    public Node.Op visitVisItem(RustParser.VisItemContext ctx) {
-        return super.visitVisItem(ctx);
-    }
-
-    @Override
     public Node.Op visitItem(RustParser.ItemContext ctx) {
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = createArtifactOrderedNodeAndAddToParent(item, nodeStack.peek());
@@ -115,7 +111,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         String condition = conditions.isEmpty() ? "" : String.join(" & ", conditions); // to handle multiple conditions on a item
 
         Token stop = ctx.stop;
-        // stop can be null in some cases, e.g., for macro items without a proper ending
+        // stop can be null in some cases, e.g., for macro items without a proper ending. So attempts to get stop from children
         if (stop == null) {
             if (ctx.macroItem() != null) {
                 stop = ctx.macroItem().stop;
@@ -148,12 +144,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
-//    @Override
-//    public Node.Op visitComment(RustParser.CommentContext ctx) {
-//        Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData(ctx.getText()));
-//        return createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
-//    }
-
     @Override
     public Node.Op visitStatements(RustParser.StatementsContext ctx) {
         this.addLineNodesFromContext(nodeStack.peek(), ctx);
@@ -161,7 +151,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // when super.visitStatements comes to a macro the tree looks like statement -> item -> macroItem(thus adding a item artifact)
         // which means going deeper in parseTree not needed here
         return nodeStack.peek();
-        // return super.visitStatements(ctx);
     }
 
     @Override
@@ -229,15 +218,17 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         //if the outerAttribute is a comment only visit the comment
         if (ctx.docComment() != null) return visitDocComment(ctx.docComment());
 
+        // Visit cfg attribute and convert to condition(formula)
         Formula condition = null;
         RustParser.CfgAttributeContext attrCtx = ctx.attr().cfgAttribute();
         if (attrCtx != null) {
             ConfigurationPredicateVisitor configVisitor = new ConfigurationPredicateVisitor();
             condition = configVisitor.visitCfgAttribute(attrCtx);
         }
+
         Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(getString(ctx)));
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-
+        // Store condition in node to use it in parent item
         if (attrCtx != null) node.putProperty("condition", condition.toString());
         return node;
     }
@@ -304,12 +295,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     }
 
     @Override
-    public Node.Op visitEnumItems(RustParser.EnumItemsContext ctx) {
-        return super.visitEnumItems(ctx);
-    }
-
-    // TODO does not support merging two enums if they differ in something like struct fields of a item since they are only line nodes
-    @Override
     public Node.Op visitEnumItem(RustParser.EnumItemContext ctx) {
         // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
         Artifact.Op<EnumItemArtifactData> item = this.entityFactory.createArtifact(new EnumItemArtifactData(getString(ctx.identifier())));
@@ -320,12 +305,17 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
+    /** Get the function signature as a string from the given Function_Context
+     * @param ctx the Function_Context to extract the signature from
+     * @return String representing the function signature
+     */
     private String getFunctionSignature(RustParser.Function_Context ctx) {
         StringBuilder sig = new StringBuilder();
 
         // optional qualifiers
         if (ctx.functionQualifiers() != null) {
-            var qualifiers = ctx.functionQualifiers();
+            // getString(ctx.functionQualifiers()) does not always work, since the stop variable can be null
+            RustParser.FunctionQualifiersContext qualifiers = ctx.functionQualifiers();
             if (qualifiers.KW_CONST() != null) sig.append("const ");
             if (qualifiers.KW_ASYNC() != null) sig.append("async ");
             if (qualifiers.KW_UNSAFE() != null) sig.append("unsafe ");
@@ -462,11 +452,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         for (int i = startLine; i <= stopLine; i++) {
             String codeLine;
             // Handle 1 based line numbers and 0 based array index
-            if (i == 0) {
-                codeLine = this.codeLines[0];
-            } else {
-                codeLine = this.codeLines[i - 1];
-            }
+            codeLine = this.codeLines[i - 1];
             if (codeLine.isEmpty()) {
                 continue;
             }
