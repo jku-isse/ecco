@@ -41,10 +41,16 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
         prioritizedPatterns.put(Integer.MAX_VALUE, new String[]{"**.c", "**.h"});
     }
 
+    private String commithash;
+    private int commitIndex;
+
     @Inject
-    public CReader(EntityFactory entityFactory) {
+    public CReader(EntityFactory entityFactory, String commithash, int commitIndex) {
         checkNotNull(entityFactory);
         this.entityFactory = entityFactory;
+
+        this.commitIndex = commitIndex;
+        this.commithash = commithash;
     }
 
     @Override
@@ -95,9 +101,10 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
                            Path relPath,
                            String configuration){
         try {
+            //I could read the file that contains the commithashes, but how could i decide, which commit the file belongs?
             List<String> lineList = Files.readAllLines(absolutePath);
             String[] lines = lineList.toArray(new String[0]);
-            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath, configuration);
+            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath, configuration, this.commithash, this.commitIndex);
             CParser parser = this.createParser(absolutePath);
             // in order to suppress log output
             parser.removeErrorListeners();

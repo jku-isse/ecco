@@ -12,12 +12,25 @@ public class Location implements Persistable {
     private int startLine;
     private int endLine;
     private String filePath;
+    int indexOfCommit;
+    String commithash;
     // original configurationString of committed variant
     private String configurationString;
 
     public Location(int startLine, int endLine, Path filePath, String configurationString){
         this.startLine = startLine;
         this.endLine = endLine;
+        this.indexOfCommit = -1;
+        this.commithash = null;
+        this.filePath = filePath.toString();
+        this.setConfigurationString(configurationString);
+    }
+
+    public Location(int startLine, int endLine, Path filePath, String configurationString, int indexOfCommit, String commithash){
+        this.startLine = startLine;
+        this.endLine = endLine;
+        this.commithash = commithash;
+        this.indexOfCommit = indexOfCommit;
         this.filePath = filePath.toString();
         this.setConfigurationString(configurationString);
     }
@@ -37,6 +50,10 @@ public class Location implements Persistable {
     public String getConfigurationString() {
         return configurationString;
     }
+
+    public String getCommithash() { return  this.commithash; }
+
+    public int getIndexOfCommit() { return this.indexOfCommit; }
 
     public void setConfigurationString(String configurationString){
         this.configurationString = sortConfigurationString(configurationString);

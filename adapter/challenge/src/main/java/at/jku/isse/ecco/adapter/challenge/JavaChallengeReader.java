@@ -106,8 +106,7 @@ public class JavaChallengeReader implements ArtifactReader<Path, Set<Node.Op>> {
 				String className = typeDeclaration.getName().toString();
 				Artifact.Op<ClassArtifactData> classArtifact = this.entityFactory.createArtifact(new ClassArtifactData(packageName + "." + className));
 
-				Location location = new Location(typeDeclaration.getRange().get().begin.line,
-						typeDeclaration.getRange().get().end.line, relativePath, configuration);
+				Location location = new Location(typeDeclaration.getRange().get().begin.line, typeDeclaration.getRange().get().end.line, relativePath, configuration);
 				Node.Op classNode = this.createNodeWithLocation(classArtifact, location);
 				pluginNode.addChild(classNode);
 				this.checkForFeatureTrace(typeDeclaration, fileConditionContainer, classNode);

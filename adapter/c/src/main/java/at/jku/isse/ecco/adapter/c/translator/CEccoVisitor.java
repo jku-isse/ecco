@@ -22,13 +22,17 @@ public class CEccoVisitor extends CBaseVisitor<Node.Op> {
     private VevosFileConditionContainer fileConditionContainer;
     private Path path;
     private String configuration;
+    private String commithash;
+    private int commitIndex;
 
     public CEccoVisitor(Node.Op pluginNode,
                         String[] codeLines,
                         EntityFactory entityFactory,
                         VevosFileConditionContainer fileConditionContainer,
                         Path path,
-                        String configuration){
+                        String configuration,
+                        String commithash,
+                        int commitIndex){
         this.pluginNode = pluginNode;
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
@@ -36,6 +40,8 @@ public class CEccoVisitor extends CBaseVisitor<Node.Op> {
         this.fileConditionContainer = fileConditionContainer;
         this.path = path;
         this.configuration = configuration;
+        this.commithash = commithash;
+        this.commitIndex = commitIndex;
     }
 
     public Node.Op translate(ParseTree tree){
@@ -49,7 +55,7 @@ public class CEccoVisitor extends CBaseVisitor<Node.Op> {
         }
 
         CEccoTranslator translator = new CEccoTranslator(
-                this.codeLines, this.entityFactory, this.fileConditionContainer, this.path, this.configuration);
+                this.codeLines, this.entityFactory, this.fileConditionContainer, this.path, this.configuration, this.commithash, this.commitIndex);
         this.collectFunctions(translator);
         translator.addChildrenToPluginNode(this.pluginNode);
         return this.pluginNode;

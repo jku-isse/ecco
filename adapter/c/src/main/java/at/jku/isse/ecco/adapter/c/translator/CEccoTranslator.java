@@ -21,18 +21,24 @@ public class CEccoTranslator {
     private VevosFileConditionContainer fileConditionContainer;
     private Path path;
     private String configuration;
+    private String commithash;
+    private int commitIndex;
 
     public CEccoTranslator(String[] codeLines,
                            EntityFactory entityFactory,
                            VevosFileConditionContainer fileConditionContainer,
                            Path path,
-                           String configuration){
+                           String configuration,
+                           String commithash,
+                           int commitIndex){
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.functionStructures = new LinkedList<>();
         this.fileConditionContainer = fileConditionContainer;
         this.path = path;
         this.configuration = configuration;
+        this.commithash = commithash;
+        this.commitIndex = commitIndex;
     }
 
     public void addFunctionStructure(int start, int end, String functionSignature){
@@ -67,7 +73,8 @@ public class CEccoTranslator {
             }
 
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-            Location location = new Location(i, i, this.path, this.configuration);
+            Location location = new Location(i, i, this.path, this.configuration, this.commitIndex, this.commithash);
+            //Here to set the commit index and the commithash of location
             Node.Op lineNode = this.createNodeWithLocation(lineArtifactData, location);
             this.checkForFeatureTrace(i, lineNode);
             parentNode.addChild(lineNode);

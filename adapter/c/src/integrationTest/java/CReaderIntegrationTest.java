@@ -179,7 +179,7 @@ public class CReaderIntegrationTest {
     }
 
     private Set<Node.Op> readFolder(Path folderPath){
-        CReader reader = new CReader(new SerEntityFactory());
+        CReader reader = new CReader(new SerEntityFactory(), "tryHash", 1);
         Collection<Path> relativeFiles = this.getRelativeDirContent(reader, folderPath);
         Path[] relativeFileAr = relativeFiles.toArray(new Path[0]);
         return reader.read(folderPath, relativeFileAr);

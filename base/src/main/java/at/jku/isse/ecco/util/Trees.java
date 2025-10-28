@@ -741,4 +741,20 @@ public class Trees {
 
 		return mainTree;
 	}
+
+	public static Node.Op BasedOnCommitOrder(Node.Op node1, Node.Op node2) {
+		try {
+			Location location1 = (Location) node1.getProperty("Location").get();
+			Location location2 = (Location) node2.getProperty("Location").get();
+			if(location1.indexOfCommit != -1 && location2.indexOfCommit != -1) {
+				if(location1.indexOfCommit > location2.indexOfCommit) return node1;
+				else return node2;
+			}
+			else{
+				return node1;//random
+			}
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
 }
