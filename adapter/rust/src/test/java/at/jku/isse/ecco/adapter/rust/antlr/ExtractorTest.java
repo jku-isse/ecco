@@ -2,6 +2,7 @@ package at.jku.isse.ecco.adapter.rust.antlr;
 
 import at.jku.isse.ecco.adapter.rust.extractor.Extractor;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static at.jku.isse.ecco.adapter.rust.extractor.Extractor.getFeaturesFromFile;
@@ -55,12 +57,15 @@ class ExtractorTest {
         List<String> files = Files.list(outputBase).filter(Files::isDirectory)
                 .map(path -> path.getFileName().toString())
                 .sorted()
-                .toList();
+                .collect(Collectors.toList());
+        String lastFolder = files.removeLast();
+        Assertions.assertNotNull(service);
         for (String folder : files) {
-            Assertions.assertNotNull(service);
             service.setBaseDir(outputBase.resolve(folder));
             service.commit();
         }
+        service.setBaseDir(testDir);
+        service.checkout(service.getConfigStringFromFile(outputBase.resolve(lastFolder).resolve(".config")));
     }
 
 }
