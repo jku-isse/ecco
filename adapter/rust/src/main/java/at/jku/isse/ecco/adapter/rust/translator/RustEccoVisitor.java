@@ -98,6 +98,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitItem(RustParser.ItemContext ctx) {
+        // If item has no children, the item is likely created by the antlr parser because of a parse error
+        if (ctx.macroItem() == null && ctx.visItem() == null) {
+            return null;
+        }
+
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = createArtifactOrderedNodeAndAddToParent(item, nodeStack.peek());
         nodeStack.push(itemNode);
@@ -123,7 +128,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
         // if still null throw exception
         if (stop == null) {
-            throw new EccoException("Cannot determine end of ItemContext at " + ctx.start.getLine() + " in " + this.path + "\n with text: " + ctx.getText());
+            throw new EccoException("Cannot determine end of ItemContext at " + ctx.start.getLine() + " in " + this.path.toAbsolutePath() + "\n with text: " + ctx.getText());
         }
 
         Location location = new Location(ctx.start.getLine(), stop.getLine(), this.path, this.configuration);
@@ -305,9 +310,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
         Artifact.Op<EnumItemArtifactData> item = this.entityFactory.createArtifact(new EnumItemArtifactData(getString(ctx.identifier())));
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-
-        this.addLineNodesFromContext(node, ctx);
-
+        int startLine = ctx.getStart().getLine();
+        int endLine = ctx.getStop().getLine();
+        this.addLineNodes(node, startLine, endLine);
         return node;
     }
 

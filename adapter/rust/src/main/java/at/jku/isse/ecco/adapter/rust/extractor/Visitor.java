@@ -45,17 +45,14 @@ public class Visitor extends RustParserBaseVisitor<Object> {
 
     @Override
     public Object visitCfgAttribute(RustParser.CfgAttributeContext ctx) {
+        // check if we are inside a macro
+        if (isInsideMacro(ctx)) {
+            return null; // skip removal inside macros
+        }
         Formula formula = this.configVisitor.visitCfgAttribute(ctx);
         boolean isFeatureUsed = formula.evaluate(this.assignment);
         // If the feature is not used, remove the corresponding lines from codeLines
         if (!isFeatureUsed) {
-            // check if we are inside a macro
-            ParserRuleContext parent = ctx.getParent();
-            if (parent instanceof RustParser.ItemContext itemCtx) {
-                if (itemCtx.macroItem() != null) {
-                    return null; // Do not remove anything inside macros
-                }
-            }
             removeLinesForUnusedFeature(ctx);
         }
         // Dont need deeper traversal
@@ -83,7 +80,8 @@ public class Visitor extends RustParserBaseVisitor<Object> {
         while (current != null &&
                 !(current instanceof RustParser.ItemContext) &&
                 !(current instanceof RustParser.StatementContext) &&
-                !(current instanceof RustParser.ExpressionContext)) {
+                !(current instanceof RustParser.ExpressionContext) &&
+                !(current instanceof RustParser.EnumItemContext)) {
             current = current.getParent();
         }
         return current;
@@ -92,19 +90,32 @@ public class Visitor extends RustParserBaseVisitor<Object> {
     private void removeLines(ParserRuleContext ctx) {
         int startLine = ctx.getStart().getLine() - 1;
         int endLine = ctx.getStop().getLine() - 1;
+        if (ctx.stop == null || endLine < startLine) {
+            throw new IllegalStateException("Invalid line range for removal:" + startLine + " to " + endLine + "for" + ctx.getText());
+        }
+
         for (int i = startLine; i <= endLine; i++) {
             this.codeLines[i] = null;
         }
-
-        //@TODO hack to remove trailling }
-        for (int i = endLine + 1; i < this.codeLines.length; i++) {
-            if (this.codeLines[i] != null) {
-                String trimmed = this.codeLines[i].trim();
-                if (trimmed.equals("}") || trimmed.equals("};")) {
-                    this.codeLines[i] = null;
-                }
-                break; // Stop after first non-null line
-            }
-        }
     }
+
+    private boolean isInsideMacro(ParseTree ctx) {
+        ParseTree current = ctx;
+        if (current == null) {
+            System.out.println("Context is null, cannot determine if inside macro.");
+        }
+        while (current != null) {
+            if (current instanceof RustParser.MacroInvocationContext ||
+                    current instanceof RustParser.MacroInvocationSemiContext ||
+                    current instanceof RustParser.MacroRulesDefinitionContext ||
+                    current instanceof RustParser.MacroItemContext ||
+            current instanceof RustParser.TokenTreeContext) {
+                System.out.println("Skipping removal inside macro for context: " + ctx.getText());
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
 }
