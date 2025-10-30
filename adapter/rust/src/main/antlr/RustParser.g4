@@ -58,7 +58,15 @@ tokenTreeToken
     | macroLiteralToken
     | macroPunctuationToken
     | macroRepOp
+    | macroDocComment
     | DOLLAR
+    ;
+
+macroDocComment
+    : OUTER_LINE_DOC
+    | OUTER_BLOCK_DOC
+    | INNER_LINE_DOC
+    | INNER_BLOCK_DOC
     ;
 
 macroInvocationSemi
@@ -169,7 +177,8 @@ cfgAttrs
 
 // 6
 item
-    : (outerAttribute* (visItem | macroItem))
+    : outerAttribute* visItem
+    | outerAttribute* macroItem
     ;
 
 docComment
@@ -428,7 +437,7 @@ forLifetimes
 
 // 6.15
 associatedItem
-    : (macroInvocationSemi | visibility? ( typeAlias | constantItem | function_))
+    : outerAttribute* (macroInvocationSemi | visibility? ( typeAlias | constantItem | function_))
     ;
 
 // 7

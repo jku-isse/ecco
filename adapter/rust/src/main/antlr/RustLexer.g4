@@ -32,13 +32,31 @@ options
     superClass = RustLexerBase;
 }
 
-// cfg
-KW_ANY       : 'any';
-KW_ALL       : 'all';
-KW_NOT       : 'not';
-KW_CFG       : 'cfg';
-KW_CFG_ATTR  : 'cfg_attr';
 
+
+// comments https://doc.rust-lang.org/reference/comments.html
+LINE_COMMENT: ('//' (~[/!] | '//') ~[\r\n]* | '//') -> channel(HIDDEN);
+
+BLOCK_COMMENT:
+    (
+        '/*' (~[*!] | '**' | BLOCK_COMMENT_OR_DOC) (BLOCK_COMMENT_OR_DOC | ~[*])*? '*/'
+        | '/**/'
+        | '/***/'
+    ) -> channel(HIDDEN)
+;
+
+INNER_LINE_DOC: '//!' ~[\n\r]* ; // isolated cr
+
+INNER_BLOCK_DOC: '/*!' ( BLOCK_COMMENT_OR_DOC | ~[*])*? '*/' ;
+
+// OUTER_LINE_DOC: '///' (~[/] ~[\n\r]*)? ; // isolated cr
+OUTER_LINE_DOC: '///' (~[\n\r])* ;
+
+OUTER_BLOCK_DOC:
+    '/**' (~[*] | BLOCK_COMMENT_OR_DOC) (BLOCK_COMMENT_OR_DOC | ~[*])*? '*/'
+;
+
+BLOCK_COMMENT_OR_DOC: ( BLOCK_COMMENT | INNER_BLOCK_DOC | OUTER_BLOCK_DOC) ;
 
 // https://doc.rust-lang.org/reference/keywords.html strict
 
@@ -122,31 +140,11 @@ fragment UNICODE_OIDS: '\u1885' ..'\u1886' | '\u2118' | '\u212e' | '\u309b' ..'\
 fragment UNICODE_OIDC: '\u00b7' | '\u0387' | '\u1369' ..'\u1371' | '\u19da';
 
 RAW_IDENTIFIER: 'r#' NON_KEYWORD_IDENTIFIER;
-// comments https://doc.rust-lang.org/reference/comments.html
-LINE_COMMENT: ('//' (~[/!] | '//') ~[\r\n]* | '//') -> channel(HIDDEN);
 
-BLOCK_COMMENT:
-    (
-        '/*' (~[*!] | '**' | BLOCK_COMMENT_OR_DOC) (BLOCK_COMMENT_OR_DOC | ~[*])*? '*/'
-        | '/**/'
-        | '/***/'
-    ) -> channel(HIDDEN)
-;
+SHEBANG: {this.SOF()}? '\ufeff'? '#!' { _input.LA(1) != '[' }? ~[\r\n]* -> channel(HIDDEN);
 
-INNER_LINE_DOC: '//!' ~[\n\r]* ; // isolated cr
-
-INNER_BLOCK_DOC: '/*!' ( BLOCK_COMMENT_OR_DOC | ~[*])*? '*/' ;
-
-// OUTER_LINE_DOC: '///' (~[/] ~[\n\r]*)? ; // isolated cr
-OUTER_LINE_DOC: '///' (~[\n\r])* ;
-
-OUTER_BLOCK_DOC:
-    '/**' (~[*] | BLOCK_COMMENT_OR_DOC) (BLOCK_COMMENT_OR_DOC | ~[*])*? '*/'
-;
-
-BLOCK_COMMENT_OR_DOC: ( BLOCK_COMMENT | INNER_BLOCK_DOC | OUTER_BLOCK_DOC) ;
-
-SHEBANG: {this.SOF()}? '\ufeff'? '#!' ~[\r\n]* -> channel(HIDDEN);
+// inner attribute
+INNER_ATTRIBUTE: '#!' '[' ;
 
 //ISOLATED_CR
 // : '\r' {_input.LA(1)!='\n'}// not followed with \n ;
@@ -283,3 +281,10 @@ LSQUAREBRACKET : '[';
 RSQUAREBRACKET : ']';
 LPAREN         : '(';
 RPAREN         : ')';
+
+// cfg
+KW_ANY       : 'any';
+KW_ALL       : 'all';
+KW_NOT       : 'not';
+KW_CFG       : 'cfg';
+KW_CFG_ATTR  : 'cfg_attr';
