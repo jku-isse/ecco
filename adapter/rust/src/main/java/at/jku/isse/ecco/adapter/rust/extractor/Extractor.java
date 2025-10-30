@@ -3,10 +3,7 @@ package at.jku.isse.ecco.adapter.rust.extractor;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.rust.antlr.RustLexer;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
@@ -136,10 +133,12 @@ public class Extractor {
 
     // Extract using features listed in a feature file
     // Feature files has format csvconf like "serde",True \n
+    // Features always start with the library name, e.g., serde
     public static Set<String> getFeaturesFromFile(Path sourceDir, Path featureFile) {
         try {
             List<String> featureLines = Files.readAllLines(featureFile);
             Set<String> featuresFromFile = new HashSet<>();
+            featureLines.removeFirst(); // remove library name header
             for (String line : featureLines) {
                 String[] parts = line.split(",");
                 if (parts.length != 2) {
@@ -155,14 +154,11 @@ public class Extractor {
         }
     }
 
-
-
-
-
     public static void main(String[] args) {
-//        Set<String> features = Set.of("std", "feature=std");
+        // default.1, std.1, serde_derive.1, serde.1, serde_core.1, derive.1
+//        Set<String> features = Set.of("serde", "std", "serde_derive", "serde_core", "derive");
 //        Extractor extractor = new Extractor(features, Paths.get("."));
-//        Path input = Paths.get("/home/zaber/Documents/bachelor/serde/serde_core");
+//        Path input = Paths.get("/home/zaber/Documents/bachelor/ecco/adapter/rust/src/test/resources/extractor/test");
 //        String lastFolder = input.getFileName().toString();
 //        Path output = Paths.get("adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/extractor").resolve(lastFolder + "_output");
 //        extractor.extractFromDirectory(input, output);
