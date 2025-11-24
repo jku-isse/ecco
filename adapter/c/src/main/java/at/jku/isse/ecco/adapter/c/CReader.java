@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.adapter.c;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
+import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
 import at.jku.isse.ecco.adapter.c.translator.CEccoVisitor;
 import at.jku.isse.ecco.adapter.c.parser.generated.CLexer;
 import at.jku.isse.ecco.adapter.c.parser.generated.CParser;
@@ -12,6 +14,7 @@ import at.jku.isse.ecco.featuretrace.parser.VevosConditionHandler;
 import at.jku.isse.ecco.featuretrace.parser.VevosFileConditionContainer;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Location;
 import com.google.inject.Inject;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -36,21 +39,48 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     private static Map<Integer, String[]> prioritizedPatterns;
 
+    private String gitCommitHash;
+    private int gitCommitIndex;
+
+
     static {
         prioritizedPatterns = new HashMap<>();
-        prioritizedPatterns.put(Integer.MAX_VALUE, new String[]{"**.c", "**.h"});
+        prioritizedPatterns.put(Integer.MAX_VALUE, new String[]{"**.c", "**.h", "**.gch"});
     }
 
-    private String commithash;
-    private int commitIndex;
-
     @Inject
-    public CReader(EntityFactory entityFactory, String commithash, int commitIndex) {
+    public CReader(EntityFactory entityFactory) {
         checkNotNull(entityFactory);
         this.entityFactory = entityFactory;
+        this.gitCommitIndex = -1;
+        this.gitCommitHash = null;
+    }
 
-        this.commitIndex = commitIndex;
-        this.commithash = commithash;
+
+    /*public void setGitCommitDetails(Path path) {
+        if (!Files.exists(path)) {
+            this.gitCommitHash = null;
+            this.gitCommitIndex = -1;
+
+            LOGGER.info(this.gitCommitHash);
+        }
+
+        try (Stream<String> stream = Files.lines(path)) {
+            List<String> fileLines = stream.toList();
+            this.gitCommitIndex = Integer.parseInt(fileLines.get(0).split(";")[0]);
+            this.gitCommitHash = fileLines.get(0).split(";")[1];
+
+            LOGGER.info(this.gitCommitHash);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+
+        }
+    }*/
+
+    @Override
+    public void SetGitCommitDetails(String contentOfFile) {
+        this.gitCommitIndex = Integer.parseInt(contentOfFile.split(";")[0]);
+        this.gitCommitHash = contentOfFile.split(";")[1];
     }
 
     @Override
@@ -60,17 +90,35 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
     public Map<Integer, String[]> getPrioritizedPatterns() { return Collections.unmodifiableMap(prioritizedPatterns); }
 
     @Override
-    public Set<Node.Op> read(Path base, Path[] input) {
+    public Set<Node.Op> read(Path base, Path[] input) throws IOException {
+        // Initial checks and logging
+        if (base == null) {
+            throw new EccoException(getPluginId() + ": Reader base path is null!");
+        }
+
         VevosConditionHandler vevosConditionHandler = new VevosConditionHandler(base);
         String configuration = this.getConfigurationString(base);
         Set<Node.Op> nodes = new HashSet<>();
+
+        /*try {
+            setGitCommitDetails(base.resolve("gitCommitHash.gch"));
+            //Files.deleteIfExists(path.resolve("gitCommitHash.gch"));
+        } catch(Exception e) {
+            LOGGER.info(e.getMessage());
+        }*/
+
         for (Path path : input) {
             VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(path);
             Node.Op pluginNode = addPluginNode(nodes, path);
             Path absolutePath = base.resolve(path);
+
+
             this.parseFile(pluginNode, absolutePath, fileConditionContainer, path, configuration);
+            //No need to add location here, it is done in CEccoTranslator at line 76
+
             nodes.add(pluginNode);
         }
+
         return nodes;
     }
 
@@ -101,10 +149,15 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
                            Path relPath,
                            String configuration){
         try {
-            //I could read the file that contains the commithashes, but how could i decide, which commit the file belongs?
             List<String> lineList = Files.readAllLines(absolutePath);
             String[] lines = lineList.toArray(new String[0]);
-            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath, configuration, this.commithash, this.commitIndex);
+            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath, configuration);
+
+            LOGGER.info(this.gitCommitHash + ";" + this.gitCommitIndex);
+
+            translator.setGitCommitHash(this.gitCommitHash);
+            translator.setGitCommitIndex(this.gitCommitIndex);
+
             CParser parser = this.createParser(absolutePath);
             // in order to suppress log output
             parser.removeErrorListeners();
@@ -128,8 +181,10 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
         }
     }
 
+
+
     @Override
-    public Set<Node.Op> read(Path[] input) { return this.read(Paths.get("."), input); }
+    public Set<Node.Op> read(Path[] input) throws IOException { return this.read(Paths.get("."), input); }
 
     @Override
     public void addListener(ReadListener listener) {

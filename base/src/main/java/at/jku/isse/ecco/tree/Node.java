@@ -4,6 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.util.Location;
 import at.jku.isse.ecco.util.Trees;
 
 import java.util.*;

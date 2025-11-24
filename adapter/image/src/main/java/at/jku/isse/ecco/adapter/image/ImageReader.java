@@ -7,6 +7,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Location;
 import com.google.inject.Inject;
 
 import javax.imageio.ImageIO;
@@ -25,12 +26,20 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 	public static final String TYPE_COLOR = "COLOR";
 
 	private final EntityFactory entityFactory;
+	private String gitCommitHash;
+	private int gitCommitIndex;
 
 	@Inject
 	public ImageReader(final EntityFactory entityFactory) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
+	}
+
+	@Override
+	public void SetGitCommitDetails(String contentOfFile) {
+		this.gitCommitIndex = Integer.parseInt(contentOfFile.split(";")[0]);
+		this.gitCommitHash = contentOfFile.split(";")[1];
 	}
 
 	@Override
@@ -65,6 +74,10 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 			try {
 				Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
 				Node.Op pluginNode = this.entityFactory.createNode(pluginArtifact);
+
+				pluginNode.putProperty("GIT_COMMIT_HASH", this.gitCommitHash);
+				pluginNode.putProperty("GIT_COMMIT_INDEX", this.gitCommitIndex);
+
 				nodes.add(pluginNode);
 
 				final BufferedImage image = ImageIO.read(resolvedPath.toFile());

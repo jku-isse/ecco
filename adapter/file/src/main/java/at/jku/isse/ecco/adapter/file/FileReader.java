@@ -6,12 +6,16 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Location;
 import com.google.inject.Inject;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /* TODO: also include directories in this module? or move the file (or rather directory!) handling from modules to some sort of "super" module?
 i would say we include the folder structure in our artifact tree! that way we can even store folder properties (in case it ever becomes relevant).
@@ -20,12 +24,20 @@ i would say we include the folder structure in our artifact tree! that way we ca
 public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
+	private int gitCommitIndex;
+	private String gitCommitHash;
 
 	@Inject
 	public FileReader(EntityFactory entityFactory) {
 		com.google.common.base.Preconditions.checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
+	}
+
+	@Override
+	public void SetGitCommitDetails(String contentOfFile) {
+		this.gitCommitIndex = Integer.parseInt(contentOfFile.split(";")[0]);
+		this.gitCommitHash = contentOfFile.split(";")[1];
 	}
 
 	@Override
@@ -45,6 +57,7 @@ public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return Collections.unmodifiableMap(prioritizedPatterns);
 	}
 
+
 	@Override
 	public Set<Node.Op> read(Path[] input) {
 		return this.read(Paths.get("."), input);
@@ -61,6 +74,11 @@ public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 				FileArtifactData fileArtifactData = new FileArtifactData(base, path);
 				Node.Op fileNode = this.entityFactory.createNode(this.entityFactory.createArtifact(fileArtifactData));
+
+				Logger.getAnonymousLogger().info(this.gitCommitHash + " - " + this.gitCommitIndex);
+				pluginNode.putProperty("GIT_COMMIT_HASH", this.gitCommitHash);
+				pluginNode.putProperty("GIT_COMMIT_INDEX", this.gitCommitIndex);
+
 				pluginNode.addChild(fileNode);
 			} catch (IOException e) {
 				e.printStackTrace();

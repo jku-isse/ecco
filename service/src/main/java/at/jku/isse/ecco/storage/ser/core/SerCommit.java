@@ -20,7 +20,7 @@ public class SerCommit implements Commit {
 	private Configuration configuration;
 	private Date committingDate;
 	private String commitMessage;
-	private final Collection<Association> associations = new ArrayList<>();;
+	private final Collection<Association> associations = new ArrayList<>();
 
 
 	public SerCommit(String username) {
@@ -97,6 +97,7 @@ public class SerCommit implements Commit {
 	public Collection<Association> getAssociations() {
 		return associations;
 	}
+
 
 	@Override
 	public boolean equals(final Object o) {

@@ -12,6 +12,7 @@ import at.jku.isse.ecco.util.Location;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class CEccoTranslator {
 
@@ -21,24 +22,38 @@ public class CEccoTranslator {
     private VevosFileConditionContainer fileConditionContainer;
     private Path path;
     private String configuration;
-    private String commithash;
-    private int commitIndex;
+    private String gitCommitHash;
+    private int gitCommitIndex;
 
     public CEccoTranslator(String[] codeLines,
                            EntityFactory entityFactory,
                            VevosFileConditionContainer fileConditionContainer,
                            Path path,
-                           String configuration,
-                           String commithash,
-                           int commitIndex){
+                           String configuration){
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.functionStructures = new LinkedList<>();
         this.fileConditionContainer = fileConditionContainer;
         this.path = path;
         this.configuration = configuration;
-        this.commithash = commithash;
-        this.commitIndex = commitIndex;
+        this.gitCommitHash = null;
+        this.gitCommitIndex = -1;
+    }
+
+    public void setGitCommitHash(String gitCommitHash) {
+        this.gitCommitHash = gitCommitHash;
+    }
+
+    public void setGitCommitIndex(int gitCommitIndex) {
+        this.gitCommitIndex = gitCommitIndex;
+    }
+
+    public String getGitCommitHash() {
+        return gitCommitHash;
+    }
+
+    public int getGitCommitIndex() {
+        return gitCommitIndex;
     }
 
     public void addFunctionStructure(int start, int end, String functionSignature){
@@ -73,8 +88,10 @@ public class CEccoTranslator {
             }
 
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-            Location location = new Location(i, i, this.path, this.configuration, this.commitIndex, this.commithash);
-            //Here to set the commit index and the commithash of location
+            Location location = new Location(i, i, this.path, this.configuration);
+            location.setCommithash(this.gitCommitHash);
+            location.setIndexOfCommit(this.gitCommitIndex);
+
             Node.Op lineNode = this.createNodeWithLocation(lineArtifactData, location);
             this.checkForFeatureTrace(i, lineNode);
             parentNode.addChild(lineNode);

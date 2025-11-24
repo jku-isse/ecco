@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class CReaderIntegrationTest {
 
     @Test
-    public void readFileTest() throws URISyntaxException {
+    public void readFileTest() throws URISyntaxException, IOException {
         String relativeResourceFolderPath = "C_SPL/simple_file";
         URI resourceFolderUri = Objects.requireNonNull(getClass().getClassLoader().getResource(relativeResourceFolderPath)).toURI();
         String resourceFolderPathString = Paths.get(resourceFolderUri).toString();
@@ -35,7 +35,7 @@ public class CReaderIntegrationTest {
     }
 
     @Test
-    public void readHeaderFileTest() throws URISyntaxException {
+    public void readHeaderFileTest() throws URISyntaxException, IOException {
         String relativeResourceFolderPath = "C_SPL/header_file";
         URI resourceFolderUri = Objects.requireNonNull(getClass().getClassLoader().getResource(relativeResourceFolderPath)).toURI();
         String resourceFolderPathString = Paths.get(resourceFolderUri).toString();
@@ -49,7 +49,7 @@ public class CReaderIntegrationTest {
     }
 
     @Test
-    public void testGrammarBugHandling() throws URISyntaxException {
+    public void testGrammarBugHandling() throws URISyntaxException, IOException {
         // a buggy function will not be added as function node but as multiple line nodes
 
         String relativeResourceFolderPath = "C_SPL/buggy_file";
@@ -102,7 +102,7 @@ public class CReaderIntegrationTest {
     }
 
     @Test
-    public void readMultipleFiles() throws URISyntaxException {
+    public void readMultipleFiles() throws URISyntaxException, IOException {
         String relativeResourceFolderPath = "C_SPL/multiple_files";
         URI resourceFolderUri = Objects.requireNonNull(getClass().getClassLoader().getResource(relativeResourceFolderPath)).toURI();
         String resourceFolderPathString = Paths.get(resourceFolderUri).toString();
@@ -178,8 +178,8 @@ public class CReaderIntegrationTest {
         checkLineNode(pluginNodeChildren.get(12), "WPGFileHead;");
     }
 
-    private Set<Node.Op> readFolder(Path folderPath){
-        CReader reader = new CReader(new SerEntityFactory(), "tryHash", 1);
+    private Set<Node.Op> readFolder(Path folderPath) throws IOException {
+        CReader reader = new CReader(new SerEntityFactory());
         Collection<Path> relativeFiles = this.getRelativeDirContent(reader, folderPath);
         Path[] relativeFileAr = relativeFiles.toArray(new Path[0]);
         return reader.read(folderPath, relativeFileAr);

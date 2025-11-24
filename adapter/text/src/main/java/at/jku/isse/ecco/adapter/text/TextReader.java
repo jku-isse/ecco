@@ -23,12 +23,20 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 	public static final String PROPERTY_LINE_END = "LINE_END";
 
 	private final EntityFactory entityFactory;
+	private int gitCommitIndex;
+	private String gitCommitHash;
 
 	@Inject
 	public TextReader(EntityFactory entityFactory) {
 		checkNotNull(entityFactory);
 
 		this.entityFactory = entityFactory;
+	}
+
+	@Override
+	public void SetGitCommitDetails(String contentOfFile) {
+		this.gitCommitIndex = Integer.parseInt(contentOfFile.split(";")[0]);
+		this.gitCommitHash = contentOfFile.split(";")[1];
 	}
 
 	@Override
@@ -60,6 +68,10 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 			Path resolvedPath = base.resolve(path);
 			Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
 			Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+
+			pluginNode.putProperty("GIT_COMMIT_HASH", this.gitCommitHash);
+			pluginNode.putProperty("GIT_COMMIT_INDEX", this.gitCommitIndex);
+
 			nodes.add(pluginNode);
 
 			try (BufferedReader br = new BufferedReader(new FileReader(resolvedPath.toFile()))) {

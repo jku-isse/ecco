@@ -10,8 +10,11 @@ import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.logging.Logger;
@@ -27,6 +30,29 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	public static final Path IGNORES_FILE_NAME = Paths.get(".ignores");
 	public static final Path ADAPTERS_FILE_NAME = Paths.get(".adapters");
 
+	private int gitCommitIndex;
+	private String gitCommitHash;
+	private String gitCommitContent;
+
+	@Override
+	public void SetGitCommitDetails(String contentOfFile) {
+		this.gitCommitIndex = Integer.parseInt(contentOfFile.split(";")[0]);
+		this.gitCommitHash = contentOfFile.split(";")[1];
+	}
+
+	public void readGitCommitHashFile(Path path)
+	{
+		try (Stream<String> stream = Files.lines(path)) {
+			List<String> fileLines = stream.toList();
+			SetGitCommitDetails(fileLines.get(0));
+			this.gitCommitContent = fileLines.get(0);
+
+			LOGGER.info(this.gitCommitHash);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+
+		}
+	}
 
 	@Override
 	public String getPluginId() {
@@ -81,6 +107,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		this.prioritizedPatterns = new HashMap<>();
 	}
+
 
 	public void addAdapterMappings(String pattern, ArtifactReader<Path, Set<Node.Op>> reader) {
 		this.adapterMappings.add(new Mapping(pattern, reader));
@@ -206,11 +233,11 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
-	public Set<Node.Op> readSpecificFiles(Path[] input) {
+	public Set<Node.Op> readSpecificFiles(Path[] input) throws IOException {
 		return this.readSpecificFiles(Paths.get("."), input);
 	}
 
-	public Set<Node.Op> readSpecificFiles(Path base, Path[] input) {
+	public Set<Node.Op> readSpecificFiles(Path base, Path[] input) throws IOException {
 		long startTime = System.currentTimeMillis();
 
 		// for every file in paths add all parent directories and parse the file using the appropriate plugin
@@ -291,17 +318,19 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 
 	@Override
-	public Set<Node.Op> read(Path[] input) {
+	public Set<Node.Op> read(Path[] input) throws IOException {
 		return this.read(Paths.get("."), input);
 	}
 
 	@Override
-	public Set<Node.Op> read(Path base, Path[] input) {
+	public Set<Node.Op> read(Path base, Path[] input) throws IOException {
 		if (!Files.exists(base)) {
 			throw new EccoException("Base directory does not exist.");
 		} else if (!Files.isDirectory(base)) {
 			throw new EccoException("Current base directory is not a directory but a file.");
 		}
+
+		readGitCommitHashFile(base.resolve("gitCommitHash.gch"));
 
 		long startTime = System.currentTimeMillis();
 
@@ -333,6 +362,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 			// let readers read the assigned, modified files
 			for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
 				ArrayList<Path> filesList = readerToFilesMap.get(reader);
+				reader.SetGitCommitDetails(this.gitCommitContent);
 
 				if (filesList != null) {
 					Path[] pluginInput = filesList.toArray(new Path[0]);

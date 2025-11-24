@@ -2,6 +2,8 @@ package at.jku.isse.ecco.adapter;
 
 import at.jku.isse.ecco.service.listener.ReadListener;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -12,15 +14,19 @@ import java.util.Map;
  */
 public interface ArtifactReader<I, O> {
 
+	//public void setListOfCommitHashes(List<String> commitHashes);
+
+	public void SetGitCommitDetails(String contentOfFile);
+
 	public String getPluginId();
 
 
 	public Map<Integer, String[]> getPrioritizedPatterns();
 
 
-	public O read(I base, I[] input);
+	public O read(I base, I[] input) throws IOException;
 
-	public O read(I[] input);
+	public O read(I[] input) throws IOException;
 
 
 	public void addListener(ReadListener listener);

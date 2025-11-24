@@ -22,9 +22,10 @@ dependencies {
 	implementation project(':ecco-service')
 	implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
 
-	runtimeOnly project(':ecco-adapter-file')
+	//runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
+	runtimeOnly project(':ecco-adapter-c')
 	//runtimeOnly project(':ecco-adapter-python')
 
 	testRuntimeOnly project(':ecco-adapter-file')

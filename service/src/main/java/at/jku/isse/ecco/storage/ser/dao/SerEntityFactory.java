@@ -72,6 +72,7 @@ public class SerEntityFactory implements EntityFactory {
 		final Association.Op association = new SerAssociation();
 
 		RootNode.Op rootNode = this.createRootNode();
+
 		rootNode.setContainingAssociation(association);
 
 		for (Node.Op node : nodes) {
@@ -91,7 +92,6 @@ public class SerEntityFactory implements EntityFactory {
 
 		return new SerFeature(id, name);
 	}
-
 
 	@Override
 	public RootNode.Op createRootNode() {

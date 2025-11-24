@@ -1839,7 +1839,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
 
-    public synchronized Set<Node.Op> readFiles() {
+    public synchronized Set<Node.Op> readFiles() throws IOException {
         return this.reader.read(this.baseDir, new Path[]{Paths.get("")});
     }
 
