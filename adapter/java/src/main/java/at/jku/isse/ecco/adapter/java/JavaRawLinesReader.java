@@ -39,6 +39,11 @@ public class JavaRawLinesReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 	@Override
+	public void SetGitCommitDetails(String contentOfFile) {
+		//TODO: implement
+	}
+
+	@Override
 	public String getPluginId() {
 		return JavaPlugin.class.getName();
 	}

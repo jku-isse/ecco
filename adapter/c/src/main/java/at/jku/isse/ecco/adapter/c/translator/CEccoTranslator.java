@@ -80,6 +80,7 @@ public class CEccoTranslator {
     }
 
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine){
+        Location location = null;
         for(int i = startLine; i <= endLine; i++){
             String codeLine = this.codeLines[i - 1];
 
@@ -88,7 +89,7 @@ public class CEccoTranslator {
             }
 
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-            Location location = new Location(i, i, this.path, this.configuration);
+            location = new Location(i, i, this.path, this.configuration);
             location.setCommithash(this.gitCommitHash);
             location.setIndexOfCommit(this.gitCommitIndex);
 
@@ -96,6 +97,8 @@ public class CEccoTranslator {
             this.checkForFeatureTrace(i, lineNode);
             parentNode.addChild(lineNode);
         }
+        if(location != null)
+            Logger.getAnonymousLogger().info( location.getIndexOfCommit() + " - " +location.getEndLine() + " - " + location.getStartLine() + " - " + location.getCommithash());
     }
 
     private Node.Op createFunctionNode(FunctionStructure functionStructure){

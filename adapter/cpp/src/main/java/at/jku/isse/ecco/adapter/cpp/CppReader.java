@@ -44,6 +44,11 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     @Override
+    public void SetGitCommitDetails(String contentOfFile) {
+        //TODO: implement
+    }
+
+    @Override
     public String getPluginId() {
         return CppPlugin.class.getName();
     }

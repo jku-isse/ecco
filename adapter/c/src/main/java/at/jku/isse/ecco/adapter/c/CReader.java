@@ -100,12 +100,6 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
         String configuration = this.getConfigurationString(base);
         Set<Node.Op> nodes = new HashSet<>();
 
-        /*try {
-            setGitCommitDetails(base.resolve("gitCommitHash.gch"));
-            //Files.deleteIfExists(path.resolve("gitCommitHash.gch"));
-        } catch(Exception e) {
-            LOGGER.info(e.getMessage());
-        }*/
 
         for (Path path : input) {
             VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(path);

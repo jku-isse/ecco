@@ -426,6 +426,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
 					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent.getFileName()));
 					Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
+					LOGGER.info(directoryNode.getNodeString());
 					directoryNodes.put(relativeCurrent, directoryNode);
 
 					this.fireReadEvent(base.relativize(current), this);
@@ -434,8 +435,10 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					try (Stream<Path> filesStream = Files.list(current)) {
 						filesStream.forEach(d -> {
 							Node.Op child = this.readDirectories(base, d, hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes);
-							if (child != null)
+							if (child != null) {
 								directoryNode.addChild(child);
+								LOGGER.info(child.getNodeString());
+							}
 						});
 					}
 

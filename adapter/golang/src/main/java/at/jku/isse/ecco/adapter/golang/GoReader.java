@@ -37,6 +37,11 @@ public class GoReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 
     @Override
+    public void SetGitCommitDetails(String contentOfFile) {
+        //TODO : implement
+    }
+
+    @Override
     public String getPluginId() {
         return new GoPlugin().getPluginId();
     }
