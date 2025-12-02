@@ -2,10 +2,11 @@ package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
-import org.logicng.io.parsers.ParserException;
+
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -75,7 +76,7 @@ public interface Condition extends Persistable {
 		for (Collection<ModuleRevision> moduleRevisions : moduleMap.values()) {
 			Collection<Formula> moduleRevisionFormulas = moduleRevisions.stream()
 					.map(ModuleRevision::getConditionString)
-					.map(this::parseString)
+					.map(LogicUtils::parseString)
 					.collect(Collectors.toList());
 			moduleFormulas.add(formulaFactory.or(moduleRevisionFormulas));
 		}
@@ -83,14 +84,6 @@ public interface Condition extends Persistable {
 		Formula conditionFormula;
 		conditionFormula = formulaFactory.or(moduleFormulas);
 		return conditionFormula.toString();
-	}
-
-	private Formula parseString(String string){
-		try{
-			return FormulaFactoryProvider.getFormulaFactory().parse(string);
-		} catch (ParserException e){
-			throw new RuntimeException("Formula-String in module-revision could not be parsed: " + e.getMessage());
-		}
 	}
 
 	/**

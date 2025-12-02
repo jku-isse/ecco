@@ -1,4 +1,4 @@
-// Generated from .\ecco\adapter\c\src\main\resources\grammar\C.g4 by ANTLR 4.9.3
+// Generated from C:/Projects/ECCO/ecco/adapter/c/src/main/resources/grammar/C.g4 by ANTLR 4.13.2
 package at.jku.isse.ecco.adapter.c.parser.generated;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
@@ -10,6 +10,12 @@ import org.antlr.v4.runtime.tree.ParseTreeVisitor;
  * operations with no return type.
  */
 public interface CVisitor<T> extends ParseTreeVisitor<T> {
+	/**
+	 * Visit a parse tree produced by {@link CParser#compilationUnit}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCompilationUnit(CParser.CompilationUnitContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link CParser#primaryExpression}.
 	 * @param ctx the parse tree
@@ -508,12 +514,6 @@ public interface CVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitJumpStatement(CParser.JumpStatementContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link CParser#compilationUnit}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitCompilationUnit(CParser.CompilationUnitContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link CParser#translationUnit}.
 	 * @param ctx the parse tree

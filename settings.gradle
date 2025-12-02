@@ -8,6 +8,7 @@ include 'web'
 include 'rest'
 include 'experiment'
 include 'util'
+include 'logic'
 
 include 'adapter-file'
 include 'adapter-text'
@@ -19,6 +20,7 @@ include 'adapter-c'
 include 'adapter-cpp'
 include 'adapter-runtime'
 include 'adapter-golang'
+include 'adapter-c'
 
 project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
@@ -26,6 +28,7 @@ project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
 project(':web').projectDir = file('web')
 project(':util').projectDir = file('util')
+project(':logic').projectDir = file('logic')
 
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')

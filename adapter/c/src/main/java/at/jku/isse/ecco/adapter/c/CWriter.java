@@ -35,8 +35,10 @@ public class CWriter implements ArtifactWriter<Set<Node>, Path> {
         for (Node fileNode : input) {
             Artifact<?> fileArtifact = fileNode.getArtifact();
             ArtifactData artifactData = fileArtifact.getData();
-            if (!(artifactData instanceof PluginArtifactData pluginArtifactData))
+            if (!(artifactData instanceof PluginArtifactData)){
                 throw new EccoException("Expected plugin artifact data.");
+            }
+            PluginArtifactData pluginArtifactData = (PluginArtifactData) artifactData;
             Path outputPath = base.resolve(pluginArtifactData.getPath());
             output.add(outputPath);
 
@@ -54,7 +56,8 @@ public class CWriter implements ArtifactWriter<Set<Node>, Path> {
                 ArtifactData artifactData = artifact.getData();
                 if (artifactData instanceof FunctionArtifactData){
                     this.writeFunctionNode(bw, node);
-                } else if (artifactData instanceof LineArtifactData lineArtifactData){
+                } else if (artifactData instanceof LineArtifactData){
+                    LineArtifactData lineArtifactData = (LineArtifactData) artifactData;
                     bw.write(lineArtifactData.getLine());
                     bw.newLine();
                 } else {
