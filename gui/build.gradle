@@ -27,6 +27,7 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-image')
 	runtimeOnly project(':ecco-adapter-python')
 	runtimeOnly project(':ecco-adapter-c')
+	runtimeOnly project(':ecco-adapter-lilypond')
 
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')

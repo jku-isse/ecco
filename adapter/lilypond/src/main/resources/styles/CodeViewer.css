@@ -1,0 +1,42 @@
+.list-cell {
+    -fx-padding: 1;
+}
+.list-cell:odd {
+    -fx-background-color: whitesmoke;
+}
+.list-cell:even {
+    -fx-background-color: whitesmoke;
+}
+HBox {
+    -fx-spacing: 2;
+}
+TextBlockLabel {
+    -fx-border-color: gray;
+    -fx-border-width: 1;
+    -fx-padding: 1, 2, 1, 2;
+}
+TextBlockLabel:highlight {
+    -fx-border-color: red;
+    -fx-border-style: dotted;
+}
+TextBlockLabel.innerBlock {
+    -fx-border-color: gray transparent gray transparent;
+}
+TextBlockLabel.innerBlock:highlight {
+    -fx-border-color: red transparent red transparent;
+    -fx-border-style: dotted;
+}
+TextBlockLabel.firstBlock {
+    -fx-border-color: gray transparent gray gray;
+}
+TextBlockLabel.firstBlock:highlight {
+    -fx-border-color: red transparent red red;
+    -fx-border-style: dotted;
+}
+TextBlockLabel.lastBlock {
+    -fx-border-color: gray gray gray transparent;
+}
+TextBlockLabel.lastBlock:highlight {
+    -fx-border-color: red red red transparent;
+    -fx-border-style: dotted;
+}
