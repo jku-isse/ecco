@@ -18,6 +18,7 @@ include 'adapter-java'
 include 'adapter-python'
 include 'adapter-c'
 include 'adapter-cpp'
+include 'adapter-typescript'
 include 'adapter-runtime'
 include 'adapter-golang'
 include 'adapter-c'
@@ -38,6 +39,7 @@ project(':adapter-challenge').projectDir = file('adapter/challenge')
 project(':adapter-java').projectDir = file('adapter/java')
 project(':adapter-python').projectDir = file('adapter/python')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
+project(':adapter-typescript').projectDir = file('adapter/typescript')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
 project(':adapter-golang').projectDir = file('adapter/golang')
 project(':adapter-c').projectDir = file('adapter/c')
