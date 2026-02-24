@@ -15,38 +15,29 @@ javafx {
 }
 
 dependencies {
-	implementation 'org.graphstream:gs-core:2.0'
-	implementation 'org.graphstream:gs-algo:2.0'
-	implementation 'org.graphstream:gs-ui-javafx:2.0'
+    implementation 'org.graphstream:gs-core:2.0'
+    implementation 'org.graphstream:gs-algo:2.0'
+    implementation 'org.graphstream:gs-ui-javafx:2.0'
 
-	implementation project(':ecco-service')
-	implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
+    implementation project(':ecco-service')
+    implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
 
-	runtimeOnly project(':ecco-adapter-file')
-	runtimeOnly project(':ecco-adapter-text')
-	runtimeOnly project(':ecco-adapter-image')
-<<<<<<< feature/typescript-adapter
-	runtimeOnly project(':ecco-adapter-typescript')
-	runtimeOnly project(':ecco-adapter-golang')
-	runtimeOnly project(':ecco-adapter-python')
-  
-	testRuntimeOnly project(':ecco-adapter-golang')
-=======
-	runtimeOnly project(':ecco-adapter-python')
-	runtimeOnly project(':ecco-adapter-c')
-	runtimeOnly project(':ecco-adapter-lilypond')
+    runtimeOnly project(':ecco-adapter-file')
+    runtimeOnly project(':ecco-adapter-text')
+    runtimeOnly project(':ecco-adapter-image')
+    runtimeOnly project(':ecco-adapter-typescript')
+    runtimeOnly project(':ecco-adapter-python')
+    runtimeOnly project(':ecco-adapter-c')
+    runtimeOnly project(':ecco-adapter-lilypond')
 
->>>>>>> master
-	testRuntimeOnly project(':ecco-adapter-file')
-	testRuntimeOnly project(':ecco-adapter-text')
-	testRuntimeOnly project(':ecco-adapter-image')
-	testRuntimeOnly project(':ecco-adapter-challenge')
-<<<<<<< feature/typescript-adapter
-	testRuntimeOnly project(':ecco-adapter-cpp')
-	testRuntimeOnly project(':ecco-adapter-typescript')
-=======
->>>>>>> master
-	testRuntimeOnly project(':ecco-adapter-runtime')
+    testRuntimeOnly project(':ecco-adapter-file')
+    testRuntimeOnly project(':ecco-adapter-text')
+    testRuntimeOnly project(':ecco-adapter-image')
+    testRuntimeOnly project(':ecco-adapter-challenge')
+    testRuntimeOnly project(':ecco-adapter-cpp')
+    testRuntimeOnly project(':ecco-adapter-typescript')
+    testRuntimeOnly project(':ecco-adapter-runtime')
+}
 
 ospackage {
 	summary 'GUI (Graphical User Interface) for ECCO.'
