@@ -1,0 +1,16 @@
+ecco.adapter = true
+
+
+dependencies {
+    implementation project(':ecco-service')
+    implementation 'org.antlr:antlr4:4.13.1'
+    implementation 'org.antlr:antlr4-runtime:4.13.1'
+    testImplementation 'junit:junit:4.13.1'
+    testImplementation 'commons-io:commons-io:2.15.1'
+
+}
+
+// https://stackoverflow.com/questions/67265308/gradle-entry-classpath-is-a-duplicate-but-no-duplicate-handling-strategy-has-b
+jar {
+    duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+}

@@ -3,12 +3,10 @@ package at.jku.isse.ecco.tree;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.util.Trees;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,29 +19,29 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public interface Node extends Persistable {
 
 	@Override
-	public int hashCode();
+	int hashCode();
 
 	@Override
-	public boolean equals(Object obj);
+	boolean equals(Object obj);
 
 
-	public default String getNodeString() {
+	default String getNodeString() {
 		return Objects.toString(this.getArtifact());
 	}
 
 	@Override
-	public String toString();
+	String toString();
 
-
-	public default void traverse(NodeVisitor visitor) {
+	default void traverse(NodeVisitor visitor) {
 		visitor.visit(this);
-
-		for (Node child : this.getChildren()) {
+		List<? extends Node> children = this.getChildren();
+		if (children == null) { return; }
+		for (Node child : children) {
 			child.traverse(visitor);
 		}
 	}
 
-	public interface NodeVisitor {
+	interface NodeVisitor {
 		public void visit(Node node);
 	}
 
@@ -60,42 +58,50 @@ public interface Node extends Persistable {
 	 *
 	 * @return True if the node is unique, false otherwise.
 	 */
-	public boolean isAtomic();
+	boolean isAtomic();
 
 	/**
 	 * Returns the association that contains this node.
 	 *
 	 * @return The association that contains this node.
 	 */
-	public Association getContainingAssociation();
+	Association getContainingAssociation();
 
 	/**
 	 * Returns the artifact stored in the node.
 	 *
 	 * @return The stored artifact.
 	 */
-	public Artifact<?> getArtifact();
+	Artifact<?> getArtifact();
 
 	/**
 	 * Returns the parent node.
 	 *
 	 * @return The parent.
 	 */
-	public Node getParent();
+	Node getParent();
+
+	default Node getRoot(){
+		if (this.getParent() == null){
+			return this;
+		} else {
+			return this.getParent().getRoot();
+		}
+	}
 
 	/**
 	 * Returns whether this node is unique or not.
 	 *
 	 * @return True if the node is unique, false otherwise.
 	 */
-	public boolean isUnique();
+	boolean isUnique();
 
 	/**
 	 * Returns all children of this node.
 	 *
 	 * @return all children
 	 */
-	public List<? extends Node> getChildren();
+	List<? extends Node> getChildren();
 
 
 	/**
@@ -103,7 +109,7 @@ public interface Node extends Persistable {
 	 *
 	 * @return The number of artifacts contained in the tree.
 	 */
-	public default int countArtifacts() {
+	default int countArtifacts() {
 		return Trees.countArtifacts(this);
 	}
 
@@ -112,7 +118,7 @@ public interface Node extends Persistable {
 	 *
 	 * @return The depth of the tree.
 	 */
-	public default int computeDepth() {
+	default int computeDepth() {
 		return Trees.computeDepth(this);
 	}
 
@@ -121,14 +127,14 @@ public interface Node extends Persistable {
 	 *
 	 * @return A map containing the number of artifacts (value) per depth (key).
 	 */
-	public default Map<Integer, Integer> countArtifactsPerDepth() {
+	default Map<Integer, Integer> countArtifactsPerDepth() {
 		return Trees.countArtifactsPerDepth(this);
 	}
 
 	/**
 	 * See {@link at.jku.isse.ecco.util.Trees#print(Node)}
 	 */
-	public default void print() {
+	default void print() {
 		Trees.print(this);
 	}
 
@@ -140,18 +146,21 @@ public interface Node extends Persistable {
 	 *
 	 * @return The properties map of this artifact.
 	 */
-	public Map<String, Object> getProperties();
+	Map<String, Object> getProperties();
 
 
 	/**
-	 * Returns the property with the given name in form of an optional. The optional will only contain a result if the name and the type are correct. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
+	 * Returns the property with the given name in form of an optional.
+	 * The optional will only contain a result if the name and the type are correct.
+	 * It is not possible to store different types with the same name as the name is the main criterion.
+	 * Thus using the same name overrides old properties.
 	 * These properties are volatile, i.e. they are not persisted!
 	 *
 	 * @param name The name of the property that should be retrieved.
 	 * @param <T>  The type of the property.
 	 * @return An optional which contains the actual property or nothing.
 	 */
-	public default <T> Optional<T> getProperty(final String name) {
+	default <T> Optional<T> getProperty(final String name) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
 
@@ -171,13 +180,13 @@ public interface Node extends Persistable {
 
 	/**
 	 * Adds a new property. It is not possible to store different types with the same name as the name is the main criterion. Thus using the same name overrides old properties.
-	 * These properties are volatile, i.e. they are not persisted!
+	 * The property must be persistable.
 	 *
 	 * @param name     The name of the property.
 	 * @param property The object to be added as a property of the given name.
 	 * @param <T>      The type of the property to be added.
 	 */
-	public default <T> void putProperty(final String name, final T property) {
+	default <T> void putProperty(final String name, final T property) {
 		checkNotNull(name);
 		checkArgument(!name.isEmpty(), "Expected non-empty name, but was empty.");
 		checkNotNull(property);
@@ -185,12 +194,16 @@ public interface Node extends Persistable {
 		this.getProperties().put(name, property);
 	}
 
+	default void putProperties(Map<String, Object> propertyMap){
+		propertyMap.forEach(this::putProperty);
+	}
+
 	/**
 	 * Removes the property with the given name. If the name could not be found in the map it does nothing.
 	 *
 	 * @param name of the property that should be removed
 	 */
-	public default void removeProperty(String name) {
+	default void removeProperty(String name) {
 		checkNotNull(name);
 
 		this.getProperties().remove(name);
@@ -200,9 +213,12 @@ public interface Node extends Persistable {
 	/**
 	 * Private interface for node operands that are used internally and not passed outside.
 	 */
-	public interface Op extends Node {
+	interface Op extends Node {
 
-		public default void traverse(NodeVisitor visitor) {
+		/**
+		 * Traverse the subtree with this node as its root in a pre-order depth-first manner.
+		 */
+		default void traverse(NodeVisitor visitor) {
 			visitor.visit(this);
 
 			for (Node.Op child : this.getChildren()) {
@@ -210,76 +226,107 @@ public interface Node extends Persistable {
 			}
 		}
 
-		public interface NodeVisitor {
-			public void visit(Node.Op node);
+		/**
+		 * Traverse the subtree with this node as its root in a post-order depth-first manner.
+		 */
+		default void poTraverse(DfNodeVisitor visitor){
+			// necessary in case child will be removed (list must not be changed during iteration)
+			List<Node.Op> children = new LinkedList<>(this.getChildren());
+			for (Node.Op child : children) {
+				child.poTraverse(visitor);
+			}
+			visitor.dfVisit(this);
+		}
+
+		interface NodeVisitor {
+			void visit(Node.Op node);
+		}
+
+		interface DfNodeVisitor {
+			void dfVisit(Node.Op node);
 		}
 
 
-		public Association.Op getContainingAssociation();
+		Association.Op getContainingAssociation();
 
 		/**
 		 * Sets the node to be unique or not.
 		 *
 		 * @param unique Whether the node is unique or not.
 		 */
-		public void setUnique(boolean unique);
+		void setUnique(boolean unique);
 
 		@Override
-		public Artifact.Op<?> getArtifact();
+		Artifact.Op<?> getArtifact();
 
 		/**
 		 * Sets the artifact that should be stored in the node.
 		 *
 		 * @param artifact that should be stored in the node
 		 */
-		public void setArtifact(Artifact.Op<?> artifact);
+		void setArtifact(Artifact.Op<?> artifact);
 
 		/**
 		 * Returns the parent node.
 		 *
 		 * @return The parent.
 		 */
-		public Op getParent();
+		Op getParent();
 
 		/**
 		 * Sets the parent of the node.
 		 *
 		 * @param parent the parent of the node
 		 */
-		public void setParent(Node.Op parent);
+		void setParent(Node.Op parent);
+
+		/**
+		 * Removes this node as a child from the parent.
+		 */
+		default void removeParent(){
+			Node.Op parent = this.getParent();
+			if (parent == null){
+				return;
+			}
+			parent.removeChild(this);
+		}
 
 		@Override
-		public List<? extends Op> getChildren();
+		List<? extends Op> getChildren();
+
+		void setChildren(List<Op> children);
 
 		/**
 		 * Adds a new child node to this node.
 		 *
 		 * @param child Child node to be added.
 		 */
-		public void addChild(Op child);
+		void addChild(Op child);
 
 		/**
 		 * Adds a list of children to this node.
 		 *
 		 * @param children List of child nodes to be added.
 		 */
-		public void addChildren(Op... children);
+		void addChildren(Op... children);
+
+		void addChildWithoutNumberUpdate(Op child);
 
 		/**
 		 * Removes the given child from the node.
 		 *
 		 * @param child Child node that is to be removed.
 		 */
-		public void removeChild(Op child);
+		void removeChild(Op child);
 
 
 		/**
-		 * Creates a new instance of this type of node.
+		 * Creates a new instance of this type of node. The type includes the properties.
 		 *
 		 * @param artifact The artifact to set for this node.
 		 * @return The new node instance.
 		 */
-		public Op createNode(Artifact.Op<?> artifact);
+		Op createNode(Artifact.Op<?> artifact);
 
 
 		/**
@@ -287,7 +334,7 @@ public interface Node extends Persistable {
 		 *
 		 * @return The list of artifacts.
 		 */
-		public default List<? extends Artifact.Op<?>> getChildrenArtifacts() {
+		default List<? extends Artifact.Op<?>> getChildrenArtifacts() {
 			return this.getChildren().stream().map((Function<at.jku.isse.ecco.tree.Node.Op, ? extends Artifact.Op<?>>) at.jku.isse.ecco.tree.Node.Op::getArtifact).collect(Collectors.toList());
 		}
 
@@ -297,7 +344,7 @@ public interface Node extends Persistable {
 		 *
 		 * @param node The other node to slice with this one.
 		 */
-		public default void slice(Op node) {
+		default void slice(Op node) {
 			Trees.slice(this, node);
 		}
 
@@ -306,21 +353,21 @@ public interface Node extends Persistable {
 		 *
 		 * @param node The other node to merge with this one.
 		 */
-		public default void merge(Op node) {
+		default void merge(Op node) {
 			Trees.merge(this, node);
 		}
 
 		/**
 		 * See {@link at.jku.isse.ecco.util.Trees#sequence(Node.Op)}
 		 */
-		public default void sequence() {
+		default void sequence() {
 			Trees.sequence(this);
 		}
 
 		/**
 		 * See {@link at.jku.isse.ecco.util.Trees#updateArtifactReferences(Node.Op)}
 		 */
-		public default void updateArtifactReferences() {
+		default void updateArtifactReferences() {
 			Trees.updateArtifactReferences(this);
 		}
 
@@ -329,17 +376,69 @@ public interface Node extends Persistable {
 		 *
 		 * @return The tree containing the marked nodes of this tree.
 		 */
-		public default Node extractMarked() {
+		default Node extractMarked() {
 			return Trees.extractMarked(this);
 		}
 
 		/**
 		 * See {@link at.jku.isse.ecco.util.Trees#checkConsistency(Node.Op)}
 		 */
-		public default void checkConsistency() {
+		default void checkConsistency() {
 			Trees.checkConsistency(this);
 		}
 
-	}
+		default Op copyTree(boolean copyFeatureTraces){
+			Op copy = copyTreeDownwards(copyFeatureTraces);
+			if (!(this instanceof RootNode)) {
+				Op parentCopy = copyTreeUpwards(copyFeatureTraces);
+				if (!(parentCopy == null)){ parentCopy.addChild(copy); }
+			}
+			return copy;
+		}
 
+		Op copySingleNode(boolean copyFeatureTrace);
+
+		default Op copyTreeDownwards(boolean copyFeatureTraces){
+			// copy this node and all descendants
+			Op node = this.copySingleNode(copyFeatureTraces);
+			for (Op child : this.getChildren()){
+				node.addChild(child.copyTreeDownwards(copyFeatureTraces));
+			}
+			return node;
+		}
+
+		default Op copyTreeUpwards(boolean copyFeatureTraces){
+			// copy the parent of this node as well as all ancestors and siblings
+			Op parent = this.getParent();
+			if (parent == null) { return parent; }
+			Op parentCopy = parent.copySingleNode(copyFeatureTraces);
+			for (Node.Op node : parent.getChildren()){
+				if (node != this){
+					parentCopy.addChild(node.copySingleNode(copyFeatureTraces));
+				}
+			}
+			if(parent instanceof RootNode){ return parentCopy; }
+			Op grandParentCopy = parent.copyTreeUpwards(copyFeatureTraces);
+			if (!(grandParentCopy == null)){ grandParentCopy.addChild(parentCopy); }
+			return parentCopy;
+		}
+
+		default Node.Op createPathSkeleton(){
+			return Trees.createSkeletonPath(this);
+		}
+
+		Node.Op getEqualChild(Node.Op template);
+
+		FeatureTrace getFeatureTrace();
+
+		void setFeatureTrace(FeatureTrace featureTrace);
+
+		void combineProactiveTrace(Node.Op other);
+
+		void removeProactiveTrace();
+
+		int getNumberOfChildren();
+
+		void updateNumberOfChildren();
+	}
 }

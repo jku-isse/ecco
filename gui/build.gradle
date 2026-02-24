@@ -10,7 +10,7 @@ application {
 }
 
 javafx {
-	version = "16"
+	version = "17"
 	modules = [ 'javafx.controls' ]
 }
 
@@ -25,17 +25,27 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
+<<<<<<< feature/typescript-adapter
 	runtimeOnly project(':ecco-adapter-typescript')
 	runtimeOnly project(':ecco-adapter-golang')
 	runtimeOnly project(':ecco-adapter-python')
   
 	testRuntimeOnly project(':ecco-adapter-golang')
+=======
+	runtimeOnly project(':ecco-adapter-python')
+	runtimeOnly project(':ecco-adapter-c')
+	runtimeOnly project(':ecco-adapter-lilypond')
+
+>>>>>>> master
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
 	testRuntimeOnly project(':ecco-adapter-image')
 	testRuntimeOnly project(':ecco-adapter-challenge')
+<<<<<<< feature/typescript-adapter
 	testRuntimeOnly project(':ecco-adapter-cpp')
 	testRuntimeOnly project(':ecco-adapter-typescript')
+=======
+>>>>>>> master
 	testRuntimeOnly project(':ecco-adapter-runtime')
 
 ospackage {

@@ -15,6 +15,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+// todo: make tests independent of absolute paths
+
 public class ServiceTest {
 
 	private Path outputDir = Paths.get("C:\\Users\\user\\Desktop\\transfer\\output");

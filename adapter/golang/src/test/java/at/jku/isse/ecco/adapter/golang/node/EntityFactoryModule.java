@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.golang.node;
 
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import com.google.inject.AbstractModule;
 
 /**
@@ -15,6 +15,6 @@ public class EntityFactoryModule extends AbstractModule {
     protected void configure() {
         super.configure();
 
-        bind(EntityFactory.class).to(MemEntityFactory.class);
+        bind(EntityFactory.class).to(SerEntityFactory.class);
     }
 }

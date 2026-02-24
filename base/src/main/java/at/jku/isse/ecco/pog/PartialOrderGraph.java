@@ -3,10 +3,12 @@ package at.jku.isse.ecco.pog;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.Persistable;
+import at.jku.isse.ecco.util.Permutation;
 import org.eclipse.collections.api.map.primitive.IntObjectMap;
+import org.eclipse.collections.api.map.primitive.MutableIntIntMap;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
-import org.eclipse.collections.impl.factory.Maps;
 import org.eclipse.collections.impl.factory.primitive.IntObjectMaps;
+import org.eclipse.collections.impl.map.mutable.primitive.IntIntHashMap;
 
 import java.util.*;
 
@@ -14,8 +16,6 @@ public interface PartialOrderGraph extends Persistable {
 	int INITIAL_SEQUENCE_NUMBER = 1;
 	int NOT_MATCHED_SEQUENCE_NUMBER = -1;
 	int UNASSIGNED_SEQUENCE_NUMBER = -2;
-	int HEAD_SEQUENCE_NUMBER = -3;
-	int TAIL_SEQUENCE_NUMBER = -4;
 
 
 	Node getHead();
@@ -64,6 +64,71 @@ public interface PartialOrderGraph extends Persistable {
 			return nodes;
 		}
 
+		default Node.Op[][] collectNodeSequencings() {
+			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
+			stack.push(this.getHead());
+
+			List<List<Node.Op>> sequencings = new LinkedList<>();
+			this.extendNodeSequencings(new LinkedList<>(), sequencings, counters, stack);
+
+			Node.Op[][] sequencingsArray = new Node.Op[sequencings.size()][];
+			Iterator<List<Node.Op>> pathIterator = sequencings.iterator();
+			for (int i = 0; i < sequencings.size(); i++){
+				List<Node.Op> path = pathIterator.next();
+				Node.Op[] pathArray = new Node.Op[path.size()];
+				path.toArray(pathArray);
+				sequencingsArray[i] = pathArray;
+			}
+			return sequencingsArray;
+		}
+
+		default void extendNodeSequencings(List<Node.Op> nodes,
+														  List<List<Node.Op>> sequencings,
+														  Map<PartialOrderGraph.Node.Op, Integer> counters,
+														  Stack<PartialOrderGraph.Node.Op> stack){
+			while (!stack.isEmpty()) {
+				Node.Op node = stack.pop();
+				if (!node.getNext().isEmpty() && !node.getPrevious().isEmpty()) {
+					nodes.add(node);
+				}
+
+				Collection<Node.Op> nextNodes = (Collection<Node.Op>) node.getNext();
+				if (nextNodes.size() > 1){
+					Collection<List<Node.Op>> permutations = Permutation.generatePermutations(nextNodes);
+					Iterator<List<Node.Op>> iterator = permutations.iterator();
+					List<Node.Op> firstPermutation = iterator.next();
+
+					while(iterator.hasNext()){
+						List<Node.Op> permutation = iterator.next();
+						Stack<PartialOrderGraph.Node.Op> newStack = (Stack<Node.Op>) stack.clone();
+						Map<PartialOrderGraph.Node.Op, Integer> newCounters = new HashMap<>(counters);
+						List<Node.Op> newNodes = new LinkedList<>(nodes);
+						this.sequenceChildNodes(permutation, newCounters, newStack);
+						this.extendNodeSequencings(newNodes, sequencings, newCounters, newStack);
+					}
+				}
+
+				this.sequenceChildNodes(nextNodes, counters, stack);
+			}
+			sequencings.add(nodes);
+		}
+
+		default void sequenceChildNodes(Collection<Node.Op> childNodes,
+										Map<PartialOrderGraph.Node.Op, Integer> counters,
+										Stack<PartialOrderGraph.Node.Op> stack){
+			for (Node.Op child : childNodes) {
+				counters.putIfAbsent(child, 0);
+				int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+				// check if all parents of the node have been processed
+				if (counter >= child.getPrevious().size()) {
+					counters.remove(child);
+					stack.push(child);
+				}
+			}
+		}
+
+
 		Node.Op createNode(Artifact.Op<?> artifact);
 
 
@@ -94,312 +159,12 @@ public interface PartialOrderGraph extends Persistable {
 			this.alignMemoizedBacktracking(other);
 		}
 
-
-		//private
-		class Pair {
-			public State leftState;
-			public State rightState;
-
-			public Pair(State leftState, State rightState) {
-				this.leftState = leftState;
-				this.rightState = rightState;
-			}
-
-			@Override
-			public boolean equals(Object o) {
-				if (this == o) return true;
-				if (o == null || getClass() != o.getClass()) return false;
-				Pair pair = (Pair) o;
-				return Objects.equals(leftState, pair.leftState) &&
-						Objects.equals(rightState, pair.rightState);
-			}
-
-			@Override
-			public int hashCode() {
-				return Objects.hash(leftState, rightState);
-			}
-		}
-
-		//private
-		class State {
-			public Map<Node.Op, Integer> counters;
-
-			public State() {
-				this.counters = Maps.mutable.empty();
-			}
-
-			public State(State other) {
-				this.counters = Maps.mutable.empty();
-				this.counters.putAll(other.counters);
-			}
-
-			public void advance(Node.Op node) {
-				// remove node from counters
-				this.counters.remove(node);
-				// add previous of node to counters
-				for (Node.Op previousNode : node.getPrevious()) {
-					this.counters.putIfAbsent(previousNode, 0);
-					this.counters.computeIfPresent(previousNode, (op, integer) -> integer + 1);
-				}
-			}
-
-			public boolean isStart() {
-				return this.counters.keySet().size() == 1 && this.counters.keySet().iterator().next().getNext().isEmpty();
-			}
-
-			public boolean isEnd() {
-				return this.counters.keySet().size() == 1 && this.counters.keySet().iterator().next().getPrevious().isEmpty();
-			}
-
-//			public int getBreadth() {
-//				return this.counters.values().stream().reduce((i1, i2) -> i1 + i2).orElse(0);
-//			}
-
-			@Override
-			public boolean equals(Object o) {
-				if (this == o) return true;
-				if (o == null || getClass() != o.getClass()) return false;
-				State state = (State) o;
-				return Objects.equals(counters, state.counters);
-			}
-
-			@Override
-			public int hashCode() {
-
-				return Objects.hash(counters);
-			}
-		}
-
-		//private
-		class Cell {
-			public int score;
-
-			public Cell() {
-				this.score = 0;
-			}
-
-			public Cell(Cell other) {
-				this.score = other.score;
-			}
-
-			public boolean isBetterThan(Cell other) {
-				return this.score > other.score;
-			}
-		}
-
-
 		//private
 		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
-			// matrix that stores the maps of matching nodes (sequence numbers to matching right nodes)
-			Map<Pair, Cell> matrix = Maps.mutable.empty();
-
-			// recursive memoized lcs
-			State leftState = new State();
-			leftState.counters.put(this.getTail(), 0);
-			State rightState = new State();
-			rightState.counters.put(other.getTail(), 0);
-			this.alignMemoizedBacktrackingRec(leftState, rightState, matrix);
-			//System.out.println(matrix.size());
-			IntObjectMap<Node.Op> result = this.backtrackingRec(leftState, rightState, matrix);
-
+			IntObjectMap<Node.Op> result = this.iterativeLcsAlignment(other);
 			// set sequence number of matched artifacts
 			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
 			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
-		}
-
-		//private
-		Cell ZERO_CELL = new Cell();
-
-		//private
-		default Cell alignMemoizedBacktrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
-			// check if value is already memoized
-			Pair pair = new Pair(leftState, rightState);
-			Cell value = matrix.get(pair);
-			if (value == null) {
-				// compute value
-				if (leftState.isEnd() || rightState.isEnd()) {
-					// if we reached the head of either of the two pogs
-					value = this.ZERO_CELL;
-				} else if (leftState.isStart() && rightState.isStart()) {
-					// if we are at the tail of both of the two pogs
-					State newLeftState = new State(leftState);
-					for (Node.Op node : leftState.counters.keySet())
-						newLeftState.advance(node);
-					State newRightState = new State(rightState);
-					for (Node.Op node : rightState.counters.keySet())
-						newRightState.advance(node);
-					value = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
-				} else {
-					// find matches
-					boolean matchFound = false;
-					for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-						Node.Op rightNode = rightEntry.getKey();
-						if (rightEntry.getValue() == rightNode.getNext().size()) {
-							for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-								Node.Op leftNode = leftEntry.getKey();
-								if (leftEntry.getValue() == leftNode.getNext().size()) {
-									Artifact.Op leftArtifact = leftNode.getArtifact();
-									Artifact.Op rightArtifact = rightNode.getArtifact();
-//									Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
-//									if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
-									if (leftArtifact != null && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
-										State newLeftState = new State(leftState);
-										newLeftState.advance(leftNode);
-										State newRightState = new State(rightState);
-										newRightState.advance(rightNode);
-
-										Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, newRightState, matrix);
-										value = new Cell(previousValue);
-
-										value.score += 1;
-										matchFound = true;
-										break;
-
-//										Association.Op leftAssociation = null;
-//										if (leftArtifact.getContainingNode() != null)
-//											leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
-//										if (leftAssociation == null || leftAssociation.isVisible()) {
-//											// if left association was visible we increase the score by 2 and do not explore skips
-//											value.score += 2;
-//											matchFound = true;
-//											break;
-//										} else {
-//											// if left association was not visible we increase the score only by 1 and also explore skips
-//											value.score += 1;
-//										}
-									}
-								}
-							}
-						}
-						if (matchFound)
-							break;
-					}
-
-					// if there is not a single match recurse previous of all left and right nodes
-					if (!matchFound) {
-						Cell localBest = null;
-						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-							Node.Op leftNode = leftEntry.getKey();
-							if (leftEntry.getValue() == leftNode.getNext().size()) {
-								State newLeftState = new State(leftState);
-								newLeftState.advance(leftNode);
-
-								Cell previousValue = this.alignMemoizedBacktrackingRec(newLeftState, rightState, matrix);
-
-								if (localBest == null || previousValue.isBetterThan(localBest)) {
-									localBest = previousValue;
-								}
-							}
-						}
-						for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-							Node.Op rightNode = rightEntry.getKey();
-							if (rightEntry.getValue() == rightNode.getNext().size()) {
-								State newRightState = new State(rightState);
-								newRightState.advance(rightNode);
-
-								Cell previousValue = this.alignMemoizedBacktrackingRec(leftState, newRightState, matrix);
-
-								if (localBest == null || previousValue.isBetterThan(localBest)) {
-									localBest = previousValue;
-								}
-							}
-						}
-						if (value == null || localBest != null && !value.isBetterThan(localBest))
-							value = localBest;
-					}
-				}
-				matrix.put(pair, value);
-			}
-			return value;
-		}
-
-		//private
-		default MutableIntObjectMap<Node.Op> backtrackingRec(State leftState, State rightState, Map<Pair, Cell> matrix) {
-			if (leftState.isEnd() || rightState.isEnd()) {
-				// if we reached the head of either of the two pogs: do nothing
-				return IntObjectMaps.mutable.empty();
-			} else if (leftState.isStart() && rightState.isStart()) {
-				// if we are at the tail of both of the two pogs
-				State newLeftState = new State(leftState);
-				for (Node.Op node : leftState.counters.keySet())
-					newLeftState.advance(node);
-				State newRightState = new State(rightState);
-				for (Node.Op node : rightState.counters.keySet())
-					newRightState.advance(node);
-				return this.backtrackingRec(newLeftState, newRightState, matrix);
-			} else {
-				// find matches
-				for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-					Node.Op rightNode = rightEntry.getKey();
-					if (rightEntry.getValue() == rightNode.getNext().size()) {
-						for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-							Node.Op leftNode = leftEntry.getKey();
-							if (leftEntry.getValue() == leftNode.getNext().size()) {
-								Artifact.Op leftArtifact = leftNode.getArtifact();
-								Artifact.Op rightArtifact = rightNode.getArtifact();
-//								Association.Op leftAssociation = leftArtifact.getContainingNode().getContainingAssociation();
-//								if (leftArtifact != null && (leftAssociation == null || leftAssociation.isVisible()) && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
-								if (leftArtifact != null && leftArtifact.getData() != null && rightArtifact != null && leftArtifact.getData().equals(rightArtifact.getData())) {
-									State newLeftState = new State(leftState);
-									newLeftState.advance(leftNode);
-									State newRightState = new State(rightState);
-									newRightState.advance(rightNode);
-
-									Pair pair = new Pair(newLeftState, newRightState);
-									Cell value = matrix.get(pair);
-									if (value == null) {
-										System.out.println("WARNING: No cell value at this position in sparse matrix during match. This should not happen!");
-									} else {
-										MutableIntObjectMap<Node.Op> returnedAlignment = this.backtrackingRec(newLeftState, newRightState, matrix);
-										returnedAlignment.put(leftNode.getArtifact().getSequenceNumber(), rightNode);
-										return returnedAlignment;
-									}
-								}
-							}
-						}
-					}
-				}
-
-				// if there is not a single match recurse previous of all left and right nodes
-				State bestLeftState = null;
-				State bestRightState = null;
-				Cell currentBest = null;
-				for (Map.Entry<Node.Op, Integer> leftEntry : leftState.counters.entrySet()) {
-					Node.Op leftNode = leftEntry.getKey();
-					if (leftEntry.getValue() == leftNode.getNext().size()) {
-						State newLeftState = new State(leftState);
-						newLeftState.advance(leftNode);
-
-						Pair pair = new Pair(newLeftState, rightState);
-						Cell value = matrix.get(pair);
-						if (value == null) {
-							System.out.println("WARNING: No cell value at this position in sparse matrix. This should not happen!");
-						} else if (currentBest == null || value.isBetterThan(currentBest)) {
-							currentBest = value;
-							bestLeftState = newLeftState;
-							bestRightState = rightState;
-						}
-					}
-				}
-				for (Map.Entry<Node.Op, Integer> rightEntry : rightState.counters.entrySet()) {
-					Node.Op rightNode = rightEntry.getKey();
-					if (rightEntry.getValue() == rightNode.getNext().size()) {
-						State newRightState = new State(rightState);
-						newRightState.advance(rightNode);
-
-						Pair pair = new Pair(leftState, newRightState);
-						Cell value = matrix.get(pair);
-						if (value == null) {
-							System.out.println("WARNING: No cell value at this position in sparse matrix. This should not happen!");
-						} else if (currentBest == null || value.isBetterThan(currentBest)) {
-							currentBest = value;
-							bestLeftState = leftState;
-							bestRightState = newRightState;
-						}
-					}
-				}
-				return this.backtrackingRec(bestLeftState, bestRightState, matrix);
-			}
 		}
 
 
@@ -710,6 +475,14 @@ public interface PartialOrderGraph extends Persistable {
 				current = current.addChild(other.createNode(artifact));
 			}
 			current.addChild(other.getTail()); // finish at tail
+
+			if (artifacts.size() > 0) {
+				// remove link between head and tail
+				Node.Op head = other.getHead();
+				Node.Op tail = other.getTail();
+				head.removeChild(tail);
+			}
+
 			return other;
 		}
 
@@ -824,6 +597,105 @@ public interface PartialOrderGraph extends Persistable {
 			return orders;
 		}
 
+
+		default MutableIntObjectMap<Node.Op> iterativeLcsAlignment(PartialOrderGraph.Op other) {
+			Node.Op[][] thisPaths = this.collectNodeSequencings();
+			Node.Op[][] otherPaths = other.collectNodeSequencings();
+
+			Collection<MutableIntObjectMap<Node.Op>> alignmentResults = new LinkedList<>();
+
+			for (Node.Op[] thisPath : thisPaths){
+				for (Node.Op[] otherPath : otherPaths){
+					alignmentResults.add(this.alignPaths(thisPath, otherPath));
+				}
+			}
+
+			return alignmentResults.stream()
+					.max(Comparator.comparingInt(MutableIntObjectMap::size))
+					.orElseThrow(NoSuchElementException::new);
+		}
+
+
+		default MutableIntObjectMap<Node.Op> alignPaths(Node.Op[] thisNodesArray, Node.Op[] otherNodesArray){
+
+			if (thisNodesArray.length == 0 || otherNodesArray.length == 0){
+				return IntObjectMaps.mutable.empty();
+			}
+
+			// consider a matrix with the first dimension being the nodes in this pog
+			// and the second dimension being the nodes in the other pog
+			// LCS is usually performed iteratively by filling this matrix one column after the other
+			// in order to fill a column, only the last column is needed
+			// in order to not use too much memory, the other columns are therefore not saved
+			// instead, only two arrays are used.
+
+			// This array represents the last column.
+			// Every index has a mapping of sequence-numbers to nodes of the other pog (the index of the node in the array)
+			MutableIntIntMap[] lastColumn;
+			MutableIntIntMap[] currentColumn = new IntIntHashMap[otherNodesArray.length];
+			int currentColumnNumber = 0;
+
+			for (int i = 0; i < thisNodesArray.length; i++) {
+				lastColumn = currentColumn;
+				currentColumn = new IntIntHashMap[otherNodesArray.length];
+				for (int j = 0; j < otherNodesArray.length; j++) {
+					this.lcsStep(thisNodesArray, otherNodesArray, currentColumnNumber, j, lastColumn, currentColumn);
+				}
+				currentColumnNumber++;
+			}
+
+			MutableIntIntMap resultIndexMap = currentColumn[otherNodesArray.length - 1];
+			MutableIntObjectMap<Node.Op> resultMap = IntObjectMaps.mutable.empty();
+			if (resultIndexMap == null){
+				return resultMap;
+			}
+			resultIndexMap.forEachKey(key -> {
+				int value = resultIndexMap.get(key);
+				resultMap.put(key, otherNodesArray[value]);
+			});
+
+			return resultMap;
+		}
+
+		private void lcsStep(Node.Op[] thisNodesArray, Node.Op[] otherNodesArray,
+							 int thisIndex, int otherIndex,
+							 MutableIntIntMap[] lastColumn, MutableIntIntMap[] currentColumn){
+			Node.Op thisNode = thisNodesArray[thisIndex];
+			Node.Op otherNode = otherNodesArray[otherIndex];
+			Artifact<?> thisArtifact = thisNode.getArtifact();
+			Artifact<?> otherArtifact = otherNode.getArtifact();
+			if (thisArtifact != null && thisArtifact.getData() != null && otherArtifact != null && thisArtifact.getData().equals(otherArtifact.getData())){
+				this.lcsMatchStep(thisArtifact.getSequenceNumber(), otherIndex, thisIndex, lastColumn, currentColumn);
+			} else {
+				this.lcsNonMatchStep(otherIndex, thisIndex, lastColumn, currentColumn);
+			}
+		}
+
+		private void lcsMatchStep(int sequenceNumber, int otherIndex, int thisIndex, MutableIntIntMap[] lastColumn, MutableIntIntMap[] currentColumn){
+			MutableIntIntMap sequenceNumberMap;
+			if (thisIndex == 0 || otherIndex == 0){
+				sequenceNumberMap = new IntIntHashMap();
+			} else {
+				sequenceNumberMap = new IntIntHashMap(lastColumn[otherIndex - 1]);
+			}
+			sequenceNumberMap.put(sequenceNumber, otherIndex);
+			currentColumn[otherIndex] = sequenceNumberMap;
+		}
+
+		private void lcsNonMatchStep(int otherIndex, int thisIndex, MutableIntIntMap[] lastColumn, MutableIntIntMap[] currentColumn) {
+			MutableIntIntMap sequenceNumberMap;
+			MutableIntIntMap lastThisCurrentOtherMap = thisIndex == 0 ? null : lastColumn[otherIndex];
+			MutableIntIntMap currentThisLastOtherMap = otherIndex == 0 ? null : currentColumn[otherIndex - 1];
+
+			if (lastThisCurrentOtherMap == null && currentThisLastOtherMap == null) {
+				sequenceNumberMap = new IntIntHashMap();
+			} else if (currentThisLastOtherMap == null || (lastThisCurrentOtherMap != null && lastThisCurrentOtherMap.size() > currentThisLastOtherMap.size())) {
+				sequenceNumberMap = new IntIntHashMap(lastThisCurrentOtherMap);
+			} else {
+				sequenceNumberMap = new IntIntHashMap(currentThisLastOtherMap);
+			}
+			currentColumn[otherIndex] = sequenceNumberMap;
+		}
 	}
 
 
@@ -888,7 +760,47 @@ public interface PartialOrderGraph extends Persistable {
 				void visit(Node.Op node);
 			}
 
+			// compare node itself as well as previous and next nodes
+			boolean equalsCompletely(Object o);
+
 		}
 	}
 
+	// compares nodes using equals()
+	// does account for different number of occurrences in collections
+	static boolean nodeCollectionsAreEqual(Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection){
+		if (leftCollection == null && rightCollection == null){ return true; }
+		if (leftCollection == null){ return false; }
+		if (rightCollection == null){ return false; }
+		boolean allLeftNodesInBothListSameTimes = leftCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimes(n, leftCollection, rightCollection));
+		boolean allRightNodesInBothListSameTimes = rightCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimes(n, leftCollection, rightCollection));
+		return allLeftNodesInBothListSameTimes && allRightNodesInBothListSameTimes;
+	}
+
+	// Compares occurrence of node in collections. When comparing two nodes, previous and next nodes are not compared.
+	private static boolean nodeOccursSameNumberOfTimes(Node.Op node, Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection) {
+		assert node != null;
+		long numOfLeftNodes = leftCollection.stream().filter(node::equals).count();
+		long numOfRightNodes = rightCollection.stream().filter(node::equals).count();
+		return numOfLeftNodes == numOfRightNodes;
+	}
+
+	// compares nodes using equalsCompletely()
+	// does account for different number of occurrences in collections
+	static boolean nodeCollectionsAreCompletelyEqual(Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection){
+		if (leftCollection == null && rightCollection == null){ return true; }
+		if (leftCollection == null){ return false; }
+		if (rightCollection == null){ return false; }
+		boolean allLeftNodesInBothListSameTimes = leftCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimesCompletely(n, leftCollection, rightCollection));
+		boolean allRightNodesInBothListSameTimes = rightCollection.stream().allMatch(n -> PartialOrderGraph.nodeOccursSameNumberOfTimesCompletely(n, leftCollection, rightCollection));
+		return allLeftNodesInBothListSameTimes && allRightNodesInBothListSameTimes;
+	}
+
+	// Compares occurrence of node in collections. When comparing two nodes, previous and next nodes are also compared.
+	private static boolean nodeOccursSameNumberOfTimesCompletely(Node.Op node, Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection){
+		assert node != null;
+		long numOfLeftNodes = leftCollection.stream().filter(node::equalsCompletely).count();
+		long numOfRightNodes = rightCollection.stream().filter(node::equalsCompletely).count();
+		return numOfLeftNodes == numOfRightNodes;
+	}
 }
