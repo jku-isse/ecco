@@ -118,8 +118,9 @@ public class FileParser implements LilypondParser<ParceToken> {
     }
 
     public void shutdown() {
-        Gateway.getInstance().shutdown();
-        Gateway.getInstance().removeListener(gatewayListener);
+        Gateway gateway = Gateway.getInstance();
+        gateway.shutdown();
+        gateway.removeListener(gatewayListener);
     }
 
     private static GatewayServerListener getGatewayListener() {

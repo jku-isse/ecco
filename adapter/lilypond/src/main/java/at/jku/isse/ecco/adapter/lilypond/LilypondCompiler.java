@@ -7,11 +7,15 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 public class LilypondCompiler {
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
@@ -24,7 +28,7 @@ public class LilypondCompiler {
     private final Path workingDir = basePath.getParent().resolve("compiled");
     private final String inFile = "input.ly";
     private final String outName = "image";
-    private final String outFile = "image.cropped.png";
+    private static final String CROPPED_SUFFIX = ".cropped.png";
     private String lastError;
 
     public String getLastError() {
@@ -62,6 +66,7 @@ public class LilypondCompiler {
         lilycmd.directory(workingDir.toFile());
         Process process = null;
         Image image = null;
+        Instant startTime = Instant.now();
         try {
             process = lilycmd.start();
             final BufferedReader errRd = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
@@ -86,10 +91,13 @@ public class LilypondCompiler {
 
             if (exitCode == 0) {
                 LOGGER.log(Level.FINE, "Lilypond exited normal, code: {0}", exitCode);
-                if (Files.notExists(workingDir.resolve(outFile))) {
+                // Lilypond ignores the "-o" prefix if the .ly source (or an included style sheet)
+                // sets \header { output-filename = ... }, so the actual file name is not predictable.
+                Optional<Path> croppedFile = findCroppedImage(startTime.minusSeconds(2));
+                if (croppedFile.isEmpty()) {
                     lastError = "Lilypond could not create an image.";
                 } else {
-                    image = new Image(Files.newInputStream(workingDir.resolve(outFile)));
+                    image = new Image(Files.newInputStream(croppedFile.get()));
                 }
 
             } else {
@@ -106,6 +114,30 @@ public class LilypondCompiler {
         }
 
         return image;
+    }
+
+    private Optional<Path> findCroppedImage(Instant since) {
+        try (Stream<Path> files = Files.list(workingDir)) {
+            return files
+                    .filter(p -> p.getFileName().toString().endsWith(CROPPED_SUFFIX))
+                    .filter(p -> {
+                        try {
+                            return !Files.getLastModifiedTime(p).toInstant().isBefore(since);
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    })
+                    .max(Comparator.comparing(p -> {
+                        try {
+                            return Files.getLastModifiedTime(p).toInstant();
+                        } catch (IOException e) {
+                            return Instant.MIN;
+                        }
+                    }));
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "could not list working directory for compiled image", e);
+            return Optional.empty();
+        }
     }
 
     public static Path LilypondPath() {

@@ -28,16 +28,18 @@ public class LilypondModule extends AbstractModule {
                 });
         writerMultibinder.addBinding().to(LilypondWriter.class);
 
-        final Multibinder<AssociationInfoArtifactViewer> assInfoMultiBinder = Multibinder.newSetBinder(binder(),
-                new TypeLiteral<>() {
-                });
-        assInfoMultiBinder.addBinding().to(CodeViewer.class);
-
-        if (LilypondCompiler.LilypondPath() != null) {
-            final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+        if (!Boolean.getBoolean("ecco.headless")) {
+            final Multibinder<AssociationInfoArtifactViewer> assInfoMultiBinder = Multibinder.newSetBinder(binder(),
                     new TypeLiteral<>() {
                     });
-            viewerMultibinder.addBinding().to(ImageViewer.class);
+            assInfoMultiBinder.addBinding().to(CodeViewer.class);
+
+            if (LilypondCompiler.LilypondPath() != null) {
+                final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+                        new TypeLiteral<>() {
+                        });
+                viewerMultibinder.addBinding().to(ImageViewer.class);
+            }
         }
     }
 }

@@ -53,6 +53,7 @@ public class ArtifactTreeView extends BorderPane {
 			toolBar.setDisable(true);
 
 			this.artifactTreeTableView.markSelected();
+			this.artifactDetailView.markSelectedAssociations();
 
 			toolBar.setDisable(false);
 		});

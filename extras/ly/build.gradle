@@ -8,6 +8,7 @@ dependencies {
 
     implementation project(':ecco-base')
     implementation project(':ecco-service')
+    implementation project(':ecco-adapter-lilypond')
 
 }
 
@@ -18,5 +19,6 @@ repositories {
 application {
 
     mainClass = 'at.jku.isse.ecco.extras.RepositoryPopulationUtil'
+    applicationDefaultJvmArgs = ['-Decco.headless=true']
 
 }

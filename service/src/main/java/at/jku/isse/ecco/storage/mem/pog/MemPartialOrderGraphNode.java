@@ -13,11 +13,6 @@ public class MemPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	private transient Collection<PartialOrderGraph.Node.Op> previous = new ArrayList<>();
 	private transient Collection<PartialOrderGraph.Node.Op> next = new ArrayList<>();
 
-	// only used for iterative serialization in order not to overflow stack
-	private Collection<Integer> previousSequenceNumbers = new ArrayList<>();
-	// only used for iterative serialization in order not to overflow stack
-	private Collection<Integer> nextSequenceNumbers = new ArrayList<>();
-
 	private Artifact.Op<?> artifact;
 
 	public MemPartialOrderGraphNode(Artifact.Op<?> artifact) {
@@ -28,34 +23,6 @@ public class MemPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	public void init(){
 		if (this.next == null){ this.next = new ArrayList<>(); }
 		if (this.previous == null){ this.previous = new ArrayList<>(); }
-	}
-
-	public void prepareSerialization(){
-		this.nextSequenceNumbers = new ArrayList<>();
-		this.previousSequenceNumbers = new ArrayList<>();
-		// fill integer collections, that will be serialized
-		this.previous.forEach(n -> {
-			Artifact<?> artifact = n.getArtifact();
-			if (artifact != null){
-				// head and tail will be put into deserialized node in separate step
-				this.previousSequenceNumbers.add(artifact.getSequenceNumber());
-			}
-		});
-
-		this.next.forEach(n -> {
-			Artifact<?> artifact = n.getArtifact();
-			if (artifact != null){
-				// head and tail will be put into deserialized node in separate step
-				this.nextSequenceNumbers.add(artifact.getSequenceNumber());
-			}
-		});
-	}
-
-	public void deserializeCollections(Map<Integer, MemPartialOrderGraphNode> sequenceNumberNodeMap){
-		if (this.next == null) { this.next = new ArrayList<>(); }
-		if (this.previous == null) { this.previous = new ArrayList<>(); }
-		this.nextSequenceNumbers.forEach(i -> this.next.add(sequenceNumberNodeMap.get(i)));
-		this.previousSequenceNumbers.forEach(i -> this.previous.add(sequenceNumberNodeMap.get(i)));
 	}
 
 	public void addPrevious(PartialOrderGraph.Node.Op node){

@@ -14,6 +14,7 @@ import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.NodeWrapper> {
 
@@ -157,10 +158,20 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 
 	public void setRootNode(RootNode rootNode) {
-		if (rootNode == null)
+		if (rootNode == null) {
 			this.setRoot(null);
-		else
-			this.setRoot(new NodeTreeItem(new NodeWrapper(rootNode)));
+		} else {
+			TreeItem<NodeWrapper> root = new NodeTreeItem(new NodeWrapper(rootNode));
+			this.setRoot(root);
+			expandAll(root);
+		}
+	}
+
+	private void expandAll(TreeItem<NodeWrapper> item) {
+		item.setExpanded(true);
+		for (TreeItem<NodeWrapper> child : item.getChildren()) {
+			expandAll(child);
+		}
 	}
 
 	public void markSelected() {
@@ -169,6 +180,32 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 			if (artifact != null) {
 				artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, true);
 			}
+		}
+
+		if (this.associationInfos != null && this.getRoot() != null) {
+			Set<Association> selectedAssociations = this.associationInfos.stream()
+					.filter(AssociationInfoImpl::isSelected)
+					.map(AssociationInfoImpl::getAssociation)
+					.collect(Collectors.toSet());
+
+			if (!selectedAssociations.isEmpty()) {
+				this.markAssociationArtifacts(this.getRoot(), selectedAssociations);
+			}
+		}
+
+		this.refresh();
+	}
+
+	private void markAssociationArtifacts(TreeItem<NodeWrapper> item, Set<Association> selectedAssociations) {
+		Artifact<?> artifact = item.getValue().getArtifact();
+		if (artifact != null && artifact.getContainingNode() != null) {
+			Association association = artifact.getContainingNode().getContainingAssociation();
+			if (association != null && selectedAssociations.contains(association)) {
+				artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, true);
+			}
+		}
+		for (TreeItem<NodeWrapper> child : item.getChildren()) {
+			this.markAssociationArtifacts(child, selectedAssociations);
 		}
 	}
 

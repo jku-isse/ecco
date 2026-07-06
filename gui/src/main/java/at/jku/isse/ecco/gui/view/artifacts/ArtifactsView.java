@@ -40,13 +40,16 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
     private final ObservableList<AssociationInfoImpl> associationsData = FXCollections.observableArrayList();
 
+    private final ToolBar toolBar;
+    private final ArtifactTreeView artifactTreeView;
+
 
     public ArtifactsView(final EccoService service) {
         this.service = service;
 
 
         // toolbar
-        ToolBar toolBar = new ToolBar();
+        toolBar = new ToolBar();
         this.setTop(toolBar);
 
         Button refreshButton = new Button("Refresh");
@@ -180,7 +183,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         associationsTable.setItems(sortedData);
 
 
-        ArtifactTreeView artifactTreeView = new ArtifactTreeView(service);
+        artifactTreeView = new ArtifactTreeView(service);
 
         // split panes
         SplitPane horizontalSplitPane = new SplitPane();
@@ -190,25 +193,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         this.setCenter(horizontalSplitPane);
 
 
-        refreshButton.setOnAction(e -> {
-            toolBar.setDisable(true);
-
-            artifactTreeView.setRootNode(null);
-
-            Thread th =  new Thread(() -> {
-                Collection<? extends Association> associations = ArtifactsView.this.service.getRepository().getAssociations();
-                Platform.runLater(() -> {
-                    ArtifactsView.this.associationsData.clear();
-                    for (Association a : associations) {
-                        ArtifactsView.this.associationsData.add(new AssociationInfoImpl(a));
-                    }
-                    artifactTreeView.setAssociationInfo(ArtifactsView.this.associationsData);
-
-                    toolBar.setDisable(false);
-                });
-            });
-            th.start();
-        });
+        refreshButton.setOnAction(e -> refresh());
 
         composeSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
@@ -367,10 +352,32 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         }
     }
 
+    private void refresh() {
+        Platform.runLater(() -> {
+            toolBar.setDisable(true);
+            artifactTreeView.setRootNode(null);
+        });
+
+        Thread th = new Thread(() -> {
+            Collection<? extends Association> associations = this.service.getRepository().getAssociations();
+            Platform.runLater(() -> {
+                this.associationsData.clear();
+                for (Association a : associations) {
+                    this.associationsData.add(new AssociationInfoImpl(a));
+                }
+                artifactTreeView.setAssociationInfo(this.associationsData);
+
+                toolBar.setDisable(false);
+            });
+        });
+        th.start();
+    }
+
     @Override
     public void statusChangedEvent(EccoService service) {
         if (service.isInitialized()) {
             Platform.runLater(() -> this.setDisable(false));
+            refresh();
         } else {
             Platform.runLater(() -> this.setDisable(true));
         }
