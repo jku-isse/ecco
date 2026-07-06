@@ -1587,6 +1587,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
                     "ms, .transactionStrategy.end(): " + endStrategyTime + "ms");
 
+            this.fireStatusChangedEvent();
+
             return commit;
         } catch (Exception e) {
             this.transactionStrategy.rollback();
