@@ -9,12 +9,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class LilypondCompiler {
@@ -114,6 +118,99 @@ public class LilypondCompiler {
         }
 
         return image;
+    }
+
+    /**
+     * Compiles the lilypond code to SVG, one file per page.
+     *
+     * @return The resulting SVG page files, ordered by page number, or an empty list on error
+     * (see {@link #getLastError()}).
+     */
+    public List<Path> compileSVG() {
+        lastError = null;
+        ProcessBuilder lilycmd = new ProcessBuilder(lilypond_exe.toString(), "-fsvg");
+        for (Path p : lilypond_searchPaths) {
+            lilycmd.command().add("-I");
+            lilycmd.command().add(p.toString());
+        }
+        lilycmd.command().add("-o");
+        lilycmd.command().add(workingDir.resolve(outName).toString()); // output
+        lilycmd.command().add(workingDir.resolve(inFile).toString()); // input
+        lilycmd.directory(workingDir.toFile());
+        Process process = null;
+        List<Path> pages = List.of();
+        Instant startTime = Instant.now();
+        try {
+            process = lilycmd.start();
+            final BufferedReader errRd = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
+            StringJoiner sjErr = new StringJoiner(System.getProperty("line.separator"));
+            errRd.lines().iterator().forEachRemaining(sjErr::add);
+
+            if (LOGGER.isLoggable(Level.FINE)) {
+                final BufferedReader stdRd = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
+                StringJoiner sjStd = new StringJoiner(System.getProperty("line.separator"));
+                stdRd.lines().iterator().forEachRemaining(sjStd::add);
+
+                if (sjStd.length() > 0) LOGGER.fine(sjStd.toString());
+            }
+
+            int exitCode = -1;
+            if (process.waitFor(15, TimeUnit.SECONDS)) {
+                exitCode = process.exitValue();
+            } else {
+                lastError = "compiling lilypond file to svg timed out after 15 seconds";
+                LOGGER.fine(lastError);
+            }
+
+            if (exitCode == 0) {
+                LOGGER.log(Level.FINE, "Lilypond exited normal, code: {0}", exitCode);
+                // Lilypond ignores the "-o" prefix if the .ly source (or an included style sheet)
+                // sets \header { output-filename = ... }, so the actual file name is not predictable.
+                pages = findSvgPages(startTime.minusSeconds(2));
+                if (pages.isEmpty()) {
+                    lastError = "Lilypond could not create an SVG.";
+                }
+
+            } else {
+                lastError = sjErr.toString();
+                LOGGER.log(Level.FINE, "Lilypond exited with code {0}:\n{1}", new Object[] { exitCode, lastError });
+            }
+
+        } catch (IOException | InterruptedException e) {
+            lastError = e.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, e);
+
+        } finally {
+            if (process != null) process.destroy();
+        }
+
+        return pages;
+    }
+
+    private static final Pattern SVG_PAGE_NUMBER_PATTERN = Pattern.compile("-(\\d+)\\.svg$");
+
+    private List<Path> findSvgPages(Instant since) {
+        try (Stream<Path> files = Files.list(workingDir)) {
+            return files
+                    .filter(p -> p.getFileName().toString().endsWith(".svg"))
+                    .filter(p -> {
+                        try {
+                            return !Files.getLastModifiedTime(p).toInstant().isBefore(since);
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    })
+                    .sorted(Comparator.comparingInt(LilypondCompiler::extractPageNumber))
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "could not list working directory for compiled svg", e);
+            return List.of();
+        }
+    }
+
+    private static int extractPageNumber(Path svgFile) {
+        Matcher m = SVG_PAGE_NUMBER_PATTERN.matcher(svgFile.getFileName().toString());
+        return m.find() ? Integer.parseInt(m.group(1)) : 1;
     }
 
     private Optional<Path> findCroppedImage(Instant since) {

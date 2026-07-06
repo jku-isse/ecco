@@ -6,7 +6,7 @@ ecco.adapter = true
 
 javafx {
 	version = "16"
-	modules = [ 'javafx.controls' ]
+	modules = [ 'javafx.controls', 'javafx.web' ]
 }
 
 sourceSets {
