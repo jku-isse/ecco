@@ -16,6 +16,7 @@ public class NodeTextBlock {
     private final Node node;
     private final Association association;
     private final String text;
+    private final LilypondSyntaxHighlighter.Style style;
     private Group partOf;
     private boolean isFirst = true;
     private boolean isLast = true;
@@ -35,6 +36,7 @@ public class NodeTextBlock {
         association = node.getArtifact().getContainingNode() != null
                 ? node.getArtifact().getContainingNode().getContainingAssociation()
                 : null;
+        this.style = LilypondSyntaxHighlighter.styleFor(tad.getAction());
 
         String text = tad.getText();
         String[] nodeLines = text.split("\\n", -1);
@@ -48,19 +50,20 @@ public class NodeTextBlock {
             partOf = new Group(this);
 
             for (int i=1; i<nodeLines.length; i++) {
-                partOf.add(new NodeTextBlock(node, backgroundColor, association, nodeLines[i], partOf));
+                partOf.add(new NodeTextBlock(node, backgroundColor, association, nodeLines[i], partOf, this.style));
             }
             partOf.blocks.get(partOf.size()-1).setLast();
         }
     }
 
-    private NodeTextBlock(Node node, Color bgColor, Association association, String text, Group group) {
+    private NodeTextBlock(Node node, Color bgColor, Association association, String text, Group group, LilypondSyntaxHighlighter.Style style) {
         this.node = node;
         isFirst = false;
         isLast = false;
         this.association = association;
         this.text = text;
         this.partOf = group;
+        this.style = style;
 
         setupListeners();
         this.backgroundColor.set(bgColor);
@@ -100,6 +103,10 @@ public class NodeTextBlock {
 
     public String getText() {
         return text;
+    }
+
+    LilypondSyntaxHighlighter.Style getStyle() {
+        return style;
     }
 
     public int numLines() {

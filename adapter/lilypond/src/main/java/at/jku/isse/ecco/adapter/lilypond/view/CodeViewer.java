@@ -123,6 +123,13 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 			l.highlightedProperty().set(ntb.highlightedProperty().getValue());
 			l.highlightedProperty().bind(ntb.highlightedProperty());
 
+			LilypondSyntaxHighlighter.Style style = ntb.getStyle();
+			l.setTextFill(style.color());
+			if (style.bold() || style.italic()) {
+				l.setStyle("-fx-font-weight: " + (style.bold() ? "bold" : "normal") + ";"
+						+ "-fx-font-style: " + (style.italic() ? "italic" : "normal") + ";");
+			}
+
 			box.getChildren().add(l);
 		}
 		return box;

@@ -12,7 +12,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -30,12 +33,20 @@ import java.util.Set;
  */
 public class SVGViewer extends BorderPane implements ArtifactViewer {
 
+	private static final double MIN_ZOOM = 0.25;
+	private static final double MAX_ZOOM = 4.0;
+	private static final double ZOOM_STEP = 1.15;
+
 	private final LilypondStringWriter textWriter = new LilypondStringWriter();
 
 	private final WebView webView = new WebView();
 	private final Label pageLabel = new Label();
 	private final Button previousButton = new Button("Previous");
 	private final Button nextButton = new Button("Next");
+	private final Label zoomLabel = new Label();
+	private final Button zoomOutButton = new Button("−");
+	private final Button zoomInButton = new Button("+");
+	private final Button zoomResetButton = new Button("Reset Zoom");
 	private final HBox navigationBar;
 
 	private List<Path> pages = List.of();
@@ -45,9 +56,30 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 		previousButton.setOnAction(e -> showPage(currentPage - 1));
 		nextButton.setOnAction(e -> showPage(currentPage + 1));
 
-		navigationBar = new HBox(10, previousButton, pageLabel, nextButton);
+		zoomOutButton.setOnAction(e -> setZoom(webView.getZoom() / ZOOM_STEP));
+		zoomInButton.setOnAction(e -> setZoom(webView.getZoom() * ZOOM_STEP));
+		zoomResetButton.setOnAction(e -> setZoom(1.0));
+		setZoom(1.0);
+
+		// Ctrl+scroll to zoom; intercepted as a filter since WebView otherwise consumes the
+		// scroll event itself for its own content scrolling.
+		webView.addEventFilter(ScrollEvent.SCROLL, event -> {
+			if (event.isControlDown()) {
+				setZoom(webView.getZoom() * Math.pow(ZOOM_STEP, event.getDeltaY() > 0 ? 1 : -1));
+				event.consume();
+			}
+		});
+
+		navigationBar = new HBox(10, previousButton, pageLabel, nextButton,
+				new Separator(), zoomOutButton, zoomLabel, zoomInButton, zoomResetButton);
 		navigationBar.setAlignment(Pos.CENTER);
 		navigationBar.setPadding(new Insets(5));
+	}
+
+	private void setZoom(double zoom) {
+		zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+		webView.setZoom(zoom);
+		zoomLabel.setText(Math.round(zoom * 100) + "%");
 	}
 
 	@Override
@@ -57,6 +89,10 @@ public class SVGViewer extends BorderPane implements ArtifactViewer {
 
 		if (node.getArtifact().getData() instanceof PluginArtifactData) {
 			setCursor(Cursor.WAIT);
+			this.setTop(null);
+			this.setCenter(new ProgressIndicator());
+			this.setBackground(Background.EMPTY);
+
 			LilypondCompiler lilyC = new LilypondCompiler(this.textWriter.write(nodes)[0]);
 
 			Thread th = new Thread(() -> {
