@@ -1,4 +1,13 @@
+plugins {
+	id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
 ecco.adapter = true
+
+javafx {
+	version = "21"
+	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics']
+}
 
 dependencies {
 	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.8'

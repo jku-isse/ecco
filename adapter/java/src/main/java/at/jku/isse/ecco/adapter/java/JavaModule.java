@@ -2,6 +2,8 @@ package at.jku.isse.ecco.adapter.java;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
+import at.jku.isse.ecco.adapter.java.view.JavaCodeViewer;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
@@ -23,6 +25,13 @@ public class JavaModule extends AbstractModule {
 				new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {
 				});
 		writerMultibinder.addBinding().to(JavaWriter.class);
+
+		if (!Boolean.getBoolean("ecco.headless")) {
+			final Multibinder<AssociationInfoArtifactViewer> assInfoMultiBinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<>() {
+					});
+			assInfoMultiBinder.addBinding().to(JavaCodeViewer.class);
+		}
 	}
 
 }

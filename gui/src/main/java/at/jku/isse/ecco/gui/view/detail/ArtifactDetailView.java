@@ -55,7 +55,12 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	}
 
 	public void showTree(Node node) {
-		assert node != null;
+		if (node == null) {
+			// e.g. no node in this tree has a registered ArtifactViewer (a plain commit with no
+			// adapter-specific viewer, such as pure Java/text content)
+			this.reset();
+			return;
+		}
 
 		updateInfoTab(node);
 		updatePartialOrderGraphTab(node);
@@ -200,8 +205,10 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		for (Node n : node.getChildren()) {
 			if (artifactDetailView.getArtifactViewers(n).size() > 0) {
 				return n;
-			} else {
-				return findNodeWithArtifactViewerRec(artifactDetailView, n);
+			}
+			Node found = findNodeWithArtifactViewerRec(artifactDetailView, n);
+			if (found != null) {
+				return found;
 			}
 		}
 		return null;
