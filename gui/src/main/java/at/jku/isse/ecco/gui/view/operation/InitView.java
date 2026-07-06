@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.RecentRepositories;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
@@ -101,7 +102,10 @@ public class InitView extends OperationView {
 			}
 		};
 		task.setOnFailed(event -> stepError("Error initializing repository.", task.getException()));
-		task.setOnSucceeded(event -> stepSuccess("Repository was successfully initialized."));
+		task.setOnSucceeded(event -> {
+			RecentRepositories.addRecentRepository(service.getRepositoryDir());
+			stepSuccess("Repository was successfully initialized.");
+		});
 		initButton.setOnAction(event -> {
 			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
 			this.service.setRepositoryDir(repositoryDir);

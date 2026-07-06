@@ -1,10 +1,13 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.RecentRepositories;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextField;
@@ -18,6 +21,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 public class OpenView extends OperationView {
 
@@ -60,17 +64,38 @@ public class OpenView extends OperationView {
 
 		int row = 0;
 
+		TextField repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
+		repositoryDirTextField.setDisable(false);
+
+		List<Path> recentRepositories = RecentRepositories.getRecentRepositories();
+		if (!recentRepositories.isEmpty()) {
+			Label recentLabel = new Label("Recent: ");
+			gridPane.add(recentLabel, 0, row, 1, 1);
+
+			ComboBox<Path> recentComboBox = new ComboBox<>(FXCollections.observableArrayList(recentRepositories));
+			recentComboBox.setMaxWidth(Double.MAX_VALUE);
+			recentComboBox.setPromptText("Select a recently opened repository...");
+			recentComboBox.setOnAction(event -> {
+				Path selected = recentComboBox.getValue();
+				if (selected != null) {
+					repositoryDirTextField.setText(selected.toString());
+				}
+			});
+			recentLabel.setLabelFor(recentComboBox);
+			gridPane.add(recentComboBox, 1, row, 1, 1);
+			row++;
+		}
+
 		Label repositoryDirLabel = new Label("Repository Directory: ");
 		gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 
-		TextField repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
-		repositoryDirTextField.setDisable(false);
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
 		gridPane.add(repositoryDirTextField, 1, row, 1, 1);
 
 		Button selectRepositoryDirectoryButton = new Button("...");
 		gridPane.add(selectRepositoryDirectoryButton, 2, row, 1, 1);
 		row++;
+
 		final ProgressBar pb = new ProgressBar();
 		pb.setMaxWidth(Double.MAX_VALUE);
 		pb.setVisible(false);
@@ -103,7 +128,10 @@ public class OpenView extends OperationView {
 			}
 		};
 		task.setOnFailed(event -> stepError("Error opening repository.", task.getException()));
-		task.setOnSucceeded(event -> stepSuccess("Repository was successfully opened."));
+		task.setOnSucceeded(event -> {
+			RecentRepositories.addRecentRepository(service.getRepositoryDir());
+			stepSuccess("Repository was successfully opened.");
+		});
 		openButton.setOnAction(event -> {
 			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
 			this.service.setRepositoryDir(repositoryDir);
