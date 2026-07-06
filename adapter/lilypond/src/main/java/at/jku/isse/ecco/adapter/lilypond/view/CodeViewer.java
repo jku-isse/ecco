@@ -315,14 +315,17 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		for (NodeTextBlock[] blocks : codeLines) {
 			for (NodeTextBlock ntb : blocks) {
 				Association ass = ntb.getAssociation();
-				boolean selected = false;
+				Color color = Color.WHITE;
 				if (ass != null) {
 					AssociationInfo ai = associationInfos.get(ass.getId());
-					if (ai != null) {
-						selected = Boolean.TRUE.equals(ai.getPropertyValue("selected"));
+					if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
+						Object val = ai.getPropertyValue("color");
+						if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
+							color = col;
+						}
 					}
 				}
-				ntb.setHighlighted(selected);
+				ntb.backgroundColor().set(color);
 			}
 		}
 		listView.refresh();

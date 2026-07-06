@@ -19,4 +19,4 @@ eval splitJvmOpts $JAVA_OPTS
 
 scriptDir=`dirname $0`
 
-exec "$JAVACMD" "${JVM_OPTS[@]}" -classpath "$scriptDir/*:$CLASSPATH" at.jku.isse.ecco.gui.EccoGui "$@"
+exec "$JAVACMD" "${JVM_OPTS[@]}" -classpath "$scriptDir/*:$CLASSPATH" at.jku.isse.ecco.gui.Launcher "$@"

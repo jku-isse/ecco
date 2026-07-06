@@ -5,7 +5,7 @@ plugins {
 }
 
 application {
-	mainClassName = "at.jku.isse.ecco.gui.EccoGui"
+	mainClassName = "at.jku.isse.ecco.gui.Launcher"
 	applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 }
 
@@ -35,6 +35,32 @@ dependencies {
 	testRuntimeOnly project(':ecco-adapter-challenge')
 	testRuntimeOnly project(':ecco-adapter-cpp')
 	testRuntimeOnly project(':ecco-adapter-runtime')
+}
+
+tasks.register('jpackageApp', Exec) {
+	group = 'distribution'
+	description = 'Packages the ECCO GUI as a native application image (e.g. ECCO.app on macOS) via jpackage, so the OS shows "ECCO" instead of "java" as the application name.'
+	dependsOn tasks.named('installDist')
+
+	def jpackageExe = org.gradle.internal.jvm.Jvm.current().getExecutable('jpackage')
+	def libDir = layout.buildDirectory.dir("install/${project.name}/lib")
+	def destDir = layout.buildDirectory.dir('jpackage')
+
+	doFirst {
+		project.delete(destDir.get())
+	}
+
+	commandLine(
+			jpackageExe,
+			'--type', 'app-image',
+			'--name', 'ECCO',
+			'--input', libDir.get().asFile,
+			'--main-jar', tasks.named('jar').get().archiveFileName.get(),
+			'--main-class', 'at.jku.isse.ecco.gui.Launcher',
+			'--dest', destDir.get().asFile,
+			'--java-options', '-Xss1024m',
+			'--java-options', '-Xmx8g',
+	)
 }
 
 ospackage {
