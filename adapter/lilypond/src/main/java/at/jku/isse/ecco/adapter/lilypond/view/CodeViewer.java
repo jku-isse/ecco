@@ -124,11 +124,13 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 			l.highlightedProperty().bind(ntb.highlightedProperty());
 
 			LilypondSyntaxHighlighter.Style style = ntb.getStyle();
-			l.setTextFill(style.color());
-			if (style.bold() || style.italic()) {
-				l.setStyle("-fx-font-weight: " + (style.bold() ? "bold" : "normal") + ";"
-						+ "-fx-font-style: " + (style.italic() ? "italic" : "normal") + ";");
+			StringBuilder css = new StringBuilder();
+			if (style.color() != null) {
+				css.append("-fx-text-fill: ").append(toCssRgb(style.color())).append(";");
 			}
+			css.append("-fx-font-weight: ").append(style.bold() ? "bold" : "normal").append(";");
+			css.append("-fx-font-style: ").append(style.italic() ? "italic" : "normal").append(";");
+			l.setStyle(css.toString());
 
 			box.getChildren().add(l);
 		}
@@ -280,6 +282,13 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		}
 
 		return line;
+	}
+
+	private static String toCssRgb(Color color) {
+		return String.format("rgb(%d,%d,%d)",
+				(int) Math.round(color.getRed() * 255),
+				(int) Math.round(color.getGreen() * 255),
+				(int) Math.round(color.getBlue() * 255));
 	}
 
 	private void showAssociationInfo(Association a) {
