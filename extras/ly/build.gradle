@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+dependencies {
+    implementation fileTree(dir: 'lib', include: '*.jar')
+
+    implementation project(':ecco-base')
+    implementation project(':ecco-service')
+
+}
+
+repositories {
+    mavenCentral()
+}
+
+application {
+
+    mainClass = 'at.jku.isse.ecco.extras.RepositoryPopulationUtil'
+
+}
