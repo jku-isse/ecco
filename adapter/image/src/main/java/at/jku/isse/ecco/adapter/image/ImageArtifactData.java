@@ -3,7 +3,6 @@ package at.jku.isse.ecco.adapter.image;
 import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 public class ImageArtifactData implements ArtifactData {
 
@@ -43,7 +42,10 @@ public class ImageArtifactData implements ArtifactData {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(values);
+		// must stay content-based and consistent with equals() above: Objects.hash(values) would
+		// hash the int[] by identity (arrays don't override hashCode()), breaking the
+		// hashCode/equals contract and silently defeating any hash-based artifact lookup
+		return Arrays.hashCode(values);
 	}
 
 	@Override
