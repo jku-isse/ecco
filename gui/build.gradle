@@ -25,16 +25,26 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
-	runtimeOnly project(':ecco-adapter-python')
+	// not enabled by default (see AdapterPreferences.DEFAULT_DISABLED_PLUGIN_IDS), but present on
+	// the classpath so they show up as options in the adapter Preferences dialog
+	runtimeOnly project(':ecco-adapter-challenge')
+	runtimeOnly project(':ecco-adapter-java')
 	runtimeOnly project(':ecco-adapter-c')
+	runtimeOnly project(':ecco-adapter-cpp')
+	runtimeOnly project(':ecco-adapter-runtime')
+	runtimeOnly project(':ecco-adapter-golang')
+	//runtimeOnly project(':ecco-adapter-python') // adapter/python has no sources; not buildable
 
-	testRuntimeOnly project(':ecco-adapter-golang')
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
 	testRuntimeOnly project(':ecco-adapter-image')
 	testRuntimeOnly project(':ecco-adapter-challenge')
+	testRuntimeOnly project(':ecco-adapter-java')
+	testRuntimeOnly project(':ecco-adapter-c')
 	testRuntimeOnly project(':ecco-adapter-cpp')
 	testRuntimeOnly project(':ecco-adapter-runtime')
+	testRuntimeOnly project(':ecco-adapter-golang')
+	//testRuntimeOnly project(':ecco-adapter-python') // adapter/python has no sources; not buildable
 }
 
 tasks.register('jpackageApp', Exec) {

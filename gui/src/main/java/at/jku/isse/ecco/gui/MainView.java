@@ -37,6 +37,8 @@ public class MainView extends BorderPane implements EccoListener {
 
 	private final Button serverButton = new Button("Server");
 
+	private final Button preferencesButton = new Button("Preferences");
+
 	public MainView(EccoService eccoService) {
 		this.eccoService = eccoService;
 
@@ -53,9 +55,11 @@ public class MainView extends BorderPane implements EccoListener {
 
 		this.serverButton.setOnAction(event -> this.openDialog("Server", new ServerView(eccoService)));
 
+		this.preferencesButton.setOnAction(event -> this.openDialog("Preferences", new PreferencesView()));
+
 		// toolbar
 		ToolBar toolBar = new ToolBar();
-		toolBar.getItems().addAll(openButton, initButton, new Separator(), closeButton, new Separator(), commitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), serverButton, new Separator());
+		toolBar.getItems().addAll(openButton, initButton, new Separator(), closeButton, new Separator(), commitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), serverButton, new Separator(), preferencesButton, new Separator());
 		this.setTop(toolBar);
 
 
