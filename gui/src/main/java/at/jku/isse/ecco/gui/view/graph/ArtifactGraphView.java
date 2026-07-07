@@ -228,7 +228,14 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		}
 
 		setCenter(null);
-		viewer.close();
+		try {
+			viewer.close();
+		} catch (Exception e) {
+			// GraphStream's FxGraphRenderer can NPE while tearing down a view that was
+			// created but never rendered yet (e.g. closed again in quick succession by
+			// back-to-back status-changed events during a batch commit) - harmless here
+			// since the viewer/view are discarded immediately after anyway.
+		}
 		view = null;
 		viewer = null;
 	}
