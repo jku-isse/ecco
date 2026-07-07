@@ -3,7 +3,7 @@ ecco.adapter = true
 dependencies {
 	implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.8'
 	implementation 'com.google.guava:guava:33.2.1-jre'
-	implementation 'org.logicng:logicng:2.4.0'
+	implementation 'org.logicng:logicng:2.6.0'
 
 	implementation project(':ecco-service')
 
