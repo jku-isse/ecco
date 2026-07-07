@@ -59,7 +59,6 @@ public class EccoGui extends Application implements EccoListener {
 
 
 		primaryStage.setScene(scene);
-		primaryStage.setMaximized(true);
 		primaryStage.show();
 	}
 

@@ -6,7 +6,6 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
-import javafx.beans.binding.When;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -16,16 +15,27 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 public class AssociationsView extends BorderPane implements EccoListener {
+
+	private static final double BAR_WIDTH = 60;
+	private static final double BAR_HEIGHT = 10;
 
 	private EccoService service;
 
 	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
+
+	private int maxNumArtifacts = 1;
 
 
 	public AssociationsView(EccoService service) {
@@ -63,15 +73,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0));
 		});
 
-		toolBar.getItems().add(new Separator());
-
-		CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
-		toolBar.getItems().add(useSimplifiedLabelsCheckBox);
-
-
-		toolBar.getItems().add(new Separator());
-
-
 		SplitPane splitPane = new SplitPane();
 		this.setCenter(splitPane);
 
@@ -83,7 +84,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
-		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
+		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Simplified Condition");
 		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
@@ -91,17 +92,52 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()));
 		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
+		numArtifactsAssociationsCol.setCellFactory(col -> new TableCell<AssociationInfo, Integer>() {
+			private final Region track = new Region();
+			private final Region fill = new Region();
+			private final Label valueLabel = new Label();
+			private final StackPane bar = new StackPane(track, fill);
+			private final HBox content = new HBox(6, bar, valueLabel);
+
+			{
+				track.setPrefSize(BAR_WIDTH, BAR_HEIGHT);
+				track.setMaxSize(BAR_WIDTH, BAR_HEIGHT);
+				track.setStyle("-fx-background-color: #e1e0d9; -fx-background-radius: 2;");
+
+				fill.setPrefHeight(BAR_HEIGHT);
+				fill.setMaxHeight(BAR_HEIGHT);
+				fill.setStyle("-fx-background-color: #2a78d6; -fx-background-radius: 2;");
+
+				bar.setAlignment(Pos.CENTER_LEFT);
+				content.setAlignment(Pos.CENTER_LEFT);
+			}
+
+			@Override
+			protected void updateItem(Integer value, boolean empty) {
+				super.updateItem(value, empty);
+
+				if (empty || value == null) {
+					setGraphic(null);
+				} else {
+					double ratio = AssociationsView.this.maxNumArtifacts <= 0 ? 0 : Math.min(1.0, value / (double) AssociationsView.this.maxNumArtifacts);
+					fill.setPrefWidth(BAR_WIDTH * ratio);
+					fill.setMaxWidth(BAR_WIDTH * ratio);
+					valueLabel.setText(String.valueOf(value));
+					setGraphic(content);
+				}
+			}
+		});
+
+		numArtifactsAssociationsCol.setSortType(TableColumn.SortType.DESCENDING);
+		associationsTable.getSortOrder().add(numArtifactsAssociationsCol);
 
 
 		SortedList<AssociationInfo> sortedData = new SortedList<>(filteredData);
 		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
 		associationsTable.setItems(sortedData);
-
-
-		useSimplifiedLabelsCheckBox.setSelected(true);
 
 
 		// details view
@@ -122,7 +158,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 
 		showEmptyAssociationsCheckBox.setSelected(false);
-		useSimplifiedLabelsCheckBox.setSelected(true);
 
 		Platform.runLater(() -> statusChangedEvent(service));
 
@@ -131,10 +166,17 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 
 	private void updateAssociations(Collection<? extends Association> associations) {
-		AssociationsView.this.associationsData.clear();
+		List<AssociationInfo> associationInfos = new ArrayList<>();
+		int max = 1;
 		for (Association association : associations) {
-			this.associationsData.add(new AssociationInfo(association));
+			AssociationInfo associationInfo = new AssociationInfo(association);
+			max = Math.max(max, associationInfo.getNumArtifacts());
+			associationInfos.add(associationInfo);
 		}
+		// set before mutating the observable list so cells never render against a stale max
+		this.maxNumArtifacts = max;
+
+		this.associationsData.setAll(associationInfos);
 	}
 
 

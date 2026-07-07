@@ -2,8 +2,6 @@ package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;
@@ -15,12 +13,11 @@ public class AssociationDetailView extends BorderPane {
 
 	private Association currentAssociation;
 
-	final ObservableList<ModuleInfo> modulesData = FXCollections.observableArrayList();
-
 	private TextField associationId;
 	private SplitPane splitPane;
 	private ToolBar toolBar;
 	private TextField associationPC;
+	private ArtifactSnippetTreeView artifactTreeView;
 
 
 	public AssociationDetailView(EccoService service) {
@@ -121,24 +118,10 @@ public class AssociationDetailView extends BorderPane {
 		splitPane.getItems().add(associationDetails);
 
 
-		// containment table
-		splitPane.getItems().add(new HBox(new Label("TODO: containment table")));
+		// containment table: artifact tree of the selected association
+		this.artifactTreeView = new ArtifactSnippetTreeView();
 
-
-		// list of modules
-		TableView<ModuleInfo> modulesTable = new TableView<>();
-		modulesTable.setEditable(false);
-		modulesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-		TableColumn<ModuleInfo, String> moduleCol = new TableColumn<>("Module");
-		TableColumn<ModuleInfo, String> modulesCol = new TableColumn<>("Modules");
-
-		modulesCol.getColumns().setAll(moduleCol);
-		modulesTable.getColumns().setAll(modulesCol);
-
-		modulesTable.setItems(this.modulesData);
-
-		splitPane.getItems().add(modulesTable);
+		splitPane.getItems().add(this.artifactTreeView);
 
 
 		// show nothing initially
@@ -149,8 +132,6 @@ public class AssociationDetailView extends BorderPane {
 	public void showAssociation(Association association) {
 		this.currentAssociation = association;
 
-		this.modulesData.clear();
-
 		if (association != null) {
 			this.setCenter(this.splitPane);
 			this.toolBar.setDisable(false);
@@ -160,23 +141,15 @@ public class AssociationDetailView extends BorderPane {
 			this.associationPC.setText(association.computeCondition().toString());
 
 			// show containment table
-			// TODO
-
-			// show modules
-			// TODO
+			this.artifactTreeView.setRootNode(association.getRootNode());
 		} else {
 			this.setCenter(null);
 			this.toolBar.setDisable(true);
 
 			this.associationId.setText("");
 			this.associationPC.setText("");
-		}
-	}
 
-
-	public static class ModuleInfo {
-		private ModuleInfo() {
-
+			this.artifactTreeView.setRootNode(null);
 		}
 	}
 
