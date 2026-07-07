@@ -8,7 +8,7 @@ import at.jku.isse.ecco.adapter.lilypond.LilypondStringWriter;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -322,7 +322,7 @@ public class TransformerTest {
 
         Assert.assertEquals(n.getName(), "Delimiter.Bracket.End");
 
-        EntityFactory ef = new MemEntityFactory();
+        EntityFactory ef = new SerEntityFactory();
         LilypondReader rd = new LilypondReader(ef);
         Artifact.Op<PluginArtifactData> pluginArtifact = ef.createArtifact(new PluginArtifactData(rd.getPluginId(), Path.of("")));
         Node.Op pluginNode = ef.createOrderedNode(pluginArtifact);

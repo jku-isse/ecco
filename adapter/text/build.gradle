@@ -1,11 +1,11 @@
 plugins {
-	id 'org.openjfx.javafxplugin' version '0.0.14'
+	id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 ecco.adapter = true
 
 javafx {
-	version = "17"
+	version = "21"
 	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics', 'javafx.swing']
 }
 

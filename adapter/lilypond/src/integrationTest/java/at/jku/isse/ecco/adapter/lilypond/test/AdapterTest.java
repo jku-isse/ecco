@@ -3,8 +3,10 @@ package at.jku.isse.ecco.adapter.lilypond.test;
 import at.jku.isse.ecco.adapter.lilypond.*;
 import at.jku.isse.ecco.adapter.lilypond.parce.LilypondNodeSerializationWrapper;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
+import com.google.common.io.RecursiveDeleteOption;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -28,6 +30,8 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 
 public class AdapterTest {
 
@@ -73,7 +77,7 @@ public class AdapterTest {
 
     @Test(groups = {"parce"})
 	public void Lilypond_Adapter_Test() {
-		LilypondReader reader = new LilypondReader(new MemEntityFactory());
+		LilypondReader reader = new LilypondReader(new SerEntityFactory());
 
 		System.out.println("READ FILES");
 		Set<Node.Op> nodes = reader.read(FILES);
@@ -93,7 +97,7 @@ public class AdapterTest {
     private static final Path[] SIMPLE_FILES = new Path[]{Paths.get("input/simple.ly")};
 	@Test()
 	public void testWhiteSpaceReader() {
-	    LilypondWhitespaceReader rd = new LilypondWhitespaceReader((new MemEntityFactory()));
+	    LilypondWhitespaceReader rd = new LilypondWhitespaceReader((new SerEntityFactory()));
 
 	    System.out.println("READ");
 	    Set<Node> nodes = rd.read(DATA_DIR, SIMPLE_FILES);
@@ -103,7 +107,7 @@ public class AdapterTest {
 
     @Test()
     public void testWhiteSpaceReaderAndWriter() {
-        LilypondWhitespaceReader rd = new LilypondWhitespaceReader((new MemEntityFactory()));
+        LilypondWhitespaceReader rd = new LilypondWhitespaceReader((new SerEntityFactory()));
         Set<Node> nodes = rd.read(DATA_DIR, SIMPLE_FILES);
 
 	    System.out.println("WRITE");
@@ -114,10 +118,50 @@ public class AdapterTest {
         System.out.println("END WRITE");
     }
 
-    private static final Path[] DIEU_FILE = new Path[]{Paths.get("input/dieu.ly")};
+    @Test()
+    public void populateSimpleVersionRepository() {
+        Path basePath = Paths.get("/Users/paul/Library/CloudStorage/Dropbox/UNI/Dokumente/Projekte/_ECCO/LilyECCODemos/nachtwachezwei_brahms");
+
+        // open repository
+        EccoService service = new EccoService();
+
+        //create Repo
+        String repo = ".ecco";
+        Path p = basePath.resolve(repo);
+        /*try {
+            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //ALLOW INSECURE
+            Files.delete(p);        //Works only if the dir is already empty. (done by  deleteDirectoryContents)
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Assert.assertFalse(Files.exists(p));
+*/
+        service.setRepositoryDir(p);
+        service.init();
+
+        int variantsCnt = 0;
+
+        for (int i = 74; i <= 100; i++) {
+            String variant = String.format("%03d", i); // "074", "075", ..., "100"
+
+            service.setBaseDir(basePath.resolve(variant));
+            service.commit(variant);
+
+            variantsCnt++;
+        }
+
+        System.out.printf("Committed %d variants%n", variantsCnt);
+
+
+        // close repository
+        service.close();
+        System.out.println("Repository closed.");
+    }
+
+        private static final Path[] DIEU_FILE = new Path[]{Paths.get("input/dieu.ly")};
     @Test(groups = {"parce"})
     public void DieuWriterTest() {
-        LilypondReader rd = new LilypondReader((new MemEntityFactory()));
+        LilypondReader rd = new LilypondReader((new SerEntityFactory()));
         Set<Node.Op> nodes = rd.read(DATA_DIR, DIEU_FILE);
 
         System.out.println("WRITE");

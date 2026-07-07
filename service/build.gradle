@@ -26,10 +26,13 @@ dependencies {
 	testImplementation project(':ecco-adapter-file')
 	testImplementation project(':ecco-adapter-text')
 	testImplementation project(':ecco-adapter-c')
-	testRuntimeOnly project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-challenge')
 	testImplementation project(':ecco-adapter-cpp')
 	testImplementation project(':ecco-adapter-runtime')
+	testImplementation project(':ecco-adapter-lilypond')
+
+	testRuntimeOnly project(':ecco-adapter-image')
+	testRuntimeOnly project(':ecco-adapter-lilypond')
 }
 
 // https://stackoverflow.com/questions/67265308/gradle-entry-classpath-is-a-duplicate-but-no-duplicate-handling-strategy-has-b

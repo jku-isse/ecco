@@ -14,8 +14,9 @@ import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
+import com.google.common.io.RecursiveDeleteOption;
 import javafx.application.Platform;
 import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.util.CombinatoricsUtils;
@@ -40,6 +41,8 @@ import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 
 public class PerformanceAndCorrectnessTest {
 
@@ -516,7 +519,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             Assert.fail(p + " is not compilable");
         }
 
-        LilypondReader rd = new LilypondReader((new MemEntityFactory()));
+        LilypondReader rd = new LilypondReader((new SerEntityFactory()));
         Path pOut = Path.of(outPath);
         Path nm = p.getFileName();
         Path[] input = new Path[]{nm};

@@ -4,7 +4,7 @@ import at.jku.isse.ecco.adapter.lilypond.*;
 import at.jku.isse.ecco.adapter.lilypond.parce.LilypondNodeSerializationWrapper;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
 import at.jku.isse.ecco.adapter.lilypond.test.FeatureFileVisitor;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -68,7 +68,7 @@ public class ThesisAdapterTest {
     private static final Path[] SULZER_FILE = new Path[]{Paths.get("input/factusestrepente.ly")};
     @Test(groups = {"parce"})
     public void SulzerWriterTest() {
-        LilypondReader rd = new LilypondReader((new MemEntityFactory()));
+        LilypondReader rd = new LilypondReader((new SerEntityFactory()));
         Set<Node.Op> nodes = rd.read(DATA_DIR, SULZER_FILE);
 
         System.out.println("WRITE");

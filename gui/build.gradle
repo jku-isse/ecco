@@ -1,6 +1,6 @@
 plugins {
 	id 'application'
-	id 'org.openjfx.javafxplugin' version '0.0.14'
+	id 'org.openjfx.javafxplugin' version '0.1.0'
 	//id 'com.palantir.docker' version '0.30.0'
 }
 
@@ -10,22 +10,29 @@ application {
 }
 
 javafx {
-	version = "17"
+	version = "21"
 	modules = [ 'javafx.controls', 'javafx.web' ]
 }
+
+def javafxVersion = "21.0.4"
+def platform = "mac-aarch64"
 
 dependencies {
     implementation 'org.graphstream:gs-core:2.0'
     implementation 'org.graphstream:gs-algo:2.0'
     implementation 'org.graphstream:gs-ui-javafx:2.0'
+    // gs-ui-javafx:2.0 transitively depends on org.openjfx:javafx-fxml:13, which has no
+    // mac-aarch64 artifact; force it up to a version/platform that actually resolves.
+    implementation "org.openjfx:javafx-controls:$javafxVersion:$platform"
+    implementation "org.openjfx:javafx-fxml:$javafxVersion:$platform"
 
     implementation project(':ecco-service')
     implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
 
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
-	runtimeOnly project(':ecco-adapter-image')
 	runtimeOnly project(':ecco-adapter-lilypond')
+	runtimeOnly project(':ecco-adapter-image')
 	runtimeOnly project(':ecco-adapter-typescript')
 	runtimeOnly project(':ecco-adapter-python')
 	// not enabled by default (see AdapterPreferences.DEFAULT_DISABLED_PLUGIN_IDS), but present on
@@ -39,6 +46,7 @@ dependencies {
 
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
+	testRuntimeOnly project(':ecco-adapter-lilypond')
 	testRuntimeOnly project(':ecco-adapter-image')
 	testRuntimeOnly project(':ecco-adapter-typescript')
 	testRuntimeOnly project(':ecco-adapter-challenge')
@@ -109,7 +117,7 @@ windowsZip {
 	}
 }
 
-task copyScripts(type: Copy) {
+tasks.register('copyScripts', Copy) {
 	from 'ecco-gui', 'ecco-gui.bat'
 	into project.file('build/bundle/')
 }
