@@ -10,21 +10,24 @@ application {
 }
 
 javafx {
-	version = "16"
+	version = "17"
 	modules = [ 'javafx.controls', 'javafx.web' ]
 }
 
 dependencies {
-	implementation 'org.graphstream:gs-core:2.0'
-	implementation 'org.graphstream:gs-algo:2.0'
-	implementation 'org.graphstream:gs-ui-javafx:2.0'
+    implementation 'org.graphstream:gs-core:2.0'
+    implementation 'org.graphstream:gs-algo:2.0'
+    implementation 'org.graphstream:gs-ui-javafx:2.0'
 
-	implementation project(':ecco-service')
-	implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
+    implementation project(':ecco-service')
+    implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
 
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-image')
+	runtimeOnly project(':ecco-adapter-lilypond')
+	runtimeOnly project(':ecco-adapter-typescript')
+	runtimeOnly project(':ecco-adapter-python')
 	// not enabled by default (see AdapterPreferences.DEFAULT_DISABLED_PLUGIN_IDS), but present on
 	// the classpath so they show up as options in the adapter Preferences dialog
 	runtimeOnly project(':ecco-adapter-challenge')
@@ -33,18 +36,17 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-cpp')
 	runtimeOnly project(':ecco-adapter-runtime')
 	runtimeOnly project(':ecco-adapter-golang')
-	//runtimeOnly project(':ecco-adapter-python') // adapter/python has no sources; not buildable
 
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
 	testRuntimeOnly project(':ecco-adapter-image')
+	testRuntimeOnly project(':ecco-adapter-typescript')
 	testRuntimeOnly project(':ecco-adapter-challenge')
 	testRuntimeOnly project(':ecco-adapter-java')
 	testRuntimeOnly project(':ecco-adapter-c')
 	testRuntimeOnly project(':ecco-adapter-cpp')
 	testRuntimeOnly project(':ecco-adapter-runtime')
 	testRuntimeOnly project(':ecco-adapter-golang')
-	//testRuntimeOnly project(':ecco-adapter-python') // adapter/python has no sources; not buildable
 }
 
 tasks.register('jpackageApp', Exec) {

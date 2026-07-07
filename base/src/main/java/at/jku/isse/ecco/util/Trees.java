@@ -3,6 +3,7 @@ package at.jku.isse.ecco.util;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -13,10 +14,6 @@ import java.util.stream.Collectors;
  * This static class provides a collection of tree utility functions.
  */
 public class Trees {
-
-	private Trees() {
-	}
-
 
 	// # CHILD MATCHING HELPERS ##########################################################################
 
@@ -99,18 +96,6 @@ public class Trees {
 	}
 
 
-	// # COPY OPERATION ##################################################################################
-
-	/**
-	 * Creates a shallow copy of the tree.
-	 *
-	 * @param node The root node of the tree to copy.
-	 */
-	public void copy(Node node) {
-
-	}
-
-
 	// # WRITE OPERATIONS ##############################################################################################
 
 	/**
@@ -120,16 +105,13 @@ public class Trees {
 	 * @param right The right (new) node.
 	 * @return The created intersection node.
 	 */
-	//public static <T extends Node.Op> T slice(T left, T right) throws EccoException {
 	public static Node.Op slice(Node.Op left, Node.Op right) {
 		if (!left.equals(right))
 			throw new EccoException("Intersection of non-equal nodes is not allowed!");
 
-
 		if (left.getArtifact() != null && right.getArtifact() != null) {
 			if (left.getArtifact().isOrdered()) {
 				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getPartialOrderGraph() != right.getArtifact().getPartialOrderGraph()) {
-					//throw new EccoException("Sequence Graphs did not match!");
 					left.getArtifact().getPartialOrderGraph().merge(right.getArtifact().getPartialOrderGraph());
 					right.getArtifact().setPartialOrderGraph(left.getArtifact().getPartialOrderGraph());
 				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
@@ -145,7 +127,6 @@ public class Trees {
 					throw new EccoException("Left node was not sequenced but right node was!");
 				}
 			}
-
 
 			if (left.getArtifact().isAtomic()) {
 				Trees.matchAtomicArtifacts(left, right);
@@ -175,7 +156,6 @@ public class Trees {
 			}
 		}
 
-
 		Node.Op intersection = left.createNode(left.getArtifact());
 		if (left.isUnique() && right.isUnique()) {
 			intersection.setUnique(true);
@@ -184,14 +164,14 @@ public class Trees {
 
 			if (intersection.getArtifact() != null)
 				intersection.getArtifact().setContainingNode(intersection);
+
+			intersection.combineProactiveTrace(left);
+			intersection.combineProactiveTrace(right);
+			left.removeProactiveTrace();
+			right.removeProactiveTrace();
 		} else {
 			intersection.setUnique(false);
 		}
-
-//		if (intersection.getArtifact() != null && intersection.getArtifact().isAtomic()) {
-//			return intersection;
-//		}
-
 
 		ChildIndex rightIndex = new ChildIndex(right.getChildren());
 		Set<Node.Op> leftChildrenToRemove = newIdentitySet();
@@ -204,14 +184,12 @@ public class Trees {
 				continue;
 
 			Node.Op intersectionChild = slice(leftChild, rightChild);
-
 			if (intersectionChild != null && (intersectionChild.isUnique() || (!intersectionChild.getChildren().isEmpty() && !intersectionChild.isAtomic()))) {
 				intersectionChildrenToAdd.add(intersectionChild);
 			}
 
 			if (intersectionChild != null && intersectionChild.isAtomic()) { // left child becomes the intersection child
 				intersectionChild.setParent(intersection);
-
 				rightChild.setParent(null);
 
 				leftChildrenToRemove.add(leftChild);
@@ -280,6 +258,28 @@ public class Trees {
 		}
 	}
 
+	public static void mergePartialOrderGraphs(Node.Op left, Node.Op right) {
+		if (left.getArtifact() != null && right.getArtifact() != null) {
+			if (left.getArtifact().isOrdered()) {
+				if (left.getArtifact().isSequenced() && right.getArtifact().isSequenced() && left.getArtifact().getPartialOrderGraph() != right.getArtifact().getPartialOrderGraph()) {
+					left.getArtifact().getPartialOrderGraph().merge(right.getArtifact().getPartialOrderGraph());
+					right.getArtifact().setPartialOrderGraph(left.getArtifact().getPartialOrderGraph());
+				} else if (!left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
+					left.getArtifact().setPartialOrderGraph(left.getArtifact().createSequenceGraph());
+					left.getArtifact().getPartialOrderGraph().merge(left.getChildrenArtifacts());
+				}
+
+				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
+					left.getArtifact().getPartialOrderGraph().merge(right.getChildrenArtifacts());
+				} else if (!left.getArtifact().isSequenced() && right.getArtifact().isSequenced()) {
+					right.getArtifact().getPartialOrderGraph().merge(left.getChildrenArtifacts());
+					left.getArtifact().setPartialOrderGraph(right.getArtifact().getPartialOrderGraph());
+					throw new EccoException("Left node was not sequenced but right node was!");
+				}
+			}
+		}
+	}
+
 
 	/**
 	 * Merges the right node into the left node. The right node is modified!
@@ -320,6 +320,44 @@ public class Trees {
 		removeAll(right.getChildren(), rightChildrenToRemove);
 	}
 
+	/**
+	 * Merges the right node into the left node and combines Traces of equal nodes.
+	 *
+	 * @param left  The left node to which is added.
+	 * @param right The right node which is added.
+	 */
+	public static void mergeTraceTrees(Node.Op left, Node.Op right) {
+		// do some basic checks
+		if (left.getArtifact() != right.getArtifact()) {
+			throw new EccoException("Artifact instance must be identical, i.e. trees must originate from the same repository.");
+		}
+
+		// deal with current node
+		if (right.isUnique()) {
+			left.setUnique(true); // TODO: the "unique" field is redundant. we could determine uniqueness via the artifact's containing node (i.e. whether node and containing node are identical).
+			if (left.getArtifact() != null)
+				left.getArtifact().setContainingNode(left);
+		}
+
+		// deal with children
+		Iterator<? extends Node.Op> iterator = right.getChildren().iterator();
+		while (iterator.hasNext()) {
+			Node.Op rightChild = iterator.next();
+			int li = left.getChildren().indexOf(rightChild);
+			if (li != -1) {
+				Node.Op leftChild = left.getChildren().get(li);
+
+				merge(leftChild, rightChild);
+
+				// detatch right child from right node. this should not be necessary, but to be safe we clean up here.
+				iterator.remove();
+				rightChild.setParent(null);
+			} else {
+				left.addChild(rightChild);
+			}
+		}
+	}
+
 
 	/**
 	 * Sequences all ordered nodes in the tree rooted at the given node.
@@ -353,43 +391,6 @@ public class Trees {
 			}
 
 			node.getArtifact().updateArtifactReferences();
-
-//			// update "uses" artifact references
-//			for (ArtifactReference uses : node.getArtifact().getUses()) {
-//				if (uses.getSource() != node.getArtifact())
-//					throw new EccoException("Source of uses artifact reference must be identical to artifact.");
-//
-//				if (uses.getTarget().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-//					Artifact replacingArtifact = uses.getTarget().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
-//					if (replacingArtifact != null) {
-//						uses.setTarget(replacingArtifact);
-//						if (!replacingArtifact.getUsedBy().contains(uses)) {
-//							replacingArtifact.addUsedBy(uses);
-//						}
-//					}
-//				}
-//			}
-//
-//			// update "used by" artifact references
-//			for (ArtifactReference usedBy : node.getArtifact().getUsedBy()) {
-//				if (usedBy.getTarget() != node.getArtifact())
-//					throw new EccoException("Target of usedBy artifact reference must be identical to artifact.");
-//
-//				if (usedBy.getSource().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).isPresent()) {
-//					Artifact replacingArtifact = usedBy.getSource().<Artifact>getProperty(Artifact.PROPERTY_REPLACING_ARTIFACT).get();
-//					if (replacingArtifact != null) {
-//						usedBy.setSource(replacingArtifact);
-//						if (!replacingArtifact.getUses().contains(usedBy)) {
-//							replacingArtifact.addUses(usedBy);
-//						}
-//					}
-//				}
-//			}
-//
-//			// update sequence graph symbols (which are artifacts)
-//			if (node.getArtifact().getPartialOrderGraph() != null) {
-//				node.getArtifact().getPartialOrderGraph().updateArtifactReferences();
-//			}
 		}
 
 		// traverse into children
@@ -458,7 +459,7 @@ public class Trees {
 	 * @param left  The left tree to be subtracted from, which is modified.
 	 * @param right The right tree to subtract, which is not modified.
 	 */
-	public void subtract(Node.Op left, Node.Op right) {
+	public static void subtract(Node.Op left, Node.Op right) {
 		// do some basic checks
 		if (left.getArtifact() != null && !left.getArtifact().equals(right.getArtifact()))
 			throw new EccoException("Artifacts must be equal.");
@@ -496,6 +497,10 @@ public class Trees {
 	 * @return True if the two given trees are equal, false otherwise.
 	 */
 	public static boolean equals(Node left, Node right) {
+		if (left == null && right == null) { return true; }
+		if (left == null) { return false; }
+		if (!left.equals(right)) { return false; }
+
 		Map<Node, Node> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
 
 		for (Node leftChild : left.getChildren()) {
@@ -507,6 +512,19 @@ public class Trees {
 				return false;
 		}
 		return true;
+	}
+
+	/**
+	 * Returns true, if the given nodes and all nodes on the path to root are equal.
+	 * @param left first node to be compared (not necessarily root).
+	 * @param right second node to be compared (not necessarily root).
+	 * @return
+	 */
+	public static boolean equalTrunks(Node left, Node right){
+		if (left == null && right == null) { return true; }
+		if (left == null) { return false; }
+		if (!left.equals(right)) { return false; }
+		return equalTrunks(left.getParent(), right.getParent());
 	}
 
 
@@ -556,7 +574,6 @@ public class Trees {
 			}
 		}
 
-
 		Map<Node.Op, Node.Op> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
 		for (Node.Op leftChild : left.getChildren()) {
 			Node.Op rightChild = rightByArtifact.get(leftChild);
@@ -565,15 +582,6 @@ public class Trees {
 
 			Trees.map(leftChild, rightChild);
 		}
-
-
-//		if (left.getArtifact() != null && right.getArtifact() != null) {
-//			if (left.getArtifact().isOrdered()) {
-//				if (left.getArtifact().isSequenced() && !right.getArtifact().isSequenced()) {
-//					right.getChildren().forEach((Node.Op n) -> n.getArtifact().setSequenceNumber(PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER));
-//				}
-//			}
-//		}
 	}
 
 	private static void mapAtomicArtifacts(Node.Op left, Node.Op right) {
@@ -595,18 +603,6 @@ public class Trees {
 			Trees.mapAtomicArtifacts(leftChild, rightChild);
 		}
 	}
-
-
-	/**
-	 * Composes a new tree from the given trees using clone/add/merge/etc. operations on the given trees without modifying them.
-	 *
-	 * @param nodes The root nodes of the trees to be composed.
-	 * @return The root node of the composed tree.
-	 */
-	public Node compose(Collection<Node> nodes) {
-		return null; // TODO
-	}
-
 
 	/**
 	 * Counts the number of artifacts (i.e. unique nodes) that are contained in the given tree.
@@ -776,12 +772,6 @@ public class Trees {
 		}
 	}
 
-	private static void isRootNode(Node rootNode) {
-		if (!(rootNode instanceof RootNode)) {
-			throw new IllegalStateException("Expected a root node.");
-		}
-	}
-
 	private static void isUniqueAndArtifactReferencesNode(Node node) {
 		if (!(node instanceof RootNode) && node.isUnique() && node.getArtifact().getContainingNode() != node) {
 			//throw new IllegalStateException("Expected a unique node where the artifact's containing node is the unique node.");
@@ -800,4 +790,62 @@ public class Trees {
 		}
 	}
 
+	/**
+	 * Copies the node and removes all nodes from the tree except the given and those leading to the root node.
+	 * Makes all nodes non-unique except the given node, which it makes unique.
+	 */
+	public static Node.Op createSkeletonPath(Node.Op node) {
+		// create a copy of the path from the node to the root
+		// copy of given node will include feature trace
+		// other copies will not
+		Node.Op newNode = node.copySingleNode(true);
+		if (node.getParent() == null) {
+			return newNode;
+		} else {
+			Node.Op parent = createShallowSkeletonPath(node.getParent());
+			parent.addChild(newNode);
+			return newNode;
+		}
+	}
+
+	public static Node.Op createShallowSkeletonPath(Node.Op node){
+		// create a copy of the path from the node to the root
+		// copied nodes will not include feature traces
+		Node.Op newNode = node.copySingleNode(false);
+		if (node.getParent() == null) {
+			return newNode;
+		} else {
+			Node.Op parent = createShallowSkeletonPath(node.getParent());
+			parent.addChild(newNode);
+			return newNode;
+		}
+	}
+
+	public static Node.Op treeFusion(Node.Op mainTree, Node.Op fusionNode){
+		if (fusionNode == null){ return mainTree; }
+		// new node will contain pog because same artifact is set in new node and pog is set in artifact
+		if (mainTree == null){ mainTree = fusionNode.copySingleNode(false); }
+		if (!Objects.equals(mainTree.getArtifact(), fusionNode.getArtifact())) {
+			throw new EccoException("Fusing feature trace (sub-)trees with different root nodes is not possible.");
+		}
+
+		// deal with children
+		for (Node.Op child : fusionNode.getChildren()) {
+			Node.Op mainChild = mainTree.getEqualChild(child);
+			if (mainChild == null) {
+				Node.Op newChild = child.copySingleNode(false);
+				newChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
+				newChild.setUnique(child.isUnique());
+				mainTree.addChild(newChild);
+				treeFusion(newChild, child);
+			} else {
+				mainChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
+				mainChild.setUnique(mainChild.isUnique() || child.isUnique());
+				Trees.mergePartialOrderGraphs(mainChild, child);
+				treeFusion(mainChild, child);
+			}
+		}
+
+		return mainTree;
+	}
 }

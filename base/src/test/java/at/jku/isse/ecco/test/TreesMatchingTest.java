@@ -2,7 +2,8 @@ package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
+import at.jku.isse.ecco.test.util.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
@@ -37,7 +38,7 @@ public class TreesMatchingTest {
 	 */
 	@Test
 	public void slice_matchesDuplicateSiblingsPairwiseInOriginalOrder() {
-		EntityFactory ef = new MemEntityFactory();
+		EntityFactory ef = new SerEntityFactory();
 
 		RootNode.Op leftRoot = ef.createRootNode();
 		Node.Op leftParent = ef.createOrderedNode(new TestArtifactData("parent"));
@@ -80,7 +81,7 @@ public class TreesMatchingTest {
 	 */
 	@Test
 	public void slice_orderedDuplicates_onlySequenceMatchedChildIsConsumed() {
-		EntityFactory ef = new MemEntityFactory();
+		EntityFactory ef = new SerEntityFactory();
 
 		RootNode.Op leftRoot = ef.createRootNode();
 		Node.Op leftParent = ef.createOrderedNode(new TestArtifactData("parent"));
@@ -116,7 +117,7 @@ public class TreesMatchingTest {
 	 */
 	@Test
 	public void merge_newlyAddedChildBecomesMatchCandidateForLaterDuplicate() {
-		EntityFactory ef = new MemEntityFactory();
+		EntityFactory ef = new SerEntityFactory();
 
 		Node.Op left = ef.createOrderedNode(new TestArtifactData("parent"));
 		Node.Op right = ef.createOrderedNode(left.getArtifact()); // merge() requires identical artifact instance
@@ -145,7 +146,7 @@ public class TreesMatchingTest {
 	 */
 	@Test
 	public void matchAtomicArtifacts_duplicateLeftChildrenAllMatchSameFirstRightChild() {
-		EntityFactory ef = new MemEntityFactory();
+		EntityFactory ef = new SerEntityFactory();
 
 		Node.Op left = ef.createOrderedNode(new TestArtifactData("atomicParent"));
 		left.getArtifact().setAtomic(true);
@@ -169,7 +170,7 @@ public class TreesMatchingTest {
 
 	@Test
 	public void equals_withDuplicateSiblings_returnsTrueForStructurallyEqualTrees() {
-		EntityFactory ef = new MemEntityFactory();
+		EntityFactory ef = new SerEntityFactory();
 
 		Node.Op left = ef.createOrderedNode(new TestArtifactData("parent"));
 		left.addChildren(
@@ -200,7 +201,7 @@ public class TreesMatchingTest {
 	@Test
 	@Timeout(20)
 	public void slice_manySiblings_completesWithoutQuadraticBlowup() {
-		EntityFactory ef = new MemEntityFactory();
+		EntityFactory ef = new SerEntityFactory();
 		int n = 40000;
 
 		RootNode.Op leftRoot = ef.createRootNode();

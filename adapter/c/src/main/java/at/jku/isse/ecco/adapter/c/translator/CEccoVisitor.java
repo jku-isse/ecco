@@ -3,12 +3,14 @@ package at.jku.isse.ecco.adapter.c.translator;
 import at.jku.isse.ecco.adapter.c.parser.generated.CBaseVisitor;
 import at.jku.isse.ecco.adapter.c.parser.generated.CParser;
 import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.featuretrace.parser.VevosFileConditionContainer;
 import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
 
 
 public class CEccoVisitor extends CBaseVisitor<Node.Op> {
@@ -17,17 +19,23 @@ public class CEccoVisitor extends CBaseVisitor<Node.Op> {
     private String[] codeLines;
     private EntityFactory entityFactory;
     private Collection<CParser.FunctionDefinitionContext> functionDefinitionContexts;
+    private VevosFileConditionContainer fileConditionContainer;
     private Path path;
+    private String configuration;
 
     public CEccoVisitor(Node.Op pluginNode,
                         String[] codeLines,
                         EntityFactory entityFactory,
-                        Path path){
+                        VevosFileConditionContainer fileConditionContainer,
+                        Path path,
+                        String configuration){
         this.pluginNode = pluginNode;
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.functionDefinitionContexts = new LinkedList<>();
+        this.fileConditionContainer = fileConditionContainer;
         this.path = path;
+        this.configuration = configuration;
     }
 
     public Node.Op translate(ParseTree tree){
@@ -41,7 +49,7 @@ public class CEccoVisitor extends CBaseVisitor<Node.Op> {
         }
 
         CEccoTranslator translator = new CEccoTranslator(
-                this.codeLines, this.entityFactory, this.path);
+                this.codeLines, this.entityFactory, this.fileConditionContainer, this.path, this.configuration);
         this.collectFunctions(translator);
         translator.addChildrenToPluginNode(this.pluginNode);
         return this.pluginNode;

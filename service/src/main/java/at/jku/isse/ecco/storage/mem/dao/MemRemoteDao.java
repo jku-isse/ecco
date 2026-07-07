@@ -2,7 +2,8 @@ package at.jku.isse.ecco.storage.mem.dao;
 
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.RemoteDao;
-import at.jku.isse.ecco.storage.mem.core.MemRemote;
+import at.jku.isse.ecco.storage.ser.core.SerRemote;
+import at.jku.isse.ecco.storage.common.dao.Database;
 import com.google.inject.Inject;
 
 import java.util.ArrayList;
@@ -46,9 +47,9 @@ public class MemRemoteDao extends MemAbstractGenericDao implements RemoteDao {
 		checkNotNull(remote);
 
 		final Database root = this.transactionStrategy.getDatabase();
-		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();
+		final Map<String, SerRemote> remoteIndex = root.getRemoteIndex();
 
-		final MemRemote memEntity = (MemRemote) remote;
+		final SerRemote memEntity = (SerRemote) remote;
 
 		remoteIndex.put(memEntity.getName(), memEntity);
 
@@ -60,7 +61,7 @@ public class MemRemoteDao extends MemAbstractGenericDao implements RemoteDao {
 		checkNotNull(name);
 
 		final Database root = this.transactionStrategy.getDatabase();
-		final Map<String, MemRemote> remoteIndex = root.getRemoteIndex();
+		final Map<String, SerRemote> remoteIndex = root.getRemoteIndex();
 
 		remoteIndex.remove(name);
 	}

@@ -59,6 +59,10 @@ public class EmptyModuleRevision implements ModuleRevision {
 		return this.module;
 	}
 
+	@Override
+	public String getConditionString() {
+		return "";
+	}
 
 	@Override
 	public boolean equals(Object o) {

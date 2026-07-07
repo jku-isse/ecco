@@ -2,6 +2,7 @@ package at.jku.isse.ecco.storage.mem.dao;
 
 import at.jku.isse.ecco.dao.RepositoryDao;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.common.dao.Database;
 import com.google.inject.Inject;
 
 public class MemRepositoryDao extends MemAbstractGenericDao implements RepositoryDao {

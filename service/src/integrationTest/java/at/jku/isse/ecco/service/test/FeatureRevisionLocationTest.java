@@ -18,6 +18,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
 
+// todo: make tests independent of absolute paths
+
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
     public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Curl2";

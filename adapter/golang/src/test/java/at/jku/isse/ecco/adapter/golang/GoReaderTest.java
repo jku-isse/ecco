@@ -4,7 +4,7 @@ import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.golang.data.TokenArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.service.listener.ReadListener;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.Token;
@@ -28,12 +28,12 @@ import static org.mockito.Mockito.*;
 public class GoReaderTest {
     @Test
     public void pluginIdIsEqualToGoPluginId() {
-        assertEquals(new GoPlugin().getPluginId(), new GoReader(new MemEntityFactory()).getPluginId());
+        assertEquals(new GoPlugin().getPluginId(), new GoReader(new SerEntityFactory()).getPluginId());
     }
 
     @Test
     public void prioritizedPatternsIncludeGolangFiles() {
-        Map<Integer, String[]> patterns = new GoReader(new MemEntityFactory()).getPrioritizedPatterns();
+        Map<Integer, String[]> patterns = new GoReader(new SerEntityFactory()).getPrioritizedPatterns();
 
         assertTrue(patterns.containsKey(1));
         assertEquals("**.go", patterns.get(1)[0]);
@@ -41,7 +41,7 @@ public class GoReaderTest {
 
     @Test
     public void prioritizedPatternsIsImmutable() {
-        Map<Integer, String[]> patterns = new GoReader(new MemEntityFactory()).getPrioritizedPatterns();
+        Map<Integer, String[]> patterns = new GoReader(new SerEntityFactory()).getPrioritizedPatterns();
 
         assertThrows(UnsupportedOperationException.class, () -> patterns.put(0, new String[]{}));
     }
@@ -54,7 +54,7 @@ public class GoReaderTest {
 
         Path resourcePath = Path.of(simpleGoResource.toURI());
 
-        Set<Node.Op> resultSet = new GoReader(new MemEntityFactory()).read(Paths.get("."), new Path[]{resourcePath});
+        Set<Node.Op> resultSet = new GoReader(new SerEntityFactory()).read(Paths.get("."), new Path[]{resourcePath});
 
         assertNotNull(resultSet);
 
@@ -102,7 +102,7 @@ public class GoReaderTest {
 
         Path resourcePath = Path.of(simpleGoResource.toURI());
 
-        GoReader reader = new GoReader(new MemEntityFactory());
+        GoReader reader = new GoReader(new SerEntityFactory());
         ReadListener mockListener = mock(ReadListener.class);
 
         reader.addListener(mockListener);
@@ -119,7 +119,7 @@ public class GoReaderTest {
 
         Path resourcePath = Path.of(simpleGoResource.toURI());
 
-        GoReader reader = new GoReader(new MemEntityFactory());
+        GoReader reader = new GoReader(new SerEntityFactory());
         ReadListener mockListener = mock(ReadListener.class);
 
         reader.addListener(mockListener);

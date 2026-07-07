@@ -1,7 +1,8 @@
 package at.jku.isse.ecco.test;
 
 import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
+import at.jku.isse.ecco.test.util.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import at.jku.isse.ecco.util.Trees;
@@ -27,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class TreesCheckConsistencyTest {
 
 	private static EntityFactory ef() {
-		return new MemEntityFactory();
+		return new SerEntityFactory();
 	}
 
 	@Test

@@ -5,9 +5,9 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.CommitDao;
 import at.jku.isse.ecco.dao.TransactionStrategy;
-import at.jku.isse.ecco.storage.mem.core.MemCommit;
-import at.jku.isse.ecco.storage.mem.core.MemVariant;
-import at.jku.isse.ecco.storage.mem.dao.Database;
+import at.jku.isse.ecco.storage.common.dao.Database;
+import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.core.SerVariant;
 import com.google.inject.Inject;
 
 import java.util.ArrayList;
@@ -61,7 +61,7 @@ public class SerCommitDao extends SerAbstractGenericDao implements CommitDao {
 	public Commit save(Commit entity) throws EccoException {
 		final Database root = this.transactionStrategy.getDatabase();
 
-		final MemCommit baseEntity = (MemCommit) entity;
+		final SerCommit baseEntity = (SerCommit) entity;
 
 		if (!root.getCommitIndex().containsKey(baseEntity.getId())) {
 			baseEntity.setId(root.nextCommitId());
@@ -75,7 +75,7 @@ public class SerCommitDao extends SerAbstractGenericDao implements CommitDao {
 	public Variant save(Variant entity) throws EccoException {
 		final Database root = this.transactionStrategy.getDatabase();
 
-		final MemVariant baseEntity = (MemVariant) entity;
+		final SerVariant baseEntity = (SerVariant) entity;
 
 		if (!root.getVariantIndex().containsKey(baseEntity.getId())) {
 			baseEntity.setId(root.nextCommitId());

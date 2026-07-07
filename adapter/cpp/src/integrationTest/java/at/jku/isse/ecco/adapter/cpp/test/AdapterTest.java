@@ -7,7 +7,7 @@ import at.jku.isse.ecco.adapter.dispatch.*;
 import at.jku.isse.ecco.artifact.*;
 import at.jku.isse.ecco.feature.*;
 import at.jku.isse.ecco.service.*;
-import at.jku.isse.ecco.storage.mem.dao.*;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.*;
 
@@ -29,7 +29,7 @@ public class AdapterTest {
 
     @Test
     public void CPP_Adapter_Test() {
-        CppReader reader = new CppReader(new MemEntityFactory());
+        CppReader reader = new CppReader(new SerEntityFactory());
 
         System.out.println("READ");
         Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);
@@ -40,7 +40,7 @@ public class AdapterTest {
 
     @Test
     public void ComparisonTreesTest() throws IOException {
-        CppReader reader = new CppReader(new MemEntityFactory());
+        CppReader reader = new CppReader(new SerEntityFactory());
         File repo = new File("D:\\Gabriela\\FRL-ecco\\CaseStudies\\SQLite\\variant_results");
         System.out.println("READ");
         File f = new File(repo,"featureCharacteristics");

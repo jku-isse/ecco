@@ -6,10 +6,12 @@ import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.stream.Collectors.toList;
 
 /**
  * A lazy composition node.
@@ -19,6 +21,8 @@ public class LazyCompositionNode implements Node {
 	private boolean activated = false;
 
 	private List<Node> origNodes;
+
+	private List<Node> unwantedNodes;
 
 	private OrderSelector orderSelector;
 
@@ -43,9 +47,17 @@ public class LazyCompositionNode implements Node {
 		checkNotNull(orderSelector);
 		this.activated = false;
 		this.origNodes = new ArrayList<>();
+		this.unwantedNodes = new ArrayList<>();
 		this.orderSelector = orderSelector;
 	}
 
+	public void addUnwantedNodes(List<Node> unwantedNodes){
+		this.unwantedNodes.addAll(unwantedNodes);
+	}
+
+	public void addUnwantedNode(Node unwantedNode){
+		this.unwantedNodes.add(unwantedNode);
+	}
 
 	private void activate() {
 		if (this.activated)
@@ -92,6 +104,22 @@ public class LazyCompositionNode implements Node {
 			this.children.clear();
 			this.children.addAll(orderedChildren);
 		}
+
+		if (unwantedNodes.isEmpty()){ return; }
+		List<Node> unwantedChildNodes = new LinkedList<>();
+		for (Node unwantedNode : this.unwantedNodes){
+			unwantedChildNodes.addAll(unwantedNode.getChildren());
+		}
+		for (LazyCompositionNode childNode : allChildren){
+			childNode.addUnwantedNodes(unwantedChildNodes.stream().filter(childNode::equals).collect(toList()));
+			childNode.activate();
+		}
+		for (Node unwantedNode : this.unwantedNodes){
+			if (unwantedNode.isUnique()){ this.unique = false; }
+		}
+
+		// remove non-unique children without children
+		this.children.removeIf(child -> child.isUnique() && child.getChildren().isEmpty());
 	}
 
 

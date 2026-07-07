@@ -2,6 +2,7 @@ package at.jku.isse.ecco.service.test;
 
 import at.jku.isse.ecco.adapter.text.LineArtifactData;
 import at.jku.isse.ecco.core.Checkout;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
@@ -11,6 +12,10 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashSet;
+
+// todo: make tests independent of absolute paths
 
 public class PaperTest {
 

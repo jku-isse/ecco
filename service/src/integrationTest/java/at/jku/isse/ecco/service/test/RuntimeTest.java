@@ -5,7 +5,7 @@ import at.jku.isse.ecco.adapter.challenge.*;
 import at.jku.isse.ecco.adapter.dispatch.*;
 import at.jku.isse.ecco.adapter.runtime.*;
 import at.jku.isse.ecco.service.*;
-import at.jku.isse.ecco.storage.mem.dao.*;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.*;
 import com.github.difflib.*;
@@ -19,6 +19,8 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
+
+// todo: make tests independent of absolute paths
 
 public class RuntimeTest {
 
@@ -41,7 +43,7 @@ public class RuntimeTest {
     @Test
     public void adapter_Test() throws IOException {
 
-        RuntimeReader readerRuntime = new RuntimeReader(new MemEntityFactory());
+        RuntimeReader readerRuntime = new RuntimeReader(new SerEntityFactory());
 
         EccoService service = new EccoService();
         service.setRepositoryDir(repo);
@@ -84,7 +86,7 @@ public class RuntimeTest {
         //Set<Node.Op> nodesRuntimeJacoco = this.dispatchReader.read(this.JACOCO_FEATURE, new Path[]{Paths.get("")});
 
         readers = new HashSet<ArtifactReader<Path, Set<Node.Op>>>();
-        JavaChallengeReader readerChallenge = new JavaChallengeReader(new MemEntityFactory());
+        JavaChallengeReader readerChallenge = new JavaChallengeReader(new SerEntityFactory());
         readers.add(readerChallenge);
         dispatchReader = new DispatchReader(service.getEntityFactory(), (Set<ArtifactReader<Path, Set<Node.Op>>>) readers, service.getRepositoryDir());
         //service.setReader(dispatchReader);

@@ -8,6 +8,8 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.maintree.building.AssociationMerger;
+import at.jku.isse.ecco.maintree.building.BoostedAssociationMerger;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -113,10 +115,13 @@ public interface EntityFactory {
 	 * @param artifactData The artifact data.
 	 * @return The new node.
 	 */
-	public Node.Op createNode(final ArtifactData artifactData);
+	Node.Op createNode(final ArtifactData artifactData);
 
-	public Node.Op createOrderedNode(final Artifact.Op<?> artifact);
+	Node.Op createOrderedNode(final Artifact.Op<?> artifact);
 
-	public Node.Op createOrderedNode(final ArtifactData artifactData);
+	Node.Op createOrderedNode(final ArtifactData artifactData);
 
+	BoostedAssociationMerger createBoostedAssociationMerger();
+
+	AssociationMerger createAssociationMerger();
 }

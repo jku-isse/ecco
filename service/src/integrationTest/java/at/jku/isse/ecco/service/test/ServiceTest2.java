@@ -15,6 +15,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+// todo: make tests independent of absolute paths
+
 public class ServiceTest2 {
 
     private Path outputDir = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\warningstest\\output");

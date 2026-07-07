@@ -2,7 +2,7 @@ package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.dao.TransactionStrategy;
-import at.jku.isse.ecco.storage.mem.dao.Database;
+import at.jku.isse.ecco.storage.common.dao.Database;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;

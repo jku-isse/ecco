@@ -84,9 +84,9 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 		default void extendNodeSequencings(List<Node.Op> nodes,
-										   List<List<Node.Op>> sequencings,
-										   Map<PartialOrderGraph.Node.Op, Integer> counters,
-										   Stack<PartialOrderGraph.Node.Op> stack){
+														  List<List<Node.Op>> sequencings,
+														  Map<PartialOrderGraph.Node.Op, Integer> counters,
+														  Stack<PartialOrderGraph.Node.Op> stack){
 			while (!stack.isEmpty()) {
 				Node.Op node = stack.pop();
 				if (!node.getNext().isEmpty() && !node.getPrevious().isEmpty()) {

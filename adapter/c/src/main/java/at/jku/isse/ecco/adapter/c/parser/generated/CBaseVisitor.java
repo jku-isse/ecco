@@ -1,4 +1,4 @@
-// Generated from .\ecco\adapter\c\src\main\resources\grammar\C.g4 by ANTLR 4.9.3
+// Generated from C:/Projects/ECCO/ecco/adapter/c/src/main/resources/grammar/C.g4 by ANTLR 4.13.2
 package at.jku.isse.ecco.adapter.c.parser.generated;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
@@ -10,7 +10,15 @@ import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
  * @param <T> The return type of the visit operation. Use {@link Void} for
  * operations with no return type.
  */
+@SuppressWarnings("CheckReturnValue")
 public class CBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements CVisitor<T> {
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitCompilationUnit(CParser.CompilationUnitContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -592,13 +600,6 @@ public class CBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements CVis
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	@Override public T visitJumpStatement(CParser.JumpStatementContext ctx) { return visitChildren(ctx); }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation returns the result of calling
-	 * {@link #visitChildren} on {@code ctx}.</p>
-	 */
-	@Override public T visitCompilationUnit(CParser.CompilationUnitContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

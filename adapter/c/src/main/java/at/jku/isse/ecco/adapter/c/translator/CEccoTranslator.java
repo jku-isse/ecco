@@ -4,7 +4,11 @@ import at.jku.isse.ecco.adapter.c.data.FunctionArtifactData;
 import at.jku.isse.ecco.adapter.c.data.LineArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.featuretrace.parser.VevosCondition;
+import at.jku.isse.ecco.featuretrace.parser.VevosFileConditionContainer;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Location;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -14,15 +18,21 @@ public class CEccoTranslator {
     private List<FunctionStructure> functionStructures;
     private String[] codeLines;
     private EntityFactory entityFactory;
+    private VevosFileConditionContainer fileConditionContainer;
     private Path path;
+    private String configuration;
 
     public CEccoTranslator(String[] codeLines,
                            EntityFactory entityFactory,
-                           Path path){
+                           VevosFileConditionContainer fileConditionContainer,
+                           Path path,
+                           String configuration){
         this.codeLines = codeLines;
         this.entityFactory = entityFactory;
         this.functionStructures = new LinkedList<>();
+        this.fileConditionContainer = fileConditionContainer;
         this.path = path;
+        this.configuration = configuration;
     }
 
     public void addFunctionStructure(int start, int end, String functionSignature){
@@ -31,40 +41,58 @@ public class CEccoTranslator {
 
     public void addChildrenToPluginNode(Node.Op pluginNode){
         this.sortFunctionStructures();
-
         int startLine = 1;
+
         for(FunctionStructure functionStructure : this.functionStructures){
-            this.addLineNodes(pluginNode, startLine, functionStructure.getStartLine() - 1);
+            this.addLineNodes(pluginNode, startLine, functionStructure.startLine() - 1);
             Node.Op functionNode = this.createFunctionNode(functionStructure);
             pluginNode.addChild(functionNode);
-            startLine = functionStructure.getEndLine() + 1;
+            startLine = functionStructure.endLine() + 1;
         }
 
         this.addLineNodes(pluginNode, startLine, this.codeLines.length);
     }
 
     private void sortFunctionStructures(){
-        Comparator<FunctionStructure> compareByStart = Comparator.comparingInt(FunctionStructure::getStartLine);
+        Comparator<FunctionStructure> compareByStart = Comparator.comparingInt(FunctionStructure::startLine);
         this.functionStructures.sort(compareByStart);
     }
 
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine){
         for(int i = startLine; i <= endLine; i++){
             String codeLine = this.codeLines[i - 1];
+
             if (codeLine.isEmpty()){
                 continue;
             }
 
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-            Node.Op lineNode = this.entityFactory.createNode(lineArtifactData);
+            Location location = new Location(i, i, this.path, this.configuration);
+            Node.Op lineNode = this.createNodeWithLocation(lineArtifactData, location);
+            this.checkForFeatureTrace(i, lineNode);
             parentNode.addChild(lineNode);
         }
     }
 
     private Node.Op createFunctionNode(FunctionStructure functionStructure){
-        Artifact.Op<FunctionArtifactData> data = this.entityFactory.createArtifact(new FunctionArtifactData(functionStructure.getFunctionSignature()));
+        Artifact.Op<FunctionArtifactData> data = this.entityFactory.createArtifact(new FunctionArtifactData(functionStructure.functionSignature()));
         Node.Op functionNode = this.entityFactory.createOrderedNode(data);
-        this.addLineNodes(functionNode, functionStructure.getStartLine(), functionStructure.getEndLine());
+        this.addLineNodes(functionNode, functionStructure.startLine(), functionStructure.endLine());
         return functionNode;
+    }
+
+    private Node.Op createNodeWithLocation(Artifact.Op artifact, Location location){
+        Node.Op node = this.entityFactory.createNode(artifact);
+        node.putProperty("Location", location);
+        return node;
+    }
+
+    private void checkForFeatureTrace(int lineNumber, Node.Op node){
+        if (this.fileConditionContainer == null){ return; }
+        Collection<VevosCondition> matchingConditions = this.fileConditionContainer.getMatchingPresenceConditions(lineNumber, lineNumber);
+        for(VevosCondition condition : matchingConditions){
+            FeatureTrace nodeTrace = node.getFeatureTrace();
+            nodeTrace.buildProactiveConditionConjunction(condition.getConditionString());
+        }
     }
 }

@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+// todo: make tests independent of absolute paths
+
 public class BugzillaTest {
 
 	private Path outputDir = Paths.get("reports/integrationTest/output");

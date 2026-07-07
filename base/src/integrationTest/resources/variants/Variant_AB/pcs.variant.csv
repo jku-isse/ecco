@@ -1,0 +1,10 @@
+Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
+main.c;True;True;True;ROOT;1;35
+main.c;True;FEATUREA;FEATUREA;artifact;6;7
+main.c;True;FEATUREB;FEATUREB;artifact;9;10
+main.c;True;(FEATUREA || FEATUREB);(FEATUREA || FEATUREB);artifact;12;13
+main.c;True;(FEATUREA && FEATUREB);(FEATUREA && FEATUREB);artifact;15;16
+main.c;True;FEATUREA;FEATUREA;artifact;21;23
+main.c;True;FEATUREB;FEATUREB;artifact;25;27
+main.c;True;(FEATUREA || FEATUREB);(FEATUREA || FEATUREB);artifact;29;31
+main.c;True;(FEATUREA && FEATUREB);(FEATUREA && FEATUREB);artifact;33;35

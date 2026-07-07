@@ -8,6 +8,7 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.tree.RootNode;
 
 /**
@@ -167,6 +168,10 @@ public interface Association extends Persistable {
 			this.addObservation(moduleRevision, 1);
 		}
 
+		default void setRetroactiveConditions(){
+			RetroactiveConditionSetterVisitor visitor = new RetroactiveConditionSetterVisitor(this);
+			this.getRootNode().traverse(visitor);
+		}
 	}
 
 }

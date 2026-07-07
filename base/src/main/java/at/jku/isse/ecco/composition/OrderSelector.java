@@ -3,6 +3,7 @@ package at.jku.isse.ecco.composition;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 

@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.storage.mem.dao;
 
 import at.jku.isse.ecco.dao.TransactionStrategy;
+import at.jku.isse.ecco.storage.common.dao.Database;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 

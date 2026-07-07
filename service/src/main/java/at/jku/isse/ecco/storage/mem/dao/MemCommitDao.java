@@ -3,7 +3,8 @@ package at.jku.isse.ecco.storage.mem.dao;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.CommitDao;
-import at.jku.isse.ecco.storage.mem.core.MemCommit;
+import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.common.dao.Database;
 import com.google.inject.Inject;
 
 import java.util.ArrayList;
@@ -52,7 +53,7 @@ public class MemCommitDao extends MemAbstractGenericDao implements CommitDao {
 	public Commit save(Commit entity) throws EccoException {
 		final Database root = this.transactionStrategy.getDatabase();
 
-		final MemCommit baseEntity = (MemCommit) entity;
+		final SerCommit baseEntity = (SerCommit) entity;
 
 		if (!root.getCommitIndex().containsKey(baseEntity.getId())) {
 			baseEntity.setId(root.nextCommitId());
