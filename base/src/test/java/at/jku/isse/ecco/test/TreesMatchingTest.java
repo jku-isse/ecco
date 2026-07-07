@@ -192,13 +192,16 @@ public class TreesMatchingTest {
 	 * A larger, wide sibling set. Primarily a regression guard against reintroducing O(n^2)
 	 * matching: passes quickly today, and must still pass well within the timeout after the
 	 * hash-based refactor (which should make it dramatically faster, not just "still under the
-	 * timeout").
+	 * timeout"). n is large enough that the ~n/2 matched (and thus unique, since fresh nodes
+	 * default to unique=true) children accumulating into the intersection node also exercises
+	 * intersection.addChildren() - a smaller n wouldn't catch a regression there, since e.g.
+	 * intersection.addChild() one at a time is only slow once the intersection itself grows large.
 	 */
 	@Test
 	@Timeout(20)
 	public void slice_manySiblings_completesWithoutQuadraticBlowup() {
 		EntityFactory ef = new MemEntityFactory();
-		int n = 4000;
+		int n = 40000;
 
 		RootNode.Op leftRoot = ef.createRootNode();
 		Node.Op leftParent = ef.createNode(new TestArtifactData("parent"));
@@ -217,11 +220,12 @@ public class TreesMatchingTest {
 		}
 
 		long start = System.nanoTime();
-		Trees.slice(leftRoot, rightRoot);
+		Node.Op intersection = Trees.slice(leftRoot, rightRoot);
 		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 		System.out.println("slice() of " + n + " siblings took " + elapsedMs + "ms");
 
 		assertEquals(n / 2, identifiers(leftParent).size());
 		assertEquals(0, identifiers(rightParent).size());
+		assertEquals(n / 2, identifiers(intersection.getChildren().get(0)).size());
 	}
 }

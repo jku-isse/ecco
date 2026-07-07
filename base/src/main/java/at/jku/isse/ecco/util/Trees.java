@@ -196,6 +196,7 @@ public class Trees {
 		ChildIndex rightIndex = new ChildIndex(right.getChildren());
 		Set<Node.Op> leftChildrenToRemove = newIdentitySet();
 		Set<Node.Op> rightChildrenToRemove = newIdentitySet();
+		List<Node.Op> intersectionChildrenToAdd = new ArrayList<>();
 
 		for (Node.Op leftChild : left.getChildren()) {
 			Node.Op rightChild = rightIndex.find(leftChild);
@@ -205,7 +206,7 @@ public class Trees {
 			Node.Op intersectionChild = slice(leftChild, rightChild);
 
 			if (intersectionChild != null && (intersectionChild.isUnique() || (!intersectionChild.getChildren().isEmpty() && !intersectionChild.isAtomic()))) {
-				intersection.addChild(intersectionChild);
+				intersectionChildrenToAdd.add(intersectionChild);
 			}
 
 			if (intersectionChild != null && intersectionChild.isAtomic()) { // left child becomes the intersection child
@@ -228,6 +229,10 @@ public class Trees {
 					rightIndex.remove(rightChild);
 				}
 			}
+		}
+
+		if (!intersectionChildrenToAdd.isEmpty()) {
+			intersection.addChildren(intersectionChildrenToAdd.toArray(new Node.Op[0]));
 		}
 
 		removeAll(left.getChildren(), leftChildrenToRemove);
@@ -692,6 +697,10 @@ public class Trees {
 	 * @param node The root of the artifact tree.
 	 */
 	public static void checkConsistency(Node.Op node) {
+		checkConsistencyRec(node, true);
+	}
+
+	private static void checkConsistencyRec(Node.Op node, boolean checkParentLink) {
 		if (node.getArtifact() != null)
 			node.getArtifact().checkConsistency();
 
@@ -702,12 +711,19 @@ public class Trees {
 		hasArtifact(node);
 		isNotUniqueAndArtifactDoesNotReferenceNode(node);
 		isUniqueAndArtifactReferencesNode(node);
-		parentHasNodeAsChild(node);
+		// parentHasNodeAsChild() is an O(n) scan (node.getParent().getChildren().contains(node)),
+		// so O(n^2) if repeated for every node of a wide tree. Only check it here, at the top-level
+		// entry point - for every node reached via the loop below, it is provably redundant: child
+		// was just obtained by iterating node.getChildren(), and child.getParent() == node is
+		// already verified right below, so node.getChildren().contains(child) trivially holds.
+		if (checkParentLink) {
+			parentHasNodeAsChild(node);
+		}
 
 		for (Node.Op child : node.getChildren()) {
 			if (child.getParent() != node)
 				throw new IllegalStateException("Node is child of a node that is not its parent.");
-			checkConsistency(child);
+			checkConsistencyRec(child, false);
 		}
 	}
 

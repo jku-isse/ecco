@@ -92,7 +92,9 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		List<Node.Op> pixelNode = parsePixelData(image);
 
-		pixelNode.forEach(imageNode::addChild);
+		// addChildren() checks the whole batch for duplicates in one pass; adding one at a time via
+		// addChild() would check each new pixel node against the (growing) existing list separately
+		imageNode.addChildren(pixelNode.toArray(new Node.Op[0]));
 
 		return imageNode;
 	}

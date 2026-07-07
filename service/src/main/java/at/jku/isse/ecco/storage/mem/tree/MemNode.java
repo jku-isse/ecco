@@ -7,8 +7,10 @@ import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -115,8 +117,34 @@ public class MemNode implements Node, Node.Op {
 
 	@Override
 	public void addChildren(Op... children) {
-		for (Op child : children)
-			this.addChild(child);
+		if (this.children == null) {
+			this.children = new ArrayList<>();
+		}
+
+		// check the whole batch (plus already-present children) for duplicates in one pass instead
+		// of once per child against the (growing) existing list - O(n) instead of O(n^2) for a
+		// large batch. Note this makes the check atomic: on a duplicate, nothing from this batch is
+		// added (the one-at-a-time loop this replaced would have already added the children before
+		// the duplicate). No existing caller relies on that partial-application behavior.
+		if (this.getArtifact() != null && !this.getArtifact().isOrdered()) {
+			Set<Op> seen = new HashSet<>(this.children);
+			for (Op child : children) {
+				checkNotNull(child);
+				if (!seen.add(child)) {
+					throw new EccoException("An equivalent child is already contained. If multiple equivalent children are allowed use an ordered node.");
+				}
+			}
+		} else {
+			for (Op child : children) {
+				checkNotNull(child);
+			}
+		}
+
+		for (Op child : children) {
+			this.children.add(child);
+			child.setParent(this);
+		}
+		this.numberOfChildren = this.children.size();
 	}
 
 	@Override
