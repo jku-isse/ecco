@@ -18,8 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class InitCommandTest {
     @BeforeAll
     public static void deleteTestRepositories() throws IOException {
+        Path testsDir = Path.of("tests");
+        if (!Files.exists(testsDir)) {
+            return;
+        }
         //noinspection resource,ResultOfMethodCallIgnored
-        Files.walk(Path.of("tests"))
+        Files.walk(testsDir)
                 .sorted(Comparator.reverseOrder())
                 .map(Path::toFile)
                 .forEach(File::delete);

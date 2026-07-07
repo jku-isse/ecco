@@ -2,12 +2,14 @@ package at.jku.isse.ecco.cli.command.features;
 
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,5 +45,30 @@ public class ListFeaturesCommandTest {
         assertTrue(stringWriter.getLines().get(0).contains("feature 1"));
         assertTrue(stringWriter.getLines().get(1).contains("feature 2"));
         assertTrue(stringWriter.getLines().get(2).contains("feature 3"));
+    }
+
+    @Test
+    public void printsSingleFeatureWithRevisionsWhenNameGiven() {
+        EccoService service = mock(EccoService.class);
+        Repository repository = mock(Repository.class);
+        StringWriter stringWriter = new StringWriter();
+        Feature feature = mock(Feature.class);
+        FeatureRevision revision = mock(FeatureRevision.class);
+        when(feature.getName()).thenReturn("feature 1");
+        when(feature.toString()).thenReturn("feature 1");
+        doReturn(List.of(revision)).when(feature).getRevisions();
+        when(revision.toString()).thenReturn("feature 1.1");
+        ListFeaturesCommand listFeaturesAction = new ListFeaturesCommand(service, stringWriter);
+
+        when(service.getRepository()).thenReturn(repository);
+        doReturn(List.of(feature, new TestFeature("feature 2"))).when(repository).getFeatures();
+
+        Map<String, Object> attrs = new HashMap<>();
+        attrs.put(ListFeaturesCommand.NAME_KEY, "feature 1");
+        listFeaturesAction.run(new Namespace(attrs));
+
+        assertEquals(2, stringWriter.getLines().size());
+        assertEquals("feature 1", stringWriter.getLines().get(0));
+        assertTrue(stringWriter.getLines().get(1).contains("feature 1.1"));
     }
 }
