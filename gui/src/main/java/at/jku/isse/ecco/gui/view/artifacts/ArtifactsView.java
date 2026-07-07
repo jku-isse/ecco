@@ -3,7 +3,9 @@ package at.jku.isse.ecco.gui.view.artifacts;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.io.ConfigurationPickerDialog;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.service.EccoService;
@@ -27,8 +29,6 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
-import javafx.stage.Stage;
-import javafx.stage.Window;
 import javafx.util.Callback;
 
 import java.io.IOException;
@@ -250,23 +250,14 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             public void handle(ActionEvent actionEvent) {
                 toolBar.setDisable(true);
 
-                TextInputDialog dialog = new TextInputDialog();
-                dialog.setTitle("Configuration");
-                dialog.setGraphic(null);
-                dialog.setHeaderText(null);
-                dialog.setContentText("Configuration:");
-                dialog.setResizable(true);
-                final Window wnd = dialog.getDialogPane().getScene().getWindow();
-                Stage stage = (Stage)wnd;
-                stage.setMinWidth(500);
-                stage.setMinHeight(150);
-                Optional<String> result = dialog.showAndWait();
+                ConfigurationPickerDialog dialog = new ConfigurationPickerDialog(service);
+                Optional<Configuration> result = dialog.showAndWait();
 
                 if (result.isEmpty()) {
                     toolBar.setDisable(false);
                     return;
                 }
-                String config = result.get();
+                Configuration config = result.get();
 
                 Task<Void> selectionTask = new Task<>() {
                     @Override
