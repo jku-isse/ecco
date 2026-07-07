@@ -453,6 +453,21 @@ public interface Repository extends Persistable {
 			Collection<Association.Op> toAdd = new ArrayList<>();
 			Collection<Association.Op> toRemove = new ArrayList<>();
 
+			// Reverse index (association -> commits currently referencing it), built once up
+			// front instead of rescanning every commit for every original association: that
+			// old "for origA : originalAssociations { for c : getCommits() { if
+			// c.containsAssociation(origA) ... } }" pattern is O(commits * associations) per
+			// extract() call - i.e. O(n^2) per commit, O(n^3) across a sequence of n commits -
+			// since both collections grow with the number of commits made so far. Associations
+			// use identity equals/hashCode (no override), so an IdentityHashMap here is
+			// equivalent to the old commit.containsAssociation()'s ArrayList#contains() checks.
+			Map<Association, List<Commit>> commitsByAssociation = new IdentityHashMap<>();
+			for (Commit c : getCommits()) {
+				for (Association a : c.getAssociations()) {
+					commitsByAssociation.computeIfAbsent(a, k -> new ArrayList<>()).add(c);
+				}
+			}
+
 			// slice new association with every original association
 			for (Association.Op origA : originalAssociations) {
 				// ASSOCIATION
@@ -469,10 +484,8 @@ public interface Repository extends Persistable {
 					toAdd.add(intA);
 
 					commit.addAssociation(intA);        // add association to new commit
-					for (Commit c : getCommits()) {        // updates associations in previous commits
-						if (c.containsAssociation(origA)) {
-							c.addAssociation(intA);
-						}
+					for (Commit c : commitsByAssociation.getOrDefault(origA, Collections.emptyList())) {        // updates associations in previous commits
+						c.addAssociation(intA);
 					}
 
 					Trees.checkConsistency(intA.getRootNode());
@@ -487,10 +500,8 @@ public interface Repository extends Persistable {
 					toRemove.add(origA);
 
 					commit.deleteAssociation(origA);            // delete association from new commit
-					for (Commit c : getCommits()) {                // updates associations in previous commits
-						if (c.containsAssociation(origA)) {
-							c.deleteAssociation(origA);
-						}
+					for (Commit c : commitsByAssociation.getOrDefault(origA, Collections.emptyList())) {                // updates associations in previous commits
+						c.deleteAssociation(origA);
 					}
 
 				}
