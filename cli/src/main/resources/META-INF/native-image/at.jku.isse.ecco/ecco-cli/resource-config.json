@@ -1,0 +1,22 @@
+{
+  "resources":{
+  "includes":[{
+    "pattern":"\\QMETA-INF/services/at.jku.isse.ecco.adapter.ArtifactPlugin\\E"
+  }, {
+    "pattern":"\\QMETA-INF/services/at.jku.isse.ecco.storage.StoragePlugin\\E"
+  }, {
+    "pattern":"\\QMETA-INF/services/java.lang.System$LoggerFinder\\E"
+  }, {
+    "pattern":"\\QMETA-INF/services/java.time.zone.ZoneRulesProvider\\E"
+  }, {
+    "pattern":"\\QMETA-INF/services/java.util.prefs.PreferencesFactory\\E"
+  }, {
+    "pattern":"\\QMETA-INF/services/java.util.spi.ResourceBundleControlProvider\\E"
+  }, {
+    "pattern":"\\Qecco.properties\\E"
+  }]},
+  "bundles":[{
+    "name":"net.sourceforge.argparse4j.internal.ArgumentParserImpl",
+    "locales":["", "en", "und"]
+  }]
+}

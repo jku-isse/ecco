@@ -1,6 +1,21 @@
+plugins {
+	id 'org.graalvm.buildtools.native' version '0.10.3'
+}
+
 apply plugin: 'application'
 mainClassName = "at.jku.isse.ecco.cli.Main"
+applicationName = "ecco"
 applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
+
+graalvmNative {
+	binaries {
+		main {
+			mainClass = 'at.jku.isse.ecco.cli.Main'
+			imageName = 'ecco'
+			buildArgs.add('--no-fallback')
+		}
+	}
+}
 
 dependencies {
 	implementation 'net.sourceforge.argparse4j:argparse4j:0.9.0'

@@ -1,0 +1,1091 @@
+[
+{
+  "name":"[Ljava.lang.invoke.MethodHandles$Lookup$ClassOption;"
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$2f559",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$7fd62",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$82709",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$97b3a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$98b1c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$c9a9c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchReader$$FastClassByGuice$$f3d34",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$10e579",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$15df59",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$170bab",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$179ae3",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$1958e7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$1a606c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.dispatch.DispatchWriter$$FastClassByGuice$$1ac5ef",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader$$FastClassByGuice$$25df59",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader$$FastClassByGuice$$25eea7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader$$FastClassByGuice$$270bab",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader$$FastClassByGuice$$29b85e",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader$$FastClassByGuice$$2b4bf5",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader$$FastClassByGuice$$2ef0ea",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileReader$$FastClassByGuice$$2ffcb7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer$$FastClassByGuice$$43f27a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer$$FastClassByGuice$$4751b3",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer$$FastClassByGuice$$483fc1",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer$$FastClassByGuice$$4a8937",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer$$FastClassByGuice$$4b503c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer$$FastClassByGuice$$4e95ec",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileViewer$$FastClassByGuice$$4f26ee",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter$$FastClassByGuice$$368fcd",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter$$FastClassByGuice$$370bab",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter$$FastClassByGuice$$39b85e",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter$$FastClassByGuice$$3b4bf5",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter$$FastClassByGuice$$3e1977",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter$$FastClassByGuice$$3ef0ea",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.file.FileWriter$$FastClassByGuice$$3ffcb7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter$$FastClassByGuice$$837e5a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter$$FastClassByGuice$$83b9fe",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter$$FastClassByGuice$$841516",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter$$FastClassByGuice$$84431a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter$$FastClassByGuice$$85d709",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter$$FastClassByGuice$$8a63ab",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.AwtImageWriter$$FastClassByGuice$$8f5f7f",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter$$FastClassByGuice$$937e5a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter$$FastClassByGuice$$941516",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter$$FastClassByGuice$$94431a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter$$FastClassByGuice$$95d709",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter$$FastClassByGuice$$9a63ab",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter$$FastClassByGuice$$9bcebf",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.FxImageWriter$$FastClassByGuice$$9f66c4",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter$$FastClassByGuice$$65b7e8",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter$$FastClassByGuice$$683fc1",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter$$FastClassByGuice$$6abca6",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter$$FastClassByGuice$$6b503c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter$$FastClassByGuice$$6da20d",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter$$FastClassByGuice$$6e7dc0",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageFileWriter$$FastClassByGuice$$6e95ec",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader$$FastClassByGuice$$5751b3",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader$$FastClassByGuice$$583fc1",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader$$FastClassByGuice$$5b503c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader$$FastClassByGuice$$5da20d",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader$$FastClassByGuice$$5e7dc0",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader$$FastClassByGuice$$5e95ec",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageReader$$FastClassByGuice$$5f26ee",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer$$FastClassByGuice$$711375",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer$$FastClassByGuice$$737e5a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer$$FastClassByGuice$$73b9fe",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer$$FastClassByGuice$$74349f",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer$$FastClassByGuice$$75d709",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer$$FastClassByGuice$$7a63ab",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.image.ImageViewer$$FastClassByGuice$$7f5f7f",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter$$FastClassByGuice$$d02377",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter$$FastClassByGuice$$d57048",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter$$FastClassByGuice$$d82ed8",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter$$FastClassByGuice$$da1761",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter$$FastClassByGuice$$db194a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter$$FastClassByGuice$$db42b7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextExporter$$FastClassByGuice$$ddbc7a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter$$FastClassByGuice$$b3b726",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter$$FastClassByGuice$$b41516",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter$$FastClassByGuice$$b97425",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter$$FastClassByGuice$$baa6af",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter$$FastClassByGuice$$bbcebf",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter$$FastClassByGuice$$bda945",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextFileWriter$$FastClassByGuice$$bf66c4",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader$$FastClassByGuice$$a41516",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader$$FastClassByGuice$$a4431a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader$$FastClassByGuice$$a5d709",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader$$FastClassByGuice$$a97425",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader$$FastClassByGuice$$abcebf",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader$$FastClassByGuice$$ada945",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextReader$$FastClassByGuice$$af66c4",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer$$FastClassByGuice$$c02377",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer$$FastClassByGuice$$c4f418",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer$$FastClassByGuice$$c57e06",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer$$FastClassByGuice$$c5f259",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer$$FastClassByGuice$$ca1761",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer$$FastClassByGuice$$cb194a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.adapter.text.TextViewer$$FastClassByGuice$$cd991e",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategyFactory",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.maintree.factory.MainTreeBuildingStrategyFactory",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.service.EccoService",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.service.EccoService$1",
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.SerModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerAbstractGenericDao",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$102e487",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$10499f1",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$1049a04",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$1062a88",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$1069659",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$10a4587",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerCommitDao$$FastClassByGuice$$10de64a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory$$FastClassByGuice$$1205b48",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory$$FastClassByGuice$$1261f98",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory$$FastClassByGuice$$12ae4d4",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory$$FastClassByGuice$$12b00e0",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory$$FastClassByGuice$$12ca48b",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory$$FastClassByGuice$$12d2ccd",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerEntityFactory$$FastClassByGuice$$12f9aae",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao$$FastClassByGuice$$1101b64",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao$$FastClassByGuice$$1110d43",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao$$FastClassByGuice$$112e487",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao$$FastClassByGuice$$11356f0",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao$$FastClassByGuice$$11499f1",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao$$FastClassByGuice$$117079e",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRemoteDao$$FastClassByGuice$$11a4587",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao$$FastClassByGuice$$f222c1",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao$$FastClassByGuice$$f49a04",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao$$FastClassByGuice$$f53c26",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao$$FastClassByGuice$$f62a88",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao$$FastClassByGuice$$f639d3",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao$$FastClassByGuice$$f8adcf",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerRepositoryDao$$FastClassByGuice$$fbbb30",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy$$FastClassByGuice$$e222c1",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy$$FastClassByGuice$$e30a20",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy$$FastClassByGuice$$e639d3",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy$$FastClassByGuice$$ea0406",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy$$FastClassByGuice$$eb3f1a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy$$FastClassByGuice$$eba8be",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy$$FastClassByGuice$$ebbb30",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation$$FastClassByGuice$$15113c4",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation$$FastClassByGuice$$151a660",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation$$FastClassByGuice$$152216b",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation$$FastClassByGuice$$152a29c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation$$FastClassByGuice$$152b836",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation$$FastClassByGuice$$157942a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveAdditionEvaluation$$FastClassByGuice$$15f6701",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation$$FastClassByGuice$$13113c4",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation$$FastClassByGuice$$1312bb6",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation$$FastClassByGuice$$131beb6",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation$$FastClassByGuice$$131c68b",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation$$FastClassByGuice$$139cf30",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation$$FastClassByGuice$$13a467b",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation$$FastClassByGuice$$13e7444",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation$$FastClassByGuice$$162216b",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation$$FastClassByGuice$$162a29c",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation$$FastClassByGuice$$165133e",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation$$FastClassByGuice$$166388a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation$$FastClassByGuice$$167942a",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation$$FastClassByGuice$$16a5a98",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveSubtractionEvaluation$$FastClassByGuice$$16f6701",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation$$FastClassByGuice$$14113c4",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation$$FastClassByGuice$$141a660",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation$$FastClassByGuice$$142216b",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation$$FastClassByGuice$$142b836",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation$$FastClassByGuice$$149cf30",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation$$FastClassByGuice$$14a467b",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerRetroactiveBasedEvaluation$$FastClassByGuice$$14e7444",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger$$FastClassByGuice$$1800dd5",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger$$FastClassByGuice$$1834f5d",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger$$FastClassByGuice$$18967ea",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger$$FastClassByGuice$$189c95d",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger$$FastClassByGuice$$18c12b7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger$$FastClassByGuice$$18d273d",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger$$FastClassByGuice$$18d5deb",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger$$FastClassByGuice$$1700dd5",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger$$FastClassByGuice$$170542f",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger$$FastClassByGuice$$17314f7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger$$FastClassByGuice$$175133e",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger$$FastClassByGuice$$17c12b7",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger$$FastClassByGuice$$17d273d",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"at.jku.isse.ecco.storage.ser.maintree.SerBoostedAssociationMerger$$FastClassByGuice$$17d5deb",
+  "fields":[{"name":"GUICE$INVOKERS"}]
+},
+{
+  "name":"com.google.common.util.concurrent.AbstractFuture",
+  "fields":[{"name":"listeners"}, {"name":"value"}, {"name":"waiters"}]
+},
+{
+  "name":"com.google.common.util.concurrent.AbstractFuture$Waiter",
+  "fields":[{"name":"next"}, {"name":"thread"}]
+},
+{
+  "name":"com.google.inject.AbstractModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.KotlinSupportImpl"
+},
+{
+  "name":"com.google.inject.internal.Annotations",
+  "methods":[{"name":"determineAnnotationToStringConfig","parameterTypes":[] }]
+},
+{
+  "name":"com.google.inject.internal.Element",
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.internal.InjectorShell$RootModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.internal.InternalProviderInstanceBindingImpl$Factory",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.internal.RealMultibinder",
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.internal.RealMultibinder$BaseFactory",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.internal.RealMultibinder$RealMultibinderCollectionOfProvidersProvider",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.internal.RealMultibinder$RealMultibinderProvider",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.name.Named",
+  "allDeclaredMethods":true
+},
+{
+  "name":"com.google.inject.util.Modules$EmptyModule",
+  "allDeclaredMethods":true
+},
+{
+  "name":"java.lang.Boolean",
+  "methods":[{"name":"parseBoolean","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"java.lang.Byte",
+  "methods":[{"name":"parseByte","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"java.lang.ClassLoader$$DefineAccessByGuice$$/0x000000700110a400",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"java.lang.ClassLoader$$DefineAccessByGuice$$/0x000000a00110a400",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"java.lang.ClassLoader$$DefineAccessByGuice$$/0x000000b00110a400",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"java.lang.ClassLoader$$DefineAccessByGuice$$/0x000000b80110a400",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"java.lang.ClassLoader$$DefineAccessByGuice$$/0x000000d00110a400",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"java.lang.Double",
+  "methods":[{"name":"parseDouble","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"java.lang.Float",
+  "methods":[{"name":"parseFloat","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"java.lang.Integer",
+  "methods":[{"name":"parseInt","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"java.lang.Long",
+  "methods":[{"name":"parseLong","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"java.lang.Object",
+  "allDeclaredMethods":true
+},
+{
+  "name":"java.lang.Short",
+  "methods":[{"name":"parseShort","parameterTypes":["java.lang.String"] }]
+},
+{
+  "name":"java.lang.invoke.MethodHandles$Lookup",
+  "fields":[{"name":"IMPL_LOOKUP"}],
+  "methods":[{"name":"defineHiddenClass","parameterTypes":["byte[]","boolean","java.lang.invoke.MethodHandles$Lookup$ClassOption[]"] }]
+},
+{
+  "name":"java.lang.invoke.MethodHandles$Lookup$ClassOption"
+},
+{
+  "name":"java.security.SecureRandomParameters"
+},
+{
+  "name":"java.util.concurrent.ForkJoinTask",
+  "fields":[{"name":"aux"}, {"name":"status"}]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicBoolean",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"javafx.scene.Node",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"javafx.scene.Parent",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"javafx.scene.layout.BorderPane",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"javafx.scene.layout.Pane",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"javafx.scene.layout.Region",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"jdk.internal.misc.Unsafe"
+},
+{
+  "name":"sun.misc.Unsafe",
+  "allDeclaredFields":true,
+  "methods":[{"name":"defineAnonymousClass","parameterTypes":["java.lang.Class","byte[]","java.lang.Object[]"] }]
+},
+{
+  "name":"sun.nio.fs.UnixPath",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true
+},
+{
+  "name":"sun.security.provider.NativePRNG",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"<init>","parameterTypes":["java.security.SecureRandomParameters"] }]
+},
+{
+  "name":"sun.security.provider.SHA",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+}
+]
