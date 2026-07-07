@@ -18,6 +18,87 @@ public class Trees {
 	}
 
 
+	// # CHILD MATCHING HELPERS ##########################################################################
+
+	/**
+	 * A mutable, hash-based index over a node's children, used in place of repeated
+	 * {@code list.indexOf(x)} scans (each O(n), so O(n^2) overall for n children) when matching two
+	 * nodes' children by equality during composition. Multiple children can be equal to each other
+	 * (e.g. duplicate sibling artifacts under an ordered node), so each equality bucket preserves the
+	 * children's original relative order and hands them out in that order, same as repeated
+	 * {@code indexOf()} calls would. Matches are found via {@link #find}, which does not remove
+	 * anything (mirroring indexOf()'s behavior of always finding the same first occurrence for an
+	 * unmodified list) - callers that actually remove a matched child from the underlying list must
+	 * also call {@link #remove} so it isn't offered again.
+	 */
+	private static final class ChildIndex {
+		private final Map<Node.Op, Deque<Node.Op>> buckets = new HashMap<>();
+
+		ChildIndex(List<? extends Node.Op> children) {
+			for (Node.Op child : children) {
+				add(child);
+			}
+		}
+
+		void add(Node.Op child) {
+			buckets.computeIfAbsent(child, k -> new ArrayDeque<>()).addLast(child);
+		}
+
+		/**
+		 * Returns the first still-indexed child equal to the given key, without removing it (a
+		 * child that stays in the underlying list, e.g. because it wasn't emptied by a recursive
+		 * match, must remain available for a later, duplicate key too).
+		 */
+		Node.Op find(Node.Op key) {
+			Deque<Node.Op> bucket = buckets.get(key);
+			return bucket == null ? null : bucket.peekFirst();
+		}
+
+		/**
+		 * Removes the given child (previously returned by {@link #find}) from the index, once a
+		 * caller has actually removed it from the underlying children list too.
+		 */
+		void remove(Node.Op child) {
+			Deque<Node.Op> bucket = buckets.get(child);
+			if (bucket != null) {
+				bucket.removeFirstOccurrence(child);
+				if (bucket.isEmpty()) {
+					buckets.remove(child);
+				}
+			}
+		}
+	}
+
+	/**
+	 * A non-consuming, hash-based index mapping each equality class in {@code children} to its
+	 * first occurrence, replacing repeated {@code list.indexOf(x)} scans for callers that never
+	 * remove matched children (so, like indexOf() on an unmodified list, every duplicate key
+	 * consistently resolves to the same first occurrence).
+	 */
+	private static <T extends Node> Map<T, T> buildFirstOccurrenceIndex(List<? extends T> children) {
+		Map<T, T> index = new HashMap<>();
+		for (T child : children) {
+			index.putIfAbsent(child, child);
+		}
+		return index;
+	}
+
+	/**
+	 * Removes exactly the given (identity-distinct) children from the list in a single O(n) pass,
+	 * instead of once per removed child (each of which is itself O(n) on an ArrayList, due to
+	 * element shifting) - avoiding turning n individual removals into an O(n^2) cost.
+	 */
+	private static void removeAll(List<? extends Node.Op> children, Set<Node.Op> toRemove) {
+		if (!toRemove.isEmpty()) {
+			children.removeIf(toRemove::contains);
+		}
+	}
+
+	private static Set<Node.Op> newIdentitySet() {
+		return Collections.newSetFromMap(new IdentityHashMap<>());
+	}
+
+
 	// # COPY OPERATION ##################################################################################
 
 	/**
@@ -112,15 +193,14 @@ public class Trees {
 //		}
 
 
-		Iterator<? extends Node.Op> leftChildrenIterator = left.getChildren().iterator();
-		while (leftChildrenIterator.hasNext()) {
-			Node.Op leftChild = leftChildrenIterator.next();
+		ChildIndex rightIndex = new ChildIndex(right.getChildren());
+		Set<Node.Op> leftChildrenToRemove = newIdentitySet();
+		Set<Node.Op> rightChildrenToRemove = newIdentitySet();
 
-			int ri = right.getChildren().indexOf(leftChild);
-			if (ri == -1)
+		for (Node.Op leftChild : left.getChildren()) {
+			Node.Op rightChild = rightIndex.find(leftChild);
+			if (rightChild == null)
 				continue;
-
-			Node.Op rightChild = right.getChildren().get(ri);
 
 			Node.Op intersectionChild = slice(leftChild, rightChild);
 
@@ -133,21 +213,25 @@ public class Trees {
 
 				rightChild.setParent(null);
 
-				leftChildrenIterator.remove();
-				right.getChildren().remove(rightChild);
+				leftChildrenToRemove.add(leftChild);
+				rightChildrenToRemove.add(rightChild);
+				rightIndex.remove(rightChild);
 			} else {
 				if (!leftChild.isUnique() && leftChild.getChildren().isEmpty()) {
 					leftChild.setParent(null);
-					leftChildrenIterator.remove();
+					leftChildrenToRemove.add(leftChild);
 				}
 
 				if (!rightChild.isUnique() && rightChild.getChildren().isEmpty()) {
 					rightChild.setParent(null);
-					right.getChildren().remove(rightChild);
+					rightChildrenToRemove.add(rightChild);
+					rightIndex.remove(rightChild);
 				}
 			}
 		}
 
+		removeAll(left.getChildren(), leftChildrenToRemove);
+		removeAll(right.getChildren(), rightChildrenToRemove);
 
 		return intersection;
 	}
@@ -180,14 +264,12 @@ public class Trees {
 			throw new EccoException("Equal atomic nodes must have identical children!");
 		}
 
+		Map<Node.Op, Node.Op> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
 		for (Node.Op leftChild : left.getChildren()) {
-			int ri = right.getChildren().indexOf(leftChild);
-			if (ri == -1) {
+			Node.Op rightChild = rightByArtifact.get(leftChild);
+			if (rightChild == null) {
 				throw new EccoException("Equal atomic nodes must have identical children!");
-				//continue;
 			}
-
-			Node.Op rightChild = right.getChildren().get(ri);
 
 			Trees.matchAtomicArtifacts(leftChild, rightChild);
 		}
@@ -213,22 +295,24 @@ public class Trees {
 		}
 
 		// deal with children
-		Iterator<? extends Node.Op> iterator = right.getChildren().iterator();
-		while (iterator.hasNext()) {
-			Node.Op rightChild = iterator.next();
-			int li = left.getChildren().indexOf(rightChild);
-			if (li != -1) {
-				Node.Op leftChild = left.getChildren().get(li);
+		ChildIndex leftIndex = new ChildIndex(left.getChildren());
+		Set<Node.Op> rightChildrenToRemove = newIdentitySet();
 
+		for (Node.Op rightChild : right.getChildren()) {
+			Node.Op leftChild = leftIndex.find(rightChild);
+			if (leftChild != null) {
 				merge(leftChild, rightChild);
 
 				// detatch right child from right node. this should not be necessary, but to be safe we clean up here.
-				iterator.remove();
+				rightChildrenToRemove.add(rightChild);
 				rightChild.setParent(null);
 			} else {
 				left.addChild(rightChild);
+				leftIndex.add(rightChild); // a newly-added child is a match candidate for a later duplicate
 			}
 		}
+
+		removeAll(right.getChildren(), rightChildrenToRemove);
 	}
 
 
@@ -378,20 +462,21 @@ public class Trees {
 		if (right.isUnique())
 			left.setUnique(false);
 
-		// deal with children
-		Iterator<? extends Node.Op> iterator = left.getChildren().iterator();
-		while (iterator.hasNext()) {
-			Node.Op leftChild = iterator.next();
-			int ri = right.getChildren().indexOf(leftChild);
-			if (ri != -1) {
-				Node.Op rightChild = right.getChildren().get(ri);
+		// deal with children (right is never modified, so a plain non-consuming lookup suffices)
+		Map<Node.Op, Node.Op> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
+		Set<Node.Op> leftChildrenToRemove = newIdentitySet();
 
+		for (Node.Op leftChild : left.getChildren()) {
+			Node.Op rightChild = rightByArtifact.get(leftChild);
+			if (rightChild != null) {
 				subtract(leftChild, rightChild);
 
 				if (!leftChild.isUnique() && leftChild.getChildren().isEmpty())
-					iterator.remove();
+					leftChildrenToRemove.add(leftChild);
 			}
 		}
+
+		removeAll(left.getChildren(), leftChildrenToRemove);
 	}
 
 
@@ -406,15 +491,12 @@ public class Trees {
 	 * @return True if the two given trees are equal, false otherwise.
 	 */
 	public static boolean equals(Node left, Node right) {
-		Iterator<? extends Node> leftChildrenIterator = left.getChildren().iterator();
-		while (leftChildrenIterator.hasNext()) {
-			Node leftChild = leftChildrenIterator.next();
+		Map<Node, Node> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
 
-			int ri = right.getChildren().indexOf(leftChild);
-			if (ri == -1)
+		for (Node leftChild : left.getChildren()) {
+			Node rightChild = rightByArtifact.get(leftChild);
+			if (rightChild == null)
 				return false;
-
-			Node rightChild = right.getChildren().get(ri);
 
 			if (!equals(leftChild, rightChild))
 				return false;
@@ -470,12 +552,11 @@ public class Trees {
 		}
 
 
+		Map<Node.Op, Node.Op> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
 		for (Node.Op leftChild : left.getChildren()) {
-			int ri = right.getChildren().indexOf(leftChild);
-			if (ri == -1)
+			Node.Op rightChild = rightByArtifact.get(leftChild);
+			if (rightChild == null)
 				continue;
-
-			Node.Op rightChild = right.getChildren().get(ri);
 
 			Trees.map(leftChild, rightChild);
 		}
@@ -499,13 +580,12 @@ public class Trees {
 			throw new EccoException("Equal atomic nodes must have identical children!");
 		}
 
+		Map<Node.Op, Node.Op> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
 		for (Node.Op leftChild : left.getChildren()) {
-			int ri = right.getChildren().indexOf(leftChild);
-			if (ri == -1) {
+			Node.Op rightChild = rightByArtifact.get(leftChild);
+			if (rightChild == null) {
 				throw new EccoException("Equal atomic nodes must have identical children!");
 			}
-
-			Node.Op rightChild = right.getChildren().get(ri);
 
 			Trees.mapAtomicArtifacts(leftChild, rightChild);
 		}
