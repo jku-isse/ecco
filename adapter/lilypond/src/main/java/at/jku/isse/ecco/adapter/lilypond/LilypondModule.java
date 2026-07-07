@@ -5,7 +5,6 @@ import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.lilypond.view.CodeViewer;
-import at.jku.isse.ecco.adapter.lilypond.view.ImageViewer;
 import at.jku.isse.ecco.adapter.lilypond.view.SVGViewer;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
@@ -39,7 +38,6 @@ public class LilypondModule extends AbstractModule {
                 final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
                         new TypeLiteral<>() {
                         });
-                viewerMultibinder.addBinding().to(ImageViewer.class);
                 viewerMultibinder.addBinding().to(SVGViewer.class);
             }
         }
