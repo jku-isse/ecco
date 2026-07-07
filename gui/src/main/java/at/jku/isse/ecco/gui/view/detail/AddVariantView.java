@@ -15,8 +15,6 @@ public class AddVariantView extends BorderPane {
 
     public AddVariantView() {
 
-        this.currentVariant = null;
-
         // toolbar
         this.toolBar = new ToolBar();
         this.setTop(toolBar);
@@ -57,7 +55,7 @@ public class AddVariantView extends BorderPane {
         this.showVariant(null);
     }
 
-    public void showVariant(Variant variant) {
+    public final void showVariant(Variant variant) {
         this.currentVariant = variant;
 
         if (variant != null) {

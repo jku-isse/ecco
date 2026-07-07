@@ -128,7 +128,7 @@ public class CommitGraphView extends BorderPane implements EccoListener {
 		setCenter(null);
 		try {
 			viewer.close();
-		} catch (Exception e) {
+		} catch (Exception ignored) {
 			// GraphStream's FxGraphRenderer can NPE while tearing down a view that was
 			// created but never rendered yet (e.g. closed again in quick succession by
 			// back-to-back status-changed events during a batch commit) - harmless here

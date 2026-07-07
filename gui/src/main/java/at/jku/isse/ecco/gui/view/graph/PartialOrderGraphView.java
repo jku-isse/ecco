@@ -87,7 +87,7 @@ public class PartialOrderGraphView extends BorderPane {
 		if (null != viewer) {
 			try {
 				viewer.close();
-			} catch (Exception e) {
+			} catch (Exception ignored) {
 				// GraphStream's FxGraphRenderer can NPE while tearing down a view that was
 				// created but never rendered yet - harmless here since the viewer/view are
 				// discarded immediately after anyway.

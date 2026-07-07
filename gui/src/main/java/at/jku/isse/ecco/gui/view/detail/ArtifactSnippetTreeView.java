@@ -81,7 +81,7 @@ public class ArtifactSnippetTreeView extends BorderPane {
 		this.setRootNode(null);
 	}
 
-	public void setRootNode(RootNode rootNode) {
+	public final void setRootNode(RootNode rootNode) {
 		this.currentRootNode = rootNode;
 		kindColors.clear();
 		visibleKinds.clear();

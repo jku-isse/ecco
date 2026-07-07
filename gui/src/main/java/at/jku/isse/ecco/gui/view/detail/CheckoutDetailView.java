@@ -29,9 +29,6 @@ public class CheckoutDetailView extends BorderPane {
 	public CheckoutDetailView(EccoService service) {
 		this.service = service;
 
-		this.currentCheckout = null;
-
-
 		// toolbar
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -92,7 +89,7 @@ public class CheckoutDetailView extends BorderPane {
 	}
 
 
-	public void showCheckout(Checkout checkout) {
+	public final void showCheckout(Checkout checkout) {
 		this.currentCheckout = checkout;
 
 		this.warningsData.clear();

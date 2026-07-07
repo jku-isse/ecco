@@ -104,7 +104,7 @@ public class ServerView extends OperationView implements EccoListener {
 			try {
 				Integer.parseInt(newValue);
 				portTextField.increment(0);
-			} catch (NumberFormatException e) {
+			} catch (NumberFormatException ignored) {
 			}
 		}); // workaround for not committing value when editing value
 		portLabel.setLabelFor(portTextField);

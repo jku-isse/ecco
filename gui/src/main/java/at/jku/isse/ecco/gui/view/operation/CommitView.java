@@ -197,8 +197,7 @@ public class CommitView extends OperationView implements EccoListener {
 			try {
 				if (initialDir != null && Files.exists(initialDir) && Files.isDirectory(initialDir))
 					directoryChooser.setInitialDirectory(initialDir.toFile());
-			} catch (Exception e) {
-				// do nothing
+			} catch (Exception ignored) {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory == null) {
@@ -217,8 +216,7 @@ public class CommitView extends OperationView implements EccoListener {
 			try {
 				if (initialDir != null && Files.exists(initialDir) && Files.isDirectory(initialDir))
 					directoryChooser.setInitialDirectory(initialDir.toFile());
-			} catch (Exception e) {
-				// do nothing
+			} catch (Exception ignored) {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory == null) {

@@ -30,9 +30,6 @@ public class RemoteDetailView extends BorderPane {
 	public RemoteDetailView(EccoService service) {
 		this.service = service;
 
-		this.currentRemote = null;
-
-
 		// toolbar
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -89,7 +86,7 @@ public class RemoteDetailView extends BorderPane {
 		this.showRemote(null);
 	}
 
-	public void showRemote(Remote remote) {
+	public final void showRemote(Remote remote) {
 		this.currentRemote = remote;
 
 		if (remote != null) {

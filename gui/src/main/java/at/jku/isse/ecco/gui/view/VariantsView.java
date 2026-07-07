@@ -167,8 +167,7 @@ public class VariantsView extends BorderPane implements EccoListener {
                 Path directory = Paths.get(baseDirTextField.getText());
                 if (Files.exists(directory) && Files.isDirectory(directory))
                     directoryChooser.setInitialDirectory(directory.toFile());
-            } catch (Exception e) {
-                // do nothing
+            } catch (Exception ignored) {
             }
             final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
             if (selectedDirectory != null) {

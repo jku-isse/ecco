@@ -132,7 +132,7 @@ public class VariantDetailView extends BorderPane {
 
 
 
-	public void showVariant(Variant variant) {
+	public final void showVariant(Variant variant) {
 
 		if (variant != null) {
 			this.setCenter(this.centerPane);

@@ -30,9 +30,6 @@ public class FeatureDetailView extends BorderPane {
 	public FeatureDetailView(EccoService service) {
 		this.service = service;
 
-		this.currentFeature = null;
-
-
 		// toolbar
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -113,7 +110,7 @@ public class FeatureDetailView extends BorderPane {
 	}
 
 
-	public void showFeature(Feature feature) {
+	public final void showFeature(Feature feature) {
 		this.currentFeature = feature;
 
 		this.featureRevisionsData.clear();

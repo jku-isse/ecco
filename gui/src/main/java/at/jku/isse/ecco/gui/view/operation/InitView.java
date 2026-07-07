@@ -86,8 +86,7 @@ public class InitView extends OperationView {
 					directory = directory.getParent();
 				if (Files.exists(directory) && Files.isDirectory(directory))
 					directoryChooser.setInitialDirectory(directory.toFile());
-			} catch (Exception e) {
-				// do nothing
+			} catch (Exception ignored) {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory != null) {

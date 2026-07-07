@@ -81,7 +81,7 @@ public class CommitDetailView extends BorderPane {
 	}
 
 
-	public void showCommit(Commit commit) {
+	public final void showCommit(Commit commit) {
 
 		this.associationsData.clear();
 

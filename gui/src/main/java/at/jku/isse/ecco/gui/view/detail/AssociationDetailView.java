@@ -23,9 +23,6 @@ public class AssociationDetailView extends BorderPane {
 	public AssociationDetailView(EccoService service) {
 		this.service = service;
 
-		this.currentAssociation = null;
-
-
 		// toolbar
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
@@ -129,7 +126,7 @@ public class AssociationDetailView extends BorderPane {
 	}
 
 
-	public void showAssociation(Association association) {
+	public final void showAssociation(Association association) {
 		this.currentAssociation = association;
 
 		if (association != null) {

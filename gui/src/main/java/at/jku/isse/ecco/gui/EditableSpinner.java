@@ -13,7 +13,7 @@ public class EditableSpinner extends Spinner<Integer> {
 			try {
 				Integer.parseInt(newValue);
 				this.increment(0);
-			} catch (NumberFormatException e) {
+			} catch (NumberFormatException ignored) {
 			}
 		}); // workaround for not committing value when editing value
 	}

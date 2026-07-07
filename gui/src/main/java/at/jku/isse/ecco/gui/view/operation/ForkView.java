@@ -48,11 +48,12 @@ public class ForkView extends OperationView {
 				this.service.init();
 
 				String remoteAddress = remoteAddressTextField.getText();
-				Path path;
-				try {
-					path = Paths.get(remoteAddress);
-				} catch (InvalidPathException | NullPointerException ex) {
-					path = null;
+				Path path = null;
+				if (remoteAddress != null) {
+					try {
+						path = Paths.get(remoteAddress);
+					} catch (InvalidPathException ignored) {
+					}
 				}
 
 				if (path != null) {
@@ -145,8 +146,7 @@ public class ForkView extends OperationView {
 					directory = directory.getParent();
 				if (Files.exists(directory) && Files.isDirectory(directory))
 					directoryChooser.setInitialDirectory(directory.toFile());
-			} catch (Exception e) {
-				// do nothing
+			} catch (Exception ignored) {
 			}
 			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 			if (selectedDirectory != null) {

@@ -157,7 +157,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 	}
 
 
-	public void setRootNode(RootNode rootNode) {
+	public final void setRootNode(RootNode rootNode) {
 		if (rootNode == null) {
 			this.setRoot(null);
 		} else {
@@ -253,6 +253,8 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 	}
 
 	public class NodeWrapper implements Node {
+
+		private static final long serialVersionUID = 1L;
 
 		private final ObjectProperty<Color> color;
 

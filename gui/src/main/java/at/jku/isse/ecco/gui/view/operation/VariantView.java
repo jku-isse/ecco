@@ -36,7 +36,7 @@ public class VariantView extends OperationView implements EccoListener {
         this.addVariant();
     }
 
-    public void addVariant(){
+    public final void addVariant(){
         Button cancelButton = new Button("Cancel");
         cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
         this.leftButtons.getChildren().add(cancelButton);

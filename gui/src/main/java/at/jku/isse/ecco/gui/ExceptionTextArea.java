@@ -25,7 +25,7 @@ public class ExceptionTextArea extends TextArea {
 	}
 
 
-	public void showException(Throwable ex) {
+	public final void showException(Throwable ex) {
 		if (ex != null) {
 			StringWriter sw = new StringWriter();
 			PrintWriter pw = new PrintWriter(sw);

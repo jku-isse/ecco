@@ -233,7 +233,7 @@ public class SettingsView extends BorderPane implements EccoListener {
 	// ECCO EVENTS
 
 	@Override
-	public void statusChangedEvent(EccoService service) {
+	public final void statusChangedEvent(EccoService service) {
 		Platform.runLater(() -> {
 			this.updateValues();
 		});
