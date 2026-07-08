@@ -13,6 +13,23 @@
     -fx-text-fill: black;
 }
 
+/* the default theme's selected-row style sets -fx-text-fill directly on each cell (not just
+   inherited from the row), which otherwise wins over .nonuniquerow/.uniquerow above even though
+   those are also applied to the row - so re-assert the same colors specifically while selected */
+.nonuniquerow:selected .tree-table-cell {
+    -fx-text-fill: gray;
+}
+
+.uniquerow:selected .tree-table-cell {
+    -fx-text-fill: black;
+}
+
+/* same reasoning as above, but for the row's expand/collapse disclosure arrow, which the default
+   theme also recolors (to white) when the row is selected */
+.tree-table-row-cell:selected .tree-disclosure-node .arrow {
+    -fx-background-color: black;
+}
+
 .notification-card {
     -fx-background-radius: 6;
     -fx-background-insets: 0;

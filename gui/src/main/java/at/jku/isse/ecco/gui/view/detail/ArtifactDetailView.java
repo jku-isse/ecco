@@ -241,14 +241,6 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		}
 	}
 
-	public void markSelectedAssociations() {
-		if (associationInfoArtifactViewers != null) {
-			for (AssociationInfoArtifactViewer v : associationInfoArtifactViewers) {
-				v.markSelectedAssociations();
-			}
-		}
-	}
-
 	public void setAssociationInfo(Collection<AssociationInfoImpl> associationInfos) {
 		this.associationInfos = associationInfos == null ? null :
 				associationInfos.stream()
