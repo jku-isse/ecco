@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.geometry.Insets;
@@ -30,22 +31,8 @@ import java.util.Set;
  */
 public class ArtifactSnippetTreeView extends BorderPane {
 
-	// fixed categorical hue order; a kind beyond this count falls back to OTHER_KIND_COLOR rather than cycling
-	private static final Color[] KIND_PALETTE = {
-			Color.web("#2a78d6"), // blue
-			Color.web("#1baf7a"), // aqua
-			Color.web("#eda100"), // yellow
-			Color.web("#008300"), // green
-			Color.web("#4a3aa7"), // violet
-			Color.web("#e34948"), // red
-			Color.web("#e87ba4"), // magenta
-			Color.web("#eb6834"), // orange
-	};
-	private static final Color OTHER_KIND_COLOR = Color.web("#898781");
-
 	private static final Color SNIPPET_BORDER = Color.web("#b0b0b0");
 	private static final Color SNIPPET_TEXT = Color.web("#202020");
-	private static final double TINT_TOWARDS_WHITE = 0.75;
 
 	private final TreeView<Node> treeView = new TreeView<>();
 	private final FlowPane legend = new FlowPane(12, 4);
@@ -157,12 +144,12 @@ public class ArtifactSnippetTreeView extends BorderPane {
 	private Color colorForKind(String kind) {
 		return kindColors.computeIfAbsent(kind, k -> {
 			int index = kindColors.size();
-			return index < KIND_PALETTE.length ? KIND_PALETTE[index] : OTHER_KIND_COLOR;
+			return index < CategoricalColorPalette.size() ? CategoricalColorPalette.colorAt(index) : CategoricalColorPalette.OTHER;
 		});
 	}
 
 	private static String snippetStyle(Color kindColor) {
-		Color tint = kindColor.interpolate(Color.WHITE, TINT_TOWARDS_WHITE);
+		Color tint = CategoricalColorPalette.tintForBackground(kindColor);
 		return "-fx-border-color: " + toRgbCss(SNIPPET_BORDER) + ";" +
 				"-fx-border-radius: 4;" +
 				"-fx-background-radius: 4;" +

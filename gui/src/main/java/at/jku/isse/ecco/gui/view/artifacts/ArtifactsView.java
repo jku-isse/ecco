@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.io.ConfigurationPickerDialog;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
@@ -350,11 +351,29 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         });
 
         Thread th = new Thread(() -> {
-            Collection<? extends Association> associations = this.service.getRepository().getAssociations();
+            // sorted by id (stable regardless of the repository's own iteration order) so that,
+            // as long as the set of associations doesn't change, each one keeps the same
+            // auto-assigned color across refreshes rather than reshuffling
+            List<? extends Association> associations = this.service.getRepository().getAssociations().stream()
+                    .sorted(Comparator.comparing(Association::getId))
+                    .toList();
             Platform.runLater(() -> {
                 this.associationsData.clear();
+                int index = 0;
                 for (Association a : associations) {
-                    this.associationsData.add(new AssociationInfoImpl(a));
+                    AssociationInfoImpl associationInfo = new AssociationInfoImpl(a);
+                    // color is only actually assigned once the association is selected (so the
+                    // "Highlighted" column and the code viewers stay blank for everything else),
+                    // but its slot is fixed now so the color stays the same association's color
+                    // across selections rather than depending on selection order
+                    Color assignedColor = CategoricalColorPalette.tintForBackground(CategoricalColorPalette.colorForIndex(index));
+                    associationInfo.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
+                        if (isSelected && associationInfo.colorProperty().get().equals(Color.TRANSPARENT)) {
+                            associationInfo.colorProperty().set(assignedColor);
+                        }
+                    });
+                    index++;
+                    this.associationsData.add(associationInfo);
                 }
                 artifactTreeView.setAssociationInfo(this.associationsData);
 
