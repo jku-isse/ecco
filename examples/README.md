@@ -5,4 +5,4 @@
 * The [*Draw Product Line (DPL) Example*](dpl_variants) consists of three variants of a draw application that can draw lines and rectangles in different colors.
 * The [*Person Image Example*](image_variants) consists of nine variants of an image of a differently dressed person.
 * The [*LilyPond Example*](lilypond_variants) consists of six variants (features) of a piece of music. 
-* The [*C Variants Example*](c_variants) consists of four variants of a small C program, covering every combination of two optional features.
+* The [*C Variants Example*](c_variants) consists of eight variants of a small, multi-file C program, covering every combination of three optional features.
