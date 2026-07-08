@@ -128,6 +128,52 @@ public interface PartialOrderGraph extends Persistable {
 			}
 		}
 
+		/**
+		 * Cheaply estimates how many linearizations {@link #collectNodeSequencings()} would produce
+		 * (the product, over every branch point, of that branch's degree factorial), without actually
+		 * enumerating them - a single topological walk multiplying in {@code degree!} at each node with
+		 * more than one "next" child, same branch-point detection as {@link #extendNodeSequencings}
+		 * but no recursion/cloning. Stops and returns {@link Long#MAX_VALUE} as soon as the running
+		 * product reaches {@code cap} (or would overflow), since the caller only needs "is this over
+		 * the cap" - computing the exact count for a graph that's already over it is itself expensive
+		 * (that's the whole problem this exists to avoid).
+		 */
+		default long estimateLinearizationCount(long cap) {
+			Map<PartialOrderGraph.Node.Op, Integer> counters = new HashMap<>();
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
+			stack.push(this.getHead());
+
+			long estimate = 1;
+			while (!stack.isEmpty()) {
+				Node.Op node = stack.pop();
+
+				Collection<Node.Op> nextNodes = (Collection<Node.Op>) node.getNext();
+				if (nextNodes.size() > 1) {
+					// both factors are always < cap here (this factor by loop invariant, the other
+					// from factorial()'s own cap), and cap is small enough in practice (see callers)
+					// that the product can't overflow a long before either factor would've hit cap
+					estimate *= factorial(nextNodes.size(), cap);
+					if (estimate >= cap) {
+						return Long.MAX_VALUE;
+					}
+				}
+
+				this.sequenceChildNodes(nextNodes, counters, stack);
+			}
+			return estimate;
+		}
+
+		private static long factorial(int n, long cap) {
+			long result = 1;
+			for (int i = 2; i <= n; i++) {
+				result *= i;
+				if (result >= cap) {
+					return cap;
+				}
+			}
+			return result;
+		}
+
 
 		Node.Op createNode(Artifact.Op<?> artifact);
 
@@ -159,9 +205,25 @@ public interface PartialOrderGraph extends Persistable {
 			this.alignMemoizedBacktracking(other);
 		}
 
+		// caps the estimated total linearization pair count (this * other) that iterativeLcsAlignment
+		// is allowed to face before alignMemoizedBacktracking falls back to directPoaAlignment instead
+		// of enumerating - chosen well below where iterativeLcsAlignment is empirically known to OOM
+		// (3 branch points x 5-way branching = 1,728,000 already crashes) but comfortably above the
+		// common case (a handful of 2-4 way branch points)
+		long LINEARIZATION_CAP = 100_000L;
+
 		//private
 		default void alignMemoizedBacktracking(PartialOrderGraph.Op other) {
-			IntObjectMap<Node.Op> result = this.iterativeLcsAlignment(other);
+			long thisEstimate = this.estimateLinearizationCount(LINEARIZATION_CAP);
+			long otherEstimate = thisEstimate >= LINEARIZATION_CAP ? LINEARIZATION_CAP : other.estimateLinearizationCount(LINEARIZATION_CAP);
+			boolean tooComplex = thisEstimate >= LINEARIZATION_CAP || otherEstimate >= LINEARIZATION_CAP || thisEstimate * otherEstimate >= LINEARIZATION_CAP;
+
+			// directPoaAlignment can under-match a concurrent branch whose needed order conflicts with
+			// an arbitrary topological ordering (see its javadoc) - not correctness-breaking (merge()'s
+			// consistency checks are structural, not optimality checks; an under-match just leaves one
+			// extra unmerged branch rather than corrupting anything), but it is a real quality tradeoff,
+			// so it's only used once the exact algorithm is estimated to be intractable, not by default.
+			IntObjectMap<Node.Op> result = tooComplex ? this.directPoaAlignment(other) : this.iterativeLcsAlignment(other);
 			// set sequence number of matched artifacts
 			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
 			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
@@ -598,6 +660,13 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
+		/**
+		 * The alignment algorithm {@link #align(Op)} actually uses, via {@link #alignMemoizedBacktracking(Op)}.
+		 * Factorial in the number of concurrent unresolved branches (see {@link #collectNodeSequencings()}),
+		 * but - unlike {@link #directPoaAlignment(Op)} - correct: it tries every relative ordering of a
+		 * branch's children explicitly, so it always finds the true best alignment regardless of which
+		 * order {@code other} needs them in.
+		 */
 		default MutableIntObjectMap<Node.Op> iterativeLcsAlignment(PartialOrderGraph.Op other) {
 			Node.Op[][] thisPaths = this.collectNodeSequencings();
 			Node.Op[][] otherPaths = other.collectNodeSequencings();
@@ -613,6 +682,156 @@ public interface PartialOrderGraph extends Persistable {
 			return alignmentResults.stream()
 					.max(Comparator.comparingInt(MutableIntObjectMap::size))
 					.orElseThrow(NoSuchElementException::new);
+		}
+
+
+		/**
+		 * NOT wired into {@link #align(Op)}/{@link #merge(Op)} - {@link #alignMemoizedBacktracking(Op)}
+		 * calls {@link #iterativeLcsAlignment(Op)} instead, deliberately. Wiring this in on 2026-07-08
+		 * broke {@code PartialOrderGraphTest.mergingWithBranchesWorks()}/{@code mergeTest()} (caught by
+		 * running the full suite, exactly as intended, and immediately reverted) - see
+		 * {@code DirectPoaAlignmentSpikeTest.KNOWN_BUG_concurrentBranchOrderConflictsWithOther_...} for
+		 * a minimal reproduction. <b>Known correctness bug, not just a slower-but-safe fallback:</b>
+		 * this fixes ONE arbitrary topological order of {@code this} up front (whatever
+		 * {@link #collectNodes()}'s stack traversal happens to produce) and then treats each node's
+		 * position in that one order as an implicit ordering constraint - including between sibling
+		 * nodes that aren't actually ordered relative to each other in the graph. When {@code other}
+		 * needs such siblings matched in the opposite order from the one {@link #collectNodes()}
+		 * happened to pick, this can silently under-match (find fewer matches than the true optimum)
+		 * rather than fail loudly. A correct fix needs to explore both relative orderings of a branch's
+		 * children when they conflict with {@code other}'s order - i.e. still needs something like
+		 * {@link #collectNodeSequencings()}'s permutation trying, just scoped to genuinely-conflicting
+		 * branches instead of applied globally, which is more involved than the swap attempted here.
+		 * <p>
+		 * Direct DP alignment over the two DAGs' topological structure, without enumerating
+		 * linearizations via {@link #collectNodeSequencings()}/{@code Permutation.generatePermutations()}
+		 * (the source of {@link #iterativeLcsAlignment(Op)}'s factorial blowup in the number of
+		 * concurrent unresolved branches). This is the "Partial Order Alignment" technique from
+		 * bioinformatics (Lee, Grasso &amp; Sharlow, 2002): generalize the classic Needleman-Wunsch/LCS
+		 * recurrence - where cell (i,j) depends on the single previous cell (i-1,j-1)/(i-1,j)/(i,j-1) -
+		 * so that "the previous position" becomes "the max over all direct predecessors in the DAG".
+		 * A branch point is then handled implicitly by having multiple predecessor cells to max over,
+		 * rather than explicitly by trying every ordering of its children beforehand.
+		 * <p>
+		 * {@code this} and {@code other} are each visited once in topological order (the same order
+		 * {@link #collectNodes()} already produces, no enumeration needed), so complexity is
+		 * O(E_this * E_other) - the sum, over every cell, of (in-degree in this) * (in-degree in
+		 * other) - which collapses to roughly O(V_this * V_other) for typical low-branching graphs,
+		 * regardless of how many concurrent branches exist, instead of O(V_this! * V_other!).
+		 * <p>
+		 * Matches {@link #iterativeLcsAlignment(Op)}'s actual optimization objective (confirmed by
+		 * reading {@link #lcsNonMatchStep}: it simply keeps whichever of the two skip options has more
+		 * matches so far) - maximize the number of matched nodes, with no differential cost between
+		 * skipping a node in {@code this} vs. in {@code other} (the class javadoc above describing a
+		 * "skip other costs 1" asymmetry doesn't appear to be reflected in the actual DP).
+		 */
+		default MutableIntObjectMap<Node.Op> directPoaAlignment(PartialOrderGraph.Op other) {
+			List<Node.Op> thisNodes = this.collectNodes();
+			List<Node.Op> otherNodes = other.collectNodes();
+
+			int n = thisNodes.size();
+			int m = otherNodes.size();
+			if (n == 0 || m == 0) {
+				return IntObjectMaps.mutable.empty();
+			}
+
+			Map<Node.Op, Integer> thisIndex = new HashMap<>();
+			for (int i = 0; i < n; i++) thisIndex.put(thisNodes.get(i), i);
+			Map<Node.Op, Integer> otherIndex = new HashMap<>();
+			for (int j = 0; j < m; j++) otherIndex.put(otherNodes.get(j), j);
+
+			int[][] score = new int[n][m];
+			// 0 = base case (0,0), 1 = match, 2 = skip this-node, 3 = skip other-node
+			byte[][] action = new byte[n][m];
+			int[][] backA = new int[n][m];
+			int[][] backB = new int[n][m];
+
+			for (int i = 0; i < n; i++) {
+				Node.Op nodeA = thisNodes.get(i);
+				Artifact<?> artifactA = nodeA.getArtifact();
+
+				for (int j = 0; j < m; j++) {
+					if (i == 0 && j == 0) {
+						continue; // score/action/backA/backB already 0 - this is the base case
+					}
+
+					Node.Op nodeB = otherNodes.get(j);
+					Artifact<?> artifactB = nodeB.getArtifact();
+
+					int best = Integer.MIN_VALUE;
+					byte bestAction = 0;
+					int bestA = -1, bestB = -1;
+
+					boolean canMatch = i > 0 && j > 0 && artifactA != null && artifactA.getData() != null
+							&& artifactB != null && artifactA.getData().equals(artifactB.getData());
+					if (canMatch) {
+						for (Node.Op predA : nodeA.getPrevious()) {
+							int pa = thisIndex.get(predA);
+							for (Node.Op predB : nodeB.getPrevious()) {
+								int pb = otherIndex.get(predB);
+								int candidate = score[pa][pb] + 1;
+								if (candidate > best) {
+									best = candidate;
+									bestAction = 1;
+									bestA = pa;
+									bestB = pb;
+								}
+							}
+						}
+					}
+					if (i > 0) {
+						for (Node.Op predA : nodeA.getPrevious()) {
+							int pa = thisIndex.get(predA);
+							int candidate = score[pa][j];
+							if (candidate > best) {
+								best = candidate;
+								bestAction = 2;
+								bestA = pa;
+								bestB = -1;
+							}
+						}
+					}
+					if (j > 0) {
+						for (Node.Op predB : nodeB.getPrevious()) {
+							int pb = otherIndex.get(predB);
+							int candidate = score[i][pb];
+							if (candidate > best) {
+								best = candidate;
+								bestAction = 3;
+								bestA = -1;
+								bestB = pb;
+							}
+						}
+					}
+
+					score[i][j] = best;
+					action[i][j] = bestAction;
+					backA[i][j] = bestA;
+					backB[i][j] = bestB;
+				}
+			}
+
+			// traceback from (this.tail, other.tail) - guaranteed to be the last node in each
+			// topological order, since every node eventually flows into it
+			MutableIntObjectMap<Node.Op> result = IntObjectMaps.mutable.empty();
+			int i = n - 1, j = m - 1;
+			while (!(i == 0 && j == 0)) {
+				byte a = action[i][j];
+				if (a == 1) {
+					result.put(thisNodes.get(i).getArtifact().getSequenceNumber(), otherNodes.get(j));
+					int pa = backA[i][j], pb = backB[i][j];
+					i = pa;
+					j = pb;
+				} else if (a == 2) {
+					i = backA[i][j];
+				} else if (a == 3) {
+					j = backB[i][j];
+				} else {
+					break;
+				}
+			}
+
+			return result;
 		}
 
 
