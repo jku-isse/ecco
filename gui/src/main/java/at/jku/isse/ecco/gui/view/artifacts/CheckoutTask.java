@@ -3,9 +3,9 @@ package at.jku.isse.ecco.gui.view.artifacts;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.Notifications;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.concurrent.Task;
-import javafx.scene.control.Alert;
 
 public class CheckoutTask extends Task<Void> {
     private final EccoService service;
@@ -26,12 +26,7 @@ public class CheckoutTask extends Task<Void> {
     public void succeeded() {
         super.succeeded();
 
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Checkout Successful");
-        alert.setHeaderText("Checkout Successful");
-        alert.setContentText("Checkout Successful!");
-
-        alert.showAndWait();
+        Notifications.success("Checkout Successful!");
     }
 
     @Override
