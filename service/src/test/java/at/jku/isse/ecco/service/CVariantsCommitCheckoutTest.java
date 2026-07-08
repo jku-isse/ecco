@@ -7,36 +7,59 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Commits the C variant evolution history under examples/c_variants (see its README) and checks
- * out each of the four feature combinations, verifying the checked-out main.c matches the
- * original exactly. Exercises the C adapter through EccoService's real commit/checkout flow, in
- * addition to CReaderIntegrationTest/CWriterIntegrationTest in adapter/c, which test CReader/
- * CWriter directly rather than the full repository round trip.
+ * out all eight feature combinations, verifying every checked-out file (converter.h, converter.c,
+ * main.c) matches the original exactly. Exercises the C adapter through EccoService's real
+ * commit/checkout flow and its multi-file handling, in addition to CReaderIntegrationTest/
+ * CWriterIntegrationTest in adapter/c, which test CReader/CWriter directly rather than the full
+ * repository round trip.
  */
 public class CVariantsCommitCheckoutTest {
 
 	private static final Path EXAMPLES_DIR = findRepoRoot().resolve("examples").resolve("c_variants");
+	private static final List<String> FILE_NAMES = List.of("converter.h", "converter.c", "main.c");
+
+	private static final List<String> VARIANT_DIRS = List.of(
+			"V1_core",
+			"V2_core_kelvin",
+			"V3_core_logging",
+			"V4_core_validation",
+			"V5_core_kelvin_logging",
+			"V6_core_kelvin_validation",
+			"V7_core_logging_validation",
+			"V8_core_kelvin_logging_validation"
+	);
+
+	private static final List<String> CONFIGURATIONS = List.of(
+			"CORE.1",
+			"CORE.1, KELVIN.1",
+			"CORE.1, LOGGING.1",
+			"CORE.1, VALIDATION.1",
+			"CORE.1, KELVIN.1, LOGGING.1",
+			"CORE.1, KELVIN.1, VALIDATION.1",
+			"CORE.1, LOGGING.1, VALIDATION.1",
+			"CORE.1, KELVIN.1, LOGGING.1, VALIDATION.1"
+	);
 
 	@Test
-	@Timeout(30)
+	@Timeout(60)
 	public void commitAllVariants_thenCheckoutEach_reproducesOriginalContent() throws IOException {
 		EccoService service = new EccoService();
 		service.setRepositoryDir(Files.createTempDirectory("c-variants-repo").resolve(".ecco"));
 		service.init();
 
-		commit(service, "V1_core");
-		commit(service, "V2_core_kelvin");
-		commit(service, "V3_core_logging");
-		commit(service, "V4_core_kelvin_logging");
+		for (String variantDir : VARIANT_DIRS) {
+			commit(service, variantDir);
+		}
 
-		checkoutAndVerify(service, "CORE.1", "V1_core");
-		checkoutAndVerify(service, "CORE.1, KELVIN.1", "V2_core_kelvin");
-		checkoutAndVerify(service, "CORE.1, LOGGING.1", "V3_core_logging");
-		checkoutAndVerify(service, "CORE.1, KELVIN.1, LOGGING.1", "V4_core_kelvin_logging");
+		for (int i = 0; i < VARIANT_DIRS.size(); i++) {
+			checkoutAndVerify(service, CONFIGURATIONS.get(i), VARIANT_DIRS.get(i));
+		}
 
 		service.close();
 	}
@@ -51,9 +74,11 @@ public class CVariantsCommitCheckoutTest {
 		service.setBaseDir(checkoutDir);
 		service.checkout(configurationString);
 
-		String expectedContent = withoutBlankLines(Files.readString(EXAMPLES_DIR.resolve(expectedVariantDirName).resolve("main.c"), StandardCharsets.UTF_8));
-		String actualContent = withoutBlankLines(Files.readString(checkoutDir.resolve("main.c"), StandardCharsets.UTF_8));
-		assertEquals(expectedContent, actualContent);
+		for (String fileName : FILE_NAMES) {
+			String expectedContent = withoutBlankLines(Files.readString(EXAMPLES_DIR.resolve(expectedVariantDirName).resolve(fileName), StandardCharsets.UTF_8));
+			String actualContent = withoutBlankLines(Files.readString(checkoutDir.resolve(fileName), StandardCharsets.UTF_8));
+			assertEquals(expectedContent, actualContent, () -> fileName + " mismatch for configuration \"" + configurationString + "\"");
+		}
 	}
 
 	/**

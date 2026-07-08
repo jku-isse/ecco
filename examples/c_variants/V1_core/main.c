@@ -1,8 +1,5 @@
 #include <stdio.h>
-
-float celsiusToFahrenheit(float celsius) {
-    return celsius * 9.0 / 5.0 + 32.0;
-}
+#include "converter.h"
 
 int main() {
     float celsius = 25.0;
