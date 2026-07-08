@@ -8,6 +8,7 @@ import at.jku.isse.ecco.util.resource.ResourceException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -32,7 +33,11 @@ public class CommitCheckoutTest {
         }
     }
 
-    @BeforeAll
+    @BeforeEach
+    public void deleteRepositoryBeforeEachTest() throws DirectoryException {
+        deleteFolderIfItExists(REPO_PATH);
+    }
+
     @AfterAll
     public static void deleteRepository() throws DirectoryException {
         deleteFolderIfItExists(REPO_PATH);
