@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * Maps parce/lilypond lexer token "actions" (e.g. "Text.Music.Pitch", "Keyword.Lyric",
  * "Name.Builtin", "Name.Function.Markup") to a text style for syntax highlighting in
- * {@link CodeViewer}. Parce assigns each token a dotted, Pygments-like hierarchical category (see
+ * {@link LilypondCodeViewer}. Parce assigns each token a dotted, Pygments-like hierarchical category (see
  * {@code LilypondParser_1.py} and {@code parce.lang.lilypond}).
  * <p>
  * The style groups and colors below are carried over from python-ly's {@code ly.colorize}

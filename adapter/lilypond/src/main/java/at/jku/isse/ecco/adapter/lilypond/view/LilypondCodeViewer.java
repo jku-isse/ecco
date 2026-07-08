@@ -34,7 +34,7 @@ import java.util.*;
  * parse task and position cache, mirroring the previous single-file behavior), defaulting to the
  * tab/node that was actually selected. If only one file is present, the tab chrome is skipped.
  */
-public class CodeViewer extends BorderPane implements AssociationInfoArtifactViewer {
+public class LilypondCodeViewer extends BorderPane implements AssociationInfoArtifactViewer {
 
 	private final HashMap<String, AssociationInfo> associationInfos;
 	private final HashMap<String, PropertyChangeListener> associationListeners;
@@ -44,11 +44,11 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 	private final SplitPane splitPane;
 	private final String style;
 
-	public CodeViewer() {
+	public LilypondCodeViewer() {
 		associationInfos = new HashMap<>();
 		associationListeners = new HashMap<>();
 
-		URL url = ClassLoader.getSystemResource("styles/CodeViewer.css");
+		URL url = ClassLoader.getSystemResource("styles/LilypondCodeViewer.css");
 		style = url != null ? url.toExternalForm() : null;
 
 		cellFactory = createCellFactory();
@@ -278,33 +278,14 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 		}
 	}
 
-	@Override
-	public void markSelectedAssociations() {
-		for (FileView fv : fileViews.values()) {
-			for (NodeTextBlock[] blocks : fv.codeLines) {
-				for (NodeTextBlock ntb : blocks) {
-					Association ass = ntb.getAssociation();
-					Color color = Color.WHITE;
-					if (ass != null) {
-						AssociationInfo ai = associationInfos.get(ass.getId());
-						if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-							Object val = ai.getPropertyValue("color");
-							if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
-								color = col;
-							}
-						}
-					}
-					ntb.backgroundColor().set(color);
-				}
-			}
-			fv.listView.refresh();
-		}
-	}
-
 	private PropertyChangeListener getColorPropertyListener() {
 		return evt -> {
 			if (evt.getPropertyName().equals("color")) {
-				String aId = ((AssociationInfo) evt.getSource()).getAssociation().getId();
+				AssociationInfo ai = (AssociationInfo) evt.getSource();
+				if (!Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
+					return;
+				}
+				String aId = ai.getAssociation().getId();
 				for (FileView fv : fileViews.values()) {
 					for (NodeTextBlock[] blocks : fv.codeLines) {
 						for (NodeTextBlock ntb : blocks) {
@@ -430,8 +411,9 @@ public class CodeViewer extends BorderPane implements AssociationInfoArtifactVie
 				Color bgCol = Color.WHITE;
 				if (ass != null) {
 					String aiId = ass.getId();
-					if (associationInfos.containsKey(aiId)) {
-						Object val = associationInfos.get(aiId).getPropertyValue("color");
+					AssociationInfo ai = associationInfos.get(aiId);
+					if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
+						Object val = ai.getPropertyValue("color");
 						if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
 							bgCol = col;
 						}
