@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -21,6 +22,11 @@ public final class RecentRepositories {
 	private RecentRepositories() {
 	}
 
+	/**
+	 * @return the persisted recent repository directories that still exist on disk. Entries whose
+	 * directory has since been deleted or moved are dropped and the persisted list is pruned to
+	 * match, so they don't keep reappearing on every call.
+	 */
 	public static List<Path> getRecentRepositories() {
 		String stored = prefs().get(RECENT_REPOS_KEY, "");
 		if (stored.isEmpty()) {
@@ -28,10 +34,20 @@ public final class RecentRepositories {
 		}
 
 		List<Path> paths = new ArrayList<>();
+		boolean allExist = true;
 		for (String s : stored.split(SEPARATOR)) {
 			if (!s.isEmpty()) {
-				paths.add(Paths.get(s));
+				Path path = Paths.get(s);
+				if (Files.exists(path)) {
+					paths.add(path);
+				} else {
+					allExist = false;
+				}
 			}
+		}
+
+		if (!allExist) {
+			store(paths);
 		}
 		return paths;
 	}
@@ -46,8 +62,12 @@ public final class RecentRepositories {
 			trimmed = trimmed.subList(0, MAX_ENTRIES);
 		}
 
+		store(trimmed);
+	}
+
+	private static void store(List<Path> paths) {
 		StringBuilder sb = new StringBuilder();
-		for (Path p : trimmed) {
+		for (Path p : paths) {
 			sb.append(p).append(SEPARATOR);
 		}
 		prefs().put(RECENT_REPOS_KEY, sb.toString());
