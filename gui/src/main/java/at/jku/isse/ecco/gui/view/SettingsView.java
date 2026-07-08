@@ -200,12 +200,16 @@ public class SettingsView extends BorderPane implements EccoListener {
 
 		service.addListener(this);
 
-		this.statusChangedEvent(service);
+		// synchronous, unlike statusChangedEvent(), so the view starts in the correct disabled
+		// state immediately - construction already happens on the JavaFX Application Thread
+		this.updateValues();
 	}
 
 
 	private void updateValues() {
 		if (service.isInitialized()) {
+			this.setDisable(false);
+
 			this.statusLabel.setText("The ECCO Service is initialized.");
 
 			this.baseDirUrl.setText(service.getBaseDir().toString());
@@ -225,6 +229,8 @@ public class SettingsView extends BorderPane implements EccoListener {
 //				SettingsView.this.setModeButton.setDisable(true);
 //			}
 		} else {
+			this.setDisable(true);
+
 			this.statusLabel.setText("The ECCO Service has not been initialized yet.");
 		}
 	}
