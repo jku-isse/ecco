@@ -43,6 +43,9 @@ public class Location implements Persistable {
     }
 
     public static String sortConfigurationString(String configString){
+        if (configString == null) {
+            return null;
+        }
         String[] configElements = configString.split(",");
         for (int i = 0; i < configElements.length; i++){ configElements[i] = configElements[i].trim(); }
         List<String> sortedList = Arrays.stream(configElements).sorted().toList();
