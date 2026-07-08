@@ -14,6 +14,7 @@ import java.util.*;
 
 // todo: make tests independent of absolute paths
 
+@Disabled("needs a local 'Teclo-*' variant checkout (C:\\Users\\user\\Desktop\\TEST2) and Selenium test output (D:\\Work\\SCCH\\ECCO Selenium Tests) from a Bugzilla issue-tracker export - never checked in, not fabricable")
 public class BugzillaTest {
 
 	private Path outputDir = Paths.get("reports/integrationTest/output");

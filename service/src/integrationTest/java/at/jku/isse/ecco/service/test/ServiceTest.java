@@ -17,6 +17,7 @@ import java.util.*;
 
 // todo: make tests independent of absolute paths
 
+@Disabled("needs the author's local repo/input data (C:\\Users\\user\\Desktop\\transfer) - never checked in, not fabricable")
 public class ServiceTest {
 
 	private Path outputDir = Paths.get("C:\\Users\\user\\Desktop\\transfer\\output");

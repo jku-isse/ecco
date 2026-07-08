@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.logging.*;
 import java.util.stream.*;
 
+@Disabled("needs the ArgoUML SPLC challenge benchmark corpus (C:\\Users\\user\\Desktop\\splc_challenge) - never checked in, not fabricable")
 public class ChallengeTest {
 
 	private static final Path BENCHMARK_DIR = Paths.get("C:\\Users\\user\\Desktop\\splc_challenge\\workspace\\ArgoUMLSPLBenchmark");

@@ -16,6 +16,7 @@ import java.util.stream.*;
 
 // todo: make tests independent of absolute paths
 
+@Disabled("hardcodes C:\\Users\\user\\Desktop\\ECCO_TEST paths for a real multi-process file-lock scenario - needs a proper fixture/rework, not just a path swap")
 public class FileLockTest {
 	@Test
 	public void FileLockTest2() throws IOException {
