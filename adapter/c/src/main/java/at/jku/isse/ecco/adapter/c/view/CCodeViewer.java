@@ -84,7 +84,11 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 
 		linesByFile.clear();
 
-		Node selectedFileNode = null;
+		// found by walking UP from the clicked node, rather than checking indexByNode below,
+		// since that only tracks nodes that produced a rendered line - a FunctionArtifactData
+		// node (a pure grouping node, see renderNode) or the file node itself never would, and
+		// would otherwise fail to select any tab at all
+		Node selectedFileNode = findContainingFileNode(n);
 		Integer selectedIndex = null;
 
 		for (Node fileNode : fileNodes) {
@@ -97,8 +101,7 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 			ObservableList<CCodeLine> lines = FXCollections.observableArrayList(built);
 			linesByFile.put(fileNode, lines);
 
-			if (indexByNode.containsKey(n)) {
-				selectedFileNode = fileNode;
+			if (fileNode.equals(selectedFileNode)) {
 				selectedIndex = indexByNode.get(n);
 			}
 		}
@@ -122,6 +125,18 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 		for (Node child : n.getChildren()) {
 			collectFileNodes(child, result);
 		}
+	}
+
+	private Node findContainingFileNode(Node n) {
+		for (Node cur = n; cur != null; cur = cur.getParent()) {
+			if (cur.getArtifact() != null) {
+				ArtifactData d = cur.getArtifact().getData();
+				if (d instanceof PluginArtifactData pad && getPluginId().equals(pad.getPluginId())) {
+					return cur;
+				}
+			}
+		}
+		return null;
 	}
 
 	private void rebuildView(Node selectedFileNode, Integer selectedIndex) {
@@ -227,7 +242,9 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 				: null;
 
 		if (d instanceof FunctionArtifactData) {
-			// a pure grouping node - its real opening-brace line is already the first child
+			// a pure grouping node - its real opening-brace line is already the first child, but
+			// still record where it starts so selecting the function node itself scrolls there
+			indexByNode.put(n, lines.size());
 			for (Node child : n.getChildren()) {
 				renderNode(child, lines, indexByNode);
 			}
@@ -250,8 +267,9 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 		Color bgCol = Color.WHITE;
 		if (association != null) {
 			String aiId = association.getId();
-			if (associationInfos.containsKey(aiId)) {
-				Object val = associationInfos.get(aiId).getPropertyValue("color");
+			AssociationInfo ai = associationInfos.get(aiId);
+			if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
+				Object val = ai.getPropertyValue("color");
 				if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
 					bgCol = col;
 				}
@@ -299,30 +317,14 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 		}
 	}
 
-	@Override
-	public void markSelectedAssociations() {
-		for (ObservableList<CCodeLine> lines : linesByFile.values()) {
-			for (CCodeLine line : lines) {
-				Association ass = line.getAssociation();
-				Color color = Color.WHITE;
-				if (ass != null) {
-					AssociationInfo ai = associationInfos.get(ass.getId());
-					if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-						Object val = ai.getPropertyValue("color");
-						if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
-							color = col;
-						}
-					}
-				}
-				line.backgroundColor().set(color);
-			}
-		}
-	}
-
 	private PropertyChangeListener getColorPropertyListener() {
 		return evt -> {
 			if (evt.getPropertyName().equals("color")) {
-				String aId = ((AssociationInfo) evt.getSource()).getAssociation().getId();
+				AssociationInfo ai = (AssociationInfo) evt.getSource();
+				if (!Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
+					return;
+				}
+				String aId = ai.getAssociation().getId();
 				for (ObservableList<CCodeLine> lines : linesByFile.values()) {
 					for (CCodeLine line : lines) {
 						if (line.getAssociation() != null && aId.equals(line.getAssociation().getId())) {

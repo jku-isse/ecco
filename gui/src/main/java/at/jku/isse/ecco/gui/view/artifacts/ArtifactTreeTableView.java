@@ -4,6 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
@@ -14,7 +15,6 @@ import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.NodeWrapper> {
 
@@ -23,24 +23,31 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		// create columns
 
-		class ColorTreeTableCell<Inputs> extends TreeTableCell<Inputs, Color> {
-			@Override
-			protected void updateItem(Color item, boolean empty) {
-				super.updateItem(item, empty);
-
-				setText(null);
-				setGraphic(null);
-
-				this.setBackground(new Background(new BackgroundFill(item, null, null)));
-			}
-		}
-
-		TreeTableColumn<NodeWrapper, Color> colorNodeCol = new TreeTableColumn<>();
-		colorNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Color> param) -> param.getValue().getValue().colorProperty());
-		colorNodeCol.setCellFactory(param -> new ColorTreeTableCell<>());
-
 		TreeTableColumn<NodeWrapper, String> labelNodeCol = new TreeTableColumn<>("Node");
 		labelNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, String> param) -> new ReadOnlyStringWrapper(param.getValue().getValue().toString()));
+		labelNodeCol.setCellFactory(param -> new TreeTableCell<NodeWrapper, String>() {
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				backgroundProperty().unbind();
+
+				if (empty || item == null) {
+					setText(null);
+					setBackground(null);
+				} else {
+					setText(item);
+					TreeTableRow<NodeWrapper> row = getTreeTableRow();
+					NodeWrapper wrapper = row == null ? null : row.getItem();
+					if (wrapper != null) {
+						backgroundProperty().bind(Bindings.createObjectBinding(
+								() -> new Background(new BackgroundFill(wrapper.colorProperty().getValue(), null, null)),
+								wrapper.colorProperty()));
+					} else {
+						setBackground(null);
+					}
+				}
+			}
+		});
 
 		TreeTableColumn<NodeWrapper, Boolean> orderedNodeCol = new TreeTableColumn<>("Ordered");
 		orderedNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().getArtifact() != null && param.getValue().getValue().getArtifact().isOrdered()));
@@ -103,7 +110,7 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 
 		TreeTableColumn<NodeWrapper, String> artifactTreeCol = new TreeTableColumn<>("Artifact Tree");
-		artifactTreeCol.getColumns().setAll(labelNodeCol, colorNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol, isSelectedNodeCol);
+		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol, isSelectedNodeCol);
 
 
 		uniqueNodeCol.setCellFactory(new Callback<>() {
@@ -131,12 +138,15 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 			@Override
 			public void updateItem(NodeWrapper item, boolean empty) {
 				super.updateItem(item, empty);
+				// updateItem() re-fires on every selection change too (not just when a recycled
+				// row is reused for a different tree item), so the previous class must be removed
+				// first - otherwise a row can accumulate both, and whichever rule happens to sort
+				// last in the stylesheet wins regardless of this row's actual current state
+				this.getStyleClass().removeAll("uniquerow", "nonuniquerow");
 				if (item != null && item.isUnique()) {
 					this.getStyleClass().add("uniquerow");
-					this.setTextFill(Color.BLACK);
 				} else {
 					this.getStyleClass().add("nonuniquerow");
-					this.setTextFill(Color.GRAY);
 				}
 			}
 		});
@@ -173,42 +183,6 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 			expandAll(child);
 		}
 	}
-
-	public void markSelected() {
-		for (TreeItem<NodeWrapper> item : this.getSelectionModel().getSelectedItems()) {
-			Artifact<?> artifact = item.getValue().getArtifact();
-			if (artifact != null) {
-				artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, true);
-			}
-		}
-
-		if (this.associationInfos != null && this.getRoot() != null) {
-			Set<Association> selectedAssociations = this.associationInfos.stream()
-					.filter(AssociationInfoImpl::isSelected)
-					.map(AssociationInfoImpl::getAssociation)
-					.collect(Collectors.toSet());
-
-			if (!selectedAssociations.isEmpty()) {
-				this.markAssociationArtifacts(this.getRoot(), selectedAssociations);
-			}
-		}
-
-		this.refresh();
-	}
-
-	private void markAssociationArtifacts(TreeItem<NodeWrapper> item, Set<Association> selectedAssociations) {
-		Artifact<?> artifact = item.getValue().getArtifact();
-		if (artifact != null && artifact.getContainingNode() != null) {
-			Association association = artifact.getContainingNode().getContainingAssociation();
-			if (association != null && selectedAssociations.contains(association)) {
-				artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, true);
-			}
-		}
-		for (TreeItem<NodeWrapper> child : item.getChildren()) {
-			this.markAssociationArtifacts(child, selectedAssociations);
-		}
-	}
-
 
 	private Collection<AssociationInfoImpl> associationInfos = null;
 
