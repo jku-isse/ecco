@@ -78,10 +78,6 @@ subprojects {
 		classpath = sourceSets.integrationTest.runtimeClasspath
 		testClassesDirs = sourceSets.integrationTest.output.classesDirs
 		outputs.upToDateWhen { false }
-
-		filter {
-			exclude("**/test/**")
-		}
 	}
 	check.dependsOn -= integrationTest
 
