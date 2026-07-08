@@ -1,4 +1,20 @@
+plugins {
+	id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
 apply plugin: 'java-library'
+
+// ecco-adapter-lilypond (a test-only dependency below, needed to exercise all bundled
+// artifact plugins via Guice) bundles a JavaFX-based viewer, so its classes reference
+// javafx.scene.web.WebView. That's only resolvable with the platform-specific javafx
+// artifacts the javafx plugin's variant-aware resolution provides - plain transitive
+// project-dependency resolution pulls in the classifier-less (contentless) javafx-web
+// jar and fails with NoClassDefFoundError once Guice reflects over that plugin's classes.
+javafx {
+	version = "21"
+	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics', 'javafx.swing', 'javafx.web']
+	configuration = 'testImplementation'
+}
 
 dependencies {
 	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
