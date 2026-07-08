@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
 
+@Disabled("reads from C:\\Users\\gabil\\Desktop - just the original author's desktop, no real fixture ever existed")
 public class AdapterTest {
 
 	@Test

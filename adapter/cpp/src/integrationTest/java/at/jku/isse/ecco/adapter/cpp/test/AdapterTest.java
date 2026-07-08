@@ -20,6 +20,7 @@ import java.util.stream.*;
 import static at.jku.isse.ecco.util.Trees.*;
 
 
+@Disabled("needs the author's PhD case-study data (C:\\Users\\gabil\\Desktop\\PHD..., D:\\Gabriela\\FRL-ecco\\CaseStudies\\Marlin) - never checked in, not fabricable")
 public class AdapterTest {
 
 

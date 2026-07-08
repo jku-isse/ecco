@@ -17,6 +17,7 @@ import java.util.HashSet;
 
 // todo: make tests independent of absolute paths
 
+@Disabled("needs the original author's local paper-illustration data (C:\\Users\\user\\Desktop\\vcs_paper_output, vcs_features_paper) - never checked in, not fabricable")
 public class PaperTest {
 
 	private Path outputDir = Paths.get("C:\\Users\\user\\Desktop\\vcs_paper_output");

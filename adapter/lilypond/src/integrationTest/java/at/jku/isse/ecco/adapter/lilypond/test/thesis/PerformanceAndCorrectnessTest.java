@@ -44,6 +44,11 @@ import java.util.stream.Stream;
 
 import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 
+/**
+ * Needs the original author's student-thesis benchmark corpus (G:/, F:/Uni/... paths) - never
+ * checked in, not fabricable. Class-level @Ignore since every method in this file depends on it.
+ */
+@Ignore
 public class PerformanceAndCorrectnessTest {
 
 	private static final Path DATA_DIR;

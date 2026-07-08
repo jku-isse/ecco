@@ -11,6 +11,7 @@ import com.opencsv.*;
 import com.opencsv.exceptions.*;
 import com.github.difflib.*;
 import com.github.difflib.patch.*;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
@@ -20,6 +21,7 @@ import java.util.stream.*;
 
 // todo: make tests independent of absolute paths
 
+@Disabled("needs the author's PhD case-study variant histories (Curl, Marlin, LibSSH, SQLite, Bison, Irssi) - never checked in, not fabricable")
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
     public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Curl2";

@@ -17,6 +17,7 @@ import java.util.*;
 
 // todo: make tests independent of absolute paths
 
+@Disabled("needs the author's local repo/input data (C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\warningstest) - never checked in, not fabricable")
 public class ServiceTest2 {
 
     private Path outputDir = Paths.get("C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\warningstest\\output");

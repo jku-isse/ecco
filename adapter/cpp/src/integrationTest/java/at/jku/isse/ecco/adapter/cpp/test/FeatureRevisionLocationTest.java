@@ -13,6 +13,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
 
+@Disabled("needs the author's SPLC2020 case-study data (SQLite/Marlin/LibSSH, C:\\Users\\gabil\\Desktop\\PHD..., C:\\Users\\gabil\\Downloads\\SPLC2020-FeatureRevisionLocation-master) - never checked in, not fabricable")
 public class FeatureRevisionLocationTest {
     //directory where you have the folder with the artifacts of the target systyem
     public final String resultsCSVs_path = "C:\\Users\\gabil\\Desktop\\PHD\\JournalExtensionEMSE\\CaseStudies\\Test500commits\\SQLite";

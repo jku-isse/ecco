@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.logging.*;
 import java.util.stream.*;
 
+@Disabled("needs the ArgoUML SPLC challenge benchmark corpus (C:\\Users\\gabil\\eclipse-workspace\\ArgoUMLSPLBenchmark) - never checked in, not fabricable")
 public class RuntimeModuleTest {
 
 
