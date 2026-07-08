@@ -39,6 +39,8 @@ public class MainView extends BorderPane implements EccoListener {
 
 	private final Button preferencesButton = new Button("Preferences");
 
+	private final TabPane tabPane = new TabPane();
+
 	public MainView(EccoService eccoService) {
 		this.eccoService = eccoService;
 
@@ -64,7 +66,6 @@ public class MainView extends BorderPane implements EccoListener {
 
 
 		// tabs
-		TabPane tabPane = new TabPane();
 		this.setCenter(tabPane);
 
 		// status
@@ -228,6 +229,7 @@ public class MainView extends BorderPane implements EccoListener {
 			pullButton.setDisable(false);
 			pushButton.setDisable(false);
 			serverButton.setDisable(false);
+			tabPane.setDisable(false);
 		} else {
 			openButton.setDisable(false);
 			closeButton.setDisable(true);
@@ -239,6 +241,7 @@ public class MainView extends BorderPane implements EccoListener {
 			pullButton.setDisable(true);
 			pushButton.setDisable(true);
 			serverButton.setDisable(true);
+			tabPane.setDisable(true);
 		}
 	}
 
