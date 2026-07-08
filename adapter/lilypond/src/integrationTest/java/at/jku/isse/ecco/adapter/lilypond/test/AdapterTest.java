@@ -3,10 +3,8 @@ package at.jku.isse.ecco.adapter.lilypond.test;
 import at.jku.isse.ecco.adapter.lilypond.*;
 import at.jku.isse.ecco.adapter.lilypond.parce.LilypondNodeSerializationWrapper;
 import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
-import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
-import com.google.common.io.RecursiveDeleteOption;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -118,47 +116,7 @@ public class AdapterTest {
         System.out.println("END WRITE");
     }
 
-    @Test()
-    public void populateSimpleVersionRepository() {
-        Path basePath = Paths.get("/Users/paul/Library/CloudStorage/Dropbox/UNI/Dokumente/Projekte/_ECCO/LilyECCODemos/nachtwachezwei_brahms");
-
-        // open repository
-        EccoService service = new EccoService();
-
-        //create Repo
-        String repo = ".ecco";
-        Path p = basePath.resolve(repo);
-        /*try {
-            deleteDirectoryContents(p, RecursiveDeleteOption.ALLOW_INSECURE);       //ALLOW INSECURE
-            Files.delete(p);        //Works only if the dir is already empty. (done by  deleteDirectoryContents)
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        Assert.assertFalse(Files.exists(p));
-*/
-        service.setRepositoryDir(p);
-        service.init();
-
-        int variantsCnt = 0;
-
-        for (int i = 74; i <= 100; i++) {
-            String variant = String.format("%03d", i); // "074", "075", ..., "100"
-
-            service.setBaseDir(basePath.resolve(variant));
-            service.commit(variant);
-
-            variantsCnt++;
-        }
-
-        System.out.printf("Committed %d variants%n", variantsCnt);
-
-
-        // close repository
-        service.close();
-        System.out.println("Repository closed.");
-    }
-
-        private static final Path[] DIEU_FILE = new Path[]{Paths.get("input/dieu.ly")};
+    private static final Path[] DIEU_FILE = new Path[]{Paths.get("input/dieu.ly")};
     @Test(groups = {"parce"})
     public void DieuWriterTest() {
         LilypondReader rd = new LilypondReader((new SerEntityFactory()));

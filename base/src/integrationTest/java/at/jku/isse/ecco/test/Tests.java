@@ -9,35 +9,38 @@ import java.nio.channels.*;
 import java.nio.file.*;
 import java.util.*;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Characterizes the exact java.nio.file.PathMatcher glob semantics that
+ * {@link at.jku.isse.ecco.adapter.dispatch.DispatchReader}'s ignore-pattern matching (see
+ * {@code EccoService#open()}, which registers ignore patterns like ".ecco" as globs) depends on -
+ * in particular that a glob without "**" only matches an exact relative path, not any path ending
+ * with it.
+ */
 public class Tests {
 
 	@Test
-	public void UUID_Test() {
-		UUID id = UUID.randomUUID();
-		System.out.println("ID: " + id.toString());
-		System.out.println("HASH: " + id.hashCode());
-	}
-
-	@Test
-	public void PathMatcher_Test() throws IOException {
+	public void PathMatcher_matchesExactRelativePathOnly() {
 		PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:testfolder/testfile.txt");
 
 		Path path = Paths.get("testfolder/testfile.txt");
 		Path path2 = Paths.get("testfoldera/testfolder/testfile.txt");
 
-		System.out.println(path + ": " + pm.matches(path));
-		System.out.println(path2 + ": " + pm.matches(path2));
+		assertTrue(pm.matches(path));
+		assertFalse(pm.matches(path2));
 	}
 
 	@Test
-	public void PathMatcher_Test2() throws IOException {
+	public void PathMatcher_doubleWildcardMatchesAnyPath() {
 		PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:**");
 
 		Path path = Paths.get("testfile.txt");
 		Path path2 = Paths.get("testfoldera/testfolder2/testfile.txt");
 
-		System.out.println(path + ": " + pm.matches(path));
-		System.out.println(path2 + ": " + pm.matches(path2));
+		assertTrue(pm.matches(path));
+		assertTrue(pm.matches(path2));
 	}
 
 

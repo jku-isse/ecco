@@ -3,11 +3,15 @@ package at.jku.isse.ecco.adapter.text.test;
 import at.jku.isse.ecco.adapter.text.*;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.*;
+import at.jku.isse.ecco.util.Trees;
 import org.junit.jupiter.api.*;
 
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AdapterTest {
 
@@ -30,10 +34,13 @@ public class AdapterTest {
 	public void Java_Adapter_Test() {
 		TextReader reader = new TextReader(new SerEntityFactory());
 
-		System.out.println("READ");
 		Set<Node.Op> nodes = reader.read(BASE_DIR, FILES);
 
-		System.out.println(nodes);
+		assertEquals(1, nodes.size());
+		Node.Op fileNode = nodes.iterator().next();
+		assertTrue(fileNode.getArtifact().toString().contains("file.txt"));
+		// file.txt (in src/integrationTest/resources/data/input) has 4 lines; +1 for the file node itself
+		assertEquals(5, Trees.countArtifacts(fileNode));
 	}
 
 }
