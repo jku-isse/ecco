@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.UUID;
+import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -174,11 +175,33 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// serialize to new db file
 		Path newDbFile = this.repositoryDir.resolve(newId + DB_FILE_SUFFIX);
 		//this.serialize(this.database, newDbFile);
+		//
+		// serialized first to a byte array, then written as a STORED (uncompressed) zip entry,
+		// rather than streaming directly into a DEFLATE-compressed entry as before: measured on a
+		// real ~40MB repository, DEFLATE compression (even at level 0, which still runs the deflate
+		// algorithm, just with minimal effort) was 10-15s of a ~16.6s total, vs. ~0.1s to write the
+		// same (uncompressed, ~5x larger) bytes with no compression at all - raw disk I/O was never
+		// the bottleneck, compression was. STORED entries require the size/CRC32 to be known
+		// upfront, which is why this needs the intermediate byte array. Trades disk space (the
+		// larger, uncompressed on-disk size) for a ~3x faster commit on large repositories. The read
+		// path (loadDatabase() below) needs no changes - ZipInputStream decompresses transparently
+		// regardless of which method an entry was written with, so older, DEFLATE-compressed
+		// database files remain fully readable.
+		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
+		try (ObjectOutputStream oos = new ObjectOutputStream(serialized)) {
+			oos.writeObject(this.database);
+		}
+		byte[] serializedBytes = serialized.toByteArray();
+		CRC32 crc32 = new CRC32();
+		crc32.update(serializedBytes);
 		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(newDbFile, StandardOpenOption.CREATE))) {
-			zos.putNextEntry(new ZipEntry("ecco.ser"));
-			try (ObjectOutputStream oos = new ObjectOutputStream(zos)) {
-				oos.writeObject(this.database);
-			}
+			ZipEntry entry = new ZipEntry("ecco.ser");
+			entry.setMethod(ZipEntry.STORED);
+			entry.setSize(serializedBytes.length);
+			entry.setCompressedSize(serializedBytes.length);
+			entry.setCrc(crc32.getValue());
+			zos.putNextEntry(entry);
+			zos.write(serializedBytes);
 		}
 
 		// obtain exclusive lock on id file, write new id, update current id and db file, release lock
