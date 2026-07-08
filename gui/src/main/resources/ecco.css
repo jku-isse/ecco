@@ -12,3 +12,38 @@
 .uniquerow {
     -fx-text-fill: black;
 }
+
+.notification-card {
+    -fx-background-radius: 6;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 8, 0, 0, 2);
+}
+
+.notification-card .label {
+    -fx-text-fill: white;
+}
+
+.notification-success {
+    -fx-background-color: #00cc99;
+}
+
+.notification-error {
+    -fx-background-color: #ff6666;
+}
+
+.notification-info {
+    -fx-background-color: #4a90d9;
+}
+
+.notification-close {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+    -fx-padding: 2 6 2 6;
+    -fx-cursor: hand;
+}
+
+.notification-close:hover {
+    -fx-background-color: rgba(255,255,255,0.25);
+    -fx-background-radius: 4;
+}

@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.operation;
 
 
 import at.jku.isse.ecco.gui.ExceptionTextArea;
+import at.jku.isse.ecco.gui.Notifications;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -126,37 +127,16 @@ public abstract class OperationView extends BorderPane {
 		this.rightButtons.getChildren().setAll(finishButton);
 	}
 
+	/**
+	 * Closes this operation's dialog immediately and reports success via the non-blocking
+	 * {@link Notifications} panel, instead of replacing the dialog's content with a message the
+	 * user has to click "Done" to dismiss before they can go back to using the app. Steps that show
+	 * richer content on success (e.g. a summary) should call {@link #showSuccessHeader()} directly
+	 * instead, to keep that content on screen.
+	 */
 	protected void stepSuccess(String text) {
-//		this.clearSteps();
-
-//		// toolbar top
-//		ToolBar toolBar = new ToolBar();
-//		toolBar.setStyle("-fx-base: #00cc99;");
-//		toolBar.getStyleClass().add("success");
-//		final Pane spacerLeft = new Pane();
-//		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-//		final Pane spacerRight = new Pane();
-//		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-//
-//		Button finishButton = new Button("Done");
-//		finishButton.getStyleClass().add("success");
-//
-//		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
-//
-//		toolBar.getItems().setAll(spacerLeft, finishButton);
-//
-//		this.setTop(toolBar);
-
-		this.showSuccessHeader();
-
-
-		// main content
-		Label label = new Label(text);
-		label.setPadding(new Insets(10));
-		this.setCenter(label);
-
-
-		this.fit();
+		Notifications.success(text);
+		((Stage) this.getScene().getWindow()).close();
 	}
 
 

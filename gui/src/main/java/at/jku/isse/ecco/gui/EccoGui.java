@@ -5,8 +5,9 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.scene.Group;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 import java.nio.file.Paths;
@@ -22,7 +23,9 @@ public class EccoGui extends Application implements EccoListener {
 
 	private MainView mainView;
 
-	private Group root;
+	private NotificationPanel notificationPanel;
+
+	private StackPane root;
 
 	private Stage stage;
 
@@ -40,7 +43,7 @@ public class EccoGui extends Application implements EccoListener {
 		// INIT
 		Application.setUserAgentStylesheet(STYLESHEET_MODENA);
 		primaryStage.setTitle("ECCO");
-		this.root = new Group();
+		this.root = new StackPane();
 		Scene scene = new Scene(root, 800, 600);
 		scene.getStylesheets().add("ecco.css");
 
@@ -50,6 +53,11 @@ public class EccoGui extends Application implements EccoListener {
 		// bind to take available space
 		mainView.prefHeightProperty().bind(scene.heightProperty());
 		mainView.prefWidthProperty().bind(scene.widthProperty());
+
+		// floating overlay for non-blocking notifications - see Notifications
+		this.notificationPanel = new NotificationPanel();
+		StackPane.setAlignment(notificationPanel, Pos.BOTTOM_RIGHT);
+		Notifications.install(notificationPanel);
 
 
 		this.eccoService.addListener(this);
@@ -74,7 +82,7 @@ public class EccoGui extends Application implements EccoListener {
 
 
 	private void updateView() {
-		this.root.getChildren().setAll(this.mainView);
+		this.root.getChildren().setAll(this.mainView, this.notificationPanel);
 	}
 
 
