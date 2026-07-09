@@ -389,8 +389,18 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			loadedAssociations.add((Association.Op) readZipped(associationFile));
 		}
 		repo.restoreAssociations(loadedAssociations);
-		for (Commit commit : this.database.getCommitIndex().values()) {
-			((SerCommit) commit).setAssociationResolver(repo);
+		// NOTE: deliberately NOT this.database.getCommitIndex().values() here - that map is only
+		// ever populated by SerCommitDao.save()/SerRepositoryDao.store(), neither of which
+		// EccoService's actual commit() flow ever calls (commits are added via
+		// SerRepository.addCommit(), a separate, always-populated collection). Using commitIndex
+		// left every commit loaded from disk with no association resolver wired up at all -
+		// Commit.getAssociations() would throw IllegalStateException for every commit after any
+		// reload. Caught by CommitAssociationConsistencyTest, not by any pre-existing test (none of
+		// them call Commit.getAssociations() after a reload).
+		for (Commit commit : repo.getCommits()) {
+			if (commit instanceof SerCommit serCommit) {
+				serCommit.setAssociationResolver(repo);
+			}
 		}
 
 		this.resolveCrossAssociationReferences(repo);
