@@ -17,6 +17,17 @@ public class SerNode implements Node, Node.Op {
 
 	public static final long serialVersionUID = 1L;
 
+	// stable identity, independent of artifact content - lets a foreign reference to this exact
+	// node (e.g. SerArtifact.containingNode, when it points outside the node's own association's
+	// tree) be resolved back to a real, properly-reconstructed instance after separately-persisted
+	// associations are loaded, instead of dangling. See SerTransactionStrategy's post-load
+	// resolution pass.
+	private String id = UUID.randomUUID().toString();
+
+	public String getStorageId() {
+		return this.id;
+	}
+
 	private boolean unique = true;
 
 	private transient List<Op> children = new ArrayList<>();

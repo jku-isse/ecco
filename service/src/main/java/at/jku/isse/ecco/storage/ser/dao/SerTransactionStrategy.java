@@ -1,12 +1,18 @@
 package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.common.dao.Database;
+import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
+import at.jku.isse.ecco.storage.ser.artifact.SerArtifactReference;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
 import at.jku.isse.ecco.storage.ser.repository.SerRepository;
+import at.jku.isse.ecco.storage.ser.tree.SerNode;
+import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
@@ -21,7 +27,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
@@ -381,6 +389,72 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		repo.restoreAssociations(loadedAssociations);
 		for (Commit commit : this.database.getCommitIndex().values()) {
 			((SerCommit) commit).setAssociationResolver(repo);
+		}
+
+		this.resolveCrossAssociationReferences(repo);
+	}
+
+	/**
+	 * Each association was just deserialized from its own, independent file/stream, so any
+	 * reference that points OUTSIDE that association's own tree (SerArtifact.containingNode,
+	 * SerArtifactReference.source/target - both transient, carrying only an id) was not restored by
+	 * the default deserialization of that file. This walks every loaded association's tree exactly
+	 * once to build a global id -> instance index, then uses it to fill in those transient fields -
+	 * always resolving to a real, properly-reconstructed instance (found via the same controlled
+	 * tree walk every association's own load already went through), never a dangling or
+	 * independently-duplicated fragment. See TreesObjectIdentityDependencyTest and
+	 * incremental-persistence-node-sharing-blocker for why this matters.
+	 */
+	private void resolveCrossAssociationReferences(SerRepository repo) {
+		Map<String, Node.Op> nodesById = new HashMap<>();
+		Map<String, Artifact.Op<?>> artifactsById = new HashMap<>();
+
+		for (Association.Op association : repo.getAssociations()) {
+			if (association.getRootNode() != null) {
+				this.indexNodeAndArtifact(association.getRootNode(), nodesById, artifactsById);
+			}
+		}
+
+		for (Artifact.Op<?> artifact : artifactsById.values()) {
+			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
+
+			String containingNodeId = serArtifact.getContainingNodeId();
+			if (containingNodeId != null) {
+				Node.Op containingNode = nodesById.get(containingNodeId);
+				if (containingNode == null) {
+					throw new EccoException("Could not resolve containing node " + containingNodeId + " for artifact " + serArtifact.getStorageId() + " after loading all associations.");
+				}
+				serArtifact.resolveContainingNode(containingNode);
+			}
+
+			this.resolveReferences(serArtifact.getUses(), artifactsById);
+			this.resolveReferences(serArtifact.getUsedBy(), artifactsById);
+		}
+	}
+
+	private void indexNodeAndArtifact(Node.Op node, Map<String, Node.Op> nodesById, Map<String, Artifact.Op<?>> artifactsById) {
+		if (node instanceof SerNode serNode) {
+			nodesById.put(serNode.getStorageId(), node);
+		}
+		Artifact.Op<?> artifact = node.getArtifact();
+		if (artifact instanceof SerArtifact<?> serArtifact) {
+			artifactsById.put(serArtifact.getStorageId(), artifact);
+		}
+		for (Node.Op child : node.getChildren()) {
+			this.indexNodeAndArtifact(child, nodesById, artifactsById);
+		}
+	}
+
+	private void resolveReferences(Iterable<ArtifactReference.Op> references, Map<String, Artifact.Op<?>> artifactsById) {
+		for (ArtifactReference.Op reference : references) {
+			if (!(reference instanceof SerArtifactReference serReference)) continue;
+
+			Artifact.Op<?> source = artifactsById.get(serReference.getSourceId());
+			Artifact.Op<?> target = artifactsById.get(serReference.getTargetId());
+			if (source == null || target == null) {
+				throw new EccoException("Could not resolve artifact reference (source=" + serReference.getSourceId() + ", target=" + serReference.getTargetId() + ") after loading all associations.");
+			}
+			serReference.resolveReferences(source, target);
 		}
 	}
 

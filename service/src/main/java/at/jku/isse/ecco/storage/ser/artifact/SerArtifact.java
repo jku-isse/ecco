@@ -6,6 +6,7 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraph;
+import at.jku.isse.ecco.storage.ser.tree.SerNode;
 import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -23,6 +25,16 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	public static final long serialVersionUID = 1L;
 
+	// stable identity, independent of data content - lets a foreign reference to this exact
+	// artifact (e.g. SerArtifactReference.source/target, when the referenced artifact lives in a
+	// different association's tree) be resolved back to a real instance after separately-persisted
+	// associations are loaded, instead of dangling or duplicating. See SerTransactionStrategy's
+	// post-load resolution pass.
+	private String id = UUID.randomUUID().toString();
+
+	public String getStorageId() {
+		return this.id;
+	}
 
 	private DataType data;
 
@@ -200,7 +212,15 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	// CONTAINING NODE
 
-	private Node.Op containingNode;
+	// transient: may point to a node outside this artifact's own node's association tree (that's
+	// exactly what "non-unique" means here), so it can't be serialized directly without pulling in
+	// a foreign object graph via a side channel that bypasses that association's own controlled
+	// tree walk (SerRootNode's BFS writeObject/readObject) - producing an orphaned, improperly
+	// reconstructed copy on reload. containingNodeId is the serialized surrogate; the transient
+	// field is populated by SerTransactionStrategy's post-load resolution pass, once every
+	// association's tree has been properly reconstructed and a global node-id index exists.
+	private transient Node.Op containingNode;
+	private String containingNodeId;
 
 	@Override
 	public Node.Op getContainingNode() {
@@ -209,6 +229,16 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 
 	@Override
 	public void setContainingNode(final Node.Op node) {
+		this.containingNode = node;
+		this.containingNodeId = (node instanceof SerNode serNode) ? serNode.getStorageId() : null;
+	}
+
+	public String getContainingNodeId() {
+		return this.containingNodeId;
+	}
+
+	/** Used only by SerTransactionStrategy's post-load resolution pass - sets the live reference without touching containingNodeId (already correct, just loaded from the stream). */
+	public void resolveContainingNode(final Node.Op node) {
 		this.containingNode = node;
 	}
 
