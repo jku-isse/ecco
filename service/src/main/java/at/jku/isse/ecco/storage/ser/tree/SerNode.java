@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
+import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.featuretrace.SerFeatureTrace;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Location;
@@ -32,7 +33,17 @@ public class SerNode implements Node, Node.Op {
 
 	private transient List<Op> children = new ArrayList<>();
 
-	private Artifact.Op<?> artifact = null;
+	// transient: artifacts are now their own independently-persisted, deduplicated entities (see
+	// SerRepository.artifactsById) rather than being embedded once per referencing node - a node's
+	// own artifact field used to be a "safe" direct reference (every node genuinely owns exactly
+	// one artifact, a clean forward link), but that stopped being true once a NON-UNIQUE, shared
+	// artifact (e.g. an ordered node with a PartialOrderGraph, reachable from multiple associations'
+	// trees) got redundantly, independently re-serialized once per association file that reached it
+	// - each copy a distinct Java object claiming the same storageId, silently clobbering each
+	// other's resolution. artifactId is the serialized surrogate; the transient field is populated
+	// by SerTransactionStrategy's post-load resolution pass against the global artifact store.
+	private transient Artifact.Op<?> artifact = null;
+	private String artifactId;
 
 	private transient Op parent = null;
 
@@ -123,7 +134,7 @@ public class SerNode implements Node, Node.Op {
 	}
 
 	public SerNode(Artifact.Op<?> artifact) {
-		this.artifact = artifact;
+		this.setArtifact(artifact);
 		this.featureTrace = new SerFeatureTrace(this);
 	}
 
@@ -157,6 +168,16 @@ public class SerNode implements Node, Node.Op {
 
 	@Override
 	public void setArtifact(Artifact.Op<?> artifact) {
+		this.artifact = artifact;
+		this.artifactId = (artifact instanceof SerArtifact<?> serArtifact) ? serArtifact.getStorageId() : null;
+	}
+
+	public String getArtifactId() {
+		return this.artifactId;
+	}
+
+	/** Used only by SerTransactionStrategy's post-load resolution pass - sets the live reference without touching artifactId (already correct, just loaded from the stream). */
+	public void resolveArtifact(Artifact.Op<?> artifact) {
 		this.artifact = artifact;
 	}
 
