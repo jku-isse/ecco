@@ -34,6 +34,23 @@ public class SerModuleCounter implements ModuleCounter {
 		//this.children = HashObjObjMaps.newMutableMap();
 	}
 
+	/**
+	 * Used only by SerTransactionStrategy's post-load resolution pass: each association is
+	 * deserialized from its own separate file, so this counter's {@code module} field - a direct,
+	 * non-transient reference embedded in that same stream - comes back as its own independent copy
+	 * of the module, not the repository's single canonical instance (Module.equals()/hashCode() are
+	 * content-based, so this copy is data-equal but object-distinct). Since Module.getCount() is a
+	 * mutable field read directly off whichever instance happens to be referenced
+	 * (Association.computeCondition() -> moduleRevisionCounter.getObject().getCount()), every
+	 * association ending up with its own divergent copy - instead of all sharing the repository's
+	 * one true count - corrupts presence-condition computation after any reload. Replacing the
+	 * reference with the repository's canonical instance (found by content equality, no id needed)
+	 * restores the same-object-sharing invariant a single continuous session gets for free.
+	 */
+	public void resolveModule(SerModule module) {
+		this.module = module;
+	}
+
 
 //	@Override
 //	public MemModuleRevisionCounter addChild(ModuleRevision child) {

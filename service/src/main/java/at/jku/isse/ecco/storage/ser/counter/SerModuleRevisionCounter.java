@@ -20,6 +20,11 @@ public class SerModuleRevisionCounter implements ModuleRevisionCounter {
 		this.count = 0;
 	}
 
+	/** See {@link SerModuleCounter#resolveModule} - same reasoning, one level down. */
+	public void resolveModuleRevision(SerModuleRevision moduleRevision) {
+		this.moduleRevision = moduleRevision;
+	}
+
 
 	@Override
 	public SerModuleRevision getObject() {
