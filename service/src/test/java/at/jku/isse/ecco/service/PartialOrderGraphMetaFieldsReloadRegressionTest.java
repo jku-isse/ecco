@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -13,31 +12,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Minimal, portable repro of a real checkout-correctness bug found via a user's real repository
- * (see memory/pog-align-duplicate-candidate-ambiguity for the full investigation) - NOT the same bug
- * as {@link TreeFusionOrderedSiblingMatchingTest}/{@link PartialOrderGraphReloadRegressionTest},
- * which are both fixed. This one is characterized but NOT fixed.
+ * Regression test for a real checkout-correctness bug found via a user's real repository (see
+ * memory/association-condition-corruption-after-reload for the full investigation) - not the same
+ * bug as {@link TreeFusionOrderedSiblingMatchingTest}/{@link PartialOrderGraphReloadRegressionTest},
+ * which are separate, already-fixed bugs found earlier in the same investigation chain.
  * <p>
  * {@code examples/lilypond_meta_fields}: v1 commits 5 quoted-string metadata fields; v2 adds 4 more,
- * inserted in the MIDDLE of the existing ones (not appended at the end) - every field's value shares
- * the same generic "LilyPond.list" wrapper artifact type, so they're all mutually content-equal to
- * each other from {@code PartialOrderGraph.align()}'s point of view, differing only by position.
+ * inserted in the MIDDLE of the existing ones (not appended at the end).
  * <p>
  * Committing v1, then closing and reopening the repository (this step matters - see
- * {@link #reopenBetweenCommits_producesGarbledOutput()} vs {@link #singleSession_isCorrect()} - the
- * single-session case is fine), then committing v2 and checking out "meta.1, header.1" corrupts one
- * field: a quoted string value gets appended onto an unrelated field's value instead of staying on
- * its own line (non-compilable lilypond). Root cause is narrowed to
- * {@code PartialOrderGraph.align()}'s {@code iterativeLcsAlignment()} assigning the wrong one of
- * several content-equal candidates a matching sequence number - confirmed via targeted
- * instrumentation on this exact repro - but multiple attempts to isolate it further into a fast,
- * pure {@code PartialOrderGraph}-only unit test (including an actual Java serialization round trip
- * simulating the reload) did not reproduce it, meaning something about the FULL repository reload
- * (not just the POG object) is part of the trigger. Left disabled rather than fixed - a real fix
- * touches core POG matching logic in a subsystem with a history of subtle correctness bugs
- * ({@code directPoaAlignment}'s own javadoc, {@code pog-merge-shared-artifact-bug}), and deserves a
- * dedicated session with its own fast feedback loop, which this test at least now provides the
- * fixture for.
+ * {@link #reopenBetweenCommits_isCorrect()} vs {@link #singleSession_isCorrect()}), then committing
+ * v2 and checking out "meta.1, header.1" used to corrupt one field: a quoted string value got
+ * appended onto an unrelated field's value instead of staying on its own line (non-compilable
+ * lilypond). Root cause: {@code SerModuleCounter}/{@code SerModuleRevisionCounter} held direct
+ * (non-transient) references to {@code Module}/{@code ModuleRevision} objects, which carry a
+ * mutable count field read by {@code Association.computeCondition()} to decide whether a module was
+ * "always present". Since associations are persisted as separate files, each one independently
+ * re-serialized its own copy of a module/module-revision instead of sharing the repository's single
+ * canonical instance (only correct by construction within one continuous session) - so after any
+ * reload, that count diverged per association, producing an over-broad presence condition that let
+ * pruned content wrongly survive. Fixed in {@code SerTransactionStrategy.resolveModuleReferences()},
+ * a post-load pass that replaces each counter's reference with the repository's own canonical
+ * lookup (no id surrogate needed - {@code Module}/{@code ModuleRevision} equality is already
+ * content-based).
  */
 public class PartialOrderGraphMetaFieldsReloadRegressionTest {
 
@@ -65,8 +62,7 @@ public class PartialOrderGraphMetaFieldsReloadRegressionTest {
 
 	@Test
 	@Timeout(30)
-	@Disabled("Characterized, not fixed - see class javadoc and memory/pog-align-duplicate-candidate-ambiguity")
-	public void reopenBetweenCommits_producesGarbledOutput() throws IOException {
+	public void reopenBetweenCommits_isCorrect() throws IOException {
 		Path repoDir = Files.createTempDirectory("meta-fields-reopen").resolve(".ecco");
 
 		try (EccoService service = new EccoService()) {

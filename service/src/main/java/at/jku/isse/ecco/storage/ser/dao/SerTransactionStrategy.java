@@ -5,12 +5,20 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.counter.ModuleCounter;
+import at.jku.isse.ecco.counter.ModuleRevisionCounter;
 import at.jku.isse.ecco.dao.TransactionStrategy;
+import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.common.dao.Database;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifactReference;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.counter.SerModuleCounter;
+import at.jku.isse.ecco.storage.ser.counter.SerModuleRevisionCounter;
+import at.jku.isse.ecco.storage.ser.module.SerModule;
+import at.jku.isse.ecco.storage.ser.module.SerModuleRevision;
 import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraphNode;
 import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 import at.jku.isse.ecco.storage.ser.tree.SerNode;
@@ -460,6 +468,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 
 		this.resolveCrossAssociationReferences(repo);
+		this.resolveModuleReferences(repo);
 
 		// SerRepository.mainTree is purely derived from associations (see buildMainTree()) but
 		// isn't transient, so a freshly-loaded repository initially holds whatever copy was
@@ -527,6 +536,47 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 			if (serArtifact.getPartialOrderGraph() != null) {
 				this.resolvePartialOrderGraph(serArtifact.getPartialOrderGraph(), artifactsById);
+			}
+		}
+	}
+
+	/**
+	 * Each association's AssociationCounter -> ModuleCounter -> ModuleRevisionCounter chain holds
+	 * direct (non-transient) references to Module/ModuleRevision - deserialized independently once
+	 * per association file (SerModuleCounter.module, SerModuleRevisionCounter.moduleRevision), so
+	 * every association ends up with its own data-equal-but-object-distinct copy instead of sharing
+	 * the repository's one canonical instance (SerRepository.modules/features, part of the "core"
+	 * blob, not split into per-association files). Association.computeCondition() reads a mutable
+	 * count directly off whichever ModuleRevision instance a counter happens to reference
+	 * (moduleRevisionCounter.getObject().getCount()), not off the per-association counter itself -
+	 * so that divergence corrupts presence-condition computation for every association after any
+	 * reload, in a way a single continuous session never exhibits (the repository's registry is the
+	 * only source of Module/ModuleRevision objects there, so everything shares by construction).
+	 * Unlike artifacts/nodes, Module/ModuleRevision equality is already content-based (feature id
+	 * strings all the way down), so no id surrogate is needed - resolving is just replacing each
+	 * counter's reference with the repository's own lookup result.
+	 */
+	private void resolveModuleReferences(SerRepository repo) {
+		for (Association.Op association : repo.getAssociations()) {
+			for (ModuleCounter moduleCounter : association.getCounter().getChildren()) {
+				if (!(moduleCounter instanceof SerModuleCounter serModuleCounter)) continue;
+
+				Module module = moduleCounter.getObject();
+				SerModule canonicalModule = repo.getModule(module.getPos(), module.getNeg());
+				if (canonicalModule != null) {
+					serModuleCounter.resolveModule(canonicalModule);
+				}
+				Module lookupModule = canonicalModule != null ? canonicalModule : module;
+
+				for (ModuleRevisionCounter moduleRevisionCounter : moduleCounter.getChildren()) {
+					if (!(moduleRevisionCounter instanceof SerModuleRevisionCounter serModuleRevisionCounter)) continue;
+
+					ModuleRevision moduleRevision = moduleRevisionCounter.getObject();
+					ModuleRevision canonicalModuleRevision = lookupModule.getRevision(moduleRevision.getPos(), moduleRevision.getNeg());
+					if (canonicalModuleRevision instanceof SerModuleRevision serCanonicalModuleRevision) {
+						serModuleRevisionCounter.resolveModuleRevision(serCanonicalModuleRevision);
+					}
+				}
 			}
 		}
 	}
