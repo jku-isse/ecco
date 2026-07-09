@@ -13,29 +13,35 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
- * Characterizes a real checkout-correctness bug found via a real user repository (not included
- * here - see memory/lytiny-treefusion-duplicate-token-bug for the original investigation):
- * {@code Trees.treeFusion()} (used to build the cached mainTree every real checkout reads from,
- * via {@code SerBoostedAssociationMerger.buildMainTree()} - NOT the same path as
- * {@code Trees.merge()}/{@code LazyCompositionRootNode}, which are GUI-preview-only) can misdirect
+ * Characterizes (and, since {@code Trees.treeFusion()}'s fix, verifies the fix for) a real
+ * checkout-correctness bug found via a real user repository (not included here - see
+ * memory/lytiny-treefusion-duplicate-token-bug for the original investigation): {@code
+ * Trees.treeFusion()} (used to build the cached mainTree every real checkout reads from, via
+ * {@code SerBoostedAssociationMerger.buildMainTree()} - NOT the same path as
+ * {@code Trees.merge()}/{@code LazyCompositionRootNode}, which are GUI-preview-only) could misdirect
  * content into the wrong sibling when a parent has multiple content-equal ordered children - a
  * real, necessary pattern for adapters like lilypond, which model structurally-similar-but-
  * logically-distinct constructs (e.g. each voice's clef-value wrapper) as ordered siblings sharing
  * the same generic context type.
  * <p>
- * Root cause: {@code SerNode.getEqualChild()} matches purely by
- * {@code child.getArtifact().equals(template.getArtifact())} - the first content-matching child
- * wins, with no way to account for WHICH occurrence a template is meant to correspond to. This is
- * fine when only one candidate exists, but {@code SerNode.addChild()} explicitly requires a parent
- * to be marked "ordered" specifically to allow MULTIPLE content-equal children to coexist as
- * siblings at all (confirmed here: constructing this scenario with a non-ordered parent throws
- * "An equivalent child is already contained" immediately) - meaning ordered-sibling ambiguity is
- * not a rare edge case, it's the very case "ordered" exists to support, and getEqualChild() was
- * never adapted to disambiguate within it.
+ * Root cause: {@code Node.getEqualChild()} (see the first test below) matches purely by
+ * {@code child.getArtifact().equals(template.getArtifact())} and always returns the FIRST
+ * content-matching child, with no way to account for WHICH occurrence a template is meant to
+ * correspond to. This is fine when only one candidate exists, but {@code SerNode.addChild()}
+ * explicitly requires a parent to be marked "ordered" specifically to allow MULTIPLE content-equal
+ * children to coexist as siblings at all (confirmed here: constructing this scenario with a
+ * non-ordered parent throws "An equivalent child is already contained" immediately) - meaning
+ * ordered-sibling ambiguity is not a rare edge case, it's the very case "ordered" exists to
+ * support.
  * <p>
- * Deliberately not fixed - this is core {@code Trees}/compose logic shared by every checkout,
- * across every backend and adapter; a real fix needs to disambiguate ordered-sibling matches
- * without breaking every other (single-candidate) case that already works correctly today.
+ * Fix: rather than changing {@code getEqualChild()} itself (a general-purpose, single-caller-free
+ * interface method whose stateless "first match" semantics other current/future callers could
+ * reasonably depend on), {@code Trees.treeFusion()} - its one and only caller - now uses the same
+ * {@code ChildIndex} mechanism {@code Trees.slice()} already relies on for matching
+ * duplicate/ordered siblings: matched candidates are consumed within one fusion pass (so several
+ * content-equal children arriving together each pair up with a DIFFERENT candidate), and among
+ * remaining candidates, an empty (not yet filled) one is preferred over an already-filled one -
+ * the empty one is far more likely to be the position genuinely still waiting for this content.
  */
 public class TreeFusionOrderedSiblingMatchingTest {
 
@@ -57,6 +63,9 @@ public class TreeFusionOrderedSiblingMatchingTest {
 
 	@Test
 	public void getEqualChild_alwaysReturnsFirstContentMatch_regardlessOfWhichOneIsCorrect() {
+		// this is Node.getEqualChild()'s own, UNCHANGED, low-level behavior - deliberately left
+		// alone (see class javadoc for why); Trees.treeFusion() no longer calls it directly for
+		// exactly this reason
 		Node.Op musiclist = orderedContext("LilyPond.list");
 		Node.Op sopranoSlot = context("LilyPond.list");
 		Node.Op altoSlot = withChild(context("LilyPond.list"), token("treble"));
@@ -88,14 +97,13 @@ public class TreeFusionOrderedSiblingMatchingTest {
 	}
 
 	@Test
-	public void treeFusion_misdirectsContent_whenAlreadyFilledSlotComesFirst() {
+	public void treeFusion_correctlyFillsEmptySlot_evenWhenAlreadyFilledSlotComesFirst() {
 		// same scenario as the test above, but the ALREADY-FILLED slot happens to be first in
-		// child order instead of the empty one - the only thing that differs between this test and
-		// the one above is sibling ORDER, yet the outcome is completely different: this is not a
-		// content-dependent bug, it's a positional one
+		// child order instead of the empty one - before the fix, sibling order alone determined
+		// whether this worked; now the outcome is the same regardless of order
 		Node.Op mainTree = orderedContext("LilyPond.musiclist");
 		Node.Op altoSlot = withChild(context("LilyPond.list"), token("treble")); // already filled
-		Node.Op sopranoSlot = context("LilyPond.list"); // empty - should have been filled instead
+		Node.Op sopranoSlot = context("LilyPond.list"); // empty - should be filled
 		mainTree.addChild(altoSlot);
 		mainTree.addChild(sopranoSlot);
 
@@ -104,22 +112,19 @@ public class TreeFusionOrderedSiblingMatchingTest {
 
 		Trees.treeFusion(mainTree, orphan);
 
-		assertEquals(0, sopranoSlot.getChildren().size(),
-				"BUG: soprano's slot was never filled - the orphan's content was misdirected into alto's slot instead");
-		assertEquals(1, altoSlot.getChildren().size(),
-				"alto's slot silently absorbed the orphan (its content happened to already match, " +
-						"masking the misdirection here - see the next test for the case where it doesn't)");
+		assertEquals(1, sopranoSlot.getChildren().size(), "soprano's slot should have been filled");
+		assertEquals(1, altoSlot.getChildren().size(), "alto's slot should have been left untouched");
 	}
 
 	@Test
-	public void treeFusion_duplicatesContent_whenMisdirectedIntoADifferentlyPopulatedSlot() {
-		// same positional bug as above, but the wrongly-matched slot already holds DIFFERENT
-		// content ("treble_8", not "treble") - so instead of the orphan silently vanishing into an
-		// existing match, it gets APPENDED as extra, duplicate content: the exact "misplaced
-		// duplicate token" symptom seen in the real repository this was characterized from
+	public void treeFusion_fillsCorrectSlot_whenWronglyMatchedSlotWouldHaveDuplicatedContent() {
+		// same positional scenario as above, but the wrongly-orderable slot already holds DIFFERENT
+		// content ("treble_8", not "treble") - before the fix, misdirection here didn't just lose
+		// the orphan's content, it actively duplicated content into the wrong slot: the exact
+		// "misplaced duplicate token" symptom seen in the real repository this was characterized from
 		Node.Op mainTree = orderedContext("LilyPond.musiclist");
 		Node.Op tenorSlot = withChild(context("LilyPond.list"), token("treble_8")); // different content
-		Node.Op sopranoSlot = context("LilyPond.list"); // empty - should have been filled instead
+		Node.Op sopranoSlot = context("LilyPond.list"); // empty - should be filled
 		mainTree.addChild(tenorSlot);
 		mainTree.addChild(sopranoSlot);
 
@@ -128,11 +133,31 @@ public class TreeFusionOrderedSiblingMatchingTest {
 
 		Trees.treeFusion(mainTree, orphan);
 
-		assertEquals(0, sopranoSlot.getChildren().size(),
-				"BUG: soprano's slot was never filled");
-		assertEquals(2, tenorSlot.getChildren().size(),
-				"BUG: tenor's slot now incorrectly holds both its own \"treble_8\" AND the " +
-						"misdirected \"treble\" - genuine duplicated/garbled content, not just a silent loss");
+		assertEquals(1, sopranoSlot.getChildren().size(), "soprano's slot should have been filled");
+		assertEquals(1, tenorSlot.getChildren().size(),
+				"tenor's slot should have been left with only its own \"treble_8\" - not duplicated");
+	}
+
+	@Test
+	public void treeFusion_pairsUpMultipleContentEqualSiblings_arrivingInOnePass() {
+		// fusionNode itself contributes BOTH voices' clef values in one pass (the common case: a
+		// single association's tree already has the full multi-voice structure) - each should pair
+		// up with a DIFFERENT mainTree candidate instead of both being funneled into whichever one
+		// getEqualChild() would return first
+		Node.Op mainTree = orderedContext("LilyPond.musiclist");
+		Node.Op sopranoSlot = context("LilyPond.list");
+		Node.Op altoSlot = context("LilyPond.list");
+		mainTree.addChild(sopranoSlot);
+		mainTree.addChild(altoSlot);
+
+		Node.Op fusionNode = orderedContext("LilyPond.musiclist");
+		fusionNode.addChild(withChild(context("LilyPond.list"), token("treble")));
+		fusionNode.addChild(withChild(context("LilyPond.list"), token("treble")));
+
+		Trees.treeFusion(mainTree, fusionNode);
+
+		assertEquals(1, sopranoSlot.getChildren().size(), "first slot should have received one treble");
+		assertEquals(1, altoSlot.getChildren().size(), "second slot should have received the other treble");
 	}
 
 	private Node.Op context(String name) {

@@ -52,6 +52,32 @@ public class Trees {
 		}
 
 		/**
+		 * Like {@link #find}, but when several still-indexed children are equal to the key, prefers
+		 * one that's currently empty (no children of its own) over one that already has content.
+		 * Used by {@link #treeFusion} when reconciling an association tree that only contributes
+		 * SOME of several ordered, content-equal siblings (e.g. one voice's clef value, re-fused
+		 * back in after being temporarily different in an earlier commit) against a mainTree that
+		 * may already have accumulated the others from a previously-fused association - an empty
+		 * candidate is far more likely to be the position still waiting for this content than an
+		 * already-filled one, which is almost certainly a different, already-resolved sibling.
+		 * Content equality alone can't tell these apart (that's the whole reason multiple equal
+		 * children need an "ordered" parent to coexist at all - see SerNode#addChildWithoutNumberUpdate),
+		 * and unlike {@link #find}, this does NOT default to insertion order when it doesn't need to,
+		 * since insertion order here reflects the ACCIDENT of which association got fused first, not
+		 * any real correspondence between the two trees being fused.
+		 */
+		Node.Op findPreferringEmpty(Node.Op key) {
+			Deque<Node.Op> bucket = buckets.get(key);
+			if (bucket == null) return null;
+			for (Node.Op candidate : bucket) {
+				if (candidate.getChildren().isEmpty()) {
+					return candidate;
+				}
+			}
+			return bucket.peekFirst();
+		}
+
+		/**
 		 * Removes the given child (previously returned by {@link #find}) from the index, once a
 		 * caller has actually removed it from the underlying children list too.
 		 */
@@ -829,16 +855,32 @@ public class Trees {
 			throw new EccoException("Fusing feature trace (sub-)trees with different root nodes is not possible.");
 		}
 
-		// deal with children
+		// deal with children - ChildIndex (the same mechanism Trees.slice() already uses for
+		// matching duplicate/ordered siblings) instead of calling mainTree.getEqualChild() per
+		// child directly: getEqualChild() alone has no memory of what it already matched earlier in
+		// THIS loop, so if fusionNode itself contributes multiple content-equal ordered children
+		// (e.g. several voices sharing the same clef value) in one pass, every one of them would be
+		// funneled into whichever single mainTree candidate happens to match first, instead of each
+		// pairing up with a DIFFERENT candidate. findPreferringEmpty() additionally prefers a
+		// still-empty candidate over an already-filled one when several remain available, for the
+		// case where mainTree already accumulated more ordered siblings than this fusionNode
+		// currently offers (an association re-fusing just one voice's content back in) - see
+		// TreeFusionOrderedSiblingMatchingTest for the exact scenario this fixes.
+		ChildIndex mainIndex = new ChildIndex(mainTree.getChildren());
 		for (Node.Op child : fusionNode.getChildren()) {
-			Node.Op mainChild = mainTree.getEqualChild(child);
+			Node.Op mainChild = mainIndex.findPreferringEmpty(child);
 			if (mainChild == null) {
 				Node.Op newChild = child.copySingleNode(false);
 				newChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
 				newChild.setUnique(child.isUnique());
 				mainTree.addChild(newChild);
+				// deliberately NOT added to mainIndex - a newly-created child must stay available
+				// only for a later cross-association re-fusion (a future treeFusion() call, with its
+				// own fresh ChildIndex), not for a second content-equal sibling arriving LATER in
+				// THIS SAME fusionNode's children, which needs its own distinct new child too
 				treeFusion(newChild, child);
 			} else {
+				mainIndex.remove(mainChild);
 				mainChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
 				mainChild.setUnique(mainChild.isUnique() || child.isUnique());
 				Trees.mergePartialOrderGraphs(mainChild, child);
