@@ -24,6 +24,7 @@ import javafx.scene.layout.StackPane;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public class AssociationsView extends BorderPane implements EccoListener {
@@ -187,7 +188,10 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			Collection<? extends Association> associations = service.getRepository().getAssociations();
 			Platform.runLater(() -> this.updateAssociations(associations));
 		} else {
-			Platform.runLater(() -> this.setDisable(true));
+			Platform.runLater(() -> {
+				this.setDisable(true);
+				this.updateAssociations(Collections.emptyList());
+			});
 		}
 	}
 

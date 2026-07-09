@@ -196,7 +196,10 @@ public class CommitsView extends BorderPane implements EccoListener {
 				}
 			});
 		} else {
-			Platform.runLater(() -> this.setDisable(true));
+			Platform.runLater(() -> {
+				this.setDisable(true);
+				this.commitsData.clear();
+			});
 		}
 	}
 
