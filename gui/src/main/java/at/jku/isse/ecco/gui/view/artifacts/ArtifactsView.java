@@ -389,7 +389,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             Platform.runLater(() -> this.setDisable(false));
             refresh();
         } else {
-            Platform.runLater(() -> this.setDisable(true));
+            Platform.runLater(() -> {
+                this.setDisable(true);
+                this.artifactTreeView.setRootNode(null);
+                this.associationsData.clear();
+            });
         }
     }
 }

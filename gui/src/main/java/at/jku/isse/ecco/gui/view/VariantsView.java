@@ -421,7 +421,10 @@ public class VariantsView extends BorderPane implements EccoListener {
         if (service.isInitialized()) {
             Platform.runLater(() -> this.setDisable(false));
         } else {
-            Platform.runLater(() -> this.setDisable(true));
+            Platform.runLater(() -> {
+                this.setDisable(true);
+                this.variantsDataSelected.clear();
+            });
         }
     }
 
