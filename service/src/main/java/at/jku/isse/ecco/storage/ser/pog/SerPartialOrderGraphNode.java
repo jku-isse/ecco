@@ -29,6 +29,22 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	private transient Artifact.Op<?> artifact;
 	private String artifactId;
 
+	// this node's own position within its own graph - see PartialOrderGraph.Node.getSequenceNumber()
+	// for why this can't just be artifact.getSequenceNumber() anymore. Serialized directly (not
+	// transient): it's now the authoritative value, so prepareSerialization()/deserializeCollections()
+	// below key off it directly instead of round-tripping through the artifact.
+	private int sequenceNumber = PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
+
+	@Override
+	public int getSequenceNumber() {
+		return this.sequenceNumber;
+	}
+
+	@Override
+	public void setSequenceNumber(int sequenceNumber) {
+		this.sequenceNumber = sequenceNumber;
+	}
+
 	public SerPartialOrderGraphNode(Artifact.Op<?> artifact) {
 //		Objects.requireNonNull(artifact);
 		this.artifact = artifact;
@@ -52,20 +68,19 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	public void prepareSerialization(){
 		this.nextSequenceNumbers = new ArrayList<>();
 		this.previousSequenceNumbers = new ArrayList<>();
-		// fill integer collections, that will be serialized
+		// fill integer collections, that will be serialized - keyed by each neighbor's own
+		// node-owned sequence number now, not its artifact's (see the field javadoc above)
 		this.previous.forEach(n -> {
-			Artifact<?> artifact = n.getArtifact();
-			if (artifact != null){
+			if (n.getArtifact() != null){
 				// head and tail will be put into deserialized node in separate step
-				this.previousSequenceNumbers.add(artifact.getSequenceNumber());
+				this.previousSequenceNumbers.add(n.getSequenceNumber());
 			}
 		});
 
 		this.next.forEach(n -> {
-			Artifact<?> artifact = n.getArtifact();
-			if (artifact != null){
+			if (n.getArtifact() != null){
 				// head and tail will be put into deserialized node in separate step
-				this.nextSequenceNumbers.add(artifact.getSequenceNumber());
+				this.nextSequenceNumbers.add(n.getSequenceNumber());
 			}
 		});
 	}
@@ -126,7 +141,7 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 
 	@Override
 	public String toString() {
-		return this.getArtifact() == null ? "NULL" : this.getArtifact().toString() + " [" + this.getArtifact().getSequenceNumber() + "]";
+		return this.getArtifact() == null ? "NULL" : this.getArtifact().toString() + " [" + this.getSequenceNumber() + "]";
 	}
 
 	@Override

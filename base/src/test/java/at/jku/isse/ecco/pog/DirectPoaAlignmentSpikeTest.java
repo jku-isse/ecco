@@ -68,11 +68,16 @@ public class DirectPoaAlignmentSpikeTest {
 
 		for (int bp = 0; bp < branchPoints; bp++) {
 			SerPartialOrderGraphNode sync = new SerPartialOrderGraphNode(A("sync" + bp));
+			// sequence number is node-owned now, not artifact-owned (see
+			// PartialOrderGraph.Node#getSequenceNumber()'s javadoc) - set both so this fixture works
+			// whether the algorithm or anything else reads either.
+			sync.setSequenceNumber(seq);
 			sync.getArtifact().setSequenceNumber(seq++);
 			for (int alt = 0; alt < branchFactor; alt++) {
 				Artifact.Op<?> artifact = A("bp" + bp + "alt" + alt);
-				artifact.setSequenceNumber(seq++);
+				artifact.setSequenceNumber(seq);
 				SerPartialOrderGraphNode altNode = new SerPartialOrderGraphNode(artifact);
+				altNode.setSequenceNumber(seq++);
 				cur.addChild(altNode);
 				altNode.addChild(sync);
 			}
