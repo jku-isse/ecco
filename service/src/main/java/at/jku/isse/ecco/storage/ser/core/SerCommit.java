@@ -3,14 +3,24 @@ package at.jku.isse.ecco.storage.ser.core;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.repository.Repository;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Memory implementation of {@link Commit}.
+ * <p>
+ * Holds association <b>IDs</b>, not the association objects themselves - a commit that references
+ * an association it didn't just create/modify would otherwise pull that association's full content
+ * along whenever the commit is serialized (most associations are referenced by many commits over
+ * their lifetime), which is exactly what per-association-file persistence needs to avoid. IDs are
+ * resolved against {@link #associationResolver} - set once by {@link at.jku.isse.ecco.storage.ser.repository.SerRepository}
+ * (at commit creation time, and again after every load) - lazily, on demand.
  */
 public class SerCommit implements Commit {
 	public static final long serialVersionUID = 1L;
@@ -20,12 +30,18 @@ public class SerCommit implements Commit {
 	private Configuration configuration;
 	private Date committingDate;
 	private String commitMessage;
-	private final Collection<Association> associations = new ArrayList<>();;
+	private final Set<String> associationIds = new LinkedHashSet<>();
+
+	private transient Repository associationResolver;
 
 
 	public SerCommit(String username) {
 		committer = username;
 		committingDate = new Date();
+	}
+
+	public void setAssociationResolver(Repository associationResolver) {
+		this.associationResolver = associationResolver;
 	}
 
 	@Override
@@ -81,21 +97,32 @@ public class SerCommit implements Commit {
 
 	@Override
 	public boolean containsAssociation(final Association association) {
-		return associations.contains(association);
+		return associationIds.contains(association.getId());
 	}
 
 	@Override
 	public void addAssociation(final Association association) {
-		associations.add(association);
+		associationIds.add(association.getId());
 	}
 
 	@Override
 	public void deleteAssociation(final Association association) {
-		associations.remove(association);
+		associationIds.remove(association.getId());
 	}
 
 	public Collection<Association> getAssociations() {
-		return associations;
+		if (associationResolver == null) {
+			throw new IllegalStateException("SerCommit " + id + " has no association resolver wired up - " +
+					"this should be set by SerRepository at commit-creation time and again after every load.");
+		}
+		Collection<Association> result = new ArrayList<>(associationIds.size());
+		for (String associationId : associationIds) {
+			Association association = associationResolver.getAssociation(associationId);
+			if (association != null) {
+				result.add(association);
+			}
+		}
+		return result;
 	}
 
 	@Override
