@@ -74,17 +74,29 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 		SerPartialOrderGraphNode memPartialOrderGraphHead = ((SerPartialOrderGraphNode) this.head);
 		memPartialOrderGraphHead.deserializeCollections(this.sequenceNumberNodeMap);
 		// put head in "previous" of every item in next-collection of head
+		//
+		// NOTE: this used to check "n.getArtifact() != null" to distinguish a real node from the
+		// tail sentinel (head can be directly linked to tail in an empty graph, via
+		// wireHeadAndTail() above, and that edge is already bidirectional there - this loop must
+		// not add a redundant/wrong edge for it). That worked back when artifact was an ordinary
+		// (eagerly-populated-by-readObject) field, but artifact is now transient and only filled in
+		// later by SerTransactionStrategy's post-load resolution pass - at this point in
+		// deserialization it is always null, for every node, real or not. So the check always
+		// evaluated false, meaning head was silently never added to any real node's "previous"
+		// collection after a reload, corrupting checkConsistency()'s reachability count. Use
+		// identity against the known sentinel instead - correct regardless of artifact resolution
+		// timing.
 		this.head.getNext().forEach(n -> {
-			if (n.getArtifact() != null) {
+			if (n != this.tail) {
 				((SerPartialOrderGraphNode) n).addPrevious(this.head);
 			}
 		});
 
 		SerPartialOrderGraphNode memPartialOrderGraphTail = ((SerPartialOrderGraphNode) this.tail);
 		memPartialOrderGraphTail.deserializeCollections(this.sequenceNumberNodeMap);
-		// put tail in "next" of every item in previous-collection of tail
+		// put tail in "next" of every item in previous-collection of tail - see the comment above
 		this.tail.getPrevious().forEach(n -> {
-			if (n.getArtifact() != null) {
+			if (n != this.head) {
 				((SerPartialOrderGraphNode) n).addNext(this.tail);
 			}
 		});

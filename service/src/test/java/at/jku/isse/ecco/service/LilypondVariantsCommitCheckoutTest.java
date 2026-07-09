@@ -153,7 +153,7 @@ public class LilypondVariantsCommitCheckoutTest {
 		return content.replaceAll("\\s+", "");
 	}
 
-	private static Path findRepoRoot() {
+	static Path findRepoRoot() {
 		Path dir = Path.of("").toAbsolutePath();
 		while (dir != null) {
 			if (Files.exists(dir.resolve("settings.gradle"))) {
