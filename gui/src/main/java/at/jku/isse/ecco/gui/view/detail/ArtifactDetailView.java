@@ -45,6 +45,26 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		setCenter(detailsTabPane);
 	}
 
+	/**
+	 * The key (e.g. "info"/"pog"/"AV_...") of whichever tab is currently selected, or null. Callers
+	 * that are about to {@link #reset()} and rebuild (e.g. every recompose from a feature toggle in
+	 * the live Artifacts panel) should capture this BEFORE resetting and pass it to
+	 * {@link #showTree(Node, String)} afterwards - reset() throws away every Tab instance and
+	 * rebuilds them fresh, so there's no way to recover "what was selected" from the rebuilt state
+	 * itself; JavaFX also auto-selects the first tab added to an empty TabPane, which a
+	 * selection-listener-based approach can't distinguish from a real user click, since that
+	 * auto-selection fires mid-rebuild, before a listener-based capture could be read back.
+	 */
+	public String getSelectedTabKey() {
+		Tab selected = detailsTabPane.getSelectionModel().getSelectedItem();
+		for (Map.Entry<String, Tab> entry : openDetailsTabs.entrySet()) {
+			if (entry.getValue() == selected) {
+				return entry.getKey();
+			}
+		}
+		return null;
+	}
+
 	public void reset() {
 		if (null != partialOrderGraphView) {
 			partialOrderGraphView.closeGraph();
@@ -55,6 +75,19 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	}
 
 	public void showTree(Node node) {
+		showTree(node, null);
+	}
+
+	/**
+	 * @param restoreTabKey a key previously returned by {@link #getSelectedTabKey()} (captured
+	 *                      BEFORE calling {@link #reset()}), to restore afterwards if a tab of the
+	 *                      same kind still exists - otherwise every recompose (e.g. a feature
+	 *                      toggle in the live Artifacts panel) would silently jump back to the Info
+	 *                      tab even if the user was looking at, say, a lilypond code viewer. Pass
+	 *                      null to just let the rebuild pick its own default (e.g. a first-ever
+	 *                      showTree() call, with nothing to restore).
+	 */
+	public void showTree(Node node, String restoreTabKey) {
 		if (node == null) {
 			// e.g. no node in this tree has a registered ArtifactViewer (a plain commit with no
 			// adapter-specific viewer, such as pure Java/text content)
@@ -68,6 +101,10 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		//long tm = System.nanoTime();
 		updateArtifactViewerTabs(node);
 		//System.out.println("\nArtifactDetailsView:showTree->updateArtifactViewerTabs: " + ((System.nanoTime() - tm)/1000000) + "ms");
+
+		if (restoreTabKey != null && openDetailsTabs.containsKey(restoreTabKey)) {
+			detailsTabPane.getSelectionModel().select(openDetailsTabs.get(restoreTabKey));
+		}
 	}
 
 	private void updateInfoTab(Node node) {

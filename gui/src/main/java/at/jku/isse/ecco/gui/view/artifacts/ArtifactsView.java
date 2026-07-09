@@ -9,6 +9,7 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.io.ConfigurationPickerDialog;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
+import at.jku.isse.ecco.gui.io.FeatureTogglePanel;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -29,20 +30,31 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ArtifactsView extends BorderPane implements EccoListener {
+
+    private static final double BAR_WIDTH = 60;
+    private static final double BAR_HEIGHT = 10;
 
     private final EccoService service;
 
     private final ObservableList<AssociationInfoImpl> associationsData = FXCollections.observableArrayList();
+    private int maxNumArtifacts = 1;
 
     private final ToolBar toolBar;
     private final ArtifactTreeView artifactTreeView;
+
+    private FeatureTogglePanel featureTogglePanel;
+    private final AtomicLong liveConfigurationGeneration = new AtomicLong();
 
 
     public ArtifactsView(final EccoService service) {
@@ -69,6 +81,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         Button checkoutSelectedButton = new Button("Checkout Selected");
         Button composeSelectedButton = new Button("Compose Selected");
+        Button liveFeaturesButton = new Button("Live Features...");
 
         CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
         CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
@@ -79,7 +92,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         showBelowFilesCheckBox.setDisable(true);
 
         toolBar.getItems().addAll(refreshButton, new Separator(),
-                selectionMenuButton, checkoutSelectedButton, composeSelectedButton, new Separator(),
+                selectionMenuButton, checkoutSelectedButton, composeSelectedButton, liveFeaturesButton, new Separator(),
                 showEmptyAssociationsCheckBox, new Separator(),
                 useSimplifiedLabelsCheckBox, new Separator(),
                 showBelowAtomicCheckBox, new Separator(),
@@ -113,6 +126,41 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
         conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
         numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
+        numArtifactsAssociationsCol.setCellFactory(col -> new TableCell<AssociationInfoImpl, Integer>() {
+            private final Region track = new Region();
+            private final Region fill = new Region();
+            private final Label valueLabel = new Label();
+            private final StackPane bar = new StackPane(track, fill);
+            private final HBox content = new HBox(6, bar, valueLabel);
+
+            {
+                track.setPrefSize(BAR_WIDTH, BAR_HEIGHT);
+                track.setMaxSize(BAR_WIDTH, BAR_HEIGHT);
+                track.setStyle("-fx-background-color: #e1e0d9; -fx-background-radius: 2;");
+
+                fill.setPrefHeight(BAR_HEIGHT);
+                fill.setMaxHeight(BAR_HEIGHT);
+                fill.setStyle("-fx-background-color: #2a78d6; -fx-background-radius: 2;");
+
+                bar.setAlignment(Pos.CENTER_LEFT);
+                content.setAlignment(Pos.CENTER_LEFT);
+            }
+
+            @Override
+            protected void updateItem(Integer value, boolean empty) {
+                super.updateItem(value, empty);
+
+                if (empty || value == null) {
+                    setGraphic(null);
+                } else {
+                    double ratio = ArtifactsView.this.maxNumArtifacts <= 0 ? 0 : Math.min(1.0, value / (double) ArtifactsView.this.maxNumArtifacts);
+                    fill.setPrefWidth(BAR_WIDTH * ratio);
+                    fill.setMaxWidth(BAR_WIDTH * ratio);
+                    valueLabel.setText(String.valueOf(value));
+                    setGraphic(content);
+                }
+            }
+        });
 
 
         selectedAssocationCol.setCellValueFactory(new PropertyValueFactory<>("selected"));
@@ -228,6 +276,14 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             }
         });
 
+        liveFeaturesButton.setOnAction(e -> {
+            if (featureTogglePanel == null) {
+                featureTogglePanel = new FeatureTogglePanel(service, this::applyLiveConfiguration);
+            }
+            featureTogglePanel.show();
+            featureTogglePanel.toFront();
+        });
+
         selectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent e) {
@@ -338,6 +394,50 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         service.addListener(this);
     }
 
+    /**
+     * Called by the {@link FeatureTogglePanel} on every checkbox toggle - the plug-and-play
+     * alternative to Select by Configuration -> Compose Selected. Selection itself is cheap
+     * (association.computeCertainCondition().holds(configuration) is a synchronous, in-memory
+     * check already used elsewhere, e.g. AssociationsView's condition column, directly on the FX
+     * thread - unlike EccoService.getAssociations(), which runs a full compose pipeline and is why
+     * Select by Configuration needs a background Task) so it runs immediately here. Only the tree
+     * rebuild stays on a background Task, same as Compose Selected. A generation counter discards
+     * a stale rebuild's result if the user toggles another checkbox before the first rebuild
+     * finishes, rather than letting an out-of-order compose silently overwrite a newer one.
+     */
+    private void applyLiveConfiguration(Configuration configuration) {
+        long generation = liveConfigurationGeneration.incrementAndGet();
+
+        Collection<Association> selectedAssociations = new ArrayList<>();
+        for (AssociationInfoImpl associationInfo : ArtifactsView.this.associationsData) {
+            // computeCertainCondition() lives on Association.Op, not the plain Association
+            // AssociationInfoImpl exposes - every real association is an Op at runtime though
+            Association.Op association = (Association.Op) associationInfo.getAssociation();
+            boolean matches = association.computeCertainCondition().holds(configuration);
+            associationInfo.setSelected(matches);
+            if (matches) {
+                selectedAssociations.add(associationInfo.getAssociation());
+            }
+        }
+
+        Task<Void> composeTask = new Task<>() {
+            @Override
+            public Void call() {
+                LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+                for (Association association : selectedAssociations) {
+                    rootNode.addOrigNode(association.getRootNode());
+                }
+                Platform.runLater(() -> {
+                    if (liveConfigurationGeneration.get() == generation) {
+                        artifactTreeView.setRootNode(rootNode);
+                    }
+                });
+                return null;
+            }
+        };
+        new Thread(composeTask).start();
+    }
+
     private void setAllAssociationsSelected(boolean flag) {
         for (AssociationInfoImpl assocInfo : ArtifactsView.this.associationsData) {
             assocInfo.setSelected(flag);
@@ -357,7 +457,14 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             List<? extends Association> associations = this.service.getRepository().getAssociations().stream()
                     .sorted(Comparator.comparing(Association::getId))
                     .toList();
+            int max = 1;
+            for (Association a : associations) {
+                max = Math.max(max, a.getRootNode().countArtifacts());
+            }
+            final int maxNumArtifacts = max;
             Platform.runLater(() -> {
+                // set before mutating associationsData so cells never render against a stale max
+                this.maxNumArtifacts = maxNumArtifacts;
                 this.associationsData.clear();
                 int index = 0;
                 for (Association a : associations) {
@@ -393,6 +500,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 this.setDisable(true);
                 this.artifactTreeView.setRootNode(null);
                 this.associationsData.clear();
+                this.maxNumArtifacts = 1;
+                if (this.featureTogglePanel != null) {
+                    this.featureTogglePanel.close();
+                    this.featureTogglePanel = null;
+                }
             });
         }
     }
