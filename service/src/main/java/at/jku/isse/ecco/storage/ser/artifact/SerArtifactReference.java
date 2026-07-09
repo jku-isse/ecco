@@ -18,8 +18,15 @@ public class SerArtifactReference implements ArtifactReference, ArtifactReferenc
 
 	private final String type;
 
-	private Artifact.Op<?> source;
-	private Artifact.Op<?> target;
+	// transient for the same reason as SerArtifact.containingNode: source/target can point to an
+	// artifact that lives in a different association's tree, so a direct reference would pull in a
+	// foreign object graph via a side channel on reload. The *Id fields are the serialized
+	// surrogates; the transient fields are populated by SerTransactionStrategy's post-load
+	// resolution pass against a global artifact-id index.
+	private transient Artifact.Op<?> source;
+	private transient Artifact.Op<?> target;
+	private String sourceId;
+	private String targetId;
 
 	/**
 	 * Constructs a new artifact reference with the type initiliazed to an empty string.
@@ -57,12 +64,28 @@ public class SerArtifactReference implements ArtifactReference, ArtifactReferenc
 		checkNotNull(source);
 
 		this.source = source;
+		this.sourceId = (source instanceof SerArtifact<?> serArtifact) ? serArtifact.getStorageId() : null;
 	}
 
 	@Override
 	public void setTarget(final Artifact.Op<?> target) {
 		checkNotNull(target);
 
+		this.target = target;
+		this.targetId = (target instanceof SerArtifact<?> serArtifact) ? serArtifact.getStorageId() : null;
+	}
+
+	public String getSourceId() {
+		return this.sourceId;
+	}
+
+	public String getTargetId() {
+		return this.targetId;
+	}
+
+	/** Used only by SerTransactionStrategy's post-load resolution pass - sets the live references without touching sourceId/targetId (already correct, just loaded from the stream). */
+	public void resolveReferences(final Artifact.Op<?> source, final Artifact.Op<?> target) {
+		this.source = source;
 		this.target = target;
 	}
 
