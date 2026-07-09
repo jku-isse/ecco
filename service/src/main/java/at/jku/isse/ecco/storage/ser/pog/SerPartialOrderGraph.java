@@ -37,10 +37,12 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 		}
 		for(Node.Op node : nodes){
 			SerPartialOrderGraphNode serPartialOrderGraphNode = (SerPartialOrderGraphNode) node;
-			Artifact<?> artifact = serPartialOrderGraphNode.getArtifact();
-			if (artifact != null) {
-				// head and tail will be serialized as field and must not be in the map
-				Integer sequenceNumber = artifact.getSequenceNumber();
+			if (serPartialOrderGraphNode.getArtifact() != null) {
+				// head and tail will be serialized as field and must not be in the map. Keyed by the
+				// node's own sequence number now, not its artifact's - see the field javadoc on
+				// SerPartialOrderGraphNode.sequenceNumber for why the artifact's own value can't be
+				// trusted to be unique-per-node anymore (it can be legitimately shared).
+				Integer sequenceNumber = serPartialOrderGraphNode.getSequenceNumber();
 				if (this.sequenceNumberNodeMap.containsKey(sequenceNumber)) {
 					throw new RuntimeException("Multiple occurences of the same sequence number!");
 				}

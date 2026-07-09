@@ -224,9 +224,23 @@ public interface PartialOrderGraph extends Persistable {
 			// extra unmerged branch rather than corrupting anything), but it is a real quality tradeoff,
 			// so it's only used once the exact algorithm is estimated to be intractable, not by default.
 			IntObjectMap<Node.Op> result = tooComplex ? this.directPoaAlignment(other) : this.iterativeLcsAlignment(other);
-			// set sequence number of matched artifacts
-			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.getArtifact().setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
-			result.forEachKeyValue((key, value) -> value.getArtifact().setSequenceNumber(key));
+			// set sequence number of matched nodes - on the NODE, not the artifact (see
+			// Node.getSequenceNumber()'s javadoc): other's nodes can share an artifact object with
+			// nodes in this or in a completely unrelated graph, and writing through the artifact would
+			// silently corrupt whichever other node/graph happens to reference the same object.
+			other.collectNodes().stream().filter(op -> op.getArtifact() != null).forEach(op -> op.setSequenceNumber(NOT_MATCHED_SEQUENCE_NUMBER));
+			result.forEachKeyValue((key, value) -> value.setSequenceNumber(key));
+
+			// align()'s own contract (see its javadoc) is "sets the identifiers of other's
+			// artifacts" - a public API in its own right, callable without ever going through
+			// addRelations()/merge() (see DirectPoaAlignmentSpikeTest.fallbackViaAlign...), so the
+			// node -> artifact sync needs to happen here too, not only in addRelations(). Same
+			// tradeoff as there: this can still be overwritten later by an unrelated graph sharing
+			// the same artifact, which is a display/equals staleness concern now, not a correctness
+			// one, since matching itself is entirely node-based (see Node.getSequenceNumber()).
+			other.collectNodes().stream()
+					.filter(op -> op.getArtifact() != null)
+					.forEach(op -> op.getArtifact().setSequenceNumber(op.getSequenceNumber()));
 		}
 
 
@@ -254,7 +268,7 @@ public interface PartialOrderGraph extends Persistable {
 			Collection<Node.Op> thisNodes = this.collectNodes();
 			Collection<Node.Op> otherNodes = other.collectNodes();
 			int numNodesBefore = thisNodes.size();
-			int numMatchedNodes = (int) otherNodes.stream().filter(otherNode -> otherNode.getArtifact() != null && otherNode.getArtifact().getSequenceNumber() != PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER).count() + 2; // +2 because of head and tail
+			int numMatchedNodes = (int) otherNodes.stream().filter(otherNode -> otherNode.getArtifact() != null && otherNode.getSequenceNumber() != PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER).count() + 2; // +2 because of head and tail
 			int numUnmatchedNodes = otherNodes.size() - numMatchedNodes;
 
 			// merge other partial order graph into this partial order graph
@@ -271,14 +285,14 @@ public interface PartialOrderGraph extends Persistable {
 			for (Node.Op thisNode : this.collectNodes())
 				if (thisNode.getArtifact() != null)
 					for (Node.Op nextNode : thisNode.getNext())
-						if (canReach(nextNode, thisNode.getArtifact()))
+						if (canReach(nextNode, thisNode))
 							throw new EccoException("There is a cycle in the POG!");
 
 			// CONSISTENCY: check for redundant connections: can any node be reached from any of the other nodes?
 			for (Node.Op thisNode : this.collectNodes())
 				for (Node.Op nextNode : thisNode.getNext())
 					for (Node.Op nextNode2 : thisNode.getNext())
-						if (nextNode != nextNode2 && nextNode.getArtifact() != null && canReach(nextNode2, nextNode.getArtifact()))
+						if (nextNode != nextNode2 && nextNode.getArtifact() != null && canReach(nextNode2, nextNode))
 							throw new EccoException("There is a redundant transitive connection in the POG!");
 
 			// CONSISTENCY: check if graph has cycles and throw exception if it does
@@ -298,12 +312,12 @@ public interface PartialOrderGraph extends Persistable {
 			for (Node.Op otherNode : otherNodes) {
 				if (otherNode.getArtifact() == null) {
 					// nothing to do
-				} else if (otherNode.getArtifact().getSequenceNumber() == PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
-					otherNode.getArtifact().setSequenceNumber(this.getMaxIdentifier());
+				} else if (otherNode.getSequenceNumber() == PartialOrderGraph.NOT_MATCHED_SEQUENCE_NUMBER) {
+					otherNode.setSequenceNumber(this.getMaxIdentifier());
 					this.incMaxIdentifier();
 				} else {
 					for (Node.Op thisNode : thisNodes) {
-						if (thisNode.getArtifact() != null && thisNode.getArtifact().getSequenceNumber() == otherNode.getArtifact().getSequenceNumber()) {
+						if (thisNode.getArtifact() != null && thisNode.getSequenceNumber() == otherNode.getSequenceNumber()) {
 							nodeMap.put(otherNode, thisNode);
 							break;
 						}
@@ -315,6 +329,11 @@ public interface PartialOrderGraph extends Persistable {
 				Node.Op thisNode = nodeMap.get(otherNode);
 				if (thisNode == null) {
 					thisNode = this.createNode(otherNode.getArtifact());
+					// sequence number used to propagate for free here (it lived on the shared
+					// artifact object createNode() just reused) - now that it's node-owned, a freshly
+					// created node needs its OWN copy of otherNode's already-assigned number, or it'd
+					// default to UNASSIGNED and never match anything in a later merge.
+					thisNode.setSequenceNumber(otherNode.getSequenceNumber());
 					nodeMap.put(otherNode, thisNode);
 				}
 				// add all next nodes that do not already exist
@@ -322,11 +341,26 @@ public interface PartialOrderGraph extends Persistable {
 					Node.Op thisNextNode = nodeMap.get(otherNextNode);
 					if (thisNextNode == null) {
 						thisNextNode = this.createNode(otherNextNode.getArtifact());
+						thisNextNode.setSequenceNumber(otherNextNode.getSequenceNumber());
 						nodeMap.put(otherNextNode, thisNextNode);
 					}
 					if (!thisNode.getNext().contains(thisNextNode)) {
 						thisNode.addChild(thisNextNode);
 					}
+				}
+			}
+
+			// nothing inside this class reads artifact.getSequenceNumber() anymore (matching/merging
+			// is entirely node-owned now - see canReach() and Node.getSequenceNumber()'s javadoc), but
+			// code outside it still does: Artifact.equals() (deliberately, for ordered-duplicate
+			// disambiguation), GUI/web display, EccoUtil's cross-backend copy. Sync each of this
+			// graph's own nodes' final, settled value onto its artifact once here so those keep
+			// working. This can still be overwritten later by an unrelated graph that happens to
+			// share the same artifact object - but that's now a cosmetic display/equals staleness
+			// concern, not a correctness one, since nothing above depends on reading it back.
+			for (Node.Op thisNode : this.collectNodes()) {
+				if (thisNode.getArtifact() != null) {
+					thisNode.getArtifact().setSequenceNumber(thisNode.getSequenceNumber());
 				}
 			}
 		}
@@ -349,7 +383,7 @@ public interface PartialOrderGraph extends Persistable {
 					Node.Op child = it.next();
 
 					for (Node.Op otherChild : current.getNext()) {
-						if (otherChild != child && canReach(otherChild, child.getArtifact())) {
+						if (otherChild != child && canReach(otherChild, child)) {
 							// we do not need connection -> delete it
 							it.remove();
 							child.getPrevious().remove(current);
@@ -376,25 +410,31 @@ public interface PartialOrderGraph extends Persistable {
 
 
 		/**
-		 * Checks whether an artifact can be reached from a given node.
+		 * Checks whether a target node can be reached from a given node - compared by the target's
+		 * own node-owned sequence number (see {@link Node#getSequenceNumber()}), not by artifact
+		 * identity: takes a {@code Node} rather than an {@code Artifact} specifically so this never
+		 * has to trust an artifact's sequence number, which - unlike the node's - can be shared with
+		 * (and silently overwritten by) an unrelated graph.
 		 *
-		 * @param node     The node to start from.
-		 * @param artifact The artifact to look for.
-		 * @return True if artifact could be reached from node, false otherwise.
+		 * @param node   The node to start from.
+		 * @param target The node to look for.
+		 * @return True if target could be reached from node, false otherwise.
 		 */
 		//private
-		static boolean canReach(Node node, Artifact<?> artifact) {
+		static boolean canReach(Node node, Node target) {
 //			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
 			Stack<Node> stack = new Stack<>();
 			stack.add(node);
 			Set<Node> stacked = new HashSet<>();
 			stacked.add(node);
 
+			Artifact<?> targetArtifact = target == null ? null : target.getArtifact();
+
 			while (!stack.isEmpty()) {
 				Node current = stack.pop();
 
 				// process node
-				if ((artifact == null && current.getArtifact() == null) || (artifact != null && current.getArtifact() != null && current.getArtifact().getSequenceNumber() == artifact.getSequenceNumber()))
+				if ((targetArtifact == null && current.getArtifact() == null) || (targetArtifact != null && current.getArtifact() != null && current.getSequenceNumber() == target.getSequenceNumber()))
 					return true;
 
 				// add children of current node
@@ -453,6 +493,7 @@ public interface PartialOrderGraph extends Persistable {
 					Node.Op leftChild = matches.get(rightChild);
 					if (leftChild == null) {
 						leftChild = this.createNode(rightChild.getArtifact());
+						leftChild.setSequenceNumber(rightChild.getSequenceNumber());
 						matches.put(rightChild, leftChild);
 						stack.push(new Node.Op[]{leftChild, rightChild});
 					}
@@ -597,7 +638,12 @@ public interface PartialOrderGraph extends Persistable {
 
 				if (node.getArtifact() != null && node.getArtifact().hasReplacingArtifact()) {
 					Artifact.Op<?> replacing = node.getArtifact().getReplacingArtifact();
-					replacing.setSequenceNumber(node.getArtifact().getSequenceNumber());
+					// node's own sequence number is unaffected by which artifact it wraps, so this
+					// isn't strictly needed for the node itself anymore - kept so the replacing
+					// artifact's own (cosmetic/display) sequence number stays consistent too, sourced
+					// from the node (authoritative) rather than the old artifact (see
+					// Node.getSequenceNumber()'s javadoc).
+					replacing.setSequenceNumber(node.getSequenceNumber());
 					node.setArtifact(replacing);
 				}
 
@@ -818,7 +864,7 @@ public interface PartialOrderGraph extends Persistable {
 			while (!(i == 0 && j == 0)) {
 				byte a = action[i][j];
 				if (a == 1) {
-					result.put(thisNodes.get(i).getArtifact().getSequenceNumber(), otherNodes.get(j));
+					result.put(thisNodes.get(i).getSequenceNumber(), otherNodes.get(j));
 					int pa = backA[i][j], pb = backB[i][j];
 					i = pa;
 					j = pb;
@@ -884,7 +930,7 @@ public interface PartialOrderGraph extends Persistable {
 			Artifact<?> thisArtifact = thisNode.getArtifact();
 			Artifact<?> otherArtifact = otherNode.getArtifact();
 			if (thisArtifact != null && thisArtifact.getData() != null && otherArtifact != null && thisArtifact.getData().equals(otherArtifact.getData())){
-				this.lcsMatchStep(thisArtifact.getSequenceNumber(), otherIndex, thisIndex, lastColumn, currentColumn);
+				this.lcsMatchStep(thisNode.getSequenceNumber(), otherIndex, thisIndex, lastColumn, currentColumn);
 			} else {
 				this.lcsNonMatchStep(otherIndex, thisIndex, lastColumn, currentColumn);
 			}
@@ -925,6 +971,23 @@ public interface PartialOrderGraph extends Persistable {
 
 		Artifact<?> getArtifact();
 
+		/**
+		 * This node's own position within its own graph - NOT the same thing as
+		 * {@code getArtifact().getSequenceNumber()}, and deliberately so: an artifact object can be
+		 * legitimately shared by nodes in more than one PartialOrderGraph (see
+		 * pog-merge-shared-artifact-bug), so a position that lived on the artifact would let one
+		 * graph's bookkeeping clobber another's merely because they happen to reference the same
+		 * artifact. Defaults to delegating to the artifact for any implementation that doesn't
+		 * override it (backward compatible with backends that never adopted their own storage for
+		 * this - see SerPartialOrderGraphNode for the real, node-owned implementation actually used).
+		 * The mutator is on {@link Op} only - Artifact.setSequenceNumber() is likewise only on
+		 * {@link Artifact.Op}.
+		 */
+		default int getSequenceNumber() {
+			Artifact<?> artifact = this.getArtifact();
+			return artifact != null ? artifact.getSequenceNumber() : PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER;
+		}
+
 		default void traverse(NodeVisitor visitor) {
 			Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
 			Stack<PartialOrderGraph.Node> stack = new Stack<>();
@@ -964,6 +1027,14 @@ public interface PartialOrderGraph extends Persistable {
 			Artifact.Op<?> getArtifact();
 
 			void setArtifact(Artifact.Op<?> artifact);
+
+			/** See {@link Node#getSequenceNumber()}. Default mirrors that one's artifact-delegating fallback. */
+			default void setSequenceNumber(int sequenceNumber) {
+				Artifact.Op<?> artifact = this.getArtifact();
+				if (artifact != null) {
+					artifact.setSequenceNumber(sequenceNumber);
+				}
+			}
 
 			Node.Op addChild(Node.Op child);
 
