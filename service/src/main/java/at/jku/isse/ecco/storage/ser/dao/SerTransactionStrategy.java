@@ -50,6 +50,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private static final String WRITELOCK_FILENAME = "write";
 	private static final String DB_FILE_SUFFIX = ".ser.zip";
 	private static final String ASSOCIATIONS_DIRNAME = "associations";
+	private static final String ARTIFACTS_DIRNAME = "artifacts";
 	private static final String ZIP_ENTRY_NAME = "ecco.ser";
 
 	// repository directory
@@ -60,6 +61,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private final Path writeLockFile;
 	// one file per association lives here - see the class javadoc on SerCommit for why this split exists
 	private final Path associationsDir;
+	// one file per artifact lives here - see SerNode.artifactId's javadoc for why this split exists
+	private final Path artifactsDir;
 
 	// id of currently loaded database file
 	private String id;
@@ -84,6 +87,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.idFile = repositoryDir.resolve(ID_FILENAME);
 		this.writeLockFile = repositoryDir.resolve(WRITELOCK_FILENAME);
 		this.associationsDir = repositoryDir.resolve(ASSOCIATIONS_DIRNAME);
+		this.artifactsDir = repositoryDir.resolve(ARTIFACTS_DIRNAME);
 		this.reset();
 	}
 
@@ -230,6 +234,33 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		SerRepository repo = (SerRepository) this.database.getRepository();
 
+		// discover this transaction's dirty artifacts by walking the trees of associations already
+		// known to be dirty - artifacts have no add/remove choke point the way associations do
+		// (SerEntityFactory.createArtifact() doesn't register with a repository at all), so this
+		// tree walk is the closest equivalent, reusing work we're about to do anyway (writing those
+		// same associations below). May register some artifacts that didn't actually change this
+		// commit (anything reachable from a dirty association, not just what's new) - harmless,
+		// same over-inclusive-but-safe tradeoff associations' own dirty-tracking already makes.
+		for (Association association : repo.getDirtyAssociations()) {
+			if (association.getRootNode() instanceof Node.Op rootNode) {
+				this.registerReachableArtifacts(rootNode, repo);
+			}
+		}
+
+		// write dirty artifacts before dirty associations: an association's nodes only carry
+		// artifact IDs now (see SerNode.artifactId's javadoc), so on a fresh load the artifact files
+		// need to already exist for the resolution pass to find - writing them first is not itself
+		// required for crash-safety (nothing points at them until the id-file swap below, same as
+		// associations), just keeps the two writes in the same order load reads them back in.
+		if (!repo.getDirtyArtifacts().isEmpty()) {
+			Files.createDirectories(this.artifactsDir);
+		}
+		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts()) {
+			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
+			Path artifactFile = this.artifactsDir.resolve(serArtifact.getStorageId() + DB_FILE_SUFFIX);
+			writeStored(artifact, artifactFile);
+		}
+
 		// write only the associations actually touched this transaction, one file each, rather
 		// than the whole database - most associations are untouched by any given commit but were,
 		// before this, being fully reserialized every single time anyway. See the class javadoc on
@@ -309,6 +340,15 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.transaction = null;
 	}
 
+	private void registerReachableArtifacts(Node.Op node, SerRepository repo) {
+		if (node.getArtifact() != null) {
+			repo.registerArtifact(node.getArtifact());
+		}
+		for (Node.Op child : node.getChildren()) {
+			this.registerReachableArtifacts(child, repo);
+		}
+	}
+
 
 	private void reset() {
 		this.id = null;
@@ -378,11 +418,27 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			this.database = new Database();
 		}
 
+		SerRepository repo = (SerRepository) this.database.getRepository();
+
+		// load every artifact from its own file BEFORE any association - association trees' nodes
+		// only carry an artifactId now (see SerNode.artifactId's javadoc), so the global artifact
+		// store needs to already be in place for the resolution pass below to resolve them against.
+		// This is what actually fixes pog-mismatch-real-cause-duplicate-storageid: an artifact is
+		// now loaded exactly once, from its own file, regardless of how many associations reference
+		// it - structurally impossible for it to come back as multiple distinct objects sharing one
+		// storageId, rather than merely hoping a name-tag-scan-and-overwrite (the old approach)
+		// happens to land on a usable one.
+		List<Artifact.Op<?>> loadedArtifacts = new ArrayList<>(repo.getArtifactIds().size());
+		for (String artifactId : repo.getArtifactIds()) {
+			Path artifactFile = this.artifactsDir.resolve(artifactId + DB_FILE_SUFFIX);
+			loadedArtifacts.add((Artifact.Op<?>) readZipped(artifactFile));
+		}
+		repo.restoreArtifacts(loadedArtifacts);
+
 		// load each association from its own file (eagerly - this spike only addresses the write
 		// side; every association is still loaded on open, same as before) and wire up the
 		// resolver every commit needs to turn the IDs it holds back into Association objects. A
 		// no-op for a brand new repository (SerRepository starts with an empty association-id set).
-		SerRepository repo = (SerRepository) this.database.getRepository();
 		List<Association.Op> loadedAssociations = new ArrayList<>(repo.getAssociationIds().size());
 		for (String associationId : repo.getAssociationIds()) {
 			Path associationFile = this.associationsDir.resolve(associationId + DB_FILE_SUFFIX);
@@ -424,22 +480,33 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 	/**
 	 * Each association was just deserialized from its own, independent file/stream, so any
-	 * reference that points OUTSIDE that association's own tree (SerArtifact.containingNode,
-	 * SerArtifactReference.source/target - both transient, carrying only an id) was not restored by
-	 * the default deserialization of that file. This walks every loaded association's tree exactly
-	 * once to build a global id -> instance index, then uses it to fill in those transient fields -
-	 * always resolving to a real, properly-reconstructed instance (found via the same controlled
-	 * tree walk every association's own load already went through), never a dangling or
-	 * independently-duplicated fragment. See TreesObjectIdentityDependencyTest and
-	 * incremental-persistence-node-sharing-blocker for why this matters.
+	 * reference that points OUTSIDE that association's own tree (SerNode.artifactId,
+	 * SerArtifact.containingNode, SerArtifactReference.source/target - all transient, carrying only
+	 * an id) was not restored by the default deserialization of that file. artifactsById comes
+	 * directly from the global artifact store (restoreArtifacts(), already loaded above) rather than
+	 * being harvested by walking nodes - that's what actually fixes
+	 * pog-mismatch-real-cause-duplicate-storageid, since it means there is structurally exactly one
+	 * instance per artifact id, not "whichever association's independently-deserialized copy
+	 * happened to be indexed last". This walks every loaded association's tree once to wire each
+	 * node's artifactId to that instance and build a node id -> instance index, then uses both to
+	 * fill in the remaining transient fields - always resolving to a real, properly-reconstructed
+	 * instance, never a dangling or independently-duplicated fragment. See
+	 * TreesObjectIdentityDependencyTest and incremental-persistence-node-sharing-blocker for why
+	 * this matters.
 	 */
 	private void resolveCrossAssociationReferences(SerRepository repo) {
-		Map<String, Node.Op> nodesById = new HashMap<>();
 		Map<String, Artifact.Op<?>> artifactsById = new HashMap<>();
+		for (String artifactId : repo.getArtifactIds()) {
+			Artifact.Op<?> artifact = repo.getArtifact(artifactId);
+			if (artifact != null) {
+				artifactsById.put(artifactId, artifact);
+			}
+		}
 
+		Map<String, Node.Op> nodesById = new HashMap<>();
 		for (Association.Op association : repo.getAssociations()) {
 			if (association.getRootNode() != null) {
-				this.indexNodeAndArtifact(association.getRootNode(), nodesById, artifactsById);
+				this.indexNodeAndResolveArtifact(association.getRootNode(), nodesById, artifactsById);
 			}
 		}
 
@@ -485,16 +552,21 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 	}
 
-	private void indexNodeAndArtifact(Node.Op node, Map<String, Node.Op> nodesById, Map<String, Artifact.Op<?>> artifactsById) {
+	private void indexNodeAndResolveArtifact(Node.Op node, Map<String, Node.Op> nodesById, Map<String, Artifact.Op<?>> artifactsById) {
 		if (node instanceof SerNode serNode) {
 			nodesById.put(serNode.getStorageId(), node);
-		}
-		Artifact.Op<?> artifact = node.getArtifact();
-		if (artifact instanceof SerArtifact<?> serArtifact) {
-			artifactsById.put(serArtifact.getStorageId(), artifact);
+
+			String artifactId = serNode.getArtifactId();
+			if (artifactId != null) {
+				Artifact.Op<?> artifact = artifactsById.get(artifactId);
+				if (artifact == null) {
+					throw new EccoException("Could not resolve node artifact " + artifactId + " after loading all associations.");
+				}
+				serNode.resolveArtifact(artifact);
+			}
 		}
 		for (Node.Op child : node.getChildren()) {
-			this.indexNodeAndArtifact(child, nodesById, artifactsById);
+			this.indexNodeAndResolveArtifact(child, nodesById, artifactsById);
 		}
 	}
 

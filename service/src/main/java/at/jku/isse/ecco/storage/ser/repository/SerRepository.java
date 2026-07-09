@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.ser.repository;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.featuretrace.evaluation.ProactiveBasedEvaluation;
 import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
@@ -43,6 +44,18 @@ public final class SerRepository implements Repository, Repository.Op {
 	// SerTransactionStrategy.endReadWrite(). Not serialized: purely a within-transaction concept.
 	private transient Set<Association.Op> dirtyAssociations = new LinkedHashSet<>();
 	private transient Set<String> removedAssociationIds = new LinkedHashSet<>();
+	// artifacts are their own independently-persisted, deduplicated entities too (same split as
+	// associations, and for the same reason: an artifact reachable from more than one association -
+	// e.g. shared, non-unique structure - must not be redundantly re-serialized once per association
+	// file, or it comes back as multiple distinct objects claiming the same id after reload, each
+	// with its own diverging state like an independently-deserialized PartialOrderGraph copy. See
+	// pog-mismatch-real-cause-duplicate-storageid). Unlike associations, artifacts have no
+	// add/remove choke point (SerEntityFactory.createArtifact() doesn't register with a repository
+	// at all) - SerTransactionStrategy discovers dirty artifacts by walking dirty associations'
+	// trees at write time instead, via registerArtifact() below.
+	private Set<String> artifactIds = new LinkedHashSet<>();
+	private transient Map<String, Artifact.Op<?>> artifactsById = new LinkedHashMap<>();
+	private transient Set<Artifact.Op<?>> dirtyArtifacts = new LinkedHashSet<>();
 	private ArrayList<Variant> variants = new ArrayList<>();
 	private List<Map<SerModule, SerModule>> modules;
 	private Collection<Commit> commits;
@@ -94,6 +107,51 @@ public final class SerRepository implements Repository, Repository.Op {
 	public void clearDirtyTracking() {
 		this.dirtyAssociations.clear();
 		this.removedAssociationIds.clear();
+		this.dirtyArtifacts.clear();
+	}
+
+	/**
+	 * Populates the transient, in-memory artifact map from artifacts loaded from their own
+	 * per-artifact files - called once by SerTransactionStrategy right after the "core" database has
+	 * been deserialized, before any association is loaded (associations' nodes only carry an
+	 * artifactId until this store is in place to resolve them against).
+	 */
+	public void restoreArtifacts(Collection<? extends Artifact.Op<?>> loaded) {
+		this.artifactsById = new LinkedHashMap<>();
+		for (Artifact.Op<?> artifact : loaded) {
+			if (artifact instanceof at.jku.isse.ecco.storage.ser.artifact.SerArtifact<?> serArtifact) {
+				this.artifactsById.put(serArtifact.getStorageId(), artifact);
+			}
+		}
+		this.dirtyArtifacts = new LinkedHashSet<>();
+	}
+
+	/** The full set of artifact IDs that should have a file on disk - what {@link #restoreArtifacts} needs loaded. */
+	public Set<String> getArtifactIds() {
+		return Collections.unmodifiableSet(this.artifactIds);
+	}
+
+	/** Artifacts touched since the last {@link #clearDirtyTracking()} - need writing. */
+	public Set<Artifact.Op<?>> getDirtyArtifacts() {
+		return Collections.unmodifiableSet(this.dirtyArtifacts);
+	}
+
+	public Artifact.Op<?> getArtifact(String id) {
+		return this.artifactsById.get(id);
+	}
+
+	/**
+	 * Registers an artifact discovered while walking a dirty association's tree at write time
+	 * (SerTransactionStrategy.endReadWrite()) - the closest equivalent to addAssociation() artifacts
+	 * have, since nothing calls this at creation time (see the field javadoc above). Safe to call
+	 * repeatedly for the same artifact (e.g. reachable from more than one dirty association) - a
+	 * LinkedHashSet/Map, so re-adding is a no-op beyond confirming it's tracked and dirty.
+	 */
+	public void registerArtifact(Artifact.Op<?> artifact) {
+		if (!(artifact instanceof at.jku.isse.ecco.storage.ser.artifact.SerArtifact<?> serArtifact)) return;
+		this.artifactsById.put(serArtifact.getStorageId(), artifact);
+		this.artifactIds.add(serArtifact.getStorageId());
+		this.dirtyArtifacts.add(artifact);
 	}
 
 	@Override
