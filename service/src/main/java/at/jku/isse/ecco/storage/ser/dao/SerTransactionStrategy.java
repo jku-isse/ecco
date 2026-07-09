@@ -1,8 +1,12 @@
 package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.storage.common.dao.Database;
+import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
@@ -16,6 +20,8 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
@@ -33,6 +39,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private static final String ID_FILENAME = "id";
 	private static final String WRITELOCK_FILENAME = "write";
 	private static final String DB_FILE_SUFFIX = ".ser.zip";
+	private static final String ASSOCIATIONS_DIRNAME = "associations";
+	private static final String ZIP_ENTRY_NAME = "ecco.ser";
 
 	// repository directory
 	private final Path repositoryDir;
@@ -40,6 +48,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private final Path idFile;
 	// lock file for making sure there is onyl one write transaction going on at a time
 	private final Path writeLockFile;
+	// one file per association lives here - see the class javadoc on SerCommit for why this split exists
+	private final Path associationsDir;
 
 	// id of currently loaded database file
 	private String id;
@@ -63,7 +73,45 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.repositoryDir = repositoryDir;
 		this.idFile = repositoryDir.resolve(ID_FILENAME);
 		this.writeLockFile = repositoryDir.resolve(WRITELOCK_FILENAME);
+		this.associationsDir = repositoryDir.resolve(ASSOCIATIONS_DIRNAME);
 		this.reset();
+	}
+
+	/**
+	 * Serializes object as a STORED (uncompressed) zip entry at file - see the comment in
+	 * endReadWrite() for why STORED rather than the default DEFLATE compression.
+	 */
+	private static void writeStored(Object object, Path file) throws IOException {
+		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
+		try (ObjectOutputStream oos = new ObjectOutputStream(serialized)) {
+			oos.writeObject(object);
+		}
+		byte[] serializedBytes = serialized.toByteArray();
+		CRC32 crc32 = new CRC32();
+		crc32.update(serializedBytes);
+		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file, StandardOpenOption.CREATE))) {
+			ZipEntry entry = new ZipEntry(ZIP_ENTRY_NAME);
+			entry.setMethod(ZipEntry.STORED);
+			entry.setSize(serializedBytes.length);
+			entry.setCompressedSize(serializedBytes.length);
+			entry.setCrc(crc32.getValue());
+			zos.putNextEntry(entry);
+			zos.write(serializedBytes);
+		}
+	}
+
+	private static Object readZipped(Path file) throws IOException, ClassNotFoundException {
+		try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file))) {
+			ZipEntry e;
+			while ((e = zis.getNextEntry()) != null) {
+				if (e.getName().equals(ZIP_ENTRY_NAME)) {
+					try (ObjectInputStream ois = new ObjectInputStream(zis)) {
+						return ois.readObject();
+					}
+				}
+			}
+		}
+		throw new EccoException("No " + ZIP_ENTRY_NAME + " entry found in " + file);
 	}
 
 
@@ -170,6 +218,25 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		if (!this.writeFileLock.isValid())
 			throw new EccoException("Lost exclusive lock on WRITE file.");
 
+		SerRepository repo = (SerRepository) this.database.getRepository();
+
+		// write only the associations actually touched this transaction, one file each, rather
+		// than the whole database - most associations are untouched by any given commit but were,
+		// before this, being fully reserialized every single time anyway. See the class javadoc on
+		// SerCommit for why commits/the repository hold association IDs rather than direct
+		// references (that's what makes it safe to leave everything else out of the "core" write
+		// below). Written BEFORE the core/id-file swap: if we crash after writing some of these but
+		// before the swap, the old core (which doesn't reference the new files yet) is still valid,
+		// and the new files are just harmless, unreferenced garbage - the same "write new, then
+		// atomically flip a pointer to it" safety property the core file already had.
+		if (!repo.getDirtyAssociations().isEmpty()) {
+			Files.createDirectories(this.associationsDir);
+		}
+		for (Association association : repo.getDirtyAssociations()) {
+			Path associationFile = this.associationsDir.resolve(association.getId() + DB_FILE_SUFFIX);
+			writeStored(association, associationFile);
+		}
+
 		// compute new random id
 		String newId = UUID.randomUUID().toString();
 		// serialize to new db file
@@ -187,22 +254,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// path (loadDatabase() below) needs no changes - ZipInputStream decompresses transparently
 		// regardless of which method an entry was written with, so older, DEFLATE-compressed
 		// database files remain fully readable.
-		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
-		try (ObjectOutputStream oos = new ObjectOutputStream(serialized)) {
-			oos.writeObject(this.database);
-		}
-		byte[] serializedBytes = serialized.toByteArray();
-		CRC32 crc32 = new CRC32();
-		crc32.update(serializedBytes);
-		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(newDbFile, StandardOpenOption.CREATE))) {
-			ZipEntry entry = new ZipEntry("ecco.ser");
-			entry.setMethod(ZipEntry.STORED);
-			entry.setSize(serializedBytes.length);
-			entry.setCompressedSize(serializedBytes.length);
-			entry.setCrc(crc32.getValue());
-			zos.putNextEntry(entry);
-			zos.write(serializedBytes);
-		}
+		//
+		// this "core" write is now cheap regardless of repository size: SerRepository.associations
+		// and SerCommit.associations are both ID-only now (see their javadocs), so the only things
+		// actually reachable from `database` here are IDs, commit/feature/module metadata, and
+		// similar - not the (large, POG-heavy) association trees themselves.
+		writeStored(this.database, newDbFile);
 
 		// obtain exclusive lock on id file, write new id, update current id and db file, release lock
 		try (FileChannel idFileChannel = FileChannel.open(this.idFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE); FileLock idFileLock = idFileChannel.lock(0, Long.MAX_VALUE, false)) {
@@ -226,6 +283,14 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 			// release exclusive id lock automatically when exiting try block
 		}
+
+		// best-effort cleanup of association files no longer referenced by the now-current core -
+		// after the id-file swap above, so a failure here never leaves the repository in a state
+		// where the current core references a file that got deleted
+		for (String removedId : repo.getRemovedAssociationIds()) {
+			Files.deleteIfExists(this.associationsDir.resolve(removedId + DB_FILE_SUFFIX));
+		}
+		repo.clearDirtyTracking();
 
 		// release exclusive write lock automatically after try block
 		this.writeFileLock.close();
@@ -301,6 +366,21 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			}
 		} else {
 			this.database = new Database();
+		}
+
+		// load each association from its own file (eagerly - this spike only addresses the write
+		// side; every association is still loaded on open, same as before) and wire up the
+		// resolver every commit needs to turn the IDs it holds back into Association objects. A
+		// no-op for a brand new repository (SerRepository starts with an empty association-id set).
+		SerRepository repo = (SerRepository) this.database.getRepository();
+		List<Association.Op> loadedAssociations = new ArrayList<>(repo.getAssociationIds().size());
+		for (String associationId : repo.getAssociationIds()) {
+			Path associationFile = this.associationsDir.resolve(associationId + DB_FILE_SUFFIX);
+			loadedAssociations.add((Association.Op) readZipped(associationFile));
+		}
+		repo.restoreAssociations(loadedAssociations);
+		for (Commit commit : this.database.getCommitIndex().values()) {
+			((SerCommit) commit).setAssociationResolver(repo);
 		}
 	}
 

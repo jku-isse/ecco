@@ -12,6 +12,7 @@ import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
+import at.jku.isse.ecco.storage.ser.core.SerCommit;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.storage.ser.feature.SerFeature;
 import at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation;
@@ -33,7 +34,15 @@ public final class SerRepository implements Repository, Repository.Op {
 	public static final MainTreeBuildingStrategy DEFAULT_MAIN_TREE_BUILDING_STRATEGY = new SerBoostedAssociationMerger();
 
 	private Map<String, SerFeature> features;
-	private Collection<Association.Op> associations;
+	// only the association IDs are actually serialized as part of the "core" database (see the
+	// fields below) - each association's own (large) content lives in its own file, written only
+	// when dirty. See SerTransactionStrategy for the read/write side of this split.
+	private Set<String> associationIds = new LinkedHashSet<>();
+	private transient Map<String, Association.Op> associationsById = new LinkedHashMap<>();
+	// which associations were added/removed since the last successful commit - read and cleared by
+	// SerTransactionStrategy.endReadWrite(). Not serialized: purely a within-transaction concept.
+	private transient Set<Association.Op> dirtyAssociations = new LinkedHashSet<>();
+	private transient Set<String> removedAssociationIds = new LinkedHashSet<>();
 	private ArrayList<Variant> variants = new ArrayList<>();
 	private List<Map<SerModule, SerModule>> modules;
 	private Collection<Commit> commits;
@@ -44,12 +53,47 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	public SerRepository() {
 		this.features = Maps.mutable.empty();
-		this.associations = new ArrayList<>();
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(DEFAULT_MAX_ORDER);
 		this.setEvaluationStrategy(DEFAULT_EVALUATION_STRATEGY);
 		this.setMaintreeBuildingStrategy(DEFAULT_MAIN_TREE_BUILDING_STRATEGY);
+	}
+
+	/**
+	 * Populates the transient, in-memory association map from associations loaded from their own
+	 * per-association files - called once by {@link at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy}
+	 * right after the "core" database (which only carries {@link #associationIds}, not the
+	 * associations themselves) has been deserialized.
+	 */
+	public void restoreAssociations(Collection<? extends Association.Op> loaded) {
+		this.associationsById = new LinkedHashMap<>();
+		for (Association.Op association : loaded) {
+			this.associationsById.put(association.getId(), association);
+		}
+		this.dirtyAssociations = new LinkedHashSet<>();
+		this.removedAssociationIds = new LinkedHashSet<>();
+	}
+
+	/** The full set of association IDs that should have a file on disk - what {@link #restoreAssociations} needs loaded. */
+	public Set<String> getAssociationIds() {
+		return Collections.unmodifiableSet(this.associationIds);
+	}
+
+	/** Associations added or (re-)referenced since the last {@link #clearDirtyTracking()} - need writing. */
+	public Set<Association.Op> getDirtyAssociations() {
+		return Collections.unmodifiableSet(this.dirtyAssociations);
+	}
+
+	/** IDs removed since the last {@link #clearDirtyTracking()} - their files can be deleted. */
+	public Set<String> getRemovedAssociationIds() {
+		return Collections.unmodifiableSet(this.removedAssociationIds);
+	}
+
+	/** Called by SerTransactionStrategy after a successful write, to start tracking fresh for the next transaction. */
+	public void clearDirtyTracking() {
+		this.dirtyAssociations.clear();
+		this.removedAssociationIds.clear();
 	}
 
 	@Override
@@ -63,7 +107,7 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public Collection<Association.Op> getAssociations() {
-		return Collections.unmodifiableCollection(this.associations);
+		return Collections.unmodifiableCollection(this.associationsById.values());
 	}
 
 	@Override
@@ -94,13 +138,7 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public Association getAssociation(String id) {
-		Association assoc = null;
-		for (Association.Op association : this.getAssociations()) {
-			if (association.getId().equals(id)) {
-				assoc = association;
-			}
-		}
-		return assoc;
+		return this.associationsById.get(id);
 	}
 
 	@Override
@@ -128,6 +166,12 @@ public final class SerRepository implements Repository, Repository.Op {
 			commit.setId(UUID.randomUUID().toString());
 		} while(getCommits().contains(commit));        //Just to make sure no Id is given twice
 		commits.add(commit);
+		// wire up the association resolver immediately - extract() calls addAssociation() on this
+		// commit shortly after, within the same transaction, well before any reload would otherwise
+		// do this wiring (see SerCommit.getAssociations())
+		if (commit instanceof SerCommit serCommit) {
+			serCommit.setAssociationResolver(this);
+		}
 	}
 
 	@Override
@@ -160,7 +204,10 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public void addAssociation(Association.Op association) {
-		this.associations.add(association);
+		this.associationsById.put(association.getId(), association);
+		this.associationIds.add(association.getId());
+		this.dirtyAssociations.add(association);
+		this.removedAssociationIds.remove(association.getId());
 	}
 
 	@Override
@@ -187,7 +234,10 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public void removeAssociation(Association.Op association) {
-		this.associations.remove(association);
+		this.associationsById.remove(association.getId());
+		this.associationIds.remove(association.getId());
+		this.dirtyAssociations.remove(association);
+		this.removedAssociationIds.add(association.getId());
 	}
 
 
