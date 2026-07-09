@@ -14,6 +14,9 @@ import javafx.application.Platform;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -63,6 +66,17 @@ public class MainView extends BorderPane implements EccoListener {
 		ToolBar toolBar = new ToolBar();
 		toolBar.getItems().addAll(openButton, initButton, new Separator(), closeButton, new Separator(), commitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), serverButton, new Separator(), preferencesButton, new Separator());
 		this.setTop(toolBar);
+
+		// Cmd+O on macOS, Ctrl+O elsewhere (SHORTCUT_DOWN maps to the platform's own shortcut
+		// modifier) - registered as a Scene accelerator, not a button-level one, since MainView
+		// isn't added to a Scene until EccoGui.start() does so after construction
+		this.sceneProperty().addListener((observable, oldScene, newScene) -> {
+			if (newScene != null) {
+				newScene.getAccelerators().put(
+						new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN),
+						this.openButton::fire);
+			}
+		});
 
 
 		// tabs
