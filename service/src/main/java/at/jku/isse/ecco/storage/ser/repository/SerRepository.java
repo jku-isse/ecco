@@ -265,8 +265,24 @@ public final class SerRepository implements Repository, Repository.Op {
 		this.mainTree = this.mainTreeBuildingStrategy.buildMainTree(this.getAssociations());
 	}
 
+	/**
+	 * Marks the main tree as stale without paying to rebuild it - called by SerTransactionStrategy
+	 * after every load, since the persisted mainTree copy is unusable (see the comment at its call
+	 * site) but most read-only access (e.g. just listing associations) never touches the main tree
+	 * at all. buildMainTree() is comparatively expensive (copies + boosts every association's tree
+	 * and re-merges their PartialOrderGraphs), so doing it unconditionally on every open - rather
+	 * than lazily, only when something actually asks for the main tree - was a real, measured
+	 * performance regression.
+	 */
+	public void invalidateMainTree() {
+		this.mainTree = null;
+	}
+
 	 @Override
 	 public Node.Op getMainTree(){
+		if (this.mainTree == null) {
+			this.buildMainTree();
+		}
 		return this.mainTree;
 	 }
 
@@ -319,7 +335,7 @@ public final class SerRepository implements Repository, Repository.Op {
 	@Override
 	public Collection<FeatureTrace> getFeatureTraces(){
 		FeatureTraceCollectorVisitor collectorVisitor = new FeatureTraceCollectorVisitor();
-		this.mainTree.traverse(collectorVisitor);
+		this.getMainTree().traverse(collectorVisitor);
 		return collectorVisitor.getFeatureTraces();
 	}
 

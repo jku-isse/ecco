@@ -403,10 +403,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// blob, a stream entirely separate from the per-association files, so its node/artifact
 		// references suffer the exact same cross-file dangling problem resolveCrossAssociationReferences
 		// just fixed for the associations themselves - except mainTree isn't indexed by that pass at
-		// all. Rebuilding it fresh from the now-correctly-resolved associations sidesteps that
-		// entirely rather than adding yet another id-resolution path for a value that's cheap to
-		// recompute and already rebuilt unconditionally on every commit (EccoService.commit()).
-		repo.buildMainTree();
+		// all. Just invalidating it (not rebuilding it here) sidesteps that entirely: getMainTree()
+		// rebuilds lazily, on first actual use, from the now-correctly-resolved associations. Calling
+		// buildMainTree() unconditionally here instead was tried and reverted - it made every
+		// read-only transaction (e.g. just listing associations, which never touches the main tree)
+		// pay for a full copy+boost+PartialOrderGraph-merge of every association, a measured
+		// real-world regression (slow repo open in the GUI's Artifacts tab).
+		repo.invalidateMainTree();
 	}
 
 	/**
