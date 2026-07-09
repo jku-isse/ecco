@@ -706,6 +706,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
                     FeatureRevision featureRevision = feature.getRevision(featureRevisionId);
                     if (featureRevision == null) {
+                        // FeatureRevision#getFeatureRevisionString() (used wherever a configuration is
+                        // displayed, e.g. Configuration#toString()) truncates the id to 7 characters,
+                        // git-short-hash style - not round-trippable through an exact getRevision()
+                        // lookup. Resolve a truncated id against existing revisions the same way git
+                        // resolves an abbreviated hash, before falling back to treating it as brand new.
+                        featureRevision = findRevisionByIdPrefix(feature, featureRevisionId);
+                    }
+                    if (featureRevision == null) {
                         featureRevision = feature.addRevision(featureRevisionId);
                     }
 
@@ -742,6 +750,24 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             throw new EccoException("Error parsing configuration string: " + configurationString, e);
         }
+    }
+
+    /**
+     * Finds the unique revision of {@code feature} whose full id starts with {@code idPrefix}, or
+     * null if none or more than one match (an ambiguous prefix is treated the same as no match -
+     * callers fall back to creating a new revision rather than guessing).
+     */
+    private FeatureRevision findRevisionByIdPrefix(Feature feature, String idPrefix) {
+        FeatureRevision match = null;
+        for (FeatureRevision candidate : feature.getRevisions()) {
+            if (candidate.getId().startsWith(idPrefix)) {
+                if (match != null) {
+                    return null;
+                }
+                match = candidate;
+            }
+        }
+        return match;
     }
 
     private Feature getFeature(Repository.Op repository, String featureName) {
