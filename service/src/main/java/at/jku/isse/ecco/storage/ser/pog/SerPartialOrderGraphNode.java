@@ -3,6 +3,7 @@ package at.jku.isse.ecco.storage.ser.pog;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
+import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 
 import java.util.*;
 
@@ -18,10 +19,28 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	// only used for iterative serialization in order not to overflow stack
 	private Collection<Integer> nextSequenceNumbers = new ArrayList<>();
 
-	private Artifact.Op<?> artifact;
+	// transient for the same reason as SerArtifact.containingNode: PartialOrderGraphs get merged
+	// across nodes that can belong to different associations (Trees.slice(), Trees.java:115), so a
+	// POG node's artifact can live in a foreign association's tree - a direct reference would pull
+	// in that foreign object graph via a side channel on reload. artifactId is the serialized
+	// surrogate; the transient field is populated by SerTransactionStrategy's post-load resolution
+	// pass against the same global artifact-id index used for SerArtifact.containingNode and
+	// SerArtifactReference.source/target.
+	private transient Artifact.Op<?> artifact;
+	private String artifactId;
 
 	public SerPartialOrderGraphNode(Artifact.Op<?> artifact) {
 //		Objects.requireNonNull(artifact);
+		this.artifact = artifact;
+		this.artifactId = (artifact instanceof SerArtifact<?> serArtifact) ? serArtifact.getStorageId() : null;
+	}
+
+	public String getArtifactId() {
+		return this.artifactId;
+	}
+
+	/** Used only by SerTransactionStrategy's post-load resolution pass - sets the live reference without touching artifactId (already correct, just loaded from the stream). */
+	public void resolveArtifact(Artifact.Op<?> artifact) {
 		this.artifact = artifact;
 	}
 
@@ -85,6 +104,7 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 	public void setArtifact(Artifact.Op<?> artifact) {
 		Objects.requireNonNull(artifact);
 		this.artifact = artifact;
+		this.artifactId = (artifact instanceof SerArtifact<?> serArtifact) ? serArtifact.getStorageId() : null;
 	}
 
 	@Override

@@ -6,10 +6,12 @@ import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.dao.TransactionStrategy;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.storage.common.dao.Database;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifactReference;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraphNode;
 import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 import at.jku.isse.ecco.storage.ser.tree.SerNode;
 import at.jku.isse.ecco.tree.Node;
@@ -392,6 +394,19 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 
 		this.resolveCrossAssociationReferences(repo);
+
+		// SerRepository.mainTree is purely derived from associations (see buildMainTree()) but
+		// isn't transient, so a freshly-loaded repository initially holds whatever copy was
+		// persisted alongside the "core" blob - built by copying each association's tree
+		// (SerBoostedAssociationMerger.createBoostedAssociationTree -> copyTree, which reuses
+		// artifact instances rather than cloning them). That copy was serialized as part of the core
+		// blob, a stream entirely separate from the per-association files, so its node/artifact
+		// references suffer the exact same cross-file dangling problem resolveCrossAssociationReferences
+		// just fixed for the associations themselves - except mainTree isn't indexed by that pass at
+		// all. Rebuilding it fresh from the now-correctly-resolved associations sidesteps that
+		// entirely rather than adding yet another id-resolution path for a value that's cheap to
+		// recompute and already rebuilt unconditionally on every commit (EccoService.commit()).
+		repo.buildMainTree();
 	}
 
 	/**
@@ -429,6 +444,31 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 			this.resolveReferences(serArtifact.getUses(), artifactsById);
 			this.resolveReferences(serArtifact.getUsedBy(), artifactsById);
+
+			if (serArtifact.getPartialOrderGraph() != null) {
+				this.resolvePartialOrderGraph(serArtifact.getPartialOrderGraph(), artifactsById);
+			}
+		}
+	}
+
+	/**
+	 * PartialOrderGraphs get merged across nodes that can belong to different associations
+	 * (Trees.slice(), Trees.java:115), so a POG node's artifact (SerPartialOrderGraphNode.artifact)
+	 * can be a foreign, side-channel-serialized reference for the same reason
+	 * SerArtifact.containingNode was - resolved here against the same global artifact-id index.
+	 */
+	private void resolvePartialOrderGraph(PartialOrderGraph.Op graph, Map<String, Artifact.Op<?>> artifactsById) {
+		for (PartialOrderGraph.Node.Op node : graph.collectNodes()) {
+			if (!(node instanceof SerPartialOrderGraphNode serNode)) continue;
+
+			String artifactId = serNode.getArtifactId();
+			if (artifactId == null) continue; // head/tail sentinel nodes have no artifact
+
+			Artifact.Op<?> artifact = artifactsById.get(artifactId);
+			if (artifact == null) {
+				throw new EccoException("Could not resolve POG node artifact " + artifactId + " after loading all associations.");
+			}
+			serNode.resolveArtifact(artifact);
 		}
 	}
 
