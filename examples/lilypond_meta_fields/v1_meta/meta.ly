@@ -1,0 +1,5 @@
+pieceDuration = "duration:90"
+pieceSubject = "Abendlied"
+pieceLicense = "free"
+pieceArranger = ""
+pieceVoices = "SAATTB"
