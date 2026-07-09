@@ -55,7 +55,14 @@ public final class SerRepository implements Repository, Repository.Op {
 	// trees at write time instead, via registerArtifact() below.
 	private Set<String> artifactIds = new LinkedHashSet<>();
 	private transient Map<String, Artifact.Op<?>> artifactsById = new LinkedHashMap<>();
-	private transient Set<Artifact.Op<?>> dirtyArtifacts = new LinkedHashSet<>();
+	// identity-keyed (Collections.newSetFromMap(new IdentityHashMap<>()), same pattern
+	// Trees.java's newIdentitySet() already uses for the same reason): SerArtifact.equals()/
+	// hashCode() are deliberately data-based (Trees.slice() relies on it), so a plain
+	// content-equality Set here would silently drop a genuinely distinct artifact (different
+	// storageId, already recorded in artifactIds) whenever its DATA happens to match one already
+	// in the set - its id would then have no file ever written for it, a real bug this caught via
+	// a many-commits-with-repeated-content benchmark (NoSuchFileException on the next reload).
+	private transient Set<Artifact.Op<?>> dirtyArtifacts = Collections.newSetFromMap(new IdentityHashMap<>());
 	private ArrayList<Variant> variants = new ArrayList<>();
 	private List<Map<SerModule, SerModule>> modules;
 	private Collection<Commit> commits;
@@ -123,7 +130,7 @@ public final class SerRepository implements Repository, Repository.Op {
 				this.artifactsById.put(serArtifact.getStorageId(), artifact);
 			}
 		}
-		this.dirtyArtifacts = new LinkedHashSet<>();
+		this.dirtyArtifacts = Collections.newSetFromMap(new IdentityHashMap<>());
 	}
 
 	/** The full set of artifact IDs that should have a file on disk - what {@link #restoreArtifacts} needs loaded. */
