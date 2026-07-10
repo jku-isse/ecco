@@ -3,7 +3,6 @@ package at.jku.isse.ecco.gui.view.operation;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
@@ -21,7 +20,6 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxListCell;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -49,14 +47,12 @@ public class CommitView extends OperationView implements EccoListener {
 
 	private EccoService service;
 
-	private final ObservableList<FileInfo> logData = FXCollections.observableArrayList();
 	private final ObservableList<FolderEntry> folderData = FXCollections.observableArrayList();
 
 
 	private SplitPane splitPane;
 	private CommitDetailView commitDetailView;
-	private TableView<FileInfo> logTable;
-	private Label pluginsSummaryLabel;
+	private TextArea logArea;
 
 
 	public CommitView(EccoService service) {
@@ -71,49 +67,15 @@ public class CommitView extends OperationView implements EccoListener {
 		// commit detail view
 		this.commitDetailView = new CommitDetailView();
 
-		// log table
-		this.logTable = new TableView<>();
-		logTable.setEditable(false);
-		logTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-		logTable.getStyleClass().add("headerless-table");
+		// plain scrolling text log (one line per read/write/commit)
+		this.logArea = new TextArea();
+		logArea.setEditable(false);
+		logArea.setWrapText(false);
 
-		TableColumn<FileInfo, String> actionCol = new TableColumn<>("Action");
-		TableColumn<FileInfo, String> pathCol = new TableColumn<>("Path");
-		TableColumn<FileInfo, String> pluginCol = new TableColumn<>("Plugin");
-
-		// give Path most of the width (it's the column that actually needs it) instead of the
-		// equal three-way split CONSTRAINED_RESIZE_POLICY defaults to, which was truncating paths
-		actionCol.prefWidthProperty().bind(logTable.widthProperty().multiply(0.12));
-		pathCol.prefWidthProperty().bind(logTable.widthProperty().multiply(0.63));
-		pluginCol.prefWidthProperty().bind(logTable.widthProperty().multiply(0.25));
-
-		logTable.getColumns().setAll(actionCol, pathCol, pluginCol);
-
-		actionCol.setCellValueFactory(new PropertyValueFactory<>("action"));
-		pathCol.setCellValueFactory(new PropertyValueFactory<>("path"));
-		pluginCol.setCellValueFactory(new PropertyValueFactory<>("plugin"));
-
-		logTable.setItems(this.logData);
-
-		// single-line summary of every plugin actually used (READ/WRITE rows only - SELECT and
-		// COMMIT rows repurpose the "plugin" column for other data, see fileReadEvent/etc. below)
-		this.pluginsSummaryLabel = new Label("Plugins used: ");
-		this.logData.addListener((ListChangeListener<FileInfo>) change -> this.updatePluginsSummary());
-
-		splitPane.getItems().add(logTable);
+		splitPane.getItems().add(logArea);
 
 
 		this.step1();
-	}
-
-	private void updatePluginsSummary() {
-		String plugins = this.logData.stream()
-				.filter(info -> READ_ACTION_STRING.equals(info.getAction()) || WRITE_ACTION_STRING.equals(info.getAction()))
-				.map(FileInfo::getPlugin)
-				.distinct()
-				.sorted()
-				.collect(Collectors.joining(", "));
-		this.pluginsSummaryLabel.setText("Plugins used: " + plugins);
 	}
 
 
@@ -304,7 +266,7 @@ public class CommitView extends OperationView implements EccoListener {
 			String commitMessage = commitMessageStringTextField.getText();
 			List<FolderEntry> foldersToCommit = new ArrayList<>(folderData);
 
-			this.logData.clear();
+			this.logArea.clear();
 			this.service.addListener(this);
 
 			Task<Commit> commitTask = new Task<Commit>() {
@@ -319,8 +281,9 @@ public class CommitView extends OperationView implements EccoListener {
 							lastCommit = CommitView.this.service.commit(commitMessage, configurationString);
 						else
 							lastCommit = CommitView.this.service.commit(commitMessage);
-						long durationMillis = System.currentTimeMillis() - startMillis;
-						Platform.runLater(() -> CommitView.this.logData.add(new FileInfo(COMMIT_ACTION_STRING, entry.getFolder(), formatDuration(durationMillis))));
+						double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
+						Platform.runLater(() -> CommitView.this.logArea.appendText(
+								String.format("Committed %s in %.2f seconds.%n", entry.getFolder(), durationSeconds)));
 					}
 					return lastCommit;
 				}
@@ -331,7 +294,7 @@ public class CommitView extends OperationView implements EccoListener {
 					CommitView.this.service.removeListener(CommitView.this);
 					// show value in commit detail view
 					CommitView.this.commitDetailView.showCommit(this.getValue());
-					CommitView.this.splitPane.getItems().setAll(CommitView.this.logTable, CommitView.this.commitDetailView);
+					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, CommitView.this.commitDetailView);
 					CommitView.this.showSuccessHeader();
 				}
 
@@ -341,7 +304,7 @@ public class CommitView extends OperationView implements EccoListener {
 					CommitView.this.service.removeListener(CommitView.this);
 					// show exception textarea instead of commit detail view
 					CommitView.this.commitDetailView.showCommit(null);
-					CommitView.this.splitPane.getItems().setAll(CommitView.this.logTable, new ExceptionTextArea(this.getException()));
+					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
 					CommitView.this.showErrorHeader();
 				}
 
@@ -351,7 +314,7 @@ public class CommitView extends OperationView implements EccoListener {
 					CommitView.this.service.removeListener(CommitView.this);
 					// show exception textarea instead of commit detail view
 					CommitView.this.commitDetailView.showCommit(null);
-					CommitView.this.splitPane.getItems().setAll(CommitView.this.logTable, new ExceptionTextArea(this.getException()));
+					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
 					CommitView.this.showErrorHeader();
 				}
 			};
@@ -448,34 +411,24 @@ public class CommitView extends OperationView implements EccoListener {
 		this.rightButtons.getChildren().clear();
 
 
-		VBox centerBox = new VBox(5, this.pluginsSummaryLabel, this.splitPane);
-		centerBox.setPadding(new Insets(0, 10, 10, 10));
-		VBox.setVgrow(this.splitPane, Priority.ALWAYS);
-		this.setCenter(centerBox);
+		this.splitPane.setPadding(new Insets(0, 10, 10, 10));
+		this.setCenter(this.splitPane);
 
 
 		this.fit();
 	}
 
 
-	private static final String READ_ACTION_STRING = "READ";
-	private static final String WRITE_ACTION_STRING = "WRITE";
-	private static final String ASSOCIATION_SELECTION_STRING = "SELECT";
-	private static final String COMMIT_ACTION_STRING = "COMMIT";
-
 	@Override
 	public void fileReadEvent(Path file, ArtifactReader reader) {
-		Platform.runLater(() -> this.logData.add(new FileInfo(this.READ_ACTION_STRING, file.toString(), shortPluginName(reader.getPluginId()))));
+		String plugin = shortPluginName(reader.getPluginId());
+		Platform.runLater(() -> this.logArea.appendText(String.format("Read %s using (%s)%n", file, plugin)));
 	}
 
 	@Override
 	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-		Platform.runLater(() -> this.logData.add(new FileInfo(this.WRITE_ACTION_STRING, file.toString(), shortPluginName(writer.getPluginId()))));
-	}
-
-	@Override
-	public void associationSelectedEvent(EccoService service, Association association) {
-		Platform.runLater(() -> this.logData.add(new FileInfo(this.ASSOCIATION_SELECTION_STRING, String.valueOf(association.getId()), association.computeCondition().toString())));
+		String plugin = shortPluginName(writer.getPluginId());
+		Platform.runLater(() -> this.logArea.appendText(String.format("Wrote %s using (%s)%n", file, plugin)));
 	}
 
 	/** getPluginId() returns a fully-qualified class name (e.g. "at.jku.isse.ecco.adapter.lilypond.LilypondPlugin") - just the simple class name is enough to display. */
@@ -483,48 +436,6 @@ public class CommitView extends OperationView implements EccoListener {
 		if (pluginId == null) return null;
 		int lastDot = pluginId.lastIndexOf('.');
 		return lastDot < 0 ? pluginId : pluginId.substring(lastDot + 1);
-	}
-
-	/** e.g. 927 -> "0.93 sec" (decimal separator follows the platform's default locale). */
-	private static String formatDuration(long durationMillis) {
-		return String.format("%.2f sec", durationMillis / 1000.0);
-	}
-
-
-	public static class FileInfo {
-		private final SimpleStringProperty action;
-		private final SimpleStringProperty path;
-		private final SimpleStringProperty plugin;
-
-		private FileInfo(String action, String path, String plugin) {
-			this.action = new SimpleStringProperty(action);
-			this.path = new SimpleStringProperty(path);
-			this.plugin = new SimpleStringProperty(plugin);
-		}
-
-		public String getAction() {
-			return this.action.get();
-		}
-
-		public void setAction(String action) {
-			this.action.set(action);
-		}
-
-		public String getPath() {
-			return this.path.get();
-		}
-
-		public void setPath(String path) {
-			this.path.set(path);
-		}
-
-		public String getPlugin() {
-			return this.plugin.get();
-		}
-
-		public void setPlugin(String plugin) {
-			this.plugin.set(plugin);
-		}
 	}
 
 

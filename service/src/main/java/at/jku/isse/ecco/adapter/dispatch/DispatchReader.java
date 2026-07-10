@@ -27,6 +27,15 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	public static final Path IGNORES_FILE_NAME = Paths.get(".ignores");
 	public static final Path ADAPTERS_FILE_NAME = Paths.get(".adapters");
 
+	/**
+	 * Patterns written to a fresh repository's {@link #IGNORES_FILE_NAME} file, so files like
+	 * macOS's ".DS_Store" (a Finder metadata file that would otherwise be picked up by the
+	 * catch-all FilePlugin) are ignored out of the box instead of being committed as content.
+	 * Only applied when the ignores file doesn't exist yet - an existing repository's ignores
+	 * file (and any user edits to it) is left untouched.
+	 */
+	private static final List<String> DEFAULT_IGNORE_PATTERNS = List.of(".DS_Store", "**/.DS_Store");
+
 
 	@Override
 	public String getPluginId() {
@@ -110,7 +119,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		try {
 			Path ignoresFile = this.repositoryDir.resolve(IGNORES_FILE_NAME);
 			if (!Files.exists(ignoresFile))
-				Files.createFile(ignoresFile);
+				Files.write(ignoresFile, DEFAULT_IGNORE_PATTERNS);
 			List<String> ignorePatterns = Files.readAllLines(ignoresFile).stream().filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
 			this.ignorePatterns.addAll(ignorePatterns);
 		} catch (IOException e) {
