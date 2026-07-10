@@ -34,7 +34,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
@@ -109,8 +108,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 	}
 
 	/**
-	 * Pick a local git clone and a contiguous range of commits (newest first, matching normal
-	 * {@code git log} order) to import.
+	 * Pick a local git clone and a contiguous range of commits (oldest first, the order the import
+	 * itself has to process them in) to import.
 	 */
 	private void step1() {
 		Button cancelButton = new Button("Cancel");
@@ -193,7 +192,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 			}
 
 			try {
+				// listCommits() returns newest-first (matching plain "git log"); shown oldest-first
+				// here instead, since that's both the order the user reads a history top-to-bottom
+				// as "what happened" and the exact order the import itself has to process in
 				List<GitCommitInfo> commits = this.gitHistoryReader.listCommits(selectedPath);
+				Collections.reverse(commits);
 				this.repoDir = selectedPath;
 				repoPathField.setText(selectedPath.toString());
 				commitsTable.setItems(FXCollections.observableArrayList(commits));
@@ -209,10 +212,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 			List<Integer> selectedIndices = new ArrayList<>(commitsTable.getSelectionModel().getSelectedIndices());
 			int minIndex = Collections.min(selectedIndices);
 			int maxIndex = Collections.max(selectedIndices);
-			// table is newest-first; the selected contiguous block, reversed, is the oldest-first
-			// processing order the actual import needs
+			// table is already oldest-first, matching the order the import itself needs
 			List<GitCommitInfo> oldestFirst = new ArrayList<>(commitsTable.getItems().subList(minIndex, maxIndex + 1));
-			Collections.reverse(oldestFirst);
 			this.suggestFeatures(oldestFirst);
 		});
 
@@ -227,6 +228,16 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * log, this is genuinely one request for the whole batch).
 	 */
 	private void suggestFeatures(List<GitCommitInfo> commitsOldestFirst) {
+		if (LlmPreferences.getModelName().isBlank()) {
+			Alert alert = new Alert(Alert.AlertType.WARNING,
+					"No LLM model name is configured (Preferences → LLM Settings), so feature suggestions " +
+							"would fail for every commit. Skipping suggestions - you can still fill in each " +
+							"commit's configuration by hand on the next screen.");
+			alert.showAndWait();
+			this.step2(commitsOldestFirst, Collections.nCopies(commitsOldestFirst.size(), ""), null);
+			return;
+		}
+
 		Button backButton = new Button("Back");
 		backButton.setOnAction(event -> this.step1());
 		this.leftButtons.getChildren().setAll(backButton);
@@ -243,9 +254,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		this.fit();
 
-		Task<List<String>> suggestTask = new Task<>() {
+		Task<LlmFeatureSuggestionClient.SuggestionBatch> suggestTask = new Task<>() {
 			@Override
-			protected List<String> call() {
+			protected LlmFeatureSuggestionClient.SuggestionBatch call() {
 				List<LlmFeatureSuggestionClient.CommitForSuggestion> commitsForSuggestion = commitsOldestFirst.stream()
 						.map(commit -> new LlmFeatureSuggestionClient.CommitForSuggestion(
 								commit.getShortId(), commit.getMessage(),
@@ -263,16 +274,19 @@ public class ImportGitView extends OperationView implements EccoListener {
 			@Override
 			public void succeeded() {
 				super.succeeded();
-				ImportGitView.this.step2(commitsOldestFirst, this.getValue());
+				ImportGitView.this.step2(commitsOldestFirst, this.getValue().configurations(), this.getValue().failureReason());
 			}
 
 			@Override
 			public void failed() {
 				super.failed();
-				// LlmFeatureSuggestionClient itself never throws (see its javadoc) - this is
-				// realistically unreachable, but if it ever did, the user should still get a fully
-				// editable review table rather than being stuck on this progress screen
-				ImportGitView.this.step2(commitsOldestFirst, Collections.nCopies(commitsOldestFirst.size(), ""));
+				// LlmFeatureSuggestionClient itself never throws (see its javadoc), but gathering
+				// its inputs above (reading each commit's diff, listing known features) can - e.g. a
+				// commit JGit can't diff cleanly, or a repository access problem. Surface it instead
+				// of silently landing on a review table that looks like the LLM just had no
+				// suggestions, then still let the user fill configurations in by hand.
+				new ExceptionAlert(this.getException()).show();
+				ImportGitView.this.step2(commitsOldestFirst, Collections.nCopies(commitsOldestFirst.size(), ""), null);
 			}
 		};
 		new Thread(suggestTask).start();
@@ -283,7 +297,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * commit, oldest first, pre-filled from {@code suggestedConfigurations} (same order/size as
 	 * {@code commitsOldestFirst}) - nothing is committed into ecco until "Import" is clicked here.
 	 */
-	private void step2(List<GitCommitInfo> commitsOldestFirst, List<String> suggestedConfigurations) {
+	private void step2(List<GitCommitInfo> commitsOldestFirst, List<String> suggestedConfigurations, String suggestionFailureReason) {
 		Button backButton = new Button("Back");
 		backButton.setOnAction(event -> this.step1());
 		this.leftButtons.getChildren().setAll(backButton);
@@ -314,6 +328,15 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		int row = 0;
 
+		if (suggestionFailureReason != null) {
+			Label warningLabel = new Label("LLM feature suggestions failed, so Configuration is blank below - " +
+					"fill it in by hand, or go Back and retry once this is fixed. Reason: " + suggestionFailureReason);
+			warningLabel.setWrapText(true);
+			warningLabel.setStyle("-fx-text-fill: #cc6600;");
+			gridPane.add(warningLabel, 0, row, 1, 1);
+			row++;
+		}
+
 		Label label = new Label("Commits to import, oldest first - edit Configuration before importing:");
 		gridPane.add(label, 0, row, 1, 1);
 		row++;
@@ -335,7 +358,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		TableColumn<CommitEntry, String> configCol = new TableColumn<>("Configuration");
 		configCol.setCellValueFactory(param -> param.getValue().configurationProperty());
-		configCol.setCellFactory(TextFieldTableCell.forTableColumn());
+		configCol.setCellFactory(OperationView.editableStringCellFactory());
 		configCol.setOnEditCommit(event -> event.getRowValue().setConfiguration(event.getNewValue()));
 
 		reviewTable.getColumns().setAll(idCol, messageCol, configCol);
