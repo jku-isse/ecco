@@ -10,8 +10,11 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
@@ -20,18 +23,23 @@ import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.SingleGraph;
 import org.graphstream.stream.file.FileSink;
 import org.graphstream.stream.file.FileSinkFactory;
+import org.graphstream.ui.geom.Point3;
+import org.graphstream.ui.graphicGraph.GraphicElement;
 import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.layout.Layout;
 import org.graphstream.ui.layout.springbox.implementations.SpringBox;
 import org.graphstream.ui.fx_viewer.FxViewPanel;
 import org.graphstream.ui.fx_viewer.FxViewer;
+import org.graphstream.ui.fx_viewer.util.FxMouseOverMouseManager;
 import org.graphstream.ui.view.Viewer;
+import org.graphstream.ui.view.util.InteractiveElement;
 
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +55,43 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	private FxViewPanel view;
 
 	private final ToolBar toolBar;
+
+	/**
+	 * Floating node-info panel shown by {@link HoverOverlayMouseManager} after the mouse has
+	 * rested on a node for {@link #HOVER_DELAY_MS} - a plain JavaFX node stacked on top of {@link
+	 * #view} (which is itself real JavaFX, not a Swing bridge, despite GraphStream's rendering
+	 * running on its own thread per {@link Viewer.ThreadingModel#GRAPH_IN_ANOTHER_THREAD}).
+	 * {@code mouseTransparent} so it never steals the hover/click GraphStream itself needs from
+	 * the node underneath it.
+	 */
+	private final Label hoverInfoLabel = new Label();
+	private final VBox hoverOverlay = createHoverOverlay(this.hoverInfoLabel);
+
+	/**
+	 * Node id -> hover info, rebuilt (as a whole new map, never mutated in place) alongside every
+	 * {@link #applySnapshot}. Read from {@link #showHoverOverlay} on the FX thread while written
+	 * from the Swing thread GraphStream's rendering runs on - safe via plain reference-swap
+	 * publication under {@code volatile}, the same pattern {@link #tabVisible} already uses.
+	 */
+	private volatile Map<String, HoverInfo> hoverInfoById = Map.of();
+
+	/** Everything {@link #showHoverOverlay} needs to display for one node, looked up by id rather than read off the GraphicElement itself - see {@link #hoverInfoById}. */
+	private record HoverInfo(String text, Integer successorsCount) {
+	}
+
+	private static VBox createHoverOverlay(Label infoLabel) {
+		VBox overlay = new VBox(infoLabel);
+		overlay.setMouseTransparent(true);
+		overlay.setVisible(false);
+		// StackPane resizes children to fill its own bounds by default - without this, the
+		// overlay stretched to the size of the whole graph view instead of sizing to its content
+		overlay.setMaxSize(VBox.USE_PREF_SIZE, VBox.USE_PREF_SIZE);
+		overlay.setStyle("-fx-background-color: rgba(20,20,20,0.85); -fx-padding: 6px 10px; " +
+				"-fx-background-radius: 4px; -fx-border-color: rgba(255,255,255,0.3); -fx-border-radius: 4px;");
+		infoLabel.setStyle("-fx-text-fill: white; -fx-font-size: 11px;");
+		infoLabel.setWrapText(false);
+		return overlay;
+	}
 
 	/**
 	 * Whether this view's tab is the one currently showing, as reported by {@link #setTabVisible}.
@@ -219,11 +264,16 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		closeView();
 		viewer = new FxViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
 		view = (FxViewPanel)  viewer.addDefaultView(false, new FxGraphRenderer());
+		view.setMouseManager(new HoverOverlayMouseManager());
 
-		setCenter(view);
+		StackPane stackPane = new StackPane(view, this.hoverOverlay);
+		StackPane.setAlignment(this.hoverOverlay, Pos.TOP_LEFT);
+		setCenter(stackPane);
 	}
 
 	private void closeView() {
+		this.hoverOverlay.setVisible(false);
+
 		if (null == viewer) {
 			return;
 		}
@@ -239,6 +289,58 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		}
 		view = null;
 		viewer = null;
+	}
+
+	/**
+	 * Positions and fills in {@link #hoverOverlay} for the given node, then makes it visible.
+	 * Called from {@link HoverOverlayMouseManager}, which - per {@link FxMouseOverMouseManager}'s
+	 * own implementation - runs its hover-delay timer on a background {@code java.util.Timer}
+	 * thread, not the FX Application Thread, so every caller goes through {@code Platform.runLater}.
+	 */
+	private void showHoverOverlay(GraphicElement element) {
+		if (this.view == null) {
+			return;
+		}
+
+		HoverInfo info = this.hoverInfoById.get(element.getId());
+		StringBuilder text = new StringBuilder(info != null && info.text() != null && !info.text().isBlank() ? info.text() : "(unnamed)");
+		if (info != null && info.successorsCount() != null) {
+			text.append("\nArtifacts: ").append(info.successorsCount());
+		}
+		this.hoverInfoLabel.setText(text.toString());
+
+		Point3 pixelPos = this.view.getCamera().transformGuToPx(element.getX(), element.getY(), element.getZ());
+		this.hoverOverlay.setTranslateX(pixelPos.x + HOVER_OVERLAY_OFFSET);
+		this.hoverOverlay.setTranslateY(pixelPos.y + HOVER_OVERLAY_OFFSET);
+		this.hoverOverlay.setVisible(true);
+	}
+
+	private void hideHoverOverlay() {
+		this.hoverOverlay.setVisible(false);
+	}
+
+	/**
+	 * GraphStream's own FX hover-with-delay mouse manager, scoped to nodes only (not edges) -
+	 * {@link #mouseOverElement}/{@link #mouseLeftElement} are its extension points, called once the
+	 * mouse has rested on (or left) a node for {@link #HOVER_DELAY_MS}.
+	 */
+	private class HoverOverlayMouseManager extends FxMouseOverMouseManager {
+
+		HoverOverlayMouseManager() {
+			super(EnumSet.of(InteractiveElement.NODE), HOVER_DELAY_MS);
+		}
+
+		@Override
+		protected void mouseOverElement(GraphicElement element) {
+			super.mouseOverElement(element);
+			Platform.runLater(() -> ArtifactGraphView.this.showHoverOverlay(element));
+		}
+
+		@Override
+		protected void mouseLeftElement(GraphicElement element) {
+			super.mouseLeftElement(element);
+			Platform.runLater(ArtifactGraphView.this::hideHoverOverlay);
+		}
 	}
 
 	/**
@@ -329,6 +431,13 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 			this.maxSuccessorsCount = snapshot.maxSuccessorsCount;
 
+			// built alongside the graph and swapped into the volatile field in one shot below,
+			// rather than relying on GraphStream to carry these as custom attributes across into
+			// the GraphicElements the hover mouse manager sees - those live in a separate graph
+			// mirrored across a thread boundary (GRAPH_IN_ANOTHER_THREAD), and there's no
+			// guarantee a non-"ui."-namespaced attribute actually survives that mirror
+			Map<String, HoverInfo> newHoverInfoById = new HashMap<>();
+
 			for (NodeSnapshot nodeSnapshot : snapshot.nodes) {
 				Node graphNode = this.graph.addNode(nodeSnapshot.id);
 				if (nodeSnapshot.assocId != null) {
@@ -340,7 +449,11 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 				if (nodeSnapshot.successorsCount != null) {
 					graphNode.setAttribute(SUCCESSOR_COUNT_ATTRIBUTE, nodeSnapshot.successorsCount);
 				}
+				newHoverInfoById.put(nodeSnapshot.id,
+						new HoverInfo(nodeSnapshot.hoverText, nodeSnapshot.successorsCount));
 			}
+			this.hoverInfoById = newHoverInfoById;
+
 			for (EdgeSnapshot edgeSnapshot : snapshot.edges) {
 				this.graph.addEdge(edgeSnapshot.id, edgeSnapshot.sourceId, edgeSnapshot.targetId, true);
 			}
@@ -369,6 +482,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	private static final int DEFAULT_SIZE = 20;
 	private static final String SUCCESSOR_COUNT_ATTRIBUTE = "artifactsCount";
 	private static final String ASSOC_ID_ATTRIBUTE = "assocId";
+	private static final long HOVER_DELAY_MS = 200;
+	private static final double HOVER_OVERLAY_OFFSET = 12;
 
 	private int maxSuccessorsCount = 0;
 
@@ -384,6 +499,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		final String id;
 		String assocId;
 		String label;
+		/** Fuller text for the hover overlay - unlike {@link #label}, set for every artifact node, not just files/directories. */
+		String hoverText;
 		Integer successorsCount;
 
 		NodeSnapshot(String id) {
@@ -434,6 +551,11 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 			} else if (eccoNode.getArtifact().getData() instanceof DirectoryArtifactData) {
 				nodeSnapshot.label = ((DirectoryArtifactData) eccoNode.getArtifact().getData()).getPath().toString();
 			}
+			// the on-canvas label above is deliberately limited to files/directories to avoid
+			// cluttering the graph, but the hover overlay has room to show the real content of
+			// any node - every ArtifactData implementation (line, token, function, ...) has a
+			// meaningful toString(), e.g. a source line's actual text
+			nodeSnapshot.hoverText = nodeSnapshot.label != null ? nodeSnapshot.label : eccoNode.getArtifact().getData().toString();
 		}
 
 		List<? extends at.jku.isse.ecco.tree.Node> children = eccoNode.getChildren();
@@ -487,6 +609,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		String summaryId = String.valueOf(++snapshot.nextArtifactId);
 		NodeSnapshot summaryNode = new NodeSnapshot(summaryId);
 		summaryNode.label = label;
+		summaryNode.hoverText = label;
 		summaryNode.successorsCount = successorsCount;
 		summaryNode.assocId = assocId;
 		snapshot.nodes.add(summaryNode);
