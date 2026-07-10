@@ -48,10 +48,13 @@ public class SerFeatureRevision implements FeatureRevision {
 
 	@Override
 	public String getLogicLiteralRepresentation() {
-		// don't use "." and "-" in order to make it parsable by logicNG
-		String featureName = this.getFeature().getName();
+		// don't use "." and "-" in order to make it parsable by logicNG - the id was already
+		// sanitized here, but the feature name wasn't, so a hyphenated name (a legitimate,
+		// common feature-name style - e.g. "shopping-cart") produced a literal LogicNG's parser
+		// rejected outright, crashing every commit once more than one feature existed
+		String sanitizedFeatureName = this.getFeature().getName().replace(".", "_").replace("-", "_");
 		String sanitizedId = this.id.replace("-", "_");
-		return featureName + "_" + sanitizedId;
+		return sanitizedFeatureName + "_" + sanitizedId;
 	}
 
 	@Override
