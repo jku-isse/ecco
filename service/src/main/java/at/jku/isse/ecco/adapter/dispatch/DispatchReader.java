@@ -29,12 +29,14 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	/**
 	 * Patterns written to a fresh repository's {@link #IGNORES_FILE_NAME} file, so files like
-	 * macOS's ".DS_Store" (a Finder metadata file that would otherwise be picked up by the
-	 * catch-all FilePlugin) are ignored out of the box instead of being committed as content.
-	 * Only applied when the ignores file doesn't exist yet - an existing repository's ignores
-	 * file (and any user edits to it) is left untouched.
+	 * macOS's ".DS_Store" (a Finder metadata file) and git's own ".gitignore" (relevant to the
+	 * "Import from Git" feature, which extracts a git clone's full working tree per commit) are
+	 * ignored out of the box instead of being picked up by the catch-all FilePlugin and committed
+	 * as content. Only applied when the ignores file doesn't exist yet - an existing repository's
+	 * ignores file (and any user edits to it) is left untouched.
 	 */
-	private static final List<String> DEFAULT_IGNORE_PATTERNS = List.of(".DS_Store", "**/.DS_Store");
+	private static final List<String> DEFAULT_IGNORE_PATTERNS = List.of(
+			".DS_Store", "**/.DS_Store", ".gitignore", "**/.gitignore");
 
 
 	@Override
