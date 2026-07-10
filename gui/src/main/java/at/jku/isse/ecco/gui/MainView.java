@@ -32,6 +32,7 @@ public class MainView extends BorderPane implements EccoListener {
 	private final Button forkButton = new Button("Fork");
 
 	private final Button commitButton = new Button("Commit");
+	private final Button importGitButton = new Button("Import from Git");
 	private final Button checkoutButton = new Button("Checkout");
 
 	private final Button fetchButton = new Button("Fetch");
@@ -52,6 +53,7 @@ public class MainView extends BorderPane implements EccoListener {
 		this.closeButton.setOnAction(event -> this.eccoService.close());
 
 		this.commitButton.setOnAction(event -> this.openDialog("Commit", new CommitView(eccoService)));
+		this.importGitButton.setOnAction(event -> this.openDialog("Import from Git", new ImportGitView(eccoService)));
 		this.checkoutButton.setOnAction(event -> this.openDialog("Checkout", new CheckoutView(eccoService)));
 
 		this.fetchButton.setOnAction(event -> this.openDialog("Fetch", new FetchView(eccoService)));
@@ -64,7 +66,7 @@ public class MainView extends BorderPane implements EccoListener {
 
 		// toolbar
 		ToolBar toolBar = new ToolBar();
-		toolBar.getItems().addAll(openButton, initButton, new Separator(), closeButton, new Separator(), commitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), serverButton, new Separator(), preferencesButton, new Separator());
+		toolBar.getItems().addAll(openButton, initButton, new Separator(), closeButton, new Separator(), commitButton, importGitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), serverButton, new Separator(), preferencesButton, new Separator());
 		this.setTop(toolBar);
 
 		// Cmd+O on macOS, Ctrl+O elsewhere (SHORTCUT_DOWN maps to the platform's own shortcut
@@ -242,6 +244,7 @@ public class MainView extends BorderPane implements EccoListener {
 			initButton.setDisable(true);
 			forkButton.setDisable(true);
 			commitButton.setDisable(false);
+			importGitButton.setDisable(false);
 			checkoutButton.setDisable(false);
 			fetchButton.setDisable(false);
 			pullButton.setDisable(false);
@@ -254,6 +257,7 @@ public class MainView extends BorderPane implements EccoListener {
 			initButton.setDisable(false);
 			forkButton.setDisable(false);
 			commitButton.setDisable(true);
+			importGitButton.setDisable(true);
 			checkoutButton.setDisable(true);
 			fetchButton.setDisable(true);
 			pullButton.setDisable(true);
