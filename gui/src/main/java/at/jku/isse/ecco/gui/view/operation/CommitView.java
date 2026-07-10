@@ -20,7 +20,6 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxListCell;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -141,7 +140,7 @@ public class CommitView extends OperationView implements EccoListener {
 
 		TableColumn<FolderEntry, String> configCol = new TableColumn<>("Configuration");
 		configCol.setCellValueFactory(param -> param.getValue().configurationProperty());
-		configCol.setCellFactory(TextFieldTableCell.forTableColumn());
+		configCol.setCellFactory(OperationView.editableStringCellFactory());
 		configCol.setOnEditCommit(event -> event.getRowValue().setConfiguration(event.getNewValue()));
 
 		foldersTable.getColumns().setAll(orderCol, folderCol, configCol);

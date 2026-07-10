@@ -8,10 +8,16 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Callback;
+import javafx.util.converter.DefaultStringConverter;
 
 import java.util.Stack;
 
@@ -211,6 +217,31 @@ public abstract class OperationView extends BorderPane {
 
 
 		this.fit();
+	}
+
+
+	/**
+	 * {@link TextFieldTableCell#forTableColumn()}'s edit only commits on Enter (its inner text
+	 * field has no focus-lost handling) - clicking straight from the field to another control, e.g.
+	 * this dialog's own "Commit"/"Import" button, silently discards whatever was typed instead of
+	 * committing it. Use this in place of {@code TextFieldTableCell.forTableColumn()} for any
+	 * editable string column whose value feeds into an action button, so a typed-but-not-Entered
+	 * edit is never lost.
+	 */
+	protected static <S> Callback<TableColumn<S, String>, TableCell<S, String>> editableStringCellFactory() {
+		return column -> new TextFieldTableCell<S, String>(new DefaultStringConverter()) {
+			@Override
+			public void startEdit() {
+				super.startEdit();
+				if (this.getGraphic() instanceof TextField textField) {
+					textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+						if (!isNowFocused && this.isEditing()) {
+							this.commitEdit(textField.getText());
+						}
+					});
+				}
+			}
+		};
 	}
 
 }
