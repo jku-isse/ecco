@@ -50,21 +50,30 @@ public class CommitsView extends BorderPane implements EccoListener {
 			@Override
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
-				CommitsView.this.commitsData.clear();
 
-				Task commitsRefreshTask = new Task<Void>() {
+				// fetch first, clear/repopulate together once the result is ready (not before) -
+				// avoids an unnecessary blank-table flash while a slow fetch is still in flight,
+				// same reasoning as ArtifactsView.refresh()
+				Task<Collection<Commit>> commitsRefreshTask = new Task<>() {
 					@Override
-					public Void call() throws EccoException {
-						Collection<Commit> commits = CommitsView.this.service.getCommits();
-						Platform.runLater(() -> {
-							for (Commit commit : commits) {
-								CommitsView.this.commitsData.add(new CommitInfo(commit));
-							}
-						});
-						Platform.runLater(() -> toolBar.setDisable(false));
-						return null;
+					public Collection<Commit> call() throws EccoException {
+						return CommitsView.this.service.getCommits();
 					}
 				};
+				commitsRefreshTask.setOnSucceeded(event -> {
+					CommitsView.this.commitsData.clear();
+					for (Commit commit : commitsRefreshTask.getValue()) {
+						CommitsView.this.commitsData.add(new CommitInfo(commit));
+					}
+					toolBar.setDisable(false);
+				});
+				commitsRefreshTask.setOnFailed(event -> {
+					// unlike before, a failure here no longer leaves the toolbar disabled with no
+					// way to recover short of restarting the app - same gap ArtifactsView.refresh()
+					// had (see that fix's commit for why this matters at scale)
+					toolBar.setDisable(false);
+					new ExceptionAlert(commitsRefreshTask.getException()).show();
+				});
 
 				new Thread(commitsRefreshTask).start();
 			}
