@@ -226,6 +226,15 @@ public interface Repository extends Persistable {
 									ModuleRevisionCounter existingModuleRevisionCounter = existingModuleCounter.getChild(moduleRevision);
 									if (existingModuleRevisionCounter != null) {
 										association.addObservation(newModuleRevision, existingModuleRevisionCounter.getCount());
+										// this mutates an EXISTING association's counter (one that may not
+										// otherwise be touched at all by the commit that introduced the new
+										// feature) - nothing else marks it dirty for re-persistence, so
+										// without this the retroactive observation is visible for the rest
+										// of the live session but silently lost on the next reload, leaving
+										// the reloaded condition missing valid "!newFeature" terms (too
+										// broad, not just shorter). Safe to call again on an
+										// already-tracked association - see SerRepository.addAssociation().
+										this.addAssociation(association);
 									}
 								}
 							}
