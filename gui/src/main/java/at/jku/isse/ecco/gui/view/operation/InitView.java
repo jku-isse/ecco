@@ -4,7 +4,9 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.RecentRepositories;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextField;
@@ -15,9 +17,14 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Optional;
 
 public class InitView extends OperationView {
 
@@ -107,8 +114,48 @@ public class InitView extends OperationView {
 		});
 		initButton.setOnAction(event -> {
 			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
+			Path baseDir = repositoryDir.getParent();
+
+			// the text field is free-form (the user can type a path directly, not just pick an
+			// existing one via the "..." chooser above), so the target directory may not exist yet,
+			// or may still hold a ".ecco" from an earlier attempt - handle both, but only after the
+			// user explicitly confirms, since one creates on disk and the other deletes on disk
+			if (baseDir != null && !Files.exists(baseDir)) {
+				Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+						"The directory\n" + baseDir + "\ndoes not exist. Create it?",
+						ButtonType.YES, ButtonType.CANCEL);
+				confirm.setHeaderText("Create Directory");
+				Optional<ButtonType> result = confirm.showAndWait();
+				if (result.isEmpty() || result.get() != ButtonType.YES) {
+					return;
+				}
+				try {
+					Files.createDirectories(baseDir);
+				} catch (IOException e) {
+					stepError("Error creating directory.", e);
+					return;
+				}
+			}
+
+			if (Files.exists(repositoryDir)) {
+				Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+						"A repository already exists at\n" + repositoryDir + "\nDelete it and start fresh?",
+						ButtonType.YES, ButtonType.CANCEL);
+				confirm.setHeaderText("Delete Existing Repository");
+				Optional<ButtonType> result = confirm.showAndWait();
+				if (result.isEmpty() || result.get() != ButtonType.YES) {
+					return;
+				}
+				try {
+					deleteRecursively(repositoryDir);
+				} catch (IOException e) {
+					stepError("Error deleting existing repository.", e);
+					return;
+				}
+			}
+
 			this.service.setRepositoryDir(repositoryDir);
-			this.service.setBaseDir(repositoryDir.getParent());
+			this.service.setBaseDir(baseDir);
 			pb.setProgress(-1.0f);
 			pb.setVisible(true);
 			Thread th = new Thread(task);
@@ -118,6 +165,22 @@ public class InitView extends OperationView {
 
 
 		this.fit();
+	}
+
+	private static void deleteRecursively(Path directory) throws IOException {
+		Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				Files.delete(file);
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+				Files.delete(dir);
+				return FileVisitResult.CONTINUE;
+			}
+		});
 	}
 
 }
