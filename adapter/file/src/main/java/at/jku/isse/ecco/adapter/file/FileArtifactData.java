@@ -11,7 +11,6 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.Objects;
 
 public class FileArtifactData implements ArtifactData {
 
@@ -113,7 +112,11 @@ public class FileArtifactData implements ArtifactData {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.checksum);
+		// must stay content-based and consistent with equals() above: Objects.hash(checksum) would
+		// hash the byte[] by identity (arrays don't override hashCode()), breaking the
+		// hashCode/equals contract and silently defeating any hash-based artifact lookup - see
+		// ImageArtifactData for the same fix applied there
+		return Arrays.hashCode(this.checksum);
 	}
 
 	@Override
