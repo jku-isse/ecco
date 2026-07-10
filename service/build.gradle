@@ -25,6 +25,9 @@ dependencies {
 	implementation 'io.github.java-diff-utils:java-diff-utils:4.12'
 	implementation 'com.opencsv:opencsv:5.9'
 	implementation 'com.google.guava:guava:33.2.1-jre'
+	implementation 'org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
+	implementation 'com.fasterxml.jackson.core:jackson-core:2.13.3'
 
 	implementation project(':ecco-util')
     implementation project(':ecco-logic')
@@ -35,8 +38,6 @@ dependencies {
 
 	testImplementation 'org.junit.jupiter:junit-jupiter'
 	testImplementation 'commons-io:commons-io:2.15.1'
-	testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
-	testImplementation 'com.fasterxml.jackson.core:jackson-core:2.13.3'
 
 	testImplementation project(':ecco-util')
 	testImplementation project(':ecco-adapter-file')
