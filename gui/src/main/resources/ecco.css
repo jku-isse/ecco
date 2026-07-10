@@ -64,12 +64,3 @@
     -fx-background-color: rgba(255,255,255,0.25);
     -fx-background-radius: 4;
 }
-
-/* hides a TableView's column header row - apply to tables whose row content is self-explanatory
-   without column titles (e.g. CommitView's commit log) */
-.headerless-table .column-header-background {
-    -fx-max-height: 0;
-    -fx-pref-height: 0;
-    -fx-min-height: 0;
-    visibility: hidden;
-}
