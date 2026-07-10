@@ -123,7 +123,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 	private static Object readZipped(Path file) throws IOException, ClassNotFoundException {
-		try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file))) {
+		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
 			ZipEntry e;
 			while ((e = zis.getNextEntry()) != null) {
 				if (e.getName().equals(ZIP_ENTRY_NAME)) {
@@ -395,7 +395,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 						throw new EccoException("Could not obtain shared lock on DB file.");
 
 					//this.database = (Database) this.deserialize(this.dbFile);
-					InputStream is = Channels.newInputStream(dbFileChannel);
+					InputStream is = new BufferedInputStream(Channels.newInputStream(dbFileChannel));
 					ZipInputStream zis = new ZipInputStream(is);
 					ZipEntry e = null;
 					while ((e = zis.getNextEntry()) != null) {
