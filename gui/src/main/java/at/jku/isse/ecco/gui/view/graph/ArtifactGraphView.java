@@ -4,6 +4,7 @@ import at.jku.isse.ecco.adapter.dispatch.DirectoryArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.service.EccoService;
@@ -11,6 +12,7 @@ import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
@@ -28,7 +30,10 @@ import org.graphstream.ui.view.Viewer;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -41,35 +46,42 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	private FxViewer viewer;
 	private FxViewPanel view;
 
-	private boolean depthFade = false;
-	private boolean showLabels = true;
+	private final ToolBar toolBar;
 
-	private int childCountLimit = 20;
-	private int depthLimit = 10;
+	/**
+	 * Whether this view's tab is the one currently showing, as reported by {@link #setTabVisible}.
+	 * Defaults to true so a caller that doesn't wire tab-selection tracking gets the old
+	 * always-render behavior rather than a silently inert view. Volatile since it's read from
+	 * {@link #statusChangedEvent}, which - notably, for a commit - runs on the commit thread, not
+	 * the FX thread that writes it.
+	 */
+	private volatile boolean tabVisible = true;
+
+	private boolean showLabels = DEFAULT_SHOW_LABELS;
+
+	private int childCountLimit = DEFAULT_CHILD_COUNT_LIMIT;
+	private int depthLimit = DEFAULT_DEPTH_LIMIT;
 
 	public ArtifactGraphView(EccoService service) {
 		this.service = service;
 
-		ToolBar toolBar = new ToolBar();
+		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
 
-		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, CHILD_COUNT_LIMIT, childCountLimit);
+		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, CHILD_COUNT_LIMIT_MAX, childCountLimit);
 		childCountLimitSpinner.setEditable(true);
 		Label childCountLimitLabel = new Label("Child Count Limit: ");
+		childCountLimitSpinner.valueProperty().addListener((obs, oldValue, newValue) -> {
+			ArtifactGraphView.this.childCountLimit = newValue;
+			ArtifactGraphView.this.refreshGraph();
+		});
 
-		Spinner<Integer> depthLimitSpinner = new EditableSpinner(1, DEPTH_LIMIT, depthLimit);
+		Spinner<Integer> depthLimitSpinner = new EditableSpinner(1, DEPTH_LIMIT_MAX, depthLimit);
 		depthLimitSpinner.setEditable(true);
 		Label depthLimitLabel = new Label("Depth Limit: ");
-
-		Button refreshButton = new Button("Refresh");
-		refreshButton.setOnAction(e -> {
-			toolBar.setDisable(true);
-			childCountLimit = childCountLimitSpinner.getValue();
-			depthLimit = depthLimitSpinner.getValue();
-			SwingUtilities.invokeLater(() -> {
-				ArtifactGraphView.this.updateGraph(ArtifactGraphView.this.depthFade, ArtifactGraphView.this.showLabels);
-				Platform.runLater(() -> toolBar.setDisable(false));
-			});
+		depthLimitSpinner.valueProperty().addListener((obs, oldValue, newValue) -> {
+			ArtifactGraphView.this.depthLimit = newValue;
+			ArtifactGraphView.this.refreshGraph();
 		});
 
 		Button exportButton = new Button("Export");
@@ -99,20 +111,23 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 			toolBar.setDisable(false);
 		});
 
-		CheckBox depthFadeCheckBox = new CheckBox("Depth Fade");
-		depthFadeCheckBox.selectedProperty().addListener((ov, old_val, new_val) -> {
-			ArtifactGraphView.this.depthFade = new_val;
-			ArtifactGraphView.this.updateNodesAndEdgesStyles(new_val);
-		});
-
 		CheckBox showLabelsCheckbox = new CheckBox("Show Labels");
 		showLabelsCheckbox.selectedProperty().addListener((ov, old_val, new_val) -> {
 			ArtifactGraphView.this.showLabels = new_val;
 			ArtifactGraphView.this.updateGraphStylehseet(new_val);
 		});
 
+		Button resetButton = new Button("Reset");
+		resetButton.setOnAction(e -> {
+			// each control's own listener (already wired above) applies the new value and
+			// triggers a redraw, so nothing else needs to happen here
+			childCountLimitSpinner.getValueFactory().setValue(DEFAULT_CHILD_COUNT_LIMIT);
+			depthLimitSpinner.getValueFactory().setValue(DEFAULT_DEPTH_LIMIT);
+			showLabelsCheckbox.setSelected(DEFAULT_SHOW_LABELS);
+		});
 
-		toolBar.getItems().setAll(refreshButton, new Separator(), exportButton, new Separator(), depthFadeCheckBox, new Separator(), showLabelsCheckbox, new Separator(), childCountLimitLabel, childCountLimitSpinner, new Separator(), depthLimitLabel, depthLimitSpinner, new Separator());
+
+		toolBar.getItems().setAll(exportButton, resetButton, new Separator(), showLabelsCheckbox, new Separator(), childCountLimitLabel, childCountLimitSpinner, new Separator(), depthLimitLabel, depthLimitSpinner, new Separator());
 
 
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
@@ -131,7 +146,6 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 			}
 		});
 
-		depthFadeCheckBox.setSelected(this.depthFade);
 		showLabelsCheckbox.setSelected(this.showLabels);
 
 		service.addListener(this);
@@ -139,55 +153,56 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 	}
 
 
-	private void updateNodesAndEdgesStyles(boolean depthFade) {
+	private void updateNodesAndEdgesStyles() {
 		Map<String, Integer> idColorMap = new HashMap<>();
-		int nextColor = 1;
+		int nextColor = 0;
 
 		for (Node node : this.graph.nodes().collect(Collectors.toSet())) {
-			int depth = node.getAttribute(DEPTH_ATTRIBUTE, Integer.class);
-
 			int size = DEFAULT_SIZE;
 			if (node.hasAttribute(SUCCESSOR_COUNT_ATTRIBUTE)) {
 				int successorsCount = node.getAttribute(SUCCESSOR_COUNT_ATTRIBUTE, Integer.class);
 				size = (int) ((double) MIN_SIZE + ((double) successorsCount) / (double) (this.maxSuccessorsCount) * (double) (MAX_SIZE - MIN_SIZE));
 			}
 
-			if (depthFade) {
-				int colorValue = (int) (((double) depth) * 200.0 / ((double) this.maxDepth));
-				node.setAttribute("ui.style", "size: " + size + "px; fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
-				node.removeAttribute("ui.class");
-			} else {
-				node.setAttribute("ui.style", "size: " + size + "px;");
-				if (node.hasAttribute(ASSOC_ID_ATTRIBUTE)) {
-					String id = node.getAttribute(ASSOC_ID_ATTRIBUTE, String.class);
-					if (!idColorMap.containsKey(id)) {
-						idColorMap.put(id, nextColor++);
-					}
-					node.setAttribute("ui.class", "A" + idColorMap.get(id));
-					//node.setAttribute("ui.class", "A" + ((node.<Integer>getAttribute(ASSOC_ID_ATTRIBUTE) % 7) + 1));
+			// nodes with no association (e.g. a "dropped children" summary node spanning several
+			// associations, see addSummaryNode) get the palette's neutral fallback color rather than
+			// no fill-color at all - GraphStream defaults an unset fill-color to black, which is the
+			// exact bug fixed earlier for the general case
+			Color fillColor = CategoricalColorPalette.OTHER;
+			if (node.hasAttribute(ASSOC_ID_ATTRIBUTE)) {
+				String id = node.getAttribute(ASSOC_ID_ATTRIBUTE, String.class);
+				if (!idColorMap.containsKey(id)) {
+					idColorMap.put(id, nextColor++);
 				}
+				fillColor = CategoricalColorPalette.colorForIndex(idColorMap.get(id));
 			}
+			node.setAttribute("ui.style", "size: " + size + "px; fill-color: " + toHexColor(fillColor) + ";");
 		}
 
 		for (Edge edge : this.graph.edges().collect(Collectors.toSet())) {
-			//int depth = edge.getAttribute(DEPTH_ATTRIBUTE);
-			int depth = edge.getSourceNode().getAttribute(DEPTH_ATTRIBUTE, Integer.class);
-			int colorValue = (int) (((double) depth) * 200.0 / ((double) this.maxDepth));
-			if (depthFade) {
-				edge.setAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
-				edge.removeAttribute("ui.class");
-			} else {
-				if (edge.getSourceNode().hasAttribute(ASSOC_ID_ATTRIBUTE)) {
-					String id = edge.getSourceNode().getAttribute(ASSOC_ID_ATTRIBUTE, String.class);
-					if (!idColorMap.containsKey(id)) {
-						idColorMap.put(id, nextColor++);
-					}
-					edge.setAttribute("ui.class", "A" + idColorMap.get(id));
-					//edge.setAttribute("ui.class", "A" + ((edge.getSourceNode().getAttribute(ASSOC_ID_ATTRIBUTE, Integer.class) % 7) + 1));
+			Color fillColor = CategoricalColorPalette.OTHER;
+			if (edge.getSourceNode().hasAttribute(ASSOC_ID_ATTRIBUTE)) {
+				String id = edge.getSourceNode().getAttribute(ASSOC_ID_ATTRIBUTE, String.class);
+				if (!idColorMap.containsKey(id)) {
+					idColorMap.put(id, nextColor++);
 				}
-				edge.removeAttribute("ui.style");
+				fillColor = CategoricalColorPalette.colorForIndex(idColorMap.get(id));
 			}
+			edge.setAttribute("ui.style", "fill-color: " + toHexColorWithAlpha(fillColor, 0x88) + ";");
 		}
+	}
+
+	/** "#2a78d6" - GraphStream's inline "ui.style" attributes accept CSS hex colors directly. */
+	private static String toHexColor(Color color) {
+		return String.format("#%02x%02x%02x",
+				(int) Math.round(color.getRed() * 255),
+				(int) Math.round(color.getGreen() * 255),
+				(int) Math.round(color.getBlue() * 255));
+	}
+
+	/** As {@link #toHexColor}, with an appended 8-bit alpha channel, e.g. "#2a78d688". */
+	private static String toHexColorWithAlpha(Color color, int alpha) {
+		return toHexColor(color) + String.format("%02x", alpha);
 	}
 
 	private void updateGraphStylehseet(boolean showLabels) {
@@ -197,21 +212,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 		this.graph.setAttribute("ui.stylesheet",
 				"edge { size: 1px; shape: blob; arrow-shape: none; arrow-size: 3px, 3px; } " +
-						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: " + DEFAULT_SIZE + "px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } " +
-						"edge.A1 { fill-color: #ffaaaa88; } " +
-						"edge.A2 { fill-color: #aaffaa88; } " +
-						"edge.A3 { fill-color: #aaaaff88; } " +
-						"edge.A4 { fill-color: #ffffaa88; } " +
-						"edge.A5 { fill-color: #ffaaff88; } " +
-						"edge.A6 { fill-color: #aaffff88; } " +
-						"edge.A7 { fill-color: #aaaaaa88; } " +
-						"node.A1 { fill-color: #ffaaaa88; } " +
-						"node.A2 { fill-color: #aaffaa88; } " +
-						"node.A3 { fill-color: #aaaaff88; } " +
-						"node.A4 { fill-color: #ffffaa88; } " +
-						"node.A5 { fill-color: #ffaaff88; } " +
-						"node.A6 { fill-color: #aaffff88; } " +
-						"node.A7 { fill-color: #aaaaaa88; } ");
+						"node { " + textMode + " text-background-mode: plain;  shape: circle; size: " + DEFAULT_SIZE + "px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
 	}
 
 	private void initView() {
@@ -240,59 +241,167 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		viewer = null;
 	}
 
-	private void updateGraph(boolean depthFade, boolean showLabels) {
-		assert viewer != null && view != null;
+	/**
+	 * Builds a fresh snapshot of the repository's current associations and queues it for rendering.
+	 * Used by the toolbar's child-count/depth-limit spinners, which trigger directly on the FX
+	 * thread in response to a user edit - only the current values matter there, unlike the
+	 * point-in-time correctness {@link #statusChangedEvent} needs (see {@link #buildSnapshot()}).
+	 */
+	private void refreshGraph() {
+		this.refreshGraph(this.buildSnapshot());
+	}
 
-		this.viewer.disableAutoLayout();
+	/**
+	 * Queues an already-built snapshot for rendering on GraphStream's background Swing thread.
+	 * Deliberately does NOT skip/coalesce a render just because a newer snapshot has since been
+	 * queued (e.g. committing several folders back to back): every snapshot is rendered in order,
+	 * so a viewer left open during a multi-folder commit visibly grows one commit at a time instead
+	 * of jumping straight to the final state. The only guard is against the repository having been
+	 * closed (viewer/view torn down) while this was queued, checked both when scheduling and again
+	 * right before use since that happens on a different thread.
+	 */
+	private void refreshGraph(GraphSnapshot snapshot) {
+		if (this.viewer == null || this.view == null) {
+			return;
+		}
 
-		this.graph.removeSink(this.layout);
-		this.layout.removeAttributeSink(this.graph);
-		this.layout.clear();
-		this.graph.clear();
+		this.toolBar.setDisable(true);
+		SwingUtilities.invokeLater(() -> {
+			if (this.viewer == null || this.view == null) {
+				return;
+			}
+			this.applySnapshot(snapshot, this.showLabels);
+			Platform.runLater(() -> this.toolBar.setDisable(false));
+		});
+	}
 
-		this.view.getCamera().resetView();
-
-
-		this.graph.setAttribute("ui.quality");
-		this.graph.setAttribute("ui.antialias");
-
-		this.artifactCount = 0;
-		this.maxSuccessorsCount = 0;
-		this.maxDepth = 0;
-
-		// traverse trees and add nodes
-//		for (Association association : this.service.getAssociations()) {
-//			this.traverseTree(association.getRootNode(), 0, association.getId(), depthFade);
-//		}
+	/**
+	 * Walks the repository's current associations into a plain-data {@link GraphSnapshot}. Touches
+	 * only the ecco data model (no GraphStream/Swing/JavaFX), so it's safe to call synchronously
+	 * from any thread - notably the commit thread itself, from {@link #statusChangedEvent}, so each
+	 * commit's exact state gets captured before the next commit can run.
+	 */
+	private GraphSnapshot buildSnapshot() {
+		GraphSnapshot snapshot = new GraphSnapshot();
 		LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
 		for (Association association : this.service.getRepository().getAssociations()) {
 			compRootNode.addOrigNode(association.getRootNode());
 		}
-		this.traverseTree(compRootNode, 0);
+		this.traverseSnapshot(compRootNode, 0, snapshot);
+		return snapshot;
+	}
 
-		this.updateNodesAndEdgesStyles(depthFade);
-		this.updateGraphStylehseet(showLabels);
+	/**
+	 * Renders a previously-built snapshot into the live GraphStream graph. Swing-thread only.
+	 * <p>
+	 * Node/edge identity isn't stable across snapshots (ids are just a sequential counter assigned
+	 * during traversal - the underlying ecco model doesn't expose a persistent per-artifact id this
+	 * view could otherwise key off of), so an in-place diff against the previous render isn't
+	 * possible; every call still does a full {@code graph.clear()} and rebuild. Two things are done
+	 * to keep that from looking like a flicker on every commit: the view is hidden for the duration
+	 * of the rebuild, since GraphStream renders on its own thread (the {@code GRAPH_IN_ANOTHER_THREAD}
+	 * model) independently of this one and could otherwise catch and paint the graph mid-rebuild -
+	 * empty right after {@code clear()}, or half-populated partway through the node/edge loops below
+	 * - as a visible blank/broken frame; and the camera is only reset on the very first render, not
+	 * on every subsequent one, so an open viewer keeps its current zoom/pan across commits instead of
+	 * snapping back to the default view each time.
+	 */
+	private void applySnapshot(GraphSnapshot snapshot, boolean showLabels) {
+		assert viewer != null && view != null;
+
+		boolean firstRender = this.graph.getNodeCount() == 0;
+
+		this.view.setVisible(false);
+		try {
+			this.viewer.disableAutoLayout();
+
+			this.graph.removeSink(this.layout);
+			this.layout.removeAttributeSink(this.graph);
+			this.layout.clear();
+			this.graph.clear();
+
+			if (firstRender) {
+				this.view.getCamera().resetView();
+			}
+
+			this.graph.setAttribute("ui.quality");
+			this.graph.setAttribute("ui.antialias");
+
+			this.maxSuccessorsCount = snapshot.maxSuccessorsCount;
+
+			for (NodeSnapshot nodeSnapshot : snapshot.nodes) {
+				Node graphNode = this.graph.addNode(nodeSnapshot.id);
+				if (nodeSnapshot.assocId != null) {
+					graphNode.setAttribute(ASSOC_ID_ATTRIBUTE, nodeSnapshot.assocId);
+				}
+				if (nodeSnapshot.label != null) {
+					graphNode.setAttribute("label", nodeSnapshot.label);
+				}
+				if (nodeSnapshot.successorsCount != null) {
+					graphNode.setAttribute(SUCCESSOR_COUNT_ATTRIBUTE, nodeSnapshot.successorsCount);
+				}
+			}
+			for (EdgeSnapshot edgeSnapshot : snapshot.edges) {
+				this.graph.addEdge(edgeSnapshot.id, edgeSnapshot.sourceId, edgeSnapshot.targetId, true);
+			}
+
+			this.updateNodesAndEdgesStyles();
+			this.updateGraphStylehseet(showLabels);
 
 
-		this.graph.addSink(this.layout);
-		this.layout.addAttributeSink(this.graph);
+			this.graph.addSink(this.layout);
+			this.layout.addAttributeSink(this.graph);
 
-		this.viewer.enableAutoLayout(this.layout);
+			this.viewer.enableAutoLayout(this.layout);
+		} finally {
+			this.view.setVisible(true);
+		}
 	}
 
 
-	private static final int CHILD_COUNT_LIMIT = 1000;
-	private static final int DEPTH_LIMIT = 50;
+	private static final int CHILD_COUNT_LIMIT_MAX = 1000;
+	private static final int DEPTH_LIMIT_MAX = 50;
+	private static final int DEFAULT_CHILD_COUNT_LIMIT = 20;
+	private static final int DEFAULT_DEPTH_LIMIT = 10;
+	private static final boolean DEFAULT_SHOW_LABELS = true;
 	private static final int MAX_SIZE = 100;
 	private static final int MIN_SIZE = 30;
 	private static final int DEFAULT_SIZE = 20;
 	private static final String SUCCESSOR_COUNT_ATTRIBUTE = "artifactsCount";
-	private static final String DEPTH_ATTRIBUTE = "depth";
 	private static final String ASSOC_ID_ATTRIBUTE = "assocId";
 
-	private int artifactCount = 0;
 	private int maxSuccessorsCount = 0;
-	private int maxDepth = 0;
+
+	/** Plain-data node/edge lists built by {@link #buildSnapshot()} - safe to construct off the FX/Swing threads. */
+	private static final class GraphSnapshot {
+		final List<NodeSnapshot> nodes = new ArrayList<>();
+		final List<EdgeSnapshot> edges = new ArrayList<>();
+		int maxSuccessorsCount = 0;
+		private int nextArtifactId = 0;
+	}
+
+	private static final class NodeSnapshot {
+		final String id;
+		String assocId;
+		String label;
+		Integer successorsCount;
+
+		NodeSnapshot(String id) {
+			this.id = id;
+		}
+	}
+
+	private static final class EdgeSnapshot {
+		final String id;
+		final String sourceId;
+		final String targetId;
+
+		EdgeSnapshot(String sourceId, String targetId) {
+			this.id = sourceId + "-" + targetId;
+			this.sourceId = sourceId;
+			this.targetId = targetId;
+		}
+	}
 
 	private void groupArtifactsByAssocRec(at.jku.isse.ecco.tree.Node eccoNode, Map<Association, Integer> groupMap) {
 		for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
@@ -312,107 +421,138 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		}
 	}
 
-	private Node traverseTree(at.jku.isse.ecco.tree.Node eccoNode, int depth) {
-		String assocId;
-
-		Node graphNode = null;
+	private String traverseSnapshot(at.jku.isse.ecco.tree.Node eccoNode, int depth, GraphSnapshot snapshot) {
+		String nodeId = null;
 		if (eccoNode.getArtifact() != null) {
-			this.artifactCount++;
-
-			graphNode = this.graph.addNode(String.valueOf(this.artifactCount));
-			graphNode.setAttribute(DEPTH_ATTRIBUTE, depth);
-			assocId = eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId();
-			graphNode.setAttribute(ASSOC_ID_ATTRIBUTE, assocId);
-			if (this.maxDepth < depth)
-				this.maxDepth = depth;
-
-//			if (depthFade) {
-//				graphNode.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
-//			} else {
-//				graphNode.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() & 7) + 1));
-//			}
-
-			if (eccoNode.getChildren().size() >= this.childCountLimit || depth >= this.depthLimit) {
-				// group children by association
-				Map<Association, Integer> groupMap = new HashMap<>();
-				this.groupArtifactsByAssocRec(eccoNode, groupMap);
-//				for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
-//					if (eccoChildNode.getArtifact() != null) {
-//						Association childContainingAssociation = eccoChildNode.getArtifact().getContainingNode().getContainingAssociation();
-//						if (childContainingAssociation != null) {
-//							int childContainedArtifactsCount = eccoChildNode.getArtifact().getContainingNode().countArtifacts();
-//							if (groupMap.containsKey(childContainingAssociation)) {
-//								int groupCount = groupMap.get(childContainingAssociation);
-//								groupCount += childContainedArtifactsCount;
-//								groupMap.put(childContainingAssociation, groupCount);
-//							} else {
-//								groupMap.put(childContainingAssociation, childContainedArtifactsCount);
-//							}
-//						}
-//					}
-//				}
-				// add one child node per group
-				for (Map.Entry<Association, Integer> entry : groupMap.entrySet()) {
-					this.artifactCount++;
-					Node graphChildNode = this.graph.addNode(String.valueOf(this.artifactCount));
-					graphChildNode.setAttribute("label", "[" + entry.getValue() + "]");
-//					if (depthFade) {
-//						int childColorValue = (int) (Math.min(1.0, (depth + 1) / 8.0) * 200.0);
-//						graphChildNode.addAttribute("ui.style", "size: " + Math.min(MAX_SIZE, entry.getValue()) + "px; fill-color: rgb(" + childColorValue + ", " + childColorValue + ", " + childColorValue + ");");
-//					} else {
-//						graphChildNode.addAttribute("ui.style", "size: " + Math.min(MAX_SIZE, entry.getValue()) + "px;");
-//						graphChildNode.addAttribute("ui.class", "A" + ((entry.getKey().getId() % 7) + 1));
-//					}
-//					if (!depthFade) {
-//						graphChildNode.addAttribute("ui.class", "A" + ((entry.getKey().getId() % 7) + 1));
-//					}
-					graphChildNode.setAttribute(SUCCESSOR_COUNT_ATTRIBUTE, entry.getValue());
-					graphChildNode.setAttribute(DEPTH_ATTRIBUTE, depth + 1);
-					graphChildNode.setAttribute(ASSOC_ID_ATTRIBUTE, entry.getKey().getId());
-
-					if (this.maxSuccessorsCount < entry.getValue())
-						this.maxSuccessorsCount = entry.getValue();
-
-					Edge edge = this.graph.addEdge(graphNode.getId() + "-" + graphChildNode.getId(), graphNode, graphChildNode, true);
-//					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
-//					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
-				}
-			}
+			nodeId = String.valueOf(++snapshot.nextArtifactId);
+			NodeSnapshot nodeSnapshot = new NodeSnapshot(nodeId);
+			nodeSnapshot.assocId = eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId();
+			snapshot.nodes.add(nodeSnapshot);
 
 			if (eccoNode.getArtifact().getData() instanceof PluginArtifactData) {
-				graphNode.setAttribute("label", ((PluginArtifactData) eccoNode.getArtifact().getData()).getPath().toString());
+				nodeSnapshot.label = ((PluginArtifactData) eccoNode.getArtifact().getData()).getPath().toString();
 			} else if (eccoNode.getArtifact().getData() instanceof DirectoryArtifactData) {
-				graphNode.setAttribute("label", ((DirectoryArtifactData) eccoNode.getArtifact().getData()).getPath().toString());
+				nodeSnapshot.label = ((DirectoryArtifactData) eccoNode.getArtifact().getData()).getPath().toString();
 			}
 		}
 
+		List<? extends at.jku.isse.ecco.tree.Node> children = eccoNode.getChildren();
 
-		if (eccoNode.getChildren().size() < this.childCountLimit && depth < this.depthLimit) {
-			for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
-				Node graphChildNode = this.traverseTree(eccoChildNode, depth + 1);
+		if (depth >= this.depthLimit) {
+			// gone too deep to keep expanding - collapse the entire remaining subtree into one
+			// summary node per association instead of continuing to recurse
+			if (nodeId != null && !children.isEmpty()) {
+				Map<Association, Integer> groupMap = new HashMap<>();
+				this.groupArtifactsByAssocRec(eccoNode, groupMap);
+				for (Map.Entry<Association, Integer> entry : groupMap.entrySet()) {
+					this.addSummaryNode(nodeId, entry.getKey().getId(), "[" + entry.getValue() + "]", entry.getValue(), snapshot);
+				}
+			}
+		} else if (children.size() > this.childCountLimit) {
+			// too many children to show individually - keep the childCountLimit children with the
+			// most content (by subtree artifact count) and expand those normally, folding the
+			// smaller remainder into a single combined summary node rather than hiding them
+			// without a trace
+			List<at.jku.isse.ecco.tree.Node> sortedChildren = new ArrayList<>(children);
+			sortedChildren.sort(Comparator.comparingInt(at.jku.isse.ecco.tree.Node::countArtifacts).reversed());
 
-				if (graphChildNode != null && graphNode != null) {
-					Edge edge = this.graph.addEdge(graphNode.getId() + "-" + graphChildNode.getId(), graphNode, graphChildNode, true);
-//					edge.addAttribute(DEPTH_ATTRIBUTE, depth);
-//					edge.addAttribute(ASSOC_ID_ATTRIBUTE, assocId);
+			List<at.jku.isse.ecco.tree.Node> kept = sortedChildren.subList(0, this.childCountLimit);
+			List<at.jku.isse.ecco.tree.Node> dropped = sortedChildren.subList(this.childCountLimit, sortedChildren.size());
 
-//					if (depthFade)
-//						edge.addAttribute("ui.style", "fill-color: rgb(" + colorValue + ", " + colorValue + ", " + colorValue + ");");
-//					else
-//						edge.addAttribute("ui.class", "A" + ((eccoNode.getArtifact().getContainingNode().getContainingAssociation().getId() % 7) + 1));
+			for (at.jku.isse.ecco.tree.Node eccoChildNode : kept) {
+				String childNodeId = this.traverseSnapshot(eccoChildNode, depth + 1, snapshot);
+				if (childNodeId != null && nodeId != null) {
+					snapshot.edges.add(new EdgeSnapshot(nodeId, childNodeId));
+				}
+			}
+
+			if (nodeId != null && !dropped.isEmpty()) {
+				int droppedArtifactCount = dropped.stream().mapToInt(at.jku.isse.ecco.tree.Node::countArtifacts).sum();
+				this.addSummaryNode(nodeId, null, "[+" + dropped.size() + " smaller, " + droppedArtifactCount + "]", droppedArtifactCount, snapshot);
+			}
+		} else {
+			for (at.jku.isse.ecco.tree.Node eccoChildNode : children) {
+				String childNodeId = this.traverseSnapshot(eccoChildNode, depth + 1, snapshot);
+				if (childNodeId != null && nodeId != null) {
+					snapshot.edges.add(new EdgeSnapshot(nodeId, childNodeId));
 				}
 			}
 		}
 
-		return graphNode;
+		return nodeId;
 	}
 
+	/** Adds a synthetic "collapsed" node (grouped-by-association summary, or dropped-children summary) as a child of {@code parentId}. */
+	private void addSummaryNode(String parentId, String assocId, String label, int successorsCount, GraphSnapshot snapshot) {
+		String summaryId = String.valueOf(++snapshot.nextArtifactId);
+		NodeSnapshot summaryNode = new NodeSnapshot(summaryId);
+		summaryNode.label = label;
+		summaryNode.successorsCount = successorsCount;
+		summaryNode.assocId = assocId;
+		snapshot.nodes.add(summaryNode);
+
+		if (snapshot.maxSuccessorsCount < successorsCount)
+			snapshot.maxSuccessorsCount = successorsCount;
+
+		snapshot.edges.add(new EdgeSnapshot(parentId, summaryId));
+	}
+
+	/**
+	 * Called by the containing tab whenever it's selected or deselected, so this view can skip its
+	 * (comparatively expensive, done once per commit - see {@link #statusChangedEvent}) snapshot
+	 * work while nobody's looking at it. Catches up with a single fresh render when the tab becomes
+	 * visible again, since commits that happened while hidden were never snapshotted.
+	 */
+	public void setTabVisible(boolean tabVisible) {
+		boolean becameVisible = tabVisible && !this.tabVisible;
+		this.tabVisible = tabVisible;
+		if (becameVisible && this.service.isInitialized()) {
+			Platform.runLater(() -> {
+				if (this.viewer == null || this.view == null) {
+					initView();
+				}
+				this.setDisable(false);
+				this.refreshGraph();
+			});
+		}
+	}
+
+	/**
+	 * Fires on open/close AND, notably, after every commit too (unlike {@code commitsChangedEvent},
+	 * which {@link EccoService} defines but never actually fires - so this is the only hook that
+	 * makes "refresh automatically when a new commit happens" possible). Only (re)creates the native
+	 * GraphStream viewer the first time the repository becomes initialized; a later call (e.g. from
+	 * a commit) just queues a re-render into the already-open viewer instead of tearing it down and
+	 * recreating it every time. Skips the snapshot and render entirely while {@link #tabVisible} is
+	 * false - {@link #setTabVisible} catches up with a single fresh render once the tab is shown
+	 * again, rather than this method doing the (wasted, invisible) work for every commit in between.
+	 * <p>
+	 * When visible, the snapshot is built synchronously, right here, on whatever thread fired this
+	 * event - e.g. the commit thread itself, still inside that specific {@code commit()} call -
+	 * rather than deferred like the rest of this method. Committing several folders in one session
+	 * fires this once per folder in a tight loop with nothing throttling it; if the snapshot were
+	 * built lazily (e.g. inside the {@code Platform.runLater} below, or worse, inside the render task
+	 * on the Swing thread), by the time any of that code actually ran the loop would typically have
+	 * already raced ahead through every remaining commit, so EVERY queued render would end up reading
+	 * the same final repository state and the view would visibly jump straight to it instead of
+	 * growing one commit at a time. Capturing the snapshot here - before returning control to the
+	 * caller, i.e. before the loop can advance to the next commit - is what makes each queued render
+	 * distinct.
+	 */
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
+			if (!this.tabVisible) {
+				Platform.runLater(() -> this.setDisable(false));
+				return;
+			}
+			GraphSnapshot snapshot = this.buildSnapshot();
 			Platform.runLater(() -> {
-				initView();
+				if (this.viewer == null || this.view == null) {
+					initView();
+				}
 				this.setDisable(false);
+				this.refreshGraph(snapshot);
 			});
 		} else {
 			Platform.runLater(() -> {

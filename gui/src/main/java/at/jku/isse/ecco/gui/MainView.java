@@ -159,6 +159,8 @@ public class MainView extends BorderPane implements EccoListener {
 
 		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService);
 		artifactsGraphTab.setContent(artifactsGraphView);
+		artifactsGraphView.setTabVisible(artifactsGraphTab.isSelected());
+		artifactsGraphTab.selectedProperty().addListener((obs, wasSelected, isSelected) -> artifactsGraphView.setTabVisible(isSelected));
 
 		// dependency graph
 		Tab dependencyGraphTab = new Tab();
