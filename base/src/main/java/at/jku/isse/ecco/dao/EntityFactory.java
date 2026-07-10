@@ -94,11 +94,13 @@ public interface EntityFactory {
 	public RootNode.Op createRootNode();
 
 	/**
-	 * Creates a new empty node.
+	 * Creates a new node with no artifact yet - for building a tree bottom-up before an artifact
+	 * is known/decided (e.g. a deep copy that conditionally attaches a copied artifact
+	 * afterward), or for a node - like a root node - that legitimately never has one. Prefer
+	 * {@link #createNode(Artifact.Op)} whenever the artifact is already known.
 	 *
 	 * @return A new empty node.
 	 */
-	@Deprecated
 	public Node.Op createNode();
 
 	/**

@@ -98,7 +98,6 @@ public class SerEntityFactory implements EntityFactory {
 		return new SerRootNode();
 	}
 
-	@Deprecated
 	@Override
 	public Node.Op createNode() {
 		return new SerNode();
