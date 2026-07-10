@@ -480,7 +480,8 @@ public interface Repository extends Persistable {
 				intA.setRootNode((RootNode.Op) Trees.slice(origA.getRootNode(), association.getRootNode()));
 
 				// INTERSECTION
-				if (!intA.getRootNode().getChildren().isEmpty()) { // if the intersection association has artifacts store it
+				boolean origAWasSliced = !intA.getRootNode().getChildren().isEmpty();
+				if (origAWasSliced) { // if the intersection association has artifacts store it
 					toAdd.add(intA);
 
 					commit.addAssociation(intA);        // add association to new commit
@@ -496,6 +497,18 @@ public interface Repository extends Persistable {
 				// ORIGINAL
 				if (!origA.getRootNode().getChildren().isEmpty()) { // if the original association has artifacts left
 					Trees.checkConsistency(origA.getRootNode());
+					// origA's own tree just had the intersected part sliced out of it in place - if
+					// that happened (origAWasSliced) it's now a different, smaller tree than what's on
+					// disk, but nothing else marks an already-existing (not newly added, not fully
+					// emptied) association dirty for re-persistence. Without this, closing and
+					// reopening the repository loses the reduction: the next commit reloads origA at
+					// its old, pre-slice size and redundantly re-slices content it already gave away,
+					// producing duplicate associations. addAssociation() is safe to call again on an
+					// already-tracked association - id/dirty-set membership are all idempotent (see
+					// SerRepository.addAssociation()).
+					if (origAWasSliced) {
+						this.addAssociation(origA);
+					}
 				} else {
 					toRemove.add(origA);
 
