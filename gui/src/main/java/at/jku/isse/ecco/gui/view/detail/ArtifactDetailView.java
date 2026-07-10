@@ -19,6 +19,7 @@ import javafx.scene.layout.Pane;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class ArtifactDetailView extends BorderPane implements EccoListener {
@@ -30,6 +31,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	private boolean initialized;
 	private Collection<AssociationInfo> associationInfos = null;
 	private PartialOrderGraphView partialOrderGraphView;
+	private final AtomicLong pogGeneration = new AtomicLong();
 
 	@Inject
 	private Set<ArtifactViewer> artifactViewers;
@@ -127,9 +129,13 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 		if (node.getArtifact() != null && node.getArtifact().getPartialOrderGraph() != null) {
 			if (null == partialOrderGraphView) { partialOrderGraphView = new PartialOrderGraphView(); }
 
+			long generation = pogGeneration.incrementAndGet();
 			Thread th = new Thread(() -> {
 				PartialOrderGraph pog = node.getArtifact().getPartialOrderGraph();
-				Platform.runLater(() -> partialOrderGraphView.showGraph(pog));
+				Platform.runLater(() -> {
+					if (pogGeneration.get() != generation) { return; }
+					partialOrderGraphView.showGraph(pog);
+				});
 			});
 			th.start();
 
