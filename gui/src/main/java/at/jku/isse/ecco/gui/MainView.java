@@ -105,12 +105,14 @@ public class MainView extends BorderPane implements EccoListener {
 
 		// features
 		Tab featuresTab = new Tab();
-		featuresTab.setText("Features");
+		featuresTab.setText("Feature Model");
 		featuresTab.setClosable(false);
 		tabPane.getTabs().add(featuresTab);
 
 		FeaturesView featuresView = new FeaturesView(eccoService);
 		featuresTab.setContent(featuresView);
+		featuresView.setTabVisible(featuresTab.isSelected());
+		featuresTab.selectedProperty().addListener((obs, wasSelected, isSelected) -> featuresView.setTabVisible(isSelected));
 
 		// remotes
 		Tab remotesTab = new Tab();
