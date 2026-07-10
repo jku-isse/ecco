@@ -2,7 +2,7 @@ package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Checkout;
-import at.jku.isse.ecco.core.Warning;
+import at.jku.isse.ecco.module.ModuleRevision;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -16,7 +16,7 @@ public class CheckoutDetailView extends BorderPane {
 
 	private Checkout currentCheckout;
 
-	final ObservableList<WarningInfo> warningsData = FXCollections.observableArrayList();
+	final ObservableList<DiagnosticInfo> warningsData = FXCollections.observableArrayList();
 
 
 	private Pane centerPane;
@@ -65,18 +65,20 @@ public class CheckoutDetailView extends BorderPane {
 		row++;
 
 
-		// list of warnings
-		TableView<WarningInfo> warningsTable = new TableView<>();
+		// list of missing/surplus module diagnostics
+		TableView<DiagnosticInfo> warningsTable = new TableView<>();
 		warningsTable.setEditable(false);
 		warningsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<WarningInfo, String> moduleWarningsCol = new TableColumn<>("Module");
-		TableColumn<WarningInfo, String> warningsCol = new TableColumn<>("Warnings");
+		TableColumn<DiagnosticInfo, String> typeCol = new TableColumn<>("Type");
+		TableColumn<DiagnosticInfo, String> moduleCol = new TableColumn<>("Module");
+		TableColumn<DiagnosticInfo, String> traceCol = new TableColumn<>("Trace");
 
-		warningsCol.getColumns().setAll(moduleWarningsCol);
-		warningsTable.getColumns().setAll(warningsCol);
+		warningsTable.getColumns().setAll(typeCol, moduleCol, traceCol);
 
-		moduleWarningsCol.setCellValueFactory((TableColumn.CellDataFeatures<WarningInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().toString()));
+		typeCol.setCellValueFactory((TableColumn.CellDataFeatures<DiagnosticInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getType()));
+		moduleCol.setCellValueFactory((TableColumn.CellDataFeatures<DiagnosticInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getModule()));
+		traceCol.setCellValueFactory((TableColumn.CellDataFeatures<DiagnosticInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getTrace()));
 
 		warningsTable.setItems(this.warningsData);
 
@@ -103,9 +105,12 @@ public class CheckoutDetailView extends BorderPane {
 			else
 				this.checkoutConfiguration.setText("");
 
-			// show warnings
-			for (Warning warning : checkout.getWarnings()) {
-				CheckoutDetailView.this.warningsData.add(new WarningInfo(warning));
+			// show missing and surplus module diagnostics (see Repository.Op.compose())
+			for (ModuleRevision missingModuleRevision : checkout.getMissing()) {
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("MISSING", missingModuleRevision.toString(), ""));
+			}
+			for (java.util.Map.Entry<ModuleRevision, String> surplusEntry : checkout.getSurplusModules().entrySet()) {
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("SURPLUS", surplusEntry.getKey().toString(), surplusEntry.getValue()));
 			}
 		} else {
 			this.setCenter(null);
@@ -116,15 +121,27 @@ public class CheckoutDetailView extends BorderPane {
 	}
 
 
-	public static class WarningInfo {
-		private Warning warning;
+	public static class DiagnosticInfo {
+		private final String type;
+		private final String module;
+		private final String trace;
 
-		public WarningInfo(Warning warning) {
-			this.warning = warning;
+		public DiagnosticInfo(String type, String module, String trace) {
+			this.type = type;
+			this.module = module;
+			this.trace = trace;
 		}
 
-		public Warning getWarning() {
-			return this.warning;
+		public String getType() {
+			return this.type;
+		}
+
+		public String getModule() {
+			return this.module;
+		}
+
+		public String getTrace() {
+			return this.trace;
 		}
 	}
 
