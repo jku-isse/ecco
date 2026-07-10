@@ -56,6 +56,7 @@ public class CommitView extends OperationView implements EccoListener {
 	private SplitPane splitPane;
 	private CommitDetailView commitDetailView;
 	private TableView<FileInfo> logTable;
+	private Label pluginsSummaryLabel;
 
 
 	public CommitView(EccoService service) {
@@ -74,10 +75,17 @@ public class CommitView extends OperationView implements EccoListener {
 		this.logTable = new TableView<>();
 		logTable.setEditable(false);
 		logTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+		logTable.getStyleClass().add("headerless-table");
 
 		TableColumn<FileInfo, String> actionCol = new TableColumn<>("Action");
 		TableColumn<FileInfo, String> pathCol = new TableColumn<>("Path");
 		TableColumn<FileInfo, String> pluginCol = new TableColumn<>("Plugin");
+
+		// give Path most of the width (it's the column that actually needs it) instead of the
+		// equal three-way split CONSTRAINED_RESIZE_POLICY defaults to, which was truncating paths
+		actionCol.prefWidthProperty().bind(logTable.widthProperty().multiply(0.12));
+		pathCol.prefWidthProperty().bind(logTable.widthProperty().multiply(0.63));
+		pluginCol.prefWidthProperty().bind(logTable.widthProperty().multiply(0.25));
 
 		logTable.getColumns().setAll(actionCol, pathCol, pluginCol);
 
@@ -87,10 +95,25 @@ public class CommitView extends OperationView implements EccoListener {
 
 		logTable.setItems(this.logData);
 
+		// single-line summary of every plugin actually used (READ/WRITE rows only - SELECT and
+		// COMMIT rows repurpose the "plugin" column for other data, see fileReadEvent/etc. below)
+		this.pluginsSummaryLabel = new Label("Plugins used: ");
+		this.logData.addListener((ListChangeListener<FileInfo>) change -> this.updatePluginsSummary());
+
 		splitPane.getItems().add(logTable);
 
 
 		this.step1();
+	}
+
+	private void updatePluginsSummary() {
+		String plugins = this.logData.stream()
+				.filter(info -> READ_ACTION_STRING.equals(info.getAction()) || WRITE_ACTION_STRING.equals(info.getAction()))
+				.map(FileInfo::getPlugin)
+				.distinct()
+				.sorted()
+				.collect(Collectors.joining(", "));
+		this.pluginsSummaryLabel.setText("Plugins used: " + plugins);
 	}
 
 
@@ -291,10 +314,13 @@ public class CommitView extends OperationView implements EccoListener {
 					for (FolderEntry entry : foldersToCommit) {
 						CommitView.this.service.setBaseDir(Paths.get(entry.getFolder()));
 						String configurationString = entry.getConfiguration();
+						long startMillis = System.currentTimeMillis();
 						if (configurationString != null && !configurationString.isEmpty())
 							lastCommit = CommitView.this.service.commit(commitMessage, configurationString);
 						else
 							lastCommit = CommitView.this.service.commit(commitMessage);
+						long durationMillis = System.currentTimeMillis() - startMillis;
+						Platform.runLater(() -> CommitView.this.logData.add(new FileInfo(COMMIT_ACTION_STRING, entry.getFolder(), formatDuration(durationMillis))));
 					}
 					return lastCommit;
 				}
@@ -422,7 +448,10 @@ public class CommitView extends OperationView implements EccoListener {
 		this.rightButtons.getChildren().clear();
 
 
-		this.setCenter(splitPane);
+		VBox centerBox = new VBox(5, this.pluginsSummaryLabel, this.splitPane);
+		centerBox.setPadding(new Insets(0, 10, 10, 10));
+		VBox.setVgrow(this.splitPane, Priority.ALWAYS);
+		this.setCenter(centerBox);
 
 
 		this.fit();
@@ -432,20 +461,33 @@ public class CommitView extends OperationView implements EccoListener {
 	private static final String READ_ACTION_STRING = "READ";
 	private static final String WRITE_ACTION_STRING = "WRITE";
 	private static final String ASSOCIATION_SELECTION_STRING = "SELECT";
+	private static final String COMMIT_ACTION_STRING = "COMMIT";
 
 	@Override
 	public void fileReadEvent(Path file, ArtifactReader reader) {
-		Platform.runLater(() -> this.logData.add(new FileInfo(this.READ_ACTION_STRING, file.toString(), reader.getPluginId())));
+		Platform.runLater(() -> this.logData.add(new FileInfo(this.READ_ACTION_STRING, file.toString(), shortPluginName(reader.getPluginId()))));
 	}
 
 	@Override
 	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-		Platform.runLater(() -> this.logData.add(new FileInfo(this.WRITE_ACTION_STRING, file.toString(), writer.getPluginId())));
+		Platform.runLater(() -> this.logData.add(new FileInfo(this.WRITE_ACTION_STRING, file.toString(), shortPluginName(writer.getPluginId()))));
 	}
 
 	@Override
 	public void associationSelectedEvent(EccoService service, Association association) {
 		Platform.runLater(() -> this.logData.add(new FileInfo(this.ASSOCIATION_SELECTION_STRING, String.valueOf(association.getId()), association.computeCondition().toString())));
+	}
+
+	/** getPluginId() returns a fully-qualified class name (e.g. "at.jku.isse.ecco.adapter.lilypond.LilypondPlugin") - just the simple class name is enough to display. */
+	private static String shortPluginName(String pluginId) {
+		if (pluginId == null) return null;
+		int lastDot = pluginId.lastIndexOf('.');
+		return lastDot < 0 ? pluginId : pluginId.substring(lastDot + 1);
+	}
+
+	/** e.g. 927 -> "0.93 sec" (decimal separator follows the platform's default locale). */
+	private static String formatDuration(long durationMillis) {
+		return String.format("%.2f sec", durationMillis / 1000.0);
 	}
 
 
