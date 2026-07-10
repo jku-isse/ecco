@@ -445,62 +445,95 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         }
     }
 
+    /** Plain-data result of a background {@link #refresh()} computation - see that method. */
+    private static final class RefreshResult {
+        final List<? extends Association> associations;
+        final int maxNumArtifacts;
+
+        RefreshResult(List<? extends Association> associations, int maxNumArtifacts) {
+            this.associations = associations;
+            this.maxNumArtifacts = maxNumArtifacts;
+        }
+    }
+
     private void refresh() {
         // statusChangedEvent can fire many times in quick succession (e.g. once per folder from
-        // both setBaseDir() and commit() during a multi-folder Commit), each spawning its own
-        // background Thread here - without a generation guard, whichever thread happens to finish
-        // last wins, which isn't necessarily the one started last, so an earlier commit's stale
-        // (or empty, mid-commit) association list could silently overwrite the true final state.
-        // Same pattern as applyLiveConfiguration()'s liveConfigurationGeneration.
+        // both setBaseDir() and commit() during a multi-folder Commit, or once per commit in a
+        // large bulk-commit session), each spawning its own background computation here - without
+        // a generation guard, whichever one happens to finish last wins, which isn't necessarily
+        // the one started last, so an earlier commit's stale (or empty, mid-commit) association
+        // list could silently overwrite the true final state. Same pattern as
+        // applyLiveConfiguration()'s liveConfigurationGeneration.
+        //
+        // Deliberately does NOT clear associationsData/the tree up front, unlike earlier versions
+        // of this method: on a large repository, this computation (countArtifacts() over every
+        // association) can take longer than the gap between commits during a fast bulk-commit
+        // session, so every attempt keeps losing the generation race to the next one - clearing
+        // eagerly meant the tab stayed visibly blank for the whole session instead of just showing
+        // the previous (slightly stale, but real) state until a refresh actually wins.
+        //
+        // Uses a real Task (unlike the raw Thread this used to be) specifically so a failure here -
+        // e.g. an OutOfMemoryError from walking a very large tree - surfaces via setOnFailed()
+        // instead of silently killing the thread and leaving the toolbar disabled and the tree
+        // stuck on whatever it last showed until the app is restarted.
         long generation = refreshGeneration.incrementAndGet();
 
-        Platform.runLater(() -> {
-            toolBar.setDisable(true);
-            artifactTreeView.setRootNode(null);
-        });
+        Platform.runLater(() -> toolBar.setDisable(true));
 
-        Thread th = new Thread(() -> {
-            // sorted by id (stable regardless of the repository's own iteration order) so that,
-            // as long as the set of associations doesn't change, each one keeps the same
-            // auto-assigned color across refreshes rather than reshuffling
-            List<? extends Association> associations = this.service.getRepository().getAssociations().stream()
-                    .sorted(Comparator.comparing(Association::getId))
-                    .toList();
-            int max = 1;
-            for (Association a : associations) {
-                max = Math.max(max, a.getRootNode().countArtifacts());
-            }
-            final int maxNumArtifacts = max;
-            Platform.runLater(() -> {
-                if (refreshGeneration.get() != generation) {
-                    return;
-                }
-
-                // set before mutating associationsData so cells never render against a stale max
-                this.maxNumArtifacts = maxNumArtifacts;
-                this.associationsData.clear();
-                int index = 0;
+        Task<RefreshResult> refreshTask = new Task<>() {
+            @Override
+            protected RefreshResult call() {
+                // sorted by id (stable regardless of the repository's own iteration order) so
+                // that, as long as the set of associations doesn't change, each one keeps the
+                // same auto-assigned color across refreshes rather than reshuffling
+                List<? extends Association> associations = ArtifactsView.this.service.getRepository().getAssociations().stream()
+                        .sorted(Comparator.comparing(Association::getId))
+                        .toList();
+                int max = 1;
                 for (Association a : associations) {
-                    AssociationInfoImpl associationInfo = new AssociationInfoImpl(a);
-                    // color is only actually assigned once the association is selected (so the
-                    // "Highlighted" column and the code viewers stay blank for everything else),
-                    // but its slot is fixed now so the color stays the same association's color
-                    // across selections rather than depending on selection order
-                    Color assignedColor = CategoricalColorPalette.tintForBackground(CategoricalColorPalette.colorForIndex(index));
-                    associationInfo.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
-                        if (isSelected && associationInfo.colorProperty().get().equals(Color.TRANSPARENT)) {
-                            associationInfo.colorProperty().set(assignedColor);
-                        }
-                    });
-                    index++;
-                    this.associationsData.add(associationInfo);
+                    max = Math.max(max, a.getRootNode().countArtifacts());
                 }
-                artifactTreeView.setAssociationInfo(this.associationsData);
+                return new RefreshResult(associations, max);
+            }
+        };
+        refreshTask.setOnSucceeded(event -> {
+            if (refreshGeneration.get() != generation) {
+                return;
+            }
 
-                toolBar.setDisable(false);
-            });
+            RefreshResult result = refreshTask.getValue();
+
+            // set before mutating associationsData so cells never render against a stale max
+            this.maxNumArtifacts = result.maxNumArtifacts;
+            artifactTreeView.setRootNode(null);
+            this.associationsData.clear();
+            int index = 0;
+            for (Association a : result.associations) {
+                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a);
+                // color is only actually assigned once the association is selected (so the
+                // "Highlighted" column and the code viewers stay blank for everything else),
+                // but its slot is fixed now so the color stays the same association's color
+                // across selections rather than depending on selection order
+                Color assignedColor = CategoricalColorPalette.tintForBackground(CategoricalColorPalette.colorForIndex(index));
+                associationInfo.selectedProperty().addListener((observable, wasSelected, isSelected) -> {
+                    if (isSelected && associationInfo.colorProperty().get().equals(Color.TRANSPARENT)) {
+                        associationInfo.colorProperty().set(assignedColor);
+                    }
+                });
+                index++;
+                this.associationsData.add(associationInfo);
+            }
+            artifactTreeView.setAssociationInfo(this.associationsData);
+
+            toolBar.setDisable(false);
         });
-        th.start();
+        refreshTask.setOnFailed(event -> {
+            if (refreshGeneration.get() == generation) {
+                toolBar.setDisable(false);
+            }
+            new ExceptionAlert(refreshTask.getException()).show();
+        });
+        new Thread(refreshTask).start();
     }
 
     @Override
