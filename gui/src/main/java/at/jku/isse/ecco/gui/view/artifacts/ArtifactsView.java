@@ -55,6 +55,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
     private FeatureTogglePanel featureTogglePanel;
     private final AtomicLong liveConfigurationGeneration = new AtomicLong();
+    private final AtomicLong refreshGeneration = new AtomicLong();
 
 
     public ArtifactsView(final EccoService service) {
@@ -445,6 +446,14 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     }
 
     private void refresh() {
+        // statusChangedEvent can fire many times in quick succession (e.g. once per folder from
+        // both setBaseDir() and commit() during a multi-folder Commit), each spawning its own
+        // background Thread here - without a generation guard, whichever thread happens to finish
+        // last wins, which isn't necessarily the one started last, so an earlier commit's stale
+        // (or empty, mid-commit) association list could silently overwrite the true final state.
+        // Same pattern as applyLiveConfiguration()'s liveConfigurationGeneration.
+        long generation = refreshGeneration.incrementAndGet();
+
         Platform.runLater(() -> {
             toolBar.setDisable(true);
             artifactTreeView.setRootNode(null);
@@ -463,6 +472,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             }
             final int maxNumArtifacts = max;
             Platform.runLater(() -> {
+                if (refreshGeneration.get() != generation) {
+                    return;
+                }
+
                 // set before mutating associationsData so cells never render against a stale max
                 this.maxNumArtifacts = maxNumArtifacts;
                 this.associationsData.clear();
