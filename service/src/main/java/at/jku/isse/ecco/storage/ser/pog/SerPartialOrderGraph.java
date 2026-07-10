@@ -102,10 +102,6 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 		});
 
 
-		List<Node.Op> nodes = this.collectNodes();
-		if (nodes.size() > 2){
-			System.out.print("");
-		}
 	}
 
 	private void wireHeadAndTail(){
