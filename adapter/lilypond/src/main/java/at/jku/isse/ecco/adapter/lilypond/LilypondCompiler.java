@@ -1,4 +1,5 @@
 package at.jku.isse.ecco.adapter.lilypond;
+import at.jku.isse.ecco.service.LilypondPreferences;
 import javafx.scene.image.Image;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -24,8 +25,8 @@ import java.util.stream.Stream;
 public class LilypondCompiler {
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
 
-    private final static Path lilypond_exe = getLilypondPath();
-    private final static Path[] lilypond_searchPaths = getLilypondSearchPaths();
+    private final Path lilypond_exe = getLilypondPath();
+    private final Path[] lilypond_searchPaths = getLilypondSearchPaths();
 
     private final Path workingDir = Path.of(System.getProperty("java.io.tmpdir")).resolve("ecco-lilypond-compiled");
     private final String inFile = "input.ly";
@@ -236,20 +237,34 @@ public class LilypondCompiler {
     }
 
     public static Path LilypondPath() {
-        return lilypond_exe;
+        return getLilypondPath();
     }
     public static Path[] LilypondSearchPaths() {
-        return lilypond_searchPaths;
+        return getLilypondSearchPaths();
     }
 
+    /**
+     * The user-configurable {@link LilypondPreferences} executable path wins when set; otherwise
+     * falls back to the bundled {@code lilypond-config.properties} classpath resource, same as
+     * before this became user-editable.
+     */
     private static Path getLilypondPath() {
-        String path = getProperty("lilypond_executable");
-        if (path != null) {
+        String path = LilypondPreferences.getExecutablePath();
+        if (path == null || path.isBlank()) {
+            path = getProperty("lilypond_executable");
+        }
+        if (path != null && !path.isBlank()) {
             return Path.of(path);
         }
         return null;
     }
+
+    /** Same preference-overrides-bundled-default precedence as {@link #getLilypondPath()}. */
     private static Path[] getLilypondSearchPaths() {
+        List<String> prefPaths = LilypondPreferences.getSearchPaths();
+        if (!prefPaths.isEmpty()) {
+            return prefPaths.stream().map(Path::of).toArray(Path[]::new);
+        }
         String prop = getProperty("lilypond_search_paths");
         if (prop != null && !prop.isEmpty()) {
             String[] paths = prop.split("\\|");

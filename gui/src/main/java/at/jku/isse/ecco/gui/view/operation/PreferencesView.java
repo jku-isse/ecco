@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.service.AdapterPreferences;
+import at.jku.isse.ecco.service.LilypondPreferences;
 import at.jku.isse.ecco.service.LlmPreferences;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
@@ -12,14 +13,20 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -128,6 +135,76 @@ public class PreferencesView extends OperationView {
 		content.getChildren().add(llmPane);
 
 
+		// Lilypond settings
+		GridPane lilypondGridPane = new GridPane();
+		lilypondGridPane.setHgap(10);
+		lilypondGridPane.setVgap(10);
+		lilypondGridPane.setPadding(new Insets(10));
+
+		ColumnConstraints lilypondCol1constraint = new ColumnConstraints();
+		ColumnConstraints lilypondCol2constraint = new ColumnConstraints();
+		lilypondCol2constraint.setFillWidth(true);
+		lilypondCol2constraint.setHgrow(Priority.ALWAYS);
+		lilypondGridPane.getColumnConstraints().addAll(lilypondCol1constraint, lilypondCol2constraint);
+
+		int lilypondRow = 0;
+
+		Label lilypondHelpLabel = new Label("Only needed if Lilypond isn't found automatically. Used to render .ly artifacts " +
+				"as notation images. Leave blank to use the bundled default.");
+		lilypondHelpLabel.setWrapText(true);
+		lilypondGridPane.add(lilypondHelpLabel, 0, lilypondRow, 2, 1);
+		lilypondRow++;
+
+		Label executableLabel = new Label("Executable Path: ");
+		lilypondGridPane.add(executableLabel, 0, lilypondRow, 1, 1);
+		TextField lilypondExecutableField = new TextField(LilypondPreferences.getExecutablePath());
+		HBox.setHgrow(lilypondExecutableField, Priority.ALWAYS);
+		Button browseExecutableButton = new Button("Browse...");
+		browseExecutableButton.setOnAction(event -> {
+			FileChooser fileChooser = new FileChooser();
+			fileChooser.setTitle("Select Lilypond Executable");
+			preselectExistingParent(lilypondExecutableField.getText())
+					.ifPresent(dir -> fileChooser.setInitialDirectory(dir.toFile()));
+			File selected = fileChooser.showOpenDialog(this.getScene().getWindow());
+			if (selected != null) {
+				lilypondExecutableField.setText(selected.getAbsolutePath());
+			}
+		});
+		HBox executableBox = new HBox(6, lilypondExecutableField, browseExecutableButton);
+		lilypondGridPane.add(executableBox, 1, lilypondRow, 1, 1);
+		lilypondRow++;
+
+		Label searchPathsLabel = new Label("Search Paths: ");
+		lilypondGridPane.add(searchPathsLabel, 0, lilypondRow, 1, 1);
+		TextField lilypondSearchPathsField = new TextField(String.join("|", LilypondPreferences.getSearchPaths()));
+		HBox.setHgrow(lilypondSearchPathsField, Priority.ALWAYS);
+		Button browseSearchPathButton = new Button("Add...");
+		browseSearchPathButton.setOnAction(event -> {
+			DirectoryChooser directoryChooser = new DirectoryChooser();
+			directoryChooser.setTitle("Add Lilypond Search Path");
+			File selected = directoryChooser.showDialog(this.getScene().getWindow());
+			if (selected != null) {
+				String existing = lilypondSearchPathsField.getText();
+				String updated = (existing == null || existing.isBlank())
+						? selected.getAbsolutePath()
+						: existing + "|" + selected.getAbsolutePath();
+				lilypondSearchPathsField.setText(updated);
+			}
+		});
+		HBox searchPathsBox = new HBox(6, lilypondSearchPathsField, browseSearchPathButton);
+		lilypondGridPane.add(searchPathsBox, 1, lilypondRow, 1, 1);
+		lilypondRow++;
+
+		Label searchPathsNoteLabel = new Label("Multiple paths are separated by \"|\" (used for Lilypond's -I \\include search path).");
+		searchPathsNoteLabel.setWrapText(true);
+		lilypondGridPane.add(searchPathsNoteLabel, 0, lilypondRow, 2, 1);
+
+		TitledPane lilypondPane = new TitledPane("Lilypond Settings", lilypondGridPane);
+		lilypondPane.setAnimated(false);
+		lilypondPane.setCollapsible(false);
+		content.getChildren().add(lilypondPane);
+
+
 		ScrollPane outerScrollPane = new ScrollPane(content);
 		outerScrollPane.setFitToWidth(true);
 		this.setCenter(outerScrollPane);
@@ -144,10 +221,32 @@ public class PreferencesView extends OperationView {
 			LlmPreferences.setEndpointUrl(llmEndpointUrlField.getText());
 			LlmPreferences.setModelName(llmModelNameField.getText());
 
+			LilypondPreferences.setExecutablePath(lilypondExecutableField.getText());
+			String searchPathsText = lilypondSearchPathsField.getText();
+			List<String> searchPaths = (searchPathsText == null || searchPathsText.isBlank())
+					? List.of()
+					: Arrays.stream(searchPathsText.split("\\|")).filter(p -> !p.isBlank()).map(String::trim).toList();
+			LilypondPreferences.setSearchPaths(searchPaths);
+
 			((Stage) this.getScene().getWindow()).close();
 		});
 
 		this.fit();
+	}
+
+	/** Best-effort existing parent directory of a possibly-blank/invalid path, for pre-populating a chooser dialog. */
+	private static java.util.Optional<Path> preselectExistingParent(String pathText) {
+		if (pathText == null || pathText.isBlank()) {
+			return java.util.Optional.empty();
+		}
+		try {
+			Path parent = Path.of(pathText).getParent();
+			if (parent != null && java.nio.file.Files.isDirectory(parent)) {
+				return java.util.Optional.of(parent);
+			}
+		} catch (Exception ignored) {
+		}
+		return java.util.Optional.empty();
 	}
 
 	/**
