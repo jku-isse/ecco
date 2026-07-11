@@ -93,6 +93,11 @@ public final class PresenceConditionMinimizer {
         List<Term> current = new ArrayList<>(terms);
         Formula original = toFormula(current);
 
+        // syntactic absorption pre-pass (X + XY = X): unconditionally true, no SAT needed, and on
+        // real associations with many overlapping OR-terms this shrinks both the term count and the
+        // literal-removal search below before the expensive SAT loop ever runs.
+        current = absorb(current);
+
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
         SATSolver solver = MiniSat.miniSat(f);
         solver.add(featureModel);
@@ -116,6 +121,37 @@ public final class PresenceConditionMinimizer {
         }
 
         return current;
+    }
+
+    /**
+     * Drops terms whose literals are a syntactic superset of some other term's -- the boolean
+     * identity {@code X + XY = X}, which holds unconditionally (no feature model / SAT required).
+     * Ties (two identical terms) keep only the earlier one.
+     */
+    static List<Term> absorb(List<Term> terms) {
+        List<Term> result = new ArrayList<>();
+        for (int i = 0; i < terms.size(); i++) {
+            Term ti = terms.get(i);
+            boolean absorbed = false;
+            for (int j = 0; j < terms.size() && !absorbed; j++) {
+                if (i != j && subsumes(terms.get(j), ti, j, i)) {
+                    absorbed = true;
+                }
+            }
+            if (!absorbed) result.add(ti);
+        }
+        return result;
+    }
+
+    /** True if {@code smaller}'s literals make {@code larger} redundant via {@code X + XY = X}. */
+    private static boolean subsumes(Term smaller, Term larger, int smallerIndex, int largerIndex) {
+        if (!larger.positive.containsAll(smaller.positive) || !larger.negative.containsAll(smaller.negative)) {
+            return false;
+        }
+        int smallerSize = smaller.positive.size() + smaller.negative.size();
+        int largerSize = larger.positive.size() + larger.negative.size();
+        if (smallerSize < largerSize) return true;
+        return smallerSize == largerSize && smallerIndex < largerIndex; // identical terms: keep the earlier
     }
 
     private static List<Term> tryReplace(SATSolver solver, Formula original, List<Term> current, int index, Term shrunkTerm) {
