@@ -5,9 +5,7 @@ import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
-import at.jku.isse.ecco.mining.FeatureModelFormula;
-import at.jku.isse.ecco.mining.ModuleConditionBridge;
-import at.jku.isse.ecco.mining.PresenceConditionMinimizer;
+import at.jku.isse.ecco.mining.ParallelMinimization;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
@@ -30,7 +28,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import org.logicng.formulas.Formula;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AssociationsView extends BorderPane implements EccoListener {
 
@@ -217,27 +215,21 @@ public class AssociationsView extends BorderPane implements EccoListener {
 							acceptedSuggestions.add(suggestion);
 						}
 					}
-					Formula featureModel = FeatureModelFormula.compile(acceptedSuggestions);
-
-					// mining/compiling above is one pass over history and comparatively fast; the SAT
-					// work in minimize() below is the actual per-association cost, so that's what the
-					// progress bar tracks.
-					List<? extends Association> associations = new ArrayList<>(AssociationsView.this.service.getRepository().getAssociations());
-					Map<String, String> computed = new HashMap<>();
-					for (int i = 0; i < associations.size(); i++) {
-						Association association = associations.get(i);
-						List<PresenceConditionMinimizer.Term> originalTerms = ModuleConditionBridge.toTerms(association.computeCondition());
-						List<PresenceConditionMinimizer.Term> minimizedTerms = PresenceConditionMinimizer.minimize(featureModel, originalTerms);
-						String minimizedText = PresenceConditionMinimizer.format(minimizedTerms);
-						computed.put(association.getId(), minimizedText);
-						updateProgress(i + 1, associations.size());
+					// mining above is one pass over history and comparatively fast; the SAT work in
+					// minimize() below is the actual per-association cost, so that's what the progress
+					// bar tracks. Associations are independent of each other, so ParallelMinimization
+					// runs them concurrently (one worker thread per core) rather than one at a time --
+					// on a large repository the sequential version could take tens of minutes.
+					List<Association> associations = new ArrayList<>(AssociationsView.this.service.getRepository().getAssociations());
+					AtomicInteger completedCount = new AtomicInteger(0);
+					return ParallelMinimization.minimizeAll(associations, acceptedSuggestions, (association, minimizedText) -> {
+						updateProgress(completedCount.incrementAndGet(), associations.size());
 
 						AssociationInfo info = infoByAssociationId.get(association.getId());
 						if (info != null) {
 							Platform.runLater(() -> info.setSimplifiedCondition(minimizedText));
 						}
-					}
-					return computed;
+					});
 				}
 
 				// hide/unbind the progress bar and re-enable the toolbar however the task ends --
