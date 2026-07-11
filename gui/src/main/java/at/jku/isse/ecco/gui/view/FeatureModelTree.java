@@ -149,9 +149,14 @@ public final class FeatureModelTree {
 	/**
 	 * Recursively assigns each feature an integer depth (root = 0) and an x "slot". A leaf, or a
 	 * single-child "chain" continuation (see below), claims the next free slot for itself; a real
-	 * branch (more than one child) is instead centered above the average of its children's slots -
-	 * the standard simple tree-drawing technique, sufficient for a readable diagram without a
-	 * dedicated layout library. Returns the assigned x so a branching parent call can average over it.
+	 * branch (more than one child) is instead centered at the <em>midpoint of its leftmost and
+	 * rightmost child's slot</em> - not the arithmetic mean of all children's slots. Mean pulls a
+	 * parent's position toward whichever child subtree happens to have the most descendants (a
+	 * child that is itself a single leaf counts the same as one with fifty descendants when
+	 * averaging, but the fifty-descendant subtree's own center is usually far from that leaf), which
+	 * looks visibly off-center once subtrees are uneven in size; min/max is the standard tree-drawing
+	 * centering rule and stays correct regardless of how lopsided the children's subtrees are.
+	 * Returns the assigned x so a branching parent call can center over it.
 	 * <p>
 	 * Depth only increases at an actual branch point - a feature with a single child passes its own
 	 * depth straight through to that child, rather than every single link in a chain claiming its own
@@ -187,11 +192,14 @@ public final class FeatureModelTree {
 				assignPositions(children.get(0), childDepth, rootIndex, childrenOf, introOrder, xPos, depthOf, rootIndexOf, nextLeafSlot);
 			}
 		} else {
-			double sum = 0;
+			double minX = Double.POSITIVE_INFINITY;
+			double maxX = Double.NEGATIVE_INFINITY;
 			for (Feature child : children) {
-				sum += assignPositions(child, childDepth, rootIndex, childrenOf, introOrder, xPos, depthOf, rootIndexOf, nextLeafSlot);
+				double childX = assignPositions(child, childDepth, rootIndex, childrenOf, introOrder, xPos, depthOf, rootIndexOf, nextLeafSlot);
+				minX = Math.min(minX, childX);
+				maxX = Math.max(maxX, childX);
 			}
-			x = sum / children.size();
+			x = (minX + maxX) / 2.0;
 		}
 		xPos.put(feature, x);
 		return x;

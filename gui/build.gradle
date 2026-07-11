@@ -28,6 +28,7 @@ dependencies {
 
     implementation project(':ecco-service')
     implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
+    implementation 'org.logicng:logicng:2.6.0'
 
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')

@@ -10,12 +10,14 @@ import at.jku.isse.ecco.cli.command.features.ListFeaturesCommand;
 import at.jku.isse.ecco.cli.command.fetch.FetchCommand;
 import at.jku.isse.ecco.cli.command.fork.ForkCommand;
 import at.jku.isse.ecco.cli.command.init.InitCommand;
+import at.jku.isse.ecco.cli.command.minimizepreview.MinimizePreviewCommand;
 import at.jku.isse.ecco.cli.command.property.GetCommand;
 import at.jku.isse.ecco.cli.command.property.SetCommand;
 import at.jku.isse.ecco.cli.command.pull.PullCommand;
 import at.jku.isse.ecco.cli.command.push.PushCommand;
 import at.jku.isse.ecco.cli.command.remotes.RemotesCommand;
 import at.jku.isse.ecco.cli.command.status.StatusCommand;
+import at.jku.isse.ecco.cli.command.suggestconstraints.SuggestConstraintsCommand;
 import at.jku.isse.ecco.cli.command.traces.TracesCommand;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -63,6 +65,8 @@ public class Main {
         registerRemotesCommand(commandParser);
         registerTracesCommand(commandParser);
         registerDependencyGraphCommand(commandParser);
+        registerSuggestConstraintsCommand(commandParser);
+        registerMinimizePreviewCommand(commandParser);
     }
 
     private static void registerCommitCommand(Subparsers commandParser) {
@@ -154,6 +158,27 @@ public class Main {
         Subparser dependencyGraphCommandParser = commandParser.addParser(DependencyGraphCommand.DG).aliases(DependencyGraphCommand.DEPENDENCY_GRAPH_ALIAS);
         dependencyGraphCommandParser.setDefault(ProgramConstants.COMMAND, DependencyGraphCommand.DG);
         commandRegister.register(DependencyGraphCommand.DG, new DependencyGraphCommand(eccoService));
+    }
+
+    private static void registerSuggestConstraintsCommand(Subparsers commandParser) {
+        Subparser suggestConstraintsCommandParser = commandParser.addParser(SuggestConstraintsCommand.SUGGEST_CONSTRAINTS);
+        suggestConstraintsCommandParser.setDefault(ProgramConstants.COMMAND, SuggestConstraintsCommand.SUGGEST_CONSTRAINTS);
+        suggestConstraintsCommandParser.addArgument(SuggestConstraintsCommand.FLAG_MIN_WITNESS)
+                .type(Integer.class).setDefault(4).help("minimum number of witnesses before a rule is proposed");
+        suggestConstraintsCommandParser.addArgument(SuggestConstraintsCommand.FLAG_CONFIDENCE)
+                .type(Double.class).setDefault(0.9).help("confidence threshold in [0,1]; 1.0 disables near-misses");
+        commandRegister.register(SuggestConstraintsCommand.SUGGEST_CONSTRAINTS, new SuggestConstraintsCommand(eccoService));
+    }
+
+    private static void registerMinimizePreviewCommand(Subparsers commandParser) {
+        Subparser minimizePreviewCommandParser = commandParser.addParser(MinimizePreviewCommand.MINIMIZE_PREVIEW);
+        minimizePreviewCommandParser.setDefault(ProgramConstants.COMMAND, MinimizePreviewCommand.MINIMIZE_PREVIEW);
+        minimizePreviewCommandParser.addArgument(MinimizePreviewCommand.ID_KEY).nargs("?").help("show only a single association's condition");
+        minimizePreviewCommandParser.addArgument(MinimizePreviewCommand.FLAG_MIN_WITNESS)
+                .type(Integer.class).setDefault(4).help("minimum number of witnesses for a constraint to be trusted");
+        minimizePreviewCommandParser.addArgument(MinimizePreviewCommand.FLAG_CONFIDENCE)
+                .type(Double.class).setDefault(0.9).help("confidence threshold in [0,1] (only hard, i.e. confidence-1.0, accepted constraints are ever actually applied)");
+        commandRegister.register(MinimizePreviewCommand.MINIMIZE_PREVIEW, new MinimizePreviewCommand(eccoService));
     }
 
     private static void registerSimpleCommand(Subparsers commandParser, String commandString, Command command) {
