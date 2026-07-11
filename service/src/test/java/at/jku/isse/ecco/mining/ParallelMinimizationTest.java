@@ -108,4 +108,49 @@ public class ParallelMinimizationTest {
         Map<String, String> result = ParallelMinimization.minimizeAll(List.of(), List.of(), null);
         assertTrue(result.isEmpty());
     }
+
+    /**
+     * Regression guard for {@code MinimizationResults}' cancellation-on-repository-close: the
+     * calling thread being interrupted must make {@code minimizeAll} give up (not silently finish
+     * the whole batch regardless), and must leave the thread's interrupted status set afterward so
+     * the caller can tell it was a cancellation, not a real failure (see
+     * {@code MinimizationResults.run()}'s {@code Thread.currentThread().isInterrupted()} check).
+     *
+     * <p>Pre-interrupting the calling thread before entry, rather than trying to interrupt a
+     * separate thread mid-flight, is what makes this deterministic instead of a timing-dependent
+     * race: {@link java.util.concurrent.BlockingQueue#take()} (which {@code CompletionService.take()}
+     * delegates to) is specified to check the interrupted status immediately and throw without
+     * blocking if it's already set.
+     */
+    @Test
+    @Timeout(10)
+    public void minimizeAll_respondsToAnAlreadyInterruptedCallingThread() throws IOException {
+        Path workDir = Files.createTempDirectory("parallel-minimization-interrupt-test");
+        Path repoDir = workDir.resolve(".ecco");
+        Path coreDir = workDir.resolve("core");
+        Files.createDirectories(coreDir);
+        Files.writeString(coreDir.resolve("core.txt"), "core\n");
+
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.init();
+            service.setBaseDir(coreDir);
+            service.commit("core", "Core");
+
+            List<Association> associations = new ArrayList<>(service.getRepository().getAssociations());
+            assertTrue(!associations.isEmpty(), "sanity check: need at least one association to reach the interruptible wait at all");
+
+            Thread.currentThread().interrupt();
+            try {
+                org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                        () -> ParallelMinimization.minimizeAll(associations, List.of(), null),
+                        "an already-interrupted calling thread should make minimizeAll give up instead of completing the batch");
+            } finally {
+                // Thread.interrupted() reads AND clears the flag: doubles as the assertion that
+                // minimizeAll correctly left it set for the caller, and as cleanup so it doesn't
+                // leak into whatever test JUnit runs next on this thread.
+                assertTrue(Thread.interrupted(), "interrupted status should still be set after minimizeAll propagates the interruption");
+            }
+        }
+    }
 }

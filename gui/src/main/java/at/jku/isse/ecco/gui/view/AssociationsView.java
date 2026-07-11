@@ -1,11 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.gui.ExceptionAlert;
-import at.jku.isse.ecco.mining.ConfigurationBridge;
-import at.jku.isse.ecco.mining.ConstraintMiner;
-import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
-import at.jku.isse.ecco.mining.ParallelMinimization;
+import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
@@ -18,6 +14,7 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
@@ -32,43 +29,48 @@ import javafx.scene.layout.StackPane;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class AssociationsView extends BorderPane implements EccoListener {
 
 	private static final double BAR_WIDTH = 60;
 	private static final double BAR_HEIGHT = 10;
 
-	// same defaults as SuggestConstraintsCommand/ConstraintSuggestionsView; no extra UI for these
-	// here since this button is a one-click "preview with today's accepted constraints" action.
-	private static final int MINIMIZE_MIN_WITNESS = 4;
-	private static final double MINIMIZE_CONFIDENCE = 0.9;
-
 	private EccoService service;
+	private final MinimizationResults minimizationResults;
 
 	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
-
-	/** Association id -> minimized condition text, from the last "Minimize Presence Conditions" run. */
-	private final Map<String, String> minimizedByAssociationId = new HashMap<>();
 
 	private final ProgressBar minimizeProgressBar = new ProgressBar(0);
 
 	private int maxNumArtifacts = 1;
 
 
-	public AssociationsView(EccoService service) {
+	public AssociationsView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
+		this.minimizationResults = minimizationResults;
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
 
+		// this view only ever displays minimization results -- triggering a run happens in the
+		// Feature Model tab, right after reviewing/accepting suggestions; see MinimizationResults.
 		this.minimizeProgressBar.setMaxWidth(Double.MAX_VALUE);
-		this.minimizeProgressBar.setVisible(false);
+		this.minimizeProgressBar.progressProperty().bind(minimizationResults.progressProperty());
+		this.minimizeProgressBar.visibleProperty().bind(minimizationResults.runningProperty());
 		this.setBottom(this.minimizeProgressBar);
+
+		// live: as the shared minimize run (triggered elsewhere) fills entries in, or an entry is
+		// dropped because its association no longer exists, push the change into whichever
+		// currently-displayed row has that association id, without needing a table refresh.
+		minimizationResults.getMinimizedByAssociationId().addListener((MapChangeListener<String, String>) change -> {
+			for (AssociationInfo info : AssociationsView.this.associationsData) {
+				if (info.getAssociation().getId().equals(change.getKey())) {
+					info.setSimplifiedCondition(change.wasAdded() ? change.getValueAdded() : null);
+					break;
+				}
+			}
+		});
 
 		Button refreshButton = new Button("Refresh");
 		toolBar.getItems().add(refreshButton);
@@ -87,11 +89,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 			new Thread(refreshTask).start();
 		});
-
-		Button minimizeButton = new Button("Minimize Presence Conditions");
-		toolBar.getItems().add(minimizeButton);
-		// setOnAction is wired further down, once associationsTable/associationDetailView exist --
-		// this button itself has to be created here so it lands next to Refresh in the toolbar.
 
 		toolBar.getItems().add(new Separator());
 
@@ -185,95 +182,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			}
 		});
 
-		minimizeButton.setOnAction(e -> {
-			toolBar.setDisable(true);
-
-			// snapshot id -> row now, on the FX thread, so the background task can push each
-			// association's result into its table row as soon as it's computed, incrementally --
-			// rather than only updating the table once at the very end.
-			Map<String, AssociationInfo> infoByAssociationId = new HashMap<>();
-			for (AssociationInfo info : AssociationsView.this.associationsData) {
-				infoByAssociationId.put(info.getAssociation().getId(), info);
-			}
-
-			Task<Map<String, String>> minimizeTask = new Task<Map<String, String>>() {
-				@Override
-				public Map<String, String> call() throws EccoException {
-					// same pipeline as the CLI's MinimizePreviewCommand: re-mine fresh (never trust
-					// cached accept-time hardness -- a later commit may have added a counterexample
-					// since), filter to accepted signatures, compile once, then reuse that one
-					// feature-model formula across every association rather than re-mining per row.
-					updateProgress(0, 1);
-					List<Set<String>> configs = ConfigurationBridge.readConfigurations(AssociationsView.this.service);
-					List<ConstraintMiner.Suggestion> mined =
-							new ConstraintMiner(MINIMIZE_MIN_WITNESS, MINIMIZE_CONFIDENCE, null).mine(configs);
-					Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(AssociationsView.this.service.getRepositoryDir());
-
-					List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
-					for (ConstraintMiner.Suggestion suggestion : mined) {
-						if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {
-							acceptedSuggestions.add(suggestion);
-						}
-					}
-					// mining above is one pass over history and comparatively fast; the SAT work in
-					// minimize() below is the actual per-association cost, so that's what the progress
-					// bar tracks. Associations are independent of each other, so ParallelMinimization
-					// runs them concurrently (one worker thread per core) rather than one at a time --
-					// on a large repository the sequential version could take tens of minutes.
-					List<Association> associations = new ArrayList<>(AssociationsView.this.service.getRepository().getAssociations());
-					AtomicInteger completedCount = new AtomicInteger(0);
-					return ParallelMinimization.minimizeAll(associations, acceptedSuggestions, (association, minimizedText) -> {
-						updateProgress(completedCount.incrementAndGet(), associations.size());
-
-						AssociationInfo info = infoByAssociationId.get(association.getId());
-						if (info != null) {
-							Platform.runLater(() -> info.setSimplifiedCondition(minimizedText));
-						}
-					});
-				}
-
-				// hide/unbind the progress bar and re-enable the toolbar however the task ends --
-				// succeeded() and failed() both run on the FX thread regardless of which branch of
-				// call() was taken, unlike code placed only at the end of call() itself, which a
-				// thrown exception would skip entirely.
-				private void finished() {
-					AssociationsView.this.minimizeProgressBar.progressProperty().unbind();
-					AssociationsView.this.minimizeProgressBar.setVisible(false);
-					toolBar.setDisable(false);
-				}
-
-				@Override
-				public void succeeded() {
-					super.succeeded();
-
-					// kept around so a subsequent Refresh can restore each row's column instead of
-					// resetting it to empty; the column itself was already updated incrementally,
-					// per-row, during call() above.
-					AssociationsView.this.minimizedByAssociationId.clear();
-					AssociationsView.this.minimizedByAssociationId.putAll(this.getValue());
-
-					this.finished();
-				}
-
-				@Override
-				public void failed() {
-					super.failed();
-					this.finished();
-
-					ExceptionAlert alert = new ExceptionAlert(this.getException());
-					alert.setTitle("Minimize Presence Conditions Error");
-					alert.setHeaderText("Minimize Presence Conditions Error");
-					alert.showAndWait();
-				}
-			};
-
-			this.minimizeProgressBar.progressProperty().bind(minimizeTask.progressProperty());
-			this.minimizeProgressBar.setVisible(true);
-
-			new Thread(minimizeTask).start();
-		});
-
-
 		// add to split pane
 		splitPane.getItems().addAll(associationsTable, associationDetailView);
 
@@ -290,10 +198,10 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		List<AssociationInfo> associationInfos = new ArrayList<>();
 		int max = 1;
 		for (Association association : associations) {
-			// restore from the last minimize run if we have it, rather than resetting the column to
-			// empty on every refresh (a plain Refresh doesn't necessarily mean the feature model or
-			// conditions actually changed)
-			AssociationInfo associationInfo = new AssociationInfo(association, this.minimizedByAssociationId.get(association.getId()));
+			// seed from the shared model's current state, rather than resetting the column to empty
+			// on every refresh (a plain Refresh doesn't necessarily mean minimization results are
+			// stale) -- kept in sync afterward by the MapChangeListener registered in the constructor
+			AssociationInfo associationInfo = new AssociationInfo(association, this.minimizationResults.getMinimizedByAssociationId().get(association.getId()));
 			max = Math.max(max, associationInfo.getNumArtifacts());
 			associationInfos.add(associationInfo);
 		}
@@ -314,7 +222,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			Platform.runLater(() -> {
 				this.setDisable(true);
 				this.updateAssociations(Collections.emptyList());
-				this.minimizedByAssociationId.clear();
 			});
 		}
 	}
@@ -331,8 +238,8 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		private IntegerProperty numArtifacts;
 
 		/**
-		 * Empty until a "Minimize Presence Conditions" run fills it in (see
-		 * {@link AssociationsView}'s minimize button) -- unlike the old
+		 * Empty until a "Minimize Presence Conditions" run (triggered from the Feature Model tab;
+		 * see {@link at.jku.isse.ecco.gui.MinimizationResults}) fills it in -- unlike the old
 		 * {@code getSimpleModuleRevisionConditionString()}-backed column, this is a real,
 		 * SAT-verified minimization under the accepted feature model, not a truncation to the
 		 * lowest-order module(s).

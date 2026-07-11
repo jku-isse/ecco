@@ -80,7 +80,13 @@ public final class ParallelMinimization {
             }
             return result;
         } finally {
-            executor.shutdown();
+            // shutdownNow(), not shutdown(): in the normal-completion path every submitted task has
+            // already been pulled via the loop above, so there's nothing left to cancel and this is
+            // no different from a graceful shutdown -- but on the interrupted/cancelled path (e.g.
+            // the repository closed mid-run), this is what actually stops queued-but-not-yet-started
+            // associations from ever starting, and best-effort interrupts whatever's still running,
+            // instead of letting the entire remaining batch grind on in the background regardless.
+            executor.shutdownNow();
         }
     }
 }

@@ -6,6 +6,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.io.ConfigurationPickerDialog;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
@@ -16,6 +17,7 @@ import javafx.application.Platform;
 import javafx.beans.binding.When;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
+import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
@@ -46,6 +48,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     private static final double BAR_HEIGHT = 10;
 
     private final EccoService service;
+    private final MinimizationResults minimizationResults;
 
     private final ObservableList<AssociationInfoImpl> associationsData = FXCollections.observableArrayList();
     private int maxNumArtifacts = 1;
@@ -58,13 +61,33 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     private final AtomicLong refreshGeneration = new AtomicLong();
 
 
-    public ArtifactsView(final EccoService service) {
+    public ArtifactsView(final EccoService service, MinimizationResults minimizationResults) {
         this.service = service;
+        this.minimizationResults = minimizationResults;
+
+        // this view only ever displays minimization results -- triggering a run happens in the
+        // Feature Model tab, right after reviewing/accepting suggestions; see MinimizationResults.
+        // Live: as the shared run (or an undo of one) changes an entry, push it into whichever
+        // currently-displayed row has that association id, without needing a table refresh.
+        minimizationResults.getMinimizedByAssociationId().addListener((MapChangeListener<String, String>) change -> {
+            for (AssociationInfoImpl info : ArtifactsView.this.associationsData) {
+                if (info.getAssociation().getId().equals(change.getKey())) {
+                    info.setMinimizedCondition(change.wasAdded() ? change.getValueAdded() : null);
+                    break;
+                }
+            }
+        });
 
 
         // toolbar
         toolBar = new ToolBar();
         this.setTop(toolBar);
+
+        ProgressBar minimizeProgressBar = new ProgressBar(0);
+        minimizeProgressBar.setMaxWidth(Double.MAX_VALUE);
+        minimizeProgressBar.progressProperty().bind(minimizationResults.progressProperty());
+        minimizeProgressBar.visibleProperty().bind(minimizationResults.runningProperty());
+        this.setBottom(minimizeProgressBar);
 
         Button refreshButton = new Button("Refresh");
 
@@ -125,7 +148,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         associationsTable.getColumns().setAll(associationsCol);
 
         idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-        conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
+        // "then" is a live property (see MinimizationResults/AssociationInfoImpl), not a one-shot
+        // computed string, so this column updates on its own as a shared "Minimize Presence
+        // Conditions" run fills it in -- unlike the old getSimpleModuleRevisionConditionString(),
+        // which was a truncation to the lowest-order module(s), not a real minimization, and was
+        // only ever computed once per row build.
+        conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().minimizedConditionProperty()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
         numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
         numArtifactsAssociationsCol.setCellFactory(col -> new TableCell<AssociationInfoImpl, Integer>() {
             private final Region track = new Region();
@@ -509,7 +537,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             this.associationsData.clear();
             int index = 0;
             for (Association a : result.associations) {
-                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a);
+                // seed from the shared model's current state (see MinimizationResults), rather than
+                // resetting to empty on every refresh; kept in sync afterward by the
+                // MapChangeListener registered in the constructor
+                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, this.minimizationResults.getMinimizedByAssociationId().get(a.getId()));
                 // color is only actually assigned once the association is selected (so the
                 // "Highlighted" column and the code viewers stay blank for everything else),
                 // but its slot is fixed now so the color stays the same association's color

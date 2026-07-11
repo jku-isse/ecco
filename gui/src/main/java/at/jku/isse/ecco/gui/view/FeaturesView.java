@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
 import at.jku.isse.ecco.service.EccoService;
@@ -82,7 +83,7 @@ public class FeaturesView extends BorderPane implements EccoListener {
 
 	private boolean showLabels = true;
 
-	public FeaturesView(EccoService service) {
+	public FeaturesView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
 
 		this.toolBar = new ToolBar();
@@ -180,7 +181,7 @@ public class FeaturesView extends BorderPane implements EccoListener {
 		this.graphContainer.setBottom(horizontalScrollBar);
 		this.graphContainer.setRight(verticalScrollBar);
 
-		this.suggestionsView = new ConstraintSuggestionsView(service, this::refreshNow);
+		this.suggestionsView = new ConstraintSuggestionsView(service, this::refreshNow, minimizationResults);
 		this.splitPane = new SplitPane(graphContainer, suggestionsView);
 		this.splitPane.setDividerPositions(0.7);
 		this.setCenter(this.splitPane);
