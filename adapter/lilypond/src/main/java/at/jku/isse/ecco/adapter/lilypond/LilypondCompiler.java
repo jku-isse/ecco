@@ -24,12 +24,10 @@ import java.util.stream.Stream;
 public class LilypondCompiler {
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
 
-    private final Path startupPath = Path.of(System.getProperty("user.dir"));
-    private final Path basePath = startupPath.getParent();
     private final static Path lilypond_exe = getLilypondPath();
     private final static Path[] lilypond_searchPaths = getLilypondSearchPaths();
 
-    private final Path workingDir = basePath.getParent().resolve("compiled");
+    private final Path workingDir = Path.of(System.getProperty("java.io.tmpdir")).resolve("ecco-lilypond-compiled");
     private final String inFile = "input.ly";
     private final String outName = "image";
     private static final String CROPPED_SUFFIX = ".cropped.png";
