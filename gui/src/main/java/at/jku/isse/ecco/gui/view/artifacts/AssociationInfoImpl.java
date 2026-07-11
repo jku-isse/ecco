@@ -18,9 +18,20 @@ public class AssociationInfoImpl implements AssociationInfo {
 
     private final IntegerProperty numArtifacts;
 
+    /**
+     * Empty until a "Minimize Presence Conditions" run (triggered from the Feature Model tab; see
+     * {@link at.jku.isse.ecco.gui.MinimizationResults}) fills it in -- kept live in sync by a
+     * listener on the shared model, not recomputed per row build.
+     */
+    private final StringProperty minimizedCondition;
+
     private final LinkedList<PropertyChangeListener> listeners;
 
     public AssociationInfoImpl(Association association) {
+        this(association, null);
+    }
+
+    public AssociationInfoImpl(Association association, String minimizedCondition) {
         this.association = association;
         this.listeners = new LinkedList<>();
         this.selected = new SimpleBooleanProperty(false);
@@ -32,6 +43,7 @@ public class AssociationInfoImpl implements AssociationInfo {
         this.color = new SimpleObjectProperty<>(Color.TRANSPARENT);
         this.color.addListener((observable, oldValue, newValue) ->
                 onPropertyChanged("color", oldValue, newValue));
+        this.minimizedCondition = new SimpleStringProperty(minimizedCondition == null ? "" : minimizedCondition);
     }
 
     @Override
@@ -89,6 +101,18 @@ public class AssociationInfoImpl implements AssociationInfo {
 
     public IntegerProperty numArtifactsProperty() {
         return this.numArtifacts;
+    }
+
+    public String getMinimizedCondition() {
+        return this.minimizedCondition.get();
+    }
+
+    public void setMinimizedCondition(String minimizedCondition) {
+        this.minimizedCondition.set(minimizedCondition == null ? "" : minimizedCondition);
+    }
+
+    public StringProperty minimizedConditionProperty() {
+        return this.minimizedCondition;
     }
 
     private void onPropertyChanged(String propertyName, Object oldValue, Object newValue) {

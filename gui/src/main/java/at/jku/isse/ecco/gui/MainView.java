@@ -105,13 +105,17 @@ public class MainView extends BorderPane implements EccoListener {
 
 		// CORE
 
+		// one shared "Minimize Presence Conditions" run, triggered from the Feature Model tab and
+		// observed by every other view that displays a minimized condition
+		MinimizationResults minimizationResults = new MinimizationResults(eccoService);
+
 		// features
 		Tab featuresTab = new Tab();
 		featuresTab.setText("Feature Model");
 		featuresTab.setClosable(false);
 		tabPane.getTabs().add(featuresTab);
 
-		FeaturesView featuresView = new FeaturesView(eccoService);
+		FeaturesView featuresView = new FeaturesView(eccoService, minimizationResults);
 		featuresTab.setContent(featuresView);
 		featuresView.setTabVisible(featuresTab.isSelected());
 		featuresTab.selectedProperty().addListener((obs, wasSelected, isSelected) -> featuresView.setTabVisible(isSelected));
@@ -140,7 +144,7 @@ public class MainView extends BorderPane implements EccoListener {
 		associationsTab.setClosable(false);
 		tabPane.getTabs().add(associationsTab);
 
-		AssociationsView associationsView = new AssociationsView(eccoService);
+		AssociationsView associationsView = new AssociationsView(eccoService, minimizationResults);
 		associationsTab.setContent(associationsView);
 
 		// artifacts
@@ -149,7 +153,7 @@ public class MainView extends BorderPane implements EccoListener {
 		artifactTab.setClosable(false);
 		tabPane.getTabs().add(artifactTab);
 
-		ArtifactsView artifactsView = new ArtifactsView(eccoService);
+		ArtifactsView artifactsView = new ArtifactsView(eccoService, minimizationResults);
 		artifactTab.setContent(artifactsView);
 
 

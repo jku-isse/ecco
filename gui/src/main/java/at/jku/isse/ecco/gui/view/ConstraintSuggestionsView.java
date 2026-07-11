@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.gui.EditableSpinner;
+import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
@@ -53,7 +54,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     /** Notified after any accept/reject/undo decision, so the feature graph can re-render. */
     private final Runnable onReviewChanged;
 
-    public ConstraintSuggestionsView(EccoService service, Runnable onReviewChanged) {
+    public ConstraintSuggestionsView(EccoService service, Runnable onReviewChanged, MinimizationResults minimizationResults) {
         this.service = service;
         this.onReviewChanged = onReviewChanged;
 
@@ -80,13 +81,25 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         Button refreshButton = new Button("Refresh");
         refreshButton.setOnAction(e -> refresh());
 
+        // this is where a human naturally is right after reviewing/accepting suggestions, so this
+        // is where the (shared, single) minimize run is triggered from -- see MinimizationResults;
+        // Associations/Artifacts only ever display its results, they don't trigger their own.
+        Button minimizeButton = new Button("Minimize Presence Conditions");
+        minimizeButton.setOnAction(e -> minimizationResults.run());
+        minimizeButton.disableProperty().bind(minimizationResults.runningProperty());
+        ProgressBar minimizeProgressBar = new ProgressBar(0);
+        minimizeProgressBar.progressProperty().bind(minimizationResults.progressProperty());
+        minimizeProgressBar.visibleProperty().bind(minimizationResults.runningProperty());
+
         this.toolBar = new ToolBar();
         toolBar.getItems().setAll(
                 new Label("Min witness: "), minWitnessSpinner,
                 new Separator(),
                 new Label("Confidence: "), confidenceSpinner,
                 new Separator(),
-                refreshButton);
+                refreshButton,
+                new Separator(),
+                minimizeButton, minimizeProgressBar);
         this.setTop(toolBar);
 
         // pending suggestions table
