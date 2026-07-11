@@ -7,13 +7,12 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
-import at.jku.isse.ecco.mining.FeatureModelFormula;
 import at.jku.isse.ecco.mining.ModuleConditionBridge;
+import at.jku.isse.ecco.mining.ParallelMinimization;
 import at.jku.isse.ecco.mining.PresenceConditionMinimizer;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;
-import org.logicng.formulas.Formula;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,27 +66,36 @@ public class MinimizePreviewCommand implements Command {
                 acceptedSuggestions.add(suggestion);
             }
         }
-        Formula featureModel = FeatureModelFormula.compile(acceptedSuggestions);
         long hardCount = acceptedSuggestions.stream().filter(ConstraintMiner.Suggestion::isHard).count();
 
         writer.println("Feature model: " + hardCount + " accepted hard constraint(s) compiled (of "
                 + accepted.size() + " accepted total; near-misses and stale/unreproducible ones are excluded).");
         writer.println("");
 
+        List<Association> associations = new ArrayList<>();
         for (Association association : eccoService.getRepository().getAssociations()) {
-            if (id != null && !association.getId().equals(id)) continue;
-
-            Condition condition = association.computeCondition();
-            List<PresenceConditionMinimizer.Term> originalTerms = ModuleConditionBridge.toTerms(condition);
-            List<PresenceConditionMinimizer.Term> minimizedTerms = PresenceConditionMinimizer.minimize(featureModel, originalTerms);
-
-            String originalString = PresenceConditionMinimizer.format(originalTerms);
-            String minimizedString = PresenceConditionMinimizer.format(minimizedTerms);
-
-            writer.println("[" + association.getId() + "] " + (originalString.equals(minimizedString) ? "(unchanged)" : "(simplified)"));
-            writer.println("  original:  " + originalString);
-            writer.println("  minimized: " + minimizedString);
+            if (id == null || association.getId().equals(id)) associations.add(association);
         }
+
+        // associations are independent of each other, so minimize them in parallel (one worker
+        // thread per core) -- the actual bottleneck is SAT solving per association, not this loop.
+        // Print as each one finishes (completion order, not associations' original order) rather
+        // than waiting for all of them: on a large repository a handful of very large associations
+        // can each take minutes on their own, and printing nothing at all until every one of them is
+        // done -- most of which finish almost immediately -- would be a worse experience than the
+        // old sequential version, not a better one. The three lines per association are printed
+        // together (synchronized) so two associations finishing at the same time can't interleave.
+        Object printLock = new Object();
+        ParallelMinimization.minimizeAll(associations, acceptedSuggestions, (association, minimizedString) -> {
+            Condition condition = association.computeCondition();
+            String originalString = PresenceConditionMinimizer.format(ModuleConditionBridge.toTerms(condition));
+
+            synchronized (printLock) {
+                writer.println("[" + association.getId() + "] " + (originalString.equals(minimizedString) ? "(unchanged)" : "(simplified)"));
+                writer.println("  original:  " + originalString);
+                writer.println("  minimized: " + minimizedString);
+            }
+        });
 
         eccoService.close();
     }

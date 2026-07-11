@@ -6,6 +6,7 @@ import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.solvers.MiniSat;
 import org.logicng.solvers.SATSolver;
+import org.logicng.solvers.SolverState;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -78,36 +79,49 @@ public final class PresenceConditionMinimizer {
     /**
      * Returns a DNF equivalent to {@code terms} everywhere {@code featureModel} holds, with
      * redundant literals and wholly-redundant terms greedily removed.
+     *
+     * <p>One {@link SATSolver} is created for the whole call, with {@code featureModel} added once
+     * and every per-candidate check done via {@link SATSolver#saveState()}/{@code loadState} (a
+     * push/pop, not a fresh solver) -- for an association with many terms this used to construct and
+     * re-encode a brand new solver, including re-adding the entire (potentially large)
+     * {@code featureModel}, for every single literal/term candidate; on a real repository with many
+     * hard accepted constraints and associations with dozens of OR-terms, that repeated setup cost
+     * was the actual bottleneck, not the SAT solving itself. Reusing one solver changes nothing about
+     * what is checked or how the result is interpreted -- see {@link #isEquivalentUnderCareSet}.
      */
     public static List<Term> minimize(Formula featureModel, List<Term> terms) {
         List<Term> current = new ArrayList<>(terms);
         Formula original = toFormula(current);
 
+        FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
+        SATSolver solver = MiniSat.miniSat(f);
+        solver.add(featureModel);
+
         // drop wholly-redundant terms first: cheaper, and shrinks the literal-removal search
         for (int i = current.size() - 1; i >= 0; i--) {
             List<Term> candidate = new ArrayList<>(current);
             candidate.remove(i);
-            if (isEquivalentUnderCareSet(featureModel, original, toFormula(candidate))) {
+            if (isEquivalentUnderCareSet(solver, original, toFormula(candidate))) {
                 current = candidate;
             }
         }
 
         for (int i = 0; i < current.size(); i++) {
             for (String name : new LinkedHashSet<>(current.get(i).positive)) {
-                current = tryReplace(featureModel, original, current, i, withoutPositive(current.get(i), name));
+                current = tryReplace(solver, original, current, i, withoutPositive(current.get(i), name));
             }
             for (String name : new LinkedHashSet<>(current.get(i).negative)) {
-                current = tryReplace(featureModel, original, current, i, withoutNegative(current.get(i), name));
+                current = tryReplace(solver, original, current, i, withoutNegative(current.get(i), name));
             }
         }
 
         return current;
     }
 
-    private static List<Term> tryReplace(Formula featureModel, Formula original, List<Term> current, int index, Term shrunkTerm) {
+    private static List<Term> tryReplace(SATSolver solver, Formula original, List<Term> current, int index, Term shrunkTerm) {
         List<Term> candidate = new ArrayList<>(current);
         candidate.set(index, shrunkTerm);
-        if (isEquivalentUnderCareSet(featureModel, original, toFormula(candidate))) {
+        if (isEquivalentUnderCareSet(solver, original, toFormula(candidate))) {
             return candidate;
         }
         return current;
@@ -125,12 +139,20 @@ public final class PresenceConditionMinimizer {
         return new Term(term.positive, negative);
     }
 
-    /** True iff {@code featureModel} implies {@code a <-> b}, checked by SAT-refuting its negation. */
-    private static boolean isEquivalentUnderCareSet(Formula featureModel, Formula a, Formula b) {
+    /**
+     * True iff {@code featureModel} implies {@code a <-> b}, checked by SAT-refuting its negation --
+     * {@code featureModel} is already in {@code solver} (added once by the caller); this only pushes
+     * the per-candidate {@code NOT(a <-> b)} clause, solves, and pops it back off, leaving the solver
+     * exactly as it was for the next candidate.
+     */
+    private static boolean isEquivalentUnderCareSet(SATSolver solver, Formula a, Formula b) {
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
-        Formula disagreement = f.and(featureModel, f.not(f.equivalence(a, b)));
-        SATSolver solver = MiniSat.miniSat(f);
-        solver.add(disagreement);
-        return solver.sat() == Tristate.FALSE;
+        SolverState state = solver.saveState();
+        try {
+            solver.add(f.not(f.equivalence(a, b)));
+            return solver.sat() == Tristate.FALSE;
+        } finally {
+            solver.loadState(state);
+        }
     }
 }
