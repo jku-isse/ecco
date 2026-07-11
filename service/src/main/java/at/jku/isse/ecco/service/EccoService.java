@@ -13,6 +13,7 @@ import at.jku.isse.ecco.maintree.building.AssociationMerger;
 import at.jku.isse.ecco.maintree.building.BoostedAssociationMerger;
 import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.maintree.factory.MainTreeBuildingStrategyFactory;
+import at.jku.isse.ecco.mining.*;
 import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.repository.*;
 import at.jku.isse.ecco.service.listener.*;
@@ -23,6 +24,7 @@ import at.jku.isse.ecco.tree.*;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.*;
+import org.logicng.formulas.Formula;
 
 import java.io.*;
 import java.net.*;
@@ -1900,6 +1902,39 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    private volatile boolean surplusSuppressionEnabled = true;
+
+    /**
+     * Controls whether {@link #compose} suppresses {@link Checkout#getSurplusModules()} entries
+     * already provably implied by the accepted feature model (see {@link SurplusModuleSuppressor}).
+     * On by default; an escape hatch in case the mining cost this requires on every {@link #compose}
+     * call (when there's a non-empty surplus map to check) proves unacceptable in practice.
+     *
+     * @param enabled Whether surplus-module suppression should run.
+     */
+    public synchronized void setSurplusSuppressionEnabled(boolean enabled) {
+        this.surplusSuppressionEnabled = enabled;
+    }
+
+    /**
+     * Mines fresh from the currently committed configurations and filters to the signatures already
+     * accepted for this repository -- the same construction sequence used by
+     * {@code MinimizePreviewCommand}/{@code MinimizationResults}' "minimize" pipeline, kept in sync
+     * with those rather than diverging into a second implementation.
+     */
+    private List<ConstraintMiner.Suggestion> acceptedSuggestions() {
+        List<Set<String>> configs = ConfigurationBridge.readConfigurations(this);
+        List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
+        Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(this.getRepositoryDir());
+        List<ConstraintMiner.Suggestion> result = new ArrayList<>();
+        for (ConstraintMiner.Suggestion suggestion : mined) {
+            if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {
+                result.add(suggestion);
+            }
+        }
+        return result;
+    }
+
     /**
      * Composes checkout with given configuration.
      *
@@ -1910,7 +1945,20 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.checkInitialized();
         checkNotNull(configuration);
         Repository.Op repository = this.repositoryDao.load();
-        return repository.compose(configuration);
+        Checkout checkout = repository.compose(configuration);
+        if (this.surplusSuppressionEnabled && !checkout.getSurplusModules().isEmpty()) {
+            try {
+                List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions();
+                Formula revisionAwareFeatureModel =
+                        FeatureModelFormula.compileRevisionAware(acceptedSuggestions, repository.getFeatures());
+                Set<ModuleRevision> desiredModules =
+                        new HashSet<>(repository.getOrphanedConfigurationModules(configuration));
+                SurplusModuleSuppressor.suppressEntailed(checkout, desiredModules, revisionAwareFeatureModel);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Surplus-module suppression failed; leaving surplus warnings as-is.", e);
+            }
+        }
+        return checkout;
     }
 
     /**

@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.mining;
 
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
+import at.jku.isse.ecco.storage.ser.feature.SerFeature;
+import at.jku.isse.ecco.storage.ser.feature.SerFeatureRevision;
 import org.junit.jupiter.api.Test;
 import org.logicng.datastructures.Tristate;
 import org.logicng.formulas.Formula;
@@ -77,5 +79,53 @@ public class FeatureModelFormulaTest {
 
         assertTrue(satisfiable(f.and(formula, f.literal("A", true), f.literal("B", false))),
                 "near-miss must not be compiled as a hard constraint");
+    }
+
+    @Test
+    public void compileRevisionAware_atMostOneRevisionPerFeature_forbidsBothRevisionsTrue() {
+        SerFeature feature = new SerFeature("f1", "Core");
+        SerFeatureRevision r1 = feature.addRevision("1");
+        SerFeatureRevision r2 = feature.addRevision("2");
+
+        Formula formula = FeatureModelFormula.compileRevisionAware(List.of(), List.of(feature));
+        FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
+
+        assertFalse(satisfiable(f.and(formula,
+                f.literal(r1.getLogicLiteralRepresentation(), true),
+                f.literal(r2.getLogicLiteralRepresentation(), true))),
+                "two revisions of the same feature must never be simultaneously selectable");
+        assertTrue(satisfiable(f.and(formula, f.literal(r1.getLogicLiteralRepresentation(), true))),
+                "selecting just one revision must remain satisfiable");
+    }
+
+    @Test
+    public void compileRevisionAware_linkClause_revisionTrueEntailsFeatureTrue() {
+        SerFeature feature = new SerFeature("f1", "Core");
+        SerFeatureRevision r1 = feature.addRevision("1");
+
+        Formula formula = FeatureModelFormula.compileRevisionAware(List.of(), List.of(feature));
+        FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
+
+        assertFalse(satisfiable(f.and(formula,
+                f.literal(r1.getLogicLiteralRepresentation(), true),
+                f.literal("Core", false))),
+                "selecting a revision without its feature being present must be unsatisfiable");
+    }
+
+    @Test
+    public void compileRevisionAware_propagatesMinedFeatureLevelConstraintsToRevisionAtoms() {
+        SerFeature core = new SerFeature("f1", "Core");
+        SerFeatureRevision coreR1 = core.addRevision("1");
+        SerFeature other = new SerFeature("f2", "SomeFeature");
+
+        ConstraintMiner.Suggestion excludes = new ConstraintMiner.Suggestion(
+                ConstraintMiner.Kind.EXCLUDES, "Core", "SomeFeature", 0.5, 1.0, 4, List.of());
+        Formula formula = FeatureModelFormula.compileRevisionAware(List.of(excludes), List.of(core, other));
+        FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
+
+        assertFalse(satisfiable(f.and(formula,
+                f.literal(coreR1.getLogicLiteralRepresentation(), true),
+                f.literal("SomeFeature", true))),
+                "a mined feature-name-level EXCLUDES must forbid the excluded feature even when only a revision atom of the other side is asserted");
     }
 }
