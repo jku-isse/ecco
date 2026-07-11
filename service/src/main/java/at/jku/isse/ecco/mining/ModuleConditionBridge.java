@@ -1,8 +1,10 @@
 package at.jku.isse.ecco.mining;
 
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
+import at.jku.isse.ecco.module.ModuleRevision;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,5 +41,31 @@ public final class ModuleConditionBridge {
             terms.add(new PresenceConditionMinimizer.Term(positive, negative));
         }
         return terms;
+    }
+
+    /**
+     * Builds ONE revision-exact {@link PresenceConditionMinimizer.Term} for a single
+     * {@code ModuleRevision}: positive side uses {@link FeatureRevision#getLogicLiteralRepresentation()}
+     * (revision-exact atoms), negative side stays plain feature names (mirrors
+     * {@code ModuleRevision.getNeg(): Feature[]}'s own semantics -- exclusion is "at any revision",
+     * asymmetric by design versus the positive side).
+     *
+     * <p><b>Atom-vocabulary warning</b>: the atoms here are NOT the same vocabulary as
+     * {@link #toTerms(Condition)} (feature-name-only). A {@link PresenceConditionMinimizer.Term}
+     * from this method must only be combined, via SAT, with a formula from
+     * {@link FeatureModelFormula#compileRevisionAware} -- never with {@link FeatureModelFormula#compile}
+     * or with feature-name-only {@code Term}s; mixing the two silently produces a meaningless SAT
+     * problem, no error.
+     */
+    public static PresenceConditionMinimizer.Term toRevisionTerm(ModuleRevision moduleRevision) {
+        Set<String> positive = new HashSet<>();
+        for (FeatureRevision featureRevision : moduleRevision.getPos()) {
+            positive.add(featureRevision.getLogicLiteralRepresentation());
+        }
+        Set<String> negative = new HashSet<>();
+        for (Feature feature : moduleRevision.getNeg()) {
+            negative.add(feature.getName());
+        }
+        return new PresenceConditionMinimizer.Term(positive, negative);
     }
 }
