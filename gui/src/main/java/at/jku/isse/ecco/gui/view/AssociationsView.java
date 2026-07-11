@@ -1,6 +1,13 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.mining.ConfigurationBridge;
+import at.jku.isse.ecco.mining.ConstraintMiner;
+import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
+import at.jku.isse.ecco.mining.FeatureModelFormula;
+import at.jku.isse.ecco.mining.ModuleConditionBridge;
+import at.jku.isse.ecco.mining.PresenceConditionMinimizer;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
@@ -10,6 +17,8 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -21,20 +30,34 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import org.logicng.formulas.Formula;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AssociationsView extends BorderPane implements EccoListener {
 
 	private static final double BAR_WIDTH = 60;
 	private static final double BAR_HEIGHT = 10;
 
+	// same defaults as SuggestConstraintsCommand/ConstraintSuggestionsView; no extra UI for these
+	// here since this button is a one-click "preview with today's accepted constraints" action.
+	private static final int MINIMIZE_MIN_WITNESS = 4;
+	private static final double MINIMIZE_CONFIDENCE = 0.9;
+
 	private EccoService service;
 
 	private final ObservableList<AssociationInfo> associationsData = FXCollections.observableArrayList();
+
+	/** Association id -> minimized condition text, from the last "Minimize Presence Conditions" run. */
+	private final Map<String, String> minimizedByAssociationId = new HashMap<>();
+
+	private final ProgressBar minimizeProgressBar = new ProgressBar(0);
 
 	private int maxNumArtifacts = 1;
 
@@ -44,6 +67,10 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
+
+		this.minimizeProgressBar.setMaxWidth(Double.MAX_VALUE);
+		this.minimizeProgressBar.setVisible(false);
+		this.setBottom(this.minimizeProgressBar);
 
 		Button refreshButton = new Button("Refresh");
 		toolBar.getItems().add(refreshButton);
@@ -62,6 +89,11 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 			new Thread(refreshTask).start();
 		});
+
+		Button minimizeButton = new Button("Minimize Presence Conditions");
+		toolBar.getItems().add(minimizeButton);
+		// setOnAction is wired further down, once associationsTable/associationDetailView exist --
+		// this button itself has to be created here so it lands next to Refresh in the toolbar.
 
 		toolBar.getItems().add(new Separator());
 
@@ -93,7 +125,9 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		associationsTable.getColumns().setAll(associationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().getSimpleModuleRevisionConditionString()));
+		// a live property, not a one-shot computed string: cells update on their own as
+		// "Minimize Presence Conditions" fills each association in, no manual table refresh needed.
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> param.getValue().simplifiedConditionProperty());
 		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 		numArtifactsAssociationsCol.setCellFactory(col -> new TableCell<AssociationInfo, Integer>() {
 			private final Region track = new Region();
@@ -153,6 +187,100 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			}
 		});
 
+		minimizeButton.setOnAction(e -> {
+			toolBar.setDisable(true);
+
+			// snapshot id -> row now, on the FX thread, so the background task can push each
+			// association's result into its table row as soon as it's computed, incrementally --
+			// rather than only updating the table once at the very end.
+			Map<String, AssociationInfo> infoByAssociationId = new HashMap<>();
+			for (AssociationInfo info : AssociationsView.this.associationsData) {
+				infoByAssociationId.put(info.getAssociation().getId(), info);
+			}
+
+			Task<Map<String, String>> minimizeTask = new Task<Map<String, String>>() {
+				@Override
+				public Map<String, String> call() throws EccoException {
+					// same pipeline as the CLI's MinimizePreviewCommand: re-mine fresh (never trust
+					// cached accept-time hardness -- a later commit may have added a counterexample
+					// since), filter to accepted signatures, compile once, then reuse that one
+					// feature-model formula across every association rather than re-mining per row.
+					updateProgress(0, 1);
+					List<Set<String>> configs = ConfigurationBridge.readConfigurations(AssociationsView.this.service);
+					List<ConstraintMiner.Suggestion> mined =
+							new ConstraintMiner(MINIMIZE_MIN_WITNESS, MINIMIZE_CONFIDENCE, null).mine(configs);
+					Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(AssociationsView.this.service.getRepositoryDir());
+
+					List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
+					for (ConstraintMiner.Suggestion suggestion : mined) {
+						if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {
+							acceptedSuggestions.add(suggestion);
+						}
+					}
+					Formula featureModel = FeatureModelFormula.compile(acceptedSuggestions);
+
+					// mining/compiling above is one pass over history and comparatively fast; the SAT
+					// work in minimize() below is the actual per-association cost, so that's what the
+					// progress bar tracks.
+					List<? extends Association> associations = new ArrayList<>(AssociationsView.this.service.getRepository().getAssociations());
+					Map<String, String> computed = new HashMap<>();
+					for (int i = 0; i < associations.size(); i++) {
+						Association association = associations.get(i);
+						List<PresenceConditionMinimizer.Term> originalTerms = ModuleConditionBridge.toTerms(association.computeCondition());
+						List<PresenceConditionMinimizer.Term> minimizedTerms = PresenceConditionMinimizer.minimize(featureModel, originalTerms);
+						String minimizedText = PresenceConditionMinimizer.format(minimizedTerms);
+						computed.put(association.getId(), minimizedText);
+						updateProgress(i + 1, associations.size());
+
+						AssociationInfo info = infoByAssociationId.get(association.getId());
+						if (info != null) {
+							Platform.runLater(() -> info.setSimplifiedCondition(minimizedText));
+						}
+					}
+					return computed;
+				}
+
+				// hide/unbind the progress bar and re-enable the toolbar however the task ends --
+				// succeeded() and failed() both run on the FX thread regardless of which branch of
+				// call() was taken, unlike code placed only at the end of call() itself, which a
+				// thrown exception would skip entirely.
+				private void finished() {
+					AssociationsView.this.minimizeProgressBar.progressProperty().unbind();
+					AssociationsView.this.minimizeProgressBar.setVisible(false);
+					toolBar.setDisable(false);
+				}
+
+				@Override
+				public void succeeded() {
+					super.succeeded();
+
+					// kept around so a subsequent Refresh can restore each row's column instead of
+					// resetting it to empty; the column itself was already updated incrementally,
+					// per-row, during call() above.
+					AssociationsView.this.minimizedByAssociationId.clear();
+					AssociationsView.this.minimizedByAssociationId.putAll(this.getValue());
+
+					this.finished();
+				}
+
+				@Override
+				public void failed() {
+					super.failed();
+					this.finished();
+
+					ExceptionAlert alert = new ExceptionAlert(this.getException());
+					alert.setTitle("Minimize Presence Conditions Error");
+					alert.setHeaderText("Minimize Presence Conditions Error");
+					alert.showAndWait();
+				}
+			};
+
+			this.minimizeProgressBar.progressProperty().bind(minimizeTask.progressProperty());
+			this.minimizeProgressBar.setVisible(true);
+
+			new Thread(minimizeTask).start();
+		});
+
 
 		// add to split pane
 		splitPane.getItems().addAll(associationsTable, associationDetailView);
@@ -170,7 +298,10 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		List<AssociationInfo> associationInfos = new ArrayList<>();
 		int max = 1;
 		for (Association association : associations) {
-			AssociationInfo associationInfo = new AssociationInfo(association);
+			// restore from the last minimize run if we have it, rather than resetting the column to
+			// empty on every refresh (a plain Refresh doesn't necessarily mean the feature model or
+			// conditions actually changed)
+			AssociationInfo associationInfo = new AssociationInfo(association, this.minimizedByAssociationId.get(association.getId()));
 			max = Math.max(max, associationInfo.getNumArtifacts());
 			associationInfos.add(associationInfo);
 		}
@@ -191,6 +322,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 			Platform.runLater(() -> {
 				this.setDisable(true);
 				this.updateAssociations(Collections.emptyList());
+				this.minimizedByAssociationId.clear();
 			});
 		}
 	}
@@ -206,9 +338,23 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 		private IntegerProperty numArtifacts;
 
+		/**
+		 * Empty until a "Minimize Presence Conditions" run fills it in (see
+		 * {@link AssociationsView}'s minimize button) -- unlike the old
+		 * {@code getSimpleModuleRevisionConditionString()}-backed column, this is a real,
+		 * SAT-verified minimization under the accepted feature model, not a truncation to the
+		 * lowest-order module(s).
+		 */
+		private final StringProperty simplifiedCondition;
+
 		public AssociationInfo(Association association) {
+			this(association, null);
+		}
+
+		public AssociationInfo(Association association, String simplifiedCondition) {
 			this.association = association;
 			this.numArtifacts = new SimpleIntegerProperty(association.getRootNode().countArtifacts());
+			this.simplifiedCondition = new SimpleStringProperty(simplifiedCondition == null ? "" : simplifiedCondition);
 		}
 
 		public Association getAssociation() {
@@ -217,6 +363,18 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 		public int getNumArtifacts() {
 			return this.numArtifacts.get();
+		}
+
+		public String getSimplifiedCondition() {
+			return this.simplifiedCondition.get();
+		}
+
+		public void setSimplifiedCondition(String simplifiedCondition) {
+			this.simplifiedCondition.set(simplifiedCondition == null ? "" : simplifiedCondition);
+		}
+
+		public StringProperty simplifiedConditionProperty() {
+			return this.simplifiedCondition;
 		}
 	}
 

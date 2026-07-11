@@ -16,7 +16,7 @@ public class AssociationDetailView extends BorderPane {
 	private TextField associationId;
 	private SplitPane splitPane;
 	private ToolBar toolBar;
-	private TextField associationPC;
+	private TextArea associationPC;
 	private ArtifactSnippetTreeView artifactTreeView;
 
 
@@ -48,7 +48,11 @@ public class AssociationDetailView extends BorderPane {
 
 		this.associationId = new TextField();
 		this.associationId.setEditable(false);
-		this.associationPC = new TextField();
+
+		this.associationPC = new TextArea();
+		this.associationPC.setEditable(false);
+		this.associationPC.setWrapText(true);
+		this.associationPC.setPrefRowCount(8);
 
 		Button updateButton = new Button("Update");
 

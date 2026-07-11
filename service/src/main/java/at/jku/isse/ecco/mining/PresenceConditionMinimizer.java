@@ -1,0 +1,136 @@
+package at.jku.isse.ecco.mining;
+
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
+import org.logicng.datastructures.Tristate;
+import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
+import org.logicng.solvers.MiniSat;
+import org.logicng.solvers.SATSolver;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Drops redundant literals/terms from a presence condition, subject to a feature-model "care set"
+ * (see {@link FeatureModelFormula}). Zero ECCO dependency beyond LogicNG: a presence condition here
+ * is a plain sum-of-products ({@link Term}s ORed together, each an AND of positive/negative feature
+ * name literals) -- deliberately mirroring the shape of {@code Module}/{@code Condition} in
+ * {@code base} (pos/neg feature conjunctions, ORed across modules) so a future bridge can convert
+ * mechanically between the two, without this class ever touching {@code base}/{@code service}
+ * persistence types itself.
+ *
+ * <p>A literal or term is only dropped if the resulting formula is provably equivalent to the
+ * original everywhere the feature model holds (checked via SAT, not assumed) -- outside the
+ * feature model's valid configurations the two may disagree, which is fine, since those
+ * configurations are never real by construction of the feature model itself. Reduction is greedy
+ * (one pass, each candidate literal/term tried once) rather than an exhaustive search for the
+ * globally smallest form.
+ */
+public final class PresenceConditionMinimizer {
+
+    /** A conjunction of positive and negative feature-name literals (one product term of a DNF). */
+    public static final class Term {
+        public final Set<String> positive;
+        public final Set<String> negative;
+
+        public Term(Set<String> positive, Set<String> negative) {
+            this.positive = Set.copyOf(positive);
+            this.negative = Set.copyOf(negative);
+        }
+
+        @Override
+        public String toString() {
+            List<String> parts = new ArrayList<>();
+            positive.stream().sorted().forEach(parts::add);
+            negative.stream().sorted().forEach(n -> parts.add("!" + n));
+            return parts.isEmpty() ? "TRUE" : String.join(" & ", parts);
+        }
+    }
+
+    private PresenceConditionMinimizer() {
+    }
+
+    /** Renders a DNF as {@code "T1  OR  T2  OR  ..."} (or {@code "FALSE"} if empty). */
+    public static String format(List<Term> terms) {
+        if (terms.isEmpty()) return "FALSE";
+        return terms.stream().map(Object::toString).collect(Collectors.joining("  OR  "));
+    }
+
+    /** Converts a DNF (OR of {@link Term}s) into a LogicNG {@link Formula}. */
+    public static Formula toFormula(List<Term> terms) {
+        FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
+        if (terms.isEmpty()) return f.falsum();
+        List<Formula> termFormulas = new ArrayList<>();
+        for (Term term : terms) termFormulas.add(termFormula(f, term));
+        return f.or(termFormulas);
+    }
+
+    private static Formula termFormula(FormulaFactory f, Term term) {
+        List<Formula> literals = new ArrayList<>();
+        for (String name : term.positive) literals.add(f.literal(name, true));
+        for (String name : term.negative) literals.add(f.literal(name, false));
+        return literals.isEmpty() ? f.verum() : f.and(literals);
+    }
+
+    /**
+     * Returns a DNF equivalent to {@code terms} everywhere {@code featureModel} holds, with
+     * redundant literals and wholly-redundant terms greedily removed.
+     */
+    public static List<Term> minimize(Formula featureModel, List<Term> terms) {
+        List<Term> current = new ArrayList<>(terms);
+        Formula original = toFormula(current);
+
+        // drop wholly-redundant terms first: cheaper, and shrinks the literal-removal search
+        for (int i = current.size() - 1; i >= 0; i--) {
+            List<Term> candidate = new ArrayList<>(current);
+            candidate.remove(i);
+            if (isEquivalentUnderCareSet(featureModel, original, toFormula(candidate))) {
+                current = candidate;
+            }
+        }
+
+        for (int i = 0; i < current.size(); i++) {
+            for (String name : new LinkedHashSet<>(current.get(i).positive)) {
+                current = tryReplace(featureModel, original, current, i, withoutPositive(current.get(i), name));
+            }
+            for (String name : new LinkedHashSet<>(current.get(i).negative)) {
+                current = tryReplace(featureModel, original, current, i, withoutNegative(current.get(i), name));
+            }
+        }
+
+        return current;
+    }
+
+    private static List<Term> tryReplace(Formula featureModel, Formula original, List<Term> current, int index, Term shrunkTerm) {
+        List<Term> candidate = new ArrayList<>(current);
+        candidate.set(index, shrunkTerm);
+        if (isEquivalentUnderCareSet(featureModel, original, toFormula(candidate))) {
+            return candidate;
+        }
+        return current;
+    }
+
+    private static Term withoutPositive(Term term, String name) {
+        Set<String> positive = new LinkedHashSet<>(term.positive);
+        positive.remove(name);
+        return new Term(positive, term.negative);
+    }
+
+    private static Term withoutNegative(Term term, String name) {
+        Set<String> negative = new LinkedHashSet<>(term.negative);
+        negative.remove(name);
+        return new Term(term.positive, negative);
+    }
+
+    /** True iff {@code featureModel} implies {@code a <-> b}, checked by SAT-refuting its negation. */
+    private static boolean isEquivalentUnderCareSet(Formula featureModel, Formula a, Formula b) {
+        FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
+        Formula disagreement = f.and(featureModel, f.not(f.equivalence(a, b)));
+        SATSolver solver = MiniSat.miniSat(f);
+        solver.add(disagreement);
+        return solver.sat() == Tristate.FALSE;
+    }
+}
