@@ -41,6 +41,13 @@ public interface Repository extends Persistable {
 
 	Collection<? extends Association> getAssociations();
 
+	/**
+	 * Accepted feature-model constraints (see {@link Constraint}) -- purely advisory, never trusted
+	 * without re-verification against freshly mined data (see {@code EccoService#acceptedSuggestions}
+	 * in {@code service}).
+	 */
+	Collection<? extends Constraint> getConstraints();
+
 	ArrayList<Variant> getVariants();
 
 	Variant getVariant(Configuration configuration);
@@ -108,6 +115,36 @@ public interface Repository extends Persistable {
 		Feature getOrphanedFeature(String id, String name);
 
 		Feature addFeature(String id, String name);
+
+		@Override
+		Collection<? extends Constraint> getConstraints();
+
+		/**
+		 * Retrieves the constraint stored in this repository with the given id (its natural
+		 * {@code kind|featureA|featureB} signature). If no such constraint exists, null is returned.
+		 *
+		 * @param id The id of the constraint.
+		 * @return The constraint with the given id, or null if there is no such constraint.
+		 */
+		Constraint getConstraint(String id);
+
+		/**
+		 * Adds a constraint with the given kind/features if one with the same natural id does not
+		 * already exist (mirrors {@link #addFeature}'s idempotent-add shape).
+		 *
+		 * @param kind     of the constraint
+		 * @param featureA antecedent / first feature / mandatory feature name
+		 * @param featureB consequent / second feature name; null for {@link Constraint.Kind#MANDATORY}
+		 * @return The newly added constraint, or null if one with the same id already existed.
+		 */
+		Constraint addConstraint(Constraint.Kind kind, String featureA, String featureB);
+
+		/**
+		 * Removes a constraint (e.g. GUI "move back to pending" / undo-accept). No-op if not present.
+		 *
+		 * @param constraint to remove.
+		 */
+		void removeConstraint(Constraint constraint);
 
 		void addVariant(Variant variant);
 
@@ -910,6 +947,18 @@ public interface Repository extends Persistable {
 				}
 			}
 
+			// copy every accepted constraint as-is. Deliberately independent of the
+			// module/association trimming below -- constraints have no counters and no
+			// fusion/extract() participation to inherit that machinery's fragility from (see
+			// write-time-pruning-confirmed-unsafe in project memory for why that matters). A
+			// constraint whose features were excluded by "deselected" is still copied: it's
+			// advisory metadata about feature names, not a consumer of module/association data,
+			// and acceptedSuggestions()'s fresh-re-mining safety check (not this copy) is what
+			// prevents a now-inapplicable constraint from ever being trusted.
+			for (Constraint constraint : this.getConstraints()) {
+				newRepository.addConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
+			}
+
 			// for every association in this repository: trim condition, use it to check if matching association already exists, if not create it, add observations based on trimmed condition, copy artifact tree and trim order graphs. (basically current merge implementation)
 			Map<Set<ModuleRevision>, Association.Op> andConditionAssociationMap = new HashMap<>();
 			Map<Set<ModuleRevision>, Association.Op> orConditionAssociationMap = new HashMap<>();
@@ -1056,6 +1105,17 @@ public interface Repository extends Persistable {
 
 		default void merge(Repository.Op otherRepository) {
 			checkNotNull(otherRepository);
+
+			// copy every constraint from other repository into this one that doesn't already exist
+			// here (by natural kind|a|b id). Kept deliberately independent of the module/association
+			// counter-copying logic below (which has known fragility under certain conditions -- see
+			// write-time-pruning-confirmed-unsafe in project memory), since constraints have no
+			// counters or fusion participation to inherit that fragility from.
+			for (Constraint otherConstraint : otherRepository.getConstraints()) {
+				if (this.getConstraint(otherConstraint.getId()) == null) {
+					this.addConstraint(otherConstraint.getKind(), otherConstraint.getFeatureA(), otherConstraint.getFeatureB());
+				}
+			}
 
 			// extract every association. treat it as if it was an input product. only that there is no configuration.
 

@@ -2,28 +2,31 @@ package at.jku.isse.ecco.mining;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 /**
- * Persists which mined {@link ConstraintMiner.Suggestion}s a human has reviewed, so a review UI
+ * Persists which mined {@link ConstraintMiner.Suggestion}s a human has *rejected*, so a review UI
  * doesn't keep re-proposing the same pair. Scoped per repository (feature names are only
  * meaningful within one repository), backed by {@link Preferences}, mirroring
  * {@code at.jku.isse.ecco.service.AdapterPreferences}.
  *
- * <p>Per the mining epistemic contract (see CONSTRAINT_MINING_DESIGN.md): "accepted" here means
- * only "a human reviewed this and agrees it looks right" -- it records the decision, it does not
- * write a constraint into any feature model (no such persisted concept exists yet).
+ * <p>Rejection is local/personal (a "don't re-show me this" list, per-machine, lower stakes, no
+ * reason to share via fork/pull/push) -- unlike acceptance, which is now a real, repository-persisted
+ * entity (see {@code at.jku.isse.ecco.core.Constraint},
+ * {@code EccoService#acceptConstraint}/{@code #unacceptConstraint}) precisely so it travels with the
+ * repository and is visible to every collaborator, not just the machine that accepted it. Per the
+ * mining epistemic contract (see CONSTRAINT_MINING_DESIGN.md): a decision recorded here or as a
+ * persisted {@code Constraint} only means "a human reviewed this suggestion" -- neither is ever
+ * trusted on its own without re-verification against freshly mined data (see
+ * {@code EccoService#acceptedSuggestions}).
  */
 public final class ConstraintSuggestionPreferences {
 
-    private static final String ACCEPTED_KEY_PREFIX = "acceptedConstraintSuggestions:";
     private static final String REJECTED_KEY_PREFIX = "rejectedConstraintSuggestions:";
     private static final String SEPARATOR = ",";
 
@@ -60,50 +63,23 @@ public final class ConstraintSuggestionPreferences {
         }
     }
 
-    public static Set<String> getAccepted(Path repositoryDir) {
-        return readSet(ACCEPTED_KEY_PREFIX + repoScope(repositoryDir));
-    }
-
-    /** Accepted signatures, decoded back into kind/a/b -- e.g. for drawing them on the feature graph. */
-    public static List<AcceptedConstraint> getAcceptedConstraints(Path repositoryDir) {
-        List<AcceptedConstraint> constraints = new ArrayList<>();
-        for (String signature : getAccepted(repositoryDir)) {
-            AcceptedConstraint constraint = parseSignature(signature);
-            if (constraint != null) constraints.add(constraint);
-        }
-        return constraints;
-    }
+    // NOTE: accepted-constraint tracking (formerly accept()/getAccepted()/getAcceptedConstraints()
+    // here) moved into the repository itself -- see at.jku.isse.ecco.core.Constraint,
+    // EccoService#acceptConstraint/#unacceptConstraint. Rejected-suggestion tracking stays here: a
+    // personal, local "don't re-show me this" list, lower stakes, no reason to share via fork/pull/push.
 
     public static Set<String> getRejected(Path repositoryDir) {
         return readSet(REJECTED_KEY_PREFIX + repoScope(repositoryDir));
     }
 
-    public static void accept(Path repositoryDir, String signature) {
-        Set<String> rejected = getRejected(repositoryDir);
-        rejected.remove(signature);
-        writeSet(REJECTED_KEY_PREFIX + repoScope(repositoryDir), rejected);
-
-        Set<String> accepted = getAccepted(repositoryDir);
-        accepted.add(signature);
-        writeSet(ACCEPTED_KEY_PREFIX + repoScope(repositoryDir), accepted);
-    }
-
     public static void reject(Path repositoryDir, String signature) {
-        Set<String> accepted = getAccepted(repositoryDir);
-        accepted.remove(signature);
-        writeSet(ACCEPTED_KEY_PREFIX + repoScope(repositoryDir), accepted);
-
         Set<String> rejected = getRejected(repositoryDir);
         rejected.add(signature);
         writeSet(REJECTED_KEY_PREFIX + repoScope(repositoryDir), rejected);
     }
 
-    /** Moves a signature back to "pending" (out of both accepted and rejected). */
+    /** Moves a signature back to "pending" (out of rejected). */
     public static void clearDecision(Path repositoryDir, String signature) {
-        Set<String> accepted = getAccepted(repositoryDir);
-        accepted.remove(signature);
-        writeSet(ACCEPTED_KEY_PREFIX + repoScope(repositoryDir), accepted);
-
         Set<String> rejected = getRejected(repositoryDir);
         rejected.remove(signature);
         writeSet(REJECTED_KEY_PREFIX + repoScope(repositoryDir), rejected);

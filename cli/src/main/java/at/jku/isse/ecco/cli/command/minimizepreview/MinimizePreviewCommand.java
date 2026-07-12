@@ -4,6 +4,7 @@ import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
@@ -58,7 +59,7 @@ public class MinimizePreviewCommand implements Command {
 
         List<Set<String>> configs = ConfigurationBridge.readConfigurations(eccoService);
         List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(minWitness, confidence, null).mine(configs);
-        Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(eccoService.getRepositoryDir());
+        Set<String> accepted = AcceptedConstraints.acceptedSignatures(eccoService.getRepository().getConstraints());
 
         List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
         for (ConstraintMiner.Suggestion suggestion : mined) {

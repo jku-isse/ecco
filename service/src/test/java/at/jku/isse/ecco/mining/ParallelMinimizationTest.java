@@ -62,11 +62,11 @@ public class ParallelMinimizationTest {
             service.setBaseDir(branchBDir);
             service.commit("branch B", "Core, BranchB");
 
-            ConstraintSuggestionPreferences.accept(repoDir, "MANDATORY|Core|");
+            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
 
             List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
-            Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(repoDir);
+            Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
             List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
             for (ConstraintMiner.Suggestion suggestion : mined) {
                 if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {

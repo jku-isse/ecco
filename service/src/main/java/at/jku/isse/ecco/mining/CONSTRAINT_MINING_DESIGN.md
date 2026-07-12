@@ -101,13 +101,29 @@ GUI (`ConstraintSuggestionsView`, done): lives inside the Feature Model tab
 (`FeaturesView`, right side of a `SplitPane`, graph on the left). Toolbar has
 min-witness/confidence controls + Refresh; a pending-suggestions `TableView`
 with Accept/Reject; and Accepted/Rejected `ListView`s (with a "move back to
-pending" undo) backed by `ConstraintSuggestionPreferences`. Important: there
-is still no persisted `Constraint` type anywhere in `base`/`service` — "Accept"
-here only records that a human reviewed the suggestion and agrees with it. It
-does **not** write anything into a feature model, because no such enforced,
-persisted concept exists yet. That remains a distinct, larger piece of future
-work (a real `Constraint` entity + storage format), separate from what feeds
-minimization below.
+pending" undo). Accept and reject are asymmetric: **accept** persists a real
+`Constraint` entity (`at.jku.isse.ecco.core.Constraint`, SER-backed via
+`SerConstraint`/`SerRepository`) *in the repository itself* — via
+`EccoService#acceptConstraint`/`#unacceptConstraint` — so it travels with
+fork/pull/push and is visible to every collaborator, not just the machine
+that accepted it; **reject** stays local/personal, backed by
+`ConstraintSuggestionPreferences` (a `java.util.prefs.Preferences`-backed
+"don't re-show me this" list, lower stakes, no reason to share). Important:
+this is still **advisory-only** — accepting a constraint does **not** write
+anything into an *enforced* feature model and does not change
+`commit()`/`checkout()` blocking behavior; it only affects which suggestions
+are filtered from "pending" and which surplus-module warnings get suppressed
+(see "Surplus-module suppression" below). The "Crucial safety rule" above
+still applies unchanged: `EccoService#acceptedSuggestions(Repository)` always
+re-mines fresh from current commit data and only trusts a persisted
+`Constraint` if it still re-mines as hard — a stored acceptance is never
+trusted directly, so a constraint that's since picked up a real
+counterexample silently drops out of the filtered result even though the
+`Constraint` entity itself remains persisted (see
+`AcceptedConstraintStaleReMineTest`). `Constraint.Kind` (`base`) and
+`ConstraintMiner.Kind` (`service`) are independent enums bridged by name
+(`base` can't depend on `service`); `ConstraintKindLockstepTest` pins them to
+stay in lockstep.
 
 ## Minimization (done — read-only preview, deliberately never persists)
 
@@ -417,9 +433,16 @@ single `MANDATORY` feature.
 
 1. REST front-end, in addition to the CLI commands and GUI panels already done.
 2. New `mining` subproject vs. placing it in `service` (currently in `service`).
-3. A real persisted `Constraint` entity in `base`/`service` — "accept" in the
-   GUI still doesn't write to an enforced feature model (see "Exposure"
-   above). Bigger, separate architectural decision.
+3. ~~A real persisted `Constraint` entity in `base`/`service`~~ — **done.**
+   Accepted suggestions are now a real, repository-persisted `Constraint`
+   entity (`base`) with a SER backend (`service`), copied by `subset()`/
+   `merge()` so they travel with fork/pull/push (see "Exposure" above and
+   `ConstraintPersistenceMergeTest`). Deliberately stays **advisory-only**:
+   no change to `commit()`/`checkout()` blocking behavior, and the "Crucial
+   safety rule" (re-mine fresh, never trust stale acceptance) is unchanged —
+   only *where* the accepted-signature set is read from moved, from local
+   `Preferences` to `repository.getConstraints()`. Enforcement/blocking
+   remains a distinct, bigger decision, not attempted here.
 4. Wiring minimization into a REAL pipeline (commit/checkout, actually
    rewriting stored conditions) — deliberately still not attempted; the
    preview (CLI + GUI, both read-only) is a stepping stone, not this. Needs

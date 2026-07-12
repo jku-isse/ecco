@@ -71,13 +71,13 @@ public class PresenceConditionMinimizerRealRepoTest {
             service.commit("branch B", "Core, BranchB");
 
             // a real accept, exactly like a human reviewing `suggest-constraints` output would do
-            ConstraintSuggestionPreferences.accept(repoDir, "MANDATORY|Core|");
+            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Core", null);
 
             // same pipeline as MinimizePreviewCommand/AssociationsView's "Minimize Presence
             // Conditions" button: re-mine fresh, filter to accepted signatures, compile once.
             List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
             List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
-            Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(repoDir);
+            Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
             List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
             for (ConstraintMiner.Suggestion suggestion : mined) {
                 if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {

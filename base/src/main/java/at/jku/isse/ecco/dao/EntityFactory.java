@@ -4,6 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -84,6 +85,16 @@ public interface EntityFactory {
 	 * @return A new initialized instance of feature.
 	 */
 	public Feature createFeature(final String id, final String name);
+
+	/**
+	 * Creates a new, detached instance of a {@link Constraint} with the given kind and features.
+	 *
+	 * @param kind     of the constraint
+	 * @param featureA antecedent / first feature / mandatory feature name
+	 * @param featureB consequent / second feature name; null for {@link Constraint.Kind#MANDATORY}
+	 * @return A new initialized instance of Constraint.
+	 */
+	public Constraint createConstraint(final Constraint.Kind kind, final String featureA, final String featureB);
 
 
 	/**
