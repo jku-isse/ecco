@@ -42,6 +42,18 @@ import static com.google.common.base.Preconditions.*;
  * A service class that gives access to high level operations like init, fork, pull, push, etc.
  */
 public class EccoService implements ProgressInputStream.ProgressListener, ProgressOutputStream.ProgressListener, ReadListener, WriteListener, Closeable {
+    static {
+        // quiet java.util.logging's noisy INFO-level default before any Logger (here or in any
+        // class reached through EccoService, e.g. adapters) is used -- see logging.properties.
+        try (InputStream loggingConfig = EccoService.class.getClassLoader().getResourceAsStream("logging.properties")) {
+            if (loggingConfig != null) {
+                LogManager.getLogManager().readConfiguration(loggingConfig);
+            }
+        } catch (IOException e) {
+            // fall back to JUL's own defaults
+        }
+    }
+
     private static final Logger LOGGER = Logger.getLogger(EccoService.class.getName());
     public static final String KEY_USER_NAME = "user.name";
     public static final String DEFAULT_USER_NAME = "anonymous";
