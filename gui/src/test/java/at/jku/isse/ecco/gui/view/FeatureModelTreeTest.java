@@ -153,6 +153,58 @@ public class FeatureModelTreeTest {
 		}
 	}
 
+	/**
+	 * Regression for the fix that made {@link FeatureModelTree#compute} read co-occurrence from real
+	 * commit configurations instead of {@code Association#computeCondition()}'s module lattice (see
+	 * {@code CONSTRAINT_MINING_DESIGN.md}'s "Surplus-module suppression" section): that lattice
+	 * accumulates redundant terms per association (not just the minimal necessary one), and a real
+	 * co-occurrence pair whose only lattice-level evidence came from those redundant terms would
+	 * silently vanish if the lattice were ever pruned -- confirmed by direct measurement during that
+	 * investigation. Reading commit configurations directly is immune to that by construction. This
+	 * reuses the same repo shape (a mandatory-like base feature plus a feature committed only
+	 * alongside it, several times) that produced the redundant lattice in the original investigation.
+	 */
+	@Test
+	@Timeout(30)
+	public void coOccurrenceSurvivesEvenThoughTheAssociationsHaveRedundantLatticeTerms() throws IOException {
+		Path workDir = Files.createTempDirectory("feature-model-tree-cooccurrence-test");
+		Path repoDir = workDir.resolve(".ecco");
+
+		Path commonDir = workDir.resolve("common");
+		Files.createDirectories(commonDir);
+		Files.writeString(commonDir.resolve("common.txt"), "base\n");
+
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(repoDir);
+			service.init();
+
+			service.setBaseDir(commonDir);
+			service.commit("base", "Common");
+
+			for (int i = 1; i <= 4; i++) {
+				Path p = workDir.resolve("old-" + i);
+				Files.createDirectories(p);
+				Files.writeString(p.resolve("common.txt"), "old-variant\n");
+				Files.writeString(p.resolve("old.txt"), "old only\n");
+				Files.writeString(p.resolve("old-extra-" + i + ".txt"), "old pad " + i + "\n");
+				service.setBaseDir(p);
+				service.commit("old " + i, "Common, Old");
+			}
+
+			Map<String, FeatureModelTree.Placement> byName = FeatureModelTree.compute(service.getRepository()).stream()
+					.collect(Collectors.toMap(p -> p.feature.getName(), p -> p));
+
+			FeatureModelTree.Placement common = byName.get("Common");
+			FeatureModelTree.Placement old = byName.get("Old");
+
+			assertNull(common.parent, "Common was introduced first and has no earlier co-occurring feature");
+			assertEquals(common.feature, old.parent,
+					"Old must attach to Common, its real (repeatedly-committed) co-occurring predecessor -- "
+							+ "this is exactly the pair whose lattice-level presence disappeared entirely under "
+							+ "absorption in the original investigation");
+		}
+	}
+
 	static Path findRepoRoot() {
 		Path dir = Path.of("").toAbsolutePath();
 		while (dir != null) {

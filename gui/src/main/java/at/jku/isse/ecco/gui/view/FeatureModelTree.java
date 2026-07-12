@@ -1,12 +1,9 @@
 package at.jku.isse.ecco.gui.view;
 
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.module.Condition;
-import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 
 import java.util.ArrayList;
@@ -18,16 +15,17 @@ import java.util.Map;
 
 /**
  * Pure computation behind the Feature Model tab (see {@link FeaturesView}): places every feature in
- * a software-product-line-style tree using the repository's commit and association history, with no
- * dependency on JavaFX/GraphStream so the algorithm can be reasoned about and tested on its own.
+ * a software-product-line-style tree using the repository's commit history, with no dependency on
+ * JavaFX/GraphStream so the algorithm can be reasoned about and tested on its own.
  * <p>
- * Two computed signals decide the tree:
+ * Two computed signals decide the tree, both read directly from commit configurations (deliberately
+ * not from {@code Association#computeCondition()}'s module lattice - see {@link #computeCoOccurrence}):
  * <ul>
  *     <li>{@link #computeIntroOrder} - which commit, chronologically, first referenced each
  *     feature.</li>
- *     <li>{@link #computeCoOccurrence} - whether (and how strongly) each pair of features appears
- *     together in the same conjunctive clause of an association's presence condition (i.e. actually
- *     used together in committed content, not just both existing somewhere in the repository).</li>
+ *     <li>{@link #computeCoOccurrence} - whether (and how strongly) each pair of features was
+ *     actually selected together in the same commit's configuration (i.e. actually used together in
+ *     committed content, not just both existing somewhere in the repository).</li>
  * </ul>
  * Every feature's parent is, among the earlier-introduced features it co-occurs with at all, the
  * <em>most recently introduced</em> one - its nearest predecessor in commit history that it actually
@@ -229,25 +227,38 @@ public final class FeatureModelTree {
 	}
 
 	/**
-	 * Whether, and how often, each pair of features appears together in the same conjunctive clause
-	 * of an association's presence condition (a {@link Module}, i.e. one AND-term of a
-	 * {@code Condition}) - i.e. whether they were actually used together in committed content, as
-	 * opposed to merely coexisting in the repository. {@link #compute} uses presence/absence of an
-	 * entry here as the actual dependency signal; the count itself is only a tie-break (see there).
+	 * Whether, and how often, each pair of features was actually selected together in the same real
+	 * commit's configuration - i.e. actually used together in committed content, as opposed to merely
+	 * coexisting in the repository. {@link #compute} uses presence/absence of an entry here as the
+	 * actual dependency signal; the count itself is only a tie-break (see there).
+	 *
+	 * <p>Reads {@link Commit#getConfiguration()} directly (same source {@code ConfigurationBridge}
+	 * uses for constraint mining - see {@code CONSTRAINT_MINING_DESIGN.md}), not
+	 * {@link at.jku.isse.ecco.core.Association#computeCondition()}'s module lattice. That lattice
+	 * accumulates, per association, every combination of features that merely happened to stay
+	 * constant across its observed commit history (not just the minimal necessary one - see
+	 * {@code CONSTRAINT_MINING_DESIGN.md}'s "Surplus-module suppression" section for the real x8
+	 * numbers), which both inflates this method's counts with redundant restatements of the same
+	 * commit and would silently drop real co-occurrence pairs entirely if that lattice were ever
+	 * pruned (confirmed by direct measurement: a real, currently-present pair's count dropped from a
+	 * nonzero raw count to no entry at all once its association's redundant terms were absorbed).
+	 * Reading commit configurations directly sidesteps both problems and removes any dependency on
+	 * that lattice's future.
 	 */
 	private static Map<Feature, Map<Feature, Integer>> computeCoOccurrence(Repository repository) {
 		Map<Feature, Map<Feature, Integer>> coOccurrence = new HashMap<>();
-		for (Association association : repository.getAssociations()) {
-			Condition condition = association.computeCondition();
-			for (Module module : condition.getModules().keySet()) {
-				Feature[] pos = module.getPos();
-				for (Feature a : pos) {
-					for (Feature b : pos) {
-						if (a.equals(b)) {
-							continue;
-						}
-						coOccurrence.computeIfAbsent(a, k -> new HashMap<>()).merge(b, 1, Integer::sum);
+		for (Commit commit : repository.getCommits()) {
+			Configuration configuration = commit.getConfiguration();
+			if (configuration == null) {
+				continue;
+			}
+			FeatureRevision[] featureRevisions = configuration.getFeatureRevisions();
+			for (FeatureRevision a : featureRevisions) {
+				for (FeatureRevision b : featureRevisions) {
+					if (a.getFeature().equals(b.getFeature())) {
+						continue;
 					}
+					coOccurrence.computeIfAbsent(a.getFeature(), k -> new HashMap<>()).merge(b.getFeature(), 1, Integer::sum);
 				}
 			}
 		}
