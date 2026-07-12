@@ -135,6 +135,28 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    /**
+     * The directory the repository lives in (repositoryDir's parent) -- the natural default base
+     * directory for a checkout, independent of whatever {@link #getBaseDir()} currently happens to
+     * be set to (e.g. left over from an unrelated Commit/Fork done from a different folder).
+     *
+     * <p>Deliberately not just {@code repositoryDir.getParent()}: for the common case where
+     * repositoryDir is a bare relative path (e.g. {@code .ecco}, as set by
+     * {@link #detectRepository()} when running from the repository's own home directory),
+     * {@code Path.getParent()} returns {@code null} rather than "the current directory" -- resolve
+     * to a real/absolute path first so the parent is always well-defined.
+     */
+    public Path getRepositoryHomeDir() {
+        Path resolved;
+        try {
+            resolved = this.repositoryDir.toRealPath();
+        } catch (IOException e) {
+            resolved = this.repositoryDir.toAbsolutePath().normalize();
+        }
+        Path parent = resolved.getParent();
+        return parent != null ? parent : resolved;
+    }
+
     public EntityFactory getEntityFactory() {
         return entityFactory;
     }
