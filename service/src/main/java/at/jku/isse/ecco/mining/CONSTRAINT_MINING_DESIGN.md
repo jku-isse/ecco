@@ -205,7 +205,7 @@ run):
    first end-to-end run showed "0 accepted total" despite having just
    accepted one.
 
-## Surplus-module suppression (done, production) + the surplus-noise root cause (characterized, fix validated, not yet wired)
+## Surplus-module suppression (done, production) + surplus-lattice absorption (done, production)
 
 A second, closely related feature built on the same `FeatureModelFormula`
 machinery, not otherwise described in this doc: **`SurplusModuleSuppressor`**
@@ -259,10 +259,10 @@ module-revision entry holds, unconditionally of type (already noted in
 `ModuleConditionBridge`'s doc comment); every association's real condition is
 a plain OR-of-ANDs (DNF), exactly `PresenceConditionMinimizer`'s shape.
 
-**Fix validated, not yet wired**: `absorb()` — no feature model needed, the
-same syntactic `X + XY = X` pass already used inside `minimize()` — collapses
-this cleanly. Real x8 (445MB, 9426 artifacts, 63 associations): whole-repo
-pass, **42,070 → 96 total module-terms**; the single largest association
+**Fix**: `absorb()` — no feature model needed, the same syntactic
+`X + XY = X` pass already used inside `minimize()` — collapses this cleanly.
+Real x8 (445MB, 9426 artifacts, 63 associations): whole-repo pass, **42,070 →
+96 total module-terms**; the single largest association
 (`1a0d2078-92aa-437d-8840-c1110aa975cd`, 18,287 raw terms) is the exact one
 that motivated the absorption pre-pass inside `minimize()` in the first place
 (same real bloat, reachable via a second code path, same fix). A
@@ -285,8 +285,26 @@ reproduces the *exact* same reduction as `toTerms()`+`absorb()` (42,070 → 96,
 both), confirming correctness where revisions don't matter as a precondition
 for trusting it where they do.
 
-**Safety analysis for wiring this into `compose()`'s surplus loop
-(`Repository.java:688-703`), read-time, scoped locally** (not yet done):
+**Where it's wired — corrected from the original plan**: the first draft of
+this fix assumed it would live inside `Repository.Op#compose()`'s surplus
+loop directly. That's structurally impossible: `base` (where `Repository`
+lives) does not depend on `service` (where `absorb()`/`ModuleConditionBridge`
+live) — only `service` depends on `base`. So, like `SurplusModuleSuppressor`
+above, this runs as a **`service`-layer post-hoc filter**:
+**`SurplusLatticeAbsorber.suppressAbsorbed(Checkout, Repository)`**
+(`service/.../mining/SurplusLatticeAbsorber.java`) groups
+`checkout.getSurplusModules()` by owning association id, recomputes each
+relevant association's condition, converts via `toRevisionTerms()`, runs
+`absorb()`, and removes any surplus entry whose own term didn't survive.
+Wired into `EccoService.compose()`, called *before* `SurplusModuleSuppressor`
+(cheap, unconditional syntactic cleanup first, so the SAT-based suppressor's
+entailment loop runs against a smaller, cleaner set already). New flag
+`surplusAbsorptionEnabled` (default `true`), same escape-hatch pattern as
+`surplusSuppressionEnabled`, same fail-open `catch (RuntimeException e)`
+wrapping.
+
+**Safety analysis that justified read-time, scoped locally** (all verified
+before wiring, not just reasoned about):
 - Tree-preserving by construction: `selectedAssociations` (what actually gets
   composed) is computed earlier and separately, via
   `association.computeCondition().holds(configuration)` — the full raw
@@ -302,11 +320,12 @@ for trusting it where they do.
   chart, `FeatureModelTree#computeCoOccurrence()` (infers feature-dependency
   edges from raw co-occurrence — presence/absence is its actual signal per
   its own doc comment, not characterized against absorbed data), and
-  `Repository`'s subset-extraction/merge logic (`~921`, `~1235`). A fix
-  scoped locally inside `compose()`'s surplus loop (a local term list, never
-  mutating the `Condition`/`Association` object) leaves all three untouched;
-  a write-time fix inside `computeLikelyCondition()` itself would not, and
-  hasn't been investigated against them.
+  `Repository`'s subset-extraction/merge logic (`~921`, `~1235`). The
+  locally-scoped filter (a local term list per call, never mutating the
+  `Condition`/`Association` object) leaves all three untouched; a write-time
+  fix inside `computeLikelyCondition()` itself would not, and still hasn't
+  been investigated against them — not needed for the read-time fix that
+  shipped.
 - Order-cap confidence check: does `maxOrder=2` ever cause a genuine
   representation failure (a necessary condition needing >3 literals that
   neither `computeLikelyCondition()` nor its `computeCertainCondition()`
@@ -315,6 +334,16 @@ for trusting it where they do.
   that fallback always found something — zero total inference failures. Not
   proof every represented condition is the tightest possible one, but no
   evidence of the cap silently losing information in x8's actual data either.
+
+**Verified end-to-end, through the real production path** (not manual
+`absorb()` calls): `SurplusLatticeAbsorberTest.java` (unit-level, through a
+real `EccoService` commit/checkout pipeline) confirms the flag actually gates
+behavior — absorption on: known scenario's surplus goes 6 → 0; absorption
+off: stays at 6; `getMissing()` identical either way. Real x8, same
+40-novel-combo sweep as the original investigation, called through
+`service.checkout()` itself: **106,009 baseline surplus entries → 0
+remaining with absorption on, 0 missing-set mismatches, 0 combos where
+absorption added anything.**
 
 **MISSING as a feature-interaction signal** (existing behavior, clarified and
 verified this session, not changed): per `README.md`, "`.warnings` contains a
@@ -397,18 +426,22 @@ single `MANDATORY` feature.
    its own design/risk discussion given it would touch core correctness
    paths.
 
-   **Narrowed by this session, for the `compose()` surplus-loop slice
-   specifically** (see "Surplus-module suppression" above): read-time,
-   scoped locally inside `compose()`'s surplus loop, using plain `absorb()`
-   (no feature model) is now characterized and validated — tree-preserving
-   by construction, no new false positives, and the three real consumers of
-   the raw lattice (`ChartsView`, `FeatureModelTree`, `Repository`
-   merge/extract) are identified and would be untouched by a properly-scoped
-   fix. The actual `compose()` edit itself is still not made — this is
-   "characterized and de-risked," not "done." The broader question (write-time
-   pruning inside `computeLikelyCondition()`, or minimization for commit/
-   checkout beyond just the surplus loop) remains open and still needs its
-   own design/risk discussion, per the feature-model-aware half staying
-   read-time by necessity (see "Crucial safety rule" above — the accepted
-   feature model evolves as more commits arrive and humans review
-   suggestions, so anything using it can't be baked in destructively).
+   **Done, for the surplus-noise slice specifically** (see "Surplus-module
+   suppression" above): `SurplusLatticeAbsorber`, read-time, wired into
+   `EccoService.compose()` (not `Repository.Op#compose()` — `base` doesn't
+   depend on `service`, so it couldn't live there), using plain `absorb()`
+   (no feature model) — tree-preserving by construction, no new false
+   positives, verified end-to-end on real x8 through the actual `checkout()`
+   path (106,009 → 0). This is real production wiring now, not just
+   characterization. The three real consumers of the raw lattice
+   (`ChartsView`, `FeatureModelTree`, `Repository` merge/extract) were
+   identified as the reason a *write-time* fix would need separate
+   investigation first — irrelevant to the read-time fix that shipped, since
+   it never mutates the `Condition`/`Association` object. The broader
+   question (write-time pruning inside `computeLikelyCondition()`, or
+   minimization for commit/checkout beyond just the surplus computation)
+   remains open and still needs its own design/risk discussion, per the
+   feature-model-aware half staying read-time by necessity (see "Crucial
+   safety rule" above — the accepted feature model evolves as more commits
+   arrive and humans review suggestions, so anything using it can't be baked
+   in destructively).

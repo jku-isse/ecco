@@ -1916,6 +1916,22 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.surplusSuppressionEnabled = enabled;
     }
 
+    private volatile boolean surplusAbsorptionEnabled = true;
+
+    /**
+     * Controls whether {@link #compose} removes {@link Checkout#getSurplusModules()} entries that are
+     * pure syntactic noise -- a term absorbed ({@code X + XY = X}) by a simpler term already present
+     * on the same owning association's condition (see {@link SurplusLatticeAbsorber}). Needs no
+     * feature model and can never remove a genuinely-needed warning (the identity is unconditional),
+     * so this is on by default; the escape hatch exists for the same reason as
+     * {@link #setSurplusSuppressionEnabled} -- an unforeseen cost or behavior in practice.
+     *
+     * @param enabled Whether surplus-lattice absorption should run.
+     */
+    public synchronized void setSurplusAbsorptionEnabled(boolean enabled) {
+        this.surplusAbsorptionEnabled = enabled;
+    }
+
     /**
      * Mines fresh from the currently committed configurations and filters to the signatures already
      * accepted for this repository -- the same construction sequence used by
@@ -1946,6 +1962,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         checkNotNull(configuration);
         Repository.Op repository = this.repositoryDao.load();
         Checkout checkout = repository.compose(configuration);
+        if (this.surplusAbsorptionEnabled && !checkout.getSurplusModules().isEmpty()) {
+            try {
+                SurplusLatticeAbsorber.suppressAbsorbed(checkout, repository);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Surplus-lattice absorption failed; leaving surplus warnings as-is.", e);
+            }
+        }
         if (this.surplusSuppressionEnabled && !checkout.getSurplusModules().isEmpty()) {
             try {
                 List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions();
