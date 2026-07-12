@@ -3,12 +3,16 @@ package at.jku.isse.ecco.gui.view.detail;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.module.ModuleRevisions;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CheckoutDetailView extends BorderPane {
 
@@ -106,8 +110,11 @@ public class CheckoutDetailView extends BorderPane {
 				this.checkoutConfiguration.setText("");
 
 			// show missing and surplus module diagnostics (see Repository.Op.compose())
-			for (ModuleRevision missingModuleRevision : checkout.getMissing()) {
-				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("MISSING", missingModuleRevision.toString(), ""));
+			List<ModuleRevision> sortedMissing = new ArrayList<>(checkout.getMissing());
+			sortedMissing.sort(ModuleRevisions.RELEVANCE_ORDER);
+			for (ModuleRevision missingModuleRevision : sortedMissing) {
+				String location = checkout.getMissingLocations().getOrDefault(missingModuleRevision, "");
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("MISSING", ModuleRevisions.describe(missingModuleRevision), location));
 			}
 			for (java.util.Map.Entry<ModuleRevision, String> surplusEntry : checkout.getSurplusModules().entrySet()) {
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("SURPLUS", surplusEntry.getKey().toString(), surplusEntry.getValue()));

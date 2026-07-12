@@ -15,6 +15,7 @@ public class Checkout {
 	private Set<ModuleRevision> missing;
 	private Set<ModuleRevision> surplus;
 	private Map<ModuleRevision,String> surplusModules;
+	private Map<ModuleRevision,String> missingLocations;
 
 
 	private Collection<Artifact<?>> orderWarnings;
@@ -31,6 +32,7 @@ public class Checkout {
 		this.missing = new HashSet<>();
 		this.surplus = new HashSet<>();
 		this.surplusModules = new HashMap<>();
+		this.missingLocations = new HashMap<>();
 		this.orderWarnings = new ArrayList<>();
 		this.unresolvedAssociations = new HashSet<>();
 		this.selectedAssociations = new HashSet<>();
@@ -72,6 +74,14 @@ public class Checkout {
 
 	public Set<ModuleRevision> getMissing() {
 		return this.missing;
+	}
+
+	public Map<ModuleRevision,String> getMissingLocations() {
+		return this.missingLocations;
+	}
+
+	public void setMissingLocations(Map<ModuleRevision,String> missingLocations) {
+		this.missingLocations = missingLocations;
 	}
 
 	public Collection<Artifact<?>> getOrderWarnings() {
