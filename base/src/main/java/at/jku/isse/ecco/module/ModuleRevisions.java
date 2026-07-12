@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
@@ -126,6 +127,36 @@ public final class ModuleRevisions {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * The exact configuration string a fix for {@code moduleRevision} should be committed under:
+	 * the checkout's *entire* requested configuration -- not just the handful of features
+	 * {@code moduleRevision} itself names. Committing only those (and omitting the checkout's other
+	 * requested features) would likely just leave a different combination missing next time.
+	 * Renders each feature with its exact revision id (not {@link Feature#getName()} alone, which
+	 * would resolve to whichever revision happens to be latest at commit time -- not necessarily the
+	 * one actually being checked out), so the string is round-trippable through
+	 * {@code EccoService#parseConfigurationString}. Falls back to {@code moduleRevision}'s own
+	 * positive features if {@code configuration} is null (defensive, mirroring the existing
+	 * null-check around {@code Checkout#getConfiguration()} in {@code CheckoutDetailView}).
+	 */
+	public static String suggestedConfigurationString(ModuleRevision moduleRevision, Configuration configuration) {
+		FeatureRevision[] featureRevisions = configuration != null ? configuration.getFeatureRevisions() : moduleRevision.getPos();
+		return Arrays.stream(featureRevisions)
+				.map(featureRevision -> featureRevision.getFeature().getName() + "." + featureRevision.getId())
+				.sorted()
+				.collect(Collectors.joining(","));
+	}
+
+	/**
+	 * A ready-to-use suggestion for resolving a MISSING combination: since it just means nobody has
+	 * committed content under the checkout's requested configuration yet, the fix is to commit
+	 * content under {@link #suggestedConfigurationString}.
+	 */
+	public static String suggestFix(ModuleRevision moduleRevision, Configuration configuration) {
+		return "commit content under the full checkout configuration to add " + describe(moduleRevision)
+				+ " (e.g. `ecco commit -c \"" + suggestedConfigurationString(moduleRevision, configuration) + "\" -m \"...\"`)";
 	}
 
 }
