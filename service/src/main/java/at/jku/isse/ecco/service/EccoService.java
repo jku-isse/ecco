@@ -2173,8 +2173,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         } else {
             try {
                 StringBuilder sb = new StringBuilder();
-                for (ModuleRevision mr : checkout.getMissing()) {
-                    sb.append("MISSING: ").append(mr).append(System.lineSeparator());
+                List<ModuleRevision> sortedMissing = new ArrayList<>(checkout.getMissing());
+                sortedMissing.sort(ModuleRevisions.RELEVANCE_ORDER);
+                for (ModuleRevision mr : sortedMissing) {
+                    sb.append("MISSING: ").append(ModuleRevisions.describe(mr));
+                    String location = checkout.getMissingLocations().get(mr);
+                    if (location != null && !location.isEmpty()) {
+                        sb.append(" (").append(location).append(")");
+                    }
+                    sb.append(System.lineSeparator());
                 }
                 for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
                     sb.append("SURPLUS: ").append(mr.getKey()).append(" trace id: ")

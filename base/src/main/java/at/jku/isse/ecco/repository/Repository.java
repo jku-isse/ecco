@@ -20,6 +20,7 @@ import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.EmptyModule;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
+import at.jku.isse.ecco.module.ModuleRevisions;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
@@ -716,11 +717,14 @@ public interface Repository extends Persistable {
 				}
 			}
 
-			/**
-			 * TODO: trim set of missing modules to only leave modules that are LIKELY missing:
-			 * - exclude missing modules that we know from previous revisions and that did not contain artifacts there.
-			 * - exclude missing higher order modules that are covered entirely by combinations of missing lower order modules (e.g., (A,B,C) can be ignored if (A,B), (A,C), and (B,C) are also missing).
-			 */
+			// trim missing modules to only leave modules that are LIKELY missing (see ModuleRevisions.trimRedundant)
+			Set<ModuleRevision> trimmedMissingModules = ModuleRevisions.trimRedundant(missingModules);
+
+			// locate each remaining missing module's positive features in the existing associations, for diagnostics
+			Map<ModuleRevision, String> missingLocations = new HashMap<>();
+			for (ModuleRevision missingModuleRevision : trimmedMissingModules) {
+				missingLocations.put(missingModuleRevision, ModuleRevisions.describeLocation(missingModuleRevision, this.getAssociations()));
+			}
 
 			// compute surplus
 			for (Association association : selectedAssociations) {
@@ -740,7 +744,8 @@ public interface Repository extends Persistable {
 			}
 
 			checkout.setSurplusModules(surplusModules);
-			checkout.getMissing().addAll(missingModules);
+			checkout.getMissing().addAll(trimmedMissingModules);
+			checkout.setMissingLocations(missingLocations);
 
 			return checkout;
 		}
