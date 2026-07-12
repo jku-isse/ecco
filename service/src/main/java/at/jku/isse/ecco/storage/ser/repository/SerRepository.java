@@ -6,6 +6,7 @@ import at.jku.isse.ecco.featuretrace.evaluation.ProactiveBasedEvaluation;
 import at.jku.isse.ecco.maintree.building.MainTreeBuildingStrategy;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
@@ -14,6 +15,7 @@ import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.core.SerConstraint;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.storage.ser.feature.SerFeature;
 import at.jku.isse.ecco.storage.ser.featuretrace.evaluation.SerProactiveBasedEvaluation;
@@ -35,6 +37,10 @@ public final class SerRepository implements Repository, Repository.Op {
 	public static final MainTreeBuildingStrategy DEFAULT_MAIN_TREE_BUILDING_STRATEGY = new SerBoostedAssociationMerger();
 
 	private Map<String, SerFeature> features;
+	// accepted feature-model constraints (see Constraint) -- may be null on a repository
+	// deserialized from before this field existed (serialVersionUID has never changed for exactly
+	// this reason); every accessor defensively initializes it, mirroring addVariant()'s guard below.
+	private Map<String, SerConstraint> constraints;
 	// only the association IDs are actually serialized as part of the "core" database (see the
 	// fields below) - each association's own (large) content lives in its own file, written only
 	// when dirty. See SerTransactionStrategy for the read/write side of this split.
@@ -73,6 +79,7 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	public SerRepository() {
 		this.features = Maps.mutable.empty();
+		this.constraints = new LinkedHashMap<>();
 		this.modules = new ArrayList<>();
 		this.commits = new ArrayList<>();
 		this.setMaxOrder(DEFAULT_MAX_ORDER);
@@ -265,6 +272,40 @@ public final class SerRepository implements Repository, Repository.Op {
 		SerFeature feature = new SerFeature(id, name);
 		this.features.put(feature.getId(), feature);
 		return feature;
+	}
+
+	@Override
+	public Collection<Constraint> getConstraints() {
+		if (this.constraints == null) {
+			this.constraints = new LinkedHashMap<>();
+		}
+		return Collections.unmodifiableCollection(this.constraints.values());
+	}
+
+	@Override
+	public Constraint getConstraint(String id) {
+		if (this.constraints == null) {
+			this.constraints = new LinkedHashMap<>();
+		}
+		return this.constraints.get(id);
+	}
+
+	@Override
+	public Constraint addConstraint(Constraint.Kind kind, String featureA, String featureB) {
+		if (this.constraints == null) {
+			this.constraints = new LinkedHashMap<>();
+		}
+		SerConstraint constraint = new SerConstraint(kind, featureA, featureB);
+		if (this.constraints.containsKey(constraint.getId()))
+			return null;
+		this.constraints.put(constraint.getId(), constraint);
+		return constraint;
+	}
+
+	@Override
+	public void removeConstraint(Constraint constraint) {
+		if (this.constraints == null) return;
+		this.constraints.remove(constraint.getId());
 	}
 
 	@Override

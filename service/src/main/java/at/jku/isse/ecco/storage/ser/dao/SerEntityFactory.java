@@ -4,6 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
@@ -14,6 +15,7 @@ import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.core.SerAssociation;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.core.SerConstraint;
 import at.jku.isse.ecco.storage.ser.core.SerRemote;
 import at.jku.isse.ecco.storage.ser.feature.SerConfiguration;
 import at.jku.isse.ecco.storage.ser.feature.SerFeature;
@@ -90,6 +92,14 @@ public class SerEntityFactory implements EntityFactory {
 		checkArgument(!name.isEmpty(), "Expected a non-empty name but was empty.");
 
 		return new SerFeature(id, name);
+	}
+
+	@Override
+	public SerConstraint createConstraint(final Constraint.Kind kind, final String featureA, final String featureB) {
+		checkNotNull(kind);
+		checkNotNull(featureA);
+
+		return new SerConstraint(kind, featureA, featureB);
 	}
 
 

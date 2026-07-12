@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
@@ -83,7 +84,7 @@ public class MinimizationResults implements EccoListener {
                 // every association concurrently.
                 List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
                 List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(MIN_WITNESS, CONFIDENCE, null).mine(configs);
-                Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(service.getRepositoryDir());
+                Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
 
                 List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
                 for (ConstraintMiner.Suggestion suggestion : mined) {

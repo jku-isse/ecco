@@ -1728,7 +1728,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         } catch (Exception e) {
             transactionStrategy.rollback();
 
-            throw new EccoException("Error while adding a variant.", e);
+            throw new EccoException("Error during repository write transaction.", e);
         }
     }
 
@@ -1933,15 +1933,34 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
-     * Mines fresh from the currently committed configurations and filters to the signatures already
-     * accepted for this repository -- the same construction sequence used by
-     * {@code MinimizePreviewCommand}/{@code MinimizationResults}' "minimize" pipeline, kept in sync
-     * with those rather than diverging into a second implementation.
+     * Mines fresh from the currently committed configurations and filters to the signatures of
+     * constraints already persisted (accepted) in the repository -- the same construction sequence
+     * used by {@code MinimizePreviewCommand}/{@code MinimizationResults}' "minimize" pipeline, kept
+     * in sync with those rather than diverging into a second implementation.
+     *
+     * <p><b>Safety-critical:</b> a persisted {@link Constraint} is only trusted here if it ALSO still
+     * re-mines as hard against the CURRENT data -- never reconstructed directly from storage. A
+     * constraint accepted as hard could have since picked up a counterexample from a later commit;
+     * trusting a stale accepted-but-no-longer-hard constraint would make
+     * {@link SurplusModuleSuppressor} vacuously "prove" every surplus candidate suppressible. See
+     * {@code CONSTRAINT_MINING_DESIGN.md}'s "Crucial safety rule". Moving accepted-constraint storage
+     * from local {@link ConstraintSuggestionPreferences} into the repository itself (so it travels
+     * with fork/pull/push) must not weaken this guarantee -- only the source of "which signatures were
+     * accepted" changed, the fresh-mine-then-filter shape did not.
+     *
+     * @param repository the already-loaded repository to read accepted constraints and commit
+     *                    configurations from -- passed in rather than loaded internally so callers
+     *                    already holding one (e.g. {@link #compose}) don't pay for a second,
+     *                    independent {@code repositoryDao.load()} and don't risk this method seeing a
+     *                    different in-memory {@code Repository.Op} instance than the rest of the call.
+     *                    Package-private, not private: exercised directly by
+     *                    {@code AcceptedConstraintStaleReMineTest} to pin the safety property above
+     *                    without needing a full, hard-to-reproduce real surplus-suppression scenario.
      */
-    private List<ConstraintMiner.Suggestion> acceptedSuggestions() {
+    List<ConstraintMiner.Suggestion> acceptedSuggestions(Repository repository) {
         List<Set<String>> configs = ConfigurationBridge.readConfigurations(this);
         List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
-        Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(this.getRepositoryDir());
+        Set<String> accepted = AcceptedConstraints.acceptedSignatures(repository.getConstraints());
         List<ConstraintMiner.Suggestion> result = new ArrayList<>();
         for (ConstraintMiner.Suggestion suggestion : mined) {
             if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {
@@ -1949,6 +1968,60 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
         }
         return result;
+    }
+
+    private static Constraint.Kind toConstraintKind(ConstraintMiner.Kind kind) {
+        return Constraint.Kind.valueOf(kind.name());
+    }
+
+    /**
+     * Accepts a mined constraint suggestion, persisting it into the repository itself (travels with
+     * fork/pull/push, unlike the old {@link ConstraintSuggestionPreferences}-based tracking). Purely
+     * advisory bookkeeping -- see {@link #acceptedSuggestions} for why this is never trusted as-is
+     * without re-verification against fresh mining.
+     *
+     * @param suggestion the mined suggestion to accept.
+     */
+    public synchronized void acceptConstraint(ConstraintMiner.Suggestion suggestion) {
+        checkInitialized();
+        checkNotNull(suggestion);
+        acceptConstraint(suggestion.kind, suggestion.a, suggestion.b);
+    }
+
+    /**
+     * Lower-level variant taking kind/a/b directly (e.g. for test fixtures or GUI undo round-trips).
+     *
+     * @param kind     of the constraint.
+     * @param featureA antecedent / first feature / mandatory feature name.
+     * @param featureB consequent / second feature name; null for MANDATORY.
+     */
+    public synchronized void acceptConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
+        checkInitialized();
+        checkNotNull(kind);
+        checkNotNull(featureA);
+        safeTransaction(repository -> {
+            repository.addConstraint(toConstraintKind(kind), featureA, featureB);
+            return repository;
+        });
+    }
+
+    /**
+     * "Move back to pending" / undo-accept: removes a persisted constraint, if present.
+     *
+     * @param kind     of the constraint.
+     * @param featureA antecedent / first feature / mandatory feature name.
+     * @param featureB consequent / second feature name; null for MANDATORY.
+     */
+    public synchronized void unacceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
+        checkInitialized();
+        checkNotNull(kind);
+        checkNotNull(featureA);
+        safeTransaction(repository -> {
+            String id = kind.name() + "|" + featureA + "|" + (featureB == null ? "" : featureB);
+            Constraint existing = repository.getConstraint(id);
+            if (existing != null) repository.removeConstraint(existing);
+            return repository;
+        });
     }
 
     /**
@@ -1971,7 +2044,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
         if (this.surplusSuppressionEnabled && !checkout.getSurplusModules().isEmpty()) {
             try {
-                List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions();
+                List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
                 Formula revisionAwareFeatureModel =
                         FeatureModelFormula.compileRevisionAware(acceptedSuggestions, repository.getFeatures());
                 Set<ModuleRevision> desiredModules =

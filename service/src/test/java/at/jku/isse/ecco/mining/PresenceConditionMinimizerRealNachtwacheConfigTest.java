@@ -81,12 +81,12 @@ public class PresenceConditionMinimizerRealNachtwacheConfigTest {
             for (ConstraintMiner.Suggestion suggestion : mined) {
                 if (suggestion.isHard()) {
                     hardSuggestions.add(suggestion);
-                    ConstraintSuggestionPreferences.accept(repoDir, ConstraintSuggestionPreferences.signatureOf(suggestion));
+                    service.acceptConstraint(suggestion);
                 }
             }
             assertFalse(hardSuggestions.isEmpty(), "sanity check: expected at least one hard suggestion from real nachtwache-derived configurations");
 
-            Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(repoDir);
+            Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
             List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();
             for (ConstraintMiner.Suggestion suggestion : mined) {
                 if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {

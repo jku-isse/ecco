@@ -1,10 +1,9 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.MinimizationResults;
-import at.jku.isse.ecco.mining.ConstraintMiner;
-import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -475,10 +474,9 @@ public class FeaturesView extends BorderPane implements EccoListener {
 		// only MANDATORY is shown here (as a node decorator, below); accepted REQUIRES/EXCLUDES
 		// already have a home in ConstraintSuggestionsView's "Accepted" list, so this tab doesn't
 		// need a second, redundant place to show them.
-		for (ConstraintSuggestionPreferences.AcceptedConstraint constraint :
-				ConstraintSuggestionPreferences.getAcceptedConstraints(this.service.getRepositoryDir())) {
-			if (constraint.kind != ConstraintMiner.Kind.MANDATORY) continue;
-			String id = nodeIdByFeatureName.get(constraint.a);
+		for (Constraint constraint : this.service.getRepository().getConstraints()) {
+			if (constraint.getKind() != Constraint.Kind.MANDATORY) continue;
+			String id = nodeIdByFeatureName.get(constraint.getFeatureA());
 			if (id != null) snapshot.mandatoryNodeIds.add(id);
 		}
 		return snapshot;
@@ -488,9 +486,8 @@ public class FeaturesView extends BorderPane implements EccoListener {
 	 * Re-mines/re-lays-out and re-renders the graph right away, off the calling thread. Unlike
 	 * {@link #statusChangedEvent}, this isn't triggered by a real {@link EccoService} event (no
 	 * commit/checkout happened) -- it's called by {@link ConstraintSuggestionsView} whenever a
-	 * suggestion is accepted/rejected/undone, since that only changes
-	 * {@link at.jku.isse.ecco.mining.ConstraintSuggestionPreferences}, which {@code EccoService}
-	 * knows nothing about.
+	 * suggestion is accepted/rejected/undone, since none of those go through a code path that fires
+	 * an {@link at.jku.isse.ecco.service.listener.EccoListener} event.
 	 */
 	private void refreshNow() {
 		if (!this.service.isInitialized() || !this.tabVisible) return;

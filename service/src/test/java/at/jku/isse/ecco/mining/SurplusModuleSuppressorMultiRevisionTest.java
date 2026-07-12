@@ -108,7 +108,7 @@ public class SurplusModuleSuppressorMultiRevisionTest {
             }
             assertNotNull(excludesCoreExtra, "sanity check: EXCLUDES(Core,Extra) should have been mined, since they never co-occur");
             assertTrue(excludesCoreExtra.isHard(), "sanity check: should be hard, no counterexample exists");
-            ConstraintSuggestionPreferences.accept(repoDir, ConstraintSuggestionPreferences.signatureOf(excludesCoreExtra));
+            service.acceptConstraint(excludesCoreExtra);
 
             // find Core's two revisions
             Feature coreFeature = null;

@@ -1,7 +1,9 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
@@ -25,13 +27,15 @@ import java.util.stream.Collectors;
 
 /**
  * Reviews {@link ConstraintMiner} suggestions mined from committed configurations, inside the
- * Feature Model tab (see {@link FeaturesView}). Accept/reject decisions are recorded via
- * {@link ConstraintSuggestionPreferences} so a signature is not re-proposed once reviewed.
+ * Feature Model tab (see {@link FeaturesView}). An accepted suggestion is persisted as a real
+ * {@link Constraint} in the repository itself (travels with fork/pull/push); a rejected one is
+ * recorded locally via {@link ConstraintSuggestionPreferences} (personal, per-machine, so it's not
+ * re-proposed) -- see {@code EccoService#acceptConstraint}/{@code #unacceptConstraint}.
  *
  * <p>Per the mining epistemic contract (CONSTRAINT_MINING_DESIGN.md): "accept" here only records
- * that a human reviewed the suggestion and agrees with it -- there is no persisted
- * requires/excludes/mandatory constraint type in ECCO's data model yet, so accepted suggestions
- * are not (and must not silently become) enforced feature-model constraints.
+ * that a human reviewed the suggestion and agrees with it -- accepted suggestions are advisory
+ * bookkeeping only, not (and must not silently become) enforced feature-model constraints that
+ * block commit/checkout.
  */
 public class ConstraintSuggestionsView extends BorderPane implements EccoListener {
 
@@ -133,14 +137,14 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
             TableRow<ConstraintMiner.Suggestion> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && !row.isEmpty()) {
-                    review(List.of(row.getItem()), ConstraintSuggestionPreferences::accept);
+                    acceptSelected(List.of(row.getItem()));
                 }
             });
             return row;
         });
 
         Button acceptButton = new Button("Accept");
-        acceptButton.setOnAction(e -> review(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems()), ConstraintSuggestionPreferences::accept));
+        acceptButton.setOnAction(e -> acceptSelected(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems())));
         Button rejectButton = new Button("Reject");
         rejectButton.setOnAction(e -> review(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems()), ConstraintSuggestionPreferences::reject));
 
@@ -160,9 +164,9 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         this.rejectedListView.setCellFactory(lv -> new SignatureCell());
 
         Button unacceptButton = new Button("Move back to pending");
-        unacceptButton.setOnAction(e -> undoSelected(acceptedListView));
+        unacceptButton.setOnAction(e -> undoAccepted(acceptedListView));
         Button unrejectButton = new Button("Move back to pending");
-        unrejectButton.setOnAction(e -> undoSelected(rejectedListView));
+        unrejectButton.setOnAction(e -> undoRejected(rejectedListView));
 
         Label acceptedLabel = new Label("Accepted (reviewed, not yet an enforced feature-model constraint)");
         acceptedLabel.setWrapText(true);
@@ -183,6 +187,17 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         Platform.runLater(() -> statusChangedEvent(service));
     }
 
+    /** Accept persists a real {@link Constraint} in the repository -- see {@code EccoService#acceptConstraint}. */
+    private void acceptSelected(List<ConstraintMiner.Suggestion> suggestions) {
+        if (suggestions.isEmpty()) return;
+        for (ConstraintMiner.Suggestion suggestion : suggestions) {
+            service.acceptConstraint(suggestion);
+        }
+        refresh();
+        if (onReviewChanged != null) onReviewChanged.run();
+    }
+
+    /** Reject stays local -- see {@code ConstraintSuggestionPreferences#reject}. */
     private void review(List<ConstraintMiner.Suggestion> suggestions, java.util.function.BiConsumer<Path, String> decide) {
         if (suggestions.isEmpty()) return;
         Path repositoryDir = service.getRepositoryDir();
@@ -193,7 +208,20 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         if (onReviewChanged != null) onReviewChanged.run();
     }
 
-    private void undoSelected(ListView<String> listView) {
+    private void undoAccepted(ListView<String> listView) {
+        List<String> selected = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
+        if (selected.isEmpty()) return;
+        for (String signature : selected) {
+            ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
+            if (parsed == null) continue;
+            Constraint.Kind kind = Constraint.Kind.valueOf(parsed.kind.name());
+            service.unacceptConstraint(kind, parsed.a, parsed.b);
+        }
+        refresh();
+        if (onReviewChanged != null) onReviewChanged.run();
+    }
+
+    private void undoRejected(ListView<String> listView) {
         List<String> selected = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
         if (selected.isEmpty()) return;
         Path repositoryDir = service.getRepositoryDir();
@@ -219,7 +247,8 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                         new ConstraintMiner(minWitness, confidence, null).mine(configs);
 
                 Path repositoryDir = ConstraintSuggestionsView.this.service.getRepositoryDir();
-                Set<String> accepted = ConstraintSuggestionPreferences.getAccepted(repositoryDir);
+                Set<String> accepted = AcceptedConstraints.acceptedSignatures(
+                        ConstraintSuggestionsView.this.service.getRepository().getConstraints());
                 Set<String> rejected = ConstraintSuggestionPreferences.getRejected(repositoryDir);
 
                 List<ConstraintMiner.Suggestion> pending = new ArrayList<>();
