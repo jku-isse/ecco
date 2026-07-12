@@ -3,6 +3,7 @@ package at.jku.isse.ecco.mining;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.module.ModuleRevision;
+import org.logicng.datastructures.Tristate;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.solvers.MiniSat;
@@ -13,6 +14,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Suppresses {@link Checkout#getSurplusModules()} entries already provably implied by the accepted
@@ -23,6 +26,8 @@ import java.util.Set;
  * (see {@code Repository.Op#compose}'s {@code desiredModules} membership check).
  */
 public final class SurplusModuleSuppressor {
+
+    private static final Logger LOGGER = Logger.getLogger(SurplusModuleSuppressor.class.getName());
 
     private SurplusModuleSuppressor() {
     }
@@ -36,7 +41,14 @@ public final class SurplusModuleSuppressor {
      * revision mismatch (the wrong revision of a multi-revision feature) is never suppressed, since
      * the at-most-one-revision-per-feature clauses in
      * {@link FeatureModelFormula#compileRevisionAware} make the wrong revision's presence
-     * unprovable, not provably-redundant.
+     * unprovable, not provably-redundant. Also guards against unsatisfiable premises: if
+     * {@code known} itself is contradictory (e.g. the checkout being composed conflicts with an
+     * accepted constraint -- easy to do with mined constraints, and not the caller's fault), a
+     * one-directional SAT entailment check against it is vacuously true for *any* goal (ex falso
+     * quodlibet), which would otherwise silently suppress the entire surplus report regardless of
+     * whether any individual entry has a real logical connection to the contradiction. In that case
+     * nothing is suppressed at all -- the surplus map is left exactly as computed, same as for any
+     * other unprovable entry.
      */
     public static void suppressEntailed(Checkout checkout, Set<ModuleRevision> desiredModules,
                                          Formula revisionAwareFeatureModel) {
@@ -52,6 +64,13 @@ public final class SurplusModuleSuppressor {
 
         SATSolver solver = MiniSat.miniSat(f);
         solver.add(known);
+
+        if (solver.sat() != Tristate.TRUE) {
+            LOGGER.log(Level.WARNING, "Surplus-module suppression skipped: the checkout's desired "
+                    + "modules conflict with the accepted feature model (premises unsatisfiable), so "
+                    + "entailment can't be trusted. Leaving all surplus warnings as-is.");
+            return;
+        }
 
         Iterator<Map.Entry<ModuleRevision, String>> it = surplus.entrySet().iterator();
         while (it.hasNext()) {
