@@ -20,7 +20,6 @@ public class CommitCommand implements Command {
 
     @Override
     public void run(Namespace namespace) {
-        System.out.println(namespace.toString());
         eccoService.open();
         eccoService.commit(namespace.getString(COMMIT_MESSAGE_KEY), namespace.getString(CONFIGURATION_KEY));
         eccoService.close();
