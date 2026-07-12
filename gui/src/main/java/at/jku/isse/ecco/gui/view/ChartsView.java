@@ -8,7 +8,10 @@ import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.mining.ModuleConditionBridge;
+import at.jku.isse.ecco.mining.PresenceConditionMinimizer;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import javafx.application.Platform;
@@ -24,6 +27,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -35,6 +39,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 	private ObservableList<PieChart.Data> revisionsPerFeature;
 	private XYChart.Series<Number, Number> artifactsPerDepthSeries;
 	private XYChart.Series<String, Number> modulesPerOrderSeries;
+	private XYChart.Series<String, Number> modulesPerOrderAbsorbedSeries;
 	private XYChart.Series artifactsPerDepthAndOrderSeries;
 
 	public ChartsView(EccoService service) {
@@ -60,13 +65,25 @@ public class ChartsView extends BorderPane implements EccoListener {
 					}
 					Map<Integer, Integer> artifactsPerDepth = compRootNode.countArtifactsPerDepth();
 
-					// modules per order
+					// modules per order: raw (every module-lattice entry an association has ever
+					// accumulated, including redundant restatements - see CONSTRAINT_MINING_DESIGN.md's
+					// "Surplus-module suppression" section) and absorbed (X+XY=X collapsed, i.e. the
+					// minimal set of terms actually needed) side by side, so the chart itself shows how
+					// much of the raw count is accumulation noise rather than real structural complexity
 					Repository repository = ChartsView.this.service.getRepository();
 					final Map<Integer, Integer> modulesPerOrderMap = new TreeMap<>();
+					final Map<Integer, Integer> modulesPerOrderAbsorbedMap = new TreeMap<>();
 					for (Association association : repository.getAssociations()) {
-						for (Module module : association.computeCondition().getModules().keySet()) {
+						Condition condition = association.computeCondition();
+						for (Module module : condition.getModules().keySet()) {
 							//For the specified order -> If no order of this type is seen yet, it must be the first. Otherwise 1 is added to the old value
 							modulesPerOrderMap.compute(module.getOrder(), (key, oldValue) -> oldValue == null ? 1 : oldValue + 1);
+						}
+						List<PresenceConditionMinimizer.Term> absorbedTerms =
+								PresenceConditionMinimizer.absorb(ModuleConditionBridge.toRevisionTerms(condition));
+						for (PresenceConditionMinimizer.Term term : absorbedTerms) {
+							int order = term.positive.size() + term.negative.size() - 1;
+							modulesPerOrderAbsorbedMap.compute(order, (key, oldValue) -> oldValue == null ? 1 : oldValue + 1);
 						}
 					}
 
@@ -98,6 +115,10 @@ public class ChartsView extends BorderPane implements EccoListener {
 							final ObservableList<XYChart.Data<String, Number>> maxOrderData = ChartsView.this.modulesPerOrderSeries.getData();
 							maxOrderData.clear();
 							modulesPerOrderMap.forEach((key, value) -> maxOrderData.add(new XYChart.Data<>(Integer.toString(key), value)));
+
+							final ObservableList<XYChart.Data<String, Number>> maxOrderAbsorbedData = ChartsView.this.modulesPerOrderAbsorbedSeries.getData();
+							maxOrderAbsorbedData.clear();
+							modulesPerOrderAbsorbedMap.forEach((key, value) -> maxOrderAbsorbedData.add(new XYChart.Data<>(Integer.toString(key), value)));
 						}
 
 //						// artifacts per depth and order
@@ -175,24 +196,30 @@ public class ChartsView extends BorderPane implements EccoListener {
 		}
 
 
-		{ // modules per order
+		{ // modules per order: raw vs. absorbed (X+XY=X redundant terms collapsed), side by side, so
+			// the gap between the two series is a direct visualization of how much of an association's
+			// stored module lattice is accumulated redundancy rather than real structural complexity -
+			// see CONSTRAINT_MINING_DESIGN.md's "Surplus-module suppression" section
 			TitledPane modulesPerOrderPane = new TitledPane();
 			modulesPerOrderPane.setAnimated(false);
-			modulesPerOrderPane.setText("Modules per Order");
+			modulesPerOrderPane.setText("Modules per Order (raw vs. absorbed)");
 
 			final CategoryAxis xAxis = new CategoryAxis();
 			final NumberAxis yAxis = new NumberAxis();
 			final BarChart<String, Number> bc = new BarChart<>(xAxis, yAxis);
-			bc.setTitle("Modules per Order");
+			bc.setTitle("Modules per Order (raw vs. absorbed)");
 			xAxis.setLabel("Order");
 			yAxis.setLabel("Number of Modules");
 			yAxis.setTickUnit(1.0);
 			yAxis.setMinorTickVisible(false);
 
 			this.modulesPerOrderSeries = new XYChart.Series<>();
-			this.modulesPerOrderSeries.setName("Number of Modules");
+			this.modulesPerOrderSeries.setName("Raw");
 
-			bc.getData().setAll(this.modulesPerOrderSeries);
+			this.modulesPerOrderAbsorbedSeries = new XYChart.Series<>();
+			this.modulesPerOrderAbsorbedSeries.setName("Absorbed");
+
+			bc.getData().setAll(this.modulesPerOrderSeries, this.modulesPerOrderAbsorbedSeries);
 
 			modulesPerOrderPane.setContent(bc);
 

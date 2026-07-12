@@ -127,8 +127,13 @@ public final class PresenceConditionMinimizer {
      * Drops terms whose literals are a syntactic superset of some other term's -- the boolean
      * identity {@code X + XY = X}, which holds unconditionally (no feature model / SAT required).
      * Ties (two identical terms) keep only the earlier one.
+     *
+     * <p>Public (not just used internally by {@link #minimize}): also used directly wherever the
+     * unconditional identity alone is enough, with no feature model required -- see
+     * {@link at.jku.isse.ecco.service.EccoService#compose} via {@code SurplusLatticeAbsorber}, and
+     * {@code ChartsView}'s "Modules per Order" chart (visualizing raw vs. absorbed counts).
      */
-    static List<Term> absorb(List<Term> terms) {
+    public static List<Term> absorb(List<Term> terms) {
         List<Term> result = new ArrayList<>();
         for (int i = 0; i < terms.size(); i++) {
             Term ti = terms.get(i);
