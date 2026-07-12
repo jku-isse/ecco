@@ -2189,15 +2189,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                             .append(mr.getValue()).append(System.lineSeparator());
                 }
                 for (Artifact a : checkout.getOrderWarnings()) {
-                    List<String> pathList = new LinkedList<>();
-                    Node current = a.getContainingNode().getParent();
-                    while (current != null) {
-                        if (current.getArtifact() != null)
-                            pathList.add(0, current.getArtifact().toString() + " > ");
-                        current = current.getParent();
-                    }
-                    pathList.add(a.toString());
-                    sb.append("ORDER: ").append(String.join("", pathList)).append(System.lineSeparator());
+                    sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(a))
+                            .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(a)).append(")")
+                            .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix())
+                            .append(System.lineSeparator());
                 }
                 for (Association association : checkout.getUnresolvedAssociations()) {
                     sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());

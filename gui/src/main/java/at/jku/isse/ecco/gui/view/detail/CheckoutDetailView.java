@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -9,6 +10,7 @@ import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.ModuleRevisions;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.tree.ArtifactDiagnostics;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -207,6 +209,23 @@ public class CheckoutDetailView extends BorderPane {
 			for (java.util.Map.Entry<ModuleRevision, String> surplusEntry : checkout.getSurplusModules().entrySet()) {
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("SURPLUS", surplusEntry.getKey().toString(), surplusEntry.getValue(), "", null));
 			}
+
+			// show order diagnostics (see Repository.Op.compose()) -- the "fix" here reuses the exact
+			// same Apply Fix flow as MISSING: no in-GUI reorder control, no writer/compose changes,
+			// just point at the ambiguity and let the user reorder the checked-out file themselves.
+			for (Artifact<?> orderWarningArtifact : checkout.getOrderWarnings()) {
+				String suggestedConfigurationString = checkout.getConfiguration() != null
+						? ModuleRevisions.suggestedConfigurationString(null, checkout.getConfiguration())
+						: null;
+				// one child per line (with its source line number(s), when the adapter tracked one)
+				// instead of a comma-joined blob, so the wrapping cell reads as a real list.
+				String childrenMultiline = String.join(System.lineSeparator(), ArtifactDiagnostics.describeChildrenWithLines(orderWarningArtifact));
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("ORDER",
+						orderWarningArtifact + " (current order):" + System.lineSeparator() + childrenMultiline,
+						ArtifactDiagnostics.describePath(orderWarningArtifact),
+						ArtifactDiagnostics.suggestOrderFix(),
+						suggestedConfigurationString));
+			}
 		} else {
 			this.setCenter(null);
 			this.toolBar.setDisable(true);
@@ -222,7 +241,10 @@ public class CheckoutDetailView extends BorderPane {
 	 * re-checkout steps around content the user points at.
 	 */
 	private void applyFix(DiagnosticInfo diagnosticInfo) {
-		ApplyFixDialog dialog = new ApplyFixDialog(this.service, diagnosticInfo.getSuggestedConfigurationString());
+		// MISSING content usually comes from somewhere new (default: repository home dir); an ORDER
+		// fix is reordering content that already exists at the checkout's own output directory.
+		Path defaultDirectory = "ORDER".equals(diagnosticInfo.getType()) ? this.currentBaseDir : this.service.getRepositoryHomeDir();
+		ApplyFixDialog dialog = new ApplyFixDialog(defaultDirectory, diagnosticInfo.getSuggestedConfigurationString());
 		Optional<ApplyFixDialog.Result> resultOpt = dialog.showAndWait();
 		if (resultOpt.isEmpty()) return;
 		ApplyFixDialog.Result result = resultOpt.get();
@@ -307,7 +329,7 @@ public class CheckoutDetailView extends BorderPane {
 	 */
 	private static class ApplyFixDialog extends Dialog<ApplyFixDialog.Result> {
 
-		ApplyFixDialog(EccoService service, String suggestedConfigurationString) {
+		ApplyFixDialog(Path defaultDirectory, String suggestedConfigurationString) {
 			setTitle("Apply Fix");
 			setHeaderText("Commit content under this configuration, then re-run the checkout to verify.");
 			getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -321,7 +343,7 @@ public class CheckoutDetailView extends BorderPane {
 
 			Label directoryLabel = new Label("Directory: ");
 			gridPane.add(directoryLabel, 0, row, 1, 1);
-			TextField directoryField = new TextField(service.getRepositoryHomeDir().toString());
+			TextField directoryField = new TextField(defaultDirectory == null ? "" : defaultDirectory.toString());
 			gridPane.add(directoryField, 1, row, 1, 1);
 			Button browseButton = new Button("...");
 			gridPane.add(browseButton, 2, row, 1, 1);
