@@ -39,6 +39,7 @@ public class CheckoutView extends OperationView implements EccoListener {
     private final SplitPane splitPane;
     private final CheckoutDetailView checkoutDetailView;
     private final TableView<FileInfo> logTable;
+    private Path currentBaseDir;
 
     public CheckoutView(EccoService service) {
         super();
@@ -168,6 +169,7 @@ public class CheckoutView extends OperationView implements EccoListener {
 
 
             this.service.setBaseDir(baseDir);
+            this.currentBaseDir = baseDir;
             this.logData.clear();
             this.service.addListener(this);
 
@@ -193,7 +195,7 @@ public class CheckoutView extends OperationView implements EccoListener {
 
     protected void handleCheckoutResult(Checkout checkout, Node supportNode) {
         this.service.removeListener(this);
-        this.checkoutDetailView.showCheckout(checkout);
+        this.checkoutDetailView.showCheckout(checkout, this.currentBaseDir);
         this.splitPane.getItems().setAll(this.logTable, supportNode);
     }
 
