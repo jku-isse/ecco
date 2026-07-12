@@ -1,7 +1,9 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.storage.ser.feature.SerConfiguration;
 import at.jku.isse.ecco.storage.ser.feature.SerFeature;
 import at.jku.isse.ecco.storage.ser.feature.SerFeatureRevision;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
@@ -84,6 +86,30 @@ public class ModuleRevisionsTest {
 
 		assertTrue(ModuleRevisions.RELEVANCE_ORDER.compare(mrA, mrB) < 0);
 		assertEquals(0, ModuleRevisions.RELEVANCE_ORDER.compare(mrA, mrA));
+	}
+
+	@Test
+	public void suggestFix_usesTheFullCheckoutConfigurationWithExactRevisionIds_notJustTheMissingItemsOwnFeatures() {
+		ModuleRevision mrAB = moduleRevision(new FeatureRevision[]{revA, revB}, new at.jku.isse.ecco.feature.Feature[0]);
+		// the checkout's full configuration also requests FeatureC -- the suggested fix must include
+		// it too, since committing only A+B (and omitting C) would likely just leave a different
+		// combination missing next time.
+		Configuration configuration = new SerConfiguration(new FeatureRevision[]{revA, revB, revC});
+
+		assertEquals(
+				"commit content under the full checkout configuration to add FeatureA + FeatureB"
+						+ " (e.g. `ecco commit -c \"FeatureA.r1,FeatureB.r1,FeatureC.r1\" -m \"...\"`)",
+				ModuleRevisions.suggestFix(mrAB, configuration));
+	}
+
+	@Test
+	public void suggestFix_fallsBackToTheMissingItemsOwnFeaturesWhenConfigurationIsNull() {
+		ModuleRevision mrAB = moduleRevision(new FeatureRevision[]{revA, revB}, new at.jku.isse.ecco.feature.Feature[0]);
+
+		assertEquals(
+				"commit content under the full checkout configuration to add FeatureA + FeatureB"
+						+ " (e.g. `ecco commit -c \"FeatureA.r1,FeatureB.r1\" -m \"...\"`)",
+				ModuleRevisions.suggestFix(mrAB, null));
 	}
 
 }

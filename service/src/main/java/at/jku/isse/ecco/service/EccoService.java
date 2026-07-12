@@ -2181,6 +2181,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     if (location != null && !location.isEmpty()) {
                         sb.append(" (").append(location).append(")");
                     }
+                    sb.append(" -- suggested fix: ").append(ModuleRevisions.suggestFix(mr, checkout.getConfiguration()));
                     sb.append(System.lineSeparator());
                 }
                 for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
