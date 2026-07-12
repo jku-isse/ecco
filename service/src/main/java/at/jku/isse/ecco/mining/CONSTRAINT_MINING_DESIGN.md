@@ -205,6 +205,134 @@ run):
    first end-to-end run showed "0 accepted total" despite having just
    accepted one.
 
+## Surplus-module suppression (done, production) + the surplus-noise root cause (characterized, fix validated, not yet wired)
+
+A second, closely related feature built on the same `FeatureModelFormula`
+machinery, not otherwise described in this doc: **`SurplusModuleSuppressor`**
+(`service/.../mining/SurplusModuleSuppressor.java`, wired into
+`EccoService.compose()` since `ce32c243`, default on). Where minimization
+above rewrites a presence condition, this instead takes `Checkout`'s
+already-computed `getSurplusModules()` map and removes any entry *provably
+entailed* by (accepted feature model AND the modules already known to be
+desired) — non-actionable noise, not a real gap. `getMissing()` is never
+touched by this or anything below: a genuinely missing module means content
+doesn't exist anywhere in the repository, unconditionally real regardless of
+feature model (see "MISSING as a feature-interaction signal" below).
+
+**Bug found and fixed in `SurplusModuleSuppressor` itself**: `suppressEntailed()`
+built `known = revisionAwareFeatureModel AND desiredFacts` and trusted
+one-directional SAT entailment against it (`Entailment.entails`) without ever
+checking `known` was satisfiable first. Whenever a checkout's desired modules
+conflicted with an accepted constraint — easy to trigger, confirmed at real x8
+scale where 40/40 sampled novel intensional configurations hit this — `known`
+became contradictory, and classical logic made it vacuously "entail" *every*
+surplus candidate (ex falso quodlibet), wiping the entire surplus report
+(106,009 entries → 0) regardless of whether any entry had a real logical
+connection to the conflict. Fixed with a satisfiability guard before the
+entailment loop; if UNSAT, suppression is skipped entirely (same conservative
+fallback already used for an individually-unprovable entry). Repro:
+`SurplusModuleSuppressorUnsatPremisesBugTest.java`.
+
+**Root cause of surplus noise more broadly** (why even *constraint-respecting*
+intensional checkouts produced huge surplus counts with nothing suppressible):
+an un-minimized module lattice, unrelated to the accepted feature model at
+all. `Association.Op#computeLikelyCondition()`
+(`base/.../core/Association.java:95-113`) selects, from every `Module` an
+association has ever co-occurred with, every one that (a) was present in
+every commit where the association was present and (b) globally always
+implied the association's presence — correctly proving *sufficiency*, never
+checking *minimality*. The candidate modules it selects from are generated at
+**commit time** by `Repository.Op#addConfigurationModules()`
+(`base/.../repository/Repository.java:274-379`): the full powerset of
+(selected positive features) × (every other feature in the repo, as
+negative), bounded by `getMaxOrder()` (default 2 — `SerRepository
+.DEFAULT_MAX_ORDER`, `ecco.properties`' `default.max.order`). So an
+association accumulates, across its commit history, every combination of
+*other* features that merely happened to stay constant (e.g. always-absent)
+so far — not just the minimal necessary term. `Module.getOrder()` (the `d^N`
+prefix in `toString()`) is literal-count minus one, purely a derived display
+label; nothing is lost by not carrying it into `Term` — `absorb()`'s own
+`subsumes()` recomputes the equivalent size from `Term`'s own fields. Also
+confirmed: `Condition#getType()` (AND/OR) is not the real combination
+semantics — `Condition#holds()` returns true the moment *any* stored
+module-revision entry holds, unconditionally of type (already noted in
+`ModuleConditionBridge`'s doc comment); every association's real condition is
+a plain OR-of-ANDs (DNF), exactly `PresenceConditionMinimizer`'s shape.
+
+**Fix validated, not yet wired**: `absorb()` — no feature model needed, the
+same syntactic `X + XY = X` pass already used inside `minimize()` — collapses
+this cleanly. Real x8 (445MB, 9426 artifacts, 63 associations): whole-repo
+pass, **42,070 → 96 total module-terms**; the single largest association
+(`1a0d2078-92aa-437d-8840-c1110aa975cd`, 18,287 raw terms) is the exact one
+that motivated the absorption pre-pass inside `minimize()` in the first place
+(same real bloat, reachable via a second code path, same fix). A
+10-novel-combo checkout sweep: **26,039 total surplus entries, 0 survive
+absorption** — 100% eliminated, all confirmed non-actionable lattice noise.
+
+**Revision-aware bridge added**: `compose()`'s surplus loop operates on
+revision-exact `ModuleRevision`s, but `toTerms(Condition)` is feature-name-level
+only (same scope limit as the rest of this feature) and would conflate
+different revisions of the same feature under absorption. Added
+`ModuleConditionBridge.toRevisionTerms(Condition)` (committed), one `Term` per
+`ModuleRevision` across every `Module` in a condition, using the same
+revision-exact-positive / plain-feature-name-negative encoding as the existing
+single-revision `toRevisionTerm()`. Verified: unit tests
+(`ModuleConditionBridgeTest.java`) confirm a redundant same-revision superset
+gets absorbed while a genuinely different revision of the same feature
+survives independently, never cross-contaminated; a real-x8 consistency check
+(x8 has zero multi-revision features) showed `toRevisionTerms()`+`absorb()`
+reproduces the *exact* same reduction as `toTerms()`+`absorb()` (42,070 → 96,
+both), confirming correctness where revisions don't matter as a precondition
+for trusting it where they do.
+
+**Safety analysis for wiring this into `compose()`'s surplus loop
+(`Repository.java:688-703`), read-time, scoped locally** (not yet done):
+- Tree-preserving by construction: `selectedAssociations` (what actually gets
+  composed) is computed earlier and separately, via
+  `association.computeCondition().holds(configuration)` — the full raw
+  disjunction. `X + XY = X` is a tautology, true in every configuration, so
+  nothing about absorption can change what holds().
+- No new false positives: checked the `desiredModules` asymmetry risk
+  directly — `getOrphanedConfigurationModules()` builds the full powerset up
+  to the same `getMaxOrder()` cap, always including order-0 (minimal) entries
+  first, so an absorbed minimal candidate always finds its match if one
+  should exist.
+- Scope matters: three real consumers read the *raw*, un-minimized lattice
+  for purposes unrelated to surplus — `ChartsView`'s "modules per order"
+  chart, `FeatureModelTree#computeCoOccurrence()` (infers feature-dependency
+  edges from raw co-occurrence — presence/absence is its actual signal per
+  its own doc comment, not characterized against absorbed data), and
+  `Repository`'s subset-extraction/merge logic (`~921`, `~1235`). A fix
+  scoped locally inside `compose()`'s surplus loop (a local term list, never
+  mutating the `Condition`/`Association` object) leaves all three untouched;
+  a write-time fix inside `computeLikelyCondition()` itself would not, and
+  hasn't been investigated against them.
+- Order-cap confidence check: does `maxOrder=2` ever cause a genuine
+  representation failure (a necessary condition needing >3 literals that
+  neither `computeLikelyCondition()` nor its `computeCertainCondition()`
+  fallback can express)? Checked directly on real x8: of 63 associations, 62
+  succeeded via the "likely" method, exactly 1 fell back to "certain", and
+  that fallback always found something — zero total inference failures. Not
+  proof every represented condition is the tightest possible one, but no
+  evidence of the cap silently losing information in x8's actual data either.
+
+**MISSING as a feature-interaction signal** (existing behavior, clarified and
+verified this session, not changed): per `README.md`, "`.warnings` contains a
+list of *feature interaction* and uncertain ordering warnings or hints."
+`getMissing()`'s check (`Repository.java:673-680`) walks the same full
+powerset (`desiredModules`) and flags any combination with no matching
+`Module`/`ModuleRevision` in the repository at all. Verified with a small real
+`EccoService` repo: `A` and `B` alone, plus `A,B` together with extra "glue"
+content only present when both are selected. Checking out `A,B,C` (a
+combination nobody had ever committed, since `C` only ever existed alone)
+reported exactly three MISSING entries — `A+C`, `B+C`, `A+B+C` — the precise
+new pairwise/triple combinations introduced by adding `C`, while `A+B`'s glue
+content was correctly still composed (not flagged, since it was already
+validated). Caveat worth keeping in mind: this is a conservative "never
+validated" signal, not a diagnosis that glue code is *needed* — ECCO has no
+way to know two features are safely independent without that exact
+combination having been tried at least once.
+
 ## Tests (pure core → easy, this is where correctness is pinned)
 
 `ConstraintMinerTest` (7 tests):
@@ -268,3 +396,19 @@ single `MANDATORY` feature.
    preview (CLI + GUI, both read-only) is a stepping stone, not this. Needs
    its own design/risk discussion given it would touch core correctness
    paths.
+
+   **Narrowed by this session, for the `compose()` surplus-loop slice
+   specifically** (see "Surplus-module suppression" above): read-time,
+   scoped locally inside `compose()`'s surplus loop, using plain `absorb()`
+   (no feature model) is now characterized and validated — tree-preserving
+   by construction, no new false positives, and the three real consumers of
+   the raw lattice (`ChartsView`, `FeatureModelTree`, `Repository`
+   merge/extract) are identified and would be untouched by a properly-scoped
+   fix. The actual `compose()` edit itself is still not made — this is
+   "characterized and de-risked," not "done." The broader question (write-time
+   pruning inside `computeLikelyCondition()`, or minimization for commit/
+   checkout beyond just the surplus loop) remains open and still needs its
+   own design/risk discussion, per the feature-model-aware half staying
+   read-time by necessity (see "Crucial safety rule" above — the accepted
+   feature model evolves as more commits arrive and humans review
+   suggestions, so anything using it can't be baked in destructively).
