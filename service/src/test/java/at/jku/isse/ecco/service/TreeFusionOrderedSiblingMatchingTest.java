@@ -160,6 +160,30 @@ public class TreeFusionOrderedSiblingMatchingTest {
 		assertEquals(1, altoSlot.getChildren().size(), "second slot should have received the other treble");
 	}
 
+	@Test
+	public void treeFusion_propagatesNodePropertiesOntoTheKeptSibling_whenAMatchIsFound() {
+		// LINE_START/LINE_END (set by adapters like TextReader/LilypondLineReader at parse time) are
+		// display-only metadata, not structural -- but were silently dropped for a content-equal
+		// sibling reused via mainIndex, unlike feature trace fusion and the PartialOrderGraph merge
+		// in the very same branch, which were already propagated correctly. Root-caused via a real
+		// GUI bug report: ORDER-warning line numbers were missing in practice despite surviving a
+		// real close/reopen round trip for an ordinary (non-fused) checkout.
+		Node.Op mainTree = orderedContext("LilyPond.musiclist");
+		Node.Op sopranoSlot = context("LilyPond.list");
+		mainTree.addChild(sopranoSlot);
+
+		Node.Op incomingSlot = context("LilyPond.list");
+		incomingSlot.putProperty("LINE_START", 5);
+		incomingSlot.putProperty("LINE_END", 5);
+		Node.Op orphan = withChild(orderedContext("LilyPond.musiclist"), incomingSlot);
+
+		Trees.treeFusion(mainTree, orphan);
+
+		assertEquals(java.util.Optional.of(5), sopranoSlot.getProperty("LINE_START"),
+				"LINE_START must survive fusion onto the kept sibling, not just the feature trace and PartialOrderGraph");
+		assertEquals(java.util.Optional.of(5), sopranoSlot.getProperty("LINE_END"));
+	}
+
 	private Node.Op context(String name) {
 		return factory.createNode(new DefaultContextArtifactData(name));
 	}

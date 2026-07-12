@@ -884,6 +884,12 @@ public class Trees {
 				mainChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
 				mainChild.setUnique(mainChild.isUnique() || child.isUnique());
 				Trees.mergePartialOrderGraphs(mainChild, child);
+				// properties (e.g. LINE_START/LINE_END, set by adapters like TextReader at parse
+				// time) are purely informational/display metadata, not structural -- but were
+				// silently dropped for a content-equal sibling reused via mainIndex, unlike the
+				// copySingleNode() branch above which already propagates them. Additive (putProperty
+				// per key), so this can't clobber anything mainChild already has beyond the same keys.
+				mainChild.putProperties(child.getProperties());
 				treeFusion(mainChild, child);
 			}
 		}
