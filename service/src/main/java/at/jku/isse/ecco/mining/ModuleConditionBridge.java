@@ -7,6 +7,7 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -67,5 +68,31 @@ public final class ModuleConditionBridge {
             negative.add(feature.getName());
         }
         return new PresenceConditionMinimizer.Term(positive, negative);
+    }
+
+    /**
+     * Revision-aware sibling of {@link #toTerms(Condition)}: converts a whole {@link Condition} into
+     * one {@link PresenceConditionMinimizer.Term} per {@link ModuleRevision} (via {@link
+     * #toRevisionTerm(ModuleRevision)}), across every {@link Module} in {@link Condition#getModules()}
+     * -- not just one term per {@code Module} key, since a single {@code Module} (a pos/neg
+     * feature-name shape) can carry multiple {@code ModuleRevision}s (distinct revision picks for
+     * that same shape).
+     *
+     * <p>Exists for callers that need {@link PresenceConditionMinimizer#absorb} to operate correctly
+     * on a revision-carrying repository -- feature-level {@link #toTerms} would conflate different
+     * revisions of the same feature into one atom, incorrectly treating e.g. {@code Old@r1} and
+     * {@code Old@r2} as identical for subsumption purposes. Same atom-vocabulary warning as {@link
+     * #toRevisionTerm}: only pairs meaningfully with revision-aware machinery
+     * ({@link FeatureModelFormula#compileRevisionAware}), never with {@link #toTerms}'s plain
+     * feature-name output.
+     */
+    public static List<PresenceConditionMinimizer.Term> toRevisionTerms(Condition condition) {
+        List<PresenceConditionMinimizer.Term> terms = new ArrayList<>();
+        for (Collection<ModuleRevision> moduleRevisions : condition.getModules().values()) {
+            for (ModuleRevision moduleRevision : moduleRevisions) {
+                terms.add(toRevisionTerm(moduleRevision));
+            }
+        }
+        return terms;
     }
 }
