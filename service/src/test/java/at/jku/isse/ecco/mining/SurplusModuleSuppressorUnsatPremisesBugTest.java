@@ -8,7 +8,6 @@ import at.jku.isse.ecco.storage.ser.feature.SerFeature;
 import at.jku.isse.ecco.storage.ser.feature.SerFeatureRevision;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
 import at.jku.isse.ecco.storage.ser.module.SerModuleRevision;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.logicng.datastructures.Tristate;
 import org.logicng.formulas.Formula;
@@ -24,19 +23,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Minimal, isolated repro of the real-x8-scale finding from the intensional-checkout investigation
- * (see project memory "surplus-suppression-intensional-checkout" and its x8 follow-up): running
+ * (see project memory "surplus-suppressor-unsat-premises-bug"): running
  * {@link SurplusModuleSuppressor#suppressEntailed} against real x8 with 40 genuinely novel
- * (never-committed-as-that-exact-combination) intensional configurations suppressed 100% of surplus
- * warnings on all 40 -- 106,009 baseline entries in, 0 remaining out, every single time. Every one
- * of those 40 combos also happened to violate one of x8's 60 accepted mined constraints (mostly
- * MANDATORY(header), since "header" was present in all 52 real commits).
+ * (never-committed-as-that-exact-combination) intensional configurations originally suppressed 100%
+ * of surplus warnings on all 40 -- 106,009 baseline entries in, 0 remaining out, every single time.
+ * Every one of those 40 combos also happened to violate one of x8's 60 accepted mined constraints
+ * (mostly MANDATORY(header), since "header" was present in all 52 real commits).
  *
  * <p>This test proves the mechanism directly rather than by correlation: {@link Entailment#entails}
- * decides "known AND NOT(goal) is UNSAT" -- but {@code suppressEntailed} never checks that
- * {@code known} (accepted feature model AND desired-module facts) is satisfiable BEFORE trusting
- * that check. If {@code known} is already contradictory, "known AND NOT(goal)" is trivially UNSAT
- * for literally any goal (classical ex falso quodlibet), so entailment reports true for every
- * surplus candidate -- including ones with no real logical connection to the contradiction at all.
+ * decides "known AND NOT(goal) is UNSAT" -- but {@code suppressEntailed} originally never checked that
+ * {@code known} (accepted feature model AND desired-module facts) is satisfiable BEFORE trusting that
+ * check. If {@code known} is already contradictory, "known AND NOT(goal)" is trivially UNSAT for
+ * literally any goal (classical ex falso quodlibet), so entailment reported true for every surplus
+ * candidate -- including ones with no real logical connection to the contradiction at all.
+ * {@code suppressEntailed} now guards against this by checking {@code known}'s satisfiability first
+ * and skipping suppression entirely (leaving the surplus map untouched) when it's UNSAT.
  *
  * <p>The contradiction is easy to trigger with completely ordinary inputs: a MANDATORY(X) constraint
  * (mined whenever a feature is present in 100% of witnessed commits -- an extremely common, easily
@@ -79,10 +80,7 @@ public class SurplusModuleSuppressorUnsatPremisesBugTest {
     }
 
     @Test
-    @Disabled("documents a known, unfixed bug: suppressEntailed doesn't guard against unsatisfiable "
-            + "premises before trusting entailment from them -- see memory "
-            + "'surplus-suppressor-unsat-premises-bug'")
-    public void unsatPremises_causeAnUnrelatedNeverEntailedSurplusEntryToBeWronglySuppressed() {
+    public void unsatPremises_leaveAnUnrelatedNeverEntailedSurplusEntryUntouched() {
         SerFeature header = new SerFeature("f1", "header");
         SerFeatureRevision headerR1 = header.addRevision("1");
         SerFeature unrelated = new SerFeature("f2", "Unrelated");
@@ -111,10 +109,9 @@ public class SurplusModuleSuppressorUnsatPremisesBugTest {
 
         SurplusModuleSuppressor.suppressEntailed(checkout, Set.of(desiredRevision), revisionAwareFeatureModel);
 
-        // THE BUG: this currently fails. A completely unrelated, never-actually-entailed surplus
-        // entry gets removed anyway, purely because the premises happen to be contradictory for an
-        // unrelated reason (the omitted MANDATORY(header) feature). The real, actionable surplus
-        // warning about Unrelated@1 silently disappears from the user's checkout report.
+        // the satisfiability guard in suppressEntailed() must detect the contradictory premises
+        // (unrelated to Unrelated@1 -- caused by the omitted MANDATORY(header) feature) and skip
+        // suppression entirely, leaving the real, actionable surplus warning intact
         assertTrue(checkout.getSurplusModules().containsKey(surplusRevision),
                 "an unrelated surplus entry with no real logical connection to the contradiction must "
                         + "still be retained -- suppressEntailed must guard against unsatisfiable premises "
