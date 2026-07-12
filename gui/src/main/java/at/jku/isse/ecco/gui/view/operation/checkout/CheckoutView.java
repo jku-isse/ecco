@@ -111,7 +111,11 @@ public class CheckoutView extends OperationView implements EccoListener {
         Label baseDirLabel = new Label("Base Directory: ");
         gridPane.add(baseDirLabel, 0, row, 1, 1);
 
-        TextField baseDirTextField = new TextField(service.getBaseDir().toString());
+        // default to the directory the repository lives in, not whatever service.getBaseDir()
+        // happens to still be set to from a previous, possibly unrelated operation (e.g. a Commit
+        // or Fork done from a different folder) -- still freely editable below before the actual
+        // checkout.
+        TextField baseDirTextField = new TextField(service.getRepositoryHomeDir().toString());
         baseDirTextField.setDisable(false);
         baseDirLabel.setLabelFor(baseDirTextField);
         gridPane.add(baseDirTextField, 1, row, 1, 1);

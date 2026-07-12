@@ -390,6 +390,11 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         rootNode.addOrigNode(association.getRootNode());
                     }
 
+                    // default to the directory the repository lives in, same as the full Checkout
+                    // dialog -- there's no directory-picker step here, so this IS the effective
+                    // default rather than just a pre-filled suggestion.
+                    service.setBaseDir(service.getRepositoryHomeDir());
+
                     try {
                         if (!Directory.isEmpty(service.getBaseDir())) {
                             new DeleteDirectoryContentsDialog(service.getBaseDir()).showBlocked();
