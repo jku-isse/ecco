@@ -95,9 +95,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     @Inject
     private EntityFactory entityFactory;
     @Inject
-    private TransactionStrategy transactionStrategy;
+    TransactionStrategy transactionStrategy;
     @Inject
-    private RepositoryDao repositoryDao;
+    RepositoryDao repositoryDao;
     @Inject
     private RemoteDao remoteDao;
 
@@ -222,7 +222,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // # LISTENERS #####################################################################################################
 
-    private final ListenerRegistry listeners = new ListenerRegistry(this);
+    final ListenerRegistry listeners = new ListenerRegistry(this);
+
+    private final VariantManager variantManager = new VariantManager(this);
 
     public boolean isWriteInProgress() {
         return this.listeners.isWriteInProgress();
@@ -1613,43 +1615,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configuration The configuration of the variant
      */
     public synchronized void addVariant(Configuration configuration, String name, String description) {
-        this.checkInitialized();
-
-        checkNotNull(configuration);
-
-        this.listeners.setWriteInProgress(true);
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = this.repositoryDao.load();
-            ArrayList<Variant> variants = repository.getVariants();
-
-            //storing new variant
-            boolean hasConfigurarion = false;
-            for (Variant v : variants) {
-                if (v.getConfiguration().equals(configuration)) {
-                    hasConfigurarion = true;
-                }
-            }
-            if (!hasConfigurarion) {
-                SerVariant memVariant = new SerVariant(name, configuration, UUID.randomUUID().toString());
-                memVariant.setDescription(description);
-                repository.addVariant(memVariant);
-            }
-            //
-
-            repositoryDao.store(repository);
-
-            transactionStrategy.end();
-
-            this.listeners.fireStatusChangedEvent();
-        } catch (Exception e) {
-            transactionStrategy.rollback();
-
-            throw new EccoException("Error during adding a variant.", e);
-        } finally {
-            this.listeners.setWriteInProgress(false);
-        }
+        this.variantManager.addVariant(configuration, name, description);
     }
 
     /**
@@ -1658,9 +1624,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param id The configuration of the variant
      */
     public synchronized void removeVariant(String id) {
-        checkInitialized();
-        checkNotNull(id);
-        safeTransaction(repository -> removeVariantById(repository, id));
+        this.variantManager.removeVariant(id);
     }
 
     /**
@@ -1669,31 +1633,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configuration The configuration of the variant
      */
     public synchronized void removeVariant(Configuration configuration) {
-        checkInitialized();
-        checkNotNull(configuration);
-        safeTransaction(repository -> removeVariantByConfiguration(repository, configuration));
+        this.variantManager.removeVariant(configuration);
     }
 
-    private Repository.Op removeVariantById(Repository.Op repository, String id) {
-        Variant variant = repository.getVariant(id);
-
-        if (variant != null) {
-            repository.removeVariant(variant);
-        }
-
-        return repository;
-    }
-
-    private Repository.Op removeVariantByConfiguration(Repository.Op repository, Configuration configuration) {
-        Variant variant = repository.getVariant(configuration);
-
-        if (variant != null) {
-            repository.removeVariant(variant);
-        }
-
-        return repository;
-    }
-
+    // still used by acceptConstraint()/unacceptConstraint() below (cluster not yet extracted)
     private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
         this.listeners.setWriteInProgress(true);
         try {
@@ -1733,128 +1676,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
 
-    public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id, EccoService service) {
-        service.checkInitialized();
-
-        try {
-            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = service.repositoryDao.load();
-
-            Variant variant = service.getRepository().getVariant(id);
-            FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
-            FeatureRevision[] newFeatureRevisions = new FeatureRevision[featureRevisions.length];
-            int count = 0;
-            Collection<? extends Feature> features = this.getRepository().getFeatures();
-            FeatureRevision featureRevisionToUpdate = null;
-            for (Feature feature : features) {
-                if (feature.getName().equals(featureRevisionUpdate.substring(0, featureRevisionUpdate.indexOf(".")))) {
-                    for (FeatureRevision revision : feature.getRevisions()) {
-                        if (revision.getFeatureRevisionString().equals(featureRevisionUpdate)) {
-                            featureRevisionToUpdate = revision;
-                        }
-                    }
-                }
-            }
-            StringBuilder sb = new StringBuilder();
-            for (FeatureRevision fr : featureRevisions) {
-                if (fr.equals(featureRevision) && featureRevisionToUpdate != null) {
-                    newFeatureRevisions[count] = featureRevisionToUpdate;
-                    sb.append(",").append(featureRevisionUpdate);
-                } else {
-                    newFeatureRevisions[count] = fr;
-                    sb.append(",").append(fr);
-                }
-                count++;
-            }
-            String config = sb.length() > 0 ? sb.substring(1) : ""; // remove first ','
-            variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
-            Configuration newConfiguration = service.parseConfigurationString(config);
-            variant.setConfiguration(newConfiguration);
-
-            service.repositoryDao.store(repository);
-            service.transactionStrategy.end();
-        } catch (Exception e) {
-            service.transactionStrategy.rollback();
-            throw new EccoException("Error during adding a variant.", e);
-        }
-
+    public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id) {
+        this.variantManager.updateFeatureRevision(featureRevision, featureRevisionUpdate, id);
     }
 
-
-    public void removeFeatureRevision(FeatureRevision featureRevision, String id, EccoService service) {
-        service.checkInitialized();
-
-        try {
-            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = service.repositoryDao.load();
-
-            Variant variant = service.getRepository().getVariant(id);
-            FeatureRevision[] featureRevisions = variant.getConfiguration().getFeatureRevisions();
-            FeatureRevision[] newFeatureRevisions = new FeatureRevision[featureRevisions.length];
-            int count = 0;
-            StringBuilder sb = new StringBuilder();
-            for (FeatureRevision fr : featureRevisions) {
-                if (!fr.equals(featureRevision)) {
-                    newFeatureRevisions[count] = fr;
-                    sb.append(",").append(fr);
-                }
-                count++;
-            }
-            String config = sb.length() > 0 ? sb.substring(1) : ""; // remove first ','
-            variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
-            Configuration newConfiguration = service.parseConfigurationString(config);
-            variant.setConfiguration(newConfiguration);
-
-            service.repositoryDao.store(repository);
-
-            service.transactionStrategy.end();
-
-
-        } catch (Exception e) {
-            service.transactionStrategy.rollback();
-
-            throw new EccoException("Error during adding a variant.", e);
-        }
-
+    public void removeFeatureRevision(FeatureRevision featureRevision, String id) {
+        this.variantManager.removeFeatureRevision(featureRevision, id);
     }
 
     /**
      * Remove a new variant configuration
      *
      * @param configuration The configuration of the variant
-     * @param service       The service to update a variant in a repository
      */
-    public synchronized void updateVariant(Configuration configuration, String name, String id, EccoService service) {
-        service.checkInitialized();
-
-        checkNotNull(configuration);
-
-        this.listeners.setWriteInProgress(true);
-        try {
-            service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = service.repositoryDao.load();
-            Variant variant = repository.getVariant(id);
-            if (variant != null) {
-                repository.updateVariant(variant, configuration, name);
-            }
-            //
-
-            service.repositoryDao.store(repository);
-
-            service.transactionStrategy.end();
-
-            this.listeners.fireStatusChangedEvent();
-
-        } catch (Exception e) {
-            service.transactionStrategy.rollback();
-
-            throw new EccoException("Error during adding a variant.", e);
-        } finally {
-            this.listeners.setWriteInProgress(false);
-        }
+    public synchronized void updateVariant(Configuration configuration, String name, String id) {
+        this.variantManager.updateVariant(configuration, name, id);
     }
 
 

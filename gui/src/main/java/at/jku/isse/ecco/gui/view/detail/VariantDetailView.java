@@ -52,7 +52,7 @@ public class VariantDetailView extends BorderPane {
 							String name = variantName.getText();
 							String id = variantId.getText();
 							Configuration config = VariantDetailView.this.service.parseConfigurationString(configuration);
-							VariantDetailView.this.service.updateVariant(config,name,id, VariantDetailView.this.service);
+							VariantDetailView.this.service.updateVariant(config,name,id);
 						});
 						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;

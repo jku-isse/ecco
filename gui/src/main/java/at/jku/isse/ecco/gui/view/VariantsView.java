@@ -246,7 +246,7 @@ public class VariantsView extends BorderPane implements EccoListener {
                                     String name = variantInfo.getVariant().getName();
                                     String id = variantInfo.getVariant().getId();
                                     Configuration config = VariantsView.this.service.parseConfigurationString(configuration);
-                                    VariantsView.this.service.updateVariant(config, name, id, VariantsView.this.service);
+                                    VariantsView.this.service.updateVariant(config, name, id);
                                 }
                             }
                             Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
@@ -284,7 +284,7 @@ public class VariantsView extends BorderPane implements EccoListener {
                                 if (variantInfo.isSelected()) {
                                     for (FeatureRevision f : variantInfo.getVariant().getConfiguration().getFeatureRevisions()) {
                                         if (f.getFeatureRevisionString().equals(searchField.getText())) {
-                                            VariantsView.this.service.removeFeatureRevision(f, variantInfo.getVariant().getId(), VariantsView.this.service);
+                                            VariantsView.this.service.removeFeatureRevision(f, variantInfo.getVariant().getId());
                                         }
                                     }
                                 }
@@ -327,7 +327,7 @@ public class VariantsView extends BorderPane implements EccoListener {
                                 if (variantInfo.isSelected()) {
                                     for (FeatureRevision f : variantInfo.getVariant().getConfiguration().getFeatureRevisions()) {
                                         if (f.getFeatureRevisionString().equals(searchField.getText())) {
-                                            VariantsView.this.service.updateFeatureRevision(f, updateField.getText(), variantInfo.getVariant().getId(), VariantsView.this.service);
+                                            VariantsView.this.service.updateFeatureRevision(f, updateField.getText(), variantInfo.getVariant().getId());
                                         }
                                     }
                                 }
