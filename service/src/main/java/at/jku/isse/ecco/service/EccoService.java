@@ -115,7 +115,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         if (this.baseDir == null || !this.baseDir.equals(baseDir)) {
             this.baseDir = baseDir;
-            this.fireStatusChangedEvent();
+            this.listeners.fireStatusChangedEvent();
         }
     }
 
@@ -131,7 +131,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         if (!this.repositoryDir.equals(repositoryDir)) {
             this.repositoryDir = repositoryDir;
-            this.fireStatusChangedEvent();
+            this.listeners.fireStatusChangedEvent();
         }
     }
 
@@ -172,11 +172,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public void setReader(DispatchReader reader) {
         this.reader = reader;
     }
-
-    // TODO: set current operation. update progress during operations (instead of just relaying the progress from input and output streams) and notify listeners.
-    private Operation currentOperation;
-    private int maxAbsoluteProgress;
-
 
     /**
      * Creates the service and tries to detect an existing repository automatically using {@link #detectRepository(Path path) detectRepository}. If no existing repository was found the base directory (directory from which files are committed and checked out) and repository directory (directory at which the repository data is stored) are set to their defaults:
@@ -227,37 +222,18 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // # LISTENERS #####################################################################################################
 
-    // CopyOnWriteArrayList: fire*Event methods can now run on background threads (e.g.
-    // addVariant()/safeTransaction() firing after a GUI action's own background Thread/Task), while
-    // GUI dialogs add/removeListener from the FX thread -- a plain ArrayList would risk
-    // ConcurrentModificationException across those threads.
-    private final Collection<EccoListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
-
-    /**
-     * Advisory-only signal for GUI code: true while a write operation that mutates the live, shared
-     * {@code Association}/{@code AssociationCounter} object graph (or persists other repository
-     * state) is in flight. Does NOT provide mutual exclusion by itself -- {@code commit()} etc. are
-     * already {@code synchronized} on this instance, which serializes THEM against each other, but
-     * NOT against GUI code that holds a direct reference to an {@code Association} object and calls
-     * methods on it later, entirely outside any {@code EccoService} synchronization (e.g.
-     * {@code ArtifactsView} rendering {@code association.computeCondition()} on the FX thread). That
-     * is a real, pre-existing unsynchronized-access gap in the core object model, not fixed here --
-     * this flag only lets speculative GUI background reads (constraint-violation checks, etc.) opt
-     * to skip themselves while a write is in progress, reducing how often background read traffic
-     * overlaps that unprotected window, without pretending to close it.
-     */
-    private volatile boolean writeInProgress = false;
+    private final ListenerRegistry listeners = new ListenerRegistry(this);
 
     public boolean isWriteInProgress() {
-        return this.writeInProgress;
+        return this.listeners.isWriteInProgress();
     }
 
     public void addListener(EccoListener listener) {
-        this.listeners.add(listener);
+        this.listeners.addListener(listener);
     }
 
     public void removeListener(EccoListener listener) {
-        this.listeners.remove(listener);
+        this.listeners.removeListener(listener);
     }
 
 
@@ -265,115 +241,22 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     @Override
     public void readProgressEvent(double progress, long bytes) {
-        this.fireOperationProgressEvent("READ", progress);
+        this.listeners.fireOperationProgressEvent("READ", progress);
     }
 
     @Override
     public void writeProgressEvent(double progress, long bytes) {
-        this.fireOperationProgressEvent("WRITE", progress);
+        this.listeners.fireOperationProgressEvent("WRITE", progress);
     }
 
     @Override
     public void fileReadEvent(Path file, ArtifactReader reader) {
-        this.fireReadEvent(file, reader);
+        this.listeners.fireReadEvent(file, reader);
     }
 
     @Override
     public void fileWriteEvent(Path file, ArtifactWriter writer) {
-        this.fireWriteEvent(file, writer);
-    }
-
-
-    // service events
-
-    // A listener throwing must never abort the broadcast to the remaining listeners -- and, since
-    // fire*Event methods are called from inside write-transaction try blocks (e.g. addVariant(),
-    // safeTransaction()), an uncaught exception here would be caught by that method's own
-    // catch-and-rollback, incorrectly rolling back a transaction that already committed
-    // (repositoryDao.store()/transactionStrategy.end() already ran). Isolating each listener call
-    // makes that impossible.
-    private void fireStatusChangedEvent() {
-        for (EccoListener listener : this.listeners) {
-            try {
-                listener.statusChangedEvent(this);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Listener threw during statusChangedEvent; notifying remaining listeners.", e);
-            }
-        }
-    }
-
-    private void fireOperationProgressEvent(String operationString, double progress) {
-        for (EccoListener listener : this.listeners) {
-            try {
-                listener.operationProgressEvent(this, operationString, progress);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Listener threw during operationProgressEvent; notifying remaining listeners.", e);
-            }
-        }
-    }
-
-    private void fireReadEvent(Path path, ArtifactReader reader) {
-        for (ReadListener listener : this.listeners) {
-            try {
-                listener.fileReadEvent(path, reader);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Listener threw during fileReadEvent; notifying remaining listeners.", e);
-            }
-        }
-    }
-
-    private void fireWriteEvent(Path path, ArtifactWriter writer) {
-        for (WriteListener listener : this.listeners) {
-            try {
-                listener.fileWriteEvent(path, writer);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Listener threw during fileWriteEvent; notifying remaining listeners.", e);
-            }
-        }
-    }
-
-
-    // repository events
-
-    private void fireCommitsChangedEvent(Commit commit) {
-        for (EccoListener listener : this.listeners) {
-            try {
-                listener.commitsChangedEvent(this, commit);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Listener threw during commitsChangedEvent; notifying remaining listeners.", e);
-            }
-        }
-    }
-
-    private void fireAssociationSelectedEvent(Association association) {
-        for (EccoListener listener : this.listeners) {
-            try {
-                listener.associationSelectedEvent(this, association);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Listener threw during associationSelectedEvent; notifying remaining listeners.", e);
-            }
-        }
-    }
-
-
-    // server events
-
-    private void fireServerEvent(String message) {
-        for (ServerListener listener : this.listeners) {
-            listener.serverEvent(this, message);
-        }
-    }
-
-    private void fireServerStartedEvent(int port) {
-        for (ServerListener listener : this.listeners) {
-            listener.serverStartEvent(this, port);
-        }
-    }
-
-    private void fireServerStoppedEvent() {
-        for (ServerListener listener : this.listeners) {
-            listener.serverStopEvent(this);
-        }
+        this.listeners.fireWriteEvent(file, writer);
     }
 
 
@@ -602,7 +485,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.reader.addListener(this);
         this.writer.addListener(this);
         this.initialized = true;
-        this.fireStatusChangedEvent();
+        this.listeners.fireStatusChangedEvent();
         LOGGER.info("Repository opened.");
     }
 
@@ -622,7 +505,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.repositoryDao.close();
         this.remoteDao.close();
         this.transactionStrategy.close();
-        this.fireStatusChangedEvent();
+        this.listeners.fireStatusChangedEvent();
         LOGGER.info("Repository closed.");
     }
 
@@ -981,8 +864,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             ssChannel.socket().bind(new InetSocketAddress(port));
 
             LOGGER.info("Server started on port " + port + ".");
-            this.fireServerEvent("Server started on port " + port + ".");
-            this.fireServerStartedEvent(port);
+            this.listeners.fireServerEvent("Server started on port " + port + ".");
+            this.listeners.fireServerStartedEvent(port);
 
             while (!serverShutdown) {
                 try (SocketChannel sChannel = ssChannel.accept()) {
@@ -993,7 +876,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     // determine if it is a push (receive data) or a pull (send data)
                     String command = (String) ois.readObject();
                     LOGGER.info("COMMAND: " + command);
-                    this.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
+                    this.listeners.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
 
                     switch (command) {
                         case "FETCH": { // if fetch, send data
@@ -1074,12 +957,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     //e.printStackTrace();
                 } catch (SocketException | ClosedChannelException e) {
                     LOGGER.warning("Error receiving request.");
-                    this.fireServerEvent("Error receiving request: " + e.getMessage());
+                    this.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
                     e.printStackTrace();
                 } catch (Exception e) {
                     //throw new EccoException("Error receiving request.", e);
                     LOGGER.warning("Error receiving request.");
-                    this.fireServerEvent("Error receiving request: " + e.getMessage());
+                    this.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
@@ -1091,8 +974,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
 
         LOGGER.info("Server stopped.");
-        this.fireServerEvent("Server stopped.");
-        this.fireServerStoppedEvent();
+        this.listeners.fireServerEvent("Server stopped.");
+        this.listeners.fireServerStoppedEvent();
     }
 
     public void stopServer() {
@@ -1656,7 +1539,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.checkInitialized();
         checkNotNull(configuration);
 
-        this.writeInProgress = true;
+        this.listeners.setWriteInProgress(true);
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
@@ -1694,14 +1577,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
                     "ms, .transactionStrategy.end(): " + endStrategyTime + "ms");
 
-            this.fireStatusChangedEvent();
+            this.listeners.fireStatusChangedEvent();
 
             return commit;
         } catch (Exception e) {
             this.transactionStrategy.rollback();
             throw new EccoException("Error during commit.", e);
         } finally {
-            this.writeInProgress = false;
+            this.listeners.setWriteInProgress(false);
         }
     }
 
@@ -1734,7 +1617,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         checkNotNull(configuration);
 
-        this.writeInProgress = true;
+        this.listeners.setWriteInProgress(true);
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
@@ -1759,13 +1642,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             transactionStrategy.end();
 
-            this.fireStatusChangedEvent();
+            this.listeners.fireStatusChangedEvent();
         } catch (Exception e) {
             transactionStrategy.rollback();
 
             throw new EccoException("Error during adding a variant.", e);
         } finally {
-            this.writeInProgress = false;
+            this.listeners.setWriteInProgress(false);
         }
     }
 
@@ -1812,7 +1695,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
-        this.writeInProgress = true;
+        this.listeners.setWriteInProgress(true);
         try {
             transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             Repository.Op repository = repositoryDao.load();
@@ -1822,13 +1705,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             repositoryDao.store(repository);
             transactionStrategy.end();
 
-            this.fireStatusChangedEvent();
+            this.listeners.fireStatusChangedEvent();
         } catch (Exception e) {
             transactionStrategy.rollback();
 
             throw new EccoException("Error during repository write transaction.", e);
         } finally {
-            this.writeInProgress = false;
+            this.listeners.setWriteInProgress(false);
         }
     }
 
@@ -1948,7 +1831,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         checkNotNull(configuration);
 
-        this.writeInProgress = true;
+        this.listeners.setWriteInProgress(true);
         try {
             service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
@@ -1963,14 +1846,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             service.transactionStrategy.end();
 
-            this.fireStatusChangedEvent();
+            this.listeners.fireStatusChangedEvent();
 
         } catch (Exception e) {
             service.transactionStrategy.rollback();
 
             throw new EccoException("Error during adding a variant.", e);
         } finally {
-            this.writeInProgress = false;
+            this.listeners.setWriteInProgress(false);
         }
     }
 
@@ -2265,7 +2148,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     // TODO: check if 'compareArtifacts' is proper name for method (fires association-selected events and returns artifact nodes)
     private synchronized Set<Node> compareArtifacts(Checkout checkout) {
         for (Association selectedAssociation : checkout.getSelectedAssociations()) {
-            this.fireAssociationSelectedEvent(selectedAssociation);
+            this.listeners.fireAssociationSelectedEvent(selectedAssociation);
         }
         // nodes (artifacts) to write to files
         return new HashSet<>(checkout.getNode().getChildren());
@@ -2278,7 +2161,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The checkout object.
      */
     public synchronized Checkout checkout(Configuration configuration) {
-        this.writeInProgress = true;
+        this.listeners.setWriteInProgress(true);
         try {
             Checkout checkout = compose(configuration);
 
@@ -2296,7 +2179,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 } catch (IOException e) {
                     throw new EccoException("Could not create configuration file.", e);
                 }
-                this.fireWriteEvent(configFile, this.writer);
+                this.listeners.fireWriteEvent(configFile, this.writer);
             }
 
             // write warnings file into base directory
@@ -2337,12 +2220,12 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 } catch (IOException e) {
                     throw new EccoException("Could not create warnings file.", e);
                 }
-                this.fireWriteEvent(warningsFile, this.writer);
+                this.listeners.fireWriteEvent(warningsFile, this.writer);
             }
 
             return checkout;
         } finally {
-            this.writeInProgress = false;
+            this.listeners.setWriteInProgress(false);
         }
     }
 
