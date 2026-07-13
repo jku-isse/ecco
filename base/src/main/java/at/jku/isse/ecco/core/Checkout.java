@@ -23,6 +23,8 @@ public class Checkout {
 	private Set<Association> unresolvedAssociations;
 	private Set<Association> selectedAssociations;
 
+	private List<String> constraintWarnings;
+
 	private Node node;
 
 	private String message;
@@ -36,6 +38,7 @@ public class Checkout {
 		this.orderWarnings = new ArrayList<>();
 		this.unresolvedAssociations = new HashSet<>();
 		this.selectedAssociations = new HashSet<>();
+		this.constraintWarnings = new ArrayList<>();
 		this.node = null;
 		this.message = "";
 	}
@@ -94,6 +97,10 @@ public class Checkout {
 
 	public Set<Association> getSelectedAssociations() {
 		return this.selectedAssociations;
+	}
+
+	public List<String> getConstraintWarnings() {
+		return this.constraintWarnings;
 	}
 
 	public String getMessage() {

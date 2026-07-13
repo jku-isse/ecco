@@ -31,12 +31,20 @@ public final class ConfigurationBridge {
     public static List<Set<String>> readConfigurations(EccoService service) {
         List<Set<String>> configs = new ArrayList<>();
         for (Commit commit : service.getCommits()) {
-            Configuration cfg = commit.getConfiguration();
-            Set<String> tokens = new HashSet<>();
-            for (FeatureRevision fr : cfg.getFeatureRevisions())
-                tokens.add(fr.getFeature().getName());
-            configs.add(tokens);
+            configs.add(tokensOf(commit.getConfiguration()));
         }
         return configs;
+    }
+
+    /**
+     * Feature-level tokens (feature name, not revision) selected by the given configuration.
+     * Every entry is already a positive selection -- everything else is implicitly negative
+     * at the repository level -- so no sign check is needed.
+     */
+    public static Set<String> tokensOf(Configuration cfg) {
+        Set<String> tokens = new HashSet<>();
+        for (FeatureRevision fr : cfg.getFeatureRevisions())
+            tokens.add(fr.getFeature().getName());
+        return tokens;
     }
 }

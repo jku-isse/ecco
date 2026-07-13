@@ -4,6 +4,7 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
@@ -11,6 +12,7 @@ import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
 import at.jku.isse.ecco.gui.view.operation.OperationView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -24,14 +26,18 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.Optional;
 
 public class CheckoutView extends OperationView implements EccoListener {
     private final EccoService service;
@@ -135,6 +141,89 @@ public class CheckoutView extends OperationView implements EccoListener {
         gridPane.add(configurationStringTextField, 1, row, 2, 1);
         row++;
 
+        // known-variants picker -- speeds up checkout by prefilling Configuration from an
+        // already-saved variant (see the Variants tab) instead of retyping it; flags variants that
+        // currently violate an accepted constraint the same way the rest of this feature does.
+        Label knownVariantsLabel = new Label("Known Variants: ");
+        gridPane.add(knownVariantsLabel, 0, row, 1, 1);
+
+        ComboBox<at.jku.isse.ecco.core.Variant> knownVariantsComboBox = new ComboBox<>();
+        knownVariantsComboBox.setPromptText("(select to prefill Configuration)");
+        knownVariantsComboBox.setMaxWidth(Double.MAX_VALUE);
+        gridPane.add(knownVariantsComboBox, 1, row, 2, 1);
+        row++;
+
+        java.util.Map<at.jku.isse.ecco.core.Variant, String> knownVariantWarnings = new java.util.HashMap<>();
+        javafx.util.Callback<ListView<at.jku.isse.ecco.core.Variant>, ListCell<at.jku.isse.ecco.core.Variant>> variantCellFactory = lv -> new ListCell<at.jku.isse.ecco.core.Variant>() {
+            @Override
+            protected void updateItem(at.jku.isse.ecco.core.Variant variant, boolean empty) {
+                super.updateItem(variant, empty);
+                if (empty || variant == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+                String label = variant.getName() == null || variant.getName().isEmpty() ? variant.getId() : variant.getName();
+                String warning = knownVariantWarnings.get(variant);
+                if (warning != null && !warning.isEmpty()) {
+                    setText("⚠ " + label);
+                    setStyle("-fx-text-fill: firebrick;");
+                } else {
+                    setText(label);
+                    setStyle("");
+                }
+            }
+        };
+        knownVariantsComboBox.setCellFactory(variantCellFactory);
+        knownVariantsComboBox.setButtonCell(variantCellFactory.call(null));
+        knownVariantsComboBox.setOnAction(event -> {
+            at.jku.isse.ecco.core.Variant selected = knownVariantsComboBox.getValue();
+            if (selected != null) {
+                configurationStringTextField.setText(selected.getConfiguration().toString());
+            }
+        });
+
+        if (this.service.isInitialized() && !this.service.isWriteInProgress()) {
+            new Thread(() -> {
+                java.util.List<at.jku.isse.ecco.core.Variant> variants =
+                        new java.util.ArrayList<>(this.service.getRepository().getVariants());
+                for (at.jku.isse.ecco.core.Variant variant : variants) {
+                    String warning = describeConstraintViolations(variant.getConfiguration());
+                    if (!warning.isEmpty()) knownVariantWarnings.put(variant, warning);
+                }
+                Platform.runLater(() -> {
+                    knownVariantsComboBox.getItems().setAll(variants);
+                    knownVariantsComboBox.setButtonCell(variantCellFactory.call(null));
+                });
+            }).start();
+        }
+
+        // live constraint-violation feedback as the user enters a configuration -- see
+        // EccoService.checkConstraintViolations; debounced so it doesn't re-check on every keystroke.
+        Label constraintWarningLabel = new Label();
+        constraintWarningLabel.setTextFill(Color.FIREBRICK);
+        constraintWarningLabel.setWrapText(true);
+        gridPane.add(constraintWarningLabel, 1, row, 2, 1);
+        row++;
+
+        PauseTransition constraintCheckDebounce = new PauseTransition(Duration.millis(400));
+        constraintCheckDebounce.setOnFinished(event -> {
+            String configurationString = configurationStringTextField.getText();
+            if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()
+                    || this.service.isWriteInProgress()) {
+                Platform.runLater(() -> constraintWarningLabel.setText(""));
+                return;
+            }
+            new Thread(() -> {
+                String text = describeConstraintViolations(configurationString);
+                Platform.runLater(() -> constraintWarningLabel.setText(text));
+            }).start();
+        });
+        configurationStringTextField.textProperty().addListener((obs, oldV, newV) -> {
+            constraintCheckDebounce.stop();
+            constraintCheckDebounce.playFromStart();
+        });
+
 
         selectBaseDirectoryButton.setOnAction(event -> {
             final DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -167,6 +256,10 @@ public class CheckoutView extends OperationView implements EccoListener {
                 return;
             }
 
+            if (!confirmProceedDespiteViolations(configurationString, "check out")) {
+                this.step1();
+                return;
+            }
 
             this.service.setBaseDir(baseDir);
             this.currentBaseDir = baseDir;
@@ -181,6 +274,44 @@ public class CheckoutView extends OperationView implements EccoListener {
         this.fit();
 
         Platform.runLater(configurationStringTextField::requestFocus);
+    }
+
+    /** Empty string if no violations (or the configuration can't be parsed yet, e.g. mid-typing). */
+    private String describeConstraintViolations(String configurationString) {
+        try {
+            return describeConstraintViolations(this.service.parseConfigurationString(configurationString));
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    /** Empty string if no violations. */
+    private String describeConstraintViolations(Configuration configuration) {
+        try {
+            List<String> violations = this.service.checkConstraintViolations(configuration);
+            return violations.isEmpty() ? "" : "Violates accepted constraint(s): " + String.join("; ", violations);
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    /**
+     * Checks the configuration against accepted constraints and, if it violates any, asks the user
+     * to confirm before proceeding -- constraint violations are advisory (see
+     * {@code EccoService#checkConstraintViolations}), never a hard block, so the user can still choose
+     * to {@code actionVerb} anyway.
+     *
+     * @return true if there were no violations, or the user confirmed anyway; false to abort.
+     */
+    private boolean confirmProceedDespiteViolations(String configurationString, String actionVerb) {
+        if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()) return true;
+        String description = describeConstraintViolations(configurationString);
+        if (description.isEmpty()) return true;
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+                description + "\n\nDo you want to " + actionVerb + " anyway?");
+        alert.setHeaderText("Constraint violation");
+        Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == ButtonType.OK;
     }
 
     protected void checkoutSucceeded(Checkout checkout) {
