@@ -58,14 +58,60 @@ dependencies {
 	testRuntimeOnly project(':ecco-adapter-golang')
 }
 
+tasks.register('buildAppIcon') {
+	group = 'distribution'
+	description = 'Converts the ECCO logo into a macOS .icns, for use as the jpackage app-image icon.'
+
+	def logoFile = project.file('src/main/resources/ecco-logo.png')
+	def iconsetDir = layout.buildDirectory.dir('appIcon/ECCO.iconset')
+	def icnsFile = layout.buildDirectory.file('appIcon/ECCO.icns')
+
+	inputs.file(logoFile)
+	outputs.file(icnsFile)
+
+	doLast {
+		def iconset = iconsetDir.get().asFile
+		project.delete(iconset)
+		iconset.mkdirs()
+
+		// pad the (non-square, wordmarked) logo out to a square canvas on the same navy
+		// background EccoGui's splash screen uses, so it isn't squashed when resized to icon sizes.
+		// Pad to the logo's own larger dimension (not a fixed size like 1024) so this only adds
+		// letterboxing rather than also upscaling the source before the per-size resize below.
+		def logoImage = javax.imageio.ImageIO.read(logoFile)
+		def squareSize = Math.max(logoImage.width, logoImage.height)
+		def padded = new File(iconset, 'padded.png')
+		project.exec {
+			commandLine 'sips', '-p', squareSize.toString(), squareSize.toString(), '--padColor', '0b0f1a',
+					'--out', padded, logoFile
+		}
+
+		// standard macOS iconset: each size plus its @2x variant, per `iconutil` requirements.
+		[16, 32, 128, 256, 512].each { size ->
+			project.exec {
+				commandLine 'sips', '-z', size, size, '--out', new File(iconset, "icon_${size}x${size}.png"), padded
+			}
+			def size2x = size * 2
+			project.exec {
+				commandLine 'sips', '-z', size2x, size2x, '--out', new File(iconset, "icon_${size}x${size}@2x.png"), padded
+			}
+		}
+
+		project.exec {
+			commandLine 'iconutil', '-c', 'icns', iconset, '-o', icnsFile.get().asFile
+		}
+	}
+}
+
 tasks.register('jpackageApp', Exec) {
 	group = 'distribution'
 	description = 'Packages the ECCO GUI as a native application image (e.g. ECCO.app on macOS) via jpackage, so the OS shows "ECCO" instead of "java" as the application name.'
-	dependsOn tasks.named('installDist')
+	dependsOn tasks.named('installDist'), tasks.named('buildAppIcon')
 
 	def jpackageExe = org.gradle.internal.jvm.Jvm.current().getExecutable('jpackage')
 	def libDir = layout.buildDirectory.dir("install/${project.name}/lib")
 	def destDir = layout.buildDirectory.dir('jpackage')
+	def icnsFile = layout.buildDirectory.file('appIcon/ECCO.icns')
 
 	doFirst {
 		project.delete(destDir.get())
@@ -79,6 +125,7 @@ tasks.register('jpackageApp', Exec) {
 			'--main-jar', tasks.named('jar').get().archiveFileName.get(),
 			'--main-class', 'at.jku.isse.ecco.gui.Launcher',
 			'--dest', destDir.get().asFile,
+			'--icon', icnsFile.get().asFile,
 			'--java-options', '-Xss1024m',
 			'--java-options', '-Xmx8g',
 	)
