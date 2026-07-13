@@ -5,6 +5,7 @@ import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.ConstraintSuggestionPreferences;
+import at.jku.isse.ecco.mining.MinimizationPreferences;
 import at.jku.isse.ecco.mining.ParallelMinimization;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
@@ -34,10 +35,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * every view that needs to trigger or display results.
  */
 public class MinimizationResults implements EccoListener {
-
-    // same defaults as SuggestConstraintsCommand/ConstraintSuggestionsView
-    private static final int MIN_WITNESS = 4;
-    private static final double CONFIDENCE = 0.9;
 
     private final EccoService service;
 
@@ -83,7 +80,8 @@ public class MinimizationResults implements EccoListener {
                 // ParallelMinimization compile the feature model once per worker thread and process
                 // every association concurrently.
                 List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
-                List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(MIN_WITNESS, CONFIDENCE, null).mine(configs);
+                List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(
+                        MinimizationPreferences.getMinWitness(), MinimizationPreferences.getConfidence(), null).mine(configs);
                 Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
 
                 List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();

@@ -153,7 +153,19 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         // Conditions" run fills it in -- unlike the old getSimpleModuleRevisionConditionString(),
         // which was a truncation to the lowest-order module(s), not a real minimization, and was
         // only ever computed once per row build.
-        conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().minimizedConditionProperty()).otherwise(param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString()));
+        conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, String> param) -> {
+            // computeCondition() reads the live, shared Association/AssociationCounter object graph
+            // with no synchronization, which a background commit() concurrently mutates -- a
+            // pre-existing, known race (see EccoService#isWriteInProgress javadoc) that has actually
+            // crashed the FX thread with an AIOOBE from a table layout pass racing a commit. This is
+            // advisory-only, not a real fix (the flag can still flip false->true right after this
+            // check), but it closes the common case; statusChangedEvent's refresh() re-renders every
+            // row with real data as soon as the write actually finishes.
+            String rawCondition = ArtifactsView.this.service.isWriteInProgress()
+                    ? "…"
+                    : param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString();
+            return new When(useSimplifiedLabelsCheckBox.selectedProperty()).then(param.getValue().minimizedConditionProperty()).otherwise(rawCondition);
+        });
         numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfoImpl, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
         numArtifactsAssociationsCol.setCellFactory(col -> new TableCell<AssociationInfoImpl, Integer>() {
             private final Region track = new Region();

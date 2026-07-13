@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
+import at.jku.isse.ecco.gui.EditableSpinner;
+import at.jku.isse.ecco.mining.MinimizationPreferences;
 import at.jku.isse.ecco.service.AdapterPreferences;
 import at.jku.isse.ecco.service.LilypondPreferences;
 import at.jku.isse.ecco.service.LlmPreferences;
@@ -9,6 +11,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.ColumnConstraints;
@@ -40,6 +44,8 @@ import java.util.Set;
  *     initialized; it does not affect an already-open repository.</li>
  *     <li>LLM Settings - the local, OpenAI-compatible endpoint the "Import from Git" feature
  *     calls to suggest a feature configuration per imported commit.</li>
+ *     <li>Minimization Settings - the min-witness/confidence thresholds used to re-mine accepted
+ *     constraints before {@code MinimizationResults} runs.</li>
  * </ul>
  */
 public class PreferencesView extends OperationView {
@@ -135,6 +141,56 @@ public class PreferencesView extends OperationView {
 		content.getChildren().add(llmPane);
 
 
+		// Minimization settings
+		GridPane minimizationGridPane = new GridPane();
+		minimizationGridPane.setHgap(10);
+		minimizationGridPane.setVgap(10);
+		minimizationGridPane.setPadding(new Insets(10));
+
+		ColumnConstraints minimizationCol1constraint = new ColumnConstraints();
+		ColumnConstraints minimizationCol2constraint = new ColumnConstraints();
+		minimizationCol2constraint.setFillWidth(true);
+		minimizationCol2constraint.setHgrow(Priority.ALWAYS);
+		minimizationGridPane.getColumnConstraints().addAll(minimizationCol1constraint, minimizationCol2constraint);
+
+		int minimizationRow = 0;
+
+		Label minimizationHelpLabel = new Label("Thresholds used to re-mine accepted constraints before \"Minimize Presence " +
+				"Conditions\" runs (Feature Model tab). Lower thresholds catch more constraints but risk overfitting to a " +
+				"small sample of configurations.");
+		minimizationHelpLabel.setWrapText(true);
+		minimizationGridPane.add(minimizationHelpLabel, 0, minimizationRow, 2, 1);
+		minimizationRow++;
+
+		Label minWitnessLabel = new Label("Min Witness: ");
+		minimizationGridPane.add(minWitnessLabel, 0, minimizationRow, 1, 1);
+		EditableSpinner minimizationMinWitnessSpinner = new EditableSpinner(1, 1000, MinimizationPreferences.getMinWitness());
+		minimizationGridPane.add(minimizationMinWitnessSpinner, 1, minimizationRow, 1, 1);
+		minimizationRow++;
+
+		Label confidenceLabel = new Label("Confidence: ");
+		minimizationGridPane.add(confidenceLabel, 0, minimizationRow, 1, 1);
+		Spinner<Double> minimizationConfidenceSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(
+				0.0, 1.0, MinimizationPreferences.getConfidence(), 0.05));
+		minimizationConfidenceSpinner.setEditable(true);
+		// same workaround as EditableSpinner: a plain editable Spinner does not commit typed text to
+		// valueProperty() until the field loses focus, so without this, Save would read the previous
+		// value if the user clicks Save right after typing without clicking away first.
+		minimizationConfidenceSpinner.getEditor().textProperty().addListener((observable, oldValue, newValue) -> {
+			try {
+				Double.parseDouble(newValue);
+				minimizationConfidenceSpinner.increment(0);
+			} catch (NumberFormatException ignored) {
+			}
+		});
+		minimizationGridPane.add(minimizationConfidenceSpinner, 1, minimizationRow, 1, 1);
+
+		TitledPane minimizationPane = new TitledPane("Minimization Settings", minimizationGridPane);
+		minimizationPane.setAnimated(false);
+		minimizationPane.setCollapsible(false);
+		content.getChildren().add(minimizationPane);
+
+
 		// Lilypond settings
 		GridPane lilypondGridPane = new GridPane();
 		lilypondGridPane.setHgap(10);
@@ -220,6 +276,9 @@ public class PreferencesView extends OperationView {
 
 			LlmPreferences.setEndpointUrl(llmEndpointUrlField.getText());
 			LlmPreferences.setModelName(llmModelNameField.getText());
+
+			MinimizationPreferences.setMinWitness(minimizationMinWitnessSpinner.getValue());
+			MinimizationPreferences.setConfidence(minimizationConfidenceSpinner.getValue());
 
 			LilypondPreferences.setExecutablePath(lilypondExecutableField.getText());
 			String searchPathsText = lilypondSearchPathsField.getText();
