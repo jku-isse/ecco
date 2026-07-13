@@ -226,6 +226,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     private final VariantManager variantManager = new VariantManager(this);
 
+    private final ConstraintService constraintService = new ConstraintService(this);
+
     public boolean isWriteInProgress() {
         return this.listeners.isWriteInProgress();
     }
@@ -1636,28 +1638,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.variantManager.removeVariant(configuration);
     }
 
-    // still used by acceptConstraint()/unacceptConstraint() below (cluster not yet extracted)
-    private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
-        this.listeners.setWriteInProgress(true);
-        try {
-            transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            Repository.Op repository = repositoryDao.load();
-
-            repository = transaction.apply(repository);
-
-            repositoryDao.store(repository);
-            transactionStrategy.end();
-
-            this.listeners.fireStatusChangedEvent();
-        } catch (Exception e) {
-            transactionStrategy.rollback();
-
-            throw new EccoException("Error during repository write transaction.", e);
-        } finally {
-            this.listeners.setWriteInProgress(false);
-        }
-    }
-
     public void store() {
         this.checkInitialized();
 
@@ -1755,7 +1735,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.surplusAbsorptionEnabled = enabled;
     }
 
-    private volatile boolean constraintViolationWarningsEnabled = true;
+    volatile boolean constraintViolationWarningsEnabled = true;
 
     /**
      * Controls whether {@link #compose} and {@link #checkConstraintViolations} warn when a
@@ -1812,21 +1792,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      *                    display.
      */
     public List<ConstraintMiner.Suggestion> acceptedSuggestions(Repository repository) {
-        List<Set<String>> configs = ConfigurationBridge.readConfigurations(this);
-        List<ConstraintMiner.Suggestion> mined =
-                new ConstraintMiner(ACCEPTED_CONSTRAINT_MIN_WITNESS, ACCEPTED_CONSTRAINT_CONFIDENCE, null).mine(configs);
-        Set<String> accepted = AcceptedConstraints.acceptedSignatures(repository.getConstraints());
-        List<ConstraintMiner.Suggestion> result = new ArrayList<>();
-        for (ConstraintMiner.Suggestion suggestion : mined) {
-            if (accepted.contains(ConstraintSuggestionPreferences.signatureOf(suggestion))) {
-                result.add(suggestion);
-            }
-        }
-        return result;
-    }
-
-    private static Constraint.Kind toConstraintKind(ConstraintMiner.Kind kind) {
-        return Constraint.Kind.valueOf(kind.name());
+        return this.constraintService.acceptedSuggestions(repository);
     }
 
     /**
@@ -1838,9 +1804,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param suggestion the mined suggestion to accept.
      */
     public synchronized void acceptConstraint(ConstraintMiner.Suggestion suggestion) {
-        checkInitialized();
-        checkNotNull(suggestion);
-        acceptConstraint(suggestion.kind, suggestion.a, suggestion.b);
+        this.constraintService.acceptConstraint(suggestion);
     }
 
     /**
@@ -1851,13 +1815,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param featureB consequent / second feature name; null for MANDATORY.
      */
     public synchronized void acceptConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
-        checkInitialized();
-        checkNotNull(kind);
-        checkNotNull(featureA);
-        safeTransaction(repository -> {
-            repository.addConstraint(toConstraintKind(kind), featureA, featureB);
-            return repository;
-        });
+        this.constraintService.acceptConstraint(kind, featureA, featureB);
     }
 
     /**
@@ -1868,15 +1826,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param featureB consequent / second feature name; null for MANDATORY.
      */
     public synchronized void unacceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
-        checkInitialized();
-        checkNotNull(kind);
-        checkNotNull(featureA);
-        safeTransaction(repository -> {
-            String id = kind.name() + "|" + featureA + "|" + (featureB == null ? "" : featureB);
-            Constraint existing = repository.getConstraint(id);
-            if (existing != null) repository.removeConstraint(existing);
-            return repository;
-        });
+        this.constraintService.unacceptConstraint(kind, featureA, featureB);
     }
 
     /**
@@ -1932,13 +1882,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return Human-readable descriptions of violated constraints; empty if none.
      */
     public synchronized List<String> checkConstraintViolations(Configuration configuration) {
-        this.checkInitialized();
-        checkNotNull(configuration);
-        if (!this.constraintViolationWarningsEnabled) return List.of();
-        Repository.Op repository = this.repositoryDao.load();
-        List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
-        Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
-        return ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
+        return this.constraintService.checkConstraintViolations(configuration);
     }
 
     /**
