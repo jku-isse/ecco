@@ -227,7 +227,30 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // # LISTENERS #####################################################################################################
 
-    private final Collection<EccoListener> listeners = new ArrayList<>();
+    // CopyOnWriteArrayList: fire*Event methods can now run on background threads (e.g.
+    // addVariant()/safeTransaction() firing after a GUI action's own background Thread/Task), while
+    // GUI dialogs add/removeListener from the FX thread -- a plain ArrayList would risk
+    // ConcurrentModificationException across those threads.
+    private final Collection<EccoListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    /**
+     * Advisory-only signal for GUI code: true while a write operation that mutates the live, shared
+     * {@code Association}/{@code AssociationCounter} object graph (or persists other repository
+     * state) is in flight. Does NOT provide mutual exclusion by itself -- {@code commit()} etc. are
+     * already {@code synchronized} on this instance, which serializes THEM against each other, but
+     * NOT against GUI code that holds a direct reference to an {@code Association} object and calls
+     * methods on it later, entirely outside any {@code EccoService} synchronization (e.g.
+     * {@code ArtifactsView} rendering {@code association.computeCondition()} on the FX thread). That
+     * is a real, pre-existing unsynchronized-access gap in the core object model, not fixed here --
+     * this flag only lets speculative GUI background reads (constraint-violation checks, etc.) opt
+     * to skip themselves while a write is in progress, reducing how often background read traffic
+     * overlaps that unprotected window, without pretending to close it.
+     */
+    private volatile boolean writeInProgress = false;
+
+    public boolean isWriteInProgress() {
+        return this.writeInProgress;
+    }
 
     public void addListener(EccoListener listener) {
         this.listeners.add(listener);
@@ -263,27 +286,49 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // service events
 
+    // A listener throwing must never abort the broadcast to the remaining listeners -- and, since
+    // fire*Event methods are called from inside write-transaction try blocks (e.g. addVariant(),
+    // safeTransaction()), an uncaught exception here would be caught by that method's own
+    // catch-and-rollback, incorrectly rolling back a transaction that already committed
+    // (repositoryDao.store()/transactionStrategy.end() already ran). Isolating each listener call
+    // makes that impossible.
     private void fireStatusChangedEvent() {
         for (EccoListener listener : this.listeners) {
-            listener.statusChangedEvent(this);
+            try {
+                listener.statusChangedEvent(this);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during statusChangedEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
     private void fireOperationProgressEvent(String operationString, double progress) {
         for (EccoListener listener : this.listeners) {
-            listener.operationProgressEvent(this, operationString, progress);
+            try {
+                listener.operationProgressEvent(this, operationString, progress);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during operationProgressEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
     private void fireReadEvent(Path path, ArtifactReader reader) {
         for (ReadListener listener : this.listeners) {
-            listener.fileReadEvent(path, reader);
+            try {
+                listener.fileReadEvent(path, reader);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during fileReadEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
     private void fireWriteEvent(Path path, ArtifactWriter writer) {
         for (WriteListener listener : this.listeners) {
-            listener.fileWriteEvent(path, writer);
+            try {
+                listener.fileWriteEvent(path, writer);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during fileWriteEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
@@ -292,13 +337,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     private void fireCommitsChangedEvent(Commit commit) {
         for (EccoListener listener : this.listeners) {
-            listener.commitsChangedEvent(this, commit);
+            try {
+                listener.commitsChangedEvent(this, commit);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during commitsChangedEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
     private void fireAssociationSelectedEvent(Association association) {
         for (EccoListener listener : this.listeners) {
-            listener.associationSelectedEvent(this, association);
+            try {
+                listener.associationSelectedEvent(this, association);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during associationSelectedEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
@@ -1603,6 +1656,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.checkInitialized();
         checkNotNull(configuration);
 
+        this.writeInProgress = true;
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
@@ -1646,6 +1700,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         } catch (Exception e) {
             this.transactionStrategy.rollback();
             throw new EccoException("Error during commit.", e);
+        } finally {
+            this.writeInProgress = false;
         }
     }
 
@@ -1678,6 +1734,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         checkNotNull(configuration);
 
+        this.writeInProgress = true;
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
@@ -1701,10 +1758,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             repositoryDao.store(repository);
 
             transactionStrategy.end();
+
+            this.fireStatusChangedEvent();
         } catch (Exception e) {
             transactionStrategy.rollback();
 
             throw new EccoException("Error during adding a variant.", e);
+        } finally {
+            this.writeInProgress = false;
         }
     }
 
@@ -1751,6 +1812,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
+        this.writeInProgress = true;
         try {
             transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             Repository.Op repository = repositoryDao.load();
@@ -1759,10 +1821,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             repositoryDao.store(repository);
             transactionStrategy.end();
+
+            this.fireStatusChangedEvent();
         } catch (Exception e) {
             transactionStrategy.rollback();
 
             throw new EccoException("Error during repository write transaction.", e);
+        } finally {
+            this.writeInProgress = false;
         }
     }
 
@@ -1882,6 +1948,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         checkNotNull(configuration);
 
+        this.writeInProgress = true;
         try {
             service.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
@@ -1896,11 +1963,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             service.transactionStrategy.end();
 
+            this.fireStatusChangedEvent();
 
         } catch (Exception e) {
             service.transactionStrategy.rollback();
 
             throw new EccoException("Error during adding a variant.", e);
+        } finally {
+            this.writeInProgress = false;
         }
     }
 
@@ -1966,6 +2036,31 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.surplusAbsorptionEnabled = enabled;
     }
 
+    private volatile boolean constraintViolationWarningsEnabled = true;
+
+    /**
+     * Controls whether {@link #compose} and {@link #checkConstraintViolations} warn when a
+     * configuration's selected features violate an accepted, currently-still-hard constraint
+     * (see {@link ConstraintViolationChecker}). Purely advisory -- like {@link Constraint} itself,
+     * this never blocks {@code commit()}/{@code checkout()}, only surfaces a warning. On by default;
+     * the escape hatch exists for the same reason as {@link #setSurplusSuppressionEnabled}.
+     *
+     * @param enabled Whether constraint-violation warnings should be computed.
+     */
+    public synchronized void setConstraintViolationWarningsEnabled(boolean enabled) {
+        this.constraintViolationWarningsEnabled = enabled;
+    }
+
+    /**
+     * The min-witness/confidence thresholds {@link #acceptedSuggestions} re-mines against. A
+     * suggestion accepted in the GUI at a looser threshold (e.g. via {@code ConstraintSuggestionsView}'s
+     * spinners) is only ever TRUSTED once it also clears these production values -- see that method's
+     * javadoc. Exposed (not just inlined) so the GUI can tell a user *why* an accepted constraint isn't
+     * yet trusted, without duplicating the actual numbers.
+     */
+    public static final int ACCEPTED_CONSTRAINT_MIN_WITNESS = 4;
+    public static final double ACCEPTED_CONSTRAINT_CONFIDENCE = 0.9;
+
     /**
      * Mines fresh from the currently committed configurations and filters to the signatures of
      * constraints already persisted (accepted) in the repository -- the same construction sequence
@@ -1982,18 +2077,25 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * with fork/pull/push) must not weaken this guarantee -- only the source of "which signatures were
      * accepted" changed, the fresh-mine-then-filter shape did not.
      *
+     * <p>Note this re-mines at the fixed {@link #ACCEPTED_CONSTRAINT_MIN_WITNESS}/
+     * {@link #ACCEPTED_CONSTRAINT_CONFIDENCE}, not whatever threshold was used to accept a suggestion
+     * in the GUI -- a constraint accepted under a looser threshold silently drops out here until it
+     * also earns enough witnesses at the production threshold. Intentional (see javadoc above); the
+     * GUI's Accepted list surfaces this to the user rather than leaving it silent.
+     *
      * @param repository the already-loaded repository to read accepted constraints and commit
      *                    configurations from -- passed in rather than loaded internally so callers
      *                    already holding one (e.g. {@link #compose}) don't pay for a second,
      *                    independent {@code repositoryDao.load()} and don't risk this method seeing a
      *                    different in-memory {@code Repository.Op} instance than the rest of the call.
-     *                    Package-private, not private: exercised directly by
-     *                    {@code AcceptedConstraintStaleReMineTest} to pin the safety property above
-     *                    without needing a full, hard-to-reproduce real surplus-suppression scenario.
+     *                    Public: also exercised directly by {@code AcceptedConstraintStaleReMineTest}
+     *                    to pin the safety property above, and by the GUI's Accepted-constraints status
+     *                    display.
      */
-    List<ConstraintMiner.Suggestion> acceptedSuggestions(Repository repository) {
+    public List<ConstraintMiner.Suggestion> acceptedSuggestions(Repository repository) {
         List<Set<String>> configs = ConfigurationBridge.readConfigurations(this);
-        List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(4, 0.9, null).mine(configs);
+        List<ConstraintMiner.Suggestion> mined =
+                new ConstraintMiner(ACCEPTED_CONSTRAINT_MIN_WITNESS, ACCEPTED_CONSTRAINT_CONFIDENCE, null).mine(configs);
         Set<String> accepted = AcceptedConstraints.acceptedSignatures(repository.getConstraints());
         List<ConstraintMiner.Suggestion> result = new ArrayList<>();
         for (ConstraintMiner.Suggestion suggestion : mined) {
@@ -2088,7 +2190,36 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 LOGGER.log(Level.WARNING, "Surplus-module suppression failed; leaving surplus warnings as-is.", e);
             }
         }
+        if (this.constraintViolationWarningsEnabled) {
+            try {
+                List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
+                Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
+                checkout.getConstraintWarnings().addAll(
+                        ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions));
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Constraint-violation check failed; skipping.", e);
+            }
+        }
         return checkout;
+    }
+
+    /**
+     * Checks whether the given configuration's selected features violate any accepted, currently
+     * hard constraint (see {@link ConstraintViolationChecker}). Purely advisory: does not affect
+     * {@code commit()}/{@code checkout()}; callers (e.g. the GUI, right after a successful commit)
+     * decide how to surface the result.
+     *
+     * @param configuration The configuration to check.
+     * @return Human-readable descriptions of violated constraints; empty if none.
+     */
+    public synchronized List<String> checkConstraintViolations(Configuration configuration) {
+        this.checkInitialized();
+        checkNotNull(configuration);
+        if (!this.constraintViolationWarningsEnabled) return List.of();
+        Repository.Op repository = this.repositoryDao.load();
+        List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
+        Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
+        return ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
     }
 
     /**
@@ -2147,64 +2278,72 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The checkout object.
      */
     public synchronized Checkout checkout(Configuration configuration) {
-        Checkout checkout = compose(configuration);
+        this.writeInProgress = true;
+        try {
+            Checkout checkout = compose(configuration);
 
-        Set<Node> nodes = compareArtifacts(checkout);
-        this.writer.write(this.baseDir, nodes);
+            Set<Node> nodes = compareArtifacts(checkout);
+            this.writer.write(this.baseDir, nodes);
 
-        // TODO: check if rest of method is affected by code change to compose
-        // write config file into base directory
-        Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
-        if (Files.exists(configFile)) {
-            throw new EccoException("Configuration file already exists in base directory.");
-        } else {
-            try {
-                Files.write(configFile, configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch (IOException e) {
-                throw new EccoException("Could not create configuration file.", e);
+            // TODO: check if rest of method is affected by code change to compose
+            // write config file into base directory
+            Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
+            if (Files.exists(configFile)) {
+                throw new EccoException("Configuration file already exists in base directory.");
+            } else {
+                try {
+                    Files.write(configFile, configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                } catch (IOException e) {
+                    throw new EccoException("Could not create configuration file.", e);
+                }
+                this.fireWriteEvent(configFile, this.writer);
             }
-            this.fireWriteEvent(configFile, this.writer);
-        }
 
-        // write warnings file into base directory
-        Path warningsFile = this.baseDir.resolve(WARNINGS_FILE_NAME);
-        if (Files.exists(warningsFile)) {
-            throw new EccoException("Warnings file already exists in base directory.");
-        } else {
-            try {
-                StringBuilder sb = new StringBuilder();
-                List<ModuleRevision> sortedMissing = new ArrayList<>(checkout.getMissing());
-                sortedMissing.sort(ModuleRevisions.RELEVANCE_ORDER);
-                for (ModuleRevision mr : sortedMissing) {
-                    sb.append("MISSING: ").append(ModuleRevisions.describe(mr));
-                    String location = checkout.getMissingLocations().get(mr);
-                    if (location != null && !location.isEmpty()) {
-                        sb.append(" (").append(location).append(")");
+            // write warnings file into base directory
+            Path warningsFile = this.baseDir.resolve(WARNINGS_FILE_NAME);
+            if (Files.exists(warningsFile)) {
+                throw new EccoException("Warnings file already exists in base directory.");
+            } else {
+                try {
+                    StringBuilder sb = new StringBuilder();
+                    List<ModuleRevision> sortedMissing = new ArrayList<>(checkout.getMissing());
+                    sortedMissing.sort(ModuleRevisions.RELEVANCE_ORDER);
+                    for (ModuleRevision mr : sortedMissing) {
+                        sb.append("MISSING: ").append(ModuleRevisions.describe(mr));
+                        String location = checkout.getMissingLocations().get(mr);
+                        if (location != null && !location.isEmpty()) {
+                            sb.append(" (").append(location).append(")");
+                        }
+                        sb.append(" -- suggested fix: ").append(ModuleRevisions.suggestFix(mr, checkout.getConfiguration()));
+                        sb.append(System.lineSeparator());
                     }
-                    sb.append(" -- suggested fix: ").append(ModuleRevisions.suggestFix(mr, checkout.getConfiguration()));
-                    sb.append(System.lineSeparator());
+                    for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
+                        sb.append("SURPLUS: ").append(mr.getKey()).append(" trace id: ")
+                                .append(mr.getValue()).append(System.lineSeparator());
+                    }
+                    for (Artifact a : checkout.getOrderWarnings()) {
+                        sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(a))
+                                .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(a)).append(")")
+                                .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix())
+                                .append(System.lineSeparator());
+                    }
+                    for (Association association : checkout.getUnresolvedAssociations()) {
+                        sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());
+                    }
+                    for (String constraintWarning : checkout.getConstraintWarnings()) {
+                        sb.append("CONSTRAINT: ").append(constraintWarning).append(System.lineSeparator());
+                    }
+                    Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                } catch (IOException e) {
+                    throw new EccoException("Could not create warnings file.", e);
                 }
-                for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
-                    sb.append("SURPLUS: ").append(mr.getKey()).append(" trace id: ")
-                            .append(mr.getValue()).append(System.lineSeparator());
-                }
-                for (Artifact a : checkout.getOrderWarnings()) {
-                    sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(a))
-                            .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(a)).append(")")
-                            .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix())
-                            .append(System.lineSeparator());
-                }
-                for (Association association : checkout.getUnresolvedAssociations()) {
-                    sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());
-                }
-                Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch (IOException e) {
-                throw new EccoException("Could not create warnings file.", e);
+                this.fireWriteEvent(warningsFile, this.writer);
             }
-            this.fireWriteEvent(warningsFile, this.writer);
-        }
 
-        return checkout;
+            return checkout;
+        } finally {
+            this.writeInProgress = false;
+        }
     }
 
     public synchronized Checkout checkout(Node node) {

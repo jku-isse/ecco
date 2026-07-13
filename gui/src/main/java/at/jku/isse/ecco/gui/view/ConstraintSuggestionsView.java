@@ -49,6 +49,14 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     private final ObservableList<String> acceptedData = FXCollections.observableArrayList();
     private final ObservableList<String> rejectedData = FXCollections.observableArrayList();
 
+    /**
+     * signature -> " [trusted]" / " [not yet trusted -- ...]", read by {@link SignatureCell} for
+     * {@link #acceptedListView} only. Written just before {@code acceptedData.setAll(...)} inside
+     * {@link #refresh()}'s {@code Platform.runLater}, so by the time cells re-render it's current;
+     * plain (not observable) since {@code acceptedData.setAll(...)} already forces the re-render.
+     */
+    private final java.util.Map<String, String> acceptedStatusSuffix = new java.util.HashMap<>();
+
     private final TableView<ConstraintMiner.Suggestion> pendingTable;
     private final ListView<String> acceptedListView;
     private final ListView<String> rejectedListView;
@@ -160,8 +168,8 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         this.rejectedListView = new ListView<>(rejectedData);
         this.acceptedListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         this.rejectedListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        this.acceptedListView.setCellFactory(lv -> new SignatureCell());
-        this.rejectedListView.setCellFactory(lv -> new SignatureCell());
+        this.acceptedListView.setCellFactory(lv -> new SignatureCell(this.acceptedStatusSuffix));
+        this.rejectedListView.setCellFactory(lv -> new SignatureCell(null));
 
         Button unacceptButton = new Button("Move back to pending");
         unacceptButton.setOnAction(e -> undoAccepted(acceptedListView));
@@ -257,8 +265,36 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                     if (!accepted.contains(signature) && !rejected.contains(signature)) pending.add(suggestion);
                 }
 
+                // an accepted signature is only actually TRUSTED (used for surplus suppression /
+                // constraint-violation warnings) once it re-mines hard at the fixed production
+                // threshold -- see EccoService#acceptedSuggestions. Surface that here rather than
+                // leaving "accepted but silently untrusted" invisible to the user.
+                Set<String> trusted = ConstraintSuggestionsView.this.service
+                        .acceptedSuggestions(ConstraintSuggestionsView.this.service.getRepository())
+                        .stream().map(ConstraintSuggestionPreferences::signatureOf).collect(Collectors.toSet());
+                List<ConstraintMiner.Suggestion> lenientMined = new ConstraintMiner(
+                        1, EccoService.ACCEPTED_CONSTRAINT_CONFIDENCE, null).mine(configs);
+                java.util.Map<String, ConstraintMiner.Suggestion> lenientBySignature = new java.util.HashMap<>();
+                for (ConstraintMiner.Suggestion suggestion : lenientMined) {
+                    lenientBySignature.put(ConstraintSuggestionPreferences.signatureOf(suggestion), suggestion);
+                }
+                java.util.Map<String, String> statusSuffix = new java.util.HashMap<>();
+                for (String signature : accepted) {
+                    if (trusted.contains(signature)) {
+                        statusSuffix.put(signature, " [trusted]");
+                    } else {
+                        ConstraintMiner.Suggestion current = lenientBySignature.get(signature);
+                        statusSuffix.put(signature, current == null
+                                ? " [not yet trusted -- not currently reproducible]"
+                                : " [not yet trusted -- needs " + EccoService.ACCEPTED_CONSTRAINT_MIN_WITNESS
+                                        + " witnesses, has " + current.witness + "]");
+                    }
+                }
+
                 Platform.runLater(() -> {
                     pendingData.setAll(pending);
+                    acceptedStatusSuffix.clear();
+                    acceptedStatusSuffix.putAll(statusSuffix);
                     acceptedData.setAll(accepted.stream().sorted().collect(Collectors.toList()));
                     rejectedData.setAll(rejected.stream().sorted().collect(Collectors.toList()));
                     toolBar.setDisable(false);
@@ -281,8 +317,13 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     @Override
     public void statusChangedEvent(EccoService service) {
         if (service.isInitialized()) {
-            Platform.runLater(() -> this.setDisable(false));
-            if (this.tabVisible) refresh();
+            // fireStatusChangedEvent() can be invoked from a background thread (e.g. commit()'s
+            // Task); refresh() touches JavaFX UI directly, so it must run on the FX thread, not
+            // whatever thread fired the event.
+            Platform.runLater(() -> {
+                this.setDisable(false);
+                if (this.tabVisible) refresh();
+            });
         } else {
             Platform.runLater(() -> {
                 pendingData.clear();
@@ -302,6 +343,14 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     private static final class SignatureCell extends ListCell<String> {
         private static final String ARROW = " → "; // "→" = RIGHTWARDS ARROW (real symbol, not "-->")
 
+        /** signature -> trust-status suffix (e.g. " [trusted]"); null for lists with no such concept
+         * (rejected suggestions were never trusted to begin with). */
+        private final java.util.Map<String, String> statusSuffixBySignature;
+
+        SignatureCell(java.util.Map<String, String> statusSuffixBySignature) {
+            this.statusSuffixBySignature = statusSuffixBySignature;
+        }
+
         @Override
         protected void updateItem(String signature, boolean empty) {
             super.updateItem(signature, empty);
@@ -310,13 +359,11 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 return;
             }
             ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
-            if (parsed == null) {
-                setText(signature);
-            } else if (parsed.b == null) {
-                setText(parsed.kind + ": " + parsed.a);
-            } else {
-                setText(parsed.kind + ": " + parsed.a + ARROW + parsed.b);
-            }
+            String base = parsed == null ? signature
+                    : parsed.b == null ? parsed.kind + ": " + parsed.a
+                    : parsed.kind + ": " + parsed.a + ARROW + parsed.b;
+            String suffix = statusSuffixBySignature == null ? "" : statusSuffixBySignature.getOrDefault(signature, "");
+            setText(base + suffix);
         }
     }
 }

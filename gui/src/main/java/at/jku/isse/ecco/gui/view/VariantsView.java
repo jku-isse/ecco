@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -36,6 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 public class VariantsView extends BorderPane implements EccoListener {
 
@@ -43,43 +45,20 @@ public class VariantsView extends BorderPane implements EccoListener {
 
     final ObservableList<VariantsInfo> variantsDataSelected = FXCollections.observableArrayList();
 
+    private ToolBar toolBar;
+
 
     public VariantsView(EccoService service) {
         super();
         this.service = service;
 
 
-        ToolBar toolBar = new ToolBar();
+        this.toolBar = new ToolBar();
+        ToolBar toolBar = this.toolBar;
         this.setTop(toolBar);
 
-        Button refreshButton = new Button("Refresh");
-        toolBar.getItems().add(refreshButton);
-        refreshButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent e) {
-                toolBar.setDisable(true);
-                VariantsView.this.variantsDataSelected.clear();
-
-                Task variantsRefreshTask = new Task<Void>() {
-                    @Override
-                    public Void call() throws EccoException {
-                        Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
-                        Platform.runLater(() -> {
-                            for (Variant variant : variants) {
-                                //VariantsView.this.variantsData.add(variant);
-                                VariantsView.this.variantsDataSelected.add(new VariantsInfo(variant));
-                            }
-                        });
-                        Platform.runLater(() -> toolBar.setDisable(false));
-                        return null;
-                    }
-                };
-
-                new Thread(variantsRefreshTask).start();
-            }
-        });
-
-        toolBar.getItems().addAll(new Separator());
+        // no manual "Refresh" button -- statusChangedEvent() (triggered by every add/remove/update
+        // variant and by commit/accept-constraint actions) auto-refreshes this table instead.
         Button selectAllButton = new Button("Select All");
         toolBar.getItems().addAll(selectAllButton, new Separator());
         Button unselectAllButton = new Button("Unselect All");
@@ -155,7 +134,10 @@ public class VariantsView extends BorderPane implements EccoListener {
 
 
         Label baseDirLabel = new Label("Base Directory: ");
-        TextField baseDirTextField = new TextField(service.getBaseDir().toString());
+        // default to the directory the repository lives in, not whatever service.getBaseDir()
+        // happens to still be set to from a previous, possibly unrelated operation -- same rationale
+        // as CheckoutView's base-directory field -- still freely editable below before checkout.
+        TextField baseDirTextField = new TextField(service.getRepositoryHomeDir().toString());
         baseDirTextField.setDisable(false);
         baseDirLabel.setLabelFor(baseDirTextField);
         Button selectBaseDirectoryButton = new Button("...");
@@ -227,7 +209,9 @@ public class VariantsView extends BorderPane implements EccoListener {
                             for (Variant variant : variants) {
                                 for (FeatureRevision f : variant.getConfiguration().getFeatureRevisions()) {
                                     if (f.getFeatureRevisionString().equals(searchField.getText())) {
-                                        VariantsView.this.variantsDataSelected.add(new VariantsInfo(variant));
+                                        VariantsInfo info = new VariantsInfo(variant);
+                                        VariantsView.this.variantsDataSelected.add(info);
+                                        VariantsView.this.refreshDerivedInfo(info);
                                     }
                                 }
                             }
@@ -267,7 +251,9 @@ public class VariantsView extends BorderPane implements EccoListener {
                             }
                             Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
                             for (Variant variant : variants) {
-                                VariantsView.this.variantsDataSelected.add(new VariantsInfo(variant));
+                                VariantsInfo info = new VariantsInfo(variant);
+                                VariantsView.this.variantsDataSelected.add(info);
+                                VariantsView.this.refreshDerivedInfo(info);
                             }
                         });
                         Platform.runLater(() -> toolBar.setDisable(false));
@@ -305,7 +291,9 @@ public class VariantsView extends BorderPane implements EccoListener {
                             }
                             Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
                             for (Variant variant : variants) {
-                                VariantsView.this.variantsDataSelected.add(new VariantsInfo(variant));
+                                VariantsInfo info = new VariantsInfo(variant);
+                                VariantsView.this.variantsDataSelected.add(info);
+                                VariantsView.this.refreshDerivedInfo(info);
                             }
                         });
                         Platform.runLater(() -> toolBar.setDisable(false));
@@ -346,7 +334,9 @@ public class VariantsView extends BorderPane implements EccoListener {
                             }
                             Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
                             for (Variant variant : variants) {
-                                VariantsView.this.variantsDataSelected.add(new VariantsInfo(variant));
+                                VariantsInfo info = new VariantsInfo(variant);
+                                VariantsView.this.variantsDataSelected.add(info);
+                                VariantsView.this.refreshDerivedInfo(info);
                             }
                         });
                         Platform.runLater(() -> toolBar.setDisable(false));
@@ -368,16 +358,40 @@ public class VariantsView extends BorderPane implements EccoListener {
         TableColumn<VariantsInfo, String> idCol = new TableColumn<>("Id");
         TableColumn<VariantsInfo, String> nameCol = new TableColumn<>("Name");
         TableColumn<VariantsInfo, String> configCol = new TableColumn<>("Configuration");
+        TableColumn<VariantsInfo, String> warningCol = new TableColumn<>("Constraint Warning");
+        TableColumn<VariantsInfo, String> matchingCommitsCol = new TableColumn<>("Matching Commits");
         TableColumn<VariantsInfo, String> variantsCol = new TableColumn<>("Variants");
         TableColumn<VariantsView.VariantsInfo, Boolean> selectedVariantCol = new TableColumn<>("Selected");
 
-        variantsCol.getColumns().addAll(idCol, nameCol, configCol, selectedVariantCol);
+        variantsCol.getColumns().addAll(idCol, nameCol, configCol, warningCol, matchingCommitsCol, selectedVariantCol);
         variantsTable.getColumns().setAll(variantsCol);
 
 
         idCol.setCellValueFactory((TableColumn.CellDataFeatures<VariantsInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getVariant().getId()));
         nameCol.setCellValueFactory((TableColumn.CellDataFeatures<VariantsInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getVariant().getName()));
         configCol.setCellValueFactory((TableColumn.CellDataFeatures<VariantsInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getVariant().getConfiguration().toString()));
+
+        // live constraint-violation feedback -- see EccoService.checkConstraintViolations; kept
+        // current by refreshDerivedInfo(), called whenever the list is (re)populated.
+        warningCol.setCellValueFactory(param -> param.getValue().warningProperty());
+        warningCol.setCellFactory(col -> new TableCell<VariantsInfo, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || item.isEmpty()) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    setStyle("-fx-text-fill: firebrick;");
+                }
+            }
+        });
+
+        // there's no stored link between a Commit and a Variant in the data model (independent
+        // random UUIDs, and a Variant is deduplicated across commits sharing a configuration) --
+        // this matches by Configuration.equals() at display time instead (see describeMatchingCommits).
+        matchingCommitsCol.setCellValueFactory(param -> param.getValue().matchingCommitsProperty());
 
 
         selectedVariantCol.setCellValueFactory(new PropertyValueFactory<>("selected"));
@@ -393,14 +407,14 @@ public class VariantsView extends BorderPane implements EccoListener {
         VariantDetailView variantDetailView = new VariantDetailView(service);
 
 
+        // just show the detail view for the newly-selected row -- reloading the ENTIRE variants
+        // list here (as this used to do) raced with refresh()'s own background reload (see
+        // refresh()'s comment) and was the direct cause of duplicated/missing rows after a
+        // commit/checkout/save-as-variant, since clearing the list mid-selection-change can itself
+        // trigger another selection-changed event.
         variantsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
             if (newValue != null) {
                 variantDetailView.showVariant(newValue.getVariant());
-                VariantsView.this.variantsDataSelected.clear();
-                Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
-                for (Variant variant : variants) {
-                    VariantsView.this.variantsDataSelected.add(new VariantsView.VariantsInfo(variant));
-                }
             } else {
                 variantDetailView.showVariant(null);
             }
@@ -419,12 +433,141 @@ public class VariantsView extends BorderPane implements EccoListener {
     @Override
     public void statusChangedEvent(EccoService service) {
         if (service.isInitialized()) {
-            Platform.runLater(() -> this.setDisable(false));
+            // fireStatusChangedEvent() can be invoked from a background thread (e.g. commit()'s
+            // Task, or CheckoutDetailView's "Save as Variant" thread) -- refresh() touches JavaFX
+            // UI directly, so both it and setDisable must run on the FX thread, not whatever thread
+            // fired the event.
+            Platform.runLater(() -> {
+                this.setDisable(false);
+                this.refresh();
+            });
         } else {
             Platform.runLater(() -> {
                 this.setDisable(true);
                 this.variantsDataSelected.clear();
             });
+        }
+    }
+
+    /**
+     * Reloads the known-variants list from the repository -- called by {@link #statusChangedEvent}
+     * whenever the repository changes (add/remove/update variant, commit, accept/reject constraint),
+     * so the table stays current without a manual refresh action. Also (re)computes each variant's
+     * live constraint-violation status and matching-commit ids.
+     */
+    private void refresh() {
+        this.toolBar.setDisable(true);
+
+        // clear() and the add-loop must happen TOGETHER, once the background load completes -- not
+        // clear-now/add-later, which left a window where other code touching variantsDataSelected
+        // (e.g. the table's own selection-changed listener) could interleave and produce duplicate
+        // rows, or the freshly-added variant getting raced away entirely.
+        Task<ArrayList<Variant>> variantsRefreshTask = new Task<ArrayList<Variant>>() {
+            @Override
+            public ArrayList<Variant> call() throws EccoException {
+                return new ArrayList<>(VariantsView.this.service.getRepository().getVariants());
+            }
+        };
+        variantsRefreshTask.setOnSucceeded(event -> {
+            VariantsView.this.variantsDataSelected.clear();
+            List<VariantsInfo> infos = new ArrayList<>();
+            for (Variant variant : variantsRefreshTask.getValue()) {
+                VariantsInfo info = new VariantsInfo(variant);
+                VariantsView.this.variantsDataSelected.add(info);
+                infos.add(info);
+            }
+            VariantsView.this.toolBar.setDisable(false);
+            VariantsView.this.refreshDerivedInfoBatch(infos);
+        });
+        // surfaced rather than silently swallowed -- e.g. getRepository() can throw if the
+        // repository is uninitialized/mid-transaction, and this Task previously had no failure
+        // handler at all, so such a failure looked identical to "nothing to refresh".
+        variantsRefreshTask.setOnFailed(event -> {
+            VariantsView.this.toolBar.setDisable(false);
+            new at.jku.isse.ecco.gui.ExceptionAlert(variantsRefreshTask.getException()).showAndWait();
+        });
+
+        new Thread(variantsRefreshTask).start();
+    }
+
+    /**
+     * Batched version of {@link #refreshDerivedInfo(VariantsInfo)} for {@link #refresh()} (which runs
+     * after every add/remove/update-variant/commit/accept-constraint event, potentially for MANY
+     * variants at once) -- computes every entry SEQUENTIALLY on a single background thread instead of
+     * spawning one thread per variant. There's a real, pre-existing, unsynchronized-access gap between
+     * this kind of background repository read and other code (e.g. {@code ArtifactsView}) that holds
+     * live {@code Association} references and reads them directly on the FX thread while a write
+     * (e.g. {@code commit()}, on its own background thread) is in progress -- see
+     * {@code EccoService#isWriteInProgress}. This doesn't close that gap, but avoids piling on
+     * unnecessary additional concurrent read traffic while a write is in flight, and skips entirely if
+     * one is already running when the batch starts.
+     */
+    private void refreshDerivedInfoBatch(List<VariantsInfo> infos) {
+        if (!this.service.isInitialized() || this.service.isWriteInProgress() || infos.isEmpty()) return;
+        new Thread(() -> {
+            for (VariantsInfo info : infos) {
+                if (this.service.isWriteInProgress()) break;
+                String warning = describeConstraintViolations(info.getVariant().getConfiguration());
+                String matchingCommits = describeMatchingCommits(info.getVariant().getConfiguration());
+                Platform.runLater(() -> {
+                    info.setWarning(warning);
+                    info.setMatchingCommits(matchingCommits);
+                });
+            }
+        }).start();
+    }
+
+    /**
+     * Live constraint-violation feedback (see {@code EccoService#checkConstraintViolations}) and
+     * matching-commit lookup for one variant, computed off the FX thread and written back into
+     * {@code info}'s properties -- the "Constraint Warning"/"Matching Commits" columns render them
+     * in place. Used by the individual-selection/search/feature-revision actions; {@link #refresh()}
+     * uses the batched {@link #refreshDerivedInfoBatch} instead.
+     */
+    private void refreshDerivedInfo(VariantsInfo info) {
+        if (!this.service.isInitialized() || this.service.isWriteInProgress()) {
+            info.setWarning("");
+            info.setMatchingCommits("");
+            return;
+        }
+        new Thread(() -> {
+            String warning = describeConstraintViolations(info.getVariant().getConfiguration());
+            String matchingCommits = describeMatchingCommits(info.getVariant().getConfiguration());
+            Platform.runLater(() -> {
+                info.setWarning(warning);
+                info.setMatchingCommits(matchingCommits);
+            });
+        }).start();
+    }
+
+    /** Empty string if no violations. */
+    private String describeConstraintViolations(Configuration configuration) {
+        try {
+            java.util.List<String> violations = this.service.checkConstraintViolations(configuration);
+            return violations.isEmpty() ? "" : "Violates accepted constraint(s): " + String.join("; ", violations);
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    /**
+     * Matches this variant's configuration against every commit's configuration by {@code equals()}
+     * (there's no stored id-to-id or object-to-object cross reference between {@code Commit} and
+     * {@code Variant} in the data model -- both entities get independent random UUIDs, and a Variant
+     * is deduplicated across commits sharing an identical configuration -- so this is the only
+     * available correlation). Comma-joined commit ids; empty if none match.
+     */
+    private String describeMatchingCommits(Configuration configuration) {
+        try {
+            java.util.List<String> ids = new java.util.ArrayList<>();
+            for (Commit commit : this.service.getCommits()) {
+                if (commit.getConfiguration() != null && commit.getConfiguration().equals(configuration)) {
+                    ids.add(commit.getId());
+                }
+            }
+            return String.join(", ", ids);
+        } catch (RuntimeException e) {
+            return "";
         }
     }
 
@@ -451,6 +594,9 @@ public class VariantsView extends BorderPane implements EccoListener {
 
         private BooleanProperty selected;
 
+        private final javafx.beans.property.SimpleStringProperty warning = new javafx.beans.property.SimpleStringProperty("");
+        private final javafx.beans.property.SimpleStringProperty matchingCommits = new javafx.beans.property.SimpleStringProperty("");
+
 
         public VariantsInfo(Variant variant) {
             this.variant = variant;
@@ -471,6 +617,30 @@ public class VariantsView extends BorderPane implements EccoListener {
 
         public BooleanProperty selectedProperty() {
             return this.selected;
+        }
+
+        public String getWarning() {
+            return this.warning.get();
+        }
+
+        public void setWarning(String warning) {
+            this.warning.set(warning == null ? "" : warning);
+        }
+
+        public javafx.beans.property.SimpleStringProperty warningProperty() {
+            return this.warning;
+        }
+
+        public String getMatchingCommits() {
+            return this.matchingCommits.get();
+        }
+
+        public void setMatchingCommits(String matchingCommits) {
+            this.matchingCommits.set(matchingCommits == null ? "" : matchingCommits);
+        }
+
+        public javafx.beans.property.SimpleStringProperty matchingCommitsProperty() {
+            return this.matchingCommits;
         }
 
     }

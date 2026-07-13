@@ -55,6 +55,10 @@ public class CheckoutDetailView extends BorderPane {
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
 
+		Button saveAsVariantButton = new Button("Save as Variant...");
+		saveAsVariantButton.setOnAction(event -> this.saveCurrentCheckoutAsVariant());
+		this.toolBar.getItems().add(saveAsVariantButton);
+
 
 		// details
 		GridPane detailsPane = new GridPane();
@@ -226,12 +230,59 @@ public class CheckoutDetailView extends BorderPane {
 						ArtifactDiagnostics.suggestOrderFix(),
 						suggestedConfigurationString));
 			}
+
+			// show constraint-violation diagnostics (see EccoService.compose()) -- advisory only,
+			// no Apply Fix action (suggestedConfigurationString == null hides the button).
+			for (String constraintWarning : checkout.getConstraintWarnings()) {
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("CONSTRAINT", constraintWarning, "", "", null));
+			}
 		} else {
 			this.setCenter(null);
 			this.toolBar.setDisable(true);
 
 			this.checkoutConfiguration.setText("");
 		}
+	}
+
+	/**
+	 * Prompts for a name and saves the currently-shown checkout's configuration as a known
+	 * {@code Variant} (see the Variants tab) -- {@code EccoService#addVariant} silently no-ops if an
+	 * equal configuration is already saved, so this checks first to give the user real feedback
+	 * instead of a false "saved" message.
+	 */
+	private void saveCurrentCheckoutAsVariant() {
+		if (this.currentCheckout == null || this.currentCheckout.getConfiguration() == null) return;
+		Configuration configuration = this.currentCheckout.getConfiguration();
+
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("Save as Variant");
+		dialog.setHeaderText(null);
+		dialog.setContentText("Variant name:");
+		Optional<String> nameOpt = dialog.showAndWait();
+		if (nameOpt.isEmpty() || nameOpt.get().isBlank()) return;
+		String name = nameOpt.get().trim();
+
+		new Thread(() -> {
+			try {
+				java.util.Collection<? extends at.jku.isse.ecco.core.Variant> existing =
+						this.service.getRepository().getVariants();
+				at.jku.isse.ecco.core.Variant duplicate = existing.stream()
+						.filter(v -> v.getConfiguration().equals(configuration))
+						.findFirst().orElse(null);
+				if (duplicate != null) {
+					String existingName = duplicate.getName();
+					javafx.application.Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
+							"This configuration is already saved as variant '" + existingName + "'.").showAndWait());
+					return;
+				}
+				String description = this.currentCheckout.getMessage() == null ? "" : this.currentCheckout.getMessage();
+				this.service.addVariant(configuration, name, description);
+				javafx.application.Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
+						"Saved as variant '" + name + "'.").showAndWait());
+			} catch (RuntimeException e) {
+				javafx.application.Platform.runLater(() -> new ExceptionAlert(e).showAndWait());
+			}
+		}).start();
 	}
 
 	/**
@@ -260,6 +311,12 @@ public class CheckoutDetailView extends BorderPane {
 			@Override
 			public void succeeded() {
 				super.succeeded();
+				List<String> violations = CheckoutDetailView.this.service.checkConstraintViolations(getValue().getConfiguration());
+				if (!violations.isEmpty()) {
+					Alert alert = new Alert(Alert.AlertType.WARNING,
+							"The committed fix violates accepted constraint(s):\n" + String.join("\n", violations));
+					alert.showAndWait();
+				}
 				CheckoutDetailView.this.rerunCheckoutAfterFix(checkoutBaseDirToReplay);
 			}
 

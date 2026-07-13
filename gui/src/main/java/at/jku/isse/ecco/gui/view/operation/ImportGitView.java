@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
@@ -26,6 +27,7 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.SelectionMode;
@@ -53,6 +55,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -311,7 +314,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 		ObservableList<CommitEntry> commitData = FXCollections.observableArrayList();
 		for (int i = 0; i < commitsOldestFirst.size(); i++) {
 			String suggestion = i < suggestedConfigurations.size() ? suggestedConfigurations.get(i) : "";
-			commitData.add(new CommitEntry(commitsOldestFirst.get(i), suggestion));
+			CommitEntry commitEntry = new CommitEntry(commitsOldestFirst.get(i), suggestion);
+			commitData.add(commitEntry);
+			refreshConstraintWarning(commitEntry);
 		}
 
 		GridPane gridPane = new GridPane();
@@ -359,14 +364,38 @@ public class ImportGitView extends OperationView implements EccoListener {
 		TableColumn<CommitEntry, String> configCol = new TableColumn<>("Configuration");
 		configCol.setCellValueFactory(param -> param.getValue().configurationProperty());
 		configCol.setCellFactory(OperationView.editableStringCellFactory());
-		configCol.setOnEditCommit(event -> event.getRowValue().setConfiguration(event.getNewValue()));
+		configCol.setOnEditCommit(event -> {
+			event.getRowValue().setConfiguration(event.getNewValue());
+			refreshConstraintWarning(event.getRowValue());
+		});
 
-		reviewTable.getColumns().setAll(idCol, messageCol, configCol);
+		// live constraint-violation feedback as a configuration is entered/edited -- see
+		// EccoService.checkConstraintViolations; refreshed above and on initial population.
+		TableColumn<CommitEntry, String> warningCol = new TableColumn<>("Constraint Warning");
+		warningCol.setCellValueFactory(param -> param.getValue().warningProperty());
+		warningCol.setCellFactory(col -> new javafx.scene.control.TableCell<CommitEntry, String>() {
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				if (empty || item == null || item.isEmpty()) {
+					setText(null);
+					setStyle("");
+				} else {
+					setText(item);
+					setStyle("-fx-text-fill: firebrick;");
+				}
+			}
+		});
+
+		reviewTable.getColumns().setAll(idCol, messageCol, configCol, warningCol);
 		gridPane.add(reviewTable, 0, row, 1, 1);
 		GridPane.setVgrow(reviewTable, Priority.ALWAYS);
 		row++;
 
-		importButton.setOnAction(event -> this.step3(new ArrayList<>(commitData)));
+		importButton.setOnAction(event -> {
+			if (!confirmProceedDespiteViolations(commitData)) return;
+			this.step3(new ArrayList<>(commitData));
+		});
 
 		this.fit();
 	}
@@ -392,6 +421,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.logArea.clear();
 		this.service.addListener(this);
 
+		// Batch import can span many commits; a modal Alert per violating commit would be
+		// disruptive, so violations are logged inline (like the "Imported ..." lines) and only
+		// summarized in one Alert after the whole import finishes.
+		List<String> allConstraintWarnings = new ArrayList<>();
+
 		Task<Commit> importTask = new Task<Commit>() {
 			@Override
 			public Commit call() throws IOException {
@@ -409,6 +443,16 @@ public class ImportGitView extends OperationView implements EccoListener {
 						double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
 						Platform.runLater(() -> ImportGitView.this.logArea.appendText(
 								String.format("Imported %s (%s) in %.2f seconds.%n", entry.getShortId(), entry.getMessage(), durationSeconds)));
+
+						Commit committedEntry = lastCommit;
+						List<String> violations = ImportGitView.this.service.checkConstraintViolations(committedEntry.getConfiguration());
+						if (!violations.isEmpty()) {
+							allConstraintWarnings.addAll(violations);
+							Platform.runLater(() -> {
+								for (String violation : violations)
+									ImportGitView.this.logArea.appendText("CONSTRAINT: " + entry.getShortId() + ": " + violation + System.lineSeparator());
+							});
+						}
 					} finally {
 						deleteRecursively(tempDir);
 					}
@@ -423,6 +467,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 				ImportGitView.this.commitDetailView.showCommit(this.getValue());
 				ImportGitView.this.splitPane.getItems().setAll(ImportGitView.this.logArea, ImportGitView.this.commitDetailView);
 				ImportGitView.this.showSuccessHeader();
+				if (!allConstraintWarnings.isEmpty()) {
+					Alert alert = new Alert(Alert.AlertType.WARNING,
+							"Imported commits violate accepted constraint(s):\n" + String.join("\n", allConstraintWarnings));
+					alert.showAndWait();
+				}
 			}
 
 			@Override
@@ -463,6 +512,58 @@ public class ImportGitView extends OperationView implements EccoListener {
 	}
 
 
+	/**
+	 * Live constraint-violation feedback (see {@code EccoService#checkConstraintViolations}) for one
+	 * row's configuration, computed off the FX thread and written back into {@code entry}'s
+	 * {@code warningProperty()} -- the review table's cell factory renders it in place.
+	 */
+	private void refreshConstraintWarning(CommitEntry entry) {
+		String configurationString = entry.getConfiguration();
+		if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()
+				|| this.service.isWriteInProgress()) {
+			entry.setWarning("");
+			return;
+		}
+		new Thread(() -> {
+			String description = describeConstraintViolations(configurationString);
+			Platform.runLater(() -> entry.setWarning(description));
+		}).start();
+	}
+
+	/** Empty string if no violations (or the configuration can't be parsed, e.g. mid-typing). */
+	private String describeConstraintViolations(String configurationString) {
+		try {
+			Configuration configuration = this.service.parseConfigurationString(configurationString);
+			List<String> violations = this.service.checkConstraintViolations(configuration);
+			return violations.isEmpty() ? "" : "Violates accepted constraint(s): " + String.join("; ", violations);
+		} catch (RuntimeException e) {
+			return "";
+		}
+	}
+
+	/**
+	 * Aggregates each commit's already-computed warning (kept live by {@link #refreshConstraintWarning})
+	 * and, if any violates an accepted constraint, asks the user to confirm before importing -- advisory
+	 * only (see {@code EccoService#checkConstraintViolations}), never a hard block.
+	 *
+	 * @return true if there were no violations, or the user confirmed anyway; false to abort.
+	 */
+	private boolean confirmProceedDespiteViolations(List<CommitEntry> entries) {
+		List<String> lines = new ArrayList<>();
+		for (CommitEntry entry : entries) {
+			String warning = entry.getWarning();
+			if (warning != null && !warning.isEmpty()) {
+				lines.add(entry.getShortId() + ": " + warning);
+			}
+		}
+		if (lines.isEmpty()) return true;
+		Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+				String.join("\n", lines) + "\n\nDo you want to import anyway?");
+		alert.setHeaderText("Constraint violation");
+		Optional<ButtonType> result = alert.showAndWait();
+		return result.isPresent() && result.get() == ButtonType.OK;
+	}
+
 	@Override
 	public void fileReadEvent(Path file, ArtifactReader reader) {
 		String plugin = shortPluginName(reader.getPluginId());
@@ -492,12 +593,25 @@ public class ImportGitView extends OperationView implements EccoListener {
 		private final SimpleStringProperty shortId;
 		private final SimpleStringProperty message;
 		private final SimpleStringProperty configuration;
+		private final SimpleStringProperty warning = new SimpleStringProperty("");
 
 		private CommitEntry(GitCommitInfo commit, String configuration) {
 			this.commitId = commit.getId();
 			this.shortId = new SimpleStringProperty(commit.getShortId());
 			this.message = new SimpleStringProperty(commit.getMessage());
 			this.configuration = new SimpleStringProperty(configuration == null ? "" : configuration);
+		}
+
+		public String getWarning() {
+			return this.warning.get();
+		}
+
+		public void setWarning(String warning) {
+			this.warning.set(warning == null ? "" : warning);
+		}
+
+		public SimpleStringProperty warningProperty() {
+			return this.warning;
 		}
 
 		public String getCommitId() {

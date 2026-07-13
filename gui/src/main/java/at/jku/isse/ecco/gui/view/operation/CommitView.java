@@ -4,9 +4,11 @@ import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -20,6 +22,8 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -27,6 +31,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 
 import java.io.File;
@@ -39,6 +44,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -140,10 +146,31 @@ public class CommitView extends OperationView implements EccoListener {
 
 		TableColumn<FolderEntry, String> configCol = new TableColumn<>("Configuration");
 		configCol.setCellValueFactory(param -> param.getValue().configurationProperty());
-		configCol.setCellFactory(OperationView.editableStringCellFactory());
-		configCol.setOnEditCommit(event -> event.getRowValue().setConfiguration(event.getNewValue()));
+		configCol.setCellFactory(this.configCellFactoryWithLiveWarning());
+		configCol.setOnEditCommit(event -> {
+			event.getRowValue().setConfiguration(event.getNewValue());
+			refreshConstraintWarning(event.getRowValue());
+		});
 
-		foldersTable.getColumns().setAll(orderCol, folderCol, configCol);
+		// live constraint-violation feedback as a configuration is entered/edited -- see
+		// EccoService.checkConstraintViolations; refreshed on add and on each edit commit above.
+		TableColumn<FolderEntry, String> warningCol = new TableColumn<>("Constraint Warning");
+		warningCol.setCellValueFactory(param -> param.getValue().warningProperty());
+		warningCol.setCellFactory(col -> new TableCell<FolderEntry, String>() {
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				if (empty || item == null || item.isEmpty()) {
+					setText(null);
+					setStyle("");
+				} else {
+					setText(item);
+					setStyle("-fx-text-fill: firebrick;");
+				}
+			}
+		});
+
+		foldersTable.getColumns().setAll(orderCol, folderCol, configCol, warningCol);
 
 		Button addFolderButton = new Button("Add Folder...");
 		Button addMultipleButton = new Button("Add Multiple from Parent...");
@@ -190,7 +217,9 @@ public class CommitView extends OperationView implements EccoListener {
 
 			Path selectedPath = selectedDirectory.toPath();
 			String configurationString = this.service.getConfigStringFromFile(selectedPath);
-			folderData.add(new FolderEntry(selectedPath, configurationString));
+			FolderEntry entry = new FolderEntry(selectedPath, configurationString);
+			folderData.add(entry);
+			refreshConstraintWarning(entry);
 		});
 
 		addMultipleButton.setOnAction(event -> {
@@ -217,7 +246,9 @@ public class CommitView extends OperationView implements EccoListener {
 
 			for (Path folder : chooseSubfolders(selectedPath, subfolders)) {
 				String configurationString = this.service.getConfigStringFromFile(folder);
-				folderData.add(new FolderEntry(folder, configurationString));
+				FolderEntry entry = new FolderEntry(folder, configurationString);
+				folderData.add(entry);
+				refreshConstraintWarning(entry);
 			}
 		});
 
@@ -260,6 +291,10 @@ public class CommitView extends OperationView implements EccoListener {
 				return;
 			}
 
+			if (!confirmProceedDespiteViolations(folderData)) {
+				return;
+			}
+
 			this.step2();
 
 			String commitMessage = commitMessageStringTextField.getText();
@@ -283,6 +318,20 @@ public class CommitView extends OperationView implements EccoListener {
 						double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
 						Platform.runLater(() -> CommitView.this.logArea.appendText(
 								String.format("Committed %s in %.2f seconds.%n", entry.getFolder(), durationSeconds)));
+
+						Commit committedEntry = lastCommit;
+						List<String> constraintViolations =
+								CommitView.this.service.checkConstraintViolations(committedEntry.getConfiguration());
+						if (!constraintViolations.isEmpty()) {
+							Platform.runLater(() -> {
+								for (String violation : constraintViolations)
+									CommitView.this.logArea.appendText("CONSTRAINT: " + violation + System.lineSeparator());
+								Alert alert = new Alert(Alert.AlertType.WARNING,
+										"The committed configuration for " + entry.getFolder()
+												+ " violates accepted constraint(s):\n" + String.join("\n", constraintViolations));
+								alert.showAndWait();
+							});
+						}
 					}
 					return lastCommit;
 				}
@@ -437,6 +486,165 @@ public class CommitView extends OperationView implements EccoListener {
 		return lastDot < 0 ? pluginId : pluginId.substring(lastDot + 1);
 	}
 
+	/**
+	 * Like {@link OperationView#editableStringCellFactory()} (commit-on-focus-lost/Enter), plus a
+	 * debounced LIVE constraint check while the cell is being edited -- {@code setOnEditCommit} alone
+	 * only fires on focus-lost/Enter, so typing a violating configuration and immediately clicking
+	 * Commit (before losing focus, or before the async check resolves) never showed a warning. This
+	 * checks the raw in-progress text directly, the same way {@code CheckoutView}'s debounced
+	 * {@code TextField} listener does, without waiting for (or requiring) a commit.
+	 */
+	/**
+	 * A {@code TextArea}-based editor (wrapped, multiple visible rows) instead of a plain single-line
+	 * {@code TextField} -- configuration strings are often long, comma-separated lists, and a
+	 * single-line field forced horizontal scrolling to see/edit the whole thing. Enter commits (like a
+	 * TextField) rather than inserting a newline, since the underlying value is still meant to be one
+	 * line; Escape cancels. Also runs the same debounced live constraint-violation check while typing.
+	 */
+	private javafx.util.Callback<TableColumn<FolderEntry, String>, TableCell<FolderEntry, String>> configCellFactoryWithLiveWarning() {
+		return column -> new TableCell<FolderEntry, String>() {
+			private TextArea textArea;
+
+			private TextArea editor() {
+				if (this.textArea != null) return this.textArea;
+				TextArea area = new TextArea();
+				area.setWrapText(true);
+				area.setPrefRowCount(3);
+				area.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+					if (!isNowFocused && this.isEditing()) {
+						this.commitEdit(area.getText());
+					}
+				});
+				area.addEventFilter(KeyEvent.KEY_PRESSED, keyEvent -> {
+					if (keyEvent.getCode() == KeyCode.ENTER) {
+						this.commitEdit(area.getText());
+						keyEvent.consume();
+					} else if (keyEvent.getCode() == KeyCode.ESCAPE) {
+						this.cancelEdit();
+						keyEvent.consume();
+					}
+				});
+
+				PauseTransition debounce = new PauseTransition(Duration.millis(400));
+				debounce.setOnFinished(event -> {
+					if (this.getTableRow() == null || this.getTableRow().getItem() == null) return;
+					FolderEntry entry = this.getTableRow().getItem();
+					String text = area.getText();
+					if (text == null || text.isBlank() || CommitView.this.service.isWriteInProgress()) {
+						entry.setWarning("");
+						return;
+					}
+					new Thread(() -> {
+						String description = describeConstraintViolations(text);
+						Platform.runLater(() -> entry.setWarning(description));
+					}).start();
+				});
+				area.textProperty().addListener((obs, oldV, newV) -> {
+					debounce.stop();
+					debounce.playFromStart();
+				});
+
+				this.textArea = area;
+				return area;
+			}
+
+			@Override
+			public void startEdit() {
+				if (this.isEmpty()) return;
+				super.startEdit();
+				TextArea area = editor();
+				area.setText(this.getItem());
+				this.setText(null);
+				this.setGraphic(area);
+				area.requestFocus();
+				area.selectAll();
+			}
+
+			@Override
+			public void cancelEdit() {
+				super.cancelEdit();
+				this.setText(this.getItem());
+				this.setGraphic(null);
+			}
+
+			@Override
+			public void commitEdit(String newValue) {
+				// the underlying value is a single logical line -- strip any newline the user
+				// managed to introduce anyway (e.g. paste), rather than persisting a corrupted
+				// multi-line configuration string.
+				super.commitEdit(newValue == null ? null : newValue.replace("\n", "").replace("\r", ""));
+			}
+
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				if (empty) {
+					this.setText(null);
+					this.setGraphic(null);
+				} else if (this.isEditing()) {
+					editor().setText(item);
+					this.setText(null);
+					this.setGraphic(editor());
+				} else {
+					this.setText(item);
+					this.setGraphic(null);
+				}
+			}
+		};
+	}
+
+	/**
+	 * Live constraint-violation feedback (see {@code EccoService#checkConstraintViolations}) for one
+	 * row's configuration, computed off the FX thread and written back into {@code entry}'s
+	 * {@code warningProperty()} -- the table's cell factory renders it in place.
+	 */
+	private void refreshConstraintWarning(FolderEntry entry) {
+		String configurationString = entry.getConfiguration();
+		if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()
+				|| this.service.isWriteInProgress()) {
+			entry.setWarning("");
+			return;
+		}
+		new Thread(() -> {
+			String description = describeConstraintViolations(configurationString);
+			Platform.runLater(() -> entry.setWarning(description));
+		}).start();
+	}
+
+	/** Empty string if no violations (or the configuration can't be parsed, e.g. mid-typing). */
+	private String describeConstraintViolations(String configurationString) {
+		try {
+			Configuration configuration = this.service.parseConfigurationString(configurationString);
+			List<String> violations = this.service.checkConstraintViolations(configuration);
+			return violations.isEmpty() ? "" : "Violates accepted constraint(s): " + String.join("; ", violations);
+		} catch (RuntimeException e) {
+			return "";
+		}
+	}
+
+	/**
+	 * Aggregates each folder's already-computed warning (kept live by {@link #refreshConstraintWarning})
+	 * and, if any folder violates an accepted constraint, asks the user to confirm before committing --
+	 * advisory only (see {@code EccoService#checkConstraintViolations}), never a hard block.
+	 *
+	 * @return true if there were no violations, or the user confirmed anyway; false to abort.
+	 */
+	private boolean confirmProceedDespiteViolations(List<FolderEntry> entries) {
+		List<String> lines = new ArrayList<>();
+		for (FolderEntry entry : entries) {
+			String warning = entry.getWarning();
+			if (warning != null && !warning.isEmpty()) {
+				lines.add(entry.getFolder() + ": " + warning);
+			}
+		}
+		if (lines.isEmpty()) return true;
+		Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+				String.join("\n", lines) + "\n\nDo you want to commit anyway?");
+		alert.setHeaderText("Constraint violation");
+		Optional<ButtonType> result = alert.showAndWait();
+		return result.isPresent() && result.get() == ButtonType.OK;
+	}
+
 
 	/**
 	 * A folder to be committed, and its (editable) configuration string, as shown in the commit
@@ -445,6 +653,7 @@ public class CommitView extends OperationView implements EccoListener {
 	public static class FolderEntry {
 		private final SimpleStringProperty folder;
 		private final SimpleStringProperty configuration;
+		private final SimpleStringProperty warning = new SimpleStringProperty("");
 
 		private FolderEntry(Path folder, String configuration) {
 			this.folder = new SimpleStringProperty(folder.toString());
@@ -469,6 +678,18 @@ public class CommitView extends OperationView implements EccoListener {
 
 		public SimpleStringProperty configurationProperty() {
 			return this.configuration;
+		}
+
+		public String getWarning() {
+			return this.warning.get();
+		}
+
+		public void setWarning(String warning) {
+			this.warning.set(warning == null ? "" : warning);
+		}
+
+		public SimpleStringProperty warningProperty() {
+			return this.warning;
 		}
 	}
 
