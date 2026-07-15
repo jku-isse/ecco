@@ -226,6 +226,13 @@ public class RemoteSyncService {
                             // this was added; included here too for the same reason, even though this
                             // smaller payload never reproduced it.
                             oos.flush();
+                            // flush() only reaches the OS socket send buffer, not the wire -- closing the
+                            // connection (below) immediately after can race the OS's own transmission and
+                            // emit a TCP RST that discards not-yet-acknowledged bytes. shutdownOutput()
+                            // sends a proper FIN instead, which the OS guarantees only happens after
+                            // already-written data has been handed off. See RemoteSyncService#push for
+                            // where this was actually root-caused (an intermittent, ~1-in-3 hang).
+                            sChannel.shutdownOutput();
 
                             break;
                         }
@@ -258,6 +265,8 @@ public class RemoteSyncService {
                             // 8x-repeated stress test that without it, the client's final readObject() for
                             // this payload hangs forever in ~50% of runs.
                             oos.flush();
+                            // see the FETCH case above for why this is also necessary.
+                            sChannel.shutdownOutput();
 
                             break;
                         }
@@ -568,10 +577,21 @@ public class RemoteSyncService {
                         // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
                         oos.writeObject(new ArrayList<Association.Op>(subsetRepository.getAssociations()));
                         oos.writeObject(new ArrayList<Artifact.Op<?>>(subsetRepository.collectArtifacts()));
-                        // see startServer()'s FETCH case for why this flush is necessary -- this was the
-                        // exact site the missing flush was root-caused at: the server would hang forever
-                        // in ~50% of runs reading this connection's final companion payload.
+                        // flush() only pushes ObjectOutputStream's/pos's own buffers into the OS socket
+                        // send buffer -- it does NOT wait for the peer to ACK receipt over TCP. Closing
+                        // the channel (via the try-with-resources below) immediately after can race the
+                        // OS's own transmission of that already-flushed data: if the close happens before
+                        // the OS has actually sent + gotten an ACK for the last chunk, closing can emit a
+                        // TCP RST that discards it, leaving the server's matching read blocked forever
+                        // waiting for bytes that were "successfully written" on this end but never
+                        // actually arrived. shutdownOutput() sends a proper FIN instead, which the OS
+                        // guarantees only happens after already-written data has been handed off -- this
+                        // is what actually fixed the intermittent (~1-in-3 to ~1-in-4) PUSH hang; oos.flush()
+                        // alone was necessary but not sufficient (it fixed a distinct, contained,
+                        // ~50%-reproducible bug: data that never left ObjectOutputStream's own buffer at
+                        // all -- see the FETCH case in startServer() for that one).
                         oos.flush();
+                        sChannel.shutdownOutput();
                         pos.removeListener(owner);
 
                     } else {
