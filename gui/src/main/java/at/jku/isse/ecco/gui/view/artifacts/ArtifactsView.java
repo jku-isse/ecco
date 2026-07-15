@@ -128,7 +128,42 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) ->
                 filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0)));
 
-        // associations table
+        TableView<AssociationInfoImpl> associationsTable = this.buildAssociationsTable(useSimplifiedLabelsCheckBox, filteredData);
+
+
+        artifactTreeView = new ArtifactTreeView(service);
+
+        // split panes
+        SplitPane horizontalSplitPane = new SplitPane();
+        horizontalSplitPane.setOrientation(Orientation.VERTICAL);
+        horizontalSplitPane.getItems().addAll(associationsTable, artifactTreeView);
+
+        this.setCenter(horizontalSplitPane);
+
+
+        this.wireToolBarActions(refreshButton, composeSelectedButton, liveFeaturesButton,
+                selectAllMenuItem, unselectAllMenuItem, selectByConfigurationMenuItem, checkoutSelectedButton);
+
+        showEmptyAssociationsCheckBox.setSelected(false);
+        useSimplifiedLabelsCheckBox.setSelected(true);
+
+        Platform.runLater(() -> {
+            horizontalSplitPane.setDividerPosition(0, 0.2);
+            if (!service.isInitialized())
+                this.setDisable(true);
+        });
+
+        // ecco service
+        service.addListener(this);
+    }
+
+    /**
+     * Builds the associations table: id/condition/artifact-count/selected/highlighted columns, plus
+     * the local {@code ColorPickerTableCell} used for the "Highlighted" column's color-picker cells.
+     * Split out of the constructor purely for readability -- no behavior change from the previous
+     * single-constructor version.
+     */
+    private TableView<AssociationInfoImpl> buildAssociationsTable(CheckBox useSimplifiedLabelsCheckBox, FilteredList<AssociationInfoImpl> filteredData) {
         TableView<AssociationInfoImpl> associationsTable = new TableView<>();
         associationsTable.setEditable(true);
         associationsTable.setTableMenuButtonVisible(true);
@@ -272,17 +307,19 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         associationsTable.setItems(sortedData);
 
+        return associationsTable;
+    }
 
-        artifactTreeView = new ArtifactTreeView(service);
-
-        // split panes
-        SplitPane horizontalSplitPane = new SplitPane();
-        horizontalSplitPane.setOrientation(Orientation.VERTICAL);
-        horizontalSplitPane.getItems().addAll(associationsTable, artifactTreeView);
-
-        this.setCenter(horizontalSplitPane);
-
-
+    /**
+     * Wires the Refresh/Compose Selected/Live Features/Select All/Unselect All/Select by
+     * Configuration/Checkout Selected handlers. Split out of the constructor purely for
+     * readability -- no behavior change from the previous single-constructor version; called at the
+     * same point in construction as before (after {@link #artifactTreeView} and the split panes
+     * exist, since several of these handlers reference them).
+     */
+    private void wireToolBarActions(Button refreshButton, Button composeSelectedButton, Button liveFeaturesButton,
+                                     MenuItem selectAllMenuItem, MenuItem unselectAllMenuItem,
+                                     MenuItem selectByConfigurationMenuItem, Button checkoutSelectedButton) {
         refreshButton.setOnAction(e -> refresh());
 
         composeSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
@@ -426,18 +463,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 toolBar.setDisable(false);
             }
         });
-
-        showEmptyAssociationsCheckBox.setSelected(false);
-        useSimplifiedLabelsCheckBox.setSelected(true);
-
-        Platform.runLater(() -> {
-            horizontalSplitPane.setDividerPosition(0, 0.2);
-            if (!service.isInitialized())
-                this.setDisable(true);
-        });
-
-        // ecco service
-        service.addListener(this);
     }
 
     /**
