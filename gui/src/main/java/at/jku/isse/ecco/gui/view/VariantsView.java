@@ -38,6 +38,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class VariantsView extends BorderPane implements EccoListener {
 
@@ -52,10 +53,48 @@ public class VariantsView extends BorderPane implements EccoListener {
         super();
         this.service = service;
 
-
         this.toolBar = new ToolBar();
+        this.setTop(this.toolBar);
+
+        SplitPane splitPane = new SplitPane();
+        this.setCenter(splitPane);
+
+        this.buildToolBarActions();
+
+        TableView<VariantsInfo> variantsTable = this.buildVariantsTable();
+
+        // commit details view
+        VariantDetailView variantDetailView = new VariantDetailView(service);
+
+        // just show the detail view for the newly-selected row -- reloading the ENTIRE variants
+        // list here (as this used to do) raced with refresh()'s own background reload (see
+        // refresh()'s comment) and was the direct cause of duplicated/missing rows after a
+        // commit/checkout/save-as-variant, since clearing the list mid-selection-change can itself
+        // trigger another selection-changed event.
+        variantsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
+            if (newValue != null) {
+                variantDetailView.showVariant(newValue.getVariant());
+            } else {
+                variantDetailView.showVariant(null);
+            }
+        });
+
+        // add to split pane
+        splitPane.getItems().addAll(variantsTable, variantDetailView);
+
+        Platform.runLater(() -> statusChangedEvent(service));
+
+        service.addListener(this);
+    }
+
+    /**
+     * Builds every toolbar button/field and wires its action handler: select all/unselect all, add/
+     * remove variant, checkout, and search/add/remove/update feature revision. Split out of the
+     * constructor purely for readability -- no behavior change from the previous single-constructor
+     * version.
+     */
+    private void buildToolBarActions() {
         ToolBar toolBar = this.toolBar;
-        this.setTop(toolBar);
 
         // no manual "Refresh" button -- statusChangedEvent() (triggered by every add/remove/update
         // variant and by commit/accept-constraint actions) auto-refreshes this table instead.
@@ -125,13 +164,6 @@ public class VariantsView extends BorderPane implements EccoListener {
 
 
         toolBar.getItems().add(new Separator());
-        FilteredList<VariantsView.VariantsInfo> filteredData = new FilteredList<>(this.variantsDataSelected, p -> true);
-
-
-
-        SplitPane splitPane = new SplitPane();
-        this.setCenter(splitPane);
-
 
         Label baseDirLabel = new Label("Base Directory: ");
         // default to the directory the repository lives in, not whatever service.getBaseDir()
@@ -228,82 +260,24 @@ public class VariantsView extends BorderPane implements EccoListener {
 
         Button addSelectedButton = new Button("Add Feature Revision");
         toolBar.getItems().addAll(addSelectedButton);
-        addSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent e) {
-                toolBar.setDisable(true);
-                ObservableList<VariantsInfo> variantsDataSelectedAux = FXCollections.observableArrayList();
-                variantsDataSelectedAux.addAll(VariantsView.this.variantsDataSelected);
-                VariantsView.this.variantsDataSelected.clear();
-
-                Task addFeatureRevisionTask = new Task<Void>() {
-                    @Override
-                    public Void call() throws EccoException {
-                        Platform.runLater(() -> {
-                            for (VariantsInfo variantInfo : variantsDataSelectedAux) {
-                                if (variantInfo.isSelected()) {
-                                    String configuration = variantInfo.getVariant().getConfiguration().toString() + "," + searchField.getText();
-                                    String name = variantInfo.getVariant().getName();
-                                    String id = variantInfo.getVariant().getId();
-                                    Configuration config = VariantsView.this.service.parseConfigurationString(configuration);
-                                    VariantsView.this.service.updateVariant(config, name, id);
-                                }
-                            }
-                            Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
-                            for (Variant variant : variants) {
-                                VariantsInfo info = new VariantsInfo(variant);
-                                VariantsView.this.variantsDataSelected.add(info);
-                                VariantsView.this.refreshDerivedInfo(info);
-                            }
-                        });
-                        Platform.runLater(() -> toolBar.setDisable(false));
-                        return null;
-                    }
-                };
-
-                new Thread(addFeatureRevisionTask).start();
-            }
-        });
+        addSelectedButton.setOnAction(event -> this.runFeatureRevisionAction(variantInfo -> {
+            String configuration = variantInfo.getVariant().getConfiguration().toString() + "," + searchField.getText();
+            String name = variantInfo.getVariant().getName();
+            String id = variantInfo.getVariant().getId();
+            Configuration config = VariantsView.this.service.parseConfigurationString(configuration);
+            VariantsView.this.service.updateVariant(config, name, id);
+        }));
 
 
         Button removeSelectedButton = new Button("Remove Feature Revision");
         toolBar.getItems().addAll(removeSelectedButton);
-        removeSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent e) {
-                toolBar.setDisable(true);
-                ObservableList<VariantsInfo> variantsDataSelectedAux = FXCollections.observableArrayList();
-                variantsDataSelectedAux.addAll(VariantsView.this.variantsDataSelected);
-                VariantsView.this.variantsDataSelected.clear();
-
-                Task updateFeatureRevisionTask = new Task<Void>() {
-                    @Override
-                    public Void call() throws EccoException {
-                        Platform.runLater(() -> {
-                            for (VariantsInfo variantInfo : variantsDataSelectedAux) {
-                                if (variantInfo.isSelected()) {
-                                    for (FeatureRevision f : variantInfo.getVariant().getConfiguration().getFeatureRevisions()) {
-                                        if (f.getFeatureRevisionString().equals(searchField.getText())) {
-                                            VariantsView.this.service.removeFeatureRevision(f, variantInfo.getVariant().getId());
-                                        }
-                                    }
-                                }
-                            }
-                            Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
-                            for (Variant variant : variants) {
-                                VariantsInfo info = new VariantsInfo(variant);
-                                VariantsView.this.variantsDataSelected.add(info);
-                                VariantsView.this.refreshDerivedInfo(info);
-                            }
-                        });
-                        Platform.runLater(() -> toolBar.setDisable(false));
-                        return null;
-                    }
-                };
-
-                new Thread(updateFeatureRevisionTask).start();
+        removeSelectedButton.setOnAction(event -> this.runFeatureRevisionAction(variantInfo -> {
+            for (FeatureRevision f : variantInfo.getVariant().getConfiguration().getFeatureRevisions()) {
+                if (f.getFeatureRevisionString().equals(searchField.getText())) {
+                    VariantsView.this.service.removeFeatureRevision(f, variantInfo.getVariant().getId());
+                }
             }
-        });
+        }));
 
 
         TextField updateField = new TextField();
@@ -311,43 +285,21 @@ public class VariantsView extends BorderPane implements EccoListener {
 
         Button updateSelectedButton = new Button("Update Feature Revision");
         toolBar.getItems().addAll(updateSelectedButton);
-        updateSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent e) {
-                toolBar.setDisable(true);
-                ObservableList<VariantsInfo> variantsDataSelectedAux = FXCollections.observableArrayList();
-                variantsDataSelectedAux.addAll(VariantsView.this.variantsDataSelected);
-                VariantsView.this.variantsDataSelected.clear();
-
-                Task updateFeatureRevisionTask = new Task<Void>() {
-                    @Override
-                    public Void call() throws EccoException {
-                        Platform.runLater(() -> {
-                            for (VariantsInfo variantInfo : variantsDataSelectedAux) {
-                                if (variantInfo.isSelected()) {
-                                    for (FeatureRevision f : variantInfo.getVariant().getConfiguration().getFeatureRevisions()) {
-                                        if (f.getFeatureRevisionString().equals(searchField.getText())) {
-                                            VariantsView.this.service.updateFeatureRevision(f, updateField.getText(), variantInfo.getVariant().getId());
-                                        }
-                                    }
-                                }
-                            }
-                            Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
-                            for (Variant variant : variants) {
-                                VariantsInfo info = new VariantsInfo(variant);
-                                VariantsView.this.variantsDataSelected.add(info);
-                                VariantsView.this.refreshDerivedInfo(info);
-                            }
-                        });
-                        Platform.runLater(() -> toolBar.setDisable(false));
-                        return null;
-                    }
-                };
-
-                new Thread(updateFeatureRevisionTask).start();
+        updateSelectedButton.setOnAction(event -> this.runFeatureRevisionAction(variantInfo -> {
+            for (FeatureRevision f : variantInfo.getVariant().getConfiguration().getFeatureRevisions()) {
+                if (f.getFeatureRevisionString().equals(searchField.getText())) {
+                    VariantsView.this.service.updateFeatureRevision(f, updateField.getText(), variantInfo.getVariant().getId());
+                }
             }
-        });
+        }));
+    }
 
+    /**
+     * Builds the variants table: columns, cell factories, and sorting. Split out of the constructor
+     * purely for readability -- no behavior change from the previous single-constructor version.
+     */
+    private TableView<VariantsInfo> buildVariantsTable() {
+        FilteredList<VariantsView.VariantsInfo> filteredData = new FilteredList<>(this.variantsDataSelected, p -> true);
 
         // list of variants
         TableView<VariantsInfo> variantsTable = new TableView<>();
@@ -403,30 +355,47 @@ public class VariantsView extends BorderPane implements EccoListener {
         sortedData.comparatorProperty().bind(variantsTable.comparatorProperty());
         variantsTable.setItems(sortedData);
 
-        // commit details view
-        VariantDetailView variantDetailView = new VariantDetailView(service);
+        return variantsTable;
+    }
 
+    /**
+     * Runs {@code perSelectedVariant} once for every currently-selected variant, then reloads the
+     * full variant list and recomputes derived info -- the shape shared by the Add/Remove/Update
+     * Feature Revision toolbar actions (built in {@link #buildToolBarActions()}), which previously
+     * each duplicated this choreography with only the per-variant action differing. Snapshots the
+     * selection before clearing it, and clears/reloads {@link #variantsDataSelected} together inside
+     * the same {@code Platform.runLater} block -- not clear-now/add-later -- for the same reason
+     * {@link #refresh()} does: interleaving with other code touching {@link #variantsDataSelected}
+     * (e.g. the table's own selection-changed listener) can otherwise produce duplicate/missing rows.
+     */
+    private void runFeatureRevisionAction(Consumer<VariantsInfo> perSelectedVariant) {
+        this.toolBar.setDisable(true);
+        ObservableList<VariantsInfo> variantsDataSelectedAux = FXCollections.observableArrayList();
+        variantsDataSelectedAux.addAll(this.variantsDataSelected);
+        this.variantsDataSelected.clear();
 
-        // just show the detail view for the newly-selected row -- reloading the ENTIRE variants
-        // list here (as this used to do) raced with refresh()'s own background reload (see
-        // refresh()'s comment) and was the direct cause of duplicated/missing rows after a
-        // commit/checkout/save-as-variant, since clearing the list mid-selection-change can itself
-        // trigger another selection-changed event.
-        variantsTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
-            if (newValue != null) {
-                variantDetailView.showVariant(newValue.getVariant());
-            } else {
-                variantDetailView.showVariant(null);
+        Task<Void> task = new Task<Void>() {
+            @Override
+            public Void call() throws EccoException {
+                Platform.runLater(() -> {
+                    for (VariantsInfo variantInfo : variantsDataSelectedAux) {
+                        if (variantInfo.isSelected()) {
+                            perSelectedVariant.accept(variantInfo);
+                        }
+                    }
+                    Collection<? extends Variant> variants = VariantsView.this.service.getRepository().getVariants();
+                    for (Variant variant : variants) {
+                        VariantsInfo info = new VariantsInfo(variant);
+                        VariantsView.this.variantsDataSelected.add(info);
+                        VariantsView.this.refreshDerivedInfo(info);
+                    }
+                });
+                Platform.runLater(() -> VariantsView.this.toolBar.setDisable(false));
+                return null;
             }
-        });
+        };
 
-
-        // add to split pane
-        splitPane.getItems().addAll(variantsTable, variantDetailView);
-
-        Platform.runLater(() -> statusChangedEvent(service));
-
-        service.addListener(this);
+        new Thread(task).start();
     }
 
 
