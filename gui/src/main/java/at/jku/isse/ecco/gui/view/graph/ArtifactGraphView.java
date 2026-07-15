@@ -113,6 +113,43 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 		this.toolBar = new ToolBar();
 		this.setTop(toolBar);
 
+		CheckBox showLabelsCheckbox = this.buildToolBar();
+
+
+		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+
+
+		this.graph = new SingleGraph("ArtifactsGraph");
+
+		this.layout = new SpringBox(false);
+		this.graph.addSink(this.layout);
+		this.layout.addAttributeSink(this.graph);
+
+		this.setOnScroll(event -> {
+			if (null != view) {
+				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
+						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
+			}
+		});
+
+		// must run after `graph` is constructed above: setSelected(true) (DEFAULT_SHOW_LABELS)
+		// changes the checkbox away from its own JavaFX default of false, which synchronously fires
+		// its listener (wired in buildToolBar()), and that listener calls updateGraphStylehseet(),
+		// which touches this.graph.
+		showLabelsCheckbox.setSelected(this.showLabels);
+
+		service.addListener(this);
+		Platform.runLater(() -> statusChangedEvent(service));
+	}
+
+	/**
+	 * Builds the toolbar: child-count/depth-limit spinners, Export/Reset buttons, and the Show Labels
+	 * checkbox, all wired to their handlers. Split out of the constructor purely for readability -- no
+	 * behavior change from the previous single-constructor version. Returns the Show Labels checkbox
+	 * so the constructor can set its initial value once {@link #graph} exists (see the comment there
+	 * for why that ordering matters).
+	 */
+	private CheckBox buildToolBar() {
 		Spinner<Integer> childCountLimitSpinner = new EditableSpinner(1, CHILD_COUNT_LIMIT_MAX, childCountLimit);
 		childCountLimitSpinner.setEditable(true);
 		Label childCountLimitLabel = new Label("Child Count Limit: ");
@@ -174,27 +211,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener {
 
 		toolBar.getItems().setAll(exportButton, resetButton, new Separator(), showLabelsCheckbox, new Separator(), childCountLimitLabel, childCountLimitSpinner, new Separator(), depthLimitLabel, depthLimitSpinner, new Separator());
 
-
-		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
-
-
-		this.graph = new SingleGraph("ArtifactsGraph");
-
-		this.layout = new SpringBox(false);
-		this.graph.addSink(this.layout);
-		this.layout.addAttributeSink(this.graph);
-
-		this.setOnScroll(event -> {
-			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
-						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
-			}
-		});
-
-		showLabelsCheckbox.setSelected(this.showLabels);
-
-		service.addListener(this);
-		Platform.runLater(() -> statusChangedEvent(service));
+		return showLabelsCheckbox;
 	}
 
 
