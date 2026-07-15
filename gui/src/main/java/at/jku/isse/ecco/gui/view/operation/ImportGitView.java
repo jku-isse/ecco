@@ -157,24 +157,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		gridPane.add(commitsLabel, 0, row, 3, 1);
 		row++;
 
-		TableView<GitCommitInfo> commitsTable = new TableView<>();
-		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-		commitsTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-		commitsTable.setPrefHeight(300);
-
-		TableColumn<GitCommitInfo, String> idCol = new TableColumn<>("Commit");
-		idCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getShortId()));
-		idCol.setMaxWidth(90);
-
-		TableColumn<GitCommitInfo, String> messageCol = new TableColumn<>("Message");
-		messageCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getMessage()));
-
-		TableColumn<GitCommitInfo, String> dateCol = new TableColumn<>("Date");
-		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
-		dateCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(dateFormatter.format(param.getValue().getDate())));
-		dateCol.setMaxWidth(150);
-
-		commitsTable.getColumns().setAll(idCol, messageCol, dateCol);
+		TableView<GitCommitInfo> commitsTable = this.buildCommitsTable();
 		gridPane.add(commitsTable, 0, row, 3, 1);
 		GridPane.setVgrow(commitsTable, Priority.ALWAYS);
 		row++;
@@ -221,6 +204,35 @@ public class ImportGitView extends OperationView implements EccoListener {
 		});
 
 		this.fit();
+	}
+
+	/**
+	 * Builds the commit-history table (id/message/date columns) shown in {@link #step1()} for picking
+	 * the commit range to import. Split out of {@link #step1()} purely for readability -- no behavior
+	 * change from the previous single-method version. Item population happens later, in
+	 * {@code chooseRepoButton}'s handler, once a repository has actually been chosen -- matches the
+	 * previous version, where the table's items were likewise never set here.
+	 */
+	private TableView<GitCommitInfo> buildCommitsTable() {
+		TableView<GitCommitInfo> commitsTable = new TableView<>();
+		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+		commitsTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+		commitsTable.setPrefHeight(300);
+
+		TableColumn<GitCommitInfo, String> idCol = new TableColumn<>("Commit");
+		idCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getShortId()));
+		idCol.setMaxWidth(90);
+
+		TableColumn<GitCommitInfo, String> messageCol = new TableColumn<>("Message");
+		messageCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getMessage()));
+
+		TableColumn<GitCommitInfo, String> dateCol = new TableColumn<>("Date");
+		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+		dateCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(dateFormatter.format(param.getValue().getDate())));
+		dateCol.setMaxWidth(150);
+
+		commitsTable.getColumns().setAll(idCol, messageCol, dateCol);
+		return commitsTable;
 	}
 
 	/**
@@ -346,6 +358,25 @@ public class ImportGitView extends OperationView implements EccoListener {
 		gridPane.add(label, 0, row, 1, 1);
 		row++;
 
+		TableView<CommitEntry> reviewTable = this.buildReviewTable(commitData);
+		gridPane.add(reviewTable, 0, row, 1, 1);
+		GridPane.setVgrow(reviewTable, Priority.ALWAYS);
+		row++;
+
+		importButton.setOnAction(event -> {
+			if (!confirmProceedDespiteViolations(commitData)) return;
+			this.step3(new ArrayList<>(commitData));
+		});
+
+		this.fit();
+	}
+
+	/**
+	 * Builds the editable review table (id/message/configuration/warning columns) shown in
+	 * {@link #step2}. Split out of {@link #step2} purely for readability -- no behavior change from
+	 * the previous single-method version.
+	 */
+	private TableView<CommitEntry> buildReviewTable(ObservableList<CommitEntry> commitData) {
 		TableView<CommitEntry> reviewTable = new TableView<>();
 		reviewTable.setEditable(true);
 		reviewTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -388,16 +419,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		});
 
 		reviewTable.getColumns().setAll(idCol, messageCol, configCol, warningCol);
-		gridPane.add(reviewTable, 0, row, 1, 1);
-		GridPane.setVgrow(reviewTable, Priority.ALWAYS);
-		row++;
-
-		importButton.setOnAction(event -> {
-			if (!confirmProceedDespiteViolations(commitData)) return;
-			this.step3(new ArrayList<>(commitData));
-		});
-
-		this.fit();
+		return reviewTable;
 	}
 
 	/**
