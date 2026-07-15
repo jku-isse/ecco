@@ -121,6 +121,37 @@ public class CommitView extends OperationView implements EccoListener {
 		row++;
 
 		// folders table: preview of the order folders will be committed in, and their configuration
+		TableView<FolderEntry> foldersTable = this.buildFoldersTable();
+		VBox folderButtons = this.buildFolderButtons(foldersTable);
+
+		HBox foldersBox = new HBox(10, foldersTable, folderButtons);
+		HBox.setHgrow(foldersTable, Priority.ALWAYS);
+		gridPane.add(foldersBox, 0, row, 2, 1);
+		row++;
+
+
+		Label commitMessageLabel = new Label("Commit Message: ");
+		gridPane.add(commitMessageLabel, 0, row, 1, 1);
+
+		TextField commitMessageStringTextField = new TextField();
+		commitMessageStringTextField.setDisable(false);
+		commitMessageLabel.setLabelFor(commitMessageStringTextField);
+		gridPane.add(commitMessageStringTextField, 1, row, 1, 1);
+		row++;
+
+		this.wireCommitButton(commitButton, commitMessageStringTextField);
+
+		this.fit();
+
+		Platform.runLater(commitMessageStringTextField::requestFocus);
+	}
+
+	/**
+	 * Builds the folders table (order/folder/configuration/warning columns) -- preview of the order
+	 * folders will be committed in, and their configuration. Split out of {@link #step1()} purely for
+	 * readability -- no behavior change from the previous single-method version.
+	 */
+	private TableView<FolderEntry> buildFoldersTable() {
 		TableView<FolderEntry> foldersTable = new TableView<>();
 		foldersTable.setEditable(true);
 		foldersTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -171,7 +202,17 @@ public class CommitView extends OperationView implements EccoListener {
 		});
 
 		foldersTable.getColumns().setAll(orderCol, folderCol, configCol, warningCol);
+		return foldersTable;
+	}
 
+	/**
+	 * Builds the Add Folder/Add Multiple/Remove/Move Up/Move Down buttons and wires their handlers,
+	 * along with {@code foldersTable}'s selection listener and {@link #folderData}'s own change
+	 * listener that keep the Remove/Move buttons' enabled state current -- kept together with the
+	 * button wiring since both directions depend on each other. Split out of {@link #step1()} purely
+	 * for readability -- no behavior change from the previous single-method version.
+	 */
+	private VBox buildFolderButtons(TableView<FolderEntry> foldersTable) {
 		Button addFolderButton = new Button("Add Folder...");
 		Button addMultipleButton = new Button("Add Multiple from Parent...");
 		Button removeFolderButton = new Button("Remove");
@@ -180,14 +221,6 @@ public class CommitView extends OperationView implements EccoListener {
 		removeFolderButton.setDisable(true);
 		moveUpButton.setDisable(true);
 		moveDownButton.setDisable(true);
-
-		VBox folderButtons = new VBox(10, addFolderButton, addMultipleButton, removeFolderButton, moveUpButton, moveDownButton);
-		folderButtons.setAlignment(Pos.TOP_CENTER);
-
-		HBox foldersBox = new HBox(10, foldersTable, folderButtons);
-		HBox.setHgrow(foldersTable, Priority.ALWAYS);
-		gridPane.add(foldersBox, 0, row, 2, 1);
-		row++;
 
 		foldersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
 			boolean hasSelection = newValue != null;
@@ -273,17 +306,19 @@ public class CommitView extends OperationView implements EccoListener {
 			}
 		});
 
+		VBox folderButtons = new VBox(10, addFolderButton, addMultipleButton, removeFolderButton, moveUpButton, moveDownButton);
+		folderButtons.setAlignment(Pos.TOP_CENTER);
+		return folderButtons;
+	}
 
-		Label commitMessageLabel = new Label("Commit Message: ");
-		gridPane.add(commitMessageLabel, 0, row, 1, 1);
-
-		TextField commitMessageStringTextField = new TextField();
-		commitMessageStringTextField.setDisable(false);
-		commitMessageLabel.setLabelFor(commitMessageStringTextField);
-		gridPane.add(commitMessageStringTextField, 1, row, 1, 1);
-		row++;
-
-
+	/**
+	 * Wires the Commit button: validates at least one folder was added, confirms proceeding despite
+	 * any live constraint warnings, transitions to the "committing" step ({@link #step2()}), then runs
+	 * the actual commits (one per folder, in order) on a background {@code Task}, logging progress and
+	 * any constraint violations as they happen. Split out of {@link #step1()} purely for readability --
+	 * no behavior change from the previous single-method version.
+	 */
+	private void wireCommitButton(Button commitButton, TextField commitMessageStringTextField) {
 		commitButton.setOnAction(event -> {
 			if (folderData.isEmpty()) {
 				Alert alert = new Alert(Alert.AlertType.WARNING, "Add at least one folder to commit.");
@@ -368,11 +403,6 @@ public class CommitView extends OperationView implements EccoListener {
 			};
 			new Thread(commitTask).start();
 		});
-
-
-		this.fit();
-
-		Platform.runLater(commitMessageStringTextField::requestFocus);
 	}
 
 	private static List<Path> listSubfolders(Path parent) {
@@ -493,13 +523,12 @@ public class CommitView extends OperationView implements EccoListener {
 	 * Commit (before losing focus, or before the async check resolves) never showed a warning. This
 	 * checks the raw in-progress text directly, the same way {@code CheckoutView}'s debounced
 	 * {@code TextField} listener does, without waiting for (or requiring) a commit.
-	 */
-	/**
-	 * A {@code TextArea}-based editor (wrapped, multiple visible rows) instead of a plain single-line
-	 * {@code TextField} -- configuration strings are often long, comma-separated lists, and a
-	 * single-line field forced horizontal scrolling to see/edit the whole thing. Enter commits (like a
-	 * TextField) rather than inserting a newline, since the underlying value is still meant to be one
-	 * line; Escape cancels. Also runs the same debounced live constraint-violation check while typing.
+	 *
+	 * <p>Uses a {@code TextArea}-based editor (wrapped, multiple visible rows) instead of a plain
+	 * single-line {@code TextField} -- configuration strings are often long, comma-separated lists,
+	 * and a single-line field forced horizontal scrolling to see/edit the whole thing. Enter commits
+	 * (like a {@code TextField}) rather than inserting a newline, since the underlying value is still
+	 * meant to be one line; Escape cancels.
 	 */
 	private javafx.util.Callback<TableColumn<FolderEntry, String>, TableCell<FolderEntry, String>> configCellFactoryWithLiveWarning() {
 		return column -> new TableCell<FolderEntry, String>() {
