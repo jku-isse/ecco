@@ -151,6 +151,70 @@ public interface Repository extends Persistable {
 
 		void addAssociation(Association.Op association);
 
+		/**
+		 * Re-populates a repository's in-memory associations after they were carried separately from
+		 * the "core" repository object -- needed because implementations that persist each association
+		 * as its own independently-stored entity (see {@code SerRepository}) typically hold them behind
+		 * a transient index that isn't part of the repository's own (de)serialized form, e.g. when a
+		 * {@code Repository.Op} is sent whole over a raw socket (see {@code EccoService#pull}/
+		 * {@code #push}/{@code #startServer}) rather than reloaded through the normal per-association-file
+		 * DAO path. No-op by default; only meaningful for such implementations.
+		 *
+		 * @param associations the associations to restore, typically read as a companion payload sent
+		 *                     alongside this repository.
+		 */
+		default void restoreAssociations(Collection<? extends Association.Op> associations) {
+			// no-op by default
+		}
+
+		/**
+		 * Collects every distinct artifact reachable from this repository's associations' trees,
+		 * deduplicated by identity -- an artifact reachable from more than one node/association (e.g. a
+		 * shared, non-unique artifact) must not be collected twice, same concern as
+		 * {@code SerRepository.dirtyArtifacts}. Companion to {@link #resolveArtifacts}: send this
+		 * alongside a {@code Repository.Op} transferred whole over a raw socket (see
+		 * {@code EccoService#pull}/{@code #push}/{@code #startServer}), since artifacts are otherwise
+		 * held behind implementation-specific transient indices/references that ordinary serialization
+		 * of this repository does not include -- see {@link #resolveArtifacts}'s javadoc for why.
+		 *
+		 * @return the distinct artifacts reachable from this repository's associations.
+		 */
+		default Collection<? extends Artifact.Op<?>> collectArtifacts() {
+			Set<Artifact.Op<?>> artifacts = Collections.newSetFromMap(new IdentityHashMap<>());
+			for (Association.Op association : this.getAssociations()) {
+				collectArtifactsRec(association.getRootNode(), artifacts);
+			}
+			return artifacts;
+		}
+
+		private static void collectArtifactsRec(Node.Op node, Set<Artifact.Op<?>> artifacts) {
+			if (node.getArtifact() != null) {
+				artifacts.add(node.getArtifact());
+			}
+			for (Node.Op child : node.getChildren()) {
+				collectArtifactsRec(child, artifacts);
+			}
+		}
+
+		/**
+		 * Resolves each of this repository's associations' node artifact references against the given
+		 * artifacts -- companion to {@link #collectArtifacts}, and to {@link #restoreAssociations} (call
+		 * this AFTER that, since it walks {@link #getAssociations()}). No-op by default; only meaningful
+		 * for implementations that hold a node's artifact behind a transient, node-external reference
+		 * (e.g. {@code SerRepository}/{@code SerNode}, deliberately, so that an artifact reachable from
+		 * more than one node/association is resolved to one shared instance rather than redundantly
+		 * re-created once per node -- the same class of bug documented as
+		 * pog-mismatch-real-cause-duplicate-storageid in project history). Such an implementation would
+		 * otherwise only restore this via its normal per-artifact-file DAO load path, which a
+		 * {@code Repository.Op} sent whole over a raw socket bypasses entirely.
+		 *
+		 * @param artifacts the artifacts to resolve against, typically read as a companion payload sent
+		 *                  alongside this repository (see {@link #collectArtifacts}).
+		 */
+		default void resolveArtifacts(Collection<? extends Artifact.Op<?>> artifacts) {
+			// no-op by default
+		}
+
 		void removeVariant(Variant variant);
 
 		void removeAssociation(Association.Op association);

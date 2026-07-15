@@ -91,8 +91,47 @@ public final class SerRepository implements Repository, Repository.Op {
 	 * Populates the transient, in-memory association map from associations loaded from their own
 	 * per-association files - called once by {@link at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy}
 	 * right after the "core" database (which only carries {@link #associationIds}, not the
-	 * associations themselves) has been deserialized.
+	 * associations themselves) has been deserialized. Also used to restore associations sent as a
+	 * companion payload over a raw socket (see {@link Repository.Op#restoreAssociations}), which hits
+	 * the same transient-index gap since it bypasses the DAO entirely.
 	 */
+	/**
+	 * Resolves each association's node artifact references against the given artifacts -- the same
+	 * per-artifact-file-load resolution {@link at.jku.isse.ecco.storage.ser.dao.SerTransactionStrategy}
+	 * performs for a normal load (see its {@code resolveCrossAssociationReferences}), but for artifacts
+	 * received as a companion payload alongside this repository over a raw socket instead. Call after
+	 * {@link #restoreAssociations}, since it walks {@link #getAssociations()}.
+	 */
+	@Override
+	public void resolveArtifacts(Collection<? extends Artifact.Op<?>> artifacts) {
+		Map<String, Artifact.Op<?>> artifactsById = new HashMap<>();
+		for (Artifact.Op<?> artifact : artifacts) {
+			if (artifact instanceof at.jku.isse.ecco.storage.ser.artifact.SerArtifact<?> serArtifact) {
+				artifactsById.put(serArtifact.getStorageId(), artifact);
+			}
+		}
+		for (Association.Op association : this.getAssociations()) {
+			resolveArtifactsRec(association.getRootNode(), artifactsById);
+		}
+	}
+
+	private static void resolveArtifactsRec(Node.Op node, Map<String, Artifact.Op<?>> artifactsById) {
+		if (node instanceof at.jku.isse.ecco.storage.ser.tree.SerNode serNode) {
+			String artifactId = serNode.getArtifactId();
+			if (artifactId != null) {
+				Artifact.Op<?> artifact = artifactsById.get(artifactId);
+				if (artifact == null) {
+					throw new at.jku.isse.ecco.EccoException("Could not resolve node artifact " + artifactId + " among the artifacts received.");
+				}
+				serNode.resolveArtifact(artifact);
+			}
+		}
+		for (Node.Op child : node.getChildren()) {
+			resolveArtifactsRec(child, artifactsById);
+		}
+	}
+
+	@Override
 	public void restoreAssociations(Collection<? extends Association.Op> loaded) {
 		this.associationsById = new LinkedHashMap<>();
 		for (Association.Op association : loaded) {

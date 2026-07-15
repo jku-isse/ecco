@@ -93,13 +93,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     @Inject
     private DispatchWriter writer;
     @Inject
-    private EntityFactory entityFactory;
+    EntityFactory entityFactory;
     @Inject
     TransactionStrategy transactionStrategy;
     @Inject
     RepositoryDao repositoryDao;
     @Inject
-    private RemoteDao remoteDao;
+    RemoteDao remoteDao;
 
 
     public Properties getProperties() {
@@ -851,6 +851,23 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.serverRunning;
     }
 
+    /**
+     * Rolls back a transaction left open by a request handler that threw mid-transaction (e.g. a
+     * PUSH's merge() failing after transactionStrategy.begin() but before end()) -- otherwise the
+     * repository becomes permanently unclosable ({@code close()} throws "Not all transactions have
+     * been ended.") for the rest of this service's lifetime. {@link TransactionStrategy} has no
+     * "is a transaction currently active" query, so this probes via rollback() itself and swallows
+     * the "no transaction active" case, rather than widening the interface for every backend
+     * (Ser/Mem/Neo4j/Jpa/Xml/Jackson) just for this.
+     */
+    private void rollbackIfTransactionInProgress() {
+        try {
+            this.transactionStrategy.rollback();
+        } catch (EccoException ignored) {
+            // no transaction was active -- nothing to roll back
+        }
+    }
+
     public synchronized void startServer(int port) {
         this.checkInitialized();
 
@@ -890,22 +907,27 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                             Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), this.entityFactory);
                             this.transactionStrategy.end();
 
-
-                            // send features
-                            // with size:
+                            // send features, size-prefixed for the client's progress bar. The size is
+                            // only an estimate (measured via a scratch ObjectOutputStream) -- the actual
+                            // payload below is written through the connection's own `oos` so the client's
+                            // single ObjectInputStream sees one continuous stream. A previous version
+                            // spliced the scratch stream's raw bytes (including ITS OWN stream header)
+                            // directly onto the socket instead, which corrupted the stream from the
+                            // client's point of view (StreamCorruptedException: invalid type code: AC)
+                            // for every FETCH/PULL -- this cluster had no test coverage until the
+                            // characterization test written for the RemoteSyncService extraction caught it.
                             ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-                            ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
-                            // write object to temp_oos
-                            temp_oos.writeObject(copiedFeatures);
-                            // get size of data
-                            int size = byteOutputStream.size();
-                            // send size
-                            oos.writeObject(size);
-                            // send data
-                            byteOutputStream.writeTo(sChannel.socket().getOutputStream());
-                            byteOutputStream.close();
-                            // without size:
-                            //oos.writeObject(copiedFeatures);
+                            new ObjectOutputStream(byteOutputStream).writeObject(copiedFeatures);
+                            oos.writeObject(byteOutputStream.size());
+                            oos.writeObject(copiedFeatures);
+                            // ObjectOutputStream does not guarantee its internal buffer reaches the
+                            // socket after every writeObject() -- without an explicit flush before this
+                            // connection closes with nothing more read on it, the last chunk of data can
+                            // be left unsent, hanging the client's matching ois.readObject() forever. Hit
+                            // intermittently (~50% of runs) on the larger PUSH/PULL payloads below before
+                            // this was added; included here too for the same reason, even though this
+                            // smaller payload never reproduced it.
+                            oos.flush();
 
                             break;
                         }
@@ -921,28 +943,36 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                             Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), this.entityFactory);
                             this.transactionStrategy.end();
 
-
-                            // send subset repository
-                            // with size:
+                            // send subset repository, size-prefixed -- see the FETCH case above for why
+                            // the payload is written through `oos` rather than spliced in separately.
                             ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-                            ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
-                            // write object to temp_oos
-                            temp_oos.writeObject(subsetRepository);
-                            // get size of data
-                            int size = byteOutputStream.size();
-                            // send size
-                            oos.writeObject(size);
-                            // send data
-                            byteOutputStream.writeTo(sChannel.socket().getOutputStream());
-                            byteOutputStream.close();
-                            // without size:
-                            //oos.writeObject(subsetRepository);
+                            new ObjectOutputStream(byteOutputStream).writeObject(subsetRepository);
+                            oos.writeObject(byteOutputStream.size());
+                            oos.writeObject(subsetRepository);
+                            // associations are their own independently-persisted entities behind a
+                            // transient index (see Repository.Op#restoreAssociations) -- not part of
+                            // subsetRepository's own serialized form, so send them as a companion payload
+                            // for the receiving end to restore. Same for artifacts (Repository.Op#
+                            // collectArtifacts/#resolveArtifacts) -- each node only carries an artifactId
+                            // surrogate for its (possibly shared) artifact.
+                            oos.writeObject(new ArrayList<Association.Op>(subsetRepository.getAssociations()));
+                            oos.writeObject(new ArrayList<Artifact.Op<?>>(subsetRepository.collectArtifacts()));
+                            // see the FETCH case above for why this flush is necessary -- confirmed via a
+                            // 8x-repeated stress test that without it, the client's final readObject() for
+                            // this payload hangs forever in ~50% of runs.
+                            oos.flush();
 
                             break;
                         }
                         case "PUSH": { // if push, receive data
                             // retrieve repository
                             Repository.Op subsetRepository = (Repository.Op) ois.readObject();
+                            @SuppressWarnings("unchecked")
+                            Collection<Association.Op> pushedAssociations = (Collection<Association.Op>) ois.readObject();
+                            subsetRepository.restoreAssociations(pushedAssociations);
+                            @SuppressWarnings("unchecked")
+                            Collection<Artifact.Op<?>> pushedArtifacts = (Collection<Artifact.Op<?>>) ois.readObject();
+                            subsetRepository.resolveArtifacts(pushedArtifacts);
 
                             // copy it using this entity factory
                             Repository.Op copiedRepository = subsetRepository.copy(this.entityFactory);
@@ -959,15 +989,18 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 } catch (AsynchronousCloseException e) {
                     // server shut down
                     //e.printStackTrace();
+                    this.rollbackIfTransactionInProgress();
                 } catch (SocketException | ClosedChannelException e) {
                     LOGGER.warning("Error receiving request.");
                     this.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
                     e.printStackTrace();
+                    this.rollbackIfTransactionInProgress();
                 } catch (Exception e) {
                     //throw new EccoException("Error receiving request.", e);
                     LOGGER.warning("Error receiving request.");
                     this.listeners.fireServerEvent("Error receiving request: " + e.getMessage());
                     e.printStackTrace();
+                    this.rollbackIfTransactionInProgress();
                 }
             }
         } catch (Exception e) {
@@ -1026,6 +1059,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                         ObjectInputStream ois = new ObjectInputStream(progressInputStream);
 
                         oos.writeObject("FETCH");
+                        oos.flush();
 
 
                         int size = (Integer) ois.readObject();
@@ -1101,6 +1135,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
                 oos.writeObject("PULL");
                 oos.writeObject(deselectedFeatureRevisionsString);
+                oos.flush();
 
 
                 int size = (Integer) ois.readObject();
@@ -1110,6 +1145,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
                 // retrieve remote repository
                 Repository.Op subsetRepository = (Repository.Op) ois.readObject();
+                // associations and artifacts travel as companion payloads -- see
+                // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
+                @SuppressWarnings("unchecked")
+                Collection<Association.Op> pulledAssociations = (Collection<Association.Op>) ois.readObject();
+                subsetRepository.restoreAssociations(pulledAssociations);
+                @SuppressWarnings("unchecked")
+                Collection<Artifact.Op<?>> pulledArtifacts = (Collection<Artifact.Op<?>>) ois.readObject();
+                subsetRepository.resolveArtifacts(pulledArtifacts);
 
                 progressInputStream.removeListener(this);
 
@@ -1269,6 +1312,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
                         oos.writeObject("PULL");
                         oos.writeObject(deselectedFeatureRevisionsString);
+                        oos.flush();
 
 
                         int size = (Integer) ois.readObject();
@@ -1278,6 +1322,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
                         // retrieve remote repository
                         Repository.Op subsetRepository = (Repository.Op) ois.readObject();
+                        // associations and artifacts travel as companion payloads -- see
+                        // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
+                        @SuppressWarnings("unchecked")
+                        Collection<Association.Op> pulledAssociations = (Collection<Association.Op>) ois.readObject();
+                        subsetRepository.restoreAssociations(pulledAssociations);
+                        @SuppressWarnings("unchecked")
+                        Collection<Artifact.Op<?>> pulledArtifacts = (Collection<Artifact.Op<?>>) ois.readObject();
+                        subsetRepository.resolveArtifacts(pulledArtifacts);
 
                         progressInputStream.removeListener(this);
 
@@ -1362,8 +1414,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     sChannel.configureBlocking(true);
                     String[] pair = remote.getAddress().split(":");
                     if (sChannel.connect(new InetSocketAddress(pair[0], Integer.parseInt(pair[1])))) {
-                        ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                        //ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+                        // oos wraps the progress-tracking stream (not the raw socket stream directly) so
+                        // that the actual payload write below -- not just a separate scratch stream used
+                        // only to estimate size, see below -- is what the progress listener observes.
+                        ProgressOutputStream pos = new ProgressOutputStream(sChannel.socket().getOutputStream());
+                        ObjectOutputStream oos = new ObjectOutputStream(pos);
 
                         oos.writeObject("PUSH");
 
@@ -1373,23 +1428,25 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                         Repository.Op subsetRepository = repository.subset(this.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), this.entityFactory);
                         this.transactionStrategy.end();
 
-
-                        // send subset repository
-                        // without size:
-                        //oos.writeObject(subsetRepository);
-                        // with size:
+                        // estimate size for the progress bar via a scratch stream -- the actual payload
+                        // is sent through `oos` below (see PULL's server-side case in startServer() for
+                        // why splicing a separate ObjectOutputStream's raw bytes directly onto the
+                        // connection, as this used to do, corrupts the stream from the reader's side).
                         ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-                        ObjectOutputStream temp_oos = new ObjectOutputStream(byteOutputStream);
-                        temp_oos.writeObject(subsetRepository);
-                        // get size of data
-                        int size = byteOutputStream.size();
-                        byteOutputStream.close();
-                        // send data
-                        ProgressOutputStream pos = new ProgressOutputStream(sChannel.socket().getOutputStream());
-                        pos.setMaxBytes(size);
+                        new ObjectOutputStream(byteOutputStream).writeObject(subsetRepository);
+                        pos.setMaxBytes(byteOutputStream.size());
                         pos.resetProgress();
+
                         pos.addListener(this);
-                        byteOutputStream.writeTo(pos);
+                        oos.writeObject(subsetRepository);
+                        // associations and artifacts travel as companion payloads -- see
+                        // Repository.Op#restoreAssociations/#collectArtifacts/#resolveArtifacts.
+                        oos.writeObject(new ArrayList<Association.Op>(subsetRepository.getAssociations()));
+                        oos.writeObject(new ArrayList<Artifact.Op<?>>(subsetRepository.collectArtifacts()));
+                        // see startServer()'s FETCH case for why this flush is necessary -- this was the
+                        // exact site the missing flush was root-caused at: the server would hang forever
+                        // in ~50% of runs reading this connection's final companion payload.
+                        oos.flush();
                         pos.removeListener(this);
 
                     } else {
