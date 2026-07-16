@@ -81,6 +81,33 @@ public interface Association extends Persistable {
 		void setVisible(boolean visible);
 
 
+		/**
+		 * The last "Minimize Presence Conditions" run's simplified condition for this association (see
+		 * {@code PresenceConditionMinimizer}/{@code MinimizationResults} in the {@code service}/
+		 * {@code gui} modules), persisted so it survives a repository close/reopen instead of needing
+		 * to be recomputed every session. Default no-op fallback (never persisted, always null) so
+		 * backends other than the actively-maintained one (see {@code SerAssociation}) don't need to
+		 * implement storage for it -- mirrors the same default-method pattern used for
+		 * {@code Repository.Op#restoreAssociations}/{@code #collectArtifacts}/{@code #resolveArtifacts}.
+		 *
+		 * @return The minimized condition string ({@code PresenceConditionMinimizer.format(...)}), or
+		 * null if this association has never been minimized (or minimization isn't persisted by this
+		 * backend).
+		 */
+		default String getMinimizedCondition() {
+			return null;
+		}
+
+		/**
+		 * @param condition The minimized condition string to persist, or null to clear it (e.g. once
+		 *                  this association's presence condition has changed enough that a prior
+		 *                  minimization result should no longer be trusted).
+		 */
+		default void setMinimizedCondition(String condition) {
+			// no-op by default
+		}
+
+
 		default Condition computeCondition() {
 			Condition moduleCondition = this.computeLikelyCondition();
 

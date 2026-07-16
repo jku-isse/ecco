@@ -579,10 +579,19 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             this.associationsData.clear();
             int index = 0;
             for (Association a : result.associations) {
-                // seed from the shared model's current state (see MinimizationResults), rather than
-                // resetting to empty on every refresh; kept in sync afterward by the
-                // MapChangeListener registered in the constructor
-                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, this.minimizationResults.getMinimizedByAssociationId().get(a.getId()));
+                // prefer the persisted value (see EccoService#persistMinimizedConditions) read
+                // directly off the association itself -- no timing dependency on whether
+                // MinimizationResults' own statusChangedEvent-triggered seeding (async, via
+                // Platform.runLater) has already run by the time this refresh's own background Task
+                // completes. Falls back to the shared live map only if the association was never
+                // persisted (e.g. a run from this exact session that, for some reason, hasn't been
+                // persisted yet); kept in sync afterward either way by the MapChangeListener
+                // registered in the constructor.
+                String minimizedCondition = ((Association.Op) a).getMinimizedCondition();
+                if (minimizedCondition == null) {
+                    minimizedCondition = this.minimizationResults.getMinimizedByAssociationId().get(a.getId());
+                }
+                AssociationInfoImpl associationInfo = new AssociationInfoImpl(a, minimizedCondition);
                 // color is only actually assigned once the association is selected (so the
                 // "Highlighted" column and the code viewers stay blank for everything else),
                 // but its slot is fixed now so the color stays the same association's color

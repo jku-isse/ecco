@@ -23,6 +23,13 @@ public class SerAssociation implements Association, Association.Op {
 
 	private transient boolean visible;
 
+	// nullable, may be null/absent on an association serialized before this field existed --
+	// serialVersionUID deliberately left unchanged for exactly that reason, same pattern as
+	// SerRepository.constraints. Null means "never minimized" (or a prior minimization was cleared),
+	// not "minimizes to nothing" (which PresenceConditionMinimizer.format() itself renders as the
+	// literal string "FALSE").
+	private String minimizedCondition;
+
 
 	public SerAssociation() {
 		this.id = "";
@@ -78,6 +85,16 @@ public class SerAssociation implements Association, Association.Op {
 	@Override
 	public void setVisible(boolean visible) {
 		this.visible = visible;
+	}
+
+	@Override
+	public String getMinimizedCondition() {
+		return this.minimizedCondition;
+	}
+
+	@Override
+	public void setMinimizedCondition(String condition) {
+		this.minimizedCondition = condition;
 	}
 
 	@Override

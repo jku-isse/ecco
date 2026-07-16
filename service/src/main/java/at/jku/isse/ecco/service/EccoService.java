@@ -1371,6 +1371,52 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * Persists a "Minimize Presence Conditions" run's results onto the associations they were computed
+     * for (see {@code Association.Op#setMinimizedCondition}), so they survive a repository close/reopen
+     * instead of existing only in the GUI's in-memory {@code MinimizationResults}. One batched write for
+     * the whole run, not one transaction per association. Entries whose association id no longer exists
+     * in the repository (e.g. removed by a commit that ran while/after the minimization run) are
+     * silently skipped rather than treated as an error.
+     *
+     * @param minimizedByAssociationId association id -&gt; minimized condition string
+     *                                 ({@code PresenceConditionMinimizer.format(...)}), as produced by
+     *                                 {@code MinimizationResults}.
+     */
+    public synchronized void persistMinimizedConditions(Map<String, String> minimizedByAssociationId) {
+        this.checkInitialized();
+        checkNotNull(minimizedByAssociationId);
+        if (minimizedByAssociationId.isEmpty()) return;
+
+        this.listeners.setWriteInProgress(true);
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Repository.Op repository = this.repositoryDao.load();
+            for (Association.Op association : repository.getAssociations()) {
+                String minimizedCondition = minimizedByAssociationId.get(association.getId());
+                if (minimizedCondition != null) {
+                    association.setMinimizedCondition(minimizedCondition);
+                    // re-persist an already-tracked association -- safe/idempotent, same idiom
+                    // Repository.Op#extract() uses to mark a mutated-in-place association dirty.
+                    repository.addAssociation(association);
+                }
+            }
+
+            this.repositoryDao.store(repository);
+
+            this.transactionStrategy.end();
+
+            this.listeners.fireStatusChangedEvent();
+        } catch (Exception e) {
+            this.transactionStrategy.rollback();
+
+            throw new EccoException("Error persisting minimized conditions.", e);
+        } finally {
+            this.listeners.setWriteInProgress(false);
+        }
+    }
+
+    /**
      * Composes checkout with given configuration.
      *
      * @param configuration Configuration to be composed.
