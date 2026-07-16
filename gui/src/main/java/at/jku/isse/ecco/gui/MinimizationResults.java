@@ -50,6 +50,15 @@ public class MinimizationResults implements EccoListener {
      */
     private volatile Thread runningThread;
 
+    /**
+     * Whether {@link #minimizedByAssociationId} has already been seeded from persisted values for the
+     * CURRENTLY open repository -- {@code statusChangedEvent} fires on every commit/checkout/variant
+     * edit/etc, not just on open, so without this guard every one of those would re-seed from disk and
+     * clobber this session's own more-current in-memory updates (e.g. a run that finished after open)
+     * with stale persisted ones. Reset on close so the next open reseeds fresh.
+     */
+    private volatile boolean seededFromPersisted = false;
+
     public MinimizationResults(EccoService service) {
         this.service = service;
         service.addListener(this);
@@ -99,6 +108,14 @@ public class MinimizationResults implements EccoListener {
                     Platform.runLater(() -> progress.set(fraction));
                 });
 
+                // persist this run's results (one batched write, not one per association) so they
+                // survive a repository close/reopen -- see EccoService#persistMinimizedConditions.
+                // Runs on this background thread, same as the repository reads above; a failure here
+                // is caught by the catch block below like any other failure in this run.
+                if (!computed.isEmpty()) {
+                    service.persistMinimizedConditions(computed);
+                }
+
                 Platform.runLater(() -> {
                     // drop entries for associations that no longer exist (e.g. the repository
                     // changed since the last run), so a stale minimized condition never lingers
@@ -127,13 +144,33 @@ public class MinimizationResults implements EccoListener {
 
     @Override
     public void statusChangedEvent(EccoService service) {
-        if (!service.isInitialized()) {
+        if (service.isInitialized()) {
+            if (this.seededFromPersisted) return;
+            this.seededFromPersisted = true;
+
+            // seed from each association's persisted minimized condition (see
+            // EccoService#persistMinimizedConditions) so a freshly (re)opened repository shows last
+            // session's results immediately, without needing a fresh run. Only done once per open --
+            // see the seededFromPersisted field javadoc for why re-seeding on every later
+            // statusChangedEvent would be wrong.
+            Map<String, String> persisted = new java.util.HashMap<>();
+            for (Association association : service.getRepository().getAssociations()) {
+                String minimized = ((Association.Op) association).getMinimizedCondition();
+                if (minimized != null) {
+                    persisted.put(association.getId(), minimized);
+                }
+            }
+            if (!persisted.isEmpty()) {
+                Platform.runLater(() -> minimizedByAssociationId.putAll(persisted));
+            }
+        } else {
             // stop a still-running minimization instead of letting it keep grinding away in the
             // background for results nobody wants anymore: interrupts the orchestrating thread
             // (wakes it out of ParallelMinimization's blocking wait for the next association) and,
             // via ParallelMinimization's own shutdownNow() on interruption, cancels every
             // queued-but-not-yet-started association and best-effort interrupts whatever's still
             // actively running.
+            this.seededFromPersisted = false;
             Thread thread = this.runningThread;
             if (thread != null) thread.interrupt();
             Platform.runLater(minimizedByAssociationId::clear);

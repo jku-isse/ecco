@@ -66,9 +66,13 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
     /** Notified after any accept/reject/undo decision, so the feature graph can re-render. */
     private final Runnable onReviewChanged;
 
+    /** Re-triggered after every accept/unaccept -- see {@link #acceptSelected}/{@link #undoAccepted}. */
+    private final MinimizationResults minimizationResults;
+
     public ConstraintSuggestionsView(EccoService service, Runnable onReviewChanged, MinimizationResults minimizationResults) {
         this.service = service;
         this.onReviewChanged = onReviewChanged;
+        this.minimizationResults = minimizationResults;
 
         this.minWitnessSpinner = new EditableSpinner(1, 1000, 4);
         this.confidenceSpinner = new Spinner<>(new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1.0, 0.9, 0.05));
@@ -203,6 +207,10 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         }
         refresh();
         if (onReviewChanged != null) onReviewChanged.run();
+        // the accepted-constraint set just changed, which minimization's feature-model reasoning
+        // depends on -- re-run automatically instead of requiring a separate manual click. No-op if
+        // a run is already in progress (see MinimizationResults#run).
+        minimizationResults.run();
     }
 
     /** Reject stays local -- see {@code ConstraintSuggestionPreferences#reject}. */
@@ -227,6 +235,8 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         }
         refresh();
         if (onReviewChanged != null) onReviewChanged.run();
+        // see acceptSelected -- same reasoning, un-accepting also changes the accepted-constraint set.
+        minimizationResults.run();
     }
 
     private void undoRejected(ListView<String> listView) {
