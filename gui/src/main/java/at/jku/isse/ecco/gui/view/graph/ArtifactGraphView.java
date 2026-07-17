@@ -7,6 +7,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -45,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ArtifactGraphView extends BorderPane implements EccoListener {
+public class ArtifactGraphView extends BorderPane implements EccoListener, TabVisibilityAware {
 
 	private final EccoService service;
 

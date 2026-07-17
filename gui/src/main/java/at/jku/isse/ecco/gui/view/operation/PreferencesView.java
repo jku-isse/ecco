@@ -7,6 +7,7 @@ import at.jku.isse.ecco.service.AdapterPreferences;
 import at.jku.isse.ecco.service.LilypondPreferences;
 import at.jku.isse.ecco.service.LlmPreferences;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
@@ -14,7 +15,6 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TitledPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -32,11 +32,14 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
- * Two independent, globally-scoped (not tied to any open repository) preference sections, saved
- * together with one "Save":
+ * Four independent, globally-scoped (not tied to any open repository) preference sections, each its
+ * own dialog (one per {@link Section}, chosen by the caller - see {@code MainView}'s Preferences
+ * menu) rather than one dialog bundling all four behind collapsible panes, so each is reachable and
+ * saveable on its own:
  * <ul>
  *     <li>Plugins - activate/deactivate the discovered {@link ArtifactPlugin}s (e.g. Lilypond,
  *     Java, C, C++). Deactivated adapters are skipped by
@@ -46,28 +49,71 @@ import java.util.Set;
  *     calls to suggest a feature configuration per imported commit.</li>
  *     <li>Minimization Settings - the min-witness/confidence thresholds used to re-mine accepted
  *     constraints before {@code MinimizationResults} runs.</li>
+ *     <li>Lilypond Settings - where to find the Lilypond executable, if not found automatically.</li>
  * </ul>
  */
 public class PreferencesView extends OperationView {
 
-	public PreferencesView() {
+	public enum Section {
+		// each dialog now holds only its own section (previously all four shared one dialog, tall
+		// enough by virtue of stacking all of them together) - OperationView's own default
+		// (setMinWidth(600), no minHeight) left the sparser sections sized down to whatever their
+		// few rows of controls computed to, which read as cramped; an explicit minimum per section
+		// keeps each comfortably readable regardless of how little it holds.
+		PLUGINS("Plugins", 600, 420),
+		LLM("LLM Settings", 550, 260),
+		MINIMIZATION("Minimization Settings", 550, 260),
+		LILYPOND("Lilypond Settings", 600, 300);
+
+		private final String title;
+		private final double minWidth;
+		private final double minHeight;
+
+		Section(String title, double minWidth, double minHeight) {
+			this.title = title;
+			this.minWidth = minWidth;
+			this.minHeight = minHeight;
+		}
+	}
+
+	/** One section's built UI paired with the action that persists it - see each {@code buildXyzSection} method. */
+	private record SectionUi(Node content, Runnable save) {
+	}
+
+	public PreferencesView(Section section) {
 		super();
 
 		Button cancelButton = new Button("Cancel");
 		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		this.leftButtons.getChildren().setAll(cancelButton);
 
-		this.headerLabel.setText("Preferences");
+		this.headerLabel.setText(section.title);
+		this.setMinWidth(section.minWidth);
+		this.setMinHeight(section.minHeight);
 
 		Button saveButton = new Button("Save");
 		this.rightButtons.getChildren().setAll(saveButton);
 
+		SectionUi ui = switch (section) {
+			case PLUGINS -> buildPluginsSection();
+			case LLM -> buildLlmSection();
+			case MINIMIZATION -> buildMinimizationSection();
+			case LILYPOND -> buildLilypondSection();
+		};
 
-		VBox content = new VBox(10);
-		content.setPadding(new Insets(10));
+		ScrollPane outerScrollPane = new ScrollPane(ui.content());
+		outerScrollPane.setFitToWidth(true);
+		this.setCenter(outerScrollPane);
 
+		saveButton.setOnAction(event -> {
+			ui.save().run();
+			((Stage) this.getScene().getWindow()).close();
+		});
 
-		// plugins
+		this.fit();
+	}
+
+	private static SectionUi buildPluginsSection() {
 		ArtifactPlugin[] plugins = ArtifactPlugin.getArtifactPlugins();
 		Arrays.sort(plugins, Comparator.comparing(ArtifactPlugin::getName));
 
@@ -98,13 +144,22 @@ public class PreferencesView extends OperationView {
 		scrollPane.setPrefViewportHeight(250);
 
 		VBox pluginsBox = new VBox(10, scrollPane, pluginsNoteLabel);
-		TitledPane pluginsPane = new TitledPane("Plugins", pluginsBox);
-		pluginsPane.setAnimated(false);
-		pluginsPane.setCollapsible(false);
-		content.getChildren().add(pluginsPane);
+		pluginsBox.setPadding(new Insets(10));
 
+		Runnable save = () -> {
+			Set<String> newDisabledPluginIds = new HashSet<>();
+			for (Map.Entry<String, CheckBox> entry : checkBoxesByPluginId.entrySet()) {
+				if (!entry.getValue().isSelected()) {
+					newDisabledPluginIds.add(entry.getKey());
+				}
+			}
+			AdapterPreferences.setDisabledPluginIds(newDisabledPluginIds);
+		};
 
-		// LLM settings
+		return new SectionUi(pluginsBox, save);
+	}
+
+	private static SectionUi buildLlmSection() {
 		GridPane llmGridPane = new GridPane();
 		llmGridPane.setHgap(10);
 		llmGridPane.setVgap(10);
@@ -135,13 +190,15 @@ public class PreferencesView extends OperationView {
 		TextField llmModelNameField = new TextField(LlmPreferences.getModelName());
 		llmGridPane.add(llmModelNameField, 1, row, 1, 1);
 
-		TitledPane llmPane = new TitledPane("LLM Settings", llmGridPane);
-		llmPane.setAnimated(false);
-		llmPane.setCollapsible(false);
-		content.getChildren().add(llmPane);
+		Runnable save = () -> {
+			LlmPreferences.setEndpointUrl(llmEndpointUrlField.getText());
+			LlmPreferences.setModelName(llmModelNameField.getText());
+		};
 
+		return new SectionUi(llmGridPane, save);
+	}
 
-		// Minimization settings
+	private static SectionUi buildMinimizationSection() {
 		GridPane minimizationGridPane = new GridPane();
 		minimizationGridPane.setHgap(10);
 		minimizationGridPane.setVgap(10);
@@ -185,13 +242,15 @@ public class PreferencesView extends OperationView {
 		});
 		minimizationGridPane.add(minimizationConfidenceSpinner, 1, minimizationRow, 1, 1);
 
-		TitledPane minimizationPane = new TitledPane("Minimization Settings", minimizationGridPane);
-		minimizationPane.setAnimated(false);
-		minimizationPane.setCollapsible(false);
-		content.getChildren().add(minimizationPane);
+		Runnable save = () -> {
+			MinimizationPreferences.setMinWitness(minimizationMinWitnessSpinner.getValue());
+			MinimizationPreferences.setConfidence(minimizationConfidenceSpinner.getValue());
+		};
 
+		return new SectionUi(minimizationGridPane, save);
+	}
 
-		// Lilypond settings
+	private SectionUi buildLilypondSection() {
 		GridPane lilypondGridPane = new GridPane();
 		lilypondGridPane.setHgap(10);
 		lilypondGridPane.setVgap(10);
@@ -255,57 +314,31 @@ public class PreferencesView extends OperationView {
 		searchPathsNoteLabel.setWrapText(true);
 		lilypondGridPane.add(searchPathsNoteLabel, 0, lilypondRow, 2, 1);
 
-		TitledPane lilypondPane = new TitledPane("Lilypond Settings", lilypondGridPane);
-		lilypondPane.setAnimated(false);
-		lilypondPane.setCollapsible(false);
-		content.getChildren().add(lilypondPane);
-
-
-		ScrollPane outerScrollPane = new ScrollPane(content);
-		outerScrollPane.setFitToWidth(true);
-		this.setCenter(outerScrollPane);
-
-		saveButton.setOnAction(event -> {
-			Set<String> newDisabledPluginIds = new HashSet<>();
-			for (Map.Entry<String, CheckBox> entry : checkBoxesByPluginId.entrySet()) {
-				if (!entry.getValue().isSelected()) {
-					newDisabledPluginIds.add(entry.getKey());
-				}
-			}
-			AdapterPreferences.setDisabledPluginIds(newDisabledPluginIds);
-
-			LlmPreferences.setEndpointUrl(llmEndpointUrlField.getText());
-			LlmPreferences.setModelName(llmModelNameField.getText());
-
-			MinimizationPreferences.setMinWitness(minimizationMinWitnessSpinner.getValue());
-			MinimizationPreferences.setConfidence(minimizationConfidenceSpinner.getValue());
-
+		Runnable save = () -> {
 			LilypondPreferences.setExecutablePath(lilypondExecutableField.getText());
 			String searchPathsText = lilypondSearchPathsField.getText();
 			List<String> searchPaths = (searchPathsText == null || searchPathsText.isBlank())
 					? List.of()
 					: Arrays.stream(searchPathsText.split("\\|")).filter(p -> !p.isBlank()).map(String::trim).toList();
 			LilypondPreferences.setSearchPaths(searchPaths);
+		};
 
-			((Stage) this.getScene().getWindow()).close();
-		});
-
-		this.fit();
+		return new SectionUi(lilypondGridPane, save);
 	}
 
 	/** Best-effort existing parent directory of a possibly-blank/invalid path, for pre-populating a chooser dialog. */
-	private static java.util.Optional<Path> preselectExistingParent(String pathText) {
+	private static Optional<Path> preselectExistingParent(String pathText) {
 		if (pathText == null || pathText.isBlank()) {
-			return java.util.Optional.empty();
+			return Optional.empty();
 		}
 		try {
 			Path parent = Path.of(pathText).getParent();
 			if (parent != null && java.nio.file.Files.isDirectory(parent)) {
-				return java.util.Optional.of(parent);
+				return Optional.of(parent);
 			}
 		} catch (Exception ignored) {
 		}
-		return java.util.Optional.empty();
+		return Optional.empty();
 	}
 
 	/**

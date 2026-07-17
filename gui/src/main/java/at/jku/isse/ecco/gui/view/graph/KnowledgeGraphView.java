@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.gui.view.KnowledgeGraphLayout;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
@@ -63,7 +64,7 @@ import java.util.Set;
  * toolbar's layout selector can also switch to a non-physics lane layout, with node positions coming
  * straight from {@link KnowledgeGraphLayout#compute} instead - see {@link #layoutMode}.
  */
-public class KnowledgeGraphView extends BorderPane implements EccoListener {
+public class KnowledgeGraphView extends BorderPane implements EccoListener, TabVisibilityAware {
 
 	private final EccoService service;
 

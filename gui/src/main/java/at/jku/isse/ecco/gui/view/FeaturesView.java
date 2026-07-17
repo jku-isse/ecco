@@ -4,6 +4,7 @@ import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -66,7 +67,7 @@ import java.util.Set;
  * layout instead, for anyone who'd rather see the commit-history structure than
  * co-occurrence-driven clustering - see {@link #layoutMode}.
  */
-public class FeaturesView extends BorderPane implements EccoListener {
+public class FeaturesView extends BorderPane implements EccoListener, TabVisibilityAware {
 
 	private final EccoService service;
 
