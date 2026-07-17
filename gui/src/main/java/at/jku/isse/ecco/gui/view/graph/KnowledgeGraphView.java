@@ -162,6 +162,17 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 			toolBar.setDisable(true);
 
 			FileChooser fileChooser = new FileChooser();
+			// FileSinkFactory.sinkFor() picks a writer purely off the file extension and returns
+			// null (see the "Unknown file extension" branch below) for anything it doesn't
+			// recognize - the save dialog has no extension of its own to fall back on otherwise,
+			// so list the formats GraphStream actually supports and default to one that opens
+			// cleanly in most external tools.
+			fileChooser.getExtensionFilters().addAll(
+					new FileChooser.ExtensionFilter("GraphML (*.graphml)", "*.graphml"),
+					new FileChooser.ExtensionFilter("GEXF (*.gexf)", "*.gexf"),
+					new FileChooser.ExtensionFilter("DOT (*.dot)", "*.dot"),
+					new FileChooser.ExtensionFilter("DGS (*.dgs)", "*.dgs"));
+			fileChooser.setInitialFileName("knowledge-graph.graphml");
 			File selectedFile = fileChooser.showSaveDialog(KnowledgeGraphView.this.getScene().getWindow());
 
 			if (selectedFile != null) {
