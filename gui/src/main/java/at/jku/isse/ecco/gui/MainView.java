@@ -11,6 +11,7 @@ import at.jku.isse.ecco.gui.view.operation.*;
 import at.jku.isse.ecco.gui.view.operation.InitView;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -18,201 +19,191 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Region;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * A single {@link MenuBar} (Repository / Local / Distributed / Analysis / Visualization /
+ * Preferences) replaces what used to be two separate navigation layers - an 11-button action
+ * toolbar and a flat, ungrouped 11-tab strip below it - collapsing them into one, organized by
+ * workflow instead of by "is this a dialog or a tab". "Action" items (New, Open, Close, Commit,
+ * Import From Git, Checkout, Fetch, Pull, Push, Settings, Server) behave exactly as their old
+ * toolbar buttons did, via {@link #openDialog}. "Content" items (Status, Variants, Remotes, Feature
+ * Model, Commits, Associations, Artifacts, Charts, Knowledge Graph, Artifact Graph, Dependency
+ * Graph) swap a single shared content area via {@link #switchTo} - the same "one view visible at a
+ * time" model the tab pane already had, just menu-driven instead of tab-driven. Each view's own
+ * internal toolbar (e.g. Knowledge Graph's entity/layout controls) is untouched either way.
+ */
 public class MainView extends BorderPane implements EccoListener {
 	private final EccoService eccoService;
 
-	private final Button openButton = new Button("Open");
-	private final Button closeButton = new Button("Close");
+	private final MenuItem newMenuItem = new MenuItem("New");
+	private final MenuItem openMenuItem = new MenuItem("Open...");
+	private final MenuItem closeMenuItem = new MenuItem("Close");
 
-	private final Button initButton = new Button("Init");
-	private final Button forkButton = new Button("Fork");
+	private final MenuItem commitMenuItem = new MenuItem("Commit...");
+	private final MenuItem importGitMenuItem = new MenuItem("Import From Git...");
+	private final MenuItem checkoutMenuItem = new MenuItem("Checkout...");
 
-	private final Button commitButton = new Button("Commit");
-	private final Button importGitButton = new Button("Import from Git");
-	private final Button checkoutButton = new Button("Checkout");
+	private final MenuItem fetchMenuItem = new MenuItem("Fetch...");
+	private final MenuItem pullMenuItem = new MenuItem("Pull...");
+	private final MenuItem pushMenuItem = new MenuItem("Push...");
 
-	private final Button fetchButton = new Button("Fetch");
-	private final Button pullButton = new Button("Pull");
-	private final Button pushButton = new Button("Push");
+	private final MenuItem serverMenuItem = new MenuItem("Server...");
 
-	private final Button serverButton = new Button("Server");
+	/**
+	 * Every menu item disabled while no repository is open - see {@link #updateView()}. Populated
+	 * in the constructor once the content items exist too (New, Open, and the whole Preferences
+	 * menu are the only items that stay enabled either way - everything else, including every
+	 * content item, needs an open repository to mean anything).
+	 */
+	private final List<MenuItem> requiresOpenRepository = new ArrayList<>(List.of(
+			closeMenuItem, commitMenuItem, importGitMenuItem, checkoutMenuItem,
+			fetchMenuItem, pullMenuItem, pushMenuItem));
 
-	private final Button preferencesButton = new Button("Preferences");
-
-	private final TabPane tabPane = new TabPane();
+	private final Label headerLabel = new Label();
+	private final BorderPane contentArea = new BorderPane();
+	private Region currentContentView;
 
 	public MainView(EccoService eccoService) {
 		this.eccoService = eccoService;
 
-		this.openButton.setOnAction(event -> this.openDialog("Open", new OpenView(eccoService)));
-		this.initButton.setOnAction(event -> this.openDialog("Init", new InitView(eccoService)));
-		this.closeButton.setOnAction(event -> this.eccoService.close());
+		this.newMenuItem.setOnAction(event -> this.openDialog("New", new InitView(eccoService)));
+		this.openMenuItem.setOnAction(event -> this.openDialog("Open", new OpenView(eccoService)));
+		this.closeMenuItem.setOnAction(event -> this.eccoService.close());
 
-		this.commitButton.setOnAction(event -> this.openDialog("Commit", new CommitView(eccoService)));
-		this.importGitButton.setOnAction(event -> this.openDialog("Import from Git", new ImportGitView(eccoService)));
-		this.checkoutButton.setOnAction(event -> this.openDialog("Checkout", new CheckoutView(eccoService)));
+		this.commitMenuItem.setOnAction(event -> this.openDialog("Commit", new CommitView(eccoService)));
+		this.importGitMenuItem.setOnAction(event -> this.openDialog("Import from Git", new ImportGitView(eccoService)));
+		this.checkoutMenuItem.setOnAction(event -> this.openDialog("Checkout", new CheckoutView(eccoService)));
 
-		this.fetchButton.setOnAction(event -> this.openDialog("Fetch", new FetchView(eccoService)));
-		this.pullButton.setOnAction(event -> this.openDialog("Pull", new PullView(eccoService)));
-		this.pushButton.setOnAction(event -> this.openDialog("Push", new PushView(eccoService)));
+		this.fetchMenuItem.setOnAction(event -> this.openDialog("Fetch", new FetchView(eccoService)));
+		this.pullMenuItem.setOnAction(event -> this.openDialog("Pull", new PullView(eccoService)));
+		this.pushMenuItem.setOnAction(event -> this.openDialog("Push", new PushView(eccoService)));
 
-		this.serverButton.setOnAction(event -> this.openDialog("Server", new ServerView(eccoService)));
+		this.serverMenuItem.setOnAction(event -> this.openDialog("Server", new ServerView(eccoService)));
 
-		this.preferencesButton.setOnAction(event -> this.openDialog("Preferences", new PreferencesView()));
-
-		// toolbar
-		ToolBar toolBar = new ToolBar();
-		toolBar.getItems().addAll(openButton, initButton, new Separator(), closeButton, new Separator(), commitButton, importGitButton, checkoutButton, new Separator(), fetchButton, pullButton, pushButton, new Separator(), serverButton, new Separator(), preferencesButton, new Separator());
-		this.setTop(toolBar);
+		MenuItem pluginsMenuItem = new MenuItem("Plugins...");
+		pluginsMenuItem.setOnAction(event -> this.openDialog("Plugins", new PreferencesView(PreferencesView.Section.PLUGINS)));
+		MenuItem llmSettingsMenuItem = new MenuItem("LLM Settings...");
+		llmSettingsMenuItem.setOnAction(event -> this.openDialog("LLM Settings", new PreferencesView(PreferencesView.Section.LLM)));
+		MenuItem minimizationSettingsMenuItem = new MenuItem("Minimization Settings...");
+		minimizationSettingsMenuItem.setOnAction(event -> this.openDialog("Minimization Settings", new PreferencesView(PreferencesView.Section.MINIMIZATION)));
+		MenuItem lilypondSettingsMenuItem = new MenuItem("Lilypond Settings...");
+		lilypondSettingsMenuItem.setOnAction(event -> this.openDialog("Lilypond Settings", new PreferencesView(PreferencesView.Section.LILYPOND)));
 
 		// Cmd+O on macOS, Ctrl+O elsewhere (SHORTCUT_DOWN maps to the platform's own shortcut
-		// modifier) - registered as a Scene accelerator, not a button-level one, since MainView
-		// isn't added to a Scene until EccoGui.start() does so after construction
-		this.sceneProperty().addListener((observable, oldScene, newScene) -> {
-			if (newScene != null) {
-				newScene.getAccelerators().put(
-						new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN),
-						this.openButton::fire);
-			}
-		});
+		// modifier). A MenuItem accelerator registers itself against the Scene once the MenuBar
+		// becomes part of one, so - unlike the old toolbar Button this replaces - this needs no
+		// sceneProperty() listener workaround.
+		this.openMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN));
 
 
-		// tabs
-		this.setCenter(tabPane);
-
-		// status
-		Tab statusTab = new Tab();
-		statusTab.setText("Status");
-		statusTab.setClosable(false);
-		tabPane.getTabs().add(statusTab);
-
-		SettingsView statusView = new SettingsView(eccoService);
-		statusTab.setContent(statusView);
-
-//		// operations
-//		Tab operationsTab = new Tab();
-//		operationsTab.setText("Operations");
-//		operationsTab.setClosable(false);
-//		tabPane.getTabs().add(operationsTab);
-//
-//		OperationsView operationsView = new OperationsView(eccoService);
-//		operationsTab.setContent(operationsView);
-
-
-		// CORE
-
-		// one shared "Minimize Presence Conditions" run, triggered from the Feature Model tab and
+		// one shared "Minimize Presence Conditions" run, triggered from the Feature Model view and
 		// observed by every other view that displays a minimized condition
 		MinimizationResults minimizationResults = new MinimizationResults(eccoService);
 
-		// features
-		Tab featuresTab = new Tab();
-		featuresTab.setText("Feature Model");
-		featuresTab.setClosable(false);
-		tabPane.getTabs().add(featuresTab);
-
+		// every content view, constructed eagerly exactly as before - only how each becomes
+		// visible changed (menu-driven swap instead of a tab click), not construction order/timing
+		SettingsView statusView = new SettingsView(eccoService);
 		FeaturesView featuresView = new FeaturesView(eccoService, minimizationResults);
-		featuresTab.setContent(featuresView);
-		featuresView.setTabVisible(featuresTab.isSelected());
-		featuresTab.selectedProperty().addListener((obs, wasSelected, isSelected) -> featuresView.setTabVisible(isSelected));
-
-		// remotes
-		Tab remotesTab = new Tab();
-		remotesTab.setText("Remotes");
-		remotesTab.setClosable(false);
-		tabPane.getTabs().add(remotesTab);
-
 		RemotesView remotesView = new RemotesView(eccoService);
-		remotesTab.setContent(remotesView);
-
-		// commits
-		Tab commitsTab = new Tab();
-		commitsTab.setText("Commits");
-		commitsTab.setClosable(false);
-		tabPane.getTabs().add(commitsTab);
-
 		CommitsView commitsView = new CommitsView(eccoService);
-		commitsTab.setContent(commitsView);
-
-		// associations
-		Tab associationsTab = new Tab();
-		associationsTab.setText("Associations");
-		associationsTab.setClosable(false);
-		tabPane.getTabs().add(associationsTab);
-
 		AssociationsView associationsView = new AssociationsView(eccoService, minimizationResults);
-		associationsTab.setContent(associationsView);
-
-		// artifacts
-		Tab artifactTab = new Tab();
-		artifactTab.setText("Artifacts");
-		artifactTab.setClosable(false);
-		tabPane.getTabs().add(artifactTab);
-
 		ArtifactsView artifactsView = new ArtifactsView(eccoService, minimizationResults);
-		artifactTab.setContent(artifactsView);
-
-
-		// GRAPHS
-
-		// artifacts graph
-		Tab artifactsGraphTab = new Tab();
-		artifactsGraphTab.setText("Artifact Graph");
-		artifactsGraphTab.setClosable(false);
-		tabPane.getTabs().add(artifactsGraphTab);
-
-		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService);
-		artifactsGraphTab.setContent(artifactsGraphView);
-		artifactsGraphView.setTabVisible(artifactsGraphTab.isSelected());
-		artifactsGraphTab.selectedProperty().addListener((obs, wasSelected, isSelected) -> artifactsGraphView.setTabVisible(isSelected));
-
-		// dependency graph
-		Tab dependencyGraphTab = new Tab();
-		dependencyGraphTab.setText("Dependency Graph");
-		dependencyGraphTab.setClosable(false);
-		tabPane.getTabs().add(dependencyGraphTab);
-
-		DependencyGraphView dependencyGraphView = new DependencyGraphView(eccoService);
-		dependencyGraphTab.setContent(dependencyGraphView);
-
-		// knowledge graph
-		Tab knowledgeGraphTab = new Tab();
-		knowledgeGraphTab.setText("Knowledge Graph");
-		knowledgeGraphTab.setClosable(false);
-		tabPane.getTabs().add(knowledgeGraphTab);
-
-		KnowledgeGraphView knowledgeGraphView = new KnowledgeGraphView(eccoService);
-		knowledgeGraphTab.setContent(knowledgeGraphView);
-		knowledgeGraphView.setTabVisible(knowledgeGraphTab.isSelected());
-		knowledgeGraphTab.selectedProperty().addListener((obs, wasSelected, isSelected) -> knowledgeGraphView.setTabVisible(isSelected));
-
-		// charts
-		Tab chartsTab = new Tab();
-		chartsTab.setText("Charts");
-		chartsTab.setClosable(false);
-		tabPane.getTabs().add(chartsTab);
-
 		ChartsView chartsView = new ChartsView(eccoService);
-		chartsTab.setContent(chartsView);
-
-		// variants
-		Tab variantsTab = new Tab();
-		variantsTab.setText("Variants");
-		variantsTab.setClosable(false);
-		tabPane.getTabs().add(variantsTab);
-
 		VariantsView variantsView = new VariantsView(eccoService);
-		variantsTab.setContent(variantsView);
-		//
+		ArtifactGraphView artifactsGraphView = new ArtifactGraphView(eccoService);
+		DependencyGraphView dependencyGraphView = new DependencyGraphView(eccoService);
+		KnowledgeGraphView knowledgeGraphView = new KnowledgeGraphView(eccoService);
+
+		MenuItem statusMenuItem = new MenuItem("Status");
+		statusMenuItem.setOnAction(event -> this.switchTo("Status", statusView));
+		MenuItem variantsMenuItem = new MenuItem("Variants");
+		variantsMenuItem.setOnAction(event -> this.switchTo("Variants", variantsView));
+		MenuItem remotesMenuItem = new MenuItem("Remotes");
+		remotesMenuItem.setOnAction(event -> this.switchTo("Remotes", remotesView));
+		MenuItem featuresMenuItem = new MenuItem("Feature Model");
+		featuresMenuItem.setOnAction(event -> this.switchTo("Feature Model", featuresView));
+		MenuItem commitsMenuItem = new MenuItem("Commits");
+		commitsMenuItem.setOnAction(event -> this.switchTo("Commits", commitsView));
+		MenuItem associationsMenuItem = new MenuItem("Associations");
+		associationsMenuItem.setOnAction(event -> this.switchTo("Associations", associationsView));
+		MenuItem artifactsMenuItem = new MenuItem("Artifacts");
+		artifactsMenuItem.setOnAction(event -> this.switchTo("Artifacts", artifactsView));
+		MenuItem chartsMenuItem = new MenuItem("Charts");
+		chartsMenuItem.setOnAction(event -> this.switchTo("Charts", chartsView));
+		MenuItem knowledgeGraphMenuItem = new MenuItem("Knowledge Graph");
+		knowledgeGraphMenuItem.setOnAction(event -> this.switchTo("Knowledge Graph", knowledgeGraphView));
+		MenuItem artifactGraphMenuItem = new MenuItem("Artifact Graph");
+		artifactGraphMenuItem.setOnAction(event -> this.switchTo("Artifact Graph", artifactsGraphView));
+		MenuItem dependencyGraphMenuItem = new MenuItem("Dependency Graph");
+		dependencyGraphMenuItem.setOnAction(event -> this.switchTo("Dependency Graph", dependencyGraphView));
+
+		// every content item needs an open repository to mean anything - see requiresOpenRepository's javadoc
+		this.requiresOpenRepository.addAll(List.of(
+				statusMenuItem, variantsMenuItem, remotesMenuItem, featuresMenuItem, commitsMenuItem,
+				associationsMenuItem, artifactsMenuItem, chartsMenuItem, knowledgeGraphMenuItem,
+				artifactGraphMenuItem, dependencyGraphMenuItem));
+
+
+		Menu repositoryMenu = new Menu("Repository");
+		repositoryMenu.getItems().setAll(newMenuItem, openMenuItem, closeMenuItem, new SeparatorMenuItem(), statusMenuItem);
+
+		Menu localMenu = new Menu("Local");
+		localMenu.getItems().setAll(commitMenuItem, importGitMenuItem, checkoutMenuItem, new SeparatorMenuItem(), variantsMenuItem);
+
+		Menu distributedMenu = new Menu("Distributed");
+		distributedMenu.getItems().setAll(remotesMenuItem, new SeparatorMenuItem(), fetchMenuItem, pullMenuItem, pushMenuItem);
+
+		Menu analysisMenu = new Menu("Analysis");
+		analysisMenu.getItems().setAll(featuresMenuItem, commitsMenuItem, associationsMenuItem, artifactsMenuItem, chartsMenuItem);
+
+		Menu visualizationMenu = new Menu("Visualization");
+		visualizationMenu.getItems().setAll(knowledgeGraphMenuItem, artifactGraphMenuItem, dependencyGraphMenuItem);
+
+		Menu preferencesMenu = new Menu("Preferences");
+		preferencesMenu.getItems().setAll(pluginsMenuItem, llmSettingsMenuItem, minimizationSettingsMenuItem,
+				lilypondSettingsMenuItem, new SeparatorMenuItem(), serverMenuItem);
+
+		MenuBar menuBar = new MenuBar();
+		menuBar.getMenus().setAll(repositoryMenu, localMenu, distributedMenu, analysisMenu, visualizationMenu, preferencesMenu);
+		this.setTop(menuBar);
+
+
+		this.headerLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+		this.headerLabel.setPadding(new Insets(8, 10, 8, 10));
+		this.contentArea.setTop(headerLabel);
+		this.setCenter(contentArea);
 
 		this.eccoService.addListener(this);
 
-
+		this.switchTo("Status", statusView);
 		this.updateView();
+	}
+
+
+	/**
+	 * Swaps the shared content area to {@code view}, updating {@link #headerLabel} to
+	 * {@code displayName}. Calls {@link TabVisibilityAware#setTabVisible} on the outgoing view
+	 * (if it implements it) before swapping and on the incoming one after - same
+	 * skip-expensive-work-while-hidden rationale each implementor's own javadoc already documents,
+	 * just triggered by a menu click now instead of {@code Tab.selectedProperty()}.
+	 */
+	private void switchTo(String displayName, Region view) {
+		if (this.currentContentView instanceof TabVisibilityAware previous) {
+			previous.setTabVisible(false);
+		}
+		this.headerLabel.setText(displayName);
+		this.contentArea.setCenter(view);
+		this.currentContentView = view;
+		if (view instanceof TabVisibilityAware aware) {
+			aware.setTabVisible(true);
+		}
 	}
 
 
@@ -226,42 +217,20 @@ public class MainView extends BorderPane implements EccoListener {
 		dialog.setScene(dialogScene);
 		dialog.setTitle(title);
 
-//		dialog.setMinWidth(400);
-//		dialog.setMinHeight(200);
-
 		dialog.show();
 		dialog.requestFocus();
 	}
 
 
 	private void updateView() {
-		if (this.eccoService.isInitialized()) {
-			openButton.setDisable(true);
-			closeButton.setDisable(false);
-			initButton.setDisable(true);
-			forkButton.setDisable(true);
-			commitButton.setDisable(false);
-			importGitButton.setDisable(false);
-			checkoutButton.setDisable(false);
-			fetchButton.setDisable(false);
-			pullButton.setDisable(false);
-			pushButton.setDisable(false);
-			serverButton.setDisable(false);
-			tabPane.setDisable(false);
-		} else {
-			openButton.setDisable(false);
-			closeButton.setDisable(true);
-			initButton.setDisable(false);
-			forkButton.setDisable(false);
-			commitButton.setDisable(true);
-			importGitButton.setDisable(true);
-			checkoutButton.setDisable(true);
-			fetchButton.setDisable(true);
-			pullButton.setDisable(true);
-			pushButton.setDisable(true);
-			serverButton.setDisable(true);
-			tabPane.setDisable(true);
+		boolean initialized = this.eccoService.isInitialized();
+
+		this.newMenuItem.setDisable(initialized);
+		this.openMenuItem.setDisable(initialized);
+		for (MenuItem menuItem : this.requiresOpenRepository) {
+			menuItem.setDisable(!initialized);
 		}
+		this.contentArea.setDisable(!initialized);
 	}
 
 
