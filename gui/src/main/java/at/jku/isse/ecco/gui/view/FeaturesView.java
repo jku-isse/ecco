@@ -13,6 +13,7 @@ import javafx.geometry.Orientation;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollBar;
 import javafx.scene.control.Separator;
@@ -33,6 +34,8 @@ import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.geom.Point3;
 import org.graphstream.ui.graphicGraph.GraphicGraph;
 import org.graphstream.ui.javafx.FxGraphRenderer;
+import org.graphstream.ui.layout.Layout;
+import org.graphstream.ui.layout.springbox.implementations.SpringBox;
 import org.graphstream.ui.view.View;
 import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.camera.Camera;
@@ -57,6 +60,11 @@ import java.util.Set;
  * presence condition - so features naturally attach under the base feature(s) they were built on
  * top of. See {@link FeatureModelTree} for the actual algorithm (kept separate from this class so
  * it has no JavaFX/GraphStream dependency and can be tested on its own).
+ * <p>
+ * Defaults to the same {@link SpringBox} force-directed layout {@code KnowledgeGraphView}/
+ * {@code ArtifactGraphView} use; the toolbar's layout selector can also switch to that tree
+ * layout instead, for anyone who'd rather see the commit-history structure than
+ * co-occurrence-driven clustering - see {@link #layoutMode}.
  */
 public class FeaturesView extends BorderPane implements EccoListener {
 
@@ -81,6 +89,27 @@ public class FeaturesView extends BorderPane implements EccoListener {
 	private volatile boolean tabVisible = true;
 
 	private boolean showLabels = true;
+
+	private enum LayoutMode {
+		FORCE_DIRECTED("Force-directed layout"), TREE("Tree layout");
+
+		private final String displayName;
+
+		LayoutMode(String displayName) {
+			this.displayName = displayName;
+		}
+
+		@Override
+		public String toString() {
+			return this.displayName;
+		}
+	}
+
+	/** Same {@link SpringBox} class/constructor {@code ArtifactGraphView}/{@code KnowledgeGraphView} use; unused (never attached as a sink) in {@link LayoutMode#TREE}. */
+	private final Layout forceDirectedLayout = new SpringBox(false);
+	private LayoutMode layoutMode = LayoutMode.FORCE_DIRECTED;
+	/** The mode the graph was actually last rendered in, so {@link #applySnapshot} can tell a mode switch from an ordinary refresh. */
+	private LayoutMode lastAppliedLayoutMode = null;
 
 	public FeaturesView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
@@ -131,7 +160,16 @@ public class FeaturesView extends BorderPane implements EccoListener {
 			FeaturesView.this.updateGraphStylesheet();
 		});
 
-		toolBar.getItems().setAll(exportButton, new Separator(), showLabelsCheckbox, new Separator());
+		Label layoutLabel = new Label("Layout: ");
+		ChoiceBox<LayoutMode> layoutChoice = new ChoiceBox<>();
+		layoutChoice.getItems().setAll(LayoutMode.values());
+		layoutChoice.setValue(this.layoutMode);
+		layoutChoice.valueProperty().addListener((obs, oldValue, newValue) -> {
+			FeaturesView.this.layoutMode = newValue;
+			FeaturesView.this.refreshGraph();
+		});
+
+		toolBar.getItems().setAll(exportButton, new Separator(), showLabelsCheckbox, new Separator(), layoutLabel, layoutChoice, new Separator());
 
 
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
@@ -178,9 +216,9 @@ public class FeaturesView extends BorderPane implements EccoListener {
 			view.getCamera().setViewCenter(center.x, this.contentMinY + this.contentMaxY - newV.doubleValue(), center.z);
 		});
 
-		Label legend = new Label("Legend:  rectangle = feature  |  rectangle with a filled circle on top = mandatory (accepted)  |  "
-				+ "grey arrow between features = positioning hint only (co-occurrence order), not a dependency or constraint  |  "
-				+ "accepted requires/excludes constraints are listed in the panel on the right, not drawn on the graph");
+		Label legend = new Label("Legend:  feature node (a filled dot in Tree layout / bold outline in Force-directed layout "
+				+ "marks accepted-MANDATORY)  |  grey arrow = positioning hint only (co-occurrence order), not a dependency "
+				+ "or constraint  |  green arrow = accepted REQUIRES  |  red arrow = accepted EXCLUDES");
 		legend.setWrapText(true);
 		legend.setPadding(new Insets(4, 8, 4, 8));
 		legend.setStyle("-fx-font-size: 11px; -fx-font-style: italic;");
@@ -200,17 +238,33 @@ public class FeaturesView extends BorderPane implements EccoListener {
 	}
 
 
+	/**
+	 * The two layout modes need genuinely different node styling, not just different positions -
+	 * see {@code KnowledgeGraphView#updateGraphStylesheet}'s identical reasoning: {@link LayoutMode#TREE}'s
+	 * box shape sized in "gu" (so its footprint stays fixed relative to the layout's own coordinate
+	 * space) is enormous relative to {@link SpringBox}'s physics scale, which is tuned for small,
+	 * "px" (fixed on-screen pixel size regardless of zoom) shapes.
+	 */
 	private void updateGraphStylesheet() {
 		String textMode = this.showLabels ? "text-mode: normal; " : "text-mode: hidden; ";
+		String nodeShape = this.layoutMode == LayoutMode.TREE
+				// "gu" (graph units), not "px": a fixed pixel size stays constant on screen
+				// regardless of zoom, so once the camera zooms out to fit more nodes, fixed-px
+				// boxes start overlapping even though their (gu) centers are correctly spaced by
+				// X_SPACING/Y_SPACING. "gu" keeps the box's visual footprint in the same
+				// coordinate space as the layout, matching what computeContentBounds() below
+				// already assumes.
+				? "shape: box; size: " + NODE_WIDTH + "gu, " + NODE_HEIGHT + "gu;"
+				: "shape: circle; size: " + FORCE_DIRECTED_NODE_SIZE + "px;";
 		this.graph.setAttribute("ui.stylesheet",
-				"edge { " + textMode + " size: 1px; shape: line; arrow-size: 6px, 4px; fill-color: #89878188; } " +
-						// "gu" (graph units), not "px": a fixed pixel size stays constant on screen
-						// regardless of zoom, so once the camera zooms out to fit more nodes, fixed-px
-						// boxes start overlapping even though their (gu) centers are correctly spaced by
-						// X_SPACING/Y_SPACING. "gu" keeps the box's visual footprint in the same
-						// coordinate space as the layout, matching what computeContentBounds() below
-						// already assumes.
-						"node { " + textMode + " text-background-mode: plain; shape: box; size: " + NODE_WIDTH + "gu, " + NODE_HEIGHT + "gu; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
+				"edge { " + textMode + " size: 1px; shape: line; arrow-size: 6px, 4px; } " +
+						// grey: positioning hint only, not a real constraint - see the legend.
+						"edge.tree { fill-color: #89878188; } " +
+						// same green/red as KnowledgeGraphView's REQUIRES/EXCLUDES edges, for a
+						// consistent meaning across both tabs.
+						"edge.requires { fill-color: #1baf7a; } " +
+						"edge.excludes { fill-color: #e34948; } " +
+						"node { " + textMode + " text-background-mode: plain; " + nodeShape + " stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
 	}
 
 	private void initView() {
@@ -312,6 +366,13 @@ public class FeaturesView extends BorderPane implements EccoListener {
 		});
 	}
 
+	/**
+	 * {@link #forceDirectedLayout} is unconditionally detached/cleared before the rebuild and only
+	 * re-attached afterwards if {@link #layoutMode} is {@link LayoutMode#FORCE_DIRECTED} - see
+	 * {@code KnowledgeGraphView#applySnapshot}'s identical sequence (mirrored from
+	 * {@code ArtifactGraphView}'s own always-detach-then-rebuild-then-reattach pattern, proven safe
+	 * to call unconditionally including when the sink was never attached in the first place).
+	 */
 	private void applySnapshot(FeatureModelSnapshot snapshot) {
 		boolean firstRender = this.graph.getNodeCount() == 0;
 
@@ -319,6 +380,10 @@ public class FeaturesView extends BorderPane implements EccoListener {
 		// ArtifactGraphView.applySnapshot()
 		this.view.setVisible(false);
 		try {
+			this.viewer.disableAutoLayout();
+			this.graph.removeSink(this.forceDirectedLayout);
+			this.forceDirectedLayout.removeAttributeSink(this.graph);
+			this.forceDirectedLayout.clear();
 			this.graph.clear();
 
 			this.graph.setAttribute("ui.quality");
@@ -327,35 +392,85 @@ public class FeaturesView extends BorderPane implements EccoListener {
 			for (FeatureNodeSnapshot nodeSnapshot : snapshot.nodes) {
 				Node graphNode = this.graph.addNode(nodeSnapshot.id);
 				graphNode.setAttribute("label", nodeSnapshot.label);
-				graphNode.setAttribute("xyz", nodeSnapshot.x, nodeSnapshot.y, 0.0);
-				graphNode.setAttribute("ui.style", "fill-color: " + toHexColor(CategoricalColorPalette.colorForIndex(nodeSnapshot.colorIndex)) + ";");
+				if (this.layoutMode == LayoutMode.TREE) {
+					graphNode.setAttribute("xyz", nodeSnapshot.x, nodeSnapshot.y, 0.0);
+				}
+				// FORCE_DIRECTED: deliberately leave "xyz" unset, exactly like ArtifactGraphView's/
+				// KnowledgeGraphView's own SpringBox-driven nodes - SpringBox assigns its own
+				// internal initial placement to unpositioned nodes, already calibrated to its own
+				// physics scale.
 
-				if (snapshot.mandatoryNodeIds.contains(nodeSnapshot.id)) {
+				boolean mandatory = snapshot.mandatoryNodeIds.contains(nodeSnapshot.id);
+				String style = "fill-color: " + toHexColor(CategoricalColorPalette.colorForIndex(nodeSnapshot.colorIndex)) + ";";
+
+				if (mandatory && this.layoutMode == LayoutMode.TREE) {
 					// classic feature-diagram notation: a filled circle marks a mandatory feature.
 					// Implemented as a small plain node sitting at the top edge of the feature's box
 					// (not a GraphStream Sprite) so it reuses the exact node-positioning/styling path
-					// already used above, instead of a second, unverified rendering mechanism.
+					// already used above, instead of a second, unverified rendering mechanism. Only
+					// possible in TREE mode, where nodeSnapshot's xyz is actually known up front -
+					// FORCE_DIRECTED uses a stroke on the feature node itself instead (below).
 					Node marker = this.graph.addNode("mandatory:" + nodeSnapshot.id);
 					marker.setAttribute("label", "");
 					marker.setAttribute("xyz", nodeSnapshot.x, nodeSnapshot.y + NODE_HEIGHT / 2.0, 0.1);
 					marker.setAttribute("ui.style", "shape: circle; size: " + MANDATORY_MARKER_SIZE + "gu; fill-color: #000000; stroke-mode: none;");
+				} else if (mandatory) {
+					style += " stroke-width: 3px;";
 				}
+				graphNode.setAttribute("ui.style", style);
 			}
 			for (FeatureEdgeSnapshot edgeSnapshot : snapshot.edges) {
-				this.graph.addEdge(edgeSnapshot.id, edgeSnapshot.parentId, edgeSnapshot.childId, true);
+				this.graph.addEdge(edgeSnapshot.id, edgeSnapshot.parentId, edgeSnapshot.childId, true)
+						.setAttribute("ui.class", edgeSnapshot.kind.name().toLowerCase());
 			}
 
 			this.updateGraphStylesheet();
 
-			if (firstRender) {
-				this.view.getCamera().resetView();
+			if (this.layoutMode == LayoutMode.FORCE_DIRECTED) {
+				this.graph.addSink(this.forceDirectedLayout);
+				this.forceDirectedLayout.addAttributeSink(this.graph);
+				this.viewer.enableAutoLayout(this.forceDirectedLayout);
 			}
+
+			boolean layoutModeChanged = this.layoutMode != this.lastAppliedLayoutMode;
+			if (firstRender || layoutModeChanged) {
+				this.view.getCamera().resetView();
+				if (this.layoutMode == LayoutMode.FORCE_DIRECTED) {
+					// see KnowledgeGraphView#scheduleDelayedCameraReset for the full rationale: a
+					// second, later camera fit once physics has actually had a chance to spread
+					// nodes out, since the resetView() just above only fits SpringBox's initial
+					// (still-clustered) placement.
+					scheduleDelayedCameraReset();
+				}
+			}
+			this.lastAppliedLayoutMode = this.layoutMode;
 		} finally {
 			this.view.setVisible(true);
 		}
 
-		computeContentBounds(snapshot);
-		Platform.runLater(this::updateScrollBarRanges);
+		if (this.layoutMode == LayoutMode.TREE) {
+			computeContentBounds(snapshot);
+			Platform.runLater(this::updateScrollBarRanges);
+		}
+	}
+
+	/** See the call site in {@link #applySnapshot} for why force-directed mode needs a second, delayed camera fit. */
+	private void scheduleDelayedCameraReset() {
+		Thread thread = new Thread(() -> {
+			try {
+				Thread.sleep(FORCE_DIRECTED_SETTLE_DELAY_MS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			}
+			SwingUtilities.invokeLater(() -> {
+				if (this.view != null && this.layoutMode == LayoutMode.FORCE_DIRECTED) {
+					this.view.getCamera().resetView();
+				}
+			});
+		});
+		thread.setDaemon(true);
+		thread.start();
 	}
 
 	/**
@@ -432,6 +547,9 @@ public class FeaturesView extends BorderPane implements EccoListener {
 	private static final int NODE_WIDTH = 90;
 	private static final int NODE_HEIGHT = 32;
 	private static final int MANDATORY_MARKER_SIZE = 10;
+	/** Matches KnowledgeGraphView's force-directed node size - a physics-friendly scale, unlike TREE mode's much larger label-bearing boxes. */
+	private static final int FORCE_DIRECTED_NODE_SIZE = 24;
+	private static final long FORCE_DIRECTED_SETTLE_DELAY_MS = 900;
 
 	private static final class FeatureModelSnapshot {
 		final List<FeatureNodeSnapshot> nodes = new ArrayList<>();
@@ -455,15 +573,19 @@ public class FeaturesView extends BorderPane implements EccoListener {
 		}
 	}
 
+	private enum FeatureEdgeKind {TREE, REQUIRES, EXCLUDES}
+
 	private static final class FeatureEdgeSnapshot {
 		final String id;
 		final String parentId;
 		final String childId;
+		final FeatureEdgeKind kind;
 
-		FeatureEdgeSnapshot(String parentId, String childId) {
-			this.id = parentId + "->" + childId;
+		FeatureEdgeSnapshot(String parentId, String childId, FeatureEdgeKind kind) {
+			this.id = parentId + "->" + childId + ":" + kind.name();
 			this.parentId = parentId;
 			this.childId = childId;
+			this.kind = kind;
 		}
 	}
 
@@ -476,18 +598,26 @@ public class FeaturesView extends BorderPane implements EccoListener {
 			double y = -placement.depth * Y_SPACING;
 			snapshot.nodes.add(new FeatureNodeSnapshot(placement.feature.getId(), placement.feature.getName(), x, y, placement.rootIndex));
 			if (placement.parent != null) {
-				snapshot.edges.add(new FeatureEdgeSnapshot(placement.parent.getId(), placement.feature.getId()));
+				snapshot.edges.add(new FeatureEdgeSnapshot(placement.parent.getId(), placement.feature.getId(), FeatureEdgeKind.TREE));
 			}
 			nodeIdByFeatureName.put(placement.feature.getName(), placement.feature.getId());
 		}
 
-		// only MANDATORY is shown here (as a node decorator, below); accepted REQUIRES/EXCLUDES
-		// already have a home in ConstraintSuggestionsView's "Accepted" list, so this tab doesn't
-		// need a second, redundant place to show them.
+		// MANDATORY is shown as a node decorator (below); REQUIRES/EXCLUDES as a direct edge between
+		// the two features involved - both still listed in ConstraintSuggestionsView's "Accepted"
+		// list too (that listing has the exact kind/confidence text this graph has no room for), but
+		// seeing them drawn against the tree is worth the redundancy.
 		for (Constraint constraint : this.service.getRepository().getConstraints()) {
-			if (constraint.getKind() != Constraint.Kind.MANDATORY) continue;
-			String id = nodeIdByFeatureName.get(constraint.getFeatureA());
-			if (id != null) snapshot.mandatoryNodeIds.add(id);
+			if (constraint.getKind() == Constraint.Kind.MANDATORY) {
+				String id = nodeIdByFeatureName.get(constraint.getFeatureA());
+				if (id != null) snapshot.mandatoryNodeIds.add(id);
+				continue;
+			}
+			String featureAId = nodeIdByFeatureName.get(constraint.getFeatureA());
+			String featureBId = nodeIdByFeatureName.get(constraint.getFeatureB());
+			if (featureAId == null || featureBId == null) continue;
+			FeatureEdgeKind kind = constraint.getKind() == Constraint.Kind.REQUIRES ? FeatureEdgeKind.REQUIRES : FeatureEdgeKind.EXCLUDES;
+			snapshot.edges.add(new FeatureEdgeSnapshot(featureAId, featureBId, kind));
 		}
 		return snapshot;
 	}
