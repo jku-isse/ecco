@@ -70,6 +70,16 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 			toolBar.setDisable(true);
 
 			FileChooser fileChooser = new FileChooser();
+			// FileSinkFactory.sinkFor() picks a writer purely off the file extension and returns
+			// null (see the "Unknown file extension" branch below) for anything it doesn't
+			// recognize - list the formats GraphStream actually supports so the save dialog
+			// doesn't let that happen by default.
+			fileChooser.getExtensionFilters().addAll(
+					new FileChooser.ExtensionFilter("GraphML (*.graphml)", "*.graphml"),
+					new FileChooser.ExtensionFilter("GEXF (*.gexf)", "*.gexf"),
+					new FileChooser.ExtensionFilter("DOT (*.dot)", "*.dot"),
+					new FileChooser.ExtensionFilter("DGS (*.dgs)", "*.dgs"));
+			fileChooser.setInitialFileName("dependency-graph.graphml");
 			File selectedFile = fileChooser.showSaveDialog(DependencyGraphView.this.getScene().getWindow());
 
 			if (selectedFile != null) {

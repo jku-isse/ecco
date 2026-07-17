@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -75,10 +76,9 @@ public class KnowledgeGraphLayoutTest {
 	public void basicShape_onePlacementPerRealEntity() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-basic-shape");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
+			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
 
 			assertEquals(3, countOf(snapshot, KnowledgeGraphLayout.EntityKind.FEATURE), "A, B, C");
-			assertEquals(3, countOf(snapshot, KnowledgeGraphLayout.EntityKind.CONSTRAINT), "MANDATORY(A), REQUIRES(B,A), EXCLUDES(B,C)");
 			assertEquals(4, countOf(snapshot, KnowledgeGraphLayout.EntityKind.COMMIT));
 			// commit 2 and commit 3 share a configuration, so they must produce (and share) exactly one variant
 			assertEquals(3, countOf(snapshot, KnowledgeGraphLayout.EntityKind.VARIANT), "configs A / A,B / C -> 3 distinct variants");
@@ -90,16 +90,14 @@ public class KnowledgeGraphLayoutTest {
 	public void lanes_eachEntityKindSharesOneYAndLanesAreOrdered() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-lanes");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
+			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
 
 			double featureY = oneYOf(snapshot, KnowledgeGraphLayout.EntityKind.FEATURE);
-			double constraintY = oneYOf(snapshot, KnowledgeGraphLayout.EntityKind.CONSTRAINT);
 			double commitY = oneYOf(snapshot, KnowledgeGraphLayout.EntityKind.COMMIT);
 			double associationY = oneYOf(snapshot, KnowledgeGraphLayout.EntityKind.ASSOCIATION);
 			double variantY = oneYOf(snapshot, KnowledgeGraphLayout.EntityKind.VARIANT);
 
-			assertTrue(featureY > constraintY, "Feature lane above Constraint lane");
-			assertTrue(constraintY > commitY, "Constraint lane above Commit lane");
+			assertTrue(featureY > commitY, "Feature lane above Commit lane");
 			assertTrue(commitY > associationY, "Commit lane above Association lane");
 			assertTrue(associationY > variantY, "Association lane above Variant lane");
 		}
@@ -110,7 +108,7 @@ public class KnowledgeGraphLayoutTest {
 	public void commitToFeatureEdges_matchTheCommitsConfiguration() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-commit-feature-edges");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
+			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
 
 			String commit1NodeId = nodeIdForLabelPrefix(snapshot, KnowledgeGraphLayout.EntityKind.COMMIT, commit1Id(service));
 			Set<String> selectedFeatureLabels = snapshot.edges.stream()
@@ -123,18 +121,86 @@ public class KnowledgeGraphLayoutTest {
 
 	@Test
 	@Timeout(30)
-	public void constraintEdgeCounts_mandatoryOneRequiresExcludesTwo() throws IOException {
+	public void associationToFeatureInvolvesEdges_pointFromRealAssociationsToRealFeatures() throws IOException {
+		Path workDir = Files.createTempDirectory("kg-layout-involves-edges");
+		try (EccoService service = buildFourCommitRepo(workDir)) {
+			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
+
+			List<KnowledgeGraphLayout.Edge> involvesEdges = snapshot.edges.stream()
+					.filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.INVOLVES)
+					.collect(Collectors.toList());
+			assertTrue(!involvesEdges.isEmpty(), "at least one association's presence condition should involve at least one feature");
+
+			Set<String> associationNodeIds = snapshot.nodes.stream()
+					.filter(n -> n.kind == KnowledgeGraphLayout.EntityKind.ASSOCIATION).map(n -> n.id).collect(Collectors.toSet());
+			Set<String> featureNodeIds = snapshot.nodes.stream()
+					.filter(n -> n.kind == KnowledgeGraphLayout.EntityKind.FEATURE).map(n -> n.id).collect(Collectors.toSet());
+			for (KnowledgeGraphLayout.Edge edge : involvesEdges) {
+				assertTrue(associationNodeIds.contains(edge.sourceId), "INVOLVES source must be a real Association node");
+				assertTrue(featureNodeIds.contains(edge.targetId), "INVOLVES target must be a real Feature node");
+			}
+
+			// no association should list the same feature twice, even if its presence condition has
+			// more than one module term mentioning that feature (see the dedup comment in compute())
+			Set<String> seen = new java.util.HashSet<>();
+			for (KnowledgeGraphLayout.Edge edge : involvesEdges) {
+				assertTrue(seen.add(edge.id), "duplicate INVOLVES edge: " + edge.id);
+			}
+		}
+	}
+
+	@Test
+	@Timeout(30)
+	public void constraints_requiresAndExcludesAreDirectFeatureEdges_mandatoryIsAFeatureMarker() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-constraint-edges");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
+			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
 
-			long mandatoryEdges = snapshot.edges.stream().filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.MANDATORY).count();
 			long requiresEdges = snapshot.edges.stream().filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.REQUIRES).count();
 			long excludesEdges = snapshot.edges.stream().filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.EXCLUDES).count();
+			assertEquals(1, requiresEdges, "REQUIRES(B,A) is one direct Feature -> Feature edge, not two edges via a Constraint node");
+			assertEquals(1, excludesEdges, "EXCLUDES(B,C) is one direct Feature -> Feature edge, not two edges via a Constraint node");
 
-			assertEquals(1, mandatoryEdges, "MANDATORY only draws the featureA edge");
-			assertEquals(2, requiresEdges, "REQUIRES draws both featureA and featureB edges");
-			assertEquals(2, excludesEdges, "EXCLUDES draws both featureA and featureB edges");
+			String featureBNodeId = nodeIdForLabel(snapshot, KnowledgeGraphLayout.EntityKind.FEATURE, "B");
+			String featureANodeId = nodeIdForLabel(snapshot, KnowledgeGraphLayout.EntityKind.FEATURE, "A");
+			String featureCNodeId = nodeIdForLabel(snapshot, KnowledgeGraphLayout.EntityKind.FEATURE, "C");
+			assertTrue(snapshot.edges.stream().anyMatch(e -> e.kind == KnowledgeGraphLayout.EdgeKind.REQUIRES
+					&& e.sourceId.equals(featureBNodeId) && e.targetId.equals(featureANodeId)));
+			assertTrue(snapshot.edges.stream().anyMatch(e -> e.kind == KnowledgeGraphLayout.EdgeKind.EXCLUDES
+					&& e.sourceId.equals(featureBNodeId) && e.targetId.equals(featureCNodeId)));
+
+			assertTrue(mandatoryOf(snapshot, "A"), "MANDATORY(A) marks the Feature A placement, not a separate node/edge");
+			assertFalse(mandatoryOf(snapshot, "B"));
+			assertFalse(mandatoryOf(snapshot, "C"));
+		}
+	}
+
+	@Test
+	@Timeout(30)
+	public void includeConstraints_offDropsConstraintEdgesAndMandatoryMarkers() throws IOException {
+		Path workDir = Files.createTempDirectory("kg-layout-constraints-off");
+		try (EccoService service = buildFourCommitRepo(workDir)) {
+			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false, false);
+
+			assertEquals(0, snapshot.edges.stream().filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.REQUIRES).count());
+			assertEquals(0, snapshot.edges.stream().filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.EXCLUDES).count());
+			assertFalse(mandatoryOf(snapshot, "A"));
+		}
+	}
+
+	@Test
+	@Timeout(30)
+	public void commitLimit_zeroOrLessMeansNoLimit() throws IOException {
+		Path workDir = Files.createTempDirectory("kg-layout-commit-limit-unlimited");
+		try (EccoService service = buildFourCommitRepo(workDir)) {
+			KnowledgeGraphLayout.Snapshot unlimitedViaZero = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 0, true, false);
+			KnowledgeGraphLayout.Snapshot unlimitedViaNegative = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, -1, true, false);
+			KnowledgeGraphLayout.Snapshot explicit4 = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 4, true, false);
+
+			assertEquals(4, countOf(unlimitedViaZero, KnowledgeGraphLayout.EntityKind.COMMIT), "0 means every commit, not zero commits");
+			assertEquals(4, countOf(unlimitedViaNegative, KnowledgeGraphLayout.EntityKind.COMMIT));
+			assertEquals(countOf(explicit4, KnowledgeGraphLayout.EntityKind.COMMIT), countOf(unlimitedViaZero, KnowledgeGraphLayout.EntityKind.COMMIT),
+					"with only 4 real commits, 0 (unlimited) and an explicit limit of 4 must agree");
 		}
 	}
 
@@ -143,7 +209,7 @@ public class KnowledgeGraphLayoutTest {
 	public void sharedConfiguration_producesOneSharedVariantNotTwo() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-shared-variant");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
+			KnowledgeGraphLayout.Snapshot snapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
 
 			long producesVariantEdges = snapshot.edges.stream().filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.PRODUCES_VARIANT).count();
 			assertEquals(4, producesVariantEdges, "one Commit -> Variant edge per commit, even though two share a target");
@@ -158,17 +224,15 @@ public class KnowledgeGraphLayoutTest {
 
 	@Test
 	@Timeout(30)
-	public void commitLimit_windowsCommitsAssociationsAndVariants_butNotFeaturesOrConstraints() throws IOException {
+	public void commitLimit_windowsCommitsAssociationsAndVariants_butNotFeatures() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-commit-limit");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot fullSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
-			KnowledgeGraphLayout.Snapshot windowedSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 1, false);
+			KnowledgeGraphLayout.Snapshot fullSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
+			KnowledgeGraphLayout.Snapshot windowedSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 1, true, false);
 
 			assertEquals(1, countOf(windowedSnapshot, KnowledgeGraphLayout.EntityKind.COMMIT), "only the most recent commit");
 			assertEquals(countOf(fullSnapshot, KnowledgeGraphLayout.EntityKind.FEATURE), countOf(windowedSnapshot, KnowledgeGraphLayout.EntityKind.FEATURE),
 					"Features are never windowed by commitLimit");
-			assertEquals(countOf(fullSnapshot, KnowledgeGraphLayout.EntityKind.CONSTRAINT), countOf(windowedSnapshot, KnowledgeGraphLayout.EntityKind.CONSTRAINT),
-					"Constraints are never windowed by commitLimit");
 
 			// the most recent commit (commit 4, configuration "C") only touches its own association(s)
 			// and its own variant -- association/variant nodes must cascade from that same window
@@ -185,8 +249,8 @@ public class KnowledgeGraphLayoutTest {
 			Set<KnowledgeGraphLayout.EntityKind> withoutCommitLane = EnumSet.copyOf(ALL_KINDS);
 			withoutCommitLane.remove(KnowledgeGraphLayout.EntityKind.COMMIT);
 
-			KnowledgeGraphLayout.Snapshot allCommitsSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), withoutCommitLane, 10, false);
-			KnowledgeGraphLayout.Snapshot windowedSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), withoutCommitLane, 1, false);
+			KnowledgeGraphLayout.Snapshot allCommitsSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), withoutCommitLane, 10, true, false);
+			KnowledgeGraphLayout.Snapshot windowedSnapshot = KnowledgeGraphLayout.compute(service.getRepository(), withoutCommitLane, 1, true, false);
 
 			assertEquals(0, countOf(windowedSnapshot, KnowledgeGraphLayout.EntityKind.COMMIT), "Commit lane is disabled");
 			assertEquals(0, countOf(allCommitsSnapshot, KnowledgeGraphLayout.EntityKind.COMMIT), "Commit lane is disabled");
@@ -200,8 +264,8 @@ public class KnowledgeGraphLayoutTest {
 	public void computedVariantAssociationEdges_offByDefaultOnWhenRequested() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-computed-edges");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot withoutComputed = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
-			KnowledgeGraphLayout.Snapshot withComputed = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true);
+			KnowledgeGraphLayout.Snapshot withoutComputed = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
+			KnowledgeGraphLayout.Snapshot withComputed = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, true);
 
 			assertEquals(0, withoutComputed.edges.stream().filter(e -> e.kind == KnowledgeGraphLayout.EdgeKind.TOUCHES_COMPUTED).count());
 			assertTrue(withComputed.edges.stream().anyMatch(e -> e.kind == KnowledgeGraphLayout.EdgeKind.TOUCHES_COMPUTED),
@@ -214,8 +278,8 @@ public class KnowledgeGraphLayoutTest {
 	public void compute_isDeterministicAcrossRepeatedCallsOnUnchangedRepository() throws IOException {
 		Path workDir = Files.createTempDirectory("kg-layout-determinism");
 		try (EccoService service = buildFourCommitRepo(workDir)) {
-			KnowledgeGraphLayout.Snapshot first = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
-			KnowledgeGraphLayout.Snapshot second = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, false);
+			KnowledgeGraphLayout.Snapshot first = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
+			KnowledgeGraphLayout.Snapshot second = KnowledgeGraphLayout.compute(service.getRepository(), ALL_KINDS, 10, true, false);
 
 			assertEquals(toPositionMap(first), toPositionMap(second), "re-rendering an unchanged repository must not jitter node positions");
 			Set<String> firstEdgeIds = first.edges.stream().map(e -> e.id).collect(Collectors.toSet());
@@ -240,13 +304,25 @@ public class KnowledgeGraphLayoutTest {
 		return snapshot.nodes.stream().filter(n -> n.id.equals(nodeId)).findFirst().orElseThrow().label;
 	}
 
-	private static String nodeIdForLabelPrefix(KnowledgeGraphLayout.Snapshot snapshot, KnowledgeGraphLayout.EntityKind kind, String commitId) {
-		String shortId = commitId.length() <= 7 ? commitId : commitId.substring(0, 7);
+	private static boolean mandatoryOf(KnowledgeGraphLayout.Snapshot snapshot, String featureLabel) {
 		return snapshot.nodes.stream()
-				.filter(n -> n.kind == kind && n.label.equals(shortId))
+				.filter(n -> n.kind == KnowledgeGraphLayout.EntityKind.FEATURE && n.label.equals(featureLabel))
+				.findFirst()
+				.orElseThrow()
+				.mandatory;
+	}
+
+	private static String nodeIdForLabel(KnowledgeGraphLayout.Snapshot snapshot, KnowledgeGraphLayout.EntityKind kind, String label) {
+		return snapshot.nodes.stream()
+				.filter(n -> n.kind == kind && n.label.equals(label))
 				.map(n -> n.id)
 				.findFirst()
-				.orElseThrow(() -> new AssertionError("no " + kind + " node for commit " + commitId));
+				.orElseThrow(() -> new AssertionError("no " + kind + " node labeled " + label));
+	}
+
+	private static String nodeIdForLabelPrefix(KnowledgeGraphLayout.Snapshot snapshot, KnowledgeGraphLayout.EntityKind kind, String commitId) {
+		String shortId = commitId.length() <= 7 ? commitId : commitId.substring(0, 7);
+		return nodeIdForLabel(snapshot, kind, shortId);
 	}
 
 	private static String targetOfProducesVariantEdge(KnowledgeGraphLayout.Snapshot snapshot, String commitNodeId) {
