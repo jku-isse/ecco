@@ -172,6 +172,10 @@ public class MainView extends BorderPane implements EccoListener {
 
 		MenuBar menuBar = new MenuBar();
 		menuBar.getMenus().setAll(repositoryMenu, localMenu, distributedMenu, analysisMenu, visualizationMenu, preferencesMenu);
+		// on macOS, renders as the real system menu bar at the top of the screen instead of embedded
+		// in the window - silently has no effect on platforms without a global menu bar (Windows/
+		// Linux, which this project also ships), so it's safe to always set.
+		menuBar.setUseSystemMenuBar(true);
 		this.setTop(menuBar);
 
 
