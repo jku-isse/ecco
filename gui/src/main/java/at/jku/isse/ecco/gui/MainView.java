@@ -199,15 +199,6 @@ public class MainView extends BorderPane implements EccoListener {
 		ChartsView chartsView = new ChartsView(eccoService);
 		chartsTab.setContent(chartsView);
 
-		// presence table
-		Tab persenceTableTab = new Tab();
-		persenceTableTab.setText("Presence Table");
-		persenceTableTab.setClosable(false);
-		tabPane.getTabs().add(persenceTableTab);
-
-		PresenceTableView presenceTableView = new PresenceTableView(eccoService);
-		persenceTableTab.setContent(presenceTableView);
-
 		// variants
 		Tab variantsTab = new Tab();
 		variantsTab.setText("Variants");
