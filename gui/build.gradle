@@ -18,6 +18,9 @@ def javafxVersion = "21.0.4"
 def platform = "mac-aarch64"
 
 dependencies {
+    // macOS-style ("Cupertino") JavaFX theme - see EccoGui.showMainStage()
+    implementation 'io.github.mkpaz:atlantafx-base:2.1.0'
+
     implementation 'org.graphstream:gs-core:2.0'
     implementation 'org.graphstream:gs-algo:2.0'
     implementation 'org.graphstream:gs-ui-javafx:2.0'

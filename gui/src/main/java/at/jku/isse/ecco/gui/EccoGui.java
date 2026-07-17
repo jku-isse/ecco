@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import atlantafx.base.theme.CupertinoLight;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -114,7 +115,10 @@ public class EccoGui extends Application implements EccoListener {
 
 	private void showMainStage(Stage primaryStage) {
 		// INIT
-		Application.setUserAgentStylesheet(STYLESHEET_MODENA);
+		// Cupertino theme (AtlantaFX) instead of the default Modena, for a look closer to native
+		// macOS controls; applied globally before ecco.css so ecco.css's own rules still win where
+		// they overlap.
+		Application.setUserAgentStylesheet(new CupertinoLight().getUserAgentStylesheet());
 		primaryStage.setTitle("ECCO");
 		primaryStage.getIcons().add(loadLogoImage());
 		this.root = new StackPane();
