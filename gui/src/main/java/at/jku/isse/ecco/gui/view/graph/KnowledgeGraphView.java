@@ -13,6 +13,7 @@ import javafx.geometry.Orientation;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollBar;
 import javafx.scene.control.Separator;
@@ -33,6 +34,8 @@ import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.geom.Point3;
 import org.graphstream.ui.graphicGraph.GraphicGraph;
 import org.graphstream.ui.javafx.FxGraphRenderer;
+import org.graphstream.ui.layout.Layout;
+import org.graphstream.ui.layout.springbox.implementations.SpringBox;
 import org.graphstream.ui.view.View;
 import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.camera.Camera;
@@ -48,16 +51,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Cross-entity view of the repository: Features, Constraints, Commits, Associations, and Variants,
- * one horizontal lane per entity type, plus the direct (object-reference) relationships between
- * them - see {@link KnowledgeGraphLayout} for the actual algorithm (kept separate from this class
- * so it has no JavaFX/GraphStream dependency and can be tested on its own, same split as
- * {@code FeaturesView}/{@code FeatureModelTree}).
+ * Cross-entity view of the repository: Features, Commits, Associations, and Variants, one
+ * horizontal lane per entity type, plus the direct (object-reference) relationships between them -
+ * see {@link KnowledgeGraphLayout} for the actual algorithm (kept separate from this class so it has
+ * no JavaFX/GraphStream dependency and can be tested on its own, same split as
+ * {@code FeaturesView}/{@code FeatureModelTree}). Constraints aren't a fifth lane: REQUIRES/EXCLUDES
+ * render as a direct Feature -> Feature edge and MANDATORY as a marker on the Feature node itself -
+ * see {@link KnowledgeGraphLayout}'s class javadoc.
  * <p>
- * Deliberately not a physics graph: five structurally different entity kinds laid out by
- * {@link org.graphstream.ui.layout.springbox.implementations.SpringBox} would be an unreadable
- * hairball (unlike {@code ArtifactGraphView}'s homogeneous artifact tree) - node positions come
- * straight from {@link KnowledgeGraphLayout#compute}, exactly like {@code FeaturesView}.
+ * Defaults to the same {@link SpringBox} force-directed layout {@code ArtifactGraphView} uses. The
+ * toolbar's layout selector can also switch to a non-physics lane layout, with node positions coming
+ * straight from {@link KnowledgeGraphLayout#compute} instead - see {@link #layoutMode}.
  */
 public class KnowledgeGraphView extends BorderPane implements EccoListener {
 
@@ -81,7 +85,29 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 	private boolean showLabels = DEFAULT_SHOW_LABELS;
 	private final Set<KnowledgeGraphLayout.EntityKind> enabledKinds = EnumSet.allOf(KnowledgeGraphLayout.EntityKind.class);
 	private int commitLimit = DEFAULT_COMMIT_LIMIT;
+	private boolean includeConstraints = true;
 	private boolean includeComputedVariantAssociationEdges = false;
+
+	private enum LayoutMode {
+		FORCE_DIRECTED("Force-directed layout"), LANE("Lane layout");
+
+		private final String displayName;
+
+		LayoutMode(String displayName) {
+			this.displayName = displayName;
+		}
+
+		@Override
+		public String toString() {
+			return this.displayName;
+		}
+	}
+
+	/** Same {@link SpringBox} class/constructor {@code ArtifactGraphView} uses; unused (never attached as a sink) in {@link LayoutMode#LANE}. */
+	private final Layout forceDirectedLayout = new SpringBox(false);
+	private LayoutMode layoutMode = LayoutMode.FORCE_DIRECTED;
+	/** The mode the graph was actually last rendered in, so {@link #applySnapshot} can tell a mode switch from an ordinary refresh. */
+	private LayoutMode lastAppliedLayoutMode = null;
 
 	public KnowledgeGraphView(EccoService service) {
 		this.service = service;
@@ -132,9 +158,10 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 			view.getCamera().setViewCenter(center.x, this.contentMinY + this.contentMaxY - newV.doubleValue(), center.z);
 		});
 
-		Label legend = new Label("Nodes (top to bottom): Feature | Constraint | Commit | Association | Variant.  "
-				+ "Edges: touches (commit->association) | selects (commit/variant->feature) | requires | excludes | "
-				+ "mandatory | produces (commit->variant) | touches, computed (variant->association, only shown when enabled above).");
+		Label legend = new Label("Nodes: Feature | Commit | Association | Variant (a bold outline marks an accepted-MANDATORY feature).  "
+				+ "Edges: touches (commit->association) | selects (commit/variant->feature) | involves (association->feature) | "
+				+ "requires/excludes (feature->feature, only shown when Show constraints is enabled) | produces (commit->variant) | "
+				+ "touches, computed (variant->association, only shown when enabled above).");
 		legend.setWrapText(true);
 		legend.setPadding(new Insets(4, 8, 4, 8));
 		legend.setStyle("-fx-font-size: 11px; -fx-font-style: italic;");
@@ -201,7 +228,16 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 			KnowledgeGraphView.this.updateGraphStylesheet();
 		});
 
-		toolBar.getItems().setAll(exportButton, new Separator(), showLabelsCheckbox, new Separator());
+		Label layoutLabel = new Label("Layout: ");
+		ChoiceBox<LayoutMode> layoutChoice = new ChoiceBox<>();
+		layoutChoice.getItems().setAll(LayoutMode.values());
+		layoutChoice.setValue(this.layoutMode);
+		layoutChoice.valueProperty().addListener((obs, oldValue, newValue) -> {
+			KnowledgeGraphView.this.layoutMode = newValue;
+			KnowledgeGraphView.this.refreshGraph();
+		});
+
+		toolBar.getItems().setAll(exportButton, new Separator(), showLabelsCheckbox, new Separator(), layoutLabel, layoutChoice, new Separator());
 
 		for (KnowledgeGraphLayout.EntityKind kind : KnowledgeGraphLayout.EntityKind.values()) {
 			CheckBox kindCheckbox = new CheckBox(displayName(kind));
@@ -218,13 +254,21 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 		}
 		toolBar.getItems().add(new Separator());
 
-		Label commitLimitLabel = new Label("Commits shown: ");
-		Spinner<Integer> commitLimitSpinner = new EditableSpinner(1, COMMIT_LIMIT_MAX, commitLimit);
+		Label commitLimitLabel = new Label("Commits shown (0 = all): ");
+		Spinner<Integer> commitLimitSpinner = new EditableSpinner(0, COMMIT_LIMIT_MAX, commitLimit);
 		commitLimitSpinner.valueProperty().addListener((obs, oldValue, newValue) -> {
 			KnowledgeGraphView.this.commitLimit = newValue;
 			KnowledgeGraphView.this.refreshGraph();
 		});
 		toolBar.getItems().addAll(commitLimitLabel, commitLimitSpinner, new Separator());
+
+		CheckBox constraintsCheckbox = new CheckBox("Show constraints");
+		constraintsCheckbox.setSelected(this.includeConstraints);
+		constraintsCheckbox.selectedProperty().addListener((ov, oldVal, newVal) -> {
+			KnowledgeGraphView.this.includeConstraints = newVal;
+			KnowledgeGraphView.this.refreshGraph();
+		});
+		toolBar.getItems().add(constraintsCheckbox);
 
 		CheckBox computedEdgesCheckbox = new CheckBox("Show variant -> association edges (computed)");
 		computedEdgesCheckbox.setSelected(false);
@@ -242,16 +286,38 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 		return Character.toUpperCase(name.charAt(0)) + name.substring(1).toLowerCase() + "s";
 	}
 
+	/**
+	 * The two layout modes need genuinely different node styling, not just different positions:
+	 * {@link LayoutMode#LANE}'s box shape sized in "gu" (graph units, so its footprint stays fixed
+	 * relative to the layout's own coordinate space - see {@code FeaturesView}'s identical
+	 * reasoning) is enormous relative to {@link SpringBox}'s physics scale, which - per
+	 * {@code ArtifactGraphView}'s own proven-working circle nodes - is tuned for small, "px" (fixed
+	 * on-screen pixel size regardless of zoom) shapes. Using the LANE box size in FORCE_DIRECTED
+	 * mode was the real cause of a node rendering as one screen-filling blob: every node's box was
+	 * ~100x wider than the tiny area SpringBox actually spreads nodes across, so the boxes
+	 * overlapped completely regardless of how well the physics itself had settled.
+	 */
 	private void updateGraphStylesheet() {
 		String textMode = this.showLabels ? "text-mode: normal; " : "text-mode: hidden; ";
 		StringBuilder css = new StringBuilder();
-		css.append("node { ").append(textMode)
-				.append("text-background-mode: plain; shape: box; size: ").append(NODE_WIDTH).append("gu, ").append(NODE_HEIGHT)
-				.append("gu; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
+		if (this.layoutMode == LayoutMode.LANE) {
+			css.append("node { ").append(textMode)
+					.append("text-background-mode: plain; shape: box; size: ").append(NODE_WIDTH).append("gu, ").append(NODE_HEIGHT)
+					.append("gu; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
+		} else {
+			css.append("node { ").append(textMode)
+					.append("text-background-mode: plain; shape: circle; size: ").append(FORCE_DIRECTED_NODE_SIZE)
+					.append("px; stroke-mode: plain; stroke-color: #000000; stroke-width: 1px; } ");
+		}
 		for (KnowledgeGraphLayout.EntityKind kind : KnowledgeGraphLayout.EntityKind.values()) {
 			css.append("node.").append(kind.name().toLowerCase()).append(" { fill-color: ")
 					.append(toHexColor(CategoricalColorPalette.colorForIndex(kind.ordinal()))).append("; } ");
 		}
+		// same fill as a plain feature node, just a bold outline - see the class javadoc on why
+		// MANDATORY is a Feature-node decoration here rather than its own node or a self-loop edge.
+		css.append("node.featuremandatory { fill-color: ")
+				.append(toHexColor(CategoricalColorPalette.colorForIndex(KnowledgeGraphLayout.EntityKind.FEATURE.ordinal())))
+				.append("; stroke-width: 3px; } ");
 		css.append("edge { ").append(textMode).append(" size: 1px; arrow-size: 6px, 4px; } ");
 		for (Map.Entry<KnowledgeGraphLayout.EdgeKind, String> entry : EDGE_COLORS.entrySet()) {
 			css.append("edge.").append(entry.getKey().name().toLowerCase()).append(" { fill-color: ").append(entry.getValue()).append("; } ");
@@ -361,13 +427,20 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 	 */
 	private KnowledgeGraphLayout.Snapshot buildSnapshot() {
 		return KnowledgeGraphLayout.compute(this.service.getRepository(), Set.copyOf(this.enabledKinds),
-				this.commitLimit, this.includeComputedVariantAssociationEdges);
+				this.commitLimit, this.includeConstraints, this.includeComputedVariantAssociationEdges);
 	}
 
 	/**
 	 * Renders a previously-built snapshot into the live GraphStream graph. Swing-thread only. Same
 	 * flicker-avoidance (view hidden during rebuild) and camera-reset-only-on-first-render as
 	 * {@code ArtifactGraphView}/{@code FeaturesView}.
+	 * <p>
+	 * {@link #forceDirectedLayout} is unconditionally detached/cleared before the rebuild and only
+	 * re-attached afterwards if {@link #layoutMode} is {@link LayoutMode#FORCE_DIRECTED} - mirrors
+	 * {@code ArtifactGraphView#applySnapshot}'s own always-detach-then-rebuild-then-reattach
+	 * sequence (proven safe there to call unconditionally, including when the sink was never
+	 * attached in the first place). In {@link LayoutMode#LANE}, node positions are set explicitly
+	 * from the snapshot instead, and physics-only state (like {@link Layout#clear()}) doesn't apply.
 	 */
 	private void applySnapshot(KnowledgeGraphLayout.Snapshot snapshot) {
 		assert viewer != null && view != null;
@@ -376,6 +449,10 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 
 		this.view.setVisible(false);
 		try {
+			this.viewer.disableAutoLayout();
+			this.graph.removeSink(this.forceDirectedLayout);
+			this.forceDirectedLayout.removeAttributeSink(this.graph);
+			this.forceDirectedLayout.clear();
 			this.graph.clear();
 
 			this.graph.setAttribute("ui.quality");
@@ -387,8 +464,13 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 						? placement.label + " (" + placement.artifactCount + ")"
 						: placement.label;
 				graphNode.setAttribute("label", label);
-				graphNode.setAttribute("xyz", placement.x, placement.y, 0.0);
-				graphNode.setAttribute("ui.class", placement.kind.name().toLowerCase());
+				if (this.layoutMode == LayoutMode.LANE) {
+					graphNode.setAttribute("xyz", placement.x, placement.y, 0.0);
+				}
+				// FORCE_DIRECTED: deliberately leave "xyz" unset, exactly like ArtifactGraphView's
+				// own SpringBox-driven nodes - SpringBox assigns its own internal initial
+				// placement to unpositioned nodes, already calibrated to its own physics scale.
+				graphNode.setAttribute("ui.class", placement.mandatory ? "featuremandatory" : placement.kind.name().toLowerCase());
 			}
 			for (KnowledgeGraphLayout.Edge edge : snapshot.edges) {
 				this.graph.addEdge(edge.id, edge.sourceId, edge.targetId, true)
@@ -397,15 +479,53 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 
 			this.updateGraphStylesheet();
 
-			if (firstRender) {
-				this.view.getCamera().resetView();
+			if (this.layoutMode == LayoutMode.FORCE_DIRECTED) {
+				this.graph.addSink(this.forceDirectedLayout);
+				this.forceDirectedLayout.addAttributeSink(this.graph);
+				this.viewer.enableAutoLayout(this.forceDirectedLayout);
 			}
+
+			boolean layoutModeChanged = this.layoutMode != this.lastAppliedLayoutMode;
+			if (firstRender || layoutModeChanged) {
+				this.view.getCamera().resetView();
+				if (this.layoutMode == LayoutMode.FORCE_DIRECTED) {
+					// SpringBox spawns every node clustered near the origin and spreads them out
+					// over the next several frames on GraphStream's own render thread, asynchronously,
+					// well after this method returns - the resetView() just above only fits that
+					// initial cluster, which is exactly the "still need to zoom/reset manually"
+					// symptom switching into this mode had. A second, later fit - once physics has
+					// actually had a chance to spread out - is what actually shows the settled graph.
+					scheduleDelayedCameraReset();
+				}
+			}
+			this.lastAppliedLayoutMode = this.layoutMode;
 		} finally {
 			this.view.setVisible(true);
 		}
 
-		computeContentBounds(snapshot);
-		Platform.runLater(this::updateScrollBarRanges);
+		if (this.layoutMode == LayoutMode.LANE) {
+			computeContentBounds(snapshot);
+			Platform.runLater(this::updateScrollBarRanges);
+		}
+	}
+
+	/** See the call site in {@link #applySnapshot} for why force-directed mode needs a second, delayed camera fit. */
+	private void scheduleDelayedCameraReset() {
+		Thread thread = new Thread(() -> {
+			try {
+				Thread.sleep(FORCE_DIRECTED_SETTLE_DELAY_MS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			}
+			SwingUtilities.invokeLater(() -> {
+				if (this.view != null && this.layoutMode == LayoutMode.FORCE_DIRECTED) {
+					this.view.getCamera().resetView();
+				}
+			});
+		});
+		thread.setDaemon(true);
+		thread.start();
 	}
 
 	/** See {@code FeaturesView.computeContentBounds} - same reasoning (camera metrics aren't reliable synchronously after a mutation). */
@@ -470,9 +590,12 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 
 	private static final int NODE_WIDTH = 110;
 	private static final int NODE_HEIGHT = 32;
+	/** Matches CommitGraphView's node size - a physics-friendly scale, unlike LANE mode's much larger label-bearing boxes (see {@link #updateGraphStylesheet}). */
+	private static final int FORCE_DIRECTED_NODE_SIZE = 24;
 	private static final boolean DEFAULT_SHOW_LABELS = true;
 	private static final int DEFAULT_COMMIT_LIMIT = 50;
 	private static final int COMMIT_LIMIT_MAX = 1000;
+	private static final long FORCE_DIRECTED_SETTLE_DELAY_MS = 900;
 
 	/**
 	 * Fixed colors per relation kind, reused from {@link CategoricalColorPalette}'s own hues for
@@ -485,9 +608,9 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener {
 	static {
 		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.TOUCHES, "#4a3aa788");
 		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.SELECTS, "#89878188");
+		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.INVOLVES, "#eb683488");
 		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.REQUIRES, "#1baf7a");
 		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.EXCLUDES, "#e34948");
-		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.MANDATORY, "#000000");
 		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.PRODUCES_VARIANT, "#2a78d6");
 		EDGE_COLORS.put(KnowledgeGraphLayout.EdgeKind.TOUCHES_COMPUTED, "#eda10099");
 	}

@@ -6,12 +6,14 @@ import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -20,10 +22,10 @@ import java.util.Set;
 
 /**
  * Pure computation behind the Knowledge Graph tab (see {@code KnowledgeGraphView} in
- * {@code gui.view.graph}): lays out Features, Constraints, Commits, Associations, and Variants in
- * one lane per entity type, plus the direct (object-reference) relationships between them, with no
- * dependency on JavaFX/GraphStream so the algorithm can be reasoned about and tested on its own -
- * mirrors {@link FeatureModelTree}'s separation of pure layout from rendering.
+ * {@code gui.view.graph}): lays out Features, Commits, Associations, and Variants in one lane per
+ * entity type, plus the direct (object-reference) relationships between them, with no dependency on
+ * JavaFX/GraphStream so the algorithm can be reasoned about and tested on its own - mirrors
+ * {@link FeatureModelTree}'s separation of pure layout from rendering.
  * <p>
  * Deliberately scoped to <em>structural</em> relationships only - real object references already in
  * the domain model - not computed/semantic ones (e.g. whether a presence condition implies a feature
@@ -36,15 +38,20 @@ import java.util.Set;
  * artifact trees exhaustively; duplicating that here would explode node count without adding
  * insight. Instead each Association's artifact count ({@link at.jku.isse.ecco.tree.Node#countArtifacts()})
  * rides along on its {@link Placement#artifactCount}, for the view to show as a label/size hint.
+ * <p>
+ * Constraints are not their own node type either: REQUIRES/EXCLUDES render as a direct edge between
+ * the two Feature nodes involved (not a third node in between), and MANDATORY renders as a decoration
+ * on the single Feature it applies to ({@link Placement#mandatory}) rather than a self-loop edge -
+ * both are just a more direct rendering of exactly the same {@link Constraint}, not a scope change.
  */
 public final class KnowledgeGraphLayout {
 
 	private KnowledgeGraphLayout() {
 	}
 
-	public enum EntityKind {FEATURE, CONSTRAINT, COMMIT, ASSOCIATION, VARIANT}
+	public enum EntityKind {FEATURE, COMMIT, ASSOCIATION, VARIANT}
 
-	public enum EdgeKind {TOUCHES, SELECTS, REQUIRES, EXCLUDES, MANDATORY, PRODUCES_VARIANT, TOUCHES_COMPUTED}
+	public enum EdgeKind {TOUCHES, SELECTS, INVOLVES, REQUIRES, EXCLUDES, PRODUCES_VARIANT, TOUCHES_COMPUTED}
 
 	private static final double LANE_SPACING = 220;
 	private static final double X_SPACING = 140;
@@ -59,14 +66,17 @@ public final class KnowledgeGraphLayout {
 		public final double y;
 		/** {@link at.jku.isse.ecco.tree.Node#countArtifacts()} for an ASSOCIATION placement; -1 otherwise. */
 		public final int artifactCount;
+		/** True iff this is a FEATURE placement subject to an accepted MANDATORY constraint. */
+		public final boolean mandatory;
 
-		private Placement(EntityKind kind, String id, String label, double x, double y, int artifactCount) {
+		private Placement(EntityKind kind, String id, String label, double x, double y, int artifactCount, boolean mandatory) {
 			this.kind = kind;
 			this.id = id;
 			this.label = label;
 			this.x = x;
 			this.y = y;
 			this.artifactCount = artifactCount;
+			this.mandatory = mandatory;
 		}
 	}
 
@@ -98,20 +108,24 @@ public final class KnowledgeGraphLayout {
 	 * @param enabledKinds                         which entity-type lanes to actually draw; an edge is
 	 *                                              included only if both endpoints' lanes are enabled.
 	 * @param commitLimit                           how many of the most recent commits (by {@link Commit#getDate()})
-	 *                                              are "in scope". Controls scale, independent of whether the
-	 *                                              COMMIT lane itself is enabled: Associations/Variants shown are
-	 *                                              always derived from this same windowed commit set, so hiding
-	 *                                              the Commit lane doesn't silently uncap Association/Variant count.
+	 *                                              are "in scope", or {@code <= 0} for no limit (every commit).
+	 *                                              Controls scale, independent of whether the COMMIT lane itself
+	 *                                              is enabled: Associations/Variants shown are always derived
+	 *                                              from this same windowed commit set, so hiding the Commit lane
+	 *                                              doesn't silently uncap Association/Variant count.
+	 * @param includeConstraints                   whether to draw accepted REQUIRES/EXCLUDES constraints as
+	 *                                              Feature -> Feature edges and mark accepted-MANDATORY features
+	 *                                              (see the class javadoc for why these aren't their own node).
 	 * @param includeComputedVariantAssociationEdges opt-in: adds a Variant -> Association edge wherever
 	 *                                              {@code association.computeCondition().holds(variant.getConfiguration())} -
 	 *                                              the one relationship in this graph that isn't a direct object
 	 *                                              reference. Off by default (see the class javadoc).
 	 */
 	public static Snapshot compute(Repository repository, Set<EntityKind> enabledKinds, int commitLimit,
-									boolean includeComputedVariantAssociationEdges) {
+									boolean includeConstraints, boolean includeComputedVariantAssociationEdges) {
 		List<Commit> allCommits = new ArrayList<>(repository.getCommits());
 		allCommits.sort(Comparator.comparing(Commit::getDate));
-		int from = Math.max(0, allCommits.size() - commitLimit);
+		int from = commitLimit <= 0 ? 0 : Math.max(0, allCommits.size() - commitLimit);
 		List<Commit> windowedCommits = new ArrayList<>(allCommits.subList(from, allCommits.size()));
 
 		// associations are identity-keyed (not equals/hashCode) - same convention Repository.java's
@@ -133,8 +147,14 @@ public final class KnowledgeGraphLayout {
 		List<Feature> features = new ArrayList<>(repository.getFeatures());
 		features.sort(Comparator.comparing(Feature::getName, String.CASE_INSENSITIVE_ORDER));
 
-		List<Constraint> constraints = new ArrayList<>(repository.getConstraints());
-		constraints.sort(Comparator.comparing(Constraint::getId));
+		List<Constraint> constraints = includeConstraints ? new ArrayList<>(repository.getConstraints()) : List.of();
+
+		Set<String> mandatoryFeatureNames = new HashSet<>();
+		for (Constraint constraint : constraints) {
+			if (constraint.getKind() == Constraint.Kind.MANDATORY) {
+				mandatoryFeatureNames.add(constraint.getFeatureA());
+			}
+		}
 
 		List<Association> associations = new ArrayList<>(touchedAssociations);
 		associations.sort(Comparator.comparing(Association::getId));
@@ -153,26 +173,18 @@ public final class KnowledgeGraphLayout {
 		for (int i = 0; i < features.size(); i++) {
 			Feature feature = features.get(i);
 			String id = "F:" + feature.getId();
-			nodes.add(new Placement(EntityKind.FEATURE, id, feature.getName(), i * X_SPACING, featureY, -1));
+			boolean mandatory = mandatoryFeatureNames.contains(feature.getName());
+			nodes.add(new Placement(EntityKind.FEATURE, id, feature.getName(), i * X_SPACING, featureY, -1, mandatory));
 			featureNodeIdByName.put(feature.getName(), id);
 		}
 
-		double constraintY = laneY(EntityKind.CONSTRAINT);
-		for (int i = 0; i < constraints.size(); i++) {
-			Constraint constraint = constraints.get(i);
-			String id = "K:" + constraint.getId();
-			nodes.add(new Placement(EntityKind.CONSTRAINT, id, constraintLabel(constraint), i * X_SPACING, constraintY, -1));
-
-			EdgeKind edgeKind = edgeKindOf(constraint.getKind());
+		for (Constraint constraint : constraints) {
+			if (constraint.getKind() == Constraint.Kind.MANDATORY) continue; // rendered as a Feature decoration above, not an edge
+			EdgeKind edgeKind = constraint.getKind() == Constraint.Kind.REQUIRES ? EdgeKind.REQUIRES : EdgeKind.EXCLUDES;
 			String featureAId = featureNodeIdByName.get(constraint.getFeatureA());
-			if (featureAId != null) {
-				edges.add(new Edge(id, featureAId, edgeKind));
-			}
-			if (constraint.getKind() != Constraint.Kind.MANDATORY) {
-				String featureBId = featureNodeIdByName.get(constraint.getFeatureB());
-				if (featureBId != null) {
-					edges.add(new Edge(id, featureBId, edgeKind));
-				}
+			String featureBId = featureNodeIdByName.get(constraint.getFeatureB());
+			if (featureAId != null && featureBId != null) {
+				edges.add(new Edge(featureAId, featureBId, edgeKind));
 			}
 		}
 
@@ -181,15 +193,32 @@ public final class KnowledgeGraphLayout {
 			Association association = associations.get(i);
 			String id = "A:" + association.getId();
 			int artifactCount = association.getRootNode() != null ? association.getRootNode().countArtifacts() : 0;
-			nodes.add(new Placement(EntityKind.ASSOCIATION, id, association.getAssociationString(), i * X_SPACING, associationY, artifactCount));
+			nodes.add(new Placement(EntityKind.ASSOCIATION, id, association.getAssociationString(), i * X_SPACING, associationY, artifactCount, false));
 			associationNodeIdById.put(association.getId(), id);
+
+			// Association -> Feature ("involves"): the positive features of every module in the
+			// association's own presence condition - already-recorded module/counter data (same
+			// source Association.computeCondition() always reads), not evaluated against anything
+			// external, so this is exactly as "structural/cheap" as Commit/Variant -> Feature above.
+			// One association can have several module terms (e.g. surplus/redundant lattice terms -
+			// see PresenceConditionMinimizer) that repeat the same feature, so dedupe per association
+			// rather than risk GraphStream rejecting a second edge with the same id.
+			Set<String> involvedFeatureIds = new HashSet<>();
+			for (Module module : association.computeCondition().getModules().keySet()) {
+				for (Feature feature : module.getPos()) {
+					String featureId = featureNodeIdByName.get(feature.getName());
+					if (featureId != null && involvedFeatureIds.add(featureId)) {
+						edges.add(new Edge(id, featureId, EdgeKind.INVOLVES));
+					}
+				}
+			}
 		}
 
 		double commitY = laneY(EntityKind.COMMIT);
 		for (int i = 0; i < windowedCommits.size(); i++) {
 			Commit commit = windowedCommits.get(i);
 			String id = "C:" + commit.getId();
-			nodes.add(new Placement(EntityKind.COMMIT, id, commitLabel(commit), i * X_SPACING, commitY, -1));
+			nodes.add(new Placement(EntityKind.COMMIT, id, commitLabel(commit), i * X_SPACING, commitY, -1, false));
 			commitNodeIdById.put(commit.getId(), id);
 
 			for (Association association : commit.getAssociations()) {
@@ -213,7 +242,7 @@ public final class KnowledgeGraphLayout {
 		for (int i = 0; i < variants.size(); i++) {
 			Variant variant = variants.get(i);
 			String id = "V:" + variant.getId();
-			nodes.add(new Placement(EntityKind.VARIANT, id, variantLabel(variant), i * X_SPACING, variantY, -1));
+			nodes.add(new Placement(EntityKind.VARIANT, id, variantLabel(variant), i * X_SPACING, variantY, -1, false));
 			variantNodeIdById.put(variant.getId(), id);
 
 			Configuration configuration = variant.getConfiguration();
@@ -255,7 +284,7 @@ public final class KnowledgeGraphLayout {
 		}
 
 		List<Placement> visibleNodes = new ArrayList<>();
-		Set<String> visibleNodeIds = new java.util.HashSet<>();
+		Set<String> visibleNodeIds = new HashSet<>();
 		for (Placement placement : nodes) {
 			if (enabledKinds.contains(placement.kind)) {
 				visibleNodes.add(placement);
@@ -274,28 +303,6 @@ public final class KnowledgeGraphLayout {
 
 	private static double laneY(EntityKind kind) {
 		return -kind.ordinal() * LANE_SPACING;
-	}
-
-	private static EdgeKind edgeKindOf(Constraint.Kind kind) {
-		switch (kind) {
-			case REQUIRES:
-				return EdgeKind.REQUIRES;
-			case EXCLUDES:
-				return EdgeKind.EXCLUDES;
-			default:
-				return EdgeKind.MANDATORY;
-		}
-	}
-
-	private static String constraintLabel(Constraint constraint) {
-		switch (constraint.getKind()) {
-			case REQUIRES:
-				return constraint.getFeatureA() + " → " + constraint.getFeatureB();
-			case EXCLUDES:
-				return constraint.getFeatureA() + " ✕ " + constraint.getFeatureB();
-			default:
-				return constraint.getFeatureA() + " (mandatory)";
-		}
 	}
 
 	private static String commitLabel(Commit commit) {

@@ -5,7 +5,6 @@ import at.jku.isse.ecco.gui.view.operation.checkout.CheckoutView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.gui.view.*;
 import at.jku.isse.ecco.gui.view.graph.ArtifactGraphView;
-import at.jku.isse.ecco.gui.view.graph.CommitGraphView;
 import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
 import at.jku.isse.ecco.gui.view.graph.KnowledgeGraphView;
 import at.jku.isse.ecco.gui.view.operation.*;
@@ -179,15 +178,6 @@ public class MainView extends BorderPane implements EccoListener {
 
 		DependencyGraphView dependencyGraphView = new DependencyGraphView(eccoService);
 		dependencyGraphTab.setContent(dependencyGraphView);
-
-		// commits graph
-		Tab commitGraphTab = new Tab();
-		commitGraphTab.setText("Commit Graph");
-		commitGraphTab.setClosable(false);
-		tabPane.getTabs().add(commitGraphTab);
-
-		CommitGraphView commitGraphView = new CommitGraphView(eccoService);
-		commitGraphTab.setContent(commitGraphView);
 
 		// knowledge graph
 		Tab knowledgeGraphTab = new Tab();
