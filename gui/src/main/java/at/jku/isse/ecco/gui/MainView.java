@@ -102,6 +102,17 @@ public class MainView extends BorderPane implements EccoListener {
 		// sceneProperty() listener workaround.
 		this.openMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN));
 
+		// Cmd+Q (quit) / Cmd+W (close window) - standard macOS conventions, same shortcut modifier
+		// as above elsewhere. Not tied to any single MenuItem/menu (there's no visible "Quit" or
+		// "Close Window" item), so these register directly on each Scene's own accelerator map
+		// instead - see installStandardAccelerators, applied here once the main Scene exists and
+		// again per dialog Scene in openDialog, since each dialog is its own separate Scene/Stage.
+		this.sceneProperty().addListener((observable, oldScene, newScene) -> {
+			if (newScene != null) {
+				installStandardAccelerators(newScene);
+			}
+		});
+
 
 		// one shared "Minimize Presence Conditions" run, triggered from the Feature Model view and
 		// observed by every other view that displays a minimized condition
@@ -218,11 +229,26 @@ public class MainView extends BorderPane implements EccoListener {
 		dialog.initOwner(MainView.this.getScene().getWindow());
 
 		Scene dialogScene = new Scene(content);
+		installStandardAccelerators(dialogScene);
 		dialog.setScene(dialogScene);
 		dialog.setTitle(title);
 
 		dialog.show();
 		dialog.requestFocus();
+	}
+
+
+	/**
+	 * Cmd+Q quits the whole app (mirrors the OS quit path: closing the last window already triggers
+	 * this today since {@code Platform.implicitExit} defaults to true, so this just gives it a
+	 * shortcut and makes it work even while a dialog, not the main window, has focus). Cmd+W closes
+	 * whichever window ({@code scene}) is currently focused - the main window or a dialog. Ctrl+Q/
+	 * Ctrl+W on non-macOS platforms (SHORTCUT_DOWN maps to the platform's own shortcut modifier).
+	 */
+	private static void installStandardAccelerators(Scene scene) {
+		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.Q, KeyCombination.SHORTCUT_DOWN), Platform::exit);
+		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN),
+				() -> ((Stage) scene.getWindow()).close());
 	}
 
 
