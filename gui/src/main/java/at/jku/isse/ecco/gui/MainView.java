@@ -7,6 +7,7 @@ import at.jku.isse.ecco.gui.view.*;
 import at.jku.isse.ecco.gui.view.graph.ArtifactGraphView;
 import at.jku.isse.ecco.gui.view.graph.CommitGraphView;
 import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
+import at.jku.isse.ecco.gui.view.graph.KnowledgeGraphView;
 import at.jku.isse.ecco.gui.view.operation.*;
 import at.jku.isse.ecco.gui.view.operation.InitView;
 import at.jku.isse.ecco.service.listener.EccoListener;
@@ -187,6 +188,17 @@ public class MainView extends BorderPane implements EccoListener {
 
 		CommitGraphView commitGraphView = new CommitGraphView(eccoService);
 		commitGraphTab.setContent(commitGraphView);
+
+		// knowledge graph
+		Tab knowledgeGraphTab = new Tab();
+		knowledgeGraphTab.setText("Knowledge Graph");
+		knowledgeGraphTab.setClosable(false);
+		tabPane.getTabs().add(knowledgeGraphTab);
+
+		KnowledgeGraphView knowledgeGraphView = new KnowledgeGraphView(eccoService);
+		knowledgeGraphTab.setContent(knowledgeGraphView);
+		knowledgeGraphView.setTabVisible(knowledgeGraphTab.isSelected());
+		knowledgeGraphTab.selectedProperty().addListener((obs, wasSelected, isSelected) -> knowledgeGraphView.setTabVisible(isSelected));
 
 		// charts
 		Tab chartsTab = new Tab();
