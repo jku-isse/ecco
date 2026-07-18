@@ -134,6 +134,103 @@ tasks.register('jpackageApp', Exec) {
 	)
 }
 
+tasks.register('buildWindowsAppIcon') {
+	group = 'distribution'
+	description = 'Converts the ECCO logo into a Windows .ico, for use as the jpackage app-image icon on Windows. Pure-Java (no native tool dependency, unlike buildAppIcon\'s sips/iconutil), so it can be regenerated from any host OS - only jpackageAppWindows itself needs to actually run on Windows.'
+
+	def logoFile = project.file('src/main/resources/ecco-logo.png')
+	def icoFile = layout.buildDirectory.file('appIcon/ECCO.ico')
+
+	inputs.file(logoFile)
+	outputs.file(icoFile)
+
+	doLast {
+		def logoImage = javax.imageio.ImageIO.read(logoFile)
+		def squareSize = Math.max(logoImage.width, logoImage.height)
+
+		// pad the (non-square, wordmarked) logo out to a square canvas on the same navy
+		// background EccoGui's splash screen uses - same treatment as buildAppIcon's macOS .icns
+		def padded = new java.awt.image.BufferedImage(squareSize, squareSize, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+		def paddedGraphics = padded.createGraphics()
+		paddedGraphics.setColor(new java.awt.Color(0x0b, 0x0f, 0x1a))
+		paddedGraphics.fillRect(0, 0, squareSize, squareSize)
+		paddedGraphics.drawImage(logoImage, (int) ((squareSize - logoImage.width) / 2), (int) ((squareSize - logoImage.height) / 2), null)
+		paddedGraphics.dispose()
+
+		// standard Windows icon sizes; unlike .icns there's no @2x variant, just more entries
+		def sizes = [16, 32, 48, 64, 128, 256]
+		def pngDataBySize = sizes.collectEntries { size ->
+			def resized = new java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+			def resizedGraphics = resized.createGraphics()
+			resizedGraphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+			resizedGraphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+			resizedGraphics.drawImage(padded, 0, 0, size, size, null)
+			resizedGraphics.dispose()
+			def pngBytes = new java.io.ByteArrayOutputStream()
+			javax.imageio.ImageIO.write(resized, 'png', pngBytes)
+			[(size): pngBytes.toByteArray()]
+		}
+
+		// hand-rolled ICO container: an ICONDIR header followed by one ICONDIRENTRY per size, each
+		// entry's image data a plain PNG (a format Windows has accepted inside .ico since Vista) -
+		// there's no tool on Windows (nor reliably available cross-platform) that converts a PNG
+		// straight to .ico the way sips/iconutil handle .icns on macOS, so this replaces that step.
+		def headerSize = 6 + 16 * sizes.size()
+		def offset = headerSize
+		def dir = java.nio.ByteBuffer.allocate(headerSize).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+		dir.putShort((short) 0)
+		dir.putShort((short) 1)
+		dir.putShort((short) sizes.size())
+		sizes.each { size ->
+			def byteSize = size == 256 ? 0 : size
+			dir.put((byte) byteSize)
+			dir.put((byte) byteSize)
+			dir.put((byte) 0)
+			dir.put((byte) 0)
+			dir.putShort((short) 1)
+			dir.putShort((short) 32)
+			dir.putInt(pngDataBySize[size].length)
+			dir.putInt(offset)
+			offset += pngDataBySize[size].length
+		}
+
+		def icoFileHandle = icoFile.get().asFile
+		icoFileHandle.parentFile.mkdirs()
+		icoFileHandle.withOutputStream { stream ->
+			stream.write(dir.array())
+			sizes.each { size -> stream.write(pngDataBySize[size]) }
+		}
+	}
+}
+
+tasks.register('jpackageAppWindows', Exec) {
+	group = 'distribution'
+	description = 'Packages the ECCO GUI as a native Windows application image (ECCO.exe) via jpackage, so the OS shows "ECCO" instead of "java" as the application name. Must be run on Windows itself - jpackage always targets whatever OS it runs on, and a .ico icon is only meaningful there.'
+	dependsOn tasks.named('installDist'), tasks.named('buildWindowsAppIcon')
+
+	def jpackageExe = org.gradle.internal.jvm.Jvm.current().getExecutable('jpackage')
+	def libDir = layout.buildDirectory.dir("install/${project.name}/lib")
+	def destDir = layout.buildDirectory.dir('jpackageWindows')
+	def icoFile = layout.buildDirectory.file('appIcon/ECCO.ico')
+
+	doFirst {
+		project.delete(destDir.get())
+	}
+
+	commandLine(
+			jpackageExe,
+			'--type', 'app-image',
+			'--name', 'ECCO',
+			'--input', libDir.get().asFile,
+			'--main-jar', tasks.named('jar').get().archiveFileName.get(),
+			'--main-class', 'at.jku.isse.ecco.gui.Launcher',
+			'--dest', destDir.get().asFile,
+			'--icon', icoFile.get().asFile,
+			'--java-options', '-Xss1024m',
+			'--java-options', '-Xmx8g',
+	)
+}
+
 ospackage {
 	summary 'GUI (Graphical User Interface) for ECCO.'
 	packageDescription 'This package provides a GUI (Graphical User Interface) for ECCO.'
