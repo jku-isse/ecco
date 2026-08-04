@@ -4,6 +4,7 @@ import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.mining.MinimizationPreferences;
 import at.jku.isse.ecco.service.AdapterPreferences;
+import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LilypondPreferences;
 import at.jku.isse.ecco.service.LlmPreferences;
 import javafx.geometry.Insets;
@@ -11,10 +12,13 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -28,6 +32,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,10 +41,12 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Four independent, globally-scoped (not tied to any open repository) preference sections, each its
- * own dialog (one per {@link Section}, chosen by the caller - see {@code MainView}'s Preferences
- * menu) rather than one dialog bundling all four behind collapsible panes, so each is reachable and
- * saveable on its own:
+ * A single IntelliJ-style Settings dialog: a category list on the left (one entry per
+ * {@link Section}), the selected category's form on the right, and one Save/Cancel pair for the
+ * whole dialog. Every section's UI is built eagerly up front (see {@link #sectionsById}) so
+ * switching categories never loses an edit made in a section you're not currently looking at, and
+ * Save persists every field-based section together, not just the one on screen (Server is the one
+ * exception - see {@link #buildServerSection}).
  * <ul>
  *     <li>Plugins - activate/deactivate the discovered {@link ArtifactPlugin}s (e.g. Lilypond,
  *     Java, C, C++). Deactivated adapters are skipped by
@@ -50,29 +57,22 @@ import java.util.Set;
  *     <li>Minimization Settings - the min-witness/confidence thresholds used to re-mine accepted
  *     constraints before {@code MinimizationResults} runs.</li>
  *     <li>Lilypond Settings - where to find the Lilypond executable, if not found automatically.</li>
+ *     <li>Server - start/stop the ECCO server and watch its log; embeds {@link ServerView} as-is.</li>
  * </ul>
  */
 public class PreferencesView extends OperationView {
 
 	public enum Section {
-		// each dialog now holds only its own section (previously all four shared one dialog, tall
-		// enough by virtue of stacking all of them together) - OperationView's own default
-		// (setMinWidth(600), no minHeight) left the sparser sections sized down to whatever their
-		// few rows of controls computed to, which read as cramped; an explicit minimum per section
-		// keeps each comfortably readable regardless of how little it holds.
-		PLUGINS("Plugins", 600, 420),
-		LLM("LLM Settings", 550, 260),
-		MINIMIZATION("Minimization Settings", 550, 260),
-		LILYPOND("Lilypond Settings", 600, 300);
+		PLUGINS("Plugins"),
+		LLM("LLM"),
+		MINIMIZATION("Minimization"),
+		LILYPOND("Lilypond"),
+		SERVER("Server");
 
 		private final String title;
-		private final double minWidth;
-		private final double minHeight;
 
-		Section(String title, double minWidth, double minHeight) {
+		Section(String title) {
 			this.title = title;
-			this.minWidth = minWidth;
-			this.minHeight = minHeight;
 		}
 	}
 
@@ -80,33 +80,68 @@ public class PreferencesView extends OperationView {
 	private record SectionUi(Node content, Runnable save) {
 	}
 
-	public PreferencesView(Section section) {
+	private final Map<Section, SectionUi> sectionsById = new EnumMap<>(Section.class);
+
+	public PreferencesView(EccoService eccoService) {
+		this(eccoService, Section.PLUGINS);
+	}
+
+	/** @param initialSection the category selected when the dialog opens. */
+	public PreferencesView(EccoService eccoService, Section initialSection) {
 		super();
+
+		this.headerLabel.setText("Settings");
+		this.setMinWidth(700);
+		this.setMinHeight(420);
 
 		Button cancelButton = new Button("Cancel");
 		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
 		this.leftButtons.getChildren().setAll(cancelButton);
 
-		this.headerLabel.setText(section.title);
-		this.setMinWidth(section.minWidth);
-		this.setMinHeight(section.minHeight);
-
 		Button saveButton = new Button("Save");
+		saveButton.setDefaultButton(true);
 		this.rightButtons.getChildren().setAll(saveButton);
 
-		SectionUi ui = switch (section) {
-			case PLUGINS -> buildPluginsSection();
-			case LLM -> buildLlmSection();
-			case MINIMIZATION -> buildMinimizationSection();
-			case LILYPOND -> buildLilypondSection();
-		};
+		this.sectionsById.put(Section.PLUGINS, buildPluginsSection());
+		this.sectionsById.put(Section.LLM, buildLlmSection());
+		this.sectionsById.put(Section.MINIMIZATION, buildMinimizationSection());
+		this.sectionsById.put(Section.LILYPOND, buildLilypondSection());
+		this.sectionsById.put(Section.SERVER, buildServerSection(eccoService));
 
-		ScrollPane outerScrollPane = new ScrollPane(ui.content());
-		outerScrollPane.setFitToWidth(true);
-		this.setCenter(outerScrollPane);
+		ScrollPane contentScrollPane = new ScrollPane();
+		contentScrollPane.setFitToWidth(true);
+
+		ListView<Section> categoryList = new ListView<>();
+		categoryList.getItems().setAll(Section.values());
+		categoryList.setPrefWidth(160);
+		categoryList.setMaxWidth(160);
+		categoryList.setCellFactory(list -> new ListCell<>() {
+			@Override
+			protected void updateItem(Section section, boolean empty) {
+				super.updateItem(section, empty);
+				this.setText(empty || section == null ? null : section.title);
+			}
+		});
+		categoryList.getSelectionModel().selectedItemProperty().addListener((observable, oldSection, newSection) -> {
+			if (newSection != null) {
+				contentScrollPane.setContent(this.sectionsById.get(newSection).content());
+			}
+		});
+		categoryList.getSelectionModel().select(initialSection);
+
+		// BorderPane, not HBox+hgrow: BorderPane's center child is always resized to fill exactly
+		// the space left of categoryList, regardless of the selected section's own preferred width -
+		// an HBox only grants that width, it doesn't force the child to consume it, which left each
+		// GridPane-based section sized to its own preferred (narrow) width instead of stretching.
+		BorderPane body = new BorderPane();
+		body.setLeft(categoryList);
+		body.setCenter(contentScrollPane);
+		this.setCenter(body);
 
 		saveButton.setOnAction(event -> {
-			ui.save().run();
+			for (SectionUi sectionUi : this.sectionsById.values()) {
+				sectionUi.save().run();
+			}
 			((Stage) this.getScene().getWindow()).close();
 		});
 
@@ -139,11 +174,7 @@ public class PreferencesView extends OperationView {
 		Label pluginsNoteLabel = new Label("Deactivated adapters take effect the next time a repository is opened or initialized.");
 		pluginsNoteLabel.setWrapText(true);
 
-		ScrollPane scrollPane = new ScrollPane(listBox);
-		scrollPane.setFitToWidth(true);
-		scrollPane.setPrefViewportHeight(250);
-
-		VBox pluginsBox = new VBox(10, scrollPane, pluginsNoteLabel);
+		VBox pluginsBox = new VBox(10, listBox, pluginsNoteLabel);
 		pluginsBox.setPadding(new Insets(10));
 
 		Runnable save = () -> {
@@ -250,7 +281,7 @@ public class PreferencesView extends OperationView {
 		return new SectionUi(minimizationGridPane, save);
 	}
 
-	private SectionUi buildLilypondSection() {
+	private static SectionUi buildLilypondSection() {
 		GridPane lilypondGridPane = new GridPane();
 		lilypondGridPane.setHgap(10);
 		lilypondGridPane.setVgap(10);
@@ -280,7 +311,7 @@ public class PreferencesView extends OperationView {
 			fileChooser.setTitle("Select Lilypond Executable");
 			preselectExistingParent(lilypondExecutableField.getText())
 					.ifPresent(dir -> fileChooser.setInitialDirectory(dir.toFile()));
-			File selected = fileChooser.showOpenDialog(this.getScene().getWindow());
+			File selected = fileChooser.showOpenDialog(browseExecutableButton.getScene().getWindow());
 			if (selected != null) {
 				lilypondExecutableField.setText(selected.getAbsolutePath());
 			}
@@ -297,7 +328,7 @@ public class PreferencesView extends OperationView {
 		browseSearchPathButton.setOnAction(event -> {
 			DirectoryChooser directoryChooser = new DirectoryChooser();
 			directoryChooser.setTitle("Add Lilypond Search Path");
-			File selected = directoryChooser.showDialog(this.getScene().getWindow());
+			File selected = directoryChooser.showDialog(browseSearchPathButton.getScene().getWindow());
 			if (selected != null) {
 				String existing = lilypondSearchPathsField.getText();
 				String updated = (existing == null || existing.isBlank())
@@ -324,6 +355,16 @@ public class PreferencesView extends OperationView {
 		};
 
 		return new SectionUi(lilypondGridPane, save);
+	}
+
+	/**
+	 * Unlike the other sections, {@link ServerView} is a live control (start/stop, a running log),
+	 * not a set of fields to persist - reused as-is, with a no-op save, since Start/Stop already
+	 * take effect immediately via its own buttons rather than waiting on this dialog's Save.
+	 */
+	private static SectionUi buildServerSection(EccoService eccoService) {
+		return new SectionUi(new ServerView(eccoService), () -> {
+		});
 	}
 
 	/** Best-effort existing parent directory of a possibly-blank/invalid path, for pre-populating a chooser dialog. */

@@ -21,6 +21,11 @@ dependencies {
     // macOS-style ("Cupertino") JavaFX theme - see EccoGui.showMainStage()
     implementation 'io.github.mkpaz:atlantafx-base:2.1.0'
 
+    // Native bridge (JNA) to AppKit's NSMenu, used only to install a "Preferences..." item into
+    // the real macOS application menu - see MainView's Mac app-menu setup. No-ops safely (via its
+    // own DummyNativeAdapter) on Windows/Linux, so it's safe to always include.
+    implementation 'de.jangassen:nsmenufx:3.1.0'
+
     implementation 'org.graphstream:gs-core:2.0'
     implementation 'org.graphstream:gs-algo:2.0'
     implementation 'org.graphstream:gs-ui-javafx:2.0'
