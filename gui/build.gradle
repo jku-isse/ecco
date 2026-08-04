@@ -15,7 +15,21 @@ javafx {
 }
 
 def javafxVersion = "21.0.4"
-def platform = "mac-aarch64"
+// Real org.openjfx artifact classifiers - "mac"/"mac-aarch64"/"linux"/"linux-aarch64"/"win" (JavaFX
+// ships Windows binaries for x86_64 only, so "win" is the only Windows classifier; on Windows-on-ARM
+// this only resolves/runs under the JDK's x86_64 emulation layer, since a native arm64 JDK there
+// still reports os.arch=aarch64 and there is no windows-aarch64 javafx artifact to fall back to).
+def platform = {
+	def os = org.gradle.internal.os.OperatingSystem.current()
+	def isArm = System.getProperty("os.arch") in ["aarch64", "arm64"]
+	if (os.windows) {
+		return "win"
+	} else if (os.macOsX) {
+		return isArm ? "mac-aarch64" : "mac"
+	} else {
+		return isArm ? "linux-aarch64" : "linux"
+	}
+}()
 
 dependencies {
     // macOS-style ("Cupertino") JavaFX theme - see EccoGui.showMainStage()
