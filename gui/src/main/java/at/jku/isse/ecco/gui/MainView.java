@@ -10,6 +10,7 @@ import at.jku.isse.ecco.gui.view.graph.KnowledgeGraphView;
 import at.jku.isse.ecco.gui.view.operation.*;
 import at.jku.isse.ecco.gui.view.operation.InitView;
 import at.jku.isse.ecco.service.listener.EccoListener;
+import de.jangassen.MenuToolkit;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
@@ -32,12 +33,28 @@ import java.util.List;
  * Preferences) replaces what used to be two separate navigation layers - an 11-button action
  * toolbar and a flat, ungrouped 11-tab strip below it - collapsing them into one, organized by
  * workflow instead of by "is this a dialog or a tab". "Action" items (New, Open, Close, Commit,
- * Import From Git, Checkout, Fetch, Pull, Push, Settings, Server) behave exactly as their old
- * toolbar buttons did, via {@link #openDialog}. "Content" items (Status, Variants, Remotes, Feature
- * Model, Commits, Associations, Artifacts, Charts, Knowledge Graph, Artifact Graph, Dependency
- * Graph) swap a single shared content area via {@link #switchTo} - the same "one view visible at a
- * time" model the tab pane already had, just menu-driven instead of tab-driven. Each view's own
- * internal toolbar (e.g. Knowledge Graph's entity/layout controls) is untouched either way.
+ * Import From Git, Checkout, Fetch, Pull, Push) behave exactly as their old toolbar buttons did,
+ * via {@link #openDialog}. "Content" items (Variants, Remotes, Feature Model, Commits,
+ * Associations, Artifacts, Charts, Knowledge Graph, Artifact Graph, Dependency Graph) swap a single
+ * shared content area via {@link #switchTo} - the same "one view visible at a time" model the tab
+ * pane already had, just menu-driven instead of tab-driven. Each view's own internal toolbar (e.g.
+ * Knowledge Graph's entity/layout controls) is untouched either way. Status (repository/base
+ * directory info) has no menu entry of its own - it's simply the default view {@link #switchTo}
+ * lands on at startup, before any other item has been picked, so a separate way to navigate back
+ * to it would be redundant.
+ * <p>
+ * Settings (Plugins/LLM/Minimization/Lilypond/Server, all now one {@link PreferencesView} dialog)
+ * is reached differently depending on platform: on macOS it's wired as a "Preferences…" item in
+ * the real, native "ECCO" application menu (the bold, leftmost one) via
+ * {@link MenuToolkit#setApplicationMenu} - {@code java.awt.Desktop.setPreferencesHandler} looks
+ * like the obvious way to do this but does NOT work here: it hooks in through AWT's own Cocoa
+ * bridge, which is a separate native toolkit from the Glass bridge this class's own
+ * {@link MenuBar#setUseSystemMenuBar} already uses, so an AWT-registered handler is never
+ * reflected in the menu Glass actually has on screen. {@code MenuToolkit.setApplicationMenu}
+ * instead talks to AppKit's live {@code NSApplication.mainMenu} directly (via JNA) and only
+ * replaces its item 0 (the app menu), leaving everything Glass installed at positions 1+ (our own
+ * Repository/Local/etc. menus) untouched - see the {@code isMac} block below. Where that's not
+ * available (Windows/Linux), a "Preferences > Settings..." fallback menu item takes its place.
  */
 public class MainView extends BorderPane implements EccoListener {
 	private final EccoService eccoService;
@@ -53,8 +70,6 @@ public class MainView extends BorderPane implements EccoListener {
 	private final MenuItem fetchMenuItem = new MenuItem("Fetch...");
 	private final MenuItem pullMenuItem = new MenuItem("Pull...");
 	private final MenuItem pushMenuItem = new MenuItem("Push...");
-
-	private final MenuItem serverMenuItem = new MenuItem("Server...");
 
 	/**
 	 * Every menu item disabled while no repository is open - see {@link #updateView()}. Populated
@@ -85,16 +100,20 @@ public class MainView extends BorderPane implements EccoListener {
 		this.pullMenuItem.setOnAction(event -> this.openDialog("Pull", new PullView(eccoService)));
 		this.pushMenuItem.setOnAction(event -> this.openDialog("Push", new PushView(eccoService)));
 
-		this.serverMenuItem.setOnAction(event -> this.openDialog("Server", new ServerView(eccoService)));
+		// same check NSMenuFX's own NativeAdapterProvider uses internally to pick between its
+		// MacNativeAdapter and a no-op DummyNativeAdapter - mirrored here so this class can decide
+		// whether it still needs its own JavaFX-menu fallback for Settings (see below and the
+		// isMac block after the MenuBar is built).
+		boolean isMac = System.getProperty("os.name", "").startsWith("Mac");
 
-		MenuItem pluginsMenuItem = new MenuItem("Plugins...");
-		pluginsMenuItem.setOnAction(event -> this.openDialog("Plugins", new PreferencesView(PreferencesView.Section.PLUGINS)));
-		MenuItem llmSettingsMenuItem = new MenuItem("LLM Settings...");
-		llmSettingsMenuItem.setOnAction(event -> this.openDialog("LLM Settings", new PreferencesView(PreferencesView.Section.LLM)));
-		MenuItem minimizationSettingsMenuItem = new MenuItem("Minimization Settings...");
-		minimizationSettingsMenuItem.setOnAction(event -> this.openDialog("Minimization Settings", new PreferencesView(PreferencesView.Section.MINIMIZATION)));
-		MenuItem lilypondSettingsMenuItem = new MenuItem("Lilypond Settings...");
-		lilypondSettingsMenuItem.setOnAction(event -> this.openDialog("Lilypond Settings", new PreferencesView(PreferencesView.Section.LILYPOND)));
+		MenuItem settingsMenuItem = null;
+		if (!isMac) {
+			settingsMenuItem = new MenuItem("Settings...");
+			settingsMenuItem.setOnAction(event -> this.openDialog("Settings", new PreferencesView(eccoService)));
+			// Ctrl+, - not a strong platform convention outside macOS (which never reaches this
+			// branch), but harmless and matches the accelerator macOS gets for free from the OS.
+			settingsMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.COMMA, KeyCombination.SHORTCUT_DOWN));
+		}
 
 		// Cmd+O on macOS, Ctrl+O elsewhere (SHORTCUT_DOWN maps to the platform's own shortcut
 		// modifier). A MenuItem accelerator registers itself against the Scene once the MenuBar
@@ -110,6 +129,28 @@ public class MainView extends BorderPane implements EccoListener {
 		this.sceneProperty().addListener((observable, oldScene, newScene) -> {
 			if (newScene != null) {
 				installStandardAccelerators(newScene);
+				// Overrides installStandardAccelerators' Cmd+W above: this is the app's only
+				// window (unlike a dialog's Scene, where closing the Stage is exactly right), so
+				// closing it triggers Platform.implicitExit and quits the whole app - not what
+				// "close" should mean here when a repository is open and you might want to open a
+				// different one next. Mirrors closeMenuItem's action instead; a no-op (like
+				// closeMenuItem's own disabled state) when no repository is open to close.
+				newScene.getAccelerators().put(new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN),
+						this::closeRepositoryIfOpen);
+
+				// Same reasoning again for the OS's own window-close control (the traffic-light
+				// icon on macOS): by default, closing this Stage would quit the whole app via the
+				// same implicitExit path. windowProperty() rather than reading newScene.getWindow()
+				// directly here - primaryStage.setScene(scene) hasn't run yet at this point in
+				// EccoGui.showMainStage(), so the Scene has no Window to attach to yet.
+				newScene.windowProperty().addListener((observable2, oldWindow, newWindow) -> {
+					if (newWindow instanceof Stage stage) {
+						stage.setOnCloseRequest(event -> {
+							event.consume();
+							this.closeRepositoryIfOpen();
+						});
+					}
+				});
 			}
 		});
 
@@ -132,8 +173,6 @@ public class MainView extends BorderPane implements EccoListener {
 		DependencyGraphView dependencyGraphView = new DependencyGraphView(eccoService);
 		KnowledgeGraphView knowledgeGraphView = new KnowledgeGraphView(eccoService);
 
-		MenuItem statusMenuItem = new MenuItem("Status");
-		statusMenuItem.setOnAction(event -> this.switchTo("Status", statusView));
 		MenuItem variantsMenuItem = new MenuItem("Variants");
 		variantsMenuItem.setOnAction(event -> this.switchTo("Variants", variantsView));
 		MenuItem remotesMenuItem = new MenuItem("Remotes");
@@ -157,13 +196,13 @@ public class MainView extends BorderPane implements EccoListener {
 
 		// every content item needs an open repository to mean anything - see requiresOpenRepository's javadoc
 		this.requiresOpenRepository.addAll(List.of(
-				statusMenuItem, variantsMenuItem, remotesMenuItem, featuresMenuItem, commitsMenuItem,
+				variantsMenuItem, remotesMenuItem, featuresMenuItem, commitsMenuItem,
 				associationsMenuItem, artifactsMenuItem, chartsMenuItem, knowledgeGraphMenuItem,
 				artifactGraphMenuItem, dependencyGraphMenuItem));
 
 
 		Menu repositoryMenu = new Menu("Repository");
-		repositoryMenu.getItems().setAll(newMenuItem, openMenuItem, closeMenuItem, new SeparatorMenuItem(), statusMenuItem);
+		repositoryMenu.getItems().setAll(newMenuItem, openMenuItem, closeMenuItem);
 
 		Menu localMenu = new Menu("Local");
 		localMenu.getItems().setAll(commitMenuItem, importGitMenuItem, checkoutMenuItem, new SeparatorMenuItem(), variantsMenuItem);
@@ -177,17 +216,54 @@ public class MainView extends BorderPane implements EccoListener {
 		Menu visualizationMenu = new Menu("Visualization");
 		visualizationMenu.getItems().setAll(knowledgeGraphMenuItem, artifactGraphMenuItem, dependencyGraphMenuItem);
 
-		Menu preferencesMenu = new Menu("Preferences");
-		preferencesMenu.getItems().setAll(pluginsMenuItem, llmSettingsMenuItem, minimizationSettingsMenuItem,
-				lilypondSettingsMenuItem, new SeparatorMenuItem(), serverMenuItem);
+		List<Menu> menus = new ArrayList<>(List.of(repositoryMenu, localMenu, distributedMenu, analysisMenu, visualizationMenu));
+		if (settingsMenuItem != null) {
+			Menu preferencesMenu = new Menu("Preferences");
+			preferencesMenu.getItems().setAll(settingsMenuItem);
+			menus.add(preferencesMenu);
+		}
 
 		MenuBar menuBar = new MenuBar();
-		menuBar.getMenus().setAll(repositoryMenu, localMenu, distributedMenu, analysisMenu, visualizationMenu, preferencesMenu);
+		menuBar.getMenus().setAll(menus);
 		// on macOS, renders as the real system menu bar at the top of the screen instead of embedded
 		// in the window - silently has no effect on platforms without a global menu bar (Windows/
 		// Linux, which this project also ships), so it's safe to always set.
 		menuBar.setUseSystemMenuBar(true);
 		this.setTop(menuBar);
+
+		if (isMac) {
+			// Deferred one pulse: Glass installs its native menu bar (from useSystemMenuBar(true)
+			// above) asynchronously once this MainView is actually part of a shown Scene/Stage, and
+			// MenuToolkit.setApplicationMenu() falls back to REPLACING THE WHOLE NSApplication.
+			// mainMenu (wiping out Repository/Local/etc.) if it runs before that's happened and
+			// finds no existing native menu to patch item 0 of - see MacNativeAdapter.
+			// setApplicationMenu()'s null-mainMenu branch. Running this after the current pulse
+			// (during which MainView gets attached and shown) reliably avoids that.
+			Platform.runLater(() -> {
+				MenuToolkit tk = MenuToolkit.toolkit();
+
+				MenuItem preferencesItem = new MenuItem("Preferences…");
+				preferencesItem.setOnAction(event -> this.openDialog("Settings", new PreferencesView(eccoService)));
+				preferencesItem.setAccelerator(new KeyCodeCombination(KeyCode.COMMA, KeyCombination.META_DOWN));
+
+				// No About item: tk.createNativeAboutMenuItem() is explicitly @Beta in NSMenuFX's
+				// own source, and it's not just a doc caveat - it SIGABRTs the whole JVM natively
+				// (a crash no Java try/catch can guard against) when clicked. Nothing here asked
+				// for an About item anyway, so it's simplest to leave it out rather than swap in
+				// the non-Beta custom-Stage alternative (tk.createAboutMenuItem) untested.
+				Menu appMenu = new Menu("ECCO");
+				appMenu.getItems().setAll(
+						preferencesItem,
+						new SeparatorMenuItem(),
+						tk.createHideMenuItem("ECCO"),
+						tk.createHideOthersMenuItem(),
+						tk.createUnhideAllMenuItem(),
+						new SeparatorMenuItem(),
+						tk.createQuitMenuItem("ECCO"));
+
+				tk.setApplicationMenu(appMenu);
+			});
+		}
 
 
 		this.headerLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
@@ -242,13 +318,24 @@ public class MainView extends BorderPane implements EccoListener {
 	 * Cmd+Q quits the whole app (mirrors the OS quit path: closing the last window already triggers
 	 * this today since {@code Platform.implicitExit} defaults to true, so this just gives it a
 	 * shortcut and makes it work even while a dialog, not the main window, has focus). Cmd+W closes
-	 * whichever window ({@code scene}) is currently focused - the main window or a dialog. Ctrl+Q/
-	 * Ctrl+W on non-macOS platforms (SHORTCUT_DOWN maps to the platform's own shortcut modifier).
+	 * whichever window ({@code scene}) is currently focused - correct as-is for a dialog, but the
+	 * {@code sceneProperty()} listener above overrides this for the main window's own Scene, since
+	 * closing that Stage would quit the whole app via the same {@code implicitExit} path instead of
+	 * just closing the repository. Ctrl+Q/Ctrl+W on non-macOS platforms (SHORTCUT_DOWN maps to the
+	 * platform's own shortcut modifier).
 	 */
 	private static void installStandardAccelerators(Scene scene) {
 		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.Q, KeyCombination.SHORTCUT_DOWN), Platform::exit);
 		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN),
 				() -> ((Stage) scene.getWindow()).close());
+	}
+
+
+	/** Same action as {@link #closeMenuItem}; a no-op when there's no open repository to close. */
+	private void closeRepositoryIfOpen() {
+		if (this.eccoService.isInitialized()) {
+			this.eccoService.close();
+		}
 	}
 
 

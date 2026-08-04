@@ -111,10 +111,18 @@ public abstract class OperationView extends BorderPane {
 
 	protected void fit() {
 		this.autosize();
-		if (this.getScene() != null && this.getScene().getWindow() != null)
+		if (this.getScene() != null && this.getScene().getWindow() != null) {
 			this.getScene().getWindow().sizeToScene();
-		else
-			Platform.runLater(() -> this.getScene().getWindow().sizeToScene());
+		} else {
+			// Not just "not ready yet, try again next pulse": showing a new Stage can itself
+			// trigger a nested pump of this same runLater queue (seen in practice as a one-time
+			// cost on the very first additional Stage.show() after app startup, e.g. opening
+			// Settings right away), which can drain this callback before the caller (openDialog)
+			// has gotten to attach the Scene/Window at all. A single deferred retry isn't
+			// guaranteed to land after that - keep rescheduling until getScene()/getWindow() are
+			// actually non-null, however many pumps that takes, instead of assuming exactly one.
+			Platform.runLater(this::fit);
+		}
 	}
 
 
