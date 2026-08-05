@@ -11,7 +11,7 @@ apply plugin: 'java-library'
 // project-dependency resolution pulls in the classifier-less (contentless) javafx-web
 // jar and fails with NoClassDefFoundError once Guice reflects over that plugin's classes.
 javafx {
-	version = "21.0.4"
+	version = "22.0.2"
 	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics', 'javafx.swing', 'javafx.web']
 	configuration = 'testImplementation'
 }
