@@ -29,11 +29,25 @@ import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
  */
 @Singleton
 public class FileRepositoryService implements RepositoryService {
-    private final Path repoStorage = Path.of(STORAGE_LOCATION_OF_REPOSITORIES);
+    private final Path repoStorage;
     private final Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
     private final AtomicInteger repositoryHandlerId = new AtomicInteger();
     private final EccoService generalService = new EccoService();
     private static final Logger LOGGER = Logger.getLogger(FileRepositoryService.class.getName());
+
+    @Inject
+    public FileRepositoryService() {
+        this(Path.of(STORAGE_LOCATION_OF_REPOSITORIES));
+    }
+
+    /**
+     * Not used by Micronaut DI (see the no-arg constructor) - lets tests point repository storage
+     * at a temp directory instead of Settings.STORAGE_LOCATION_OF_REPOSITORIES, which resolves to a
+     * real, persistent path under this repo's own working tree (examples/).
+     */
+    public FileRepositoryService(Path repoStorage) {
+        this.repoStorage = repoStorage;
+    }
 
     // Repositories ----------------------------------------------------------------------------------------------------
     @Override

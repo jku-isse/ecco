@@ -8,9 +8,18 @@ allprojects {
 	apply plugin: 'idea'
 	apply plugin: 'eclipse'
 	apply plugin: 'pmd'
+	apply plugin: 'jacoco'
 
 	pmd {
 		ignoreFailures = true
+	}
+
+	jacoco {
+		toolVersion = '0.8.11'
+	}
+
+	repositories {
+		mavenCentral()
 	}
 }
 
@@ -29,10 +38,6 @@ subprojects {
 
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21
-
-	repositories {
-		mavenCentral()
-	}
 
 	dependencies {
 		testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
@@ -70,6 +75,15 @@ subprojects {
 		outputs.upToDateWhen { false }
 		filter {
 			exclude("**/integrationTest/**")
+		}
+		finalizedBy jacocoTestReport
+	}
+
+	jacocoTestReport {
+		dependsOn test
+		reports {
+			xml.required = true
+			html.required = true
 		}
 	}
 
@@ -237,6 +251,21 @@ subprojects {
 		project.configurations.findAll { it.name.equals("runtimeOnly") }.collectMany { it.allDependencies }.findAll {
 			it instanceof ProjectDependency
 		}.collect { it.dependencyProject.jar.outputs.files }.each { println it }
+	}
+}
+
+task jacocoRootReport(type: JacocoReport, group: 'verification') {
+	description = 'Generates an aggregated code coverage report across all modules.'
+	dependsOn subprojects.test
+
+	additionalSourceDirs.from(files(subprojects.collect { it.sourceSets.main.allSource.srcDirs }.flatten()))
+	sourceDirectories.from(files(subprojects.collect { it.sourceSets.main.allSource.srcDirs }.flatten()))
+	classDirectories.from(files(subprojects.collect { it.sourceSets.main.output }))
+	executionData.from(files(subprojects.collect { it.tasks.named('jacocoTestReport').get().executionData }).filter { it.exists() })
+
+	reports {
+		xml.required = true
+		html.required = true
 	}
 }
 
