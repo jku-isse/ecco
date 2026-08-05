@@ -95,6 +95,21 @@ subprojects {
 	}
 	check.dependsOn -= integrationTest
 
+	task jacocoIntegrationTestReport(type: JacocoReport) {
+		dependsOn integrationTest
+		executionData(integrationTest)
+		sourceSets sourceSets.main
+		reports {
+			xml.required = true
+			html.required = true
+		}
+	}
+	// integrationTest is an eager (old-style "task name(type: X) {}") task creation, whose configuration
+	// closure runs immediately at this point in script evaluation - referencing jacocoIntegrationTestReport
+	// from inside that closure would fail since it isn't declared yet at that point. Wiring it here, after
+	// both tasks exist, avoids that.
+	integrationTest.finalizedBy(jacocoIntegrationTestReport)
+
 	tasks.named("processIntegrationTestResources") {
 		duplicatesStrategy = DuplicatesStrategy.INCLUDE
 	}
@@ -255,17 +270,97 @@ subprojects {
 }
 
 task jacocoRootReport(type: JacocoReport, group: 'verification') {
-	description = 'Generates an aggregated code coverage report across all modules.'
+	description = 'Generates an aggregated code coverage report across all modules. Combines test and ' +
+			'integrationTest exec data when both are present, for an honest total rather than just the ' +
+			'default test sourceSet (integrationTest is deliberately not run automatically here, same as ' +
+			'it is excluded from check - run it yourself first if you want it folded in).'
 	dependsOn subprojects.test
 
 	additionalSourceDirs.from(files(subprojects.collect { it.sourceSets.main.allSource.srcDirs }.flatten()))
 	sourceDirectories.from(files(subprojects.collect { it.sourceSets.main.allSource.srcDirs }.flatten()))
 	classDirectories.from(files(subprojects.collect { it.sourceSets.main.output }))
 	executionData.from(files(subprojects.collect { it.tasks.named('jacocoTestReport').get().executionData }).filter { it.exists() })
+	executionData.from(files(subprojects.collect { it.tasks.named('jacocoIntegrationTestReport').get().executionData }).filter { it.exists() })
 
 	reports {
 		xml.required = true
 		html.required = true
+	}
+}
+
+task coverageSummary {
+	group = 'verification'
+	description = 'Prints LINE/BRANCH/COMPLEXITY coverage per module, plus the classes whose line ' +
+			'coverage most overstates their actual (complexity) coverage. Line coverage alone is ' +
+			'misleading on this codebase: a single line can hide several untested branches, and JaCoCo ' +
+			'reports LINE/BRANCH/COMPLEXITY/INSTRUCTION/METHOD/CLASS on every class regardless of which ' +
+			'one gets looked at. Reads each module\'s own jacocoTestReport.xml (module-level rows use ' +
+			"that report's own rollup counters directly; run jacocoRootReport first, or run this task, " +
+			'which depends on it, to make sure those reports exist and reflect the latest run)'
+	dependsOn jacocoRootReport
+
+	doLast {
+		// JaCoCo's XML reports declare a DOCTYPE (report.dtd) for their own element definitions -
+		// XmlSlurper's default parser disallows any DOCTYPE at all (a general XXE hardening
+		// default), so it needs a parser that permits the declaration itself while still refusing
+		// to actually resolve external entities/DTD content (these are locally-generated,
+		// trusted files, but there's no need to loosen more than the one feature required).
+		def parseJacocoXml = { File file ->
+			// strip the DOCTYPE line rather than configuring XmlSlurper's parser to tolerate it -
+			// simpler and more portable across JDK/parser implementations than chasing SAX feature
+			// URIs (disallow-doctype-decl, external-general-entities, ... - Xerces-specific ones
+			// like nonvalidate-load-external-dtd aren't even recognized by the JDK's built-in SAX
+			// parser). These are locally-generated, trusted files - report.dtd only defines JaCoCo's
+			// own element structure, nothing this task reads depends on it being resolved.
+			return new XmlSlurper().parseText(file.text.replaceFirst(/<!DOCTYPE[^>]*>/, ''))
+		}
+		def readCounters = { File file ->
+			if (!file.exists()) return null
+			def report = parseJacocoXml(file)
+			def totals = [:]
+			report.counter.each { c -> totals[c.@type.text()] = [missed: c.@missed.text() as int, covered: c.@covered.text() as int] }
+			return totals
+		}
+		def pct = { totals, type ->
+			def c = totals?.get(type)
+			if (c == null) return null
+			def total = c.missed + c.covered
+			return total == 0 ? null : (c.covered / total * 100)
+		}
+		def fmt = { v -> v == null ? "n/a".padLeft(6) : String.format("%5.1f%%", v) }
+
+		println ""
+		println "Coverage per module (LINE / BRANCH / COMPLEXITY):"
+		println "-" * 70
+		subprojects.each { proj ->
+			def totals = readCounters(proj.file('build/reports/jacoco/test/jacocoTestReport.xml'))
+			if (totals == null) return
+			println "  ${proj.name.padRight(24)} LINE=${fmt(pct(totals, 'LINE'))}  BRANCH=${fmt(pct(totals, 'BRANCH'))}  COMPLEXITY=${fmt(pct(totals, 'COMPLEXITY'))}"
+		}
+
+		println ""
+		println "Classes where LINE coverage most overstates COMPLEXITY coverage (line >= 50%, sorted by gap):"
+		println "-" * 70
+		def gaps = []
+		subprojects.each { proj ->
+			def reportFile = proj.file('build/reports/jacoco/test/jacocoTestReport.xml')
+			if (!reportFile.exists()) return
+			def report = parseJacocoXml(reportFile)
+			report.package.class.each { cls ->
+				def totals = [:]
+				cls.counter.each { c -> totals[c.@type.text()] = [missed: c.@missed.text() as int, covered: c.@covered.text() as int] }
+				def line = pct(totals, 'LINE')
+				def complexity = pct(totals, 'COMPLEXITY')
+				if (line != null && complexity != null && line >= 50) {
+					gaps << [name: cls.@name.text(), line: line, complexity: complexity, gap: line - complexity]
+				}
+			}
+		}
+		gaps.sort { -it.gap }
+		gaps.take(20).each {
+			println "  ${it.name.padRight(65)} LINE=${String.format('%5.1f%%', it.line)}  COMPLEXITY=${String.format('%5.1f%%', it.complexity)}  gap=${String.format('%4.1f', it.gap)}"
+		}
+		println ""
 	}
 }
 
