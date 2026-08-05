@@ -314,8 +314,16 @@ public class CWriterIntegrationTest {
         nodeSet.add(pluginNode2);
         Path[] pathResults = writer.write(getTestFolderPath(), nodeSet);
 
-        assertEquals(getTestFolderSubpath("testFile1.c"), pathResults[1]);
-        assertEquals(getTestFolderSubpath("testFile2.c"), pathResults[0]);
+        // CWriter.write() iterates its Set<Node> input directly with no sorting (CWriter.java:35), so
+        // the output order reflects HashSet's iteration order for pluginNode1/pluginNode2 - not
+        // something callers should rely on, and not guaranteed to be stable across JVM versions or
+        // hashCode() changes. This used to assert a specific index for each path (pathResults[0]/[1]),
+        // which is exactly that kind of unspecified-order dependency - failed here despite CWriter
+        // itself being correct. Assert on presence/count instead of position.
+        assertEquals(2, pathResults.length);
+        List<Path> resultPaths = Arrays.asList(pathResults);
+        assertTrue(resultPaths.contains(getTestFolderSubpath("testFile1.c")));
+        assertTrue(resultPaths.contains(getTestFolderSubpath("testFile2.c")));
     }
 
 }
