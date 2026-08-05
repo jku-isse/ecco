@@ -198,6 +198,13 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 	private ListView<JavaCodeLine> createListView(ObservableList<JavaCodeLine> lines) {
 		ListView<JavaCodeLine> listView = new ListView<>(lines);
 		listView.setCellFactory(cellFactory);
+		// AtlantaFX's Cupertino theme sets -fx-cell-size: 3em on every ListView cell (~macOS
+		// Finder-list row height) regardless of actual content height - fine for a handful of
+		// menu-like rows, but each row here is one source line, so that reads as huge gaps between
+		// lines of code. A fixed cell size is the correct override (not CSS padding tweaks): it
+		// takes priority over the theme's own -fx-cell-size and is also how ListView expects a
+		// uniform-height virtualized list to be sized in the first place.
+		listView.setFixedCellSize(20);
 		return listView;
 	}
 
