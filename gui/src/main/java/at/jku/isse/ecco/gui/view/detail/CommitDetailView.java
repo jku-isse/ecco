@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.TableColumns;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -59,7 +60,6 @@ public class CommitDetailView extends BorderPane {
 		// list of associations
 		TableView<AssociationInfo> associationsTable = new TableView<>();
 		associationsTable.setEditable(false);
-		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Condition");
@@ -70,8 +70,12 @@ public class CommitDetailView extends BorderPane {
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
 		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().toString()));
+		conditionAssociationsCol.setCellFactory(TableColumns.wrappingCellFactory());
 
 		associationsTable.setItems(this.associationsData);
+
+		TableColumns.defaultWidth(idAssociationsCol, 90);
+		TableColumns.growToFill(associationsTable, conditionAssociationsCol);
 
 		detailsPane.add(associationsTable, 1, row, 1, 1);
 		row++;

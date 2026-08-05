@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.gui.view.operation.OperationView;
 import at.jku.isse.ecco.service.EccoService;
@@ -38,7 +39,6 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         TableView<Tuple2<Association, Association>> commitsTable = new TableView<>();
         commitsTable.setEditable(false);
         commitsTable.setTableMenuButtonVisible(true);
-        commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Tuple2<Association, Association>, String> oldId = new TableColumn<>("Id");
         TableColumn<Tuple2<Association, Association>, String> oldAssociation = new TableColumn<>("Condition");
@@ -63,6 +63,11 @@ public class CommitComparisonView extends OperationView implements EccoListener 
 
         fillCompasisonData(oldCommit, newCommit);
         commitsTable.setItems(comparisonData);
+
+        TableColumns.defaultWidth(oldId, 90);
+        TableColumns.defaultWidth(newId, 90);
+        TableColumns.growToFill(commitsTable, oldAssociation);
+        TableColumns.growToFill(commitsTable, newAssociation);
 
         //Detail view
         ArtifactDetailView artifactDetailView = new ArtifactDetailView(service);

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -173,14 +174,20 @@ public class ServerView extends OperationView implements EccoListener {
 		// server log
 		TableView<String> fileTable = new TableView<>();
 		fileTable.setEditable(false);
-		fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<String, String> timeCol = new TableColumn<>("Time");
 		TableColumn<String, String> messageCol = new TableColumn<>("Message");
 		fileTable.getColumns().setAll(timeCol, messageCol);
+		// pre-existing bug, not touched here: timeCol has no cell value factory at all, and
+		// messageCol's always returns "" instead of the row's actual String - so both columns are
+		// currently non-functional regardless of width. Sizing is still applied below so this
+		// behaves correctly once that's fixed.
 		messageCol.setCellValueFactory((TableColumn.CellDataFeatures<String, String> param) -> new ReadOnlyStringWrapper(""));
 		//messageCol.setCellValueFactory(new PropertyValueFactory<>("action"));
 		fileTable.setItems(this.logData);
+
+		TableColumns.controlWidth(timeCol);
+		TableColumns.growToFill(fileTable, messageCol);
 
 		TitledPane titledPane = new TitledPane();
 		titledPane.setText("Log");

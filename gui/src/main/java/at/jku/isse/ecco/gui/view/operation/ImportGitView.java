@@ -8,6 +8,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LlmPreferences;
@@ -215,13 +216,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 */
 	private TableView<GitCommitInfo> buildCommitsTable() {
 		TableView<GitCommitInfo> commitsTable = new TableView<>();
-		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 		commitsTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		commitsTable.setPrefHeight(300);
 
 		TableColumn<GitCommitInfo, String> idCol = new TableColumn<>("Commit");
 		idCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getShortId()));
-		idCol.setMaxWidth(90);
 
 		TableColumn<GitCommitInfo, String> messageCol = new TableColumn<>("Message");
 		messageCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getMessage()));
@@ -229,9 +228,13 @@ public class ImportGitView extends OperationView implements EccoListener {
 		TableColumn<GitCommitInfo, String> dateCol = new TableColumn<>("Date");
 		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 		dateCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(dateFormatter.format(param.getValue().getDate())));
-		dateCol.setMaxWidth(150);
 
 		commitsTable.getColumns().setAll(idCol, messageCol, dateCol);
+
+		TableColumns.defaultWidth(idCol, 90);
+		TableColumns.defaultWidth(dateCol, 150);
+		TableColumns.growToFill(commitsTable, messageCol);
+
 		return commitsTable;
 	}
 
@@ -379,14 +382,12 @@ public class ImportGitView extends OperationView implements EccoListener {
 	private TableView<CommitEntry> buildReviewTable(ObservableList<CommitEntry> commitData) {
 		TableView<CommitEntry> reviewTable = new TableView<>();
 		reviewTable.setEditable(true);
-		reviewTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 		reviewTable.setItems(commitData);
 		reviewTable.setPrefHeight(300);
 
 		TableColumn<CommitEntry, String> idCol = new TableColumn<>("Commit");
 		idCol.setCellValueFactory(param -> param.getValue().shortIdProperty());
 		idCol.setEditable(false);
-		idCol.setMaxWidth(90);
 
 		TableColumn<CommitEntry, String> messageCol = new TableColumn<>("Message");
 		messageCol.setCellValueFactory(param -> param.getValue().messageProperty());
@@ -413,12 +414,18 @@ public class ImportGitView extends OperationView implements EccoListener {
 					setStyle("");
 				} else {
 					setText(item);
-					setStyle("-fx-text-fill: firebrick;");
+					setStyle("-fx-text-fill: firebrick; -fx-wrap-text: true;");
 				}
 			}
 		});
 
 		reviewTable.getColumns().setAll(idCol, messageCol, configCol, warningCol);
+
+		TableColumns.defaultWidth(idCol, 90);
+		TableColumns.fitToContent(configCol, commitData);
+		TableColumns.fitToContent(warningCol, commitData);
+		TableColumns.growToFill(reviewTable, messageCol);
+
 		return reviewTable;
 	}
 

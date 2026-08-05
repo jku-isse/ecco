@@ -6,6 +6,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.gui.view.detail.CheckoutDetailView;
@@ -62,7 +63,6 @@ public class CheckoutView extends OperationView implements EccoListener {
         // log table
         this.logTable = new TableView<>();
         logTable.setEditable(false);
-        logTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<FileInfo, String> actionCol = new TableColumn<>("Action");
         TableColumn<FileInfo, String> pathCol = new TableColumn<>("Path");
@@ -73,8 +73,15 @@ public class CheckoutView extends OperationView implements EccoListener {
         actionCol.setCellValueFactory(new PropertyValueFactory<>("action"));
         pathCol.setCellValueFactory(new PropertyValueFactory<>("path"));
         pluginCol.setCellValueFactory(new PropertyValueFactory<>("plugin"));
+        // Plugin mixes short plugin-class-name content (read/write rows) with a potentially long
+        // computeCondition().toString() (select rows) - wrap rather than clip either kind.
+        pluginCol.setCellFactory(TableColumns.wrappingCellFactory());
 
         logTable.setItems(this.logData);
+
+        TableColumns.defaultWidth(actionCol, 90);
+        TableColumns.fitToContent(pluginCol, this.logData);
+        TableColumns.growToFill(logTable, pathCol);
 
         splitPane.getItems().add(logTable);
 
