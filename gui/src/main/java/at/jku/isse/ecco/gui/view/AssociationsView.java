@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.view.detail.AssociationDetailView;
@@ -109,7 +110,6 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		TableView<AssociationInfo> associationsTable = new TableView<>();
 		associationsTable.setEditable(false);
 		associationsTable.setTableMenuButtonVisible(true);
-		associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Simplified Condition");
@@ -168,6 +168,10 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
 		associationsTable.setItems(sortedData);
+
+		TableColumns.defaultWidth(idAssociationsCol, 90);
+		TableColumns.controlWidth(numArtifactsAssociationsCol);
+		TableColumns.growToFill(associationsTable, conditionAssociationsCol);
 
 
 		// details view

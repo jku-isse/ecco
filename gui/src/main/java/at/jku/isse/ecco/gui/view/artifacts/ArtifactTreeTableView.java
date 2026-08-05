@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 import javafx.beans.binding.Bindings;
@@ -18,6 +19,12 @@ import java.util.*;
 
 public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.NodeWrapper> {
 
+	// referenced again from setRootNode() below to re-fit their width to the newly-loaded tree, so
+	// (unlike every other column here, which is only ever touched from inside the constructor)
+	// these two need to be fields rather than constructor-local variables.
+	private final TreeTableColumn<NodeWrapper, Integer> snNodeCol;
+	private final TreeTableColumn<NodeWrapper, String> associationNodeCol;
+
 	public ArtifactTreeTableView() {
 		super();
 
@@ -26,6 +33,13 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		TreeTableColumn<NodeWrapper, String> labelNodeCol = new TreeTableColumn<>("Node");
 		labelNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, String> param) -> new ReadOnlyStringWrapper(param.getValue().getValue().toString()));
 		labelNodeCol.setCellFactory(param -> new TreeTableCell<NodeWrapper, String>() {
+			{
+				// grows the row instead of the column when a node's text is long - same intent as
+				// TableColumns.wrappingCellFactory(), inlined here since this cell factory also
+				// needs its own background-coloring behavior below
+				setWrapText(true);
+			}
+
 			@Override
 			protected void updateItem(String item, boolean empty) {
 				super.updateItem(item, empty);
@@ -58,10 +72,10 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		TreeTableColumn<NodeWrapper, Boolean> uniqueNodeCol = new TreeTableColumn<>("Unique");
 		uniqueNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) -> new ReadOnlyBooleanWrapper(param.getValue().getValue().isUnique()));
 
-		TreeTableColumn<NodeWrapper, Integer> snNodeCol = new TreeTableColumn<>("Sequence Number");
+		this.snNodeCol = new TreeTableColumn<>("Sequence Number");
 		snNodeCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<NodeWrapper, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().getArtifact() == null ? -1 : param.getValue().getValue().getArtifact().getSequenceNumber()));
 
-		TreeTableColumn<NodeWrapper, String> associationNodeCol = new TreeTableColumn<>("Association");
+		this.associationNodeCol = new TreeTableColumn<>("Association");
 		associationNodeCol.setCellValueFactory(
 				(TreeTableColumn.CellDataFeatures<NodeWrapper, String> param) ->
 				{
@@ -156,8 +170,13 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		this.setEditable(true);
 		this.setTableMenuButtonVisible(true);
-		this.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
 		this.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+		TableColumns.controlWidth(orderedNodeCol);
+		TableColumns.controlWidth(atomicNodeCol);
+		TableColumns.controlWidth(uniqueNodeCol);
+		TableColumns.controlWidth(isSelectedNodeCol);
+		TableColumns.growToFill(this, labelNodeCol);
 	}
 
 	public ArtifactTreeTableView(RootNode rootNode) {
@@ -174,6 +193,9 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 			TreeItem<NodeWrapper> root = new NodeTreeItem(new NodeWrapper(rootNode));
 			this.setRoot(root);
 			expandAll(root);
+
+			TableColumns.fitToContent(snNodeCol, root);
+			TableColumns.fitToContent(associationNodeCol, root);
 		}
 	}
 

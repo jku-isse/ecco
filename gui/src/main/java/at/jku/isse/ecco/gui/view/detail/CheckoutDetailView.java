@@ -5,6 +5,7 @@ import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.module.ModuleRevision;
@@ -20,7 +21,6 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
-import javafx.util.Callback;
 
 import java.io.File;
 import java.io.IOException;
@@ -94,28 +94,13 @@ public class CheckoutDetailView extends BorderPane {
 		// list of missing/surplus module diagnostics
 		TableView<DiagnosticInfo> warningsTable = new TableView<>();
 		warningsTable.setEditable(false);
-		warningsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<DiagnosticInfo, String> typeCol = new TableColumn<>("Type");
-		typeCol.setPrefWidth(80);
-		typeCol.setMinWidth(80);
-		typeCol.setMaxWidth(80);
-		typeCol.setResizable(false);
-
 		TableColumn<DiagnosticInfo, String> moduleCol = new TableColumn<>("Module");
-		moduleCol.setPrefWidth(200);
-
 		TableColumn<DiagnosticInfo, String> traceCol = new TableColumn<>("Trace");
-		traceCol.setPrefWidth(160);
-
 		TableColumn<DiagnosticInfo, String> suggestedFixCol = new TableColumn<>("Suggested Fix");
-		suggestedFixCol.setPrefWidth(300);
 
 		TableColumn<DiagnosticInfo, Void> actionCol = new TableColumn<>("Action");
-		actionCol.setPrefWidth(100);
-		actionCol.setMinWidth(100);
-		actionCol.setMaxWidth(100);
-		actionCol.setResizable(false);
 		actionCol.setCellFactory(column -> new TableCell<DiagnosticInfo, Void>() {
 			private final Button applyButton = new Button("Apply Fix");
 			{
@@ -143,11 +128,17 @@ public class CheckoutDetailView extends BorderPane {
 
 		// wrap long text onto multiple lines (growing the row) instead of forcing the table -- and
 		// the dialog window around it, via OperationView.fit() -- very wide.
-		moduleCol.setCellFactory(wrappingCellFactory());
-		traceCol.setCellFactory(wrappingCellFactory());
-		suggestedFixCol.setCellFactory(wrappingCellFactory());
+		moduleCol.setCellFactory(TableColumns.wrappingCellFactory());
+		traceCol.setCellFactory(TableColumns.wrappingCellFactory());
+		suggestedFixCol.setCellFactory(TableColumns.wrappingCellFactory());
 
 		warningsTable.setItems(this.warningsData);
+
+		TableColumns.fixedWidth(typeCol, 80);
+		TableColumns.fitToContent(moduleCol, this.warningsData);
+		TableColumns.fitToContent(traceCol, this.warningsData);
+		TableColumns.growToFill(warningsTable, suggestedFixCol);
+		TableColumns.fixedWidth(actionCol, 100);
 
 		detailsPane.add(warningsTable, 1, row, 1, 1);
 		row++;
@@ -155,34 +146,6 @@ public class CheckoutDetailView extends BorderPane {
 
 		// show nothing initially
 		this.showCheckout(null, null);
-	}
-
-	/**
-	 * A {@link TableCell} that renders its text wrapped (width bound to the column), so long
-	 * content grows the row taller instead of forcing the column -- and the table -- wider.
-	 * {@link TableView#fixedCellSize} defaults to unset/0, which already allows per-row computed
-	 * height, so no extra row-height wiring is needed for this to take effect.
-	 */
-	private static <S> Callback<TableColumn<S, String>, TableCell<S, String>> wrappingCellFactory() {
-		return column -> new TableCell<S, String>() {
-			private final Label label = new Label();
-
-			{
-				label.setWrapText(true);
-				label.prefWidthProperty().bind(column.widthProperty().subtract(10));
-			}
-
-			@Override
-			protected void updateItem(String item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty || item == null) {
-					setGraphic(null);
-				} else {
-					label.setText(item);
-					setGraphic(label);
-				}
-			}
-		};
 	}
 
 

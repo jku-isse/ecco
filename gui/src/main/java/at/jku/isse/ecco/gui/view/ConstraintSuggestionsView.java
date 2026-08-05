@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
@@ -121,7 +122,6 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         // pending suggestions table
         this.pendingTable = new TableView<>();
         pendingTable.setTableMenuButtonVisible(true);
-        pendingTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<ConstraintMiner.Suggestion, String> kindCol = new TableColumn<>("Kind");
         kindCol.setCellValueFactory(p -> new ReadOnlyStringWrapper(p.getValue().kind.toString()));
@@ -143,6 +143,12 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         pendingTable.getColumns().setAll(List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol));
         pendingTable.setItems(pendingData);
         pendingTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        // all 8 columns are short content with no natural long-text column to absorb extra space,
+        // so none of them grow - a small trailing gutter reads better than forcing one to stretch
+        for (TableColumn<ConstraintMiner.Suggestion, String> column : List.of(kindCol, aCol, bCol, hardCol, confidenceCol, witnessCol, supportCol, violationsCol)) {
+            TableColumns.fitToContent(column, pendingData);
+        }
 
         // double-click accepts a suggestion right away, without needing the Accept button
         pendingTable.setRowFactory(tv -> {

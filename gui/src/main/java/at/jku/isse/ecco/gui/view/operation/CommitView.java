@@ -6,6 +6,7 @@ import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.animation.PauseTransition;
@@ -154,7 +155,6 @@ public class CommitView extends OperationView implements EccoListener {
 	private TableView<FolderEntry> buildFoldersTable() {
 		TableView<FolderEntry> foldersTable = new TableView<>();
 		foldersTable.setEditable(true);
-		foldersTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 		foldersTable.setItems(this.folderData);
 		foldersTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		foldersTable.setPrefHeight(200);
@@ -162,8 +162,6 @@ public class CommitView extends OperationView implements EccoListener {
 		TableColumn<FolderEntry, Integer> orderCol = new TableColumn<>("#");
 		orderCol.setSortable(false);
 		orderCol.setReorderable(false);
-		orderCol.setMinWidth(30);
-		orderCol.setMaxWidth(40);
 		orderCol.setCellFactory(col -> new TableCell<>() {
 			@Override
 			protected void updateItem(Integer item, boolean empty) {
@@ -196,12 +194,18 @@ public class CommitView extends OperationView implements EccoListener {
 					setStyle("");
 				} else {
 					setText(item);
-					setStyle("-fx-text-fill: firebrick;");
+					setStyle("-fx-text-fill: firebrick; -fx-wrap-text: true;");
 				}
 			}
 		});
 
 		foldersTable.getColumns().setAll(orderCol, folderCol, configCol, warningCol);
+
+		TableColumns.defaultWidth(orderCol, 36);
+		TableColumns.fitToContent(configCol, this.folderData);
+		TableColumns.fitToContent(warningCol, this.folderData);
+		TableColumns.growToFill(foldersTable, folderCol);
+
 		return foldersTable;
 	}
 

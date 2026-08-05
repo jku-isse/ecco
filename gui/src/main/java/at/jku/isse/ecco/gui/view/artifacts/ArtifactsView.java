@@ -7,6 +7,7 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.io.ConfigurationPickerDialog;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
@@ -167,7 +168,6 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         TableView<AssociationInfoImpl> associationsTable = new TableView<>();
         associationsTable.setEditable(true);
         associationsTable.setTableMenuButtonVisible(true);
-        associationsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<AssociationInfoImpl, String> idAssociationsCol = new TableColumn<>("Id");
         TableColumn<AssociationInfoImpl, String> conditionAssociationsCol = new TableColumn<>("Condition");
@@ -306,6 +306,12 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
         associationsTable.setItems(sortedData);
+
+        TableColumns.defaultWidth(idAssociationsCol, 90);
+        TableColumns.controlWidth(numArtifactsAssociationsCol);
+        TableColumns.controlWidth(selectedAssocationCol);
+        TableColumns.controlWidth(highlightedAssocationCol);
+        TableColumns.growToFill(associationsTable, conditionAssociationsCol);
 
         return associationsTable;
     }

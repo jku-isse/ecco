@@ -5,6 +5,7 @@ import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
@@ -89,7 +90,6 @@ public class CommitsView extends BorderPane implements EccoListener {
 		TableView<CommitInfo> commitsTable = new TableView<>();
 		commitsTable.setEditable(true);
 		commitsTable.setTableMenuButtonVisible(true);
-		commitsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<CommitInfo, String> idCol = new TableColumn<>("Id");
 		TableColumn<CommitInfo, Boolean> selectedCommitCol = new TableColumn<>("Selected");
@@ -106,7 +106,6 @@ public class CommitsView extends BorderPane implements EccoListener {
 		commiter.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getUsername()));
 		date.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getDate() == null ? "" : param.getValue().getCommit().getDate().toString()));  //TODO do better
 
-		selectedCommitCol.maxWidthProperty().bind(commitsTable.widthProperty().divide(1.2));		//selected Column smaller than the other columns
 		selectedCommitCol.setCellFactory(column -> new CheckBoxTableCell<>());
 		selectedCommitCol.setCellValueFactory(cellData -> {
 			CommitInfo cellValue = cellData.getValue();
@@ -123,6 +122,12 @@ public class CommitsView extends BorderPane implements EccoListener {
 			return property;
 		});
 		commitsTable.setItems(this.commitsData);
+
+		TableColumns.defaultWidth(idCol, 90);
+		TableColumns.controlWidth(selectedCommitCol);
+		TableColumns.fitToContent(commiter, this.commitsData);
+		TableColumns.defaultWidth(date, 150);
+		TableColumns.growToFill(commitsTable, commitMessage);
 
 		// commit details view
 		CommitDetailView commitDetailView = new CommitDetailView();

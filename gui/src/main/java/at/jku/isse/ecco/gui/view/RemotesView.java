@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.RemoteDetailView;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -73,7 +74,6 @@ public class RemotesView extends BorderPane implements EccoListener {
 		TableView<Remote> remotesTable = new TableView<>();
 		remotesTable.setEditable(true);
 		remotesTable.setTableMenuButtonVisible(true);
-		remotesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		TableColumn<Remote, String> remoteNameCol = new TableColumn<>("Name");
 		TableColumn<Remote, String> remoteAddressCol = new TableColumn<>("Address");
@@ -88,6 +88,10 @@ public class RemotesView extends BorderPane implements EccoListener {
 		remoteTypeCol.setCellValueFactory((TableColumn.CellDataFeatures<Remote, String> param) -> new ReadOnlyStringWrapper(param.getValue().getType().toString()));
 
 		remotesTable.setItems(this.remotesData);
+
+		TableColumns.fitToContent(remoteNameCol, this.remotesData);
+		TableColumns.fitToContent(remoteTypeCol, this.remotesData);
+		TableColumns.growToFill(remotesTable, remoteAddressCol);
 
 
 		// remote details view

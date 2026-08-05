@@ -5,6 +5,7 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.view.detail.VariantDetailView;
 import at.jku.isse.ecco.gui.view.operation.VariantView;
 import at.jku.isse.ecco.service.EccoService;
@@ -305,7 +306,6 @@ public class VariantsView extends BorderPane implements EccoListener {
         TableView<VariantsInfo> variantsTable = new TableView<>();
         variantsTable.setEditable(true);
         variantsTable.setTableMenuButtonVisible(true);
-        variantsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<VariantsInfo, String> idCol = new TableColumn<>("Id");
         TableColumn<VariantsInfo, String> nameCol = new TableColumn<>("Name");
@@ -322,6 +322,7 @@ public class VariantsView extends BorderPane implements EccoListener {
         idCol.setCellValueFactory((TableColumn.CellDataFeatures<VariantsInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getVariant().getId()));
         nameCol.setCellValueFactory((TableColumn.CellDataFeatures<VariantsInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getVariant().getName()));
         configCol.setCellValueFactory((TableColumn.CellDataFeatures<VariantsInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getVariant().getConfiguration().toString()));
+        configCol.setCellFactory(TableColumns.wrappingCellFactory());
 
         // live constraint-violation feedback -- see EccoService.checkConstraintViolations; kept
         // current by refreshDerivedInfo(), called whenever the list is (re)populated.
@@ -335,7 +336,7 @@ public class VariantsView extends BorderPane implements EccoListener {
                     setStyle("");
                 } else {
                     setText(item);
-                    setStyle("-fx-text-fill: firebrick;");
+                    setStyle("-fx-text-fill: firebrick; -fx-wrap-text: true;");
                 }
             }
         });
@@ -344,6 +345,7 @@ public class VariantsView extends BorderPane implements EccoListener {
         // random UUIDs, and a Variant is deduplicated across commits sharing a configuration) --
         // this matches by Configuration.equals() at display time instead (see describeMatchingCommits).
         matchingCommitsCol.setCellValueFactory(param -> param.getValue().matchingCommitsProperty());
+        matchingCommitsCol.setCellFactory(TableColumns.wrappingCellFactory());
 
 
         selectedVariantCol.setCellValueFactory(new PropertyValueFactory<>("selected"));
@@ -354,6 +356,11 @@ public class VariantsView extends BorderPane implements EccoListener {
         SortedList<VariantsView.VariantsInfo> sortedData = new SortedList<>(filteredData);
         sortedData.comparatorProperty().bind(variantsTable.comparatorProperty());
         variantsTable.setItems(sortedData);
+
+        TableColumns.defaultWidth(idCol, 90);
+        TableColumns.fitToContent(nameCol, sortedData);
+        TableColumns.controlWidth(selectedVariantCol);
+        TableColumns.growToFill(variantsTable, configCol);
 
         return variantsTable;
     }
