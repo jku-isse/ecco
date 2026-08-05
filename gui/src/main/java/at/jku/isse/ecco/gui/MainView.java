@@ -54,7 +54,9 @@ import java.util.List;
  * instead talks to AppKit's live {@code NSApplication.mainMenu} directly (via JNA) and only
  * replaces its item 0 (the app menu), leaving everything Glass installed at positions 1+ (our own
  * Repository/Local/etc. menus) untouched - see the {@code isMac} block below. Where that's not
- * available (Windows/Linux), a "Preferences > Settings..." fallback menu item takes its place.
+ * available (Windows/Linux), there's no equivalent native app menu to hook into, so a plain
+ * leftmost "ECCO" {@link Menu} (Preferences.../Quit) is added to the regular MenuBar instead,
+ * mirroring the native one's position and contents as closely as an embedded menu can.
  */
 public class MainView extends BorderPane implements EccoListener {
 	private final EccoService eccoService;
@@ -102,17 +104,24 @@ public class MainView extends BorderPane implements EccoListener {
 
 		// same check NSMenuFX's own NativeAdapterProvider uses internally to pick between its
 		// MacNativeAdapter and a no-op DummyNativeAdapter - mirrored here so this class can decide
-		// whether it still needs its own JavaFX-menu fallback for Settings (see below and the
+		// whether it still needs its own JavaFX-menu fallback "ECCO" menu (see below and the
 		// isMac block after the MenuBar is built).
 		boolean isMac = System.getProperty("os.name", "").startsWith("Mac");
 
-		MenuItem settingsMenuItem = null;
+		Menu eccoMenu = null;
 		if (!isMac) {
-			settingsMenuItem = new MenuItem("Settings...");
+			MenuItem settingsMenuItem = new MenuItem("Preferences...");
 			settingsMenuItem.setOnAction(event -> this.openDialog("Settings", new PreferencesView(eccoService)));
 			// Ctrl+, - not a strong platform convention outside macOS (which never reaches this
 			// branch), but harmless and matches the accelerator macOS gets for free from the OS.
 			settingsMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.COMMA, KeyCombination.SHORTCUT_DOWN));
+
+			MenuItem quitMenuItem = new MenuItem("Quit ECCO");
+			quitMenuItem.setOnAction(event -> Platform.exit());
+			quitMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.Q, KeyCombination.SHORTCUT_DOWN));
+
+			eccoMenu = new Menu("ECCO");
+			eccoMenu.getItems().setAll(settingsMenuItem, new SeparatorMenuItem(), quitMenuItem);
 		}
 
 		// Cmd+O on macOS, Ctrl+O elsewhere (SHORTCUT_DOWN maps to the platform's own shortcut
@@ -216,12 +225,12 @@ public class MainView extends BorderPane implements EccoListener {
 		Menu visualizationMenu = new Menu("Visualization");
 		visualizationMenu.getItems().setAll(knowledgeGraphMenuItem, artifactGraphMenuItem, dependencyGraphMenuItem);
 
-		List<Menu> menus = new ArrayList<>(List.of(repositoryMenu, localMenu, distributedMenu, analysisMenu, visualizationMenu));
-		if (settingsMenuItem != null) {
-			Menu preferencesMenu = new Menu("Preferences");
-			preferencesMenu.getItems().setAll(settingsMenuItem);
-			menus.add(preferencesMenu);
+		List<Menu> menus = new ArrayList<>();
+		if (eccoMenu != null) {
+			// leftmost, mirroring where macOS's native app menu always sits - see isMac block below.
+			menus.add(eccoMenu);
 		}
+		menus.addAll(List.of(repositoryMenu, localMenu, distributedMenu, analysisMenu, visualizationMenu));
 
 		MenuBar menuBar = new MenuBar();
 		menuBar.getMenus().setAll(menus);
