@@ -27,6 +27,14 @@
     -fx-cell-size: 2em;
 }
 
+/* Ribbon (MainView's RibbonBar, replacing the old MenuBar) - a light bottom border under the band
+   row, so the tab strip + band read as one cohesive unit sitting above the content area rather
+   than two floating rows with nothing visually separating them from what's below. */
+.ribbon-band {
+    -fx-border-color: transparent transparent -color-border-default transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
 .nonuniquerow {
     -fx-text-fill: gray;
 }
