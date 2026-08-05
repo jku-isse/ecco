@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.file;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -31,27 +32,26 @@ public class FileWriterTest {
     }
 
     @Test
-    public void writeProducesAnEmptyFileWhenThePluginNodeHasNoChildren() throws IOException {
+    public void writeThrowsWhenThePluginNodeHasNoChildren() throws IOException {
         SerEntityFactory ef = new SerEntityFactory();
         Node.Op pluginNode = ef.createNode(ef.createArtifact(new PluginArtifactData(FilePlugin.class.getName(), Path.of("empty.bin"))));
 
         Path outputDir = Files.createTempDirectory("file-writer-no-children");
-        Path[] written = writer.write(outputDir, Set.<Node>of(pluginNode));
 
-        assertEquals(0, Files.size(written[0]));
+        assertThrows(EccoException.class, () -> writer.write(outputDir, Set.<Node>of(pluginNode)));
     }
 
     /**
-     * FileWriter.write() only writes a child's data when the plugin node has EXACTLY one child
-     * (FileWriter.java: {@code if (node.getChildren().size() != 1)}) - two children, both carrying
-     * real data, still hits the "write empty file" branch, silently discarding both. Characterizing
-     * this as-is: it looks like it could only arise from a malformed/hand-built tree in practice
-     * (FileReader.read() itself always produces exactly one file child per plugin node), but the
-     * behavior itself - real data going in, an empty file coming out, no error - is surprising enough
-     * to pin down rather than leave undocumented.
+     * Regression test for a fixed bug: FileWriter.write() used to only write a child's data when the
+     * plugin node had EXACTLY one child (FileWriter.java: {@code if (node.getChildren().size() != 1)})
+     * - two children, both carrying real data, still hit the "write empty file" branch, silently
+     * discarding both. Since adapter-file is the catch-all handler for any file no more specific
+     * adapter claims, and checkout/compose can merge content from multiple associations into one tree,
+     * this wasn't purely a malformed-hand-built-tree scenario. Fixed to throw instead of silently
+     * losing data.
      */
     @Test
-    public void writeProducesAnEmptyFileWhenThePluginNodeHasMoreThanOneChild() throws IOException {
+    public void writeThrowsWhenThePluginNodeHasMoreThanOneChild() throws IOException {
         Path baseDir = Files.createTempDirectory("file-writer-multi-children");
         Files.writeString(baseDir.resolve("a.bin"), "hello");
         Files.writeString(baseDir.resolve("b.bin"), "world");
@@ -62,9 +62,8 @@ public class FileWriterTest {
         pluginNode.addChild(ef.createNode(ef.createArtifact(new FileArtifactData(baseDir, Path.of("b.bin")))));
 
         Path outputDir = Files.createTempDirectory("file-writer-multi-children-out");
-        Path[] written = writer.write(outputDir, Set.<Node>of(pluginNode));
 
-        assertEquals(0, Files.size(written[0]), "more than one child hits the same 'write empty file' branch as zero children");
+        assertThrows(EccoException.class, () -> writer.write(outputDir, Set.<Node>of(pluginNode)));
     }
 
     @Test

@@ -8,12 +8,26 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
 import org.eclipse.collections.impl.factory.Maps;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * Synchronized on {@code this} for every read AND write of {@link #children}/{@link #count}: this
+ * counter is a live, shared, mutable object reachable from any {@code Association} a caller holds a
+ * reference to, and it is genuinely read from one thread (e.g. GUI rendering via
+ * {@code Association.Op#computeLikelyCondition()}) while written from another (e.g. a commit's
+ * background write via {@code addChild()}) - see association-counter-unsynchronized-race in project
+ * memory for the real, twice-recurring production crash this caused
+ * ({@code ArrayIndexOutOfBoundsException} inside Eclipse Collections' {@code UnifiedMap} iterator,
+ * not the more familiar {@code ConcurrentModificationException} you'd get from a java.util
+ * collection - confirmed empirically, see AssociationCounterTest). {@link #getChildren()} returns a
+ * defensive copy rather than a live view for the same reason: a caller iterating the returned
+ * collection must never be able to race a concurrent structural change to {@link #children}, no
+ * matter how long that iteration takes.
+ */
 public class SerAssociationCounter implements AssociationCounter {
 
 	public static final long serialVersionUID = 1L;
@@ -33,7 +47,7 @@ public class SerAssociationCounter implements AssociationCounter {
 
 
 	@Override
-	public ModuleCounter addChild(Module child) {
+	public synchronized ModuleCounter addChild(Module child) {
 		if (!(child instanceof SerModule))
 			throw new EccoException("Only MemModule can be added as a child to MemAssociationCounter!");
 		SerModule memChild = (SerModule) child;
@@ -45,13 +59,13 @@ public class SerAssociationCounter implements AssociationCounter {
 	}
 
 	@Override
-	public ModuleCounter getChild(Module child) {
+	public synchronized ModuleCounter getChild(Module child) {
 		return this.children.get(child);
 	}
 
 	@Override
-	public Collection<ModuleCounter> getChildren() {
-		return Collections.unmodifiableCollection(this.children.values());
+	public synchronized Collection<ModuleCounter> getChildren() {
+		return new ArrayList<>(this.children.values());
 	}
 
 	@Override
@@ -60,22 +74,22 @@ public class SerAssociationCounter implements AssociationCounter {
 	}
 
 	@Override
-	public int getCount() {
+	public synchronized int getCount() {
 		return this.count;
 	}
 
 	@Override
-	public void setCount(int count) {
+	public synchronized void setCount(int count) {
 		this.count = count;
 	}
 
 	@Override
-	public void incCount() {
+	public synchronized void incCount() {
 		this.count++;
 	}
 
 	@Override
-	public void incCount(int count) {
+	public synchronized void incCount(int count) {
 		this.count += count;
 	}
 

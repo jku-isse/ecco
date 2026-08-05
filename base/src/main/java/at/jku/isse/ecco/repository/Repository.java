@@ -1284,6 +1284,7 @@ public interface Repository extends Persistable {
 				// commit association to this repository
 				Commit commit = this.getEntityFactory().createCommit(MERGE);
 				this.extract(association, commit);
+				this.addCommit(commit); // extract(Association.Op, Commit) does not register the commit itself, unlike extract(Configuration, ...) - see mergeRegistersAMergeCommitPerMergedAssociation (RepositoryOpExtractTest / FileRepositoryServiceTest)
 			}
 		}
 
