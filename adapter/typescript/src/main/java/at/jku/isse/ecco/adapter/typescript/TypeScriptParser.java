@@ -38,14 +38,21 @@ public class TypeScriptParser {
         }
     }
 
-    private static final String SCRIPT_PATH = "../adapter/typescript/src/main/resources/script/parse.js";
     private static final String NODE_MODULE_PATH = "../adapter/typescript/src/main/resources/script/node_modules/typescript";
 
     public HashMap<String, Object> parse(Path path) throws FileNotFoundException {
         HashMap<String, Object> res;
         var read = new BufferedReader(new FileReader(path.toFile()));
         Path cwd = Path.of(JavetOSUtils.WORKING_DIRECTORY);
-        File codeFile = cwd.resolve(SCRIPT_PATH).toFile();
+        // the static initializer above already extracts parse.js from the classpath resource to a
+        // real file and remembers it in the static `codeFile` field - that's the portable,
+        // working-directory-independent way to locate it. This used to be shadowed by a local
+        // variable of the same name recomputed via a hardcoded, working-directory-relative SCRIPT_PATH
+        // ("../adapter/typescript/src/main/resources/script/parse.js"), which only resolved correctly
+        // if the JVM's cwd happened to be exactly one directory below the repo root - not true when
+        // Gradle runs this module's own tests (cwd = adapter/typescript itself, two levels down),
+        // producing a doubled "adapter/typescript/../adapter/typescript/..." path and an ENOENT. See
+        // the (still-disabled) AdapterTest for the original bug report.
         var nodePath = cwd.resolve(NODE_MODULE_PATH).toString();
         var fileContent = read.lines().collect(Collectors.joining("\n"));
         try (NodeRuntime v8Runtime = V8Host.getNodeInstance().createV8Runtime()) {

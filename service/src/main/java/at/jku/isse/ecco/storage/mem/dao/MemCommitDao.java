@@ -11,7 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-//TODO not needed anymore delete.
+/**
+ * Backs the "mem" storage backend (MemModule/MemPlugin), registered as a live
+ * {@code at.jku.isse.ecco.storage.StoragePlugin} SPI provider alongside "ser" (see
+ * META-INF/services/at.jku.isse.ecco.storage.StoragePlugin) - a real, selectable storage option
+ * today, not dead code, despite an earlier "not needed anymore, delete" comment here that no longer
+ * reflected that.
+ */
 public class MemCommitDao extends MemAbstractGenericDao implements CommitDao {
 
 	@Inject
