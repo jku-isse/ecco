@@ -170,25 +170,27 @@ public class RepositoryOpExtractTest {
     }
 
     /**
-     * Repository.Op.merge()'s per-association loop (Repository.java, the "for every association in
-     * other repository" section) builds a Commit via {@code this.extract(association, commit)} for
-     * every merged association, but never calls {@code this.addCommit(commit)} on it afterward - so
-     * none of those commits ever show up in the merged-into repository's commit log, even though the
-     * feature/association data they carried was merged in correctly. Pinned here at the algorithm
-     * level; also visible through the REST layer as
-     * FileRepositoryServiceTest#forkRepositoryTransfersFeaturesButDropsTheCommitLog. Not fixed as
-     * part of this (test-only) change - see feedback-risk-methodology in project memory on escalating
-     * rather than changing core algorithms as a side effect of adding tests.
+     * Regression test for a real bug: Repository.Op.merge()'s per-association loop (Repository.java,
+     * the "for every association in other repository" section) builds a Commit via
+     * {@code this.extract(association, commit)} for every merged association, but used to never call
+     * {@code this.addCommit(commit)} on it afterward - so none of those commits ever showed up in the
+     * merged-into repository's commit log, even though the feature/association data they carried was
+     * merged in correctly. Fixed by adding the missing addCommit(commit) call, mirroring what
+     * extract(Configuration, ...) already does. Also visible (and fixed) through the REST layer as
+     * FileRepositoryServiceTest#forkRepositoryRegistersAMergeCommitPerMergedAssociation.
      */
     @Test
     @Timeout(10)
-    public void mergeDoesNotRegisterItsOwnMergeCommits() {
+    public void mergeRegistersAMergeCommitPerMergedAssociation() {
         Repository.Op source = newRepository();
         source.extract(singleFeatureConfiguration("A"), Set.of(fileNode("fileA.txt")), "alice");
 
         Repository.Op target = newRepository();
         target.merge(source);
 
-        assertTrue(target.getCommits().isEmpty(), "merge()'s per-association commits are never registered via addCommit()");
+        assertEquals(1, target.getCommits().size());
+        // createCommit(MERGE) sets the committer field, not commitMessage (SerCommit's constructor
+        // takes a username) - Repository.MERGE ("merge") ends up as the merge commit's "committer".
+        assertEquals(Repository.MERGE, target.getCommits().iterator().next().getUsername());
     }
 }

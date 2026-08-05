@@ -10,10 +10,20 @@ import at.jku.isse.ecco.storage.ser.module.SerModuleRevision;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * Synchronized on {@code this} for every read AND write of {@link #children}/{@link #count} - same
+ * live-shared-mutable-state race as SerAssociationCounter (see association-counter-unsynchronized-race
+ * in project memory and that class's javadoc); this counter is reached via
+ * AssociationCounter#getChildren() and walked the same way by
+ * {@code Association.Op#computeLikelyCondition()}, so it's vulnerable to the identical
+ * concurrent-iteration-vs-addChild() race even though it hasn't been the one to actually crash yet
+ * (it backs onto a plain ArrayList, whose iterator does throw the "expected"
+ * ConcurrentModificationException rather than SerAssociationCounter's UnifiedMap-flavored
+ * ArrayIndexOutOfBoundsException - still a crash either way).
+ */
 public class SerModuleCounter implements ModuleCounter {
 
 	public static final long serialVersionUID = 1L;
@@ -75,7 +85,7 @@ public class SerModuleCounter implements ModuleCounter {
 //	}
 
 	@Override
-	public SerModuleRevisionCounter addChild(ModuleRevision child) {
+	public synchronized SerModuleRevisionCounter addChild(ModuleRevision child) {
 		if (!(child instanceof SerModuleRevision))
 			throw new EccoException("Only MemModuleRevision can be added as a child to MemModuleCounter!");
 		SerModuleRevision memChild = (SerModuleRevision) child;
@@ -89,7 +99,7 @@ public class SerModuleCounter implements ModuleCounter {
 	}
 
 	@Override
-	public ModuleRevisionCounter getChild(ModuleRevision child) {
+	public synchronized ModuleRevisionCounter getChild(ModuleRevision child) {
 		for (ModuleRevisionCounter moduleRevisionCounter : this.children) {
 			if (moduleRevisionCounter.getObject().equals(child))
 				return moduleRevisionCounter;
@@ -98,8 +108,8 @@ public class SerModuleCounter implements ModuleCounter {
 	}
 
 	@Override
-	public Collection<ModuleRevisionCounter> getChildren() {
-		return Collections.unmodifiableCollection(this.children);
+	public synchronized Collection<ModuleRevisionCounter> getChildren() {
+		return new ArrayList<>(this.children);
 	}
 
 
@@ -109,22 +119,22 @@ public class SerModuleCounter implements ModuleCounter {
 	}
 
 	@Override
-	public int getCount() {
+	public synchronized int getCount() {
 		return this.count;
 	}
 
 	@Override
-	public void setCount(int count) {
+	public synchronized void setCount(int count) {
 		this.count = count;
 	}
 
 	@Override
-	public void incCount() {
+	public synchronized void incCount() {
 		this.count++;
 	}
 
 	@Override
-	public void incCount(int count) {
+	public synchronized void incCount(int count) {
 		this.count += count;
 	}
 

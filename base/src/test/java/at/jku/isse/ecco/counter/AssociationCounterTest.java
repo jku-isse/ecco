@@ -8,6 +8,7 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.repository.Repository;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.Iterator;
 import java.util.UUID;
@@ -77,37 +78,70 @@ public class AssociationCounterTest {
     }
 
     /**
-     * Known project bug (association-counter-unsynchronized-race in project memory): getChildren()
-     * (SerAssociationCounter.java) returns a live view directly over the same Eclipse-Collections
-     * UnifiedMap addChild() mutates, with no synchronization or defensive copy between them. Real
-     * production crashes happen across threads (one thread iterating getChildren() while another
-     * commits and calls addChild()), but the underlying defect - an unguarded live view, not a
-     * snapshot - is fully reproducible in a single thread by mutating mid-iteration, which is what
-     * this pins down deterministically rather than relying on a timing-dependent multi-threaded race
-     * (which would make this test flaky).
-     * <p>
-     * Surprising detail worth knowing if this ever needs debugging in the wild: unlike
-     * java.util.HashMap, Eclipse Collections' UnifiedMap does NOT do modCount-based fail-fast
-     * detection - mutating during iteration does not throw the "expected"
-     * ConcurrentModificationException. It throws ArrayIndexOutOfBoundsException instead (confirmed
-     * empirically, not assumed), because the iterator's internal array-index bookkeeping silently
-     * desyncs from the now-resized backing array. A real occurrence of this bug in production would
-     * therefore surface as a confusing AIOOBE deep in Eclipse Collections' internals, not the
-     * well-known "you mutated a collection during iteration" signal.
-     * <p>
-     * Not fixed here - see feedback-risk-methodology in project memory on escalating rather than
-     * changing this synchronization as a side effect of adding tests (the project has deliberately
-     * left this unfixed, twice, per explicit prior user choice).
+     * Regression test for a real, twice-recurring production crash (association-counter-
+     * unsynchronized-race in project memory): getChildren() used to return a live view directly over
+     * the same Eclipse-Collections UnifiedMap addChild() mutates, with no synchronization or defensive
+     * copy between them - one thread iterating getChildren() while another thread (a commit's
+     * background write) called addChild() crashed with ArrayIndexOutOfBoundsException (confirmed
+     * empirically - Eclipse Collections' UnifiedMap does not do java.util's modCount-based fail-fast,
+     * so it doesn't throw the "expected" ConcurrentModificationException either). Fixed by making
+     * getChildren() return a defensive copy and synchronizing every read/write of the backing map -
+     * mutating after obtaining the iterator must no longer be able to affect that already-copied
+     * collection at all, which is exactly what this pins down: no exception, and the snapshot stays
+     * exactly as it was when it was taken.
      */
     @Test
-    public void getChildrenViewIsNotSafeToIterateWhileMutating() {
+    public void getChildrenReturnsASnapshotUnaffectedByLaterMutation() {
         AssociationCounter counter = ef.createAssociation().getCounter();
         counter.addChild(moduleFor("A"));
 
         Iterator<ModuleCounter> iterator = counter.getChildren().iterator();
         iterator.next();
-        counter.addChild(moduleFor("B")); // structural modification of the same backing map, mid-iteration
+        counter.addChild(moduleFor("B")); // structural modification of the backing map, after the snapshot was taken
 
-        assertThrows(ArrayIndexOutOfBoundsException.class, iterator::next);
+        assertFalse(iterator.hasNext(), "the snapshot taken by getChildren() must be unaffected by the later addChild()");
+        assertEquals(2, counter.getChildren().size(), "a fresh call to getChildren() does see the new child");
+    }
+
+    /**
+     * The actual real-world scenario the fix targets: one thread repeatedly reading getChildren()
+     * (standing in for GUI rendering via Association.Op#computeLikelyCondition()) concurrently with
+     * another thread calling addChild() (standing in for a commit's background write) - see
+     * association-counter-unsynchronized-race in project memory for the real crash this reproduced.
+     * Before the fix this reliably threw ArrayIndexOutOfBoundsException within a handful of
+     * iterations; after it, this test must complete cleanly every time.
+     */
+    @Test
+    @Timeout(30)
+    public void concurrentReadsAndWritesDoNotCorruptTheCounter() throws InterruptedException {
+        AssociationCounter counter = ef.createAssociation().getCounter();
+        int writerModuleCount = 500;
+
+        Thread writer = new Thread(() -> {
+            for (int i = 0; i < writerModuleCount; i++) {
+                counter.addChild(moduleFor("W" + i));
+            }
+        });
+
+        final Throwable[] readerFailure = new Throwable[1];
+        Thread reader = new Thread(() -> {
+            try {
+                while (writer.isAlive()) {
+                    for (ModuleCounter moduleCounter : counter.getChildren()) {
+                        moduleCounter.getCount(); // exercise the snapshot, same shape as computeLikelyCondition()
+                    }
+                }
+            } catch (Throwable t) {
+                readerFailure[0] = t;
+            }
+        });
+
+        writer.start();
+        reader.start();
+        writer.join();
+        reader.join();
+
+        assertNull(readerFailure[0], "reading getChildren() concurrently with addChild() must never throw");
+        assertEquals(writerModuleCount, counter.getChildren().size());
     }
 }

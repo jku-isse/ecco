@@ -195,19 +195,19 @@ public class FileRepositoryServiceTest {
     }
 
     /**
-     * Repository.Op.merge() (base/src/main/java/at/jku/isse/ecco/repository/Repository.java:1240-1284,
-     * the "for every association in other repository" loop) builds a {@code Commit} per merged
-     * association via {@code this.extract(association, commit)}, but never calls
-     * {@code this.addCommit(commit)} on it afterward - so those commits are silently discarded and
-     * never appear in the merged-into repository's commit log, even though the underlying
-     * features/associations/data did transfer correctly. Asserting the (surprising) 0 here
-     * characterizes that actual behavior rather than papering over it; not fixed as part of this
-     * (test-only) change - see feedback-risk-methodology in project memory on escalating rather than
-     * changing core algorithms as a side effect of adding tests.
+     * Regression test for a real bug, now fixed: Repository.Op.merge()
+     * (base/src/main/java/at/jku/isse/ecco/repository/Repository.java, the "for every association in
+     * other repository" loop) builds a {@code Commit} per merged association via
+     * {@code this.extract(association, commit)}, but used to never call
+     * {@code this.addCommit(commit)} on it afterward - so those commits were silently discarded and
+     * never appeared in the merged-into repository's commit log, even though the underlying
+     * features/associations/data did transfer correctly. Fixed by adding the missing addCommit(commit)
+     * call - see RepositoryOpExtractTest#mergeRegistersAMergeCommitPerMergedAssociation for the same
+     * fix pinned at the algorithm level.
      */
     @Test
     @Timeout(30)
-    public void forkRepositoryTransfersFeaturesButDropsTheCommitLog() throws IOException {
+    public void forkRepositoryRegistersAMergeCommitPerMergedAssociation() throws IOException {
         Path storage = Files.createTempDirectory("file-repository-service-fork");
         FileRepositoryService service = new FileRepositoryService(storage);
         service.createRepository("original");
@@ -218,6 +218,6 @@ public class FileRepositoryServiceTest {
 
         RestRepository forked = service.getRepository(2);
         assertTrue(forked.getFeatures().stream().anyMatch(f -> "Core".equals(f.getName())), "the original's feature data should have been merged in");
-        assertEquals(0, forked.getCommits().size(), "merge() never registers its per-association commits via addCommit() - see javadoc above");
+        assertEquals(1, forked.getCommits().size(), "forking one association should register one merge commit");
     }
 }
