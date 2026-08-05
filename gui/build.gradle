@@ -40,6 +40,11 @@ dependencies {
     // own DummyNativeAdapter) on Windows/Linux, so it's safe to always include.
     implementation 'de.jangassen:nsmenufx:3.1.0'
 
+    // Icon font glyphs for the ribbon's buttons - see gui/ribbon/RibbonBar.java. Feather (flat,
+    // single-stroke) rather than a filled pack like Material2, to match Cupertino's flat aesthetic.
+    implementation 'org.kordamp.ikonli:ikonli-javafx:12.4.0'
+    implementation 'org.kordamp.ikonli:ikonli-feather-pack:12.4.0'
+
     implementation 'org.graphstream:gs-core:2.0'
     implementation 'org.graphstream:gs-algo:2.0'
     implementation 'org.graphstream:gs-ui-javafx:2.0'
