@@ -3,6 +3,28 @@
     -fx-base: #eeeeee;
     -fx-background: #eeeeee;
     -fx-background-color: #eeeeee;
+    /* AtlantaFX's Cupertino theme sets -fx-font-size: 14px on .root (JavaFX's own default is
+       13px); since table/list row heights and TextArea line spacing derive from font metrics,
+       that 1px bump was cascading into visibly taller rows and looser code-view line spacing
+       app-wide. Restoring the previous 13px keeps Cupertino's colors/paddings/etc. but not that
+       specific increase. */
+    -fx-font-size: 13px;
+}
+
+/* AtlantaFX's Cupertino theme sets -fx-cell-size: 3em on table/tree-table/tree rows (~macOS
+   Finder-list row height) - a fixed minimum height, not padding, so it can't be tuned via the
+   font-size fix above. Cupertino ships its own "dense" variant at 2em for exactly this, normally
+   opted into per-control via a "dense" style class; applied here unconditionally instead so every
+   list/table/tree in the app (Commits, Associations, Artifacts, ...) gets it automatically,
+   without having to remember to tag each one individually. list-view/list-cell is included too,
+   though CCodeViewer/LilypondCodeViewer/JavaCodeViewer already set an even tighter fixed cell size
+   of their own in Java for their single-line-of-code rows, which - being a Java API call, not CSS
+   - takes priority over this regardless. */
+.table-view .table-row-cell,
+.tree-table-view .tree-table-row-cell,
+.tree-view .tree-cell,
+.list-view .list-cell {
+    -fx-cell-size: 2em;
 }
 
 .nonuniquerow {

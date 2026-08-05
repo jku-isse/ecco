@@ -46,6 +46,11 @@ public class ArtifactSnippetTreeView extends BorderPane {
 		this.setTop(legend);
 		this.setCenter(treeView);
 
+		// AtlantaFX's Cupertino theme pads every tree cell 0.5em top+bottom (~macOS Finder-list
+		// spacing), which reads as a big gap between rows of one-line-per-row snippet text; "dense"
+		// is Cupertino's own built-in variant for exactly this, halving that padding to 0.25em.
+		treeView.getStyleClass().add("dense");
+
 		treeView.setCellFactory(tv -> new TreeCell<>() {
 			@Override
 			protected void updateItem(Node item, boolean empty) {
