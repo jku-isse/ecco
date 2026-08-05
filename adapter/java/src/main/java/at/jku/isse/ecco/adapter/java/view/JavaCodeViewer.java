@@ -18,6 +18,7 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
@@ -25,9 +26,9 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
 import javafx.util.Callback;
 
 import java.beans.PropertyChangeListener;
@@ -221,7 +222,15 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 							setGraphic(null);
 							backgroundProperty().unbind();
 						} else {
-							TextFlow flow = new TextFlow();
+							// HBox, not TextFlow: TextFlow wraps onto multiple lines once its content
+							// is too wide for the available space (comments are usually the longest
+							// token on a line, so they're what most often triggers it), which then
+							// gets clipped by this ListView's fixed cell size below - HBox never
+							// wraps, so a long line just extends past the visible width instead
+							// (matching how LilypondCodeViewer, which never had this bug, already
+							// renders its rows).
+							HBox flow = new HBox();
+							flow.setAlignment(Pos.BASELINE_LEFT);
 							flow.setOnMouseEntered(e -> showAssociationInfo(line.getAssociation()));
 
 							Text indentText = new Text(INDENT_UNIT.repeat(line.getIndent()));
@@ -312,12 +321,28 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 			}
 		}
 
-		JavaCodeLine line = new JavaCodeLine(n, association, text, indent);
-		line.backgroundColor().set(bgCol);
-		if (n != null) {
-			indexByNode.put(n, lines.size());
+		// A single artifact's stored text can itself carry a raw newline (most commonly a
+		// multi-line block comment, or a trailing // comment followed by more of the original
+		// source on the next physical line) - split into one row per physical line rather than
+		// cramming several onto one, since a Text node renders an embedded newline as an actual
+		// line break regardless of the row's fixed height, clipping whatever doesn't fit. Every
+		// resulting row shares the same node/association/indent (they're all still this one
+		// artifact); only the first is registered in indexByNode, so "scroll to this node" still
+		// lands on its first line.
+		String[] physicalLines = text.split("\r\n|\r|\n", -1);
+		boolean first = true;
+		for (String physicalLine : physicalLines) {
+			if (physicalLine.isEmpty() && !first) {
+				continue;
+			}
+			JavaCodeLine line = new JavaCodeLine(n, association, physicalLine, indent);
+			line.backgroundColor().set(bgCol);
+			if (first && n != null) {
+				indexByNode.put(n, lines.size());
+			}
+			lines.add(line);
+			first = false;
 		}
-		lines.add(line);
 	}
 
 	private static String withTrailingSemicolon(String text) {
