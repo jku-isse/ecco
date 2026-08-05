@@ -41,4 +41,6 @@ dependencies {
 	testImplementation "org.openjfx:javafx-fxml:$javafxVersion:$platform"
 
 	testImplementation project(':ecco-service')
+
+	testImplementation 'org.mockito:mockito-core:5.8.0'
 }
