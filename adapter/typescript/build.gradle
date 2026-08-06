@@ -13,10 +13,21 @@ repositories {
 
 dependencies {
     implementation project(':ecco-service')
-    // https://mvnrepository.com/artifact/com.caoccao.javet/javet
-    implementation libs.javet.core
-    // https://mvnrepository.com/artifact/com.caoccao.javet/javet-macos
-    implementation libs.javet.macos
+    // javet ships one native V8/Node binary blob per OS family rather than a single portable jar
+    // (javet: Linux + Windows x86_64, ~42MB; javet-macos: macOS x86_64 + arm64, ~46MB) - pulling
+    // both unconditionally means every build/distribution bundles ~88MB of native libraries it can
+    // never load, since a given JVM only ever uses the one matching its own OS. gui's jpackage/zip
+    // packaging tasks are already only ever run on their own target OS (see gui/build.gradle's
+    // jpackageAppWindows comment), so gating on the current build's OS - the same
+    // OperatingSystem.current() check base/cli/gui already use for JavaFX's platform classifier -
+    // matches how these are actually packaged, without needing cross-compilation support.
+    if (org.gradle.internal.os.OperatingSystem.current().macOsX) {
+        // https://mvnrepository.com/artifact/com.caoccao.javet/javet-macos
+        implementation libs.javet.macos
+    } else {
+        // https://mvnrepository.com/artifact/com.caoccao.javet/javet
+        implementation libs.javet.core
+    }
     testImplementation platform(libs.junit.bom)
     testImplementation libs.junit.jupiter
     testImplementation libs.junit4
