@@ -1,3 +1,0 @@
-
-# ECCO Java Adapter
-
