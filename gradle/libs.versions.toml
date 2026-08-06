@@ -1,0 +1,138 @@
+[versions]
+# core / test infrastructure
+junit-jupiter = "5.10.1"
+mockito = "5.8.0"
+jacoco-tool = "0.8.11"
+
+# shared across base/service/cli/gui/logic/adapter-challenge
+logicng = "2.6.0"
+eclipse-collections = "11.1.0"
+guava = "33.2.1-jre"
+guice-core = "7.0.0"
+guice-multibindings = "4.2.3"
+javaparser = "3.25.8"
+commons-io = "2.15.1"
+
+# service
+lombok = "1.18.30"
+java-diff-utils = "4.12"
+opencsv = "5.9"
+jgit = "6.10.0.202406032230-r"
+jackson-databind = "2.13.4.2"
+jackson-core = "2.13.3"
+
+# gui
+atlantafx = "2.1.0"
+nsmenufx = "3.1.0"
+ikonli = "12.4.0"
+graphstream = "2.0"
+javafx = "22.0.2"
+
+# cli
+argparse4j = "0.9.0"
+
+# web
+slf4j = "2.0.10"
+jersey = "3.1.5"
+jaxb-api = "2.3.1"
+
+# adapter-c / adapter-golang
+antlr4 = "4.13.2"
+
+# adapter-challenge
+commons-collections4 = "4.4"
+log4j-api = "2.23.1"
+
+# adapter-typescript
+javet = "2.1.2"
+junit4 = "4.13.1"
+
+# adapter-lilypond
+testng-core = "7.10.2"
+testng-engine = "1.0.6"
+commons-math3 = "3.6.1"
+py4j = "0.10.9.7"
+graalvm-polyglot-tck = "23.1.1"
+
+# rest (versions not managed by the Micronaut BOM)
+micronaut-openapi = "6.3.0"
+rxjava = "2.2.21"
+
+# plugins
+plugin-nebula-ospackage = "12.+"
+plugin-openjfx = "0.1.0"
+plugin-graalvm-native = "0.10.3"
+plugin-node-gradle = "7.0.1"
+plugin-shadow = "8.1.1"
+plugin-micronaut-app = "4.2.1"
+
+[libraries]
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+
+logicng-core = { module = "org.logicng:logicng", version.ref = "logicng" }
+logicng-parser-j11 = { module = "org.logicng:logicng-parser-j11", version.ref = "logicng" }
+eclipse-collections-core = { module = "org.eclipse.collections:eclipse-collections", version.ref = "eclipse-collections" }
+eclipse-collections-api = { module = "org.eclipse.collections:eclipse-collections-api", version.ref = "eclipse-collections" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+guice-core = { module = "com.google.inject:guice", version.ref = "guice-core" }
+guice-multibindings = { module = "com.google.inject.extensions:guice-multibindings", version.ref = "guice-multibindings" }
+javaparser-core = { module = "com.github.javaparser:javaparser-core", version.ref = "javaparser" }
+javaparser-symbol-solver-core = { module = "com.github.javaparser:javaparser-symbol-solver-core", version.ref = "javaparser" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
+
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+java-diff-utils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "java-diff-utils" }
+opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
+jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson-databind" }
+jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson-core" }
+
+atlantafx-base = { module = "io.github.mkpaz:atlantafx-base", version.ref = "atlantafx" }
+nsmenufx = { module = "de.jangassen:nsmenufx", version.ref = "nsmenufx" }
+ikonli-javafx = { module = "org.kordamp.ikonli:ikonli-javafx", version.ref = "ikonli" }
+ikonli-feather-pack = { module = "org.kordamp.ikonli:ikonli-feather-pack", version.ref = "ikonli" }
+graphstream-core = { module = "org.graphstream:gs-core", version.ref = "graphstream" }
+graphstream-algo = { module = "org.graphstream:gs-algo", version.ref = "graphstream" }
+graphstream-ui-javafx = { module = "org.graphstream:gs-ui-javafx", version.ref = "graphstream" }
+javafx-controls = { module = "org.openjfx:javafx-controls", version.ref = "javafx" }
+javafx-fxml = { module = "org.openjfx:javafx-fxml", version.ref = "javafx" }
+
+argparse4j = { module = "net.sourceforge.argparse4j:argparse4j", version.ref = "argparse4j" }
+
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+jersey-hk2 = { module = "org.glassfish.jersey.inject:jersey-hk2", version.ref = "jersey" }
+jersey-container-grizzly2-http = { module = "org.glassfish.jersey.containers:jersey-container-grizzly2-http", version.ref = "jersey" }
+jersey-media-json-jackson = { module = "org.glassfish.jersey.media:jersey-media-json-jackson", version.ref = "jersey" }
+jersey-media-multipart = { module = "org.glassfish.jersey.media:jersey-media-multipart", version.ref = "jersey" }
+jaxb-api = { module = "javax.xml.bind:jaxb-api", version.ref = "jaxb-api" }
+
+antlr4-core = { module = "org.antlr:antlr4", version.ref = "antlr4" }
+antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr4" }
+
+commons-collections4 = { module = "org.apache.commons:commons-collections4", version.ref = "commons-collections4" }
+log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j-api" }
+
+javet-core = { module = "com.caoccao.javet:javet", version.ref = "javet" }
+javet-macos = { module = "com.caoccao.javet:javet-macos", version.ref = "javet" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }
+
+testng-core = { module = "org.testng:testng", version.ref = "testng-core" }
+testng-engine = { module = "org.junit.support:testng-engine", version.ref = "testng-engine" }
+commons-math3 = { module = "org.apache.commons:commons-math3", version.ref = "commons-math3" }
+py4j = { module = "net.sf.py4j:py4j", version.ref = "py4j" }
+graalvm-polyglot-tck = { module = "org.graalvm.sdk:polyglot-tck", version.ref = "graalvm-polyglot-tck" }
+
+micronaut-openapi = { module = "io.micronaut.openapi:micronaut-openapi", version.ref = "micronaut-openapi" }
+rxjava2 = { module = "io.reactivex.rxjava2:rxjava", version.ref = "rxjava" }
+
+[plugins]
+nebula-ospackage = { id = "com.netflix.nebula.ospackage", version.ref = "plugin-nebula-ospackage" }
+openjfx-javafxplugin = { id = "org.openjfx.javafxplugin", version.ref = "plugin-openjfx" }
+graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "plugin-graalvm-native" }
+node-gradle = { id = "com.github.node-gradle.node", version.ref = "plugin-node-gradle" }
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "plugin-shadow" }
+micronaut-minimal-application = { id = "io.micronaut.minimal.application", version.ref = "plugin-micronaut-app" }

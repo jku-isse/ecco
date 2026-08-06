@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id("com.github.node-gradle.node") version "7.0.1"
+    alias(libs.plugins.node.gradle)
 }
 ecco.adapter = true
 group = 'at.jku.isse.ecco'
@@ -14,12 +14,12 @@ repositories {
 dependencies {
     implementation project(':ecco-service')
     // https://mvnrepository.com/artifact/com.caoccao.javet/javet
-    implementation group: 'com.caoccao.javet', name: 'javet', version: '2.1.2'
+    implementation libs.javet.core
     // https://mvnrepository.com/artifact/com.caoccao.javet/javet-macos
-    implementation group: 'com.caoccao.javet', name: 'javet-macos', version: '2.1.2'
-    testImplementation platform('org.junit:junit-bom:5.10.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'junit:junit:4.13.1'
+    implementation libs.javet.macos
+    testImplementation platform(libs.junit.bom)
+    testImplementation libs.junit.jupiter
+    testImplementation libs.junit4
 }
 
 ospackage {

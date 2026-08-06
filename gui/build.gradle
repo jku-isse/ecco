@@ -1,6 +1,6 @@
 plugins {
 	id 'application'
-	id 'org.openjfx.javafxplugin' version '0.1.0'
+	alias(libs.plugins.openjfx.javafxplugin)
 	//id 'com.palantir.docker' version '0.30.0'
 }
 
@@ -10,11 +10,11 @@ application {
 }
 
 javafx {
-	version = "22.0.2"
+	version = libs.versions.javafx.get()
 	modules = [ 'javafx.controls', 'javafx.web' ]
 }
 
-def javafxVersion = "22.0.2"
+def javafxVersion = libs.versions.javafx.get()
 // Real org.openjfx artifact classifiers - "mac"/"mac-aarch64"/"linux"/"linux-aarch64"/"win" (JavaFX
 // ships Windows binaries for x86_64 only, so "win" is the only Windows classifier; on Windows-on-ARM
 // this only resolves/runs under the JDK's x86_64 emulation layer, since a native arm64 JDK there
@@ -33,21 +33,21 @@ def platform = {
 
 dependencies {
     // macOS-style ("Cupertino") JavaFX theme - see EccoGui.showMainStage()
-    implementation 'io.github.mkpaz:atlantafx-base:2.1.0'
+    implementation libs.atlantafx.base
 
     // Native bridge (JNA) to AppKit's NSMenu, used only to install a "Preferences..." item into
     // the real macOS application menu - see MainView's Mac app-menu setup. No-ops safely (via its
     // own DummyNativeAdapter) on Windows/Linux, so it's safe to always include.
-    implementation 'de.jangassen:nsmenufx:3.1.0'
+    implementation libs.nsmenufx
 
     // Icon font glyphs for the ribbon's buttons - see gui/ribbon/RibbonBar.java. Feather (flat,
     // single-stroke) rather than a filled pack like Material2, to match Cupertino's flat aesthetic.
-    implementation 'org.kordamp.ikonli:ikonli-javafx:12.4.0'
-    implementation 'org.kordamp.ikonli:ikonli-feather-pack:12.4.0'
+    implementation libs.ikonli.javafx
+    implementation libs.ikonli.feather.pack
 
-    implementation 'org.graphstream:gs-core:2.0'
-    implementation 'org.graphstream:gs-algo:2.0'
-    implementation 'org.graphstream:gs-ui-javafx:2.0'
+    implementation libs.graphstream.core
+    implementation libs.graphstream.algo
+    implementation libs.graphstream.ui.javafx
     // gs-ui-javafx:2.0 transitively depends on org.openjfx:javafx-fxml:13, which has no
     // mac-aarch64 artifact; force it up to a version/platform that actually resolves.
     implementation "org.openjfx:javafx-controls:$javafxVersion:$platform"
@@ -55,7 +55,7 @@ dependencies {
 
     implementation project(':ecco-service')
     implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
-    implementation 'org.logicng:logicng:2.6.0'
+    implementation libs.logicng.core
 
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')

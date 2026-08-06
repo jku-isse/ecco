@@ -1,5 +1,5 @@
 plugins {
-	id 'org.graalvm.buildtools.native' version '0.10.3'
+	alias(libs.plugins.graalvm.native)
 }
 
 apply plugin: 'application'
@@ -18,8 +18,8 @@ graalvmNative {
 }
 
 dependencies {
-	implementation 'net.sourceforge.argparse4j:argparse4j:0.9.0'
-	implementation 'org.logicng:logicng:2.6.0'
+	implementation libs.argparse4j
+	implementation libs.logicng.core
 
 	implementation project(':ecco-service')
 
@@ -33,9 +33,9 @@ dependencies {
 	testImplementation project(':ecco-adapter-image')
 	testImplementation project(':ecco-adapter-golang')
 
-	testImplementation platform('org.junit:junit-bom:5.10.1')
-	testImplementation 'org.junit.jupiter:junit-jupiter'
-	testImplementation "org.mockito:mockito-core:5.8.0"
+	testImplementation platform(libs.junit.bom)
+	testImplementation libs.junit.jupiter
+	testImplementation libs.mockito.core
 }
 
 ospackage {

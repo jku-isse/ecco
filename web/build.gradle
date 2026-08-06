@@ -9,15 +9,15 @@ task runTest(type: JavaExec, dependsOn: classes, group: 'application') {
 }
 
 dependencies {
-	testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.10'
-	implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.10'
+	testImplementation libs.slf4j.simple
+	implementation libs.slf4j.api
 
-	implementation group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '3.1.5'
-	implementation group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '3.1.5'
-	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '3.1.5'
-	implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '3.1.5'
+	implementation libs.jersey.hk2
+	implementation libs.jersey.container.grizzly2.http
+	implementation libs.jersey.media.json.jackson
+	implementation libs.jersey.media.multipart
 
-	implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
+	implementation libs.jaxb.api
 
 	implementation project(':ecco-service')
 
