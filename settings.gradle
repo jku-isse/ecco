@@ -4,7 +4,6 @@ include 'base'
 include 'service'
 include 'cli'
 include 'gui'
-include 'web'
 include 'rest'
 include 'experiment'
 include 'util'
@@ -29,7 +28,6 @@ project(':base').projectDir = file('base')
 project(':service').projectDir = file('service')
 project(':cli').projectDir = file('cli')
 project(':gui').projectDir = file('gui')
-project(':web').projectDir = file('web')
 project(':util').projectDir = file('util')
 project(':logic').projectDir = file('logic')
 
