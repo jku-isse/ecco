@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML" xmi:id="_JAWnYM1WEeWtEcmngKLgeA" name="RootElement">
+  <packagedElement xmi:type="uml:Class" xmi:id="_CqMPMM1ZEeWtEcmngKLgeA" name="ReserveRoom">
+    <generalization xmi:type="uml:Generalization" xmi:id="_kLp-QM1aEeWtEcmngKLgeA" general="_Fwn0oM1ZEeWtEcmngKLgeA"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_Fwn0oM1ZEeWtEcmngKLgeA" name="WarehouseLayout"/>
+  <packagedElement xmi:type="uml:Class" xmi:id="_VD5xcM1ZEeWtEcmngKLgeA" name="PickFloor">
+    <generalization xmi:type="uml:Generalization" xmi:id="_kh_aoM1aEeWtEcmngKLgeA" general="_Fwn0oM1ZEeWtEcmngKLgeA"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_XsNQcM1ZEeWtEcmngKLgeA" name="Location">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_ZgvwMM1ZEeWtEcmngKLgeA" name="zoneId"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_cVkBMM1ZEeWtEcmngKLgeA" name="rackLocation"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_eAR2kM1ZEeWtEcmngKLgeA" name="levelNum"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_W15eEM1aEeWtEcmngKLgeA" name="asideID"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="_aASWcM1aEeWtEcmngKLgeA" name="Fascia">
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_etd3QM1aEeWtEcmngKLgeA" name="model"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_gE2g8M1aEeWtEcmngKLgeA" name="colour"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_hGN3UM1aEeWtEcmngKLgeA" name="sku"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_iEju4M1aEeWtEcmngKLgeA" name="quantity"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Association" xmi:id="_lQyaUM1aEeWtEcmngKLgeA" memberEnd="_lQzBYs1aEeWtEcmngKLgeA _lQzBY81aEeWtEcmngKLgeA">
+    <eAnnotations xmi:type="ecore:EAnnotation" xmi:id="_lQzBYM1aEeWtEcmngKLgeA" source="org.eclipse.papyrus">
+      <details xmi:type="ecore:EStringToStringMapEntry" xmi:id="_lQzBYc1aEeWtEcmngKLgeA" key="nature" value="UML_Nature"/>
+    </eAnnotations>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_lQzBY81aEeWtEcmngKLgeA" name="location" type="_XsNQcM1ZEeWtEcmngKLgeA" aggregation="composite" association="_lQyaUM1aEeWtEcmngKLgeA">
+      <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_pFPjYM1aEeWtEcmngKLgeA" value="1"/>
+      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_pFR_oM1aEeWtEcmngKLgeA" value="*"/>
+    </ownedEnd>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_lQzBYs1aEeWtEcmngKLgeA" name="pickfloor" type="_VD5xcM1ZEeWtEcmngKLgeA" association="_lQyaUM1aEeWtEcmngKLgeA"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Association" xmi:id="_uCguoM1aEeWtEcmngKLgeA" memberEnd="_uChVss1aEeWtEcmngKLgeA _uChVs81aEeWtEcmngKLgeA">
+    <eAnnotations xmi:type="ecore:EAnnotation" xmi:id="_uChVsM1aEeWtEcmngKLgeA" source="org.eclipse.papyrus">
+      <details xmi:type="ecore:EStringToStringMapEntry" xmi:id="_uChVsc1aEeWtEcmngKLgeA" key="nature" value="UML_Nature"/>
+    </eAnnotations>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_uChVs81aEeWtEcmngKLgeA" name="fascia" type="_aASWcM1aEeWtEcmngKLgeA" aggregation="composite" association="_uCguoM1aEeWtEcmngKLgeA"/>
+    <ownedEnd xmi:type="uml:Property" xmi:id="_uChVss1aEeWtEcmngKLgeA" name="location" type="_XsNQcM1ZEeWtEcmngKLgeA" association="_uCguoM1aEeWtEcmngKLgeA"/>
+  </packagedElement>
+</uml:Model>

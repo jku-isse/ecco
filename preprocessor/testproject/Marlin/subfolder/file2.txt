@@ -1,0 +1,11 @@
+package test;
+
+public class Main {
+	#if rec
+	public static void main() {
+		some code
+	}
+	#endif
+
+
+}
