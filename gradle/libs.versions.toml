@@ -18,8 +18,8 @@ lombok = "1.18.30"
 java-diff-utils = "4.12"
 opencsv = "5.9"
 jgit = "6.10.0.202406032230-r"
-jackson-databind = "2.13.4.2"
-jackson-core = "2.13.3"
+jackson-databind = "2.15.3"
+jackson-core = "2.15.3"
 
 # gui
 atlantafx = "2.1.0"
