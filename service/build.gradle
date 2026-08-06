@@ -17,27 +17,27 @@ javafx {
 }
 
 dependencies {
-	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
-	implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
-	implementation 'org.logicng:logicng:2.6.0'
-    implementation("org.logicng:logicng-parser-j11:2.6.0")
-	implementation 'org.projectlombok:lombok:1.18.30'
-	implementation 'io.github.java-diff-utils:java-diff-utils:4.12'
-	implementation 'com.opencsv:opencsv:5.9'
-	implementation 'com.google.guava:guava:33.2.1-jre'
-	implementation 'org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r'
-	implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
-	implementation 'com.fasterxml.jackson.core:jackson-core:2.13.3'
+	implementation libs.eclipse.collections.api
+	implementation libs.eclipse.collections.core
+	implementation libs.logicng.core
+    implementation libs.logicng.parser.j11
+	implementation libs.lombok
+	implementation libs.java.diff.utils
+	implementation libs.opencsv
+	implementation libs.guava
+	implementation libs.jgit
+	implementation libs.jackson.databind
+	implementation libs.jackson.core
 
 	implementation project(':ecco-util')
     implementation project(':ecco-logic')
 
-	api 'com.google.inject:guice:7.0.0'
-	api 'com.google.inject.extensions:guice-multibindings:4.2.3'
+	api libs.guice.core
+	api libs.guice.multibindings
 	api project(':ecco-base')
 
-	testImplementation 'org.junit.jupiter:junit-jupiter'
-	testImplementation 'commons-io:commons-io:2.15.1'
+	testImplementation libs.junit.jupiter
+	testImplementation libs.commons.io
 
 	testImplementation project(':ecco-util')
 	testImplementation project(':ecco-adapter-file')

@@ -1,16 +1,16 @@
 plugins {
 	id 'application'
-	id 'org.openjfx.javafxplugin' version '0.1.0'
+	alias(libs.plugins.openjfx.javafxplugin)
 }
 
 apply plugin: 'java-library'
 
 javafx {
-	version = "22.0.2"
+	version = libs.versions.javafx.get()
 	modules = [ 'javafx.controls' ]
 }
 
-def javafxVersion = "22.0.2"
+def javafxVersion = libs.versions.javafx.get()
 // Real org.openjfx artifact classifiers - "mac"/"mac-aarch64"/"linux"/"linux-aarch64"/"win" (JavaFX
 // ships Windows binaries for x86_64 only, so "win" is the only Windows classifier; on Windows-on-ARM
 // this only resolves/runs under the JDK's x86_64 emulation layer, since a native arm64 JDK there
@@ -28,13 +28,13 @@ def platform = {
 }()
 
 dependencies {
-	implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
-	implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
-	implementation 'com.google.guava:guava:33.2.1-jre'
-	api 'com.google.inject:guice:7.0.0'
-	implementation 'com.github.javaparser:javaparser-core:3.25.8'
-    implementation 'org.logicng:logicng:2.6.0'
-    implementation("org.logicng:logicng-parser-j11:2.6.0")
+	implementation libs.eclipse.collections.api
+	implementation libs.eclipse.collections.core
+	implementation libs.guava
+	api libs.guice.core
+	implementation libs.javaparser.core
+    implementation libs.logicng.core
+    implementation libs.logicng.parser.j11
     implementation project(':ecco-logic')
 
 	testImplementation project(':ecco-adapter-c')
@@ -45,10 +45,10 @@ dependencies {
 	testImplementation project(':ecco-adapter-java')
 	testImplementation project(':ecco-adapter-lilypond')
 
-	testImplementation 'commons-io:commons-io:2.15.1'
-	testImplementation 'org.graphstream:gs-core:2.0'
-	testImplementation 'org.graphstream:gs-algo:2.0'
-	testImplementation 'org.graphstream:gs-ui-javafx:2.0'
+	testImplementation libs.commons.io
+	testImplementation libs.graphstream.core
+	testImplementation libs.graphstream.algo
+	testImplementation libs.graphstream.ui.javafx
 	// gs-ui-javafx:2.0 transitively depends on org.openjfx:javafx-fxml:13, which has no
 	// mac-aarch64 artifact; force it up to a version/platform that actually resolves.
 	testImplementation "org.openjfx:javafx-controls:$javafxVersion:$platform"
@@ -56,5 +56,5 @@ dependencies {
 
 	testImplementation project(':ecco-service')
 
-	testImplementation 'org.mockito:mockito-core:5.8.0'
+	testImplementation libs.mockito.core
 }

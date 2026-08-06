@@ -1,5 +1,5 @@
 plugins {
-	id 'com.netflix.nebula.ospackage' version '12.+'
+	alias(libs.plugins.nebula.ospackage)
 	id 'pmd'
 	//id 'checkstyle'
 }
@@ -15,7 +15,7 @@ allprojects {
 	}
 
 	jacoco {
-		toolVersion = '0.8.11'
+		toolVersion = libs.versions.jacoco.tool.get()
 	}
 
 	repositories {
@@ -40,7 +40,7 @@ subprojects {
 	targetCompatibility = JavaVersion.VERSION_21
 
 	dependencies {
-		testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+		testImplementation libs.junit.jupiter
 	}
 
 	jar {
