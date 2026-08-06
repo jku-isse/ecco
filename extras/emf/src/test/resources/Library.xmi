@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:library="http://www.eclipse.org/emf/jcrm/samples/emf/sample/Library"
+    xsi:schemaLocation="http://www.eclipse.org/emf/jcrm/samples/emf/sample/Library Library.ecore">
+  <library:Library
+      name="Example">
+    <books title="Portugal"
+        pages="106"
+        author="/1"
+        ISBN="589112870-5"/>
+    <books title="China"
+        pages="628"
+        author="/2"
+        ISBN="819960508-1"/>
+    <books title="Philippines"
+        pages="400"
+        author="/3"
+        ISBN="688852480-9"/>
+    <books title="De-engineered"
+        pages="652"
+        author="/4"
+        ISBN="680441807-7"/>
+    <books title="Homogeneous"
+        pages="578"
+        author="/5"
+        ISBN="061417117-2"/>
+    <books title="Installation"
+        pages="584"
+        author="/6"
+        ISBN="120878134-0"/>
+  </library:Library>
+  <library:GuideBookWriter
+      name="Kory Dudek">
+    <countries>Portugal</countries>
+  </library:GuideBookWriter>
+  <library:GuideBookWriter
+      name="Hillier Willars">
+      <countries>China</countries>
+  </library:GuideBookWriter>
+  <library:GuideBookWriter
+      name="Faydra Ezele">
+      <countries>Philippines</countries>
+  </library:GuideBookWriter>
+  <library:SpecialistBookWriter
+      name="Stafford Lyttle">
+      <subject>De-engineered</subject>
+  </library:SpecialistBookWriter>
+  <library:SpecialistBookWriter
+      name="Gerhardt Streather">
+      <subject>Homogeneous</subject>
+  </library:SpecialistBookWriter>
+  <library:SpecialistBookWriter
+      name="Mufinella Tittletross">
+      <subject>Installation</subject>
+  </library:SpecialistBookWriter>
+</xmi:XMI>

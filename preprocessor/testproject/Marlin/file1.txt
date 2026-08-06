@@ -1,0 +1,59 @@
+package test;
+
+public class Calculator {
+	#if areaCircle || circumCircle
+	private static final double pi = 3.14;
+	#endif
+
+	#if rec
+	public int areaRec(int a, int b) {
+		return a * b;
+	}
+
+	public int circumferenceRec(int a, int b) {
+		return 2 * a + 2 * b;
+	}
+	#endif
+	
+	#if square
+	public int squareArea(int a) {
+		int area;
+		#if rec
+		area = areaRec(a, a);
+		#else
+		area = a * a;
+		#endif
+		return area;
+	}
+	#endif
+	
+	#if areaCircle
+	public double areaCircle(int r) {
+		return r * r * pi;
+	}
+	#endif
+
+	#if circumCircle
+	public double circumferenceCircle(int r) {
+		return 2 * r * pi;
+	}
+	#endif
+	
+	#if areaCircle && cylinder
+	public double cylinderVolume(int r, int h) {
+		return areaCircle(r) * h;
+	}
+	
+	#if cylinderArea && circumCircle
+	public double cylinderArea(int r, int h) {
+		return 2 * areaCircle(r) + areaCircle(r) * h;
+	}
+	#endif
+	#endif
+	
+	#if (rec && cylinder || (areaCircle || circumCircle)) || cylinderArea && cylinder 
+	public void complexCondition () {
+	}
+	#endif
+
+}

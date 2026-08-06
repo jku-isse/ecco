@@ -1,0 +1,52 @@
+
+ecco.set("storage", true)
+
+dependencies {
+    compile fileTree(dir: 'lib', include: '*.jar')
+
+    compile project(':ecco-base')
+    compile project(':ecco-service')
+
+    // https://mvnrepository.com/artifact/org.neo4j/neo4j
+    compile group: 'org.neo4j', name: 'neo4j', version: '5.15.0'
+
+    // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-core
+    compile group: 'org.neo4j', name: 'neo4j-ogm-core', version: '4.0.8'
+    
+    // https://mvnrepository.com/artifact/org.neo4j/neo4j-ogm-embedded-driver
+    compile group: 'org.neo4j', name: 'neo4j-ogm-embedded-driver', version: '3.3.2'
+
+    // https://mvnrepository.com/artifact/org.neo4j/neo4j-bolt
+    testCompile group: 'org.neo4j', name: 'neo4j-bolt', version: '5.15.0'
+
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+    testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.4.14'
+
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-core
+    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.4.14'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '2.0.10'
+
+    // https://mvnrepository.com/artifact/uk.co.jemos.podam/podam
+    testCompile group: 'uk.co.jemos.podam', name: 'podam', version: '8.0.1.RELEASE'
+
+    // This scala import is necessary to make Neo4J storage plugin work
+    // Issue: https://github.com/neo4j/neo4j/issues/8832
+
+    // https://mvnrepository.com/artifact/org.scala-lang/scala-library
+    compile group: 'org.scala-lang', name: 'scala-library', version: '2.13.12'
+
+    testRuntime project(':ecco-adapter-file')
+    testRuntime project(':ecco-adapter-text')
+    testRuntime project(':ecco-adapter-image')
+    testRuntime project(':ecco-adapter-java')
+}
+
+ospackage {
+    summary 'JSON database backend for ECCO.'
+    packageDescription 'This package provides a data backend module for ECCO which uses JSON.'
+
+    requires('ecco-base', version, EQUAL)
+}
+

@@ -1,0 +1,16 @@
+
+ecco.adapter = true
+
+dependencies {
+	compile fileTree(dir: 'lib', include: '*.jar')
+
+	compile project(':at.jku.isse.ecco.base')
+	compile project(':at.jku.isse.ecco.service')
+	compile project(':at.jku.isse.ecco.java')
+}
+
+ospackage {
+	requires('at.jku.isse.ecco.base', version, EQUAL)
+	requires('at.jku.isse.ecco.service', version, EQUAL)
+	requires('at.jku.isse.ecco.java', version, EQUAL)
+}
