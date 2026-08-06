@@ -55,8 +55,13 @@ public class RibbonBar extends VBox {
 				bandArea.getChildren().setAll(bandsByTab.get(newTab));
 			}
 		});
-		if (!tabLine.getTabs().isEmpty()) {
-			tabLine.getSelectionModel().selectFirst();
+		// TabLine's selection model auto-selects the first tab the moment it's added to getTabs()
+		// (above), i.e. before this listener existed to react to it - so a plain selectFirst() here
+		// would silently no-op (already-selected reselection is a no-op in TabLineSelectionModel) and
+		// leave bandArea empty until the user picks a different tab. Sync by hand instead.
+		Tab selectedTab = tabLine.getSelectionModel().getSelectedItem();
+		if (selectedTab != null) {
+			bandArea.getChildren().setAll(bandsByTab.get(selectedTab));
 		}
 
 		this.getChildren().setAll(tabLine, bandArea);
