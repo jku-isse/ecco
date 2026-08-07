@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.module.Condition;
 import javafx.application.Platform;
@@ -26,7 +27,7 @@ import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 
-public class DependencyGraphView extends BorderPane implements EccoListener {
+public class DependencyGraphView extends BorderPane implements EccoListener, TabVisibilityAware {
 
 	private final EccoService service;
 
@@ -39,6 +40,18 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 	private boolean simplifyLabels = true;
 	private boolean hideImpliedDependencies = true;
 	private boolean hideTransitiveDependencies = true;
+
+	/**
+	 * See {@code ArtifactGraphView#tabVisible} for the full rationale: without this,
+	 * {@link #statusChangedEvent} tore down and recreated the GraphStream {@link FxViewer} (each with
+	 * its own {@code GRAPH_IN_ANOTHER_THREAD} background thread) on every single commit, even while
+	 * this tab was never shown - a "Commit Multiple Versions" batch fires this once per folder in a
+	 * tight loop with nothing throttling it, so back-to-back teardown/recreate cycles raced the
+	 * previous viewer's still-running background thread against the new one, crashing deep inside
+	 * GraphStream's {@code SourceBase}/{@code ThreadProxyPipe} (NoSuchElementException/
+	 * NullPointerException from concurrent access to its internal event queue).
+	 */
+	private volatile boolean tabVisible = true;
 
 
 	private DependencyGraph dg = null;
@@ -277,9 +290,19 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 	}
 
 
+	/**
+	 * Fires on open/close AND, notably, after every commit too - see {@code ArtifactGraphView#
+	 * statusChangedEvent}. Skips the (expensive, GraphStream-viewer-recreating) refresh entirely
+	 * while {@link #tabVisible} is false; {@link #setTabVisible} catches up with a single fresh
+	 * render once the tab is shown again.
+	 */
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (service.isInitialized()) {
+			if (!this.tabVisible) {
+				Platform.runLater(() -> this.setDisable(false));
+				return;
+			}
 			Platform.runLater(() -> {
 				initView();
 				this.setDisable(false);
@@ -288,6 +311,23 @@ public class DependencyGraphView extends BorderPane implements EccoListener {
 			Platform.runLater(() -> {
 				closeView();
 				this.setDisable(true);
+			});
+		}
+	}
+
+	/**
+	 * Called by the containing tab whenever it's selected or deselected - see
+	 * {@code ArtifactGraphView#setTabVisible} for the full rationale (skip the expensive refresh
+	 * while hidden, catch up with one fresh render when shown again).
+	 */
+	@Override
+	public void setTabVisible(boolean tabVisible) {
+		boolean becameVisible = tabVisible && !this.tabVisible;
+		this.tabVisible = tabVisible;
+		if (becameVisible && this.service.isInitialized()) {
+			Platform.runLater(() -> {
+				initView();
+				this.setDisable(false);
 			});
 		}
 	}

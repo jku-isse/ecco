@@ -253,7 +253,13 @@ public class CheckoutView extends OperationView implements EccoListener {
             Path baseDir = Paths.get(baseDirTextField.getText());
             String configurationString = configurationStringTextField.getText();
 
-            try{
+            try {
+                // the user is free to type/pick a directory that doesn't exist yet (a brand-new
+                // checkout target) - Directory.isEmpty() (and the writer after it) both require it
+                // to already exist, so create it here rather than surfacing a raw NoSuchFileException.
+                if (!Files.exists(baseDir)) {
+                    Files.createDirectories(baseDir);
+                }
                 if (!Directory.isEmpty(baseDir) && !(new DeleteDirectoryContentsDialog(baseDir).showBlocked())) {
                     this.step1();
                     return;

@@ -122,8 +122,14 @@ public class EccoGui extends Application implements EccoListener {
 		primaryStage.setTitle("ECCO");
 		primaryStage.getIcons().add(loadLogoImage());
 		this.root = new StackPane();
-		Scene scene = new Scene(root, 800, 600);
+		// wide enough that every ribbon band's buttons fit without clipping (the Local tab is
+		// currently the widest: Commit/Commit Multiple Versions.../Checkout... | Variants |
+		// Import From Git... | Open Directory...) - the band is a plain HBox with no scrolling of
+		// its own, so anything narrower than its content just gets cut off at the window edge.
+		Scene scene = new Scene(root, 1200, 700);
 		scene.getStylesheets().add("ecco.css");
+		primaryStage.setMinWidth(1000);
+		primaryStage.setMinHeight(500);
 
 
 		// TOP LEVEL

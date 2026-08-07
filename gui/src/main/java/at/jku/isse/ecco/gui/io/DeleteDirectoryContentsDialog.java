@@ -23,7 +23,7 @@ public class DeleteDirectoryContentsDialog extends Alert {
         showAndWait();
 
         if (getResult() == ButtonType.YES) {
-            Files.walkFileTree(directory, new DeleteDirectoryVisitor());
+            Files.walkFileTree(directory, new DeleteDirectoryVisitor(directory));
             return true;
         }
 

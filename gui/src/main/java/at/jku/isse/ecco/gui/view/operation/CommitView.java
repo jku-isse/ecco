@@ -15,7 +15,6 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -41,7 +40,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +84,7 @@ public class CommitView extends OperationView implements EccoListener {
 
 
 	/**
-	 * Folders (in commit order), their configuration, and the commit message.
+	 * Folders (in commit order), each with its own configuration and commit message.
 	 */
 	private void step1() {
 		Button cancelButton = new Button("Cancel");
@@ -95,8 +93,7 @@ public class CommitView extends OperationView implements EccoListener {
 
 		this.headerLabel.setText("Folders and Configuration");
 
-		Button commitButton = new Button("Commit");
-		this.rightButtons.getChildren().setAll(commitButton);
+		this.rightButtons.getChildren().clear();
 
 
 		// main content
@@ -121,7 +118,8 @@ public class CommitView extends OperationView implements EccoListener {
 		gridPane.add(foldersLabel, 0, row, 2, 1);
 		row++;
 
-		// folders table: preview of the order folders will be committed in, and their configuration
+		// folders table: preview of the order folders will be committed in, their configuration, and
+		// their (per-row, individually editable) commit message
 		TableView<FolderEntry> foldersTable = this.buildFoldersTable();
 		VBox folderButtons = this.buildFolderButtons(foldersTable);
 
@@ -131,20 +129,17 @@ public class CommitView extends OperationView implements EccoListener {
 		row++;
 
 
-		Label commitMessageLabel = new Label("Commit Message: ");
-		gridPane.add(commitMessageLabel, 0, row, 1, 1);
-
-		TextField commitMessageStringTextField = new TextField();
-		commitMessageStringTextField.setDisable(false);
-		commitMessageLabel.setLabelFor(commitMessageStringTextField);
-		gridPane.add(commitMessageStringTextField, 1, row, 1, 1);
+		// Commit, bottom right -- a single global "Commit Message" field made no sense once each
+		// folder has its own editable message (defaulted from its configuration) in the table above.
+		Button commitButton = new Button("Commit");
+		HBox commitButtonBox = new HBox(commitButton);
+		commitButtonBox.setAlignment(Pos.CENTER_RIGHT);
+		gridPane.add(commitButtonBox, 0, row, 2, 1);
 		row++;
 
-		this.wireCommitButton(commitButton, commitMessageStringTextField);
+		this.wireCommitButton(commitButton);
 
 		this.fit();
-
-		Platform.runLater(commitMessageStringTextField::requestFocus);
 	}
 
 	/**
@@ -181,6 +176,13 @@ public class CommitView extends OperationView implements EccoListener {
 			refreshConstraintWarning(event.getRowValue());
 		});
 
+		// defaults to the same text as Configuration (a reasonable starting point, e.g. "BASE.1,
+		// LINE.1"), independently editable per row -- there's no single global commit message anymore.
+		TableColumn<FolderEntry, String> commitMessageCol = new TableColumn<>("Commit Message");
+		commitMessageCol.setCellValueFactory(param -> param.getValue().commitMessageProperty());
+		commitMessageCol.setCellFactory(this.editableStringCellFactory());
+		commitMessageCol.setOnEditCommit(event -> event.getRowValue().setCommitMessage(event.getNewValue()));
+
 		// live constraint-violation feedback as a configuration is entered/edited -- see
 		// EccoService.checkConstraintViolations; refreshed on add and on each edit commit above.
 		TableColumn<FolderEntry, String> warningCol = new TableColumn<>("Constraint Warning");
@@ -199,10 +201,11 @@ public class CommitView extends OperationView implements EccoListener {
 			}
 		});
 
-		foldersTable.getColumns().setAll(orderCol, folderCol, configCol, warningCol);
+		foldersTable.getColumns().setAll(orderCol, folderCol, configCol, commitMessageCol, warningCol);
 
 		TableColumns.defaultWidth(orderCol, 36);
 		TableColumns.fitToContent(configCol, this.folderData);
+		TableColumns.fitToContent(commitMessageCol, this.folderData);
 		TableColumns.fitToContent(warningCol, this.folderData);
 		TableColumns.growToFill(foldersTable, folderCol);
 
@@ -210,58 +213,21 @@ public class CommitView extends OperationView implements EccoListener {
 	}
 
 	/**
-	 * Builds the Add Folder/Add Multiple/Remove/Move Up/Move Down buttons and wires their handlers,
-	 * along with {@code foldersTable}'s selection listener and {@link #folderData}'s own change
-	 * listener that keep the Remove/Move buttons' enabled state current -- kept together with the
-	 * button wiring since both directions depend on each other. Split out of {@link #step1()} purely
-	 * for readability -- no behavior change from the previous single-method version.
+	 * Builds the single "Select Parent Folder..." button and wires its handler -- this dialog's whole
+	 * purpose is committing several variant folders picked from under one parent (see
+	 * {@code CommitBaseDirView} for the single-directory case instead), so one action that (re-)picks
+	 * the parent and the subfolders under it via {@link #chooseSubfolders} is enough; no separate
+	 * single-folder add, remove, or reorder controls are needed. Replaces whatever was previously
+	 * selected rather than appending to it, since there's no Remove button to undo a mistaken re-pick.
+	 * Split out of {@link #step1()} purely for readability -- no behavior change from the previous
+	 * single-method version beyond this simplification.
 	 */
 	private VBox buildFolderButtons(TableView<FolderEntry> foldersTable) {
-		Button addFolderButton = new Button("Add Folder...");
-		Button addMultipleButton = new Button("Add Multiple from Parent...");
-		Button removeFolderButton = new Button("Remove");
-		Button moveUpButton = new Button("Move Up");
-		Button moveDownButton = new Button("Move Down");
-		removeFolderButton.setDisable(true);
-		moveUpButton.setDisable(true);
-		moveDownButton.setDisable(true);
+		Button selectParentFolderButton = new Button("Select Parent Folder...");
 
-		foldersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-			boolean hasSelection = newValue != null;
-			removeFolderButton.setDisable(!hasSelection);
-			moveUpButton.setDisable(!hasSelection || foldersTable.getSelectionModel().getSelectedIndex() <= 0);
-			moveDownButton.setDisable(!hasSelection || foldersTable.getSelectionModel().getSelectedIndex() >= folderData.size() - 1);
-		});
-		folderData.addListener((ListChangeListener<FolderEntry>) change -> {
-			int idx = foldersTable.getSelectionModel().getSelectedIndex();
-			moveUpButton.setDisable(idx <= 0);
-			moveDownButton.setDisable(idx < 0 || idx >= folderData.size() - 1);
-		});
-
-		addFolderButton.setOnAction(event -> {
+		selectParentFolderButton.setOnAction(event -> {
 			final DirectoryChooser directoryChooser = new DirectoryChooser();
-			directoryChooser.setTitle("Select a Variant Folder to Add");
-			Path initialDir = folderData.isEmpty() ? service.getBaseDir() : Paths.get(folderData.get(folderData.size() - 1).getFolder()).getParent();
-			try {
-				if (initialDir != null && Files.exists(initialDir) && Files.isDirectory(initialDir))
-					directoryChooser.setInitialDirectory(initialDir.toFile());
-			} catch (Exception ignored) {
-			}
-			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
-			if (selectedDirectory == null) {
-				return;
-			}
-
-			Path selectedPath = selectedDirectory.toPath();
-			String configurationString = this.service.getConfigStringFromFile(selectedPath);
-			FolderEntry entry = new FolderEntry(selectedPath, configurationString);
-			folderData.add(entry);
-			refreshConstraintWarning(entry);
-		});
-
-		addMultipleButton.setOnAction(event -> {
-			final DirectoryChooser directoryChooser = new DirectoryChooser();
-			directoryChooser.setTitle("Select the Parent Folder Containing the Variant Folders to Add");
+			directoryChooser.setTitle("Select the Parent Folder Containing the Variant Folders to Commit");
 			Path initialDir = folderData.isEmpty() ? service.getBaseDir() : Paths.get(folderData.get(folderData.size() - 1).getFolder()).getParent();
 			try {
 				if (initialDir != null && Files.exists(initialDir) && Files.isDirectory(initialDir))
@@ -281,7 +247,13 @@ public class CommitView extends OperationView implements EccoListener {
 				return;
 			}
 
-			for (Path folder : chooseSubfolders(selectedPath, subfolders)) {
+			List<Path> chosen = chooseSubfolders(selectedPath, subfolders);
+			if (chosen.isEmpty()) {
+				return; // cancelled, or nothing checked -- don't wipe out an existing selection for nothing
+			}
+
+			folderData.clear();
+			for (Path folder : chosen) {
 				String configurationString = this.service.getConfigStringFromFile(folder);
 				FolderEntry entry = new FolderEntry(folder, configurationString);
 				folderData.add(entry);
@@ -289,28 +261,7 @@ public class CommitView extends OperationView implements EccoListener {
 			}
 		});
 
-		removeFolderButton.setOnAction(event -> {
-			List<FolderEntry> selected = new ArrayList<>(foldersTable.getSelectionModel().getSelectedItems());
-			folderData.removeAll(selected);
-		});
-
-		moveUpButton.setOnAction(event -> {
-			int idx = foldersTable.getSelectionModel().getSelectedIndex();
-			if (idx > 0) {
-				Collections.swap(folderData, idx, idx - 1);
-				foldersTable.getSelectionModel().select(idx - 1);
-			}
-		});
-
-		moveDownButton.setOnAction(event -> {
-			int idx = foldersTable.getSelectionModel().getSelectedIndex();
-			if (idx >= 0 && idx < folderData.size() - 1) {
-				Collections.swap(folderData, idx, idx + 1);
-				foldersTable.getSelectionModel().select(idx + 1);
-			}
-		});
-
-		VBox folderButtons = new VBox(10, addFolderButton, addMultipleButton, removeFolderButton, moveUpButton, moveDownButton);
+		VBox folderButtons = new VBox(10, selectParentFolderButton);
 		folderButtons.setAlignment(Pos.TOP_CENTER);
 		return folderButtons;
 	}
@@ -318,11 +269,12 @@ public class CommitView extends OperationView implements EccoListener {
 	/**
 	 * Wires the Commit button: validates at least one folder was added, confirms proceeding despite
 	 * any live constraint warnings, transitions to the "committing" step ({@link #step2()}), then runs
-	 * the actual commits (one per folder, in order) on a background {@code Task}, logging progress and
-	 * any constraint violations as they happen. Split out of {@link #step1()} purely for readability --
-	 * no behavior change from the previous single-method version.
+	 * the actual commits (one per folder, in order, each with its own row's commit message) on a
+	 * background {@code Task}, logging progress and any constraint violations as they happen. Split
+	 * out of {@link #step1()} purely for readability -- no behavior change from the previous
+	 * single-method version beyond commit messages now being per-row instead of one shared field.
 	 */
-	private void wireCommitButton(Button commitButton, TextField commitMessageStringTextField) {
+	private void wireCommitButton(Button commitButton) {
 		commitButton.setOnAction(event -> {
 			if (folderData.isEmpty()) {
 				Alert alert = new Alert(Alert.AlertType.WARNING, "Add at least one folder to commit.");
@@ -336,7 +288,6 @@ public class CommitView extends OperationView implements EccoListener {
 
 			this.step2();
 
-			String commitMessage = commitMessageStringTextField.getText();
 			List<FolderEntry> foldersToCommit = new ArrayList<>(folderData);
 
 			this.logArea.clear();
@@ -349,6 +300,7 @@ public class CommitView extends OperationView implements EccoListener {
 					for (FolderEntry entry : foldersToCommit) {
 						CommitView.this.service.setBaseDir(Paths.get(entry.getFolder()));
 						String configurationString = entry.getConfiguration();
+						String commitMessage = entry.getCommitMessage();
 						long startMillis = System.currentTimeMillis();
 						if (configurationString != null && !configurationString.isEmpty())
 							lastCommit = CommitView.this.service.commit(commitMessage, configurationString);
@@ -680,17 +632,21 @@ public class CommitView extends OperationView implements EccoListener {
 
 
 	/**
-	 * A folder to be committed, and its (editable) configuration string, as shown in the commit
+	 * A folder to be committed, its (editable) configuration string, and its (editable) commit
+	 * message -- defaulted to the same text as the configuration, since that's the only information
+	 * available to suggest one from, but independently editable per row -- as shown in the commit
 	 * order preview table.
 	 */
 	public static class FolderEntry {
 		private final SimpleStringProperty folder;
 		private final SimpleStringProperty configuration;
+		private final SimpleStringProperty commitMessage;
 		private final SimpleStringProperty warning = new SimpleStringProperty("");
 
 		private FolderEntry(Path folder, String configuration) {
 			this.folder = new SimpleStringProperty(folder.toString());
 			this.configuration = new SimpleStringProperty(configuration == null ? "" : configuration);
+			this.commitMessage = new SimpleStringProperty(configuration == null ? "" : configuration);
 		}
 
 		public String getFolder() {
@@ -711,6 +667,18 @@ public class CommitView extends OperationView implements EccoListener {
 
 		public SimpleStringProperty configurationProperty() {
 			return this.configuration;
+		}
+
+		public String getCommitMessage() {
+			return this.commitMessage.get();
+		}
+
+		public void setCommitMessage(String commitMessage) {
+			this.commitMessage.set(commitMessage);
+		}
+
+		public SimpleStringProperty commitMessageProperty() {
+			return this.commitMessage;
 		}
 
 		public String getWarning() {

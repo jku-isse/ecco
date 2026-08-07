@@ -330,6 +330,13 @@ public class CheckoutDetailView extends BorderPane {
 	 */
 	private void rerunCheckoutAfterFix(Path checkoutBaseDir) {
 		try {
+			// defense in depth: normally still exists from the original checkout, but a directory
+			// that became empty during the Apply-Fix flow's own "Delete contents?" confirmation
+			// shouldn't be missing by now either way (see DeleteDirectoryVisitor) - the writer
+			// requires it to exist regardless of why it might not.
+			if (!Files.exists(checkoutBaseDir)) {
+				Files.createDirectories(checkoutBaseDir);
+			}
 			if (!Directory.isEmpty(checkoutBaseDir) && !new DeleteDirectoryContentsDialog(checkoutBaseDir).showBlocked()) {
 				return;
 			}
