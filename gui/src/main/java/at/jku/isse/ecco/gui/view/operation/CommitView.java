@@ -49,6 +49,12 @@ import java.util.stream.Stream;
 
 public class CommitView extends OperationView implements EccoListener {
 
+	// SplitPane defaults to an even 50/50 split whenever a second item joins (commitDetailView on
+	// success, an ExceptionTextArea on failure/cancellation), with no regard for logArea's own
+	// preferred size - squeezing the log the user is here to check straight back down. Give it a
+	// clear majority share instead.
+	private static final double LOG_DIVIDER_POSITION = 0.65;
+
 	private EccoService service;
 
 	private final ObservableList<FolderEntry> folderData = FXCollections.observableArrayList();
@@ -71,10 +77,21 @@ public class CommitView extends OperationView implements EccoListener {
 		// commit detail view
 		this.commitDetailView = new CommitDetailView();
 
-		// plain scrolling text log (one line per read/write/commit)
+		// plain scrolling text log (one line per read/write/commit) -- no explicit size here defaults
+		// to TextArea's own tiny (~2 visible rows) preferred size, so the step2 "Committing..." view
+		// (and, on success, the top half of the split with commitDetailView) rendered almost no log
+		// text without the user manually resizing the window first.
 		this.logArea = new TextArea();
 		logArea.setEditable(false);
 		logArea.setWrapText(false);
+		logArea.setPrefRowCount(20);
+		logArea.setPrefColumnCount(80);
+		// belt and suspenders alongside prefRowCount/prefColumnCount above: SplitPane resizes its
+		// items to fill whatever space it's given rather than honoring their preferred size once
+		// more than one item is present, so a min size is what actually stops it being squeezed
+		// smaller than this regardless of divider position or window size.
+		logArea.setMinHeight(220);
+		logArea.setMinWidth(500);
 
 		splitPane.getItems().add(logArea);
 
@@ -334,6 +351,7 @@ public class CommitView extends OperationView implements EccoListener {
 					// show value in commit detail view
 					CommitView.this.commitDetailView.showCommit(this.getValue());
 					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, CommitView.this.commitDetailView);
+					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 					CommitView.this.showSuccessHeader();
 				}
 
@@ -344,6 +362,7 @@ public class CommitView extends OperationView implements EccoListener {
 					// show exception textarea instead of commit detail view
 					CommitView.this.commitDetailView.showCommit(null);
 					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
+					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 					CommitView.this.showErrorHeader();
 				}
 
@@ -354,6 +373,7 @@ public class CommitView extends OperationView implements EccoListener {
 					// show exception textarea instead of commit detail view
 					CommitView.this.commitDetailView.showCommit(null);
 					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
+					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 					CommitView.this.showErrorHeader();
 				}
 			};

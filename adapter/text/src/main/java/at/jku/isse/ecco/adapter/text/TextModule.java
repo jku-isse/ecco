@@ -2,8 +2,8 @@ package at.jku.isse.ecco.adapter.text;
 
 import at.jku.isse.ecco.adapter.ArtifactExporter;
 import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
@@ -31,8 +31,8 @@ public class TextModule extends AbstractModule {
 				});
 		writerMultibinder.addBinding().to(TextFileWriter.class);
 
-		final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<ArtifactViewer>() {
+		final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<AssociationInfoArtifactViewer>() {
 				});
 		viewerMultibinder.addBinding().to(TextViewer.class);
 
