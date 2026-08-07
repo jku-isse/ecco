@@ -70,27 +70,47 @@ public class NodeTextBlock {
     }
 
     private void setupListeners() {
-        mouseover.addListener((o, oldVal, newVal) -> {
-            Background bg = newVal ?
-                    new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null)) :
-                    new Background(new BackgroundFill(backgroundColor.getValue(), null, null));
-            if (partOf != null) {
-                for (NodeTextBlock ntb : partOf.getBlocks()) {
-                    ntb.background.set(bg);
-                }
-            } else {
-                background.set(bg);
-            }
+        mouseover.addListener((o, oldVal, newVal) -> applyMouseoverToGroup(newVal));
+        highlighted.addListener((o, oldVal, newVal) -> {
+            if (!mouseover.getValue()) updateOwnBackground();
         });
-
         backgroundColor.addListener((o, oldVal, newVal) -> {
-            if (!mouseover.getValue()) {
-                if (newVal == null || newVal == Color.TRANSPARENT) {
-                    newVal = Color.WHITE;
-                }
-                background.set(new Background(new BackgroundFill(newVal, null, null)));
-            }
+            if (!mouseover.getValue()) updateOwnBackground();
         });
+    }
+
+    /**
+     * Hover intentionally paints every block sharing this token's multi-line group at once (a
+     * wrapped token should highlight as one unit no matter which line the mouse is actually over);
+     * {@link #highlighted}/{@link #backgroundColor} changes only ever apply to the one block they
+     * were set on, since the caller ({@code LilypondCodeViewer.FileView#highlightTree}) already
+     * calls {@link #setHighlighted} on each affected block itself.
+     */
+    private void applyMouseoverToGroup(boolean entered) {
+        List<NodeTextBlock> group = partOf != null ? partOf.getBlocks() : List.of(this);
+        for (NodeTextBlock ntb : group) {
+            if (entered) {
+                ntb.background.set(new Background(new BackgroundFill(Color.rgb(50, 197, 255), null, null)));
+            } else {
+                ntb.updateOwnBackground();
+            }
+        }
+    }
+
+    /** Highlighted (selected in a reorder dialog, or navigated to) wins over the normal per-token
+     * background color, e.g. an association's selection color -- both are just "this token is of
+     * interest", but highlighted is the more specific, momentary signal. */
+    private void updateOwnBackground() {
+        Color color;
+        if (Boolean.TRUE.equals(highlighted.getValue())) {
+            color = Color.YELLOW;
+        } else {
+            color = backgroundColor.getValue();
+            if (color == null || Color.TRANSPARENT.equals(color)) {
+                color = Color.WHITE;
+            }
+        }
+        background.set(new Background(new BackgroundFill(color, null, null)));
     }
 
     public Node getNode() {

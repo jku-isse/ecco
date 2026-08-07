@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.composition;
 
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.tree.Node;
 
 import java.io.Serializable;
@@ -13,11 +12,11 @@ import java.util.List;
 public interface OrderSelector {
 
 	/**
-	 * Returns a collection of ordered artifacts for which multiple possible orders of children existed.
+	 * Returns a collection of nodes whose ordered artifact had multiple possible orders of children.
 	 *
-	 * @return The ordered artifacts with ambiguous order of children.
+	 * @return The nodes with ambiguous order of children.
 	 */
-	public Collection<Artifact<?>> getUncertainOrders();
+	public Collection<Node> getUncertainOrders();
 
 	/**
 	 * If the node contains an ordered artifact with a sequence graph, the sequence graph is used to select and set the order of the node's children.

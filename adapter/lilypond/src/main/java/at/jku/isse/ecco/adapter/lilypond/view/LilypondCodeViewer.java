@@ -318,6 +318,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		private final ObservableList<NodeTextBlock[]> codeLines = FXCollections.observableArrayList();
 		private final ListView<NodeTextBlock[]> listView = createListView(codeLines);
 		private final Map<String, int[]> nodeIdIndexes = new HashMap<>();
+		private final List<NodeTextBlock> currentlyHighlighted = new ArrayList<>();
 		private Node root;
 		private volatile boolean isTreeInitialized = false;
 
@@ -363,6 +364,14 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		}
 
 		private void highlightTree(Node node) {
+			// clear whatever was highlighted from a previous call -- otherwise every node ever passed
+			// to showTree() in this file view would stay highlighted forever, since nothing else ever
+			// un-highlights a block.
+			for (NodeTextBlock previouslyHighlighted : currentlyHighlighted) {
+				previouslyHighlighted.setHighlighted(false);
+			}
+			currentlyHighlighted.clear();
+
 			String curId = calculateNodeId(node);
 			int[] pos = nodeIdIndexes.get(curId);
 			listView.scrollTo(pos[0]);
@@ -373,6 +382,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 				if (line.length > 0) {
 					ntb = line[pos[1]];
 					ntb.setHighlighted(true);
+					currentlyHighlighted.add(ntb);
 					if (pos[1] < line.length - 1) {
 						pos[1]++;
 					} else {

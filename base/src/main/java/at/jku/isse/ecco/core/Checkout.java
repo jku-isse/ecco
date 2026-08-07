@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.core;
 
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
@@ -18,7 +17,7 @@ public class Checkout {
 	private Map<ModuleRevision,String> missingLocations;
 
 
-	private Collection<Artifact<?>> orderWarnings;
+	private Collection<Node> orderWarnings;
 
 	private Set<Association> unresolvedAssociations;
 	private Set<Association> selectedAssociations;
@@ -87,7 +86,7 @@ public class Checkout {
 		this.missingLocations = missingLocations;
 	}
 
-	public Collection<Artifact<?>> getOrderWarnings() {
+	public Collection<Node> getOrderWarnings() {
 		return this.orderWarnings;
 	}
 

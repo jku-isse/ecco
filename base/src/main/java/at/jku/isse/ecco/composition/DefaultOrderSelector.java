@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.composition;
 
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
+import at.jku.isse.ecco.tree.Node;
 
 import java.util.*;
 
@@ -12,15 +12,15 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class DefaultOrderSelector implements OrderSelector {
 
-	private Collection<Artifact<?>> uncertainOrder = new ArrayList<>();
+	private Collection<Node> uncertainOrder = new ArrayList<>();
 
 	/**
-	 * Returns a collection of ordered artifacts for which multiple possible orders of children existed and an arbitrary one was selected.
+	 * Returns a collection of nodes whose ordered artifact had multiple possible orders of children and an arbitrary one was selected.
 	 *
-	 * @return The ordered artifacts with ambiguous order of children.
+	 * @return The nodes with ambiguous order of children.
 	 */
 	@Override
-	public Collection<Artifact<?>> getUncertainOrders() {
+	public Collection<Node> getUncertainOrders() {
 		return this.uncertainOrder;
 	}
 
@@ -31,7 +31,7 @@ public class DefaultOrderSelector implements OrderSelector {
 	 * @param node The node for which to select an order.
 	 */
 	@Override
-	public List<at.jku.isse.ecco.tree.Node> select(at.jku.isse.ecco.tree.Node node) {
+	public List<Node> select(Node node) {
 		checkArgument(node.getArtifact() != null, "Cannot select order for node without artifact.");
 		checkArgument(node.getArtifact().isOrdered(), "Cannot select order for node with unordered artifact.");
 		checkArgument(node.getArtifact().isSequenced(), "Cannot select order for node with ordered artifact that has not been sequenced yet.");
@@ -39,7 +39,7 @@ public class DefaultOrderSelector implements OrderSelector {
 //		if (node.getArtifact() == null || !node.getArtifact().isOrdered() || !node.getArtifact().isSequenced() || node.getArtifact().getPartialOrderGraph() == null)
 //			return null;
 
-		List<at.jku.isse.ecco.tree.Node> orderedChildren = new ArrayList<>();
+		List<Node> orderedChildren = new ArrayList<>();
 		PartialOrderGraph graph = node.getArtifact().getPartialOrderGraph();
 		boolean uncertainOrder = false;
 
@@ -56,7 +56,7 @@ public class DefaultOrderSelector implements OrderSelector {
 				uncertainOrder = true;
 
 			// check if node is in input
-			for (at.jku.isse.ecco.tree.Node childNode : node.getChildren()) {
+			for (Node childNode : node.getChildren()) {
 				if (childNode.getArtifact().equals(pogNode.getArtifact())) {
 					// add node to order
 					orderedChildren.add(childNode);
@@ -79,7 +79,7 @@ public class DefaultOrderSelector implements OrderSelector {
 		}
 
 		if (uncertainOrder)
-			this.uncertainOrder.add(node.getArtifact());
+			this.uncertainOrder.add(node);
 
 		return orderedChildren;
 	}
