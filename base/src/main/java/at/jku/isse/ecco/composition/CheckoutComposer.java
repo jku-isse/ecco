@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.composition;
 
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.DependencyGraph;
@@ -36,7 +35,7 @@ public class CheckoutComposer {
         OrderSetterVisitor orderVisitor = new OrderSetterVisitor(this.orderSelector);
         checkoutTree.traverse(orderVisitor);
 
-        Collection<Artifact<?>> orderWarnings = this.orderSelector.getUncertainOrders();
+        Collection<Node> orderWarnings = this.orderSelector.getUncertainOrders();
         DependencyGraph dg = new DependencyGraph(selectedAssociations, DependencyGraph.ReferencesResolveMode.INCLUDE_ALL_REFERENCED_ASSOCIATIONS);
         Set<Association> unresolvedAssociations = new HashSet<>(dg.getAssociations());
         unresolvedAssociations.removeAll(selectedAssociations);

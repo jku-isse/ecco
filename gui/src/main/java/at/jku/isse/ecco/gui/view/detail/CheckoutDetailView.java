@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.gui.view.detail;
 
-import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -12,12 +11,12 @@ import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.ModuleRevisions;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.ArtifactDiagnostics;
+import at.jku.isse.ecco.tree.Node;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
@@ -115,6 +114,7 @@ public class CheckoutDetailView extends BorderPane {
 					return;
 				}
 				DiagnosticInfo info = getTableView().getItems().get(getIndex());
+				applyButton.setText("ORDER".equals(info.getType()) ? "Reorder..." : "Apply Fix");
 				setGraphic(info.getSuggestedConfigurationString() != null ? applyButton : null);
 			}
 		});
@@ -177,21 +177,23 @@ public class CheckoutDetailView extends BorderPane {
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("SURPLUS", surplusEntry.getKey().toString(), surplusEntry.getValue(), "", null));
 			}
 
-			// show order diagnostics (see Repository.Op.compose()) -- the "fix" here reuses the exact
-			// same Apply Fix flow as MISSING: no in-GUI reorder control, no writer/compose changes,
-			// just point at the ambiguity and let the user reorder the checked-out file themselves.
-			for (Artifact<?> orderWarningArtifact : checkout.getOrderWarnings()) {
+			// show order diagnostics (see Repository.Op.compose()) -- Apply Fix opens
+			// ReorderChildrenDialog first (see #applyFix), then falls through into the same
+			// commit/re-checkout flow MISSING uses, so the user's chosen order gets written to disk
+			// and committed instead of hand-editing the checked-out file themselves.
+			for (Node orderWarningNode : checkout.getOrderWarnings()) {
 				String suggestedConfigurationString = checkout.getConfiguration() != null
 						? ModuleRevisions.suggestedConfigurationString(null, checkout.getConfiguration())
 						: null;
 				// one child per line (with its source line number(s), when the adapter tracked one)
 				// instead of a comma-joined blob, so the wrapping cell reads as a real list.
-				String childrenMultiline = String.join(System.lineSeparator(), ArtifactDiagnostics.describeChildrenWithLines(orderWarningArtifact));
+				String childrenMultiline = String.join(System.lineSeparator(), ArtifactDiagnostics.describeChildrenWithLines(orderWarningNode));
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("ORDER",
-						orderWarningArtifact + " (current order):" + System.lineSeparator() + childrenMultiline,
-						ArtifactDiagnostics.describePath(orderWarningArtifact),
+						orderWarningNode.getArtifact() + " (current order):" + System.lineSeparator() + childrenMultiline,
+						ArtifactDiagnostics.describePath(orderWarningNode),
 						ArtifactDiagnostics.suggestOrderFix(),
-						suggestedConfigurationString));
+						suggestedConfigurationString,
+						orderWarningNode));
 			}
 
 			// show constraint-violation diagnostics (see EccoService.compose()) -- advisory only,
@@ -255,6 +257,29 @@ public class CheckoutDetailView extends BorderPane {
 	 * re-checkout steps around content the user points at.
 	 */
 	private void applyFix(DiagnosticInfo diagnosticInfo) {
+		if ("ORDER".equals(diagnosticInfo.getType())) {
+			Node ambiguousNode = diagnosticInfo.getAmbiguousNode();
+			if (!(ambiguousNode instanceof Node.Op)) {
+				// defense-in-depth: only the eager (Node.Op) composition path used by this view's
+				// normal checkout flow is directly editable; the lazy LazyCompositionNode path
+				// belongs to a different view (ArtifactsView's "Compose Selected").
+				new Alert(Alert.AlertType.ERROR,
+						"This order warning cannot be reordered directly here -- re-run checkout via the normal Checkout tab and try again.")
+						.showAndWait();
+				return;
+			}
+			Node.Op ambiguousOpNode = (Node.Op) ambiguousNode;
+			Optional<List<Node.Op>> reorderResultOpt = new ReorderChildrenDialog(this.service, ambiguousOpNode).showAndWait();
+			if (reorderResultOpt.isEmpty()) return; // cancelled -- do not proceed to the commit step
+			ambiguousOpNode.setChildren(reorderResultOpt.get());
+			try {
+				this.service.writeCheckoutFile(ambiguousOpNode);
+			} catch (RuntimeException e) {
+				new ExceptionAlert(e).showAndWait();
+				return;
+			}
+		}
+
 		// MISSING content usually comes from somewhere new (default: repository home dir); an ORDER
 		// fix is reordering content that already exists at the checkout's own output directory.
 		Path defaultDirectory = "ORDER".equals(diagnosticInfo.getType()) ? this.currentBaseDir : this.service.getRepositoryHomeDir();
@@ -397,7 +422,7 @@ public class CheckoutDetailView extends BorderPane {
 
 			getDialogPane().setContent(gridPane);
 
-			Node okButton = getDialogPane().lookupButton(ButtonType.OK);
+			javafx.scene.Node okButton = getDialogPane().lookupButton(ButtonType.OK);
 			okButton.setDisable(true);
 			Runnable validate = () -> okButton.setDisable(
 					directoryField.getText().isBlank() || configurationField.getText().isBlank() || commitMessageField.getText().isBlank());
@@ -441,13 +466,19 @@ public class CheckoutDetailView extends BorderPane {
 		private final String trace;
 		private final String suggestedFix;
 		private final String suggestedConfigurationString;
+		private final Node ambiguousNode;
 
 		public DiagnosticInfo(String type, String module, String trace, String suggestedFix, String suggestedConfigurationString) {
+			this(type, module, trace, suggestedFix, suggestedConfigurationString, null);
+		}
+
+		public DiagnosticInfo(String type, String module, String trace, String suggestedFix, String suggestedConfigurationString, Node ambiguousNode) {
 			this.type = type;
 			this.module = module;
 			this.trace = trace;
 			this.suggestedFix = suggestedFix;
 			this.suggestedConfigurationString = suggestedConfigurationString;
+			this.ambiguousNode = ambiguousNode;
 		}
 
 		public String getType() {
@@ -468,6 +499,15 @@ public class CheckoutDetailView extends BorderPane {
 
 		public String getSuggestedConfigurationString() {
 			return this.suggestedConfigurationString;
+		}
+
+		/**
+		 * Non-null only for ORDER rows -- the actual ambiguous node in the current checkout tree,
+		 * used by {@link CheckoutDetailView#applyFix} to open {@link ReorderChildrenDialog} before
+		 * falling through to the existing commit flow.
+		 */
+		public Node getAmbiguousNode() {
+			return this.ambiguousNode;
 		}
 	}
 

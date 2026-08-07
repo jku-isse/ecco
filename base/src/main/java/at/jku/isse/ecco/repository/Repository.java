@@ -817,7 +817,7 @@ public interface Repository extends Persistable {
 
 		default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {
 			Node compRootNode;
-			Collection<Artifact<?>> orderWarnings;
+			Collection<Node> orderWarnings;
 			if (lazy) {
 				LazyCompositionRootNode lazyCompRootNode = new LazyCompositionRootNode();
 

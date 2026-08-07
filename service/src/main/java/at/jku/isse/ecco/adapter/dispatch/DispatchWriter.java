@@ -115,6 +115,31 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 		return output.toArray(new Path[0]);
 	}
 
+	/**
+	 * Re-writes exactly the given already-on-disk file-level node (artifact data must be {@link
+	 * PluginArtifactData}, not a directory) to {@code base}, dispatching to the one adapter-specific
+	 * writer registered for its plugin id -- unlike {@link #write(Path, Set)}, does not require
+	 * {@code base} to be empty and does not touch the hashes file (dead for change-detection:
+	 * {@code DispatchReader}'s hash-based skip-reading branch is fully commented out, so a stale
+	 * hashes file here has no effect on a later commit(), which always re-reads every file). Used by
+	 * the GUI's ORDER-warning reorder dialog to flush a reordered subtree to disk before commit,
+	 * without re-running (or being blocked by) a full checkout.
+	 */
+	public Path[] writeFile(Path base, Node fileNode) {
+		Artifact<?> artifact = fileNode.getArtifact();
+		if (!(artifact.getData() instanceof PluginArtifactData)) {
+			throw new EccoException("Expected a file-level node (PluginArtifactData), but was: " + artifact.getData());
+		}
+		PluginArtifactData pluginArtifactData = (PluginArtifactData) artifact.getData();
+		ArtifactWriter<Set<Node>, Path> writer = this.getWriterForArtifact(pluginArtifactData);
+		if (writer == null) {
+			throw new EccoException("No writer registered for plugin id: " + pluginArtifactData.getPluginId());
+		}
+		Path[] outputPaths = writer.write(base, Set.of(fileNode));
+		this.fireWriteEvent(pluginArtifactData.getPath(), writer);
+		return outputPaths;
+	}
+
 	private void writeRec(Path base, Path parent, Node node, List<Path> output, Properties hashes) {
 		Artifact artifact = node.getArtifact();
 

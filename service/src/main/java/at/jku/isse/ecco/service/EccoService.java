@@ -1571,9 +1571,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                         sb.append("SURPLUS: ").append(mr.getKey()).append(" trace id: ")
                                 .append(mr.getValue()).append(System.lineSeparator());
                     }
-                    for (Artifact a : checkout.getOrderWarnings()) {
-                        sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(a))
-                                .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(a)).append(")")
+                    for (Node orderNode : checkout.getOrderWarnings()) {
+                        sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(orderNode))
+                                .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(orderNode)).append(")")
                                 .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix())
                                 .append(System.lineSeparator());
                     }
@@ -1606,6 +1606,32 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.writer.write(this.baseDir, nodes);
 
         return checkout;
+    }
+
+    /**
+     * Locates the nearest file-level ancestor (inclusive) of {@code node} -- walking up via {@code
+     * Node#getParent()} until reaching a node whose artifact data is {@link PluginArtifactData}
+     * (the granularity {@code ArtifactWriter}s actually write; intermediate ancestors may be plain
+     * {@code DirectoryArtifactData} folder nodes, or structural nodes nested inside a file, e.g. a
+     * method body) -- and re-writes just that one file to disk under the current base directory. See
+     * {@link DispatchWriter#writeFile(Path, Node)}. Used by the GUI's ORDER-warning reorder dialog to
+     * materialize a user-chosen child order (already applied via {@code Node.Op#setChildren}
+     * somewhere in this node's subtree) before committing it.
+     *
+     * @param node Any node from the currently-shown checkout's tree, e.g. the ambiguous ORDER-warning
+     *             node itself.
+     * @return The path(s) written.
+     */
+    public synchronized Path[] writeCheckoutFile(Node node) {
+        this.checkInitialized();
+        Node fileNode = node;
+        while (fileNode != null && !(fileNode.getArtifact().getData() instanceof PluginArtifactData)) {
+            fileNode = fileNode.getParent();
+        }
+        if (fileNode == null) {
+            throw new EccoException("Could not locate an enclosing file node (PluginArtifactData) for the given node.");
+        }
+        return this.writer.writeFile(this.baseDir, fileNode);
     }
 
 
