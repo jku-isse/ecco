@@ -102,8 +102,10 @@ public class MainView extends BorderPane implements EccoListener {
 		RibbonAction closeAction = new RibbonAction("Close", Feather.X,
 				() -> this.eccoService.close(), true);
 
-		RibbonAction commitAction = new RibbonAction("Commit...", Feather.CHECK_CIRCLE,
-				() -> this.openDialog("Commit", new CommitView(eccoService)), true);
+		RibbonAction commitAction = new RibbonAction("Commit", Feather.CHECK_CIRCLE,
+				() -> this.openDialog("Commit", new CommitBaseDirView(eccoService)), true);
+		RibbonAction commitMultipleAction = new RibbonAction("Commit Multiple Versions...", Feather.CHECK_SQUARE,
+				() -> this.openDialog("Commit Multiple Versions", new CommitView(eccoService)), true);
 		RibbonAction importGitAction = new RibbonAction("Import From Git...", Feather.DOWNLOAD,
 				() -> this.openDialog("Import from Git", new ImportGitView(eccoService)), true);
 		RibbonAction checkoutAction = new RibbonAction("Checkout...", Feather.GIT_BRANCH,
@@ -149,6 +151,22 @@ public class MainView extends BorderPane implements EccoListener {
 		DependencyGraphView dependencyGraphView = new DependencyGraphView(eccoService);
 		KnowledgeGraphView knowledgeGraphView = new KnowledgeGraphView(eccoService);
 
+		// Every content view above starts hidden except whichever switchTo() shows last (Status,
+		// below) - without this, a TabVisibilityAware view (whose own tabVisible field defaults to
+		// true, precisely so a caller that doesn't wire this up gets the old always-render behavior)
+		// stays "visible" for its entire lifetime despite never actually being shown, since nothing
+		// ever tells it otherwise until the user visits it at least once. That silently defeated each
+		// such view's whole point of skipping expensive per-commit work while hidden - see
+		// DependencyGraphView#tabVisible for the GraphStream crash that actually caused in practice
+		// (repeatedly tearing down/recreating a GraphStream viewer, invisibly, on every single commit
+		// of a multi-folder "Commit Multiple Versions" batch).
+		for (Region contentView : List.of(featuresView, remotesView, commitsView, associationsView, artifactsView,
+				chartsView, variantsView, artifactsGraphView, dependencyGraphView, knowledgeGraphView)) {
+			if (contentView instanceof TabVisibilityAware aware) {
+				aware.setTabVisible(false);
+			}
+		}
+
 		// "Content" actions - swap the shared content area to a pre-built view via switchTo.
 		RibbonAction variantsAction = new RibbonAction("Variants", Feather.LAYERS,
 				() -> this.switchTo("Variants", variantsView), true);
@@ -175,7 +193,7 @@ public class MainView extends BorderPane implements EccoListener {
 				new RibbonGroup(List.of(newAction, openAction, closeAction))));
 
 		RibbonTabSpec localTab = new RibbonTabSpec("Local", Feather.HARD_DRIVE, List.of(
-				new RibbonGroup(List.of(commitAction, checkoutAction)),
+				new RibbonGroup(List.of(commitAction, commitMultipleAction, checkoutAction)),
 				new RibbonGroup(List.of(variantsAction)),
 				new RibbonGroup(List.of(importGitAction)),
 				new RibbonGroup(List.of(openDirectoryAction))));
