@@ -30,6 +30,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import org.kordamp.ikonli.feather.Feather;
 
+import java.awt.Desktop;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -107,6 +108,8 @@ public class MainView extends BorderPane implements EccoListener {
 				() -> this.openDialog("Import from Git", new ImportGitView(eccoService)), true);
 		RibbonAction checkoutAction = new RibbonAction("Checkout...", Feather.GIT_BRANCH,
 				() -> this.openDialog("Checkout", new CheckoutView(eccoService)), true);
+		RibbonAction openDirectoryAction = new RibbonAction("Open Directory...", Feather.EXTERNAL_LINK,
+				() -> this.openBaseDirectory(), true);
 
 		RibbonAction fetchAction = new RibbonAction("Fetch...", Feather.ARROW_DOWN_CIRCLE,
 				() -> this.openDialog("Fetch", new FetchView(eccoService)), true);
@@ -172,8 +175,10 @@ public class MainView extends BorderPane implements EccoListener {
 				new RibbonGroup(List.of(newAction, openAction, closeAction))));
 
 		RibbonTabSpec localTab = new RibbonTabSpec("Local", Feather.HARD_DRIVE, List.of(
-				new RibbonGroup(List.of(commitAction, importGitAction, checkoutAction)),
-				new RibbonGroup(List.of(variantsAction))));
+				new RibbonGroup(List.of(commitAction, checkoutAction)),
+				new RibbonGroup(List.of(variantsAction)),
+				new RibbonGroup(List.of(importGitAction)),
+				new RibbonGroup(List.of(openDirectoryAction))));
 
 		RibbonTabSpec distributedTab = new RibbonTabSpec("Distributed", Feather.GLOBE, List.of(
 				new RibbonGroup(List.of(remotesAction)),
@@ -323,6 +328,29 @@ public class MainView extends BorderPane implements EccoListener {
 		this.currentContentView = view;
 		if (view instanceof TabVisibilityAware aware) {
 			aware.setTabVisible(true);
+		}
+	}
+
+
+	/**
+	 * Opens {@link EccoService#getBaseDir()} in the platform's file manager (Finder/Explorer/whatever
+	 * the Linux desktop environment registered) via {@link Desktop#open}, which dispatches to
+	 * whatever application is associated with directories on the current platform - no OS-specific
+	 * command needed.
+	 */
+	private void openBaseDirectory() {
+		java.nio.file.Path baseDir = this.eccoService.getBaseDir();
+		if (baseDir == null) {
+			new Alert(Alert.AlertType.WARNING, "No base directory is set.").showAndWait();
+			return;
+		}
+		try {
+			if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+				throw new UnsupportedOperationException("Opening a directory in the system file manager is not supported on this platform.");
+			}
+			Desktop.getDesktop().open(baseDir.toFile());
+		} catch (Exception e) {
+			new ExceptionAlert(e).showAndWait();
 		}
 	}
 
