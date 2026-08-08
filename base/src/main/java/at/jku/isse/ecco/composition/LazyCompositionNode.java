@@ -119,7 +119,7 @@ public class LazyCompositionNode implements Node {
 		}
 
 		// remove non-unique children without children
-		this.children.removeIf(child -> child.isUnique() && child.getChildren().isEmpty());
+		this.children.removeIf(child -> !child.isUnique() && child.getChildren().isEmpty());
 	}
 
 
