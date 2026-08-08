@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
@@ -78,7 +79,7 @@ public class LilypondLineReader implements ArtifactReader<Path, Set<Node.Op>> {
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new EccoException("Could not read file: " + resolvedPath, e);
             }
 
 		}
