@@ -191,7 +191,7 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 	@Override
 	public void setReplacingArtifact(Op<?> replacingArtifact) {
 
-		if (replacingArtifact.hasReplacingArtifact()) {
+		if (replacingArtifact != null && replacingArtifact.hasReplacingArtifact()) {
 			throw new EccoException("Replacing artifact should not have a replacing artifact itself!");
 		}
 

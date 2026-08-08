@@ -18,6 +18,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 
 public class EccoUtil {
 
@@ -51,14 +54,32 @@ public class EccoUtil {
 	 * @return The copied tree.
 	 */
 	public static Node.Op deepCopyTree(Node.Op node, EntityFactory entityFactory) {
-		Node.Op node2 = EccoUtil.deepCopyTreeRec(node, entityFactory);
+		Set<Artifact.Op<?>> touchedSourceArtifacts = Collections.newSetFromMap(new IdentityHashMap<>());
+		Node.Op node2 = EccoUtil.deepCopyTreeRec(node, entityFactory, touchedSourceArtifacts);
 
+		// updateArtifactReferences() (both here and PartialOrderGraph.Op.copy(), called from within
+		// deepCopyTreeRec() above) still needs every touched source artifact's replacingArtifact -
+		// e.g. a copied artifact's own sequence graph nodes are wired directly to the SOURCE line
+		// artifacts by PartialOrderGraph.Op.copy(), and only get redirected to their copies here.
 		Trees.updateArtifactReferences(node2);
+
+		// replacingArtifact is only meant as a "have I already copied this artifact" cache scoped to
+		// THIS deepCopyTree() call (see its javadoc on Artifact.Op) - clearing it now, once fully
+		// consumed above, stops it from leaking into a LATER, unrelated deepCopyTree()/Trees.slice()
+		// call that happens to encounter the same (e.g. shared/non-unique) source artifact object
+		// again. Left uncleared, a subsequent call would either wrongly treat the source as "already
+		// copied" (reusing a copy instance that belongs to a different, unrelated copy operation) or
+		// trip Trees.slice()'s "replacing artifact should not itself have a replacing artifact" guard
+		// - both observed in practice via fork()+local-commit()+push() (see
+		// RemoteSyncCharacterizationTest/ReplacingArtifactLeakRegressionTest).
+		for (Artifact.Op<?> touchedSourceArtifact : touchedSourceArtifacts) {
+			touchedSourceArtifact.setReplacingArtifact(null);
+		}
 
 		return node2;
 	}
 
-	private static Node.Op deepCopyTreeRec(Node.Op node, EntityFactory entityFactory) {
+	private static Node.Op deepCopyTreeRec(Node.Op node, EntityFactory entityFactory, Set<Artifact.Op<?>> touchedSourceArtifacts) {
 		Node.Op node2;
 
 		if (node.getArtifact() != null) {
@@ -74,6 +95,7 @@ public class EccoUtil {
 			} else {
 				artifact2 = entityFactory.createArtifact(artifact.getData());
 				artifact.setReplacingArtifact(artifact2);
+				touchedSourceArtifacts.add(artifact);
 				firstMatch = true;
 			}
 
@@ -134,7 +156,7 @@ public class EccoUtil {
 		}
 
 		for (Node.Op childNode : node.getChildren()) {
-			Node.Op childNode2 = EccoUtil.deepCopyTreeRec(childNode, entityFactory);
+			Node.Op childNode2 = EccoUtil.deepCopyTreeRec(childNode, entityFactory, touchedSourceArtifacts);
 			node2.addChild(childNode2);
 		}
 
