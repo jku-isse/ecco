@@ -210,12 +210,20 @@ public class Trees {
 				continue;
 
 			Node.Op intersectionChild = slice(leftChild, rightChild);
-			if (intersectionChild != null && (intersectionChild.isUnique() || (!intersectionChild.getChildren().isEmpty() && !intersectionChild.isAtomic()))) {
+			boolean keepInIntersection = intersectionChild != null && (intersectionChild.isUnique() || (!intersectionChild.getChildren().isEmpty() && !intersectionChild.isAtomic()));
+			if (keepInIntersection) {
 				intersectionChildrenToAdd.add(intersectionChild);
 			}
 
-			if (intersectionChild != null && intersectionChild.isAtomic()) { // left child becomes the intersection child
-				intersectionChild.setParent(intersection);
+			if (intersectionChild != null && intersectionChild.isAtomic()) { // left child becomes the intersection child (if kept - see keepInIntersection)
+				if (keepInIntersection) {
+					intersectionChild.setParent(intersection);
+				} else {
+					// not unique enough to keep on its own (same bar as the general case below) - it
+					// was still matched/consumed by this slice though, so it must not remain attached
+					// to left either, just like a pruned non-atomic non-unique childless node isn't.
+					leftChild.setParent(null);
+				}
 				rightChild.setParent(null);
 
 				leftChildrenToRemove.add(leftChild);
