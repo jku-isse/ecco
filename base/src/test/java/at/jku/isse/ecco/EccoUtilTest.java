@@ -4,6 +4,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.test.util.TestArtifactData;
 import at.jku.isse.ecco.tree.Node;
@@ -80,6 +81,27 @@ public class EccoUtilTest {
         Node.Op[] copiedChildren = copy.getChildren().toArray(new Node.Op[0]);
         assertEquals(2, copiedChildren.length);
         assertSame(copiedChildren[0].getArtifact(), copiedChildren[1].getArtifact(), "both copied nodes should point at the same copied artifact instance");
+    }
+
+    @Test
+    public void deepCopyTreeGivesUniqueNodesAFeatureTraceSoRetroactiveConditionSettingDoesNotNpe() {
+        // Reproduces the fork() + commit() NPE documented in RemoteSyncCharacterizationTest and
+        // NodeRemovalVisitorTest: entityFactory.createNode() (no-arg) never creates a FeatureTrace,
+        // and deepCopyTreeRec used to always go through that path even for unique nodes - unlike
+        // entityFactory.createNode(Artifact.Op), which does. Repository.setRetroactiveConditions()
+        // (called at the end of every commit()) walks unique nodes via RetroactiveConditionSetterVisitor
+        // and calls getFeatureTrace() unconditionally there, so a null trace crashed the very next
+        // commit into a forked/copied repository.
+        RootNode.Op root = ef.createRootNode();
+        Node.Op child = ef.createNode(new TestArtifactData("child"));
+        assertTrue(child.isUnique());
+        root.addChild(child);
+
+        Node.Op copy = EccoUtil.deepCopyTree(root, ef);
+        Node.Op copiedChild = copy.getChildren().iterator().next();
+
+        assertNotNull(copiedChild.getFeatureTrace(), "a copied unique node must have a FeatureTrace, like a freshly-read one would");
+        assertDoesNotThrow(() -> new RetroactiveConditionSetterVisitor("someCondition").visit(copiedChild));
     }
 
     @Test
