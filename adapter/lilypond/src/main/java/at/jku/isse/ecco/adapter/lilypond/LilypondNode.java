@@ -63,11 +63,13 @@ public class LilypondNode<T> {
         return n;
     }
 
+    /**
+     * Splices this single node out of the list, relinking its neighbors to each other (same as
+     * {@link #cut()}, which this delegates to - kept as a separate, more descriptively named entry
+     * point).
+     */
     public void remove() {
-        if (null != prev) {
-            prev.setNext(null);
-            prev = null;
-        }
+        cut();
     }
 
     public void cut() {
