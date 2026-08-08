@@ -40,7 +40,8 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	static {
 		prioritizedPatterns = new HashMap<>();
-		prioritizedPatterns.put(1, new String[]{"**.txt", "**.md", "**.xml", "**.html", "**.css", "**.js", "**.java"});//, "**.c", "**.h", "**.cpp", "**.hpp"});
+		// **.md is deliberately not claimed here - adapter-markdown (priority 2) now handles it.
+		prioritizedPatterns.put(1, new String[]{"**.txt", "**.xml", "**.html", "**.css", "**.js", "**.java"});//, "**.c", "**.h", "**.cpp", "**.hpp"});
 	}
 
 	@Override

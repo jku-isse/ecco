@@ -11,6 +11,7 @@ include 'logic'
 
 include 'adapter-file'
 include 'adapter-text'
+include 'adapter-markdown'
 include 'adapter-image'
 include 'adapter-challenge'
 include 'adapter-java'
@@ -33,6 +34,7 @@ project(':logic').projectDir = file('logic')
 
 project(':adapter-file').projectDir = file('adapter/file')
 project(':adapter-text').projectDir = file('adapter/text')
+project(':adapter-markdown').projectDir = file('adapter/markdown')
 project(':adapter-lilypond').projectDir = file('adapter/lilypond')
 project(':extras-ly').projectDir = file('extras/ly')
 project(':adapter-image').projectDir = file('adapter/image')

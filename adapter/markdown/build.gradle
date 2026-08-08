@@ -1,0 +1,7 @@
+ecco.adapter = true
+
+dependencies {
+    implementation project(':ecco-service')
+    implementation libs.commonmark.core
+    implementation libs.commonmark.ext.gfm.tables
+}
