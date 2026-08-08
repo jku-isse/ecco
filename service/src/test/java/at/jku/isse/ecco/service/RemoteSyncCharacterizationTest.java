@@ -84,13 +84,15 @@ public class RemoteSyncCharacterizationTest {
                     .map(Feature::getName).collect(Collectors.toList());
             assertTrue(pulledFeatureNames.contains("Core"), "pull() should have merged the 'Core' feature into the local repository");
 
-            // PUSH: push the just-pulled data back to origin. This deliberately does NOT commit fresh
-            // content into targetService first -- doing so hits a separate, pre-existing, purely local
-            // bug (confirmed via a standalone repro with no networking at all: fork(Path) followed by
-            // commit() NPEs in Repository.setRetroactiveConditions(), because EccoUtil.deepCopyTreeRec()
-            // /entityFactory.createNode() never sets a featureTrace on copied nodes). That bug is in
-            // subset()/copy()'s tree-copying itself, unrelated to the wire protocol this test exists to
-            // characterize, and pre-dates this investigation -- filed separately, not fixed here.
+            // Commit fresh content into targetService before pushing it back - this used to hit a
+            // separate, purely local bug (fork(Path)/pull()'s subset()/copy() tree-copying never gave
+            // copied unique nodes a FeatureTrace, so the very next commit() NPE'd in
+            // Repository.setRetroactiveConditions()), fixed in EccoUtil.deepCopyTreeRec(). Committing
+            // here, instead of just pushing back the untouched pulled content, exercises that fix and
+            // gives PUSH something genuinely new to round-trip.
+            commitFeature(targetService, targetWorkDir, "extra", "Extra");
+
+            // PUSH: push the newly-committed content back to origin.
             targetService.push("origin", "");
         }
 
@@ -102,13 +104,16 @@ public class RemoteSyncCharacterizationTest {
         serverThread.join(10_000);
         assertTrue(!serverThread.isAlive(), "server thread should have exited after stopServer()");
 
-        // push() round-tripped the same repository content back to origin without crashing -- proving
-        // the wire mechanics (splice fix, associationsById restore, artifact resolve, and the
-        // shutdownOutput()-before-close fix for the intermittent TCP-RST-truncation hang/corruption --
-        // see RemoteSyncService#push) work in this direction too, all the way through merge().
+        // push() round-tripped the pulled content plus the freshly-committed "Extra" feature back to
+        // origin without crashing -- proving the wire mechanics (splice fix, associationsById restore,
+        // artifact resolve, and the shutdownOutput()-before-close fix for the intermittent
+        // TCP-RST-truncation hang/corruption -- see RemoteSyncService#push) work in this direction too,
+        // all the way through merge(), and that committing into a pulled/forked repository (see
+        // EccoUtil.deepCopyTreeRec()'s FeatureTrace fix above) works end to end over the wire.
         Collection<String> originFeatureNamesAfterPush = originService.getRepository().getFeatures().stream()
                 .map(Feature::getName).collect(Collectors.toList());
         assertTrue(originFeatureNamesAfterPush.contains("Core"), "push() should have round-tripped the 'Core' feature back into origin's repository");
+        assertTrue(originFeatureNamesAfterPush.contains("Extra"), "push() should have round-tripped the freshly-committed 'Extra' feature back into origin's repository");
 
         originService.close();
     }

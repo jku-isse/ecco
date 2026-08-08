@@ -113,6 +113,18 @@ public final class SerRepository implements Repository, Repository.Op {
 		for (Association.Op association : this.getAssociations()) {
 			resolveArtifactsRec(association.getRootNode(), artifactsById);
 		}
+		// Same gap SerTransactionStrategy.resolveCrossAssociationReferences()'s resolvePartialOrderGraph()
+		// closes for a normal DAO load: a PartialOrderGraph's own nodes (SerPartialOrderGraphNode.artifact)
+		// are transient too (see its field javadoc), carrying only an artifactId, and get merged across
+		// nodes that can belong to different associations (Trees.slice()) -- so they need the same
+		// resolution pass the tree nodes just above got, or Trees.slice()'s later ordered-artifact
+		// handling (PartialOrderGraph.merge()) sees a node with a null getArtifact() despite a real,
+		// already-assigned sequence number, and its node-count consistency check fails.
+		for (Artifact.Op<?> artifact : artifactsById.values()) {
+			if (artifact.getPartialOrderGraph() != null) {
+				resolvePartialOrderGraphArtifacts(artifact.getPartialOrderGraph(), artifactsById);
+			}
+		}
 	}
 
 	private static void resolveArtifactsRec(Node.Op node, Map<String, Artifact.Op<?>> artifactsById) {
@@ -128,6 +140,21 @@ public final class SerRepository implements Repository, Repository.Op {
 		}
 		for (Node.Op child : node.getChildren()) {
 			resolveArtifactsRec(child, artifactsById);
+		}
+	}
+
+	private static void resolvePartialOrderGraphArtifacts(at.jku.isse.ecco.pog.PartialOrderGraph.Op graph, Map<String, Artifact.Op<?>> artifactsById) {
+		for (at.jku.isse.ecco.pog.PartialOrderGraph.Node.Op node : graph.collectNodes()) {
+			if (!(node instanceof at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraphNode serNode)) continue;
+
+			String artifactId = serNode.getArtifactId();
+			if (artifactId == null) continue; // head/tail sentinel nodes have no artifact
+
+			Artifact.Op<?> artifact = artifactsById.get(artifactId);
+			if (artifact == null) {
+				throw new at.jku.isse.ecco.EccoException("Could not resolve POG node artifact " + artifactId + " among the artifacts received.");
+			}
+			serNode.resolveArtifact(artifact);
 		}
 	}
 

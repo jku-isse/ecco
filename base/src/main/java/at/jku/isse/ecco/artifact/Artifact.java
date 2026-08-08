@@ -277,6 +277,15 @@ public interface Artifact<DataType extends ArtifactData> extends Persistable {
 
 		public Artifact.Op<?> getReplacingArtifact();
 
+		/**
+		 * @param replacingArtifact The artifact that replaces this one, or {@code null} to clear a
+		 *                          previously-set replacement once a caller (e.g. {@link at.jku.isse.ecco.EccoUtil#deepCopyTree})
+		 *                          is done consuming it -- this field is otherwise never reset on its
+		 *                          own and can leak stale state into a later, unrelated operation that
+		 *                          happens to touch the same (e.g. shared/non-unique) artifact again.
+		 *                          A non-null value must not itself already have a replacing artifact
+		 *                          (chaining is not allowed).
+		 */
 		public void setReplacingArtifact(Artifact.Op<?> replacingArtifact);
 
 		public default void updateArtifactReferences() {
