@@ -134,13 +134,19 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
 
             int prevLevel = n.getLevel();
             n = n.getNext();
-            while (n != null && n.getLevel() < prevLevel) {
+            while (n != null && node != null && n.getLevel() < prevLevel) {
                 prevLevel--;
                 //LOG.trace("({}) ecco-node level ({}) == node level ({})", cntNodes, node.computeDepth(), n.getLevel());
                 node = node.getParent();
             }
             if (node == null && n != null) {
-                LOGGER.log(Level.SEVERE, "EccoNode is null after {0} nodes", cntNodes);
+                // a level drop bigger than the ecco-tree's own remaining depth - can happen after
+                // a LilyEccoTransformer splice sets a synthetic node's level from an arbitrary
+                // earlier node, so adjacent nodes aren't guaranteed to differ by only one level.
+                // Stop here instead of continuing: the next iteration would otherwise NPE trying
+                // to add a child to a null node.
+                LOGGER.log(Level.SEVERE, "EccoNode is null after {0} nodes - stopping tree construction early", cntNodes);
+                break;
             }
         }
     }
