@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view.graph;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.DependencyGraph;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.module.Condition;
@@ -36,6 +37,10 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	private FxViewer viewer;
 	private FxViewPanel view;
 
+	/** Shared with {@link GraphCameraControls}'s Zoom In/Out buttons, so they clamp to the exact same range scroll-zoom already does. */
+	private static final double MIN_VIEW_PERCENT = 0.1;
+	private static final double MAX_VIEW_PERCENT = 1.0;
+
 	private boolean showLabels = true;
 	private boolean simplifyLabels = true;
 	private boolean hideImpliedDependencies = true;
@@ -63,19 +68,6 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 
 		ToolBar toolBar = new ToolBar();
 		this.setTop(toolBar);
-
-		Button refreshButton = new Button("Refresh");
-		toolBar.getItems().add(refreshButton);
-		refreshButton.setOnAction(e -> {
-			toolBar.setDisable(true);
-			SwingUtilities.invokeLater(() -> {
-				dg = new DependencyGraph(DependencyGraphView.this.service.getRepository().getAssociations());
-				DependencyGraphView.this.updateGraph();
-				Platform.runLater(() -> toolBar.setDisable(false));
-			});
-		});
-		toolBar.getItems().add(new Separator());
-
 
 		Button exportButton = new Button("Export");
 		toolBar.getItems().add(exportButton);
@@ -156,6 +148,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		});
 		toolBar.getItems().add(new Separator());
 
+		toolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, () -> {
+		}));
+
 
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
@@ -168,7 +163,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 
 		this.setOnScroll(event -> {
 			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
+				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
 						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
 			}
 		});
@@ -237,8 +232,11 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 		this.updateGraphStylehseet();
 
 
-		if (dg == null)
-			dg = new DependencyGraph(this.service.getRepository().getAssociations());
+		// always rebuilt, not just when null: this is also what the automatic refresh path
+		// (statusChangedEvent/setTabVisible, below) calls now, and a commit changing the
+		// repository's associations should be reflected the same way the manual Refresh button
+		// already does (which always rebuilds), not show whatever was there at the last refresh.
+		dg = new DependencyGraph(this.service.getRepository().getAssociations());
 
 		for (DependencyGraph.Dependency dep : dg.getDependencies()) {
 			Condition depFromCondition = dep.getFrom().computeCondition();
@@ -295,6 +293,11 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	 * statusChangedEvent}. Skips the (expensive, GraphStream-viewer-recreating) refresh entirely
 	 * while {@link #tabVisible} is false; {@link #setTabVisible} catches up with a single fresh
 	 * render once the tab is shown again.
+	 * <p>
+	 * Used to only call {@link #initView()} here, leaving the graph itself empty until the user
+	 * manually clicked Refresh - {@link #updateGraph()} (Swing-thread only, like every other
+	 * GraphStream mutation in this class) now runs right after, so opening a repository, switching
+	 * commits, or switching back to this tab all show current data without a manual click first.
 	 */
 	@Override
 	public void statusChangedEvent(EccoService service) {
@@ -306,6 +309,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 			Platform.runLater(() -> {
 				initView();
 				this.setDisable(false);
+				SwingUtilities.invokeLater(this::updateGraph);
 			});
 		} else {
 			Platform.runLater(() -> {
@@ -328,6 +332,7 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 			Platform.runLater(() -> {
 				initView();
 				this.setDisable(false);
+				SwingUtilities.invokeLater(this::updateGraph);
 			});
 		}
 	}

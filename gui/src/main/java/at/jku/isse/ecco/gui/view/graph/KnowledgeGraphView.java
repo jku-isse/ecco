@@ -9,6 +9,7 @@ import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.gui.view.KnowledgeGraphLayout;
 import at.jku.isse.ecco.gui.view.detail.ArtifactDetailView;
@@ -186,14 +187,14 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 
 		this.setOnScroll(event -> {
 			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(0.05, Math.min(1.0,
+				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
 						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
 				this.syncScrollBarsFromCamera();
 			}
 		});
 		this.setOnZoom(event -> {
 			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(0.05, Math.min(1.0,
+				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
 						view.getCamera().getViewPercent() / event.getZoomFactor())));
 				this.syncScrollBarsFromCamera();
 			}
@@ -322,6 +323,9 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 			KnowledgeGraphView.this.refreshGraph();
 		});
 		this.displayToolBar.getItems().add(sizeCommitsCheckbox);
+
+		this.displayToolBar.getItems().add(new Separator());
+		this.displayToolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera));
 
 		Button exportButton = new Button("Export");
 		exportButton.setOnAction(ae -> {
@@ -1114,6 +1118,9 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	}
 
 
+	/** Shared with {@link GraphCameraControls}'s Zoom In/Out buttons, so they clamp to the exact same range scroll/pinch-zoom already do. */
+	private static final double MIN_VIEW_PERCENT = 0.05;
+	private static final double MAX_VIEW_PERCENT = 1.0;
 	private static final int NODE_WIDTH = 110;
 	private static final int NODE_HEIGHT = 32;
 	/** Matches CommitGraphView's node size - a physics-friendly scale, unlike LANE mode's much larger label-bearing boxes (see {@link #updateGraphStylesheet}). */
