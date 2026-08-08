@@ -26,8 +26,6 @@ public class Checkout {
 
 	private Node node;
 
-	private String message;
-
 	public Checkout() {
 		this.warnings = new ArrayList<>();
 		this.missing = new HashSet<>();
@@ -39,7 +37,6 @@ public class Checkout {
 		this.selectedAssociations = new HashSet<>();
 		this.constraintWarnings = new ArrayList<>();
 		this.node = null;
-		this.message = "";
 	}
 
 	public Node getNode() {
@@ -100,10 +97,6 @@ public class Checkout {
 
 	public List<String> getConstraintWarnings() {
 		return this.constraintWarnings;
-	}
-
-	public String getMessage() {
-		return this.message;
 	}
 
 }
