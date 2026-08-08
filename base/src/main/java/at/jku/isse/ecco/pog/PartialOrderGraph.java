@@ -674,9 +674,13 @@ public interface PartialOrderGraph extends Persistable {
 
 					// connect every parent
 					for (Node.Op parent : new ArrayList<>(current.getPrevious())) {
-						// to every child
+						// to every child, unless already connected (e.g. another removed sibling
+						// already bypassed this same parent to this same child - a duplicate edge
+						// here would silently corrupt the graph's true branching degree)
 						for (Node.Op child : current.getNext()) {
-							parent.addChild(child);
+							if (!parent.getNext().contains(child)) {
+								parent.addChild(child);
+							}
 						}
 						// and remove it as child from parent
 						parent.removeChild(current);
