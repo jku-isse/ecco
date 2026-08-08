@@ -157,7 +157,7 @@ public class LilyEccoTransformer {
 
     private static LilypondNode<ParceToken> transformString(LilypondNode<ParceToken> string, String tokenName) {
         LilypondNode<ParceToken> n = string.getNext();
-        if (n.getData() == null || !n.getData().getAction().equals(DEF_LITERAL_STRING)) { return string; }
+        if (n == null || n.getData() == null || !n.getData().getAction().equals(DEF_LITERAL_STRING)) { return string; }
         cntInput++;
         StringBuilder sb = new StringBuilder();
         ParceToken newToken = null;
@@ -189,7 +189,7 @@ public class LilyEccoTransformer {
 
     private static LilypondNode<ParceToken> transformSchemeNumber(LilypondNode<ParceToken> number) {
         LilypondNode<ParceToken> n = number.getNext();
-        if (n.getData() == null || !n.getData().getAction().startsWith("Literal.Number")) { return number; }
+        if (n == null || n.getData() == null || !n.getData().getAction().startsWith("Literal.Number")) { return number; }
         cntInput++;
         StringBuilder sb = new StringBuilder();
         ParceToken newToken = null;
@@ -252,8 +252,24 @@ public class LilyEccoTransformer {
                 .append(" ");
         LilypondNode<ParceToken> n = lyricmode.getNext();
         cntInput++;
+        if (n == null) {
+            // malformed/truncated input: the \lyricsto or \lyricmode keyword has nothing after it
+            // at all, even though isLyriclist() validated this same node - bail out the same way
+            // every other unexpected-structure case in this method does, rather than NPE below.
+            return lyricmode;
+        }
         if (n.getName().equals(DEF_LYRICSTO)) {
-            n = n.getNext().getNext(); cntInput++; cntInput++;
+            // isLyriclist()'s own validation can skip an arbitrary run of nodes nested under
+            // LilyPond.list before reaching LilyPond.lyriclist (see its while-loop), but this is a
+            // fixed two-hop step assuming exactly one such node (LilyPond.string) - guard each hop
+            // individually instead of chaining n.getNext().getNext(), so a structure that doesn't
+            // match that assumption falls through to "give up" instead of NPEing.
+            LilypondNode<ParceToken> list = n.getNext();
+            LilypondNode<ParceToken> firstListItem = list != null ? list.getNext() : null;
+            if (firstListItem == null) {
+                return lyricmode;
+            }
+            n = firstListItem; cntInput++; cntInput++;
             n = transformString(n, n.getName());
             lyrics.append(n.getData().getText())
                     .append(" ");
