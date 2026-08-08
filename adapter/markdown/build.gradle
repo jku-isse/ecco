@@ -1,4 +1,13 @@
+plugins {
+    alias(libs.plugins.openjfx.javafxplugin)
+}
+
 ecco.adapter = true
+
+javafx {
+    version = libs.versions.javafx.get()
+    modules = ['javafx.base', 'javafx.controls', 'javafx.graphics']
+}
 
 dependencies {
     implementation project(':ecco-service')

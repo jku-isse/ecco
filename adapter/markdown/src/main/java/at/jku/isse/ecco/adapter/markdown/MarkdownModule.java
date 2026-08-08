@@ -2,6 +2,8 @@ package at.jku.isse.ecco.adapter.markdown;
 
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
+import at.jku.isse.ecco.adapter.markdown.view.MarkdownViewer;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
@@ -23,6 +25,11 @@ public class MarkdownModule extends AbstractModule {
 				new TypeLiteral<ArtifactWriter<Set<Node>, Path>>() {
 				});
 		writerMultibinder.addBinding().to(MarkdownFileWriter.class);
+
+		final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<AssociationInfoArtifactViewer>() {
+				});
+		viewerMultibinder.addBinding().to(MarkdownViewer.class);
 	}
 
 }
