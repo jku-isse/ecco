@@ -59,6 +59,7 @@ dependencies {
 
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
+	runtimeOnly project(':ecco-adapter-markdown')
 	runtimeOnly project(':ecco-adapter-lilypond')
 	runtimeOnly project(':ecco-adapter-image')
 	runtimeOnly project(':ecco-adapter-typescript')
@@ -74,6 +75,7 @@ dependencies {
 
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
+	testRuntimeOnly project(':ecco-adapter-markdown')
 	testRuntimeOnly project(':ecco-adapter-lilypond')
 	testRuntimeOnly project(':ecco-adapter-image')
 	testRuntimeOnly project(':ecco-adapter-typescript')

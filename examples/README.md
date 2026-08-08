@@ -6,3 +6,4 @@
 * The [*Person Image Example*](image_variants) consists of nine variants of an image of a differently dressed person.
 * The [*LilyPond Example*](lilypond_variants) consists of six variants (features) of a piece of music. 
 * The [*C Variants Example*](c_variants) consists of eight variants of a small, multi-file C program, covering every combination of three optional features.
+* The [*Markdown Docs Variants Example*](markdown_docs_variants) consists of twelve variants of a fictional CLI tool's documentation, covering nine optional features that add sections, list items, code blocks, blockquotes, and GFM table rows.
