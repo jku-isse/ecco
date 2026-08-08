@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.tree;
 
+import at.jku.isse.ecco.pog.PartialOrderGraph;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +13,10 @@ import java.util.stream.Collectors;
  * composition, where {@code DefaultOrderSelector} picked one arbitrarily. Purely a traversal of the
  * already-composed tree -- no mutation, no alternative-order enumeration (that needs {@code
  * PartialOrderGraph}'s factorial-blowup-prone linearization methods, deliberately avoided here).
+ * {@link #suggestOrderFix} is the one exception, and only barely: it queries {@link
+ * PartialOrderGraph#hasUnresolvedOrder}, a single bounded graph walk (no enumeration, no
+ * permutations), to tell a genuinely-actionable warning apart from one the graph's accumulated
+ * history triggered for content that isn't even part of this composition.
  */
 public final class ArtifactDiagnostics {
 
@@ -82,7 +88,20 @@ public final class ArtifactDiagnostics {
 		return String.join(", ", describeChildrenWithLines(node));
 	}
 
-	public static String suggestOrderFix() {
+	/**
+	 * Short guidance for the "Suggested Fix" column/warnings-file line -- distinguishes a genuinely
+	 * actionable warning (some pair of {@code orderWarningNode}'s current children still has no fixed
+	 * relative order) from one where the graph's history already fully determines this specific set of
+	 * children, so there's nothing to actually reorder even though the node was flagged (see {@link
+	 * PartialOrderGraph#hasUnresolvedOrder}). Falls back to the always-actionable message when there's
+	 * no graph to query at all (should be unreachable for a real ORDER warning, which requires one).
+	 */
+	public static String suggestOrderFix(Node orderWarningNode) {
+		PartialOrderGraph graph = orderWarningNode.getArtifact() != null ? orderWarningNode.getArtifact().getPartialOrderGraph() : null;
+		if (graph != null && !graph.hasUnresolvedOrder(orderWarningNode)) {
+			return "no action needed -- these children's order is already fully determined by prior commits "
+					+ "(this warning comes from other content elsewhere in the version history that isn't part of this composition)";
+		}
 		return "the order of these children could not be determined from commit history -- "
 				+ "manually reorder them in the checked-out file if needed, then commit to establish a precedent";
 	}

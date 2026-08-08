@@ -9,6 +9,7 @@ import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
 import at.jku.isse.ecco.gui.io.Directory;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.module.ModuleRevisions;
+import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.ArtifactDiagnostics;
 import at.jku.isse.ecco.tree.Node;
@@ -57,6 +58,13 @@ public class CheckoutDetailView extends BorderPane {
 		Button saveAsVariantButton = new Button("Save as Variant...");
 		saveAsVariantButton.setOnAction(event -> this.saveCurrentCheckoutAsVariant());
 		this.toolBar.getItems().add(saveAsVariantButton);
+
+		// the table above only shows what needs the user's action (see showCheckout) - this opens the
+		// full, unfiltered .warnings file EccoService#checkout always writes into the base directory,
+		// for whenever that's not enough (e.g. double-checking an ORDER row this view judged moot).
+		Button showWarningsButton = new Button("Show Warnings...");
+		showWarningsButton.setOnAction(event -> this.showWarningsFile());
+		this.toolBar.getItems().add(showWarningsButton);
 
 
 		// details
@@ -164,7 +172,17 @@ public class CheckoutDetailView extends BorderPane {
 			else
 				this.checkoutConfiguration.setText("");
 
-			// show missing and surplus module diagnostics (see Repository.Op.compose())
+			// Every diagnostic (MISSING/SURPLUS/ORDER/UNRESOLVED/CONSTRAINT) is always written in full
+			// to the .warnings file in the base directory too (see EccoService#checkout, unconditional,
+			// untouched by anything below) - nothing shown/omitted here is the only record of it.
+
+			// show missing and surplus module diagnostics (see Repository.Op.compose()). SURPLUS means
+			// a selected association's condition pulled in a module revision beyond what was actually
+			// requested - real, possibly-unwanted content in the checkout (e.g. a duplicated line) that
+			// the user may need to manually remove or reconsider, not a resolved/moot warning - unlike
+			// ORDER below, there's no check here that could tell a genuine SURPLUS apart from a stale
+			// one, so (like MISSING) it stays unfiltered even though this GUI has no automated fix for
+			// it either way.
 			List<ModuleRevision> sortedMissing = new ArrayList<>(checkout.getMissing());
 			sortedMissing.sort(ModuleRevisions.RELEVANCE_ORDER);
 			for (ModuleRevision missingModuleRevision : sortedMissing) {
@@ -181,7 +199,17 @@ public class CheckoutDetailView extends BorderPane {
 			// ReorderChildrenDialog first (see #applyFix), then falls through into the same
 			// commit/re-checkout flow MISSING uses, so the user's chosen order gets written to disk
 			// and committed instead of hand-editing the checked-out file themselves.
+			//
+			// DefaultOrderSelector flags a node the moment it walks past ANY branch point anywhere in
+			// the graph's accumulated history, even between content from variants that were never both
+			// present in one composition - PartialOrderGraph#hasUnresolvedOrder narrows that down to
+			// whether THIS node's actually-present children still have a real decision left, so a
+			// warning that stems entirely from unrelated history doesn't show up here as if it did.
 			for (Node orderWarningNode : checkout.getOrderWarnings()) {
+				PartialOrderGraph graph = orderWarningNode.getArtifact() != null ? orderWarningNode.getArtifact().getPartialOrderGraph() : null;
+				if (graph != null && !graph.hasUnresolvedOrder(orderWarningNode)) {
+					continue;
+				}
 				String suggestedConfigurationString = checkout.getConfiguration() != null
 						? ModuleRevisions.suggestedConfigurationString(null, checkout.getConfiguration())
 						: null;
@@ -191,13 +219,15 @@ public class CheckoutDetailView extends BorderPane {
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("ORDER",
 						orderWarningNode.getArtifact() + " (current order):" + System.lineSeparator() + childrenMultiline,
 						ArtifactDiagnostics.describePath(orderWarningNode),
-						ArtifactDiagnostics.suggestOrderFix(),
+						ArtifactDiagnostics.suggestOrderFix(orderWarningNode),
 						suggestedConfigurationString,
 						orderWarningNode));
 			}
 
-			// show constraint-violation diagnostics (see EccoService.compose()) -- advisory only,
-			// no Apply Fix action (suggestedConfigurationString == null hides the button).
+			// show constraint-violation diagnostics (see EccoService.compose()) -- advisory only (no
+			// Apply Fix action, suggestedConfigurationString == null hides the button), but still a
+			// real thing the user may want to act on outside this GUI (reconsider their configuration
+			// against a requires/excludes rule it violates) - not a resolved/moot warning, so unfiltered.
 			for (String constraintWarning : checkout.getConstraintWarnings()) {
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("CONSTRAINT", constraintWarning, "", "", null));
 			}
@@ -248,6 +278,40 @@ public class CheckoutDetailView extends BorderPane {
 				javafx.application.Platform.runLater(() -> new ExceptionAlert(e).showAndWait());
 			}
 		}).start();
+	}
+
+	/**
+	 * Shows the full, unfiltered content of the {@code .warnings} file {@code EccoService#checkout}
+	 * always writes into the checkout's base directory (every MISSING/SURPLUS/ORDER/UNRESOLVED/
+	 * CONSTRAINT diagnostic, regardless of what {@link #showCheckout} judged actionable enough to put
+	 * in the table above) -- read fresh from disk rather than reconstructed from {@link #currentCheckout}
+	 * in memory, so this always reflects exactly what actually got written, not a re-derived guess at it.
+	 */
+	private void showWarningsFile() {
+		if (this.currentBaseDir == null) return;
+		Path warningsFile = this.currentBaseDir.resolve(EccoService.WARNINGS_FILE_NAME);
+
+		String content;
+		try {
+			content = Files.exists(warningsFile) ? Files.readString(warningsFile) : "(no warnings file found at " + warningsFile + ")";
+		} catch (IOException e) {
+			new ExceptionAlert(e).showAndWait();
+			return;
+		}
+
+		TextArea textArea = new TextArea(content);
+		textArea.setEditable(false);
+		textArea.setWrapText(false);
+		textArea.setPrefColumnCount(100);
+		textArea.setPrefRowCount(30);
+
+		Dialog<Void> dialog = new Dialog<>();
+		dialog.setTitle("Warnings");
+		dialog.setHeaderText("Full, unfiltered diagnostics -- " + warningsFile);
+		dialog.setResizable(true);
+		dialog.getDialogPane().setContent(textArea);
+		dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+		dialog.showAndWait();
 	}
 
 	/**
