@@ -14,12 +14,12 @@ public class VevosCondition {
     private int endLine;
 
     public VevosCondition(String vevosFileLine){
-        // VEVOS file entry structure: Path;File Condition;Block Condition;Presence Condition;start;end
+        // VEVOS file entry structure: Path;File Condition;Block Condition;Presence Condition;Line Type;start;end
         String[] lineParts = vevosFileLine.split(";");
-        if (lineParts.length < 6){
+        if (lineParts.length < 7){
             throw new IllegalArgumentException(
                     String.format("VEVOS file entry has less tha" +
-                            "n 6 comma-separated parts: %s", vevosFileLine));
+                            "n 7 comma-separated parts: %s", vevosFileLine));
         }
         this.rawTextLine = vevosFileLine;
         this.filePath = Paths.get(lineParts[0]);
