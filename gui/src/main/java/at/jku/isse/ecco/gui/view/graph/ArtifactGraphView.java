@@ -234,7 +234,15 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 			int size = DEFAULT_SIZE;
 			if (node.hasAttribute(SUCCESSOR_COUNT_ATTRIBUTE)) {
 				int successorsCount = node.getAttribute(SUCCESSOR_COUNT_ATTRIBUTE, Integer.class);
-				size = (int) ((double) MIN_SIZE + ((double) successorsCount) / (double) (this.maxSuccessorsCount) * (double) (MAX_SIZE - MIN_SIZE));
+				// Logarithmic, not square-root: a tree's subtree counts span a *much* wider dynamic
+				// range than "area vs. count" alone accounts for - depth alone means a root/near-root
+				// node's count can be 1000x a leaf's, since it's a sum over every level beneath it.
+				// Against a max that large, sqrt(1) vs. sqrt(7) still barely move the needle (both
+				// round to the same on-screen pixel size once divided by sqrt(1000s)) - log1p keeps
+				// low counts spread apart even against a huge max, which is exactly what "a 1-artifact
+				// subnode should look smaller than a 7-artifact summary node" needs.
+				double t = this.maxSuccessorsCount > 0 ? Math.log1p(Math.max(0, successorsCount)) / Math.log1p(this.maxSuccessorsCount) : 0;
+				size = (int) (MIN_SIZE + t * (MAX_SIZE - MIN_SIZE));
 			}
 
 			// nodes with no association (e.g. a "dropped children" summary node spanning several
@@ -550,7 +558,11 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 
 	private void groupArtifactsByAssocRec(at.jku.isse.ecco.tree.Node eccoNode, Map<Association, Integer> groupMap) {
 		for (at.jku.isse.ecco.tree.Node eccoChildNode : eccoNode.getChildren()) {
-			if (eccoChildNode.getArtifact() != null) {
+			// isUnique() check matches Trees.countArtifacts() exactly (used both by regular nodes,
+			// above, and the dropped-children summary path below) - without it, a shared/non-unique
+			// artifact got counted here but not there, inflating this specific kind of summary node's
+			// size relative to every other node in the same view.
+			if (eccoChildNode.getArtifact() != null && eccoChildNode.isUnique()) {
 				Association childContainingAssociation = eccoChildNode.getArtifact().getContainingNode().getContainingAssociation();
 				if (childContainingAssociation != null) {
 					if (groupMap.containsKey(childContainingAssociation)) {
@@ -584,6 +596,15 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 			// any node - every ArtifactData implementation (line, token, function, ...) has a
 			// meaningful toString(), e.g. a source line's actual text
 			nodeSnapshot.hoverText = nodeSnapshot.label != null ? nodeSnapshot.label : eccoNode.getArtifact().getData().toString();
+
+			// same subtree-size sizing {@link #addSummaryNode} already gives its collapsed nodes,
+			// extended to every regular node too - a file/directory with a large subtree renders
+			// bigger than a single leaf line/token, same "count -> size" idea as the summary nodes
+			// (updateNodesAndEdgesStyles() picks this up automatically via SUCCESSOR_COUNT_ATTRIBUTE).
+			nodeSnapshot.successorsCount = eccoNode.countArtifacts();
+			if (snapshot.maxSuccessorsCount < nodeSnapshot.successorsCount) {
+				snapshot.maxSuccessorsCount = nodeSnapshot.successorsCount;
+			}
 		}
 
 		List<? extends at.jku.isse.ecco.tree.Node> children = eccoNode.getChildren();
