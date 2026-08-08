@@ -11,6 +11,7 @@ import at.jku.isse.ecco.tree.Node;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -38,14 +39,15 @@ public class LilypondStringWriter implements ArtifactWriter<Set<Node>, String> {
                 throw new EccoException("Expected plugin artifact data.");
 
 			StringBuilder sb = new StringBuilder();
-			LilypondWriter.ArtifactIterator it = new LilypondWriter.ArtifactIterator(fileNode);
-			if (it.hasNext()) {
-				Node cur = it.next();
-				DefaultTokenArtifactData d = (DefaultTokenArtifactData)cur.getArtifact().getData();
+			List<Node> tokenNodes = new ArrayList<>();
+			LilypondWriter.collectTokenNodes(fileNode, tokenNodes);
+
+			if (!tokenNodes.isEmpty()) {
+				Iterator<Node> it = tokenNodes.iterator();
+				DefaultTokenArtifactData d = (DefaultTokenArtifactData) it.next().getArtifact().getData();
 				while (it.hasNext()) {
-					Node next = it.next();
+					DefaultTokenArtifactData n = (DefaultTokenArtifactData) it.next().getArtifact().getData();
 					sb.append(d.getText());
-					DefaultTokenArtifactData n = (DefaultTokenArtifactData)next.getArtifact().getData();
 					if (LilypondFormatter.appendSpace(d, n)) {
 						sb.append(" ");
 					}
