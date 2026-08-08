@@ -50,13 +50,14 @@ public class MarkdownFileWriter implements ArtifactWriter<Set<Node>, Path> {
 				throw new EccoException("Expected plugin artifact data.");
 			PluginArtifactData pluginArtifactData = (PluginArtifactData) artifactData;
 			Path outputPath = base.resolve(pluginArtifactData.getPath());
-			output.add(outputPath);
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath)) {
 				this.writeLines(fileNode, bw);
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new EccoException("Could not write file: " + outputPath, e);
 			}
+
+			output.add(outputPath);
 		}
 
 		return output.toArray(new Path[0]);

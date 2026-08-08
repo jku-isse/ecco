@@ -40,7 +40,6 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 			if (!(artifactData instanceof PluginArtifactData pluginArtifactData))
 				throw new EccoException("Expected plugin artifact data.");
 			Path outputPath = base.resolve(pluginArtifactData.getPath());
-			output.add(outputPath);
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
 				ArtifactIterator it = new ArtifactIterator(fileNode);
@@ -60,8 +59,10 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 				}
 
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new EccoException("Could not write file: " + outputPath, e);
 			}
+
+			output.add(outputPath);
 		}
 
 		return output.toArray(new Path[0]);
