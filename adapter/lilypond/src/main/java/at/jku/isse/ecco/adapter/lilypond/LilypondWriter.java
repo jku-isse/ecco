@@ -42,14 +42,15 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 			Path outputPath = base.resolve(pluginArtifactData.getPath());
 
 			try (BufferedWriter bw = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
-				ArtifactIterator it = new ArtifactIterator(fileNode);
-				if (it.hasNext()) {
-					Node cur = it.next();
-					DefaultTokenArtifactData d = (DefaultTokenArtifactData)cur.getArtifact().getData();
+				List<Node> tokenNodes = new ArrayList<>();
+				collectTokenNodes(fileNode, tokenNodes);
+
+				if (!tokenNodes.isEmpty()) {
+					Iterator<Node> it = tokenNodes.iterator();
+					DefaultTokenArtifactData d = (DefaultTokenArtifactData) it.next().getArtifact().getData();
 					while (it.hasNext()) {
-						Node next = it.next();
+						DefaultTokenArtifactData n = (DefaultTokenArtifactData) it.next().getArtifact().getData();
 						bw.write(d.getText());
-						DefaultTokenArtifactData n = (DefaultTokenArtifactData)next.getArtifact().getData();
 						if (LilypondFormatter.appendSpace(d, n)) {
 							bw.write(" ");
 						}
@@ -68,64 +69,20 @@ public class LilypondWriter implements ArtifactWriter<Set<Node>, Path> {
 		return output.toArray(new Path[0]);
 	}
 
-	static class ArtifactIterator implements Iterator<Node> {
-		private List<? extends  Node> children;
-		private Node nextNode;
-		Stack<Integer> indexes = new Stack<>();
-
-		public ArtifactIterator(Node n) {
-			assert n != null;
-
-			nextNode = n;
-			if (nextNode.getArtifact().getData() instanceof DefaultTokenArtifactData) {
-				return;
-			}
-
-			do {
-				calcNext(nextNode);
-			} while (nextNode != null && !(nextNode.getArtifact().getData() instanceof DefaultTokenArtifactData));
+	/**
+	 * Collects every {@link DefaultTokenArtifactData} node reachable from {@code n}, in document
+	 * (pre-order) order, into {@code out}. Recurses into every node's children unconditionally -
+	 * including a token node's own children, if it has any - matching how the tree is actually
+	 * built (a node's data type doesn't affect whether it can have children). Package-visible: also
+	 * used by {@link LilypondStringWriter}, which joins the same token sequence into a String
+	 * instead of writing it to a file.
+	 */
+	static void collectTokenNodes(Node n, List<Node> out) {
+		if (n.getArtifact().getData() instanceof DefaultTokenArtifactData) {
+			out.add(n);
 		}
-
-		@Override
-		public boolean hasNext() {
-			return nextNode != null;
-		}
-
-		@Override
-		public Node next() {
-			Node current = nextNode;
-			do {
-				calcNext(nextNode);
-			} while (nextNode != null && !(nextNode.getArtifact().getData() instanceof DefaultTokenArtifactData));
-			return current;
-		}
-
-		private void calcNext(Node n) {
-			List<? extends Node> c = n.getChildren();
-			if (c.size() > 0) {
-				children = c;
-				indexes.push(0);
-				nextNode = children.get(0);
-
-			} else {
-				while (true) {
-					int i = indexes.pop();
-					i++;
-					if (i < children.size()) {
-						indexes.push(i);
-						nextNode = children.get(i);
-						return;
-
-					} else if (indexes.size() == 0 && i == children.size()) {
-						nextNode = null;
-						return;
-
-					} else {
-						n = n.getParent();
-						children = n.getParent().getChildren();
-					}
-				}
-			}
+		for (Node child : n.getChildren()) {
+			collectTokenNodes(child, out);
 		}
 	}
 
