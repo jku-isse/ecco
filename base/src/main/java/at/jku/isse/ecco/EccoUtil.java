@@ -59,9 +59,7 @@ public class EccoUtil {
 	}
 
 	private static Node.Op deepCopyTreeRec(Node.Op node, EntityFactory entityFactory) {
-		Node.Op node2 = entityFactory.createNode();
-
-		node2.setUnique(node.isUnique());
+		Node.Op node2;
 
 		if (node.getArtifact() != null) {
 			Artifact.Op<?> artifact = node.getArtifact();
@@ -79,11 +77,19 @@ public class EccoUtil {
 				firstMatch = true;
 			}
 
-			node2.setArtifact(artifact2);
-
 			if (node.isUnique()) {
-				artifact2.setContainingNode(node2);
+				// createNode(Artifact.Op) -- unlike the no-arg createNode() + setArtifact() used
+				// below for the non-unique case -- is what actually gives the copy a FeatureTrace
+				// (see SerNode's no-arg-vs-artifact constructor javadoc); without it, a later
+				// commit() walking this copy NPEs in RetroactiveConditionSetterVisitor the first
+				// time it reaches a unique node. It also sets containingNode itself, which is
+				// exactly what a unique node needs anyway (same as the explicit call this replaces).
+				node2 = entityFactory.createNode(artifact2);
+			} else {
+				node2 = entityFactory.createNode();
+				node2.setArtifact(artifact2);
 			}
+			node2.setUnique(node.isUnique());
 
 			artifact2.setAtomic(artifact.isAtomic());
 			artifact2.setOrdered(artifact.isOrdered());
@@ -122,6 +128,8 @@ public class EccoUtil {
 			}
 
 		} else {
+			node2 = entityFactory.createNode();
+			node2.setUnique(node.isUnique());
 			node2.setArtifact(null);
 		}
 
