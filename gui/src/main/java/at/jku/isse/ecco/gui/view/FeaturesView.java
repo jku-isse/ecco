@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
@@ -171,6 +172,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		});
 
 		toolBar.getItems().setAll(exportButton, new Separator(), showLabelsCheckbox, new Separator(), layoutLabel, layoutChoice, new Separator());
+		toolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, this::syncScrollBarsFromCamera));
 
 
 		System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
@@ -186,7 +188,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 		this.setOnScroll(event -> {
 			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(0.05, Math.min(1.0,
+				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
 						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
 				this.syncScrollBarsFromCamera();
 			}
@@ -194,7 +196,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		// trackpad pinch: a separate gesture from two-finger scroll, so it needs its own handler.
 		this.setOnZoom(event -> {
 			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(0.05, Math.min(1.0,
+				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
 						view.getCamera().getViewPercent() / event.getZoomFactor())));
 				this.syncScrollBarsFromCamera();
 			}
@@ -543,6 +545,9 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 	// wider than the tree layout's old circle nodes, so X_SPACING grows with it to keep siblings
 	// at the same depth from visually overlapping.
+	/** Shared with {@link GraphCameraControls}'s Zoom In/Out buttons, so they clamp to the exact same range scroll/pinch-zoom already do. */
+	private static final double MIN_VIEW_PERCENT = 0.05;
+	private static final double MAX_VIEW_PERCENT = 1.0;
 	private static final double X_SPACING = 130;
 	private static final double Y_SPACING = 110;
 	private static final int NODE_WIDTH = 90;

@@ -7,6 +7,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.CategoricalColorPalette;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.ExceptionAlert;
+import at.jku.isse.ecco.gui.GraphCameraControls;
 import at.jku.isse.ecco.gui.TabVisibilityAware;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
@@ -128,7 +129,7 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 
 		this.setOnScroll(event -> {
 			if (null != view) {
-				view.getCamera().setViewPercent(Math.max(0.1, Math.min(1.0,
+				view.getCamera().setViewPercent(Math.max(MIN_VIEW_PERCENT, Math.min(MAX_VIEW_PERCENT,
 						view.getCamera().getViewPercent() - 0.05 * event.getDeltaY() / event.getMultiplierY())));
 			}
 		});
@@ -221,6 +222,8 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 
 
 		toolBar.getItems().setAll(exportButton, resetButton, new Separator(), showLabelsCheckbox, new Separator(), childCountLimitLabel, childCountLimitSpinner, new Separator(), depthLimitLabel, depthLimitSpinner, new Separator());
+		toolBar.getItems().addAll(GraphCameraControls.build(() -> this.view, MIN_VIEW_PERCENT, MAX_VIEW_PERCENT, () -> {
+		}));
 
 		return showLabelsCheckbox;
 	}
@@ -508,6 +511,9 @@ public class ArtifactGraphView extends BorderPane implements EccoListener, TabVi
 	}
 
 
+	/** Shared with {@link GraphCameraControls}'s Zoom In/Out buttons, so they clamp to the exact same range scroll-zoom already does. */
+	private static final double MIN_VIEW_PERCENT = 0.1;
+	private static final double MAX_VIEW_PERCENT = 1.0;
 	private static final int CHILD_COUNT_LIMIT_MAX = 1000;
 	private static final int DEPTH_LIMIT_MAX = 50;
 	private static final int DEFAULT_CHILD_COUNT_LIMIT = 20;
