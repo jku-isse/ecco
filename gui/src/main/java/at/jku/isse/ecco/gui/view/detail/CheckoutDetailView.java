@@ -240,22 +240,39 @@ public class CheckoutDetailView extends BorderPane {
 	}
 
 	/**
-	 * Prompts for a name and saves the currently-shown checkout's configuration as a known
-	 * {@code Variant} (see the Variants tab) -- {@code EccoService#addVariant} silently no-ops if an
-	 * equal configuration is already saved, so this checks first to give the user real feedback
-	 * instead of a false "saved" message.
+	 * Prompts for a name and an optional description and saves the currently-shown checkout's
+	 * configuration as a known {@code Variant} (see the Variants tab) -- {@code EccoService#addVariant}
+	 * silently no-ops if an equal configuration is already saved, so this checks first to give the
+	 * user real feedback instead of a false "saved" message.
 	 */
 	private void saveCurrentCheckoutAsVariant() {
 		if (this.currentCheckout == null || this.currentCheckout.getConfiguration() == null) return;
 		Configuration configuration = this.currentCheckout.getConfiguration();
 
-		TextInputDialog dialog = new TextInputDialog();
+		TextField nameField = new TextField();
+		nameField.setPromptText("Variant name");
+		TextField descriptionField = new TextField();
+		descriptionField.setPromptText("Description (optional)");
+
+		GridPane grid = new GridPane();
+		grid.setHgap(10);
+		grid.setVgap(10);
+		grid.setPadding(new Insets(20, 150, 10, 10));
+		grid.add(new Label("Variant name:"), 0, 0);
+		grid.add(nameField, 1, 0);
+		grid.add(new Label("Description:"), 0, 1);
+		grid.add(descriptionField, 1, 1);
+
+		Dialog<ButtonType> dialog = new Dialog<>();
 		dialog.setTitle("Save as Variant");
 		dialog.setHeaderText(null);
-		dialog.setContentText("Variant name:");
-		Optional<String> nameOpt = dialog.showAndWait();
-		if (nameOpt.isEmpty() || nameOpt.get().isBlank()) return;
-		String name = nameOpt.get().trim();
+		dialog.getDialogPane().setContent(grid);
+		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+		Optional<ButtonType> result = dialog.showAndWait();
+		if (result.isEmpty() || result.get() != ButtonType.OK) return;
+		if (nameField.getText() == null || nameField.getText().isBlank()) return;
+		String name = nameField.getText().trim();
+		String description = descriptionField.getText() == null ? "" : descriptionField.getText().trim();
 
 		new Thread(() -> {
 			try {
@@ -270,7 +287,6 @@ public class CheckoutDetailView extends BorderPane {
 							"This configuration is already saved as variant '" + existingName + "'.").showAndWait());
 					return;
 				}
-				String description = this.currentCheckout.getMessage() == null ? "" : this.currentCheckout.getMessage();
 				this.service.addVariant(configuration, name, description);
 				javafx.application.Platform.runLater(() -> new Alert(Alert.AlertType.INFORMATION,
 						"Saved as variant '" + name + "'.").showAndWait());
