@@ -218,7 +218,12 @@ public final class KnowledgeGraphLayout {
 		for (int i = 0; i < windowedCommits.size(); i++) {
 			Commit commit = windowedCommits.get(i);
 			String id = "C:" + commit.getId();
-			nodes.add(new Placement(EntityKind.COMMIT, id, commitLabel(commit), i * X_SPACING, commitY, -1, false));
+			// A commit's own "size" is the total artifact count across every association it touches -
+			// same underlying unit as an association's own artifactCount, just aggregated.
+			int artifactCount = commit.getAssociations().stream()
+					.mapToInt(a -> a.getRootNode() != null ? a.getRootNode().countArtifacts() : 0)
+					.sum();
+			nodes.add(new Placement(EntityKind.COMMIT, id, commitLabel(commit), i * X_SPACING, commitY, artifactCount, false));
 			commitNodeIdById.put(commit.getId(), id);
 
 			for (Association association : commit.getAssociations()) {
