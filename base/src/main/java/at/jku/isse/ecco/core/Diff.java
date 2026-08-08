@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.core;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -10,6 +11,12 @@ public class Diff {
 	protected List<Association> newAssocations;
 	protected List<Association> removedAssociations;
 	protected List<Association> unmodifiedAssociations;
+
+	public Diff() {
+		this.newAssocations = new ArrayList<>();
+		this.removedAssociations = new ArrayList<>();
+		this.unmodifiedAssociations = new ArrayList<>();
+	}
 
 
 	public List<Association> getUnmodified() {
