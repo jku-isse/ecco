@@ -8,6 +8,7 @@ import org.eclipse.collections.impl.factory.Maps;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
 
 public class DependencyGraph {
@@ -42,8 +43,8 @@ public class DependencyGraph {
 
 
 	public DependencyGraph() {
-		this.dependencies = new ArrayList<>();
-		this.unresolvedDependencies = new ArrayList<>();
+		this.dependencies = new LinkedHashSet<>();
+		this.unresolvedDependencies = new LinkedHashSet<>();
 		this.dependencyMap = Maps.mutable.empty();
 		this.associations = new ArrayList<>();
 	}
@@ -154,11 +155,8 @@ public class DependencyGraph {
 
 
 	public Dependency getDependency(Association from, Association to) {
-		for (Dependency dependency : this.dependencies) {
-			if (dependency.getFrom() == from && dependency.getTo() == to)
-				return dependency;
-		}
-		return null;
+		DependencyImpl dependency = this.lookupDependency(from, to);
+		return (dependency != null && this.dependencies.contains(dependency)) ? dependency : null;
 	}
 
 	public Collection<Dependency> getDependencies() {
@@ -167,11 +165,13 @@ public class DependencyGraph {
 
 
 	public Dependency getUnresolvedDependency(Association from, Association to) {
-		for (Dependency dependency : this.unresolvedDependencies) {
-			if (dependency.getFrom() == from && dependency.getTo() == to)
-				return dependency;
-		}
-		return null;
+		DependencyImpl dependency = this.lookupDependency(from, to);
+		return (dependency != null && this.unresolvedDependencies.contains(dependency)) ? dependency : null;
+	}
+
+	private DependencyImpl lookupDependency(Association from, Association to) {
+		Map<Association, DependencyImpl> fromDependencyMap = this.dependencyMap.get(from);
+		return fromDependencyMap == null ? null : fromDependencyMap.get(to);
 	}
 
 	public Collection<Dependency> getUnresolvedDependencies() {
