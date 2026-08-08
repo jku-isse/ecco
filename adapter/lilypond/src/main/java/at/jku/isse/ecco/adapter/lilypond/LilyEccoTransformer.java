@@ -23,7 +23,11 @@ public class LilyEccoTransformer {
     private static int cntInput;
     private static int cntOutput;
 
-    public static LilypondNode<ParceToken> transform(LilypondNode<ParceToken> head) {
+    // transform() is the only entry point into this class - every other method here is private
+    // and only reachable from within it - so synchronizing it is enough to protect cntInput/
+    // cntOutput (used as running counters throughout the whole transform, not just at entry/exit)
+    // from concurrent LilypondReader.read() calls racing on them; nothing else needs to change.
+    public static synchronized LilypondNode<ParceToken> transform(LilypondNode<ParceToken> head) {
         if (null == head) {
             LOGGER.warning("first node is null");
             return null;
