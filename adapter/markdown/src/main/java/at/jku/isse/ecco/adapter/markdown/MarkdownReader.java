@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.markdown;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.markdown.translator.MarkdownTreeBuilder;
@@ -87,7 +88,7 @@ public class MarkdownReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Document document = (Document) this.parser.parse(content);
 				new MarkdownTreeBuilder(this.entityFactory, sourceLines).translate(document, pluginNode);
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new EccoException("Could not read file: " + resolvedPath, e);
 			}
 		}
 		return nodes;

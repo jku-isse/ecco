@@ -272,8 +272,6 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 
 	@Override
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
-		fileViews.clear(); // rebuild all file trees on next 'showTree()'
-
 		// remove listeners
 		for (Map.Entry<String, AssociationInfo> entry : this.associationInfos.entrySet()) {
 			entry.getValue().removePropertyChangeListener(associationListeners.get(entry.getKey()));
@@ -281,20 +279,42 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 
 		this.associationInfos.clear();
 		associationListeners.clear();
-		if (associationInfos == null) {
-			return;
+		if (associationInfos != null) {
+			for (AssociationInfo ai : associationInfos) {
+				this.associationInfos.put(ai.getAssociation().getId(), ai);
+			}
+
+			// add listeners
+			for (AssociationInfo ai : this.associationInfos.values()) {
+				final PropertyChangeListener pcl = getColorPropertyListener();
+				ai.addPropertyChangeListener(pcl);
+				associationListeners.put(ai.getAssociation().getId(), pcl);
+			}
 		}
 
-		for (AssociationInfo ai : associationInfos) {
-			this.associationInfos.put(ai.getAssociation().getId(), ai);
+		// re-color already-built file views from the new associationInfos instead of discarding
+		// them - a full re-parse (the (potentially expensive, py4j-backed) thing FileView's cache
+		// exists to avoid) is only actually needed when the underlying tree itself changes, which
+		// FileView#showFile() detects and handles on its own.
+		for (FileView fv : fileViews.values()) {
+			fv.refreshColors();
 		}
+	}
 
-		// add listeners
-		for (AssociationInfo ai : this.associationInfos.values()) {
-			final PropertyChangeListener pcl = getColorPropertyListener();
-			ai.addPropertyChangeListener(pcl);
-			associationListeners.put(ai.getAssociation().getId(), pcl);
+	/** Shared with {@link FileView#buildCodeLinesRec} (initial build) and
+	 * {@link FileView#refreshColors} (re-coloring already-built content) so both always agree on
+	 * what a token's background color should be for the current {@link #associationInfos}. */
+	private Color colorFor(Association ass) {
+		if (ass != null) {
+			AssociationInfo ai = associationInfos.get(ass.getId());
+			if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
+				Object val = ai.getPropertyValue("color");
+				if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
+					return col;
+				}
+			}
 		}
+		return Color.WHITE;
 	}
 
 	private PropertyChangeListener getColorPropertyListener() {
@@ -335,6 +355,14 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		private volatile boolean isTreeInitialized = false;
 
 		void showFile(Node fileRoot, Node nodeToHighlight) {
+			if (fileRoot != this.root) {
+				// a different underlying tree now maps to the same file path (e.g. viewing a
+				// different commit/composition) - the cached parse no longer applies, even
+				// though this FileView object itself is being reused. Reference equality is
+				// deliberate, not Node#equals(): reliably telling two Node objects apart by
+				// content would cost as much as the re-parse this cache exists to avoid.
+				isTreeInitialized = false;
+			}
 			this.root = fileRoot;
 
 			if (!isTreeInitialized) {
@@ -373,6 +401,17 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 			} else if (nodeToHighlight != null) {
 				highlightTree(nodeToHighlight);
 			}
+		}
+
+		/** Re-colors already-built blocks from the current {@link #associationInfos} without
+		 * re-parsing - called by {@link #setAssociationInfos} instead of discarding this FileView. */
+		void refreshColors() {
+			for (NodeTextBlock[] blocks : codeLines) {
+				for (NodeTextBlock ntb : blocks) {
+					ntb.backgroundColor().set(colorFor(ntb.getAssociation()));
+				}
+			}
+			listView.refresh();
 		}
 
 		private void highlightTree(Node node) {
@@ -437,19 +476,8 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 				Association ass = n.getArtifact().getContainingNode() != null
 						? n.getArtifact().getContainingNode().getContainingAssociation()
 						: null;
-				Color bgCol = Color.WHITE;
-				if (ass != null) {
-					String aiId = ass.getId();
-					AssociationInfo ai = associationInfos.get(aiId);
-					if (ai != null && Boolean.TRUE.equals(ai.getPropertyValue("selected"))) {
-						Object val = ai.getPropertyValue("color");
-						if (val instanceof Color col && !col.equals(Color.TRANSPARENT)) {
-							bgCol = col;
-						}
-					}
-				}
 
-				NodeTextBlock ntb = new NodeTextBlock(n, bgCol);
+				NodeTextBlock ntb = new NodeTextBlock(n, colorFor(ass));
 
 				line.add(ntb);
 				pos[1]++;

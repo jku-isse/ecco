@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
@@ -76,7 +77,7 @@ public class LilypondWhitespaceReader implements ArtifactReader<Path, Set<Node>>
                 }
 
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                throw new EccoException("Could not read file: " + resolvedPath, e);
             }
 
             //listeners.stream().forEach(l -> l.fileReadEvent(file, this));
