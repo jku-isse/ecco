@@ -2,6 +2,8 @@ package at.jku.isse.ecco.tree;
 
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
+import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraph;
+import at.jku.isse.ecco.storage.ser.pog.SerPartialOrderGraphNode;
 import at.jku.isse.ecco.storage.ser.tree.SerNode;
 import at.jku.isse.ecco.test.util.TestArtifactData;
 import org.junit.jupiter.api.Test;
@@ -94,10 +96,77 @@ public class ArtifactDiagnosticsTest {
 	}
 
 	@Test
-	public void suggestOrderFix_isNonEmptyGuidance() {
-		String suggestion = ArtifactDiagnostics.suggestOrderFix();
+	public void suggestOrderFix_withNoGraph_suggestsManualReorder() {
+		// no PartialOrderGraph attached at all - should be unreachable for a real ORDER warning, but
+		// falls back to the always-actionable message rather than claiming certainty it doesn't have.
+		Artifact.Op<?> parentArtifact = new SerArtifact<>(new TestArtifactData("Parent"));
+		SerNode parentNode = new SerNode(parentArtifact);
+
+		String suggestion = ArtifactDiagnostics.suggestOrderFix(parentNode);
 
 		assertTrue(suggestion.contains("commit"));
+	}
+
+	@Test
+	public void suggestOrderFix_withGenuineBranchPointAmongCurrentChildren_suggestsManualReorder() {
+		Artifact.Op<?> childX = new SerArtifact<>(new TestArtifactData("X"));
+		Artifact.Op<?> childY = new SerArtifact<>(new TestArtifactData("Y"));
+
+		// head -> {X, Y} -> tail: a genuine, unresolved branch point between the two present children.
+		SerPartialOrderGraph pog = new SerPartialOrderGraph();
+		pog.getHead().removeChild(pog.getTail());
+		SerPartialOrderGraphNode pogNodeX = new SerPartialOrderGraphNode(childX);
+		SerPartialOrderGraphNode pogNodeY = new SerPartialOrderGraphNode(childY);
+		pogNodeX.setSequenceNumber(1);
+		pogNodeY.setSequenceNumber(2);
+		pog.getHead().addChild(pogNodeX);
+		pog.getHead().addChild(pogNodeY);
+		pogNodeX.addChild(pog.getTail());
+		pogNodeY.addChild(pog.getTail());
+
+		Artifact.Op<?> parentArtifact = new SerArtifact<>(new TestArtifactData("Parent"));
+		parentArtifact.setPartialOrderGraph(pog);
+		SerNode parentNode = new SerNode(parentArtifact);
+		parentNode.addChild(new SerNode(childX));
+		parentNode.addChild(new SerNode(childY));
+
+		String suggestion = ArtifactDiagnostics.suggestOrderFix(parentNode);
+
+		assertTrue(suggestion.contains("commit"));
+	}
+
+	@Test
+	public void suggestOrderFix_withOnlyUnrelatedBranchPointElsewhere_saysNoActionNeeded() {
+		Artifact.Op<?> childX = new SerArtifact<>(new TestArtifactData("X"));
+		Artifact.Op<?> childY = new SerArtifact<>(new TestArtifactData("Y"));
+		Artifact.Op<?> otherVariantContent = new SerArtifact<>(new TestArtifactData("OtherVariant"));
+
+		// head -> X -> {Y, OtherVariantContent} -> tail: X/Y is fully fixed; the only genuine branch
+		// point is between Y and content from a variant not present in this composition at all.
+		SerPartialOrderGraph pog = new SerPartialOrderGraph();
+		pog.getHead().removeChild(pog.getTail());
+		SerPartialOrderGraphNode pogNodeX = new SerPartialOrderGraphNode(childX);
+		SerPartialOrderGraphNode pogNodeY = new SerPartialOrderGraphNode(childY);
+		SerPartialOrderGraphNode pogNodeOther = new SerPartialOrderGraphNode(otherVariantContent);
+		pogNodeX.setSequenceNumber(1);
+		pogNodeY.setSequenceNumber(2);
+		pogNodeOther.setSequenceNumber(3);
+		pog.getHead().addChild(pogNodeX);
+		pogNodeX.addChild(pogNodeY);
+		pogNodeX.addChild(pogNodeOther);
+		pogNodeY.addChild(pog.getTail());
+		pogNodeOther.addChild(pog.getTail());
+
+		Artifact.Op<?> parentArtifact = new SerArtifact<>(new TestArtifactData("Parent"));
+		parentArtifact.setPartialOrderGraph(pog);
+		SerNode parentNode = new SerNode(parentArtifact);
+		// only X and Y are actually present in this composition - OtherVariantContent isn't a child here.
+		parentNode.addChild(new SerNode(childX));
+		parentNode.addChild(new SerNode(childY));
+
+		String suggestion = ArtifactDiagnostics.suggestOrderFix(parentNode);
+
+		assertTrue(suggestion.contains("no action needed"));
 	}
 
 }

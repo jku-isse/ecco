@@ -1574,7 +1574,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     for (Node orderNode : checkout.getOrderWarnings()) {
                         sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(orderNode))
                                 .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(orderNode)).append(")")
-                                .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix())
+                                .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix(orderNode))
                                 .append(System.lineSeparator());
                     }
                     for (Association association : checkout.getUnresolvedAssociations()) {

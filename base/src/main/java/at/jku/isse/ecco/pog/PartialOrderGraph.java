@@ -22,6 +22,73 @@ public interface PartialOrderGraph extends Persistable {
 
 	Collection<? extends Node> collectNodes();
 
+	/**
+	 * Matches {@code treeNode}'s children to this graph's own nodes by artifact equality - the same
+	 * correlation {@code DefaultOrderSelector}'s topological walk already does when picking an order,
+	 * deliberately duplicated here (not shared/extracted) rather than reused from there, so this stays
+	 * fully additive to the composition path instead of risking a change to it. A child with no match
+	 * (e.g. content not yet reflected in the graph) is simply absent from the result - callers should
+	 * treat that as "no known constraint", not an error.
+	 */
+	default Map<at.jku.isse.ecco.tree.Node, PartialOrderGraph.Node> matchChildren(at.jku.isse.ecco.tree.Node treeNode) {
+		Map<at.jku.isse.ecco.tree.Node, PartialOrderGraph.Node> matched = new HashMap<>();
+
+		Map<PartialOrderGraph.Node, Integer> counters = new HashMap<>();
+		Stack<PartialOrderGraph.Node> stack = new Stack<>();
+		stack.push(this.getHead());
+
+		while (!stack.isEmpty()) {
+			PartialOrderGraph.Node pogNode = stack.pop();
+
+			for (at.jku.isse.ecco.tree.Node childNode : treeNode.getChildren()) {
+				if (childNode.getArtifact() != null && childNode.getArtifact().equals(pogNode.getArtifact())) {
+					matched.put(childNode, pogNode);
+					break;
+				}
+			}
+
+			for (PartialOrderGraph.Node child : pogNode.getNext()) {
+				counters.putIfAbsent(child, 0);
+				int counter = counters.computeIfPresent(child, (op, integer) -> integer + 1);
+				// check if all parents of the node have been processed
+				if (counter >= child.getPrevious().size()) {
+					counters.remove(child);
+					stack.push(child);
+				}
+			}
+		}
+
+		return matched;
+	}
+
+	/**
+	 * Whether {@code treeNode}'s children have any genuinely undetermined relative order left - i.e.
+	 * at least one pair, adjacent in {@code treeNode}'s current child order, that this graph doesn't
+	 * already fix (directly or transitively - see {@link Op#canReach}) in either direction. A child
+	 * with no matching graph node (see {@link #matchChildren}) counts as free relative to its
+	 * neighbor, same permissive fallback used there.
+	 * <p>
+	 * {@code false} doesn't mean the node wasn't flagged uncertain - {@code DefaultOrderSelector}
+	 * flags a node the moment it walks past *any* branch point anywhere in the graph's accumulated
+	 * history, even one between content from two variants that were never both present in this
+	 * composition at once. This checks something narrower and more actionable: whether *this specific
+	 * set of children*, in their current order, still has an actual decision left in it.
+	 */
+	default boolean hasUnresolvedOrder(at.jku.isse.ecco.tree.Node treeNode) {
+		Map<at.jku.isse.ecco.tree.Node, PartialOrderGraph.Node> matched = this.matchChildren(treeNode);
+		List<? extends at.jku.isse.ecco.tree.Node> children = treeNode.getChildren();
+
+		for (int i = 0; i < children.size() - 1; i++) {
+			PartialOrderGraph.Node a = matched.get(children.get(i));
+			PartialOrderGraph.Node b = matched.get(children.get(i + 1));
+			boolean fixed = a != null && b != null && PartialOrderGraph.Op.canReach(a, b);
+			if (!fixed) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 
 	interface Op extends PartialOrderGraph {
 
