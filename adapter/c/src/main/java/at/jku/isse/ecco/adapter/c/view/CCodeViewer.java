@@ -111,6 +111,18 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 	}
 
 	@Override
+	public void setShowDetailsPanel(boolean show) {
+		boolean currentlyShown = this.splitPane.getItems().contains(this.taInfo);
+		if (show == currentlyShown) return;
+		if (show) {
+			this.splitPane.getItems().add(this.taInfo);
+			Platform.runLater(() -> this.splitPane.setDividerPositions(0.95));
+		} else {
+			this.splitPane.getItems().remove(this.taInfo);
+		}
+	}
+
+	@Override
 	public String getPluginId() {
 		return CPlugin.class.getName();
 	}
