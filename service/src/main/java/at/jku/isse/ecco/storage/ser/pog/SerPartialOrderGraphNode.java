@@ -154,7 +154,10 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SerPartialOrderGraphNode node = (SerPartialOrderGraphNode) o;
-		if (!this.equals(node)) {
+		// NOT this.equals(node): equals() on this class is unoverridden (identity-based), so a
+		// deep/structural comparison like this one needs to compare artifacts directly instead (see
+		// PartialOrderGraph.nodeOccursSameNumberOfTimes()'s comment for why equals() stays that way).
+		if (!Objects.equals(this.getArtifact(), node.getArtifact())) {
 			return false;
 		}
 		if (!PartialOrderGraph.nodeCollectionsAreEqual(this.getPrevious(), node.getPrevious())){

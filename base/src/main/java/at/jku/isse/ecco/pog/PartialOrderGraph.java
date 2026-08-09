@@ -1127,7 +1127,12 @@ public interface PartialOrderGraph extends Persistable {
 		}
 	}
 
-	// compares nodes using equals()
+	// Compares nodes by artifact content, NOT Node.Op#equals() (which is identity-based and relied
+	// on elsewhere - e.g. Collection#contains()/#remove() in trim()/removeChild(), and as HashMap
+	// keys in addRelations()/collectNodes() - changing that global equals() would risk silently
+	// merging distinct node positions that happen to share an artifact, a recurring real bug in this
+	// subsystem). This helper is only ever used by equalsCompletely()'s own previous/next check
+	// below, so it is free to use a stricter, content-based notion of "same node" instead.
 	// does account for different number of occurrences in collections
 	static boolean nodeCollectionsAreEqual(Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection){
 		if (leftCollection == null && rightCollection == null){ return true; }
@@ -1141,8 +1146,8 @@ public interface PartialOrderGraph extends Persistable {
 	// Compares occurrence of node in collections. When comparing two nodes, previous and next nodes are not compared.
 	private static boolean nodeOccursSameNumberOfTimes(Node.Op node, Collection<Node.Op> leftCollection, Collection<Node.Op> rightCollection) {
 		assert node != null;
-		long numOfLeftNodes = leftCollection.stream().filter(node::equals).count();
-		long numOfRightNodes = rightCollection.stream().filter(node::equals).count();
+		long numOfLeftNodes = leftCollection.stream().filter(n -> Objects.equals(node.getArtifact(), n.getArtifact())).count();
+		long numOfRightNodes = rightCollection.stream().filter(n -> Objects.equals(node.getArtifact(), n.getArtifact())).count();
 		return numOfLeftNodes == numOfRightNodes;
 	}
 
