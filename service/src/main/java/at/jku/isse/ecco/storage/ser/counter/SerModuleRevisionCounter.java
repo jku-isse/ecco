@@ -21,33 +21,37 @@ public class SerModuleRevisionCounter implements ModuleRevisionCounter {
 	}
 
 	/** See {@link SerModuleCounter#resolveModule} - same reasoning, one level down. */
-	public void resolveModuleRevision(SerModuleRevision moduleRevision) {
+	public synchronized void resolveModuleRevision(SerModuleRevision moduleRevision) {
 		this.moduleRevision = moduleRevision;
 	}
 
 
 	@Override
-	public SerModuleRevision getObject() {
+	public synchronized SerModuleRevision getObject() {
 		return this.moduleRevision;
 	}
 
+	// Synchronized for the same reason as SerModuleCounter's count/children (see its class javadoc,
+	// association-counter-unsynchronized-race in project memory): getCount() is read concurrently by
+	// Association.Op#computeLikelyCondition()/#computeCertainCondition() while incCount() is written
+	// during commit's addObservation() - the identical race, one level down the same counter tree.
 	@Override
-	public int getCount() {
+	public synchronized int getCount() {
 		return this.count;
 	}
 
 	@Override
-	public void setCount(int count) {
+	public synchronized void setCount(int count) {
 		this.count = count;
 	}
 
 	@Override
-	public void incCount() {
+	public synchronized void incCount() {
 		this.count++;
 	}
 
 	@Override
-	public void incCount(int count) {
+	public synchronized void incCount(int count) {
 		this.count += count;
 	}
 
