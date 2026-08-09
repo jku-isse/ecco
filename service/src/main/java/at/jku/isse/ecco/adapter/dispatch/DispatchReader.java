@@ -461,7 +461,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				}
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new EccoException("Error reading directory: " + relativeCurrent, e);
 		}
 
 		return null;
