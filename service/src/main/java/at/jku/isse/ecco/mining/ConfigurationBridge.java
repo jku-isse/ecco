@@ -31,7 +31,12 @@ public final class ConfigurationBridge {
     public static List<Set<String>> readConfigurations(EccoService service) {
         List<Set<String>> configs = new ArrayList<>();
         for (Commit commit : service.getCommits()) {
-            configs.add(tokensOf(commit.getConfiguration()));
+            Configuration configuration = commit.getConfiguration();
+            // a MERGE commit (Repository.extract(Association.Op, Commit)) never gets a
+            // configuration of its own -- it reorganizes existing associations rather than
+            // committing a new variant, so it has no new configuration to contribute here.
+            if (configuration == null) continue;
+            configs.add(tokensOf(configuration));
         }
         return configs;
     }
