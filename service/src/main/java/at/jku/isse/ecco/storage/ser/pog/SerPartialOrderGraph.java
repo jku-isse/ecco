@@ -61,8 +61,9 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 		((SerPartialOrderGraphNode)this.head).init();
 		((SerPartialOrderGraphNode)this.tail).init();
 
+		this.normalizeSequenceNumberNodeMap();
 		// if next of head is empty and previous of tail is empty connect them
-		if (this.sequenceNumberNodeMap == null || this.sequenceNumberNodeMap.size() == 0){
+		if (this.sequenceNumberNodeMap.isEmpty()){
 			this.wireHeadAndTail();
 		}
 
@@ -102,6 +103,17 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 		});
 
 
+	}
+
+	/**
+	 * sequenceNumberNodeMap is non-transient, so a repository serialized by a version of this class
+	 * from before this field existed would deserialize it as null (Java leaves an absent field at
+	 * its default) - normalize to an empty map so callers can rely on it never being null.
+	 */
+	private void normalizeSequenceNumberNodeMap() {
+		if (this.sequenceNumberNodeMap == null) {
+			this.sequenceNumberNodeMap = new HashMap<>();
+		}
 	}
 
 	private void wireHeadAndTail(){
