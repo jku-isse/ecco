@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path> {
 
@@ -80,8 +81,8 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 		if (!Files.exists(base)) {
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
-			try {
-				if (Files.list(base).anyMatch(path -> !path.equals(this.repositoryDir))) {
+			try (Stream<Path> entries = Files.list(base)) {
+				if (entries.anyMatch(path -> !path.equals(this.repositoryDir))) {
 					throw new EccoException("Current base directory must be empty for checkout operation.");
 				}
 			} catch (IOException e) {
@@ -149,18 +150,21 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			try {
 				if (!path.equals(parent))
 					Files.createDirectory(path);
-				output.add(path);
-				this.fireWriteEvent(path, this);
-				for (Node child : node.getChildren()) {
-					this.writeRec(base, path, child, output, hashes);
-				}
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new EccoException("Could not create directory: " + path, e);
+			}
+			output.add(path);
+			this.fireWriteEvent(path, this);
+			for (Node child : node.getChildren()) {
+				this.writeRec(base, path, child, output, hashes);
 			}
 		} else if (artifact.getData() instanceof PluginArtifactData) {
 			PluginArtifactData pluginArtifactData = (PluginArtifactData) node.getArtifact().getData();
 
 			ArtifactWriter<Set<Node>, Path> writer = this.getWriterForArtifact(pluginArtifactData);
+			if (writer == null) {
+				throw new EccoException("No writer registered for plugin id: " + pluginArtifactData.getPluginId());
+			}
 
 			Set<Node> pluginInput = new HashSet<>();
 			pluginInput.add(node);
