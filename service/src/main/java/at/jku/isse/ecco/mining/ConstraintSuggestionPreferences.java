@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.core.Constraint;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -46,9 +48,15 @@ public final class ConstraintSuggestionPreferences {
         }
     }
 
-    /** Stable identity for a suggestion, independent of the confidence/witness it was mined with. */
+    /**
+     * Stable identity for a suggestion, independent of the confidence/witness it was mined with.
+     * Same format (and the same shared, encoding {@link Constraint#buildId} construction) as
+     * {@code SerConstraint}'s id and {@link AcceptedConstraints#acceptedSignatures} -- all three
+     * must stay byte-for-byte identical for a given kind/a/b, since freshly-mined suggestions here
+     * are compared directly against persisted-constraint signatures from the other two.
+     */
     public static String signatureOf(ConstraintMiner.Suggestion suggestion) {
-        return suggestion.kind.name() + "|" + suggestion.a + "|" + (suggestion.b == null ? "" : suggestion.b);
+        return Constraint.buildId(suggestion.kind.name(), suggestion.a, suggestion.b);
     }
 
     /** Inverse of {@link #signatureOf}; returns null for an ill-formed signature (e.g. hand-edited prefs). */
@@ -57,7 +65,8 @@ public final class ConstraintSuggestionPreferences {
         if (parts.length != 3) return null;
         try {
             ConstraintMiner.Kind kind = ConstraintMiner.Kind.valueOf(parts[0]);
-            return new AcceptedConstraint(kind, parts[1], parts[2].isEmpty() ? null : parts[2]);
+            return new AcceptedConstraint(kind, Constraint.decodeIdPart(parts[1]),
+                    parts[2].isEmpty() ? null : Constraint.decodeIdPart(parts[2]));
         } catch (IllegalArgumentException e) {
             return null;
         }

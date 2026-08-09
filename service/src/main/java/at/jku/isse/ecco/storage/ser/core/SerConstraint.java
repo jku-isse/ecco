@@ -26,7 +26,7 @@ public class SerConstraint implements Constraint {
 		this.kind = kind;
 		this.featureA = featureA;
 		this.featureB = featureB;
-		this.id = kind.name() + "|" + featureA + "|" + (featureB == null ? "" : featureB);
+		this.id = Constraint.buildId(kind.name(), featureA, featureB);
 	}
 
 
