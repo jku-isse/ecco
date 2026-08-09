@@ -1,16 +1,26 @@
 package at.jku.isse.ecco.service.git;
 
+import at.jku.isse.ecco.EccoException;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.CommitBuilder;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.FileMode;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectInserter;
+import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.TreeFormatter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -120,5 +130,55 @@ public class GitHistoryReaderTest {
 		Path notARepo = Files.createTempDirectory("not-a-git-repo");
 		org.junit.jupiter.api.Assertions.assertThrows(at.jku.isse.ecco.EccoException.class,
 				() -> reader.listCommits(notARepo));
+	}
+
+	/**
+	 * A git tree entry name is a single path component and can legally be ".." at the raw-object
+	 * level, even though porcelain commands like `git add`/`git commit` refuse to create one. Built
+	 * directly via JGit's low-level ObjectInserter/TreeFormatter API (bypassing those porcelain
+	 * checks) to simulate a maliciously crafted commit reaching a local clone: root tree -> subtree
+	 * named ".." -> blob "evil.txt", so the walked path is "../evil.txt".
+	 */
+	@Test
+	@Timeout(30)
+	public void extractCommitTree_rejectsEntryThatWouldEscapeTargetDir() throws Exception {
+		Path repoDir = Files.createTempDirectory("git-history-reader-traversal-test");
+		String commitId;
+
+		try (Git git = Git.init().setDirectory(repoDir.toFile()).call()) {
+			org.eclipse.jgit.lib.Repository repository = git.getRepository();
+			try (ObjectInserter inserter = repository.newObjectInserter()) {
+				ObjectId blobId = inserter.insert(Constants.OBJ_BLOB, "malicious\n".getBytes(StandardCharsets.UTF_8));
+
+				TreeFormatter subTree = new TreeFormatter();
+				subTree.append("evil.txt", FileMode.REGULAR_FILE, blobId);
+				ObjectId subTreeId = inserter.insert(subTree);
+
+				TreeFormatter rootTree = new TreeFormatter();
+				rootTree.append("..", FileMode.TREE, subTreeId);
+				ObjectId rootTreeId = inserter.insert(rootTree);
+
+				CommitBuilder commitBuilder = new CommitBuilder();
+				commitBuilder.setTreeId(rootTreeId);
+				commitBuilder.setAuthor(new PersonIdent("Test", "test@example.com"));
+				commitBuilder.setCommitter(new PersonIdent("Test", "test@example.com"));
+				commitBuilder.setMessage("malicious commit");
+				commitId = inserter.insert(commitBuilder).name();
+
+				inserter.flush();
+			}
+		}
+
+		Path targetDir = Files.createTempDirectory("git-history-reader-extract-target");
+		Path escapedFile = targetDir.getParent().resolve("evil.txt");
+		Files.deleteIfExists(escapedFile);
+
+		try {
+			assertThrows(EccoException.class, () -> reader.extractCommitTree(repoDir, commitId, targetDir),
+					"a tree entry that would escape targetDir must be rejected, not written");
+			assertFalse(Files.exists(escapedFile), "the malicious entry must not be written outside targetDir");
+		} finally {
+			Files.deleteIfExists(escapedFile);
+		}
 	}
 }

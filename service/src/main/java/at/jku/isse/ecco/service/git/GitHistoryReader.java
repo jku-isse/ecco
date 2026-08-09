@@ -66,6 +66,7 @@ public final class GitHistoryReader {
 	 * without needing a working-tree checkout that would disturb the clone itself.
 	 */
 	public void extractCommitTree(Path repoDir, String commitId, Path targetDir) {
+		Path normalizedTargetDir = targetDir.normalize();
 		try (Repository repository = openRepository(repoDir)) {
 			try (RevWalk revWalk = new RevWalk(repository)) {
 				RevCommit commit = revWalk.parseCommit(ObjectId.fromString(commitId));
@@ -75,7 +76,14 @@ public final class GitHistoryReader {
 					treeWalk.setRecursive(true);
 					ObjectReader reader = treeWalk.getObjectReader();
 					while (treeWalk.next()) {
-						Path outFile = targetDir.resolve(treeWalk.getPathString());
+						// a tree entry name is a single path component and can legally be ".." at the
+						// raw-object level even though porcelain git refuses to create one - reject
+						// anything that would resolve outside targetDir instead of trusting it blindly
+						// (the same class of bug as zip-slip for archive extraction).
+						Path outFile = targetDir.resolve(treeWalk.getPathString()).normalize();
+						if (!outFile.startsWith(normalizedTargetDir)) {
+							throw new EccoException("Refusing to extract entry outside target directory: " + treeWalk.getPathString());
+						}
 						Files.createDirectories(outFile.getParent());
 						ObjectLoader loader = reader.open(treeWalk.getObjectId(0));
 						try (OutputStream out = Files.newOutputStream(outFile)) {
