@@ -389,16 +389,17 @@ public class RemoteSyncService {
                 }
 
             } else if (remote.getType() == Remote.Type.LOCAL) {
-                // open parent repository
-                EccoService parentService = new EccoService();
-                parentService.setRepositoryDir(Paths.get(remote.getAddress()));
-                parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+                // open parent repository - try-with-resources so a failure below (e.g. the
+                // getRepository() call itself) still closes parentService instead of leaking
+                // whatever open()/init() acquired on the parent repository indefinitely.
+                Collection<Feature> copiedFeatures;
+                try (EccoService parentService = new EccoService()) {
+                    parentService.setRepositoryDir(Paths.get(remote.getAddress()));
+                    parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
 
-                // copy features
-                Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(parentService.getRepository().getFeatures(), owner.entityFactory);
-
-                // close parent repository
-                parentService.close();
+                    // copy features
+                    copiedFeatures = EccoUtil.deepCopyFeatures(parentService.getRepository().getFeatures(), owner.entityFactory);
+                }
 
                 // merge into this repository
                 remote.getFeatures().clear();
@@ -484,28 +485,27 @@ public class RemoteSyncService {
                 }
 
             } else if (remote.getType() == Remote.Type.LOCAL) {
-                // open parent repository
-                EccoService parentService = new EccoService();
-                parentService.setRepositoryDir(Paths.get(remote.getAddress()));
-                parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
-
-                // create subset repository
+                // open parent repository - try-with-resources so a failure below still closes
+                // parentService instead of leaking whatever open()/init() acquired indefinitely.
                 Repository.Op subsetParentRepository;
-                try {
-                    parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                try (EccoService parentService = new EccoService()) {
+                    parentService.setRepositoryDir(Paths.get(remote.getAddress()));
+                    parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
 
-                    Repository.Op parentRepository = parentService.repositoryDao.load();
-                    subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), parentRepository.getMaxOrder(), owner.entityFactory);
+                    // create subset repository
+                    try {
+                        parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
-                    parentService.transactionStrategy.end();
-                } catch (Exception e) {
-                    parentService.transactionStrategy.rollback();
+                        Repository.Op parentRepository = parentService.repositoryDao.load();
+                        subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), parentRepository.getMaxOrder(), owner.entityFactory);
 
-                    throw new EccoException("Error during local pull.", e);
+                        parentService.transactionStrategy.end();
+                    } catch (Exception e) {
+                        parentService.transactionStrategy.rollback();
+
+                        throw new EccoException("Error during local pull.", e);
+                    }
                 }
-
-                // close parent repository
-                parentService.close();
 
                 // merge into this repository
                 Repository.Op repository = owner.repositoryDao.load();
@@ -602,32 +602,31 @@ public class RemoteSyncService {
                 }
 
             } else if (remote.getType() == Remote.Type.LOCAL) {
-                // open parent repo
-                EccoService parentService = new EccoService();
-                parentService.setRepositoryDir(Paths.get(remote.getAddress()));
-                parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+                // open parent repo - try-with-resources so a failure below still closes
+                // parentService instead of leaking whatever open()/init() acquired indefinitely.
+                try (EccoService parentService = new EccoService()) {
+                    parentService.setRepositoryDir(Paths.get(remote.getAddress()));
+                    parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
 
-                // create subset repository
-                Repository.Op repository = owner.repositoryDao.load();
-                Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), parentService.entityFactory);
+                    // create subset repository
+                    Repository.Op repository = owner.repositoryDao.load();
+                    Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), parentService.entityFactory);
 
-                // merge into parent repository
-                try {
-                    parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                    // merge into parent repository
+                    try {
+                        parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
-                    Repository.Op parentRepository = parentService.repositoryDao.load();
-                    parentRepository.merge(subsetRepository);
-                    parentService.repositoryDao.store(parentRepository);
+                        Repository.Op parentRepository = parentService.repositoryDao.load();
+                        parentRepository.merge(subsetRepository);
+                        parentService.repositoryDao.store(parentRepository);
 
-                    parentService.transactionStrategy.end();
-                } catch (Exception e) {
-                    parentService.transactionStrategy.rollback();
+                        parentService.transactionStrategy.end();
+                    } catch (Exception e) {
+                        parentService.transactionStrategy.rollback();
 
-                    throw new EccoException("Error during local push.", e);
+                        throw new EccoException("Error during local push.", e);
+                    }
                 }
-
-                // close parent repository
-                parentService.close();
             }
 
             owner.transactionStrategy.end();
