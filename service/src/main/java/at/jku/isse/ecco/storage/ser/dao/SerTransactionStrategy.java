@@ -382,6 +382,36 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.database = null;
 		this.transaction = null;
 		this.transactionCounter = 0;
+		this.releaseWriteLock();
+	}
+
+	/**
+	 * Releases the exclusive write lock acquired in {@link #beginReadWrite()}, if one is currently
+	 * held - needed here (not just in {@link #endReadWrite()}'s success path) because
+	 * {@link #rollback()}/{@link #close()} also call {@link #reset()} while a READ_WRITE
+	 * transaction may still be holding it. Previously {@link #reset()} just nulled out
+	 * writeFileChannel/writeFileLock without releasing them, leaking the OS-level lock: every
+	 * subsequent {@code begin(READ_WRITE)} attempt for the rest of the process's lifetime then
+	 * threw {@code OverlappingFileLockException}, permanently write-locking the repository after
+	 * any failed write transaction (e.g. a single failed commit() making a running session unable
+	 * to ever commit again without restarting). Best-effort: a failure releasing/closing must not
+	 * prevent the rest of {@link #reset()}'s state cleanup from completing.
+	 */
+	private void releaseWriteLock() {
+		if (this.writeFileLock != null) {
+			try {
+				this.writeFileLock.close();
+			} catch (IOException e) {
+				System.err.println("Error releasing write lock: " + e.getMessage());
+			}
+		}
+		if (this.writeFileChannel != null) {
+			try {
+				this.writeFileChannel.close();
+			} catch (IOException e) {
+				System.err.println("Error closing write file channel: " + e.getMessage());
+			}
+		}
 		this.writeFileChannel = null;
 		this.writeFileLock = null;
 	}
