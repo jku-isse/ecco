@@ -8,6 +8,11 @@ import java.util.Collection;
 
 public class ProgressInputStream extends FilterInputStream {
 
+	// throttles how often listeners are notified - firing on every single byte read would be
+	// excessive, so only notify once progress has advanced by at least this much (as a 0.0-1.0
+	// fraction of maxBytes) since the last fired event.
+	private static final double PROGRESS_EVENT_THRESHOLD = 0.01;
+
 	protected long bytesRead;
 	protected long maxBytes;
 
@@ -66,7 +71,7 @@ public class ProgressInputStream extends FilterInputStream {
 		if (this.maxBytes == -1)
 			return;
 		double progress = this.getProgress();
-		if (this.lastProgress - progress >= 1.0) {
+		if (progress - this.lastProgress >= PROGRESS_EVENT_THRESHOLD) {
 			this.lastProgress = progress;
 			for (ProgressListener progressListener : this.progressListeners) {
 				progressListener.readProgressEvent(progress, bytesRead);
