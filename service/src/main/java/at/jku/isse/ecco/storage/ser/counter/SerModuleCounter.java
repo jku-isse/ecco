@@ -57,7 +57,7 @@ public class SerModuleCounter implements ModuleCounter {
 	 * reference with the repository's canonical instance (found by content equality, no id needed)
 	 * restores the same-object-sharing invariant a single continuous session gets for free.
 	 */
-	public void resolveModule(SerModule module) {
+	public synchronized void resolveModule(SerModule module) {
 		this.module = module;
 	}
 
@@ -114,7 +114,7 @@ public class SerModuleCounter implements ModuleCounter {
 
 
 	@Override
-	public Module getObject() {
+	public synchronized Module getObject() {
 		return this.module;
 	}
 
