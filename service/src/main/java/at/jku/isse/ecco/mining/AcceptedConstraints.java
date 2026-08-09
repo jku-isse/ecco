@@ -22,8 +22,7 @@ public final class AcceptedConstraints {
     public static Set<String> acceptedSignatures(Collection<? extends Constraint> constraints) {
         Set<String> signatures = new HashSet<>();
         for (Constraint constraint : constraints) {
-            signatures.add(constraint.getKind().name() + "|" + constraint.getFeatureA()
-                    + "|" + (constraint.getFeatureB() == null ? "" : constraint.getFeatureB()));
+            signatures.add(Constraint.buildId(constraint.getKind().name(), constraint.getFeatureA(), constraint.getFeatureB()));
         }
         return signatures;
     }

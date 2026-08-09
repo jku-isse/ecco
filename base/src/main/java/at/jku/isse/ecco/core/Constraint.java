@@ -2,6 +2,10 @@ package at.jku.isse.ecco.core;
 
 import at.jku.isse.ecco.dao.Persistable;
 
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 /**
  * A feature-model constraint accepted by a human reviewer (see {@code ConstraintMiner} in
  * {@code service}, which mines candidates from commit history). Persisted in the repository itself
@@ -19,11 +23,33 @@ public interface Constraint extends Persistable {
 	enum Kind { REQUIRES, EXCLUDES, MANDATORY }
 
 	/**
-	 * The natural id: {@code kind.name() + "|" + featureA + "|" + (featureB == null ? "" : featureB)}.
+	 * The natural id: {@code kind.name() + "|" + featureA + "|" + (featureB == null ? "" : featureB)},
+	 * with featureA/featureB URL-encoded (see {@link #buildId}).
 	 *
 	 * @return The id.
 	 */
 	String getId();
+
+	/**
+	 * Builds the natural id documented on {@link #getId()} -- the one shared place this
+	 * construction should happen. featureA/featureB are URL-encoded: feature names are unrestricted
+	 * free text, and a name containing a literal "|" would otherwise be misparsed as a field
+	 * separator by a caller splitting the id back apart, or (for a "," specifically) corrupt a
+	 * caller that joins multiple ids with "," (e.g. {@code ConstraintSuggestionPreferences}).
+	 *
+	 * @param kindName Kind#name(), passed as a plain string so this isn't tied to any one Kind enum
+	 *                 (service's {@code ConstraintMiner.Kind} has the identical constant names but
+	 *                 is a distinct type from this interface's own {@link Kind}).
+	 */
+	static String buildId(String kindName, String featureA, String featureB) {
+		return kindName + "|" + URLEncoder.encode(featureA, StandardCharsets.UTF_8) + "|"
+				+ (featureB == null ? "" : URLEncoder.encode(featureB, StandardCharsets.UTF_8));
+	}
+
+	/** Inverse of the featureA/featureB half of {@link #buildId} -- decodes one already-split field. */
+	static String decodeIdPart(String value) {
+		return URLDecoder.decode(value, StandardCharsets.UTF_8);
+	}
 
 	/**
 	 * @return The kind of constraint.
