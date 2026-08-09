@@ -118,9 +118,17 @@ public class SerModuleRevision implements ModuleRevision {
 	private Collection<Formula> getFeatureFormulas(){
 		Collection<Formula> formulas = new LinkedList<>();
 		for (Feature feature : this.neg){
-			String conditionString = feature.getLatestRevision().getLogicLiteralRepresentation();
-			Formula condition = parseString(conditionString);
-			formulas.add(condition);
+			// neg is feature-wide (Feature[], not FeatureRevision[]) - matching
+			// ModuleRevision.holds(Configuration)'s actual semantics, which disqualifies the module
+			// on ANY revision of the feature being present, not just its latest one. One disjunct
+			// per revision here, all OR'd together in getNegativeFormula() and then negated as a
+			// whole in getConditionString() (NOT(OR(...)) = AND(NOT(rev)) for every revision via De
+			// Morgan's) - excluding every revision, not just whichever happens to be latest right now.
+			for (FeatureRevision featureRevision : feature.getRevisions()) {
+				String conditionString = featureRevision.getLogicLiteralRepresentation();
+				Formula condition = parseString(conditionString);
+				formulas.add(condition);
+			}
 		}
 		return formulas;
 	}
