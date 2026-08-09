@@ -255,10 +255,12 @@ public class SerNode implements Node, Node.Op {
 	public void removeChild(Op child) {
 		checkNotNull(child);
 
-		if (this.children.remove(child))
+		if (this.children.remove(child)) {
 			child.setParent(null);
-		else
+			this.numberOfChildren = this.children.size();
+		} else {
 			throw new EccoException("Attempted to remove child that does not exist.");
+		}
 	}
 
 	@Override
