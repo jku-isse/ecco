@@ -6,6 +6,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Remote;
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -17,6 +18,7 @@ import at.jku.isse.ecco.storage.ser.core.SerAssociation;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
 import at.jku.isse.ecco.storage.ser.core.SerConstraint;
 import at.jku.isse.ecco.storage.ser.core.SerRemote;
+import at.jku.isse.ecco.storage.ser.core.SerVariant;
 import at.jku.isse.ecco.storage.ser.feature.SerConfiguration;
 import at.jku.isse.ecco.storage.ser.feature.SerFeature;
 import at.jku.isse.ecco.storage.ser.maintree.SerAssociationMerger;
@@ -100,6 +102,11 @@ public class SerEntityFactory implements EntityFactory {
 		checkNotNull(featureA);
 
 		return new SerConstraint(kind, featureA, featureB);
+	}
+
+	@Override
+	public Variant createVariant(final String name, final Configuration configuration, final String id) {
+		return new SerVariant(name, configuration, id);
 	}
 
 
