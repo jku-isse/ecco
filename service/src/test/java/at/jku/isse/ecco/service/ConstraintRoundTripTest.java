@@ -78,6 +78,33 @@ public class ConstraintRoundTripTest {
         }
     }
 
+    /**
+     * unacceptConstraint() used to rebuild the constraint id manually
+     * (kind.name() + "|" + featureA + "|" + ...) instead of via the shared, URL-encoding
+     * Constraint.buildId() -- SerConstraint.getId() encodes featureA/featureB, so a feature name
+     * with a space (or any character URL-encoding changes) made unacceptConstraint()'s locally-built
+     * id never match the real stored id, silently no-op-ing instead of removing the constraint.
+     */
+    @Test
+    @Timeout(30)
+    public void acceptUnacceptReAccept_worksForFeatureNamesWithSpaces() throws IOException {
+        Path workDir = Files.createTempDirectory("constraint-undo-roundtrip-spaces");
+        Path repoDir = workDir.resolve(".ecco");
+
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.init();
+
+            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "Feature A", null);
+            assertTrue(hasConstraint(service, Constraint.Kind.MANDATORY, "Feature A"));
+
+            service.unacceptConstraint(Constraint.Kind.MANDATORY, "Feature A", null);
+            assertFalse(hasConstraint(service, Constraint.Kind.MANDATORY, "Feature A"),
+                    "unaccept must remove the constraint even when the feature name contains a space");
+            assertEquals(0, service.getRepository().getConstraints().size());
+        }
+    }
+
     private static boolean hasConstraint(EccoService service, Constraint.Kind kind, String featureA) {
         for (Constraint constraint : service.getRepository().getConstraints()) {
             if (constraint.getKind() == kind && constraint.getFeatureA().equals(featureA)) return true;

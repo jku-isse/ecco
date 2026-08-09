@@ -75,7 +75,7 @@ public class ConstraintService {
         checkNotNull(kind);
         checkNotNull(featureA);
         safeTransaction(repository -> {
-            String id = kind.name() + "|" + featureA + "|" + (featureB == null ? "" : featureB);
+            String id = Constraint.buildId(kind.name(), featureA, featureB);
             Constraint existing = repository.getConstraint(id);
             if (existing != null) repository.removeConstraint(existing);
             return repository;
