@@ -7,7 +7,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
-import at.jku.isse.ecco.storage.ser.core.SerVariant;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,7 +50,7 @@ public class VariantManager {
                 }
             }
             if (!hasConfigurarion) {
-                SerVariant memVariant = new SerVariant(name, configuration, UUID.randomUUID().toString());
+                Variant memVariant = owner.entityFactory.createVariant(name, configuration, UUID.randomUUID().toString());
                 memVariant.setDescription(description);
                 repository.addVariant(memVariant);
             }

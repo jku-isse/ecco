@@ -6,6 +6,7 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.core.Remote;
+import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
@@ -95,6 +96,16 @@ public interface EntityFactory {
 	 * @return A new initialized instance of Constraint.
 	 */
 	public Constraint createConstraint(final Constraint.Kind kind, final String featureA, final String featureB);
+
+	/**
+	 * Creates a new, detached instance of a {@link Variant} with the given name, configuration, and id.
+	 *
+	 * @param name          of the variant
+	 * @param configuration the variant's configuration
+	 * @param id            of the variant
+	 * @return A new initialized instance of Variant.
+	 */
+	public Variant createVariant(final String name, final Configuration configuration, final String id);
 
 
 	/**

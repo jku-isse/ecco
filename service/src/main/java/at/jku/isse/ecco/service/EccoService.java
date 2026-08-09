@@ -18,7 +18,6 @@ import at.jku.isse.ecco.module.*;
 import at.jku.isse.ecco.repository.*;
 import at.jku.isse.ecco.service.listener.*;
 import at.jku.isse.ecco.storage.*;
-import at.jku.isse.ecco.storage.ser.core.SerVariant;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.*;
 import com.google.inject.Module;
@@ -1107,7 +1106,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 }
             }
             if (!hasConfiguration) {
-                SerVariant memVariant = new SerVariant("Commit", configuration, UUID.randomUUID().toString());
+                Variant memVariant = this.entityFactory.createVariant("Commit", configuration, UUID.randomUUID().toString());
                 memVariant.setDescription(commitMessage);
                 repository.addVariant(memVariant);
             }
