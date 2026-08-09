@@ -124,7 +124,7 @@ public class SerFeature implements Feature {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.name);
+		return Objects.hash(this.id);
 	}
 
 	@Override
