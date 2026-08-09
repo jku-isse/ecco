@@ -133,19 +133,31 @@ public class ListenerRegistry {
 
     public void fireServerEvent(String message) {
         for (ServerListener listener : this.listeners) {
-            listener.serverEvent(this.owner, message);
+            try {
+                listener.serverEvent(this.owner, message);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during serverEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
     public void fireServerStartedEvent(int port) {
         for (ServerListener listener : this.listeners) {
-            listener.serverStartEvent(this.owner, port);
+            try {
+                listener.serverStartEvent(this.owner, port);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during serverStartEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
     public void fireServerStoppedEvent() {
         for (ServerListener listener : this.listeners) {
-            listener.serverStopEvent(this.owner);
+            try {
+                listener.serverStopEvent(this.owner);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Listener threw during serverStopEvent; notifying remaining listeners.", e);
+            }
         }
     }
 
