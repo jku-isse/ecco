@@ -8,11 +8,15 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.paint.Color;
 
+import java.util.List;
+
 /**
  * One rendered, indented line of the reconstruction shown by {@link CCodeViewer}. A
  * {@code LineArtifactData}'s stored text is already a full source line (including braces, e.g. a
- * function's opening "{" is itself a line), so there is a 1:1 mapping between an artifact node and
- * a rendered line here - no synthetic lines are needed, unlike the Java adapter's viewer.
+ * function's opening "{" is itself a line), so there is usually a 1:1 mapping between an artifact
+ * node and a rendered line here - no synthetic lines are needed, unlike the Java adapter's viewer -
+ * except that a single artifact whose text carries an embedded newline is fanned out across several
+ * consecutive CCodeLine rows by {@link CCodeViewer#addLine}.
  */
 public class CCodeLine {
 
@@ -20,15 +24,17 @@ public class CCodeLine {
 	private final Association association;
 	private final String text;
 	private final int indent;
+	private final List<CSyntaxHighlighter.Token> tokens;
 
 	private final ObjectProperty<Color> backgroundColor = new SimpleObjectProperty<>(Color.WHITE);
 	private final ObjectProperty<Background> background = new SimpleObjectProperty<>();
 
-	public CCodeLine(Node node, Association association, String text, int indent) {
+	public CCodeLine(Node node, Association association, String text, int indent, List<CSyntaxHighlighter.Token> tokens) {
 		this.node = node;
 		this.association = association;
 		this.text = text;
 		this.indent = indent;
+		this.tokens = tokens;
 
 		this.backgroundColor.addListener((o, oldVal, newVal) -> {
 			Color color = newVal == null || newVal.equals(Color.TRANSPARENT) ? Color.WHITE : newVal;
@@ -51,6 +57,10 @@ public class CCodeLine {
 
 	public int getIndent() {
 		return indent;
+	}
+
+	public List<CSyntaxHighlighter.Token> getTokens() {
+		return tokens;
 	}
 
 	public ObjectProperty<Color> backgroundColor() {
