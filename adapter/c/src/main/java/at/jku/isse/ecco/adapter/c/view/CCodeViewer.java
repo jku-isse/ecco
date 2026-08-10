@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Shows a reconstructed view of a C artifact tree, mirroring the Java adapter's JavaCodeViewer.
@@ -50,6 +51,8 @@ import java.util.Map;
  * Artifacts panel case.
  */
 public class CCodeViewer extends BorderPane implements AssociationInfoArtifactViewer {
+
+	private static final Pattern LINE_BREAK = Pattern.compile("\r\n|\r|\n");
 
 	private final HashMap<String, AssociationInfo> associationInfos = new HashMap<>();
 	private final HashMap<String, PropertyChangeListener> associationListeners = new HashMap<>();
@@ -315,7 +318,7 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 		// paragraph inside a block comment) are kept. indexByNode is registered on the first
 		// non-blank row so "scroll to this node" lands on visible content rather than a leading
 		// blank line, falling back to the first row if the whole artifact is blank.
-		String[] physicalLines = text.split("\r\n|\r|\n", -1);
+		String[] physicalLines = LINE_BREAK.split(text, -1);
 		// Tokenizing the whole (possibly multi-line) text at once, rather than each physicalLine in
 		// isolation, lets CSyntaxHighlighter recognize a comment that opens on one row and closes on
 		// a later one; tokenRows splits at the exact same points as physicalLines above, so row i's
