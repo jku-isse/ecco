@@ -38,6 +38,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Shows a reconstructed, indented view of a Java artifact tree. The tree does not preserve the
@@ -248,7 +250,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 							Text indentText = new Text(INDENT_UNIT.repeat(line.getIndent()));
 							flow.getChildren().add(indentText);
 
-							for (JavaSyntaxHighlighter.Token token : JavaSyntaxHighlighter.tokenize(line.getText())) {
+							for (JavaSyntaxHighlighter.Token token : line.getTokens()) {
 								Text text = new Text(token.text());
 								JavaSyntaxHighlighter.Style style = token.style();
 								if (style.color() != null) {
@@ -339,30 +341,58 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		// cramming several onto one, since a Text node renders an embedded newline as an actual
 		// line break regardless of the row's fixed height, clipping whatever doesn't fit. Every
 		// resulting row shares the same node/association/indent (they're all still this one
-		// artifact); only the first is registered in indexByNode, so "scroll to this node" still
-		// lands on its first line.
+		// artifact). Only a genuinely trailing empty element - the split() artifact of the text
+		// ending in a line terminator, not a real blank line - is dropped; blank lines elsewhere
+		// (e.g. a blank paragraph inside a block comment) are kept. indexByNode is registered on
+		// the first non-blank row so "scroll to this node" lands on visible content rather than a
+		// leading blank line, falling back to the first row if the whole artifact is blank.
 		String[] physicalLines = text.split("\r\n|\r|\n", -1);
-		boolean first = true;
-		for (String physicalLine : physicalLines) {
-			if (physicalLine.isEmpty() && !first) {
+		// Tokenizing the whole (possibly multi-line) text at once, rather than each physicalLine in
+		// isolation, lets JavaSyntaxHighlighter recognize a comment/string that opens on one row and
+		// closes on a later one; tokenRows splits at the exact same points as physicalLines above, so
+		// row i's tokens always correspond to physicalLines[i].
+		List<List<JavaSyntaxHighlighter.Token>> tokenRows = JavaSyntaxHighlighter.tokenizeLines(text);
+		Integer firstIndex = null;
+		Integer firstContentIndex = null;
+		for (int i = 0; i < physicalLines.length; i++) {
+			String physicalLine = physicalLines[i];
+			if (physicalLine.isEmpty() && i > 0 && i == physicalLines.length - 1) {
 				continue;
 			}
-			JavaCodeLine line = new JavaCodeLine(n, association, physicalLine, indent);
+			JavaCodeLine line = new JavaCodeLine(n, association, physicalLine, indent, tokenRows.get(i));
 			line.backgroundColor().set(bgCol);
-			if (first && n != null) {
-				indexByNode.put(n, lines.size());
+			if (firstIndex == null) {
+				firstIndex = lines.size();
+			}
+			if (firstContentIndex == null && !physicalLine.isEmpty()) {
+				firstContentIndex = lines.size();
 			}
 			lines.add(line);
-			first = false;
+		}
+		if (n != null && firstIndex != null) {
+			indexByNode.put(n, firstContentIndex != null ? firstContentIndex : firstIndex);
 		}
 	}
 
+	private static final Pattern LINE_BREAK = Pattern.compile("\r\n|\r|\n");
+
+	// The actual statement lives on the first physical line; any further lines are leftover
+	// original-source text (see addLine()'s comment), so the semicolon belongs after the first
+	// line, not after whatever text happens to trail it.
 	private static String withTrailingSemicolon(String text) {
-		String trimmed = text.stripTrailing();
-		if (trimmed.isEmpty() || trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}") || trimmed.endsWith(":")) {
-			return text;
+		Matcher m = LINE_BREAK.matcher(text);
+		if (!m.find()) {
+			return appendSemicolonIfNeeded(text);
 		}
-		return text + ";";
+		return appendSemicolonIfNeeded(text.substring(0, m.start())) + text.substring(m.start());
+	}
+
+	private static String appendSemicolonIfNeeded(String line) {
+		String trimmed = line.stripTrailing();
+		if (trimmed.isEmpty() || trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}") || trimmed.endsWith(":")) {
+			return line;
+		}
+		return line + ";";
 	}
 
 	private static String simpleName(String qualifiedName) {

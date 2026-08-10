@@ -8,11 +8,15 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.paint.Color;
 
+import java.util.List;
+
 /**
  * One rendered, indented line of the pretty-printed reconstruction shown by {@link JavaCodeViewer}.
  * Unlike lilypond's per-token {@code NodeTextBlock}, a Java artifact's stored text already
- * represents a whole statement/declaration, so there is a 1:1 mapping between an artifact node and
- * a rendered line here (synthetic lines such as a closing "}" have a null node/association).
+ * represents a whole statement/declaration, so there is usually a 1:1 mapping between an artifact
+ * node and a rendered line here (synthetic lines such as a closing "}" have a null node/association)
+ * - except that a single artifact whose text carries an embedded newline is fanned out across
+ * several consecutive JavaCodeLine rows by {@link JavaCodeViewer#addLine}.
  */
 public class JavaCodeLine {
 
@@ -20,15 +24,17 @@ public class JavaCodeLine {
 	private final Association association;
 	private final String text;
 	private final int indent;
+	private final List<JavaSyntaxHighlighter.Token> tokens;
 
 	private final ObjectProperty<Color> backgroundColor = new SimpleObjectProperty<>(Color.WHITE);
 	private final ObjectProperty<Background> background = new SimpleObjectProperty<>();
 
-	public JavaCodeLine(Node node, Association association, String text, int indent) {
+	public JavaCodeLine(Node node, Association association, String text, int indent, List<JavaSyntaxHighlighter.Token> tokens) {
 		this.node = node;
 		this.association = association;
 		this.text = text;
 		this.indent = indent;
+		this.tokens = tokens;
 
 		this.backgroundColor.addListener((o, oldVal, newVal) -> {
 			Color color = newVal == null || newVal.equals(Color.TRANSPARENT) ? Color.WHITE : newVal;
@@ -51,6 +57,10 @@ public class JavaCodeLine {
 
 	public int getIndent() {
 		return indent;
+	}
+
+	public List<JavaSyntaxHighlighter.Token> getTokens() {
+		return tokens;
 	}
 
 	public ObjectProperty<Color> backgroundColor() {
