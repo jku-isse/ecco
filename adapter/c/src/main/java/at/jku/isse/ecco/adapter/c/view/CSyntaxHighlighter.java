@@ -68,6 +68,8 @@ final class CSyntaxHighlighter {
 			Pattern.DOTALL | Pattern.MULTILINE
 	);
 
+	private static final Pattern LINE_BREAK = Pattern.compile("\r\n|\r|\n");
+
 	private CSyntaxHighlighter() {
 	}
 
@@ -125,7 +127,7 @@ final class CSyntaxHighlighter {
 		List<List<Token>> rows = new ArrayList<>();
 		List<Token> current = new ArrayList<>();
 		for (Token token : tokenize(text)) {
-			String[] parts = token.text().split("\r\n|\r|\n", -1);
+			String[] parts = LINE_BREAK.split(token.text(), -1);
 			for (int i = 0; i < parts.length; i++) {
 				if (!parts[i].isEmpty()) {
 					current.add(new Token(parts[i], token.style()));

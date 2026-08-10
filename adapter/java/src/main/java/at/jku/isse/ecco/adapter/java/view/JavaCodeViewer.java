@@ -346,7 +346,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		// (e.g. a blank paragraph inside a block comment) are kept. indexByNode is registered on
 		// the first non-blank row so "scroll to this node" lands on visible content rather than a
 		// leading blank line, falling back to the first row if the whole artifact is blank.
-		String[] physicalLines = text.split("\r\n|\r|\n", -1);
+		String[] physicalLines = LINE_BREAK.split(text, -1);
 		// Tokenizing the whole (possibly multi-line) text at once, rather than each physicalLine in
 		// isolation, lets JavaSyntaxHighlighter recognize a comment/string that opens on one row and
 		// closes on a later one; tokenRows splits at the exact same points as physicalLines above, so
