@@ -241,7 +241,7 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 							flow.setAlignment(Pos.BASELINE_LEFT);
 							flow.setOnMouseEntered(e -> showAssociationInfo(line.getAssociation()));
 
-							for (CSyntaxHighlighter.Token token : CSyntaxHighlighter.tokenize(line.getText())) {
+							for (CSyntaxHighlighter.Token token : line.getTokens()) {
 								Text text = new Text(token.text());
 								CSyntaxHighlighter.Style style = token.style();
 								if (style.color() != null) {
@@ -309,22 +309,37 @@ public class CCodeViewer extends BorderPane implements AssociationInfoArtifactVi
 		// source on the next physical line) - split into one row per physical line rather than
 		// cramming several onto one, since a Text node renders an embedded newline as an actual
 		// line break regardless of the row's fixed height, clipping whatever doesn't fit. Every
-		// resulting row shares the same node/association (they're all still this one artifact);
-		// only the first is registered in indexByNode, so "scroll to this node" still lands on
-		// its first line.
+		// resulting row shares the same node/association (they're all still this one artifact).
+		// Only a genuinely trailing empty element - the split() artifact of the text ending in a
+		// line terminator, not a real blank line - is dropped; blank lines elsewhere (e.g. a blank
+		// paragraph inside a block comment) are kept. indexByNode is registered on the first
+		// non-blank row so "scroll to this node" lands on visible content rather than a leading
+		// blank line, falling back to the first row if the whole artifact is blank.
 		String[] physicalLines = text.split("\r\n|\r|\n", -1);
-		boolean first = true;
-		for (String physicalLine : physicalLines) {
-			if (physicalLine.isEmpty() && !first) {
+		// Tokenizing the whole (possibly multi-line) text at once, rather than each physicalLine in
+		// isolation, lets CSyntaxHighlighter recognize a comment that opens on one row and closes on
+		// a later one; tokenRows splits at the exact same points as physicalLines above, so row i's
+		// tokens always correspond to physicalLines[i].
+		List<List<CSyntaxHighlighter.Token>> tokenRows = CSyntaxHighlighter.tokenizeLines(text);
+		Integer firstIndex = null;
+		Integer firstContentIndex = null;
+		for (int i = 0; i < physicalLines.length; i++) {
+			String physicalLine = physicalLines[i];
+			if (physicalLine.isEmpty() && i > 0 && i == physicalLines.length - 1) {
 				continue;
 			}
-			CCodeLine line = new CCodeLine(n, association, physicalLine, 0);
+			CCodeLine line = new CCodeLine(n, association, physicalLine, 0, tokenRows.get(i));
 			line.backgroundColor().set(bgCol);
-			if (first && n != null) {
-				indexByNode.put(n, lines.size());
+			if (firstIndex == null) {
+				firstIndex = lines.size();
+			}
+			if (firstContentIndex == null && !physicalLine.isEmpty()) {
+				firstContentIndex = lines.size();
 			}
 			lines.add(line);
-			first = false;
+		}
+		if (n != null && firstIndex != null) {
+			indexByNode.put(n, firstContentIndex != null ? firstContentIndex : firstIndex);
 		}
 	}
 

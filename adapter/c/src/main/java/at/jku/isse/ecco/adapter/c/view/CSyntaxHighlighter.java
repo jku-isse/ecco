@@ -55,6 +55,9 @@ final class CSyntaxHighlighter {
 			"uint8_t", "uint16_t", "uint32_t", "uint64_t"
 	);
 
+	// MULTILINE (in addition to DOTALL) matters once tokenizeLines() below feeds this pattern a
+	// whole multi-line artifact's text at once: without it, PREPROCESSOR's '^' anchor would only
+	// match the very start of that whole text, not the start of each physical line within it.
 	private static final Pattern TOKEN_PATTERN = Pattern.compile(
 			"(?<COMMENT>//[^\\n]*|/\\*.*?\\*/)" +
 					"|(?<PREPROCESSOR>^\\s*#\\s*\\w+)" +
@@ -62,7 +65,7 @@ final class CSyntaxHighlighter {
 					"|(?<CHAR>'(?:\\\\.|[^'\\\\])*')" +
 					"|(?<NUMBER>\\b0[xX][0-9a-fA-F_]+[uUlL]*\\b|\\b\\d[\\d_]*\\.?[\\d_]*(?:[eE][+-]?\\d+)?[fFuUlL]*\\b)" +
 					"|(?<IDENT>[A-Za-z_][A-Za-z0-9_]*)",
-			Pattern.DOTALL
+			Pattern.DOTALL | Pattern.MULTILINE
 	);
 
 	private CSyntaxHighlighter() {
@@ -106,5 +109,34 @@ final class CSyntaxHighlighter {
 			tokens.add(new Token(text.substring(last), PLAIN));
 		}
 		return tokens;
+	}
+
+	/**
+	 * Like {@link #tokenize}, but tokenizes the given (possibly multi-line) text as a whole - so a
+	 * block comment spanning several physical lines is recognized as one token, since the regex
+	 * above compiles with {@link Pattern#DOTALL} - then distributes the resulting tokens across one
+	 * list per physical line. The returned list always has exactly as many elements as
+	 * {@code text.split("\r\n|\r|\n", -1)} would, split at the same points, so a caller that renders
+	 * one row per physical line can pair each row with its own pre-tokenized styling instead of
+	 * re-tokenizing that row's text in isolation (which would lose track of a comment that opened on
+	 * an earlier row).
+	 */
+	static List<List<Token>> tokenizeLines(String text) {
+		List<List<Token>> rows = new ArrayList<>();
+		List<Token> current = new ArrayList<>();
+		for (Token token : tokenize(text)) {
+			String[] parts = token.text().split("\r\n|\r|\n", -1);
+			for (int i = 0; i < parts.length; i++) {
+				if (!parts[i].isEmpty()) {
+					current.add(new Token(parts[i], token.style()));
+				}
+				if (i < parts.length - 1) {
+					rows.add(current);
+					current = new ArrayList<>();
+				}
+			}
+		}
+		rows.add(current);
+		return rows;
 	}
 }
