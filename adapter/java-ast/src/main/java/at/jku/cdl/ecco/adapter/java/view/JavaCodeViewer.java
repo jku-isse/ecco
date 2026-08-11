@@ -303,6 +303,8 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 				}
 			}
 			case IMPORT_DECLARATION -> addLine(n, association, textOf(data), indent, lines, indexByNode);
+			case MODULE_DECLARATION -> renderBlock(n, association, textOf(data), indent, lines, indexByNode);
+			case MODULE_DIRECTIVE -> addLine(n, association, textOf(data), indent, lines, indexByNode);
 			case TYPE_DECLARATION, ENUM_DECLARATION ->
 					renderBlock(n, association, stripTrailingEmptyBody(textOf(data)), indent, lines, indexByNode);
 			case FIELD_GROUP -> {
