@@ -29,6 +29,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.SelectionMode;
@@ -66,11 +67,13 @@ import java.util.stream.Collectors;
  * {@code Platform.runLater} log lines, {@code succeeded()/cancelled()/failed()} wiring into
  * {@link OperationView}'s success/error header helpers) rather than inventing a new one:
  * <ol>
- *     <li>{@link #step1()} - pick the local repo and a commit range from a table of its history.</li>
- *     <li>{@link #suggestFeatures(List)} - a background {@link Task} asks a local LLM (via
- *     {@link LlmFeatureSuggestionClient}, configured through {@link LlmPreferences}) to suggest a
- *     feature configuration for each selected commit, given its message/diff and the features
- *     already known in the target repository.</li>
+ *     <li>{@link #step1()} - pick the local repo and a commit range from a table of its history,
+ *     and optionally opt out of LLM suggestions via a checkbox (disabled when no model is
+ *     configured, checked by default otherwise).</li>
+ *     <li>{@link #suggestFeatures(List)} - if suggestions weren't opted out of, a background
+ *     {@link Task} asks a local LLM (via {@link LlmFeatureSuggestionClient}, configured through
+ *     {@link LlmPreferences}) to suggest a feature configuration for each selected commit, given
+ *     its message/diff and the features already known in the target repository.</li>
  *     <li>{@link #step2(List, List)} - review/edit each commit's feature configuration string,
  *     pre-filled with the LLM's suggestion (or blank if suggestion failed/was skipped) - nothing
  *     is committed into ecco until this step is confirmed, since a wrong automatic label would
@@ -163,6 +166,17 @@ public class ImportGitView extends OperationView implements EccoListener {
 		GridPane.setVgrow(commitsTable, Priority.ALWAYS);
 		row++;
 
+		boolean llmConfigured = !LlmPreferences.getModelName().isBlank();
+		CheckBox suggestFeaturesCheckBox = new CheckBox("Suggest features using a local LLM");
+		suggestFeaturesCheckBox.setSelected(llmConfigured);
+		suggestFeaturesCheckBox.setDisable(!llmConfigured);
+		if (!llmConfigured) {
+			suggestFeaturesCheckBox.setTooltip(new javafx.scene.control.Tooltip(
+					"Configure a model in Preferences → LLM Settings to enable this."));
+		}
+		gridPane.add(suggestFeaturesCheckBox, 0, row, 3, 1);
+		row++;
+
 		chooseRepoButton.setOnAction(event -> {
 			DirectoryChooser directoryChooser = new DirectoryChooser();
 			directoryChooser.setTitle("Select a Local Git Repository");
@@ -201,7 +215,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 			int maxIndex = Collections.max(selectedIndices);
 			// table is already oldest-first, matching the order the import itself needs
 			List<GitCommitInfo> oldestFirst = new ArrayList<>(commitsTable.getItems().subList(minIndex, maxIndex + 1));
-			this.suggestFeatures(oldestFirst);
+			if (suggestFeaturesCheckBox.isSelected()) {
+				this.suggestFeatures(oldestFirst);
+			} else {
+				this.step2(oldestFirst, Collections.nCopies(oldestFirst.size(), ""), null);
+			}
 		});
 
 		this.fit();
@@ -244,6 +262,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * with a minimal "please wait" UI of its own since this can take a while for a large range and
 	 * there's nothing more specific to show progress against (unlike {@link #step3}'s per-commit
 	 * log, this is genuinely one request for the whole batch).
+	 * <p>
+	 * Only called when {@link #step1()}'s "Suggest features using a local LLM" checkbox is checked
+	 * (unchecked skips straight to {@link #step2} - see {@code nextButton}'s handler); a user can
+	 * always opt out per-import, even with a model configured. The blank-model-name guard below is
+	 * now just a defensive fallback, since the checkbox is disabled whenever no model is configured.
 	 */
 	private void suggestFeatures(List<GitCommitInfo> commitsOldestFirst) {
 		if (LlmPreferences.getModelName().isBlank()) {
