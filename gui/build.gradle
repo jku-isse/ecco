@@ -54,7 +54,6 @@ dependencies {
     implementation "org.openjfx:javafx-fxml:$javafxVersion:$platform"
 
     implementation project(':ecco-service')
-    implementation files('../adapter/java-patched/at.jku.cdl.ecco.adapter.java-patched.jar')
     implementation libs.logicng.core
 
 	runtimeOnly project(':ecco-adapter-file')
@@ -68,6 +67,7 @@ dependencies {
 	// the classpath so they show up as options in the adapter Preferences dialog
 	runtimeOnly project(':ecco-adapter-challenge')
 	runtimeOnly project(':ecco-adapter-java')
+	runtimeOnly project(':ecco-adapter-java-ast')
 	runtimeOnly project(':ecco-adapter-c')
 	runtimeOnly project(':ecco-adapter-cpp')
 	runtimeOnly project(':ecco-adapter-runtime')
@@ -81,6 +81,7 @@ dependencies {
 	testRuntimeOnly project(':ecco-adapter-typescript')
 	testRuntimeOnly project(':ecco-adapter-challenge')
 	testRuntimeOnly project(':ecco-adapter-java')
+	testRuntimeOnly project(':ecco-adapter-java-ast')
 	testRuntimeOnly project(':ecco-adapter-c')
 	testRuntimeOnly project(':ecco-adapter-cpp')
 	testRuntimeOnly project(':ecco-adapter-runtime')
