@@ -15,6 +15,7 @@ include 'adapter-markdown'
 include 'adapter-image'
 include 'adapter-challenge'
 include 'adapter-java'
+include 'adapter-java-ast'
 include 'adapter-python'
 include 'adapter-c'
 include 'adapter-cpp'
@@ -40,6 +41,7 @@ project(':extras-ly').projectDir = file('extras/ly')
 project(':adapter-image').projectDir = file('adapter/image')
 project(':adapter-challenge').projectDir = file('adapter/challenge')
 project(':adapter-java').projectDir = file('adapter/java')
+project(':adapter-java-ast').projectDir = file('adapter/java-ast')
 project(':adapter-python').projectDir = file('adapter/python')
 project(':adapter-cpp').projectDir = file('adapter/cpp')
 project(':adapter-typescript').projectDir = file('adapter/typescript')
