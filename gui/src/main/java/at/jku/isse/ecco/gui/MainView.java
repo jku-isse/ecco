@@ -189,23 +189,23 @@ public class MainView extends BorderPane implements EccoListener {
 		RibbonAction dependencyGraphAction = new RibbonAction("Dependency Graph", Feather.CODEPEN,
 				() -> this.switchTo("Dependency Graph", dependencyGraphView), true);
 
-		RibbonTabSpec repositoryTab = new RibbonTabSpec("Repository", Feather.FOLDER, List.of(
+		RibbonTabSpec repositoryTab = new RibbonTabSpec("Repositories", Feather.FOLDER, List.of(
 				new RibbonGroup(List.of(newAction, openAction, closeAction))));
 
-		RibbonTabSpec localTab = new RibbonTabSpec("Local", Feather.HARD_DRIVE, List.of(
+		RibbonTabSpec localTab = new RibbonTabSpec("Versions", Feather.HARD_DRIVE, List.of(
 				new RibbonGroup(List.of(commitAction, commitMultipleAction, checkoutAction)),
 				new RibbonGroup(List.of(variantsAction)),
 				new RibbonGroup(List.of(importGitAction)),
 				new RibbonGroup(List.of(openDirectoryAction))));
 
-		RibbonTabSpec distributedTab = new RibbonTabSpec("Distributed", Feather.GLOBE, List.of(
+		RibbonTabSpec distributedTab = new RibbonTabSpec("Collaborate", Feather.GLOBE, List.of(
 				new RibbonGroup(List.of(remotesAction)),
 				new RibbonGroup(List.of(fetchAction, pullAction, pushAction))));
 
-		RibbonTabSpec analysisTab = new RibbonTabSpec("Analysis", Feather.SEARCH, List.of(
+		RibbonTabSpec analysisTab = new RibbonTabSpec("View", Feather.SEARCH, List.of(
 				new RibbonGroup(List.of(featuresAction, commitsAction, associationsAction, artifactsAction, chartsAction))));
 
-		RibbonTabSpec visualizationTab = new RibbonTabSpec("Visualization", Feather.EYE, List.of(
+		RibbonTabSpec visualizationTab = new RibbonTabSpec("Visualize", Feather.EYE, List.of(
 				new RibbonGroup(List.of(knowledgeGraphAction, artifactGraphAction, dependencyGraphAction))));
 
 		List<RibbonTabSpec> tabSpecs = new ArrayList<>();
