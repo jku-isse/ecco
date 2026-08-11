@@ -12,6 +12,11 @@ public class JavaASTConstructorData extends JavaASTData {
 	private List<String> typeParameters;
 	private List<String> throwExceptions;
 	private List<String> annotations;
+	// A record's compact constructor (e.g. "public Point { if (x < 0) throw ...; }") is a distinct
+	// AST node type (CompactConstructorDeclaration) from a regular ConstructorDeclaration - it has
+	// no explicit parameter list (implicitly the record's components) and is written back
+	// differently. See JavaASTReader.extractConstructors() and JavaASTWriteHandler.addConstructor().
+	private boolean compact;
 
 	public JavaASTConstructorData(String name) {
 		this.data = name;
@@ -21,6 +26,14 @@ public class JavaASTConstructorData extends JavaASTData {
 		this.throwExceptions = new ArrayList<>();
 		this.annotations = new ArrayList<>();
 		this.setType(ASTNodeType.CONSTRUCTOR_DECLARATION);
+	}
+
+	public boolean isCompact() {
+		return compact;
+	}
+
+	public void setCompact(boolean compact) {
+		this.compact = compact;
 	}
 
 	/**
@@ -91,7 +104,7 @@ public class JavaASTConstructorData extends JavaASTData {
 	public String toString() {
 		return "[data=" + data + ", modifiers=" + modifiers + ", parameters=" + parameters
 				+ ", typeParameters=" + typeParameters + ", throwExceptions=" + throwExceptions + ", annotations="
-				+ annotations + "]";
+				+ annotations + ", compact=" + compact + "]";
 	}
 
 	@Override
@@ -99,6 +112,7 @@ public class JavaASTConstructorData extends JavaASTData {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((annotations == null) ? 0 : annotations.hashCode());
+		result = prime * result + (compact ? 1231 : 1237);
 		result = prime * result + ((data == null) ? 0 : data.hashCode());
 		result = prime * result + ((modifiers == null) ? 0 : modifiers.hashCode());
 		result = prime * result + ((parameters == null) ? 0 : parameters.hashCode());
@@ -116,6 +130,8 @@ public class JavaASTConstructorData extends JavaASTData {
 		if (getClass() != obj.getClass())
 			return false;
 		JavaASTConstructorData other = (JavaASTConstructorData) obj;
+		if (compact != other.compact)
+			return false;
 		if (annotations == null) {
 			if (other.annotations != null)
 				return false;

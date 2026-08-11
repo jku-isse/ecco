@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import com.github.javaparser.ParseProblemException;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
@@ -18,6 +19,7 @@ import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.Modifier.Keyword;
 import com.github.javaparser.ast.body.BodyDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.CompactConstructorDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.EnumConstantDeclaration;
 import com.github.javaparser.ast.body.EnumDeclaration;
@@ -27,6 +29,7 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.modules.ModuleDeclaration;
 import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithBody;
 import com.github.javaparser.ast.nodeTypes.NodeWithExpression;
@@ -44,6 +47,7 @@ import com.github.javaparser.ast.stmt.TryStmt;
 import at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTConstructorData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTData;
+import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTModuleData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTSimpleStringData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTTryData;
 import at.jku.isse.ecco.EccoException;
@@ -52,7 +56,21 @@ import at.jku.isse.ecco.tree.Node;
 public class JavaASTWriteHandler {
 	private static final Logger LOGGER = Logger.getLogger(JavaASTWriteHandler.class.getName());
 
+	/**
+	 * StaticJavaParser.getParserConfiguration() is backed by a ThreadLocal (a fresh, default
+	 * ParserConfiguration - languageLevel JAVA_11 - per thread that has never set one), so setting
+	 * this once in a static initializer would only take effect on whichever thread happened to
+	 * trigger class loading, not necessarily the thread that later calls write() (e.g. a background
+	 * commit/import Task). Set explicitly at the top of both entry points below instead. Matches
+	 * JavaASTReader's PARSER_CONFIGURATION (see its javadoc for why JAVA_18, not higher).
+	 */
+	private static void configureStaticJavaParser() {
+		StaticJavaParser.setConfiguration(new ParserConfiguration()
+				.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_18));
+	}
+
 	public static void writeJavaFile(Node fileRoot, Path outputPath) {
+		configureStaticJavaParser();
 		CompilationUnit cu = new CompilationUnit();
 		for (Node child : fileRoot.getChildren()) {
 			if (child.getArtifact().getData() instanceof JavaASTData) {
@@ -80,6 +98,7 @@ public class JavaASTWriteHandler {
 	}
 	
 	public static void writeJavaString(Node root, String outputString) {
+		configureStaticJavaParser();
 		CompilationUnit cu = new CompilationUnit();
 		for (Node child : root.getChildren()) {
 			if (child.getArtifact().getData() instanceof JavaASTData) {
@@ -111,6 +130,8 @@ public class JavaASTWriteHandler {
 				break;
 			case CONSTRUCTOR_DECLARATION:
 				return addConstructor(child, parent);
+			case MODULE_DECLARATION:
+				return addModuleDeclaration(child, parent);
 			case ENUM_CONSTANTS:
 				break;
 			case ENUM_DECLARATION:
@@ -300,27 +321,72 @@ public class JavaASTWriteHandler {
 		return expression;
 	}
 
-	private static ConstructorDeclaration addConstructor(Node child, com.github.javaparser.ast.Node parent) {
+	/** See JavaASTReader.addModuleDeclaration() for the reverse (read) direction. */
+	private static ModuleDeclaration addModuleDeclaration(Node child, com.github.javaparser.ast.Node parent) {
+		JavaASTModuleData data = (JavaASTModuleData) child.getArtifact().getData();
+		ModuleDeclaration module = new ModuleDeclaration(StaticJavaParser.parseName(data.getName()), data.isOpen());
+		for (Node directiveNode : child.getChildren()) {
+			Object raw = directiveNode.getArtifact().getData();
+			if (raw instanceof JavaASTSimpleStringData) {
+				module.getDirectives().add(StaticJavaParser.parseModuleDirective(((JavaASTSimpleStringData) raw).getData()));
+			}
+		}
+		if (parent instanceof CompilationUnit) {
+			((CompilationUnit) parent).setModule(module);
+		}
+		return module;
+	}
+
+	private static BodyDeclaration<?> addConstructor(Node child, com.github.javaparser.ast.Node parent) {
 		JavaASTConstructorData childData = (JavaASTConstructorData) child.getArtifact().getData();
+		if (!(parent instanceof TypeDeclaration<?>)) {
+			return null;
+		}
 		Keyword[] modifiers = childData.getModifiers().stream().map(mod -> Keyword.valueOf(mod.toUpperCase()))
 				.collect(Collectors.toList()).toArray(new Keyword[0]);
-		if (parent instanceof TypeDeclaration<?>) {
-			ConstructorDeclaration constDecl = ((TypeDeclaration<?>) parent).addConstructor(modifiers);
-			BlockStmt body = new BlockStmt();
-			child.getChildren().forEach(c -> addNode(c, body));
-			constDecl.setBody(body);
-			childData.getParameters().forEach(p -> constDecl.addParameter(StaticJavaParser.parseParameter(p)));
-			childData.getTypeParameters().forEach(tp -> constDecl.addTypeParameter(tp));
+		BlockStmt body = new BlockStmt();
+		child.getChildren().forEach(c -> addNode(c, body));
+
+		if (childData.isCompact()) {
+			// A record's compact constructor has no explicit parameter list (implicitly the
+			// record's components), so childData.getParameters() is never used here - see
+			// JavaASTReader.extractConstructors()'s RecordDeclaration branch.
+			CompactConstructorDeclaration compactDecl = new CompactConstructorDeclaration();
+			compactDecl.setName(childData.getName());
+			compactDecl.setBody(body);
+			compactDecl.addModifier(modifiers);
+			childData.getTypeParameters().forEach(tp -> compactDecl.addTypeParameter(tp));
 			childData.getThrowExceptions()
-					.forEach(te -> constDecl.addThrownException(StaticJavaParser.parseType(te).asReferenceType()));
-			childData.getAnnotations().forEach(a -> constDecl.addAnnotation(StaticJavaParser.parseAnnotation(a)));
-			return constDecl;
+					.forEach(te -> compactDecl.addThrownException(StaticJavaParser.parseType(te).asReferenceType()));
+			childData.getAnnotations().forEach(a -> compactDecl.addAnnotation(StaticJavaParser.parseAnnotation(a)));
+			((TypeDeclaration<?>) parent).addMember(compactDecl);
+			return compactDecl;
 		}
-		return null;
+
+		ConstructorDeclaration constDecl = ((TypeDeclaration<?>) parent).addConstructor(modifiers);
+		constDecl.setBody(body);
+		childData.getParameters().forEach(p -> constDecl.addParameter(StaticJavaParser.parseParameter(p)));
+		childData.getTypeParameters().forEach(tp -> constDecl.addTypeParameter(tp));
+		childData.getThrowExceptions()
+				.forEach(te -> constDecl.addThrownException(StaticJavaParser.parseType(te).asReferenceType()));
+		childData.getAnnotations().forEach(a -> constDecl.addAnnotation(StaticJavaParser.parseAnnotation(a)));
+		return constDecl;
+	}
+
+	/**
+	 * StaticJavaParser.parseTypeDeclaration()'s TypeDeclarationParseStart grammar entry point has no
+	 * "record" production at all - independent of configured LanguageLevel, this is a hard gap in
+	 * that specific entry point, confirmed empirically (parsing the exact same text as a full
+	 * compilation unit succeeds and does include the RecordDeclaration). Parsing as a throwaway
+	 * compilation unit instead and pulling the single resulting top-level type back out works around
+	 * it uniformly for every TypeDeclaration subtype, not just records.
+	 */
+	private static TypeDeclaration<?> parseTypeDeclarationText(String text) {
+		return StaticJavaParser.parse(text).getTypes().get(0);
 	}
 
 	private static EnumDeclaration addEnumDeclaration(Node child, com.github.javaparser.ast.Node parent) {
-		TypeDeclaration<?> type = StaticJavaParser.parseTypeDeclaration(child.getArtifact().toString());
+		TypeDeclaration<?> type = parseTypeDeclarationText(child.getArtifact().toString());
 		EnumDeclaration enumType = type.asEnumDeclaration();
 		List<Node> enumConstDataNodes = child.getChildren().stream()
 				.filter(c -> JavaASTData.class.isInstance(c.getArtifact().getData()))
@@ -358,7 +424,7 @@ public class JavaASTWriteHandler {
 
 	private static TypeDeclaration<?> addTypeDeclaration(Node child, com.github.javaparser.ast.Node parent) {
 		JavaASTSimpleStringData childData = (JavaASTSimpleStringData) child.getArtifact().getData();
-		TypeDeclaration<?> type = StaticJavaParser.parseTypeDeclaration(childData.getData());
+		TypeDeclaration<?> type = parseTypeDeclarationText(childData.getData());
 		if (parent instanceof CompilationUnit) {
 			((CompilationUnit) parent).addType(type);
 		} else if (parent instanceof TypeDeclaration<?>) {

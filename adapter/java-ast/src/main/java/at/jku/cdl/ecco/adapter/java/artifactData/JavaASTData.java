@@ -12,8 +12,16 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	private static final long serialVersionUID = 1L;
 	private ASTNodeType type = ASTNodeType.UNKNOWN;
 	
+	/**
+	 * Used to collapse a captured fragment's tabs/newlines to spaces, which silently corrupted any
+	 * construct where a newline is semantically or syntactically load-bearing - most notably text
+	 * blocks, whose value IS its internal line structure, and whose opening delimiter requires a
+	 * newline immediately after it. Now just normalizes line endings to plain "\n" (still needed
+	 * since JavaParser's printer output could otherwise carry CRLF depending on platform) without
+	 * discarding any of the original content.
+	 */
 	protected String unformattedString(String str) {
-		return str.replaceAll("\t", " ").replaceAll("\n", " ").replaceAll("\r", "");
+		return str.replace("\r\n", "\n").replace("\r", "\n");
 	}
 	
 	public void setType(ASTNodeType type) {

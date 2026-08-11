@@ -14,20 +14,26 @@ import java.util.stream.Collectors;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.Position;
+import com.github.javaparser.Problem;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.BodyDeclaration;
+import com.github.javaparser.ast.body.CompactConstructorDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.EnumConstantDeclaration;
 import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.InitializerDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.modules.ModuleDeclaration;
+import com.github.javaparser.ast.modules.ModuleDirective;
 import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithBody;
 import com.github.javaparser.ast.nodeTypes.NodeWithStatements;
@@ -43,6 +49,7 @@ import com.google.inject.Inject;
 
 import at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTConstructorData;
+import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTModuleData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTSimpleStringData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTTryData;
 import at.jku.isse.ecco.EccoException;
@@ -75,6 +82,15 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		// JavaChallengeReader already use to guarantee a "**.java" reader beats the generic ones.
 		prioritizedPatterns.put(Integer.MAX_VALUE, new String[] { "**.java" });
 	}
+
+	// new JavaParser()'s default ParserConfiguration.languageLevel is POPULAR = JAVA_11, so records,
+	// sealed classes, pattern matching (instanceof and switch), and switch expressions all failed
+	// outright (and text blocks/module-info.java worse - see below). JAVA_18 is the highest
+	// non-preview level this JavaParser version (3.25.8) offers; it does NOT cover the Java 21
+	// finalization of pattern-matching switch/record patterns, so those remain unsupported - a
+	// JavaParser version bump would be needed to close that gap (tracked as follow-up).
+	private static final ParserConfiguration PARSER_CONFIGURATION = new ParserConfiguration()
+			.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_18);
 
 	private final EntityFactory entityFactory;
 	private final PrettyPrinterConfiguration PPC;
@@ -127,30 +143,51 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			Node.Op javaFileNode = this.entityFactory.createNode(javaFileArtifact);
 
 			// For Java we use the relatively lightweight open source JavaParser
-			JavaParser parser = new JavaParser();
+			JavaParser parser = new JavaParser(PARSER_CONFIGURATION);
 			try {
 				// Parse the Java File
 				ParseResult<CompilationUnit> parseResult = parser.parse(javafile);
+				// A non-empty problem list means the parse hit something it couldn't fully make
+				// sense of - JavaParser can still return a best-effort (possibly badly truncated)
+				// CompilationUnit in that case rather than an empty result, so checking only
+				// getResult().isPresent() previously let a truncated parse through silently (e.g. a
+				// class using pattern-matching switch would silently vanish from the tree entirely,
+				// and a subsequent write() would then "successfully" overwrite the original file
+				// with nothing). Failing loudly here instead - consistent with every other real
+				// error path in this reader/writer pair - trades that silent data loss for a visible
+				// commit failure.
+				if (!parseResult.getProblems().isEmpty()) {
+					String problems = parseResult.getProblems().stream().map(Problem::toString)
+							.collect(Collectors.joining("; "));
+					throw new EccoException(getPluginId() + ": Unable to fully parse " + javafile + ": " + problems);
+				}
 				// Following the Java AST is recreated with ECCO nodes.
 				// The artifact data objects contain information of later
 				// reconstruction of the original AST Elements
 				CompilationUnit cu = parseResult.getResult().orElse(null);
 				if (cu != null) {
-					PackageDeclaration pd = cu.getPackageDeclaration().orElse(null);
-					String packageName = "";
-					if (pd != null) {
-						packageName = pd.getNameAsString();
+					// module-info.java parses cleanly (no problems) but its content lives in
+					// cu.getModule(), a ModuleDeclaration - a file shaped nothing like a regular
+					// class file (no package/imports/types), so it's handled entirely separately.
+					if (cu.getModule().isPresent()) {
+						addModuleDeclaration(cu.getModule().get(), javaFileNode);
+					} else {
+						PackageDeclaration pd = cu.getPackageDeclaration().orElse(null);
+						String packageName = "";
+						if (pd != null) {
+							packageName = pd.getNameAsString();
+						}
+						// Important Data is stored in an ArtifactData element
+						JavaASTSimpleStringData packDeclData = new JavaASTSimpleStringData(packageName);
+						packDeclData.setType(ASTNodeType.PACKAGEDECLARATION);
+						Artifact.Op<JavaASTSimpleStringData> packDeclArtifact = this.entityFactory
+								.createArtifact(packDeclData);
+						// The artifact data is encapsulated in the ECCO Node
+						Node.Op packDeclNode = this.entityFactory.createNode(packDeclArtifact);
+						javaFileNode.addChild(packDeclNode);
+						extractImportNodes(cu).forEach(c -> javaFileNode.addChild(c));
+						cu.getTypes().stream().forEach(type -> addTypeDeclaration(type, javaFileNode));
 					}
-					// Important Data is stored in an ArtifactData element
-					JavaASTSimpleStringData packDeclData = new JavaASTSimpleStringData(packageName);
-					packDeclData.setType(ASTNodeType.PACKAGEDECLARATION);
-					Artifact.Op<JavaASTSimpleStringData> packDeclArtifact = this.entityFactory
-							.createArtifact(packDeclData);
-					// The artifact data is encapsulated in the ECCO Node
-					Node.Op packDeclNode = this.entityFactory.createNode(packDeclArtifact);
-					javaFileNode.addChild(packDeclNode);
-					extractImportNodes(cu).forEach(c -> javaFileNode.addChild(c));
-					cu.getTypes().stream().forEach(type -> addTypeDeclaration(type, javaFileNode));
 				}
 
 			} catch (IOException e) {
@@ -164,6 +201,29 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Long endTime = System.currentTimeMillis();
 		LOGGER.info("Java parsing completed: " + (endTime - startTime) + "ms");
 		return resultNodes;
+	}
+
+	/**
+	 * module-info.java's module header (name + open-flag) becomes one MODULE_DECLARATION node, with
+	 * one opaque-text MODULE_DIRECTIVE child per requires/exports/opens/uses/provides clause - the
+	 * same granularity IMPORT_DECLARATION already uses for the analogous "one declarative clause per
+	 * node" case. See JavaASTWriteHandler.addModuleDeclaration() for the reverse direction.
+	 */
+	private void addModuleDeclaration(ModuleDeclaration module, Node.Op parent) {
+		JavaASTModuleData moduleData = new JavaASTModuleData(module.getNameAsString(), module.isOpen());
+		Artifact.Op<JavaASTModuleData> moduleArtifact = this.entityFactory.createArtifact(moduleData);
+		Node.Op moduleNode = this.entityFactory.createOrderedNode(moduleArtifact);
+		parent.addChild(moduleNode);
+
+		for (ModuleDirective directive : module.getDirectives()) {
+			JavaASTSimpleStringData directiveData = new JavaASTSimpleStringData(directive.toString(PPC));
+			directiveData.setType(ASTNodeType.MODULE_DIRECTIVE);
+			Artifact.Op<JavaASTSimpleStringData> directiveArtifact = this.entityFactory.createArtifact(directiveData);
+			Node.Op directiveNode = this.entityFactory.createOrderedNode(directiveArtifact);
+			directiveNode.putProperty(PROPERTY_LINE_START, getStartLine(directive));
+			directiveNode.putProperty(PROPERTY_LINE_END, getEndLine(directive));
+			moduleNode.addChild(directiveNode);
+		}
 	}
 
 	private void addTypeDeclaration(TypeDeclaration<?> clazz, Node.Op parent) {
@@ -268,6 +328,25 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			constructor.getAnnotations().forEach(a -> constrData.addAnnotation(a.toString(PPC)));
 			addChildren(constructor.getBody(), constrNode);
 			constrNodes.add(constrNode);
+		}
+		// A record's compact constructor (e.g. "public Point { ... }") is a CompactConstructorDeclaration,
+		// a distinct BodyDeclaration subtype that clazz.getConstructors() above does not return - without
+		// this, its body was silently dropped on every round trip.
+		if (clazz instanceof RecordDeclaration) {
+			for (CompactConstructorDeclaration compact : ((RecordDeclaration) clazz).getCompactConstructors()) {
+				JavaASTConstructorData constrData = new JavaASTConstructorData(compact.getNameAsString());
+				constrData.setCompact(true);
+				Artifact.Op<JavaASTConstructorData> constrArtifact = this.entityFactory.createArtifact(constrData);
+				Node.Op constrNode = this.entityFactory.createOrderedNode(constrArtifact);
+				constrNode.putProperty(PROPERTY_LINE_START, getStartLine(compact));
+				constrNode.putProperty(PROPERTY_LINE_END, getEndLine(compact));
+				compact.getModifiers().forEach(m -> constrData.addModifier(m.getKeyword().asString()));
+				compact.getTypeParameters().forEach(tp -> constrData.addTypeParameter(tp.toString(PPC)));
+				compact.getThrownExceptions().forEach(te -> constrData.addThrowException(te.toString(PPC)));
+				compact.getAnnotations().forEach(a -> constrData.addAnnotation(a.toString(PPC)));
+				addChildren(compact.getBody(), constrNode);
+				constrNodes.add(constrNode);
+			}
 		}
 		return constrNodes;
 	}
