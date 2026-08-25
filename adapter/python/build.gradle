@@ -1,0 +1,96 @@
+plugins {
+    id 'groovy'
+    id 'java'
+    id 'idea' // optional (to generate IntelliJ IDEA project files)
+    id "org.ajoberstar.grgit" version "5.3.0"
+}
+
+dependencies {
+
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.1'
+
+    implementation project(':ecco-service')
+    if (use_py4j_parser.toBoolean()) {
+        println '> include py4j dependency'
+        implementation group: 'net.sf.py4j', name: 'py4j', version: '0.10.9.2'
+    }
+//    if (use_graalvm_parser.toBoolean()) {
+//        println '> include graalvm dependency'
+//        implementation group: 'org.graalvm.sdk', name: 'polyglot-tck', version: '21.3.0'
+//    }
+}
+
+ecco.adapter = true
+
+sourceSets {
+    main {
+        if (!use_py4j_parser.toBoolean()) {
+            java {
+                exclude '**/py4j/**'
+            }
+        }
+//        if (!use_graalvm_parser.toBoolean()) {
+//            java {
+//                exclude '**/graalvm/**'
+//            }
+//            resources {
+//                exclude 'graalVM-config.properties'
+//            }
+//        }
+    }
+    repositoryTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/repositoryTest/java')
+        }
+        resources {
+            srcDir file('src/repositoryTest/resources')
+        }
+    }
+}
+
+ospackage {
+    requires('ecco-base', version, EQUAL)
+    requires('ecco-service', version, EQUAL)
+}
+
+repositories {
+    mavenCentral()
+}
+
+/*
+ * repositoryTests for Thesis evaluation
+ */
+
+// clone integrationTest-repository from remote
+import org.ajoberstar.grgit.*
+def dataPath = 'src/repositoryTest/resources/data'
+task cloneRepositoryTestRepository {
+    doLast{
+        if(!file(dataPath).exists()){
+            Grgit.clone(dir: file(dataPath), uri: 'https://github.com/jku-isse/ecco-adapter-python-tests.git')
+        }
+    }
+}
+
+configurations {
+    repositoryTestImplementation.extendsFrom implementation
+    repositoryTestRuntimeOnly.extendsFrom runtimeOnly
+    repositoryTestImplementation.extendsFrom testImplementation // use Junit dependency from test
+}
+
+task repositoryTest(type: Test, group: 'verification', description: 'Runs the automatic tests and performance measurement for Thesis Evaluation.') {
+    useJUnitPlatform()
+
+    testClassesDirs = sourceSets.repositoryTest.output.classesDirs
+    classpath = sourceSets.repositoryTest.runtimeClasspath
+    outputs.upToDateWhen { false }
+
+    dependsOn("cloneRepositoryTestRepository")
+}
+check.dependsOn -=repositoryTest
+
+tasks.named("processRepositoryTestResources") {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}

@@ -1,0 +1,16 @@
+{
+  "training_path": "training",
+  "results_path": "results",
+  "device": "cpu",
+  "learningrate": 0.001,
+  "weight_decay": 1e-5,
+  "n_updates": 3000,
+  "num_workers": 2,
+  "batch_size": 128,
+  "network_config": {
+    "n_hidden_layers": 6,
+    "n_in_channels": 6,
+    "n_kernels": 64,
+    "kernel_size": 3
+  }
+}
