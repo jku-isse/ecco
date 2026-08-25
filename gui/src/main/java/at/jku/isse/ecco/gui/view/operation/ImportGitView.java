@@ -56,6 +56,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -87,6 +88,9 @@ import java.util.stream.Collectors;
  */
 public class ImportGitView extends OperationView implements EccoListener {
 
+	// matches CommitView's own log/detail split - see that class's identical splitPane setup
+	private static final double LOG_DIVIDER_POSITION = 0.65;
+
 	private final EccoService service;
 	private final GitHistoryReader gitHistoryReader = new GitHistoryReader();
 
@@ -108,6 +112,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.logArea = new TextArea();
 		this.logArea.setEditable(false);
 		this.logArea.setWrapText(false);
+		this.logArea.setPrefRowCount(20);
+		this.logArea.setPrefColumnCount(80);
+		this.logArea.setMinHeight(220);
+		this.logArea.setMinWidth(500);
 
 		this.splitPane.getItems().add(this.logArea);
 
@@ -288,7 +296,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 		ProgressIndicator progressIndicator = new ProgressIndicator();
 		progressIndicator.setMaxSize(60, 60);
-		VBox progressBox = new VBox(10, progressIndicator, new Label("Asking the local LLM to suggest feature configurations..."));
+		Label progressLabel = new Label("Asking the local LLM to suggest feature configurations...");
+		progressLabel.setWrapText(true);
+		VBox progressBox = new VBox(10, progressIndicator, progressLabel);
 		progressBox.setAlignment(Pos.CENTER);
 		progressBox.setPadding(new Insets(30));
 		this.setCenter(progressBox);
@@ -298,6 +308,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 		Task<LlmFeatureSuggestionClient.SuggestionBatch> suggestTask = new Task<>() {
 			@Override
 			protected LlmFeatureSuggestionClient.SuggestionBatch call() {
+				int total = commitsOldestFirst.size();
+				this.updateProgress(0, total);
+				this.updateMessage("Reading commit diffs...");
+
 				List<LlmFeatureSuggestionClient.CommitForSuggestion> commitsForSuggestion = commitsOldestFirst.stream()
 						.map(commit -> new LlmFeatureSuggestionClient.CommitForSuggestion(
 								commit.getShortId(), commit.getMessage(),
@@ -309,7 +323,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 						.collect(Collectors.toList());
 
 				LlmFeatureSuggestionClient client = new LlmFeatureSuggestionClient(LlmPreferences.getEndpointUrl(), LlmPreferences.getModelName());
-				return client.suggestConfigurations(commitsForSuggestion, knownFeatureNames);
+				return client.suggestConfigurations(commitsForSuggestion, knownFeatureNames, (commitIndex, totalCommits, commitId) -> {
+					this.updateProgress(commitIndex, totalCommits);
+					this.updateMessage("Suggesting configuration for commit " + (commitIndex + 1) + " of " + totalCommits + " (" + commitId + ")...");
+				});
 			}
 
 			@Override
@@ -330,7 +347,51 @@ public class ImportGitView extends OperationView implements EccoListener {
 				ImportGitView.this.step2(commitsOldestFirst, Collections.nCopies(commitsOldestFirst.size(), ""), null);
 			}
 		};
+		// indeterminate (spinning) until the first commit actually starts, then switches to a
+		// determinate fraction - progressProperty() is -1 (ProgressIndicator's indeterminate value)
+		// until the task's first updateProgress() call above
+		progressIndicator.progressProperty().bind(suggestTask.progressProperty());
+		// a listener rather than a direct bind: messageProperty() starts out empty (no updateMessage()
+		// call yet has landed on the FX thread), and binding directly would blank progressLabel's
+		// initial text for that brief window instead of leaving it showing until the first real update
+		suggestTask.messageProperty().addListener((observable, oldMessage, newMessage) -> {
+			if (newMessage != null && !newMessage.isEmpty()) {
+				progressLabel.setText(newMessage);
+			}
+		});
 		new Thread(suggestTask).start();
+	}
+
+	/**
+	 * Turns each commit's LLM-suggested configuration - {@link LlmFeatureSuggestionClient} classifies
+	 * which feature(s) THAT COMMIT'S DIFF belongs to, in isolation (see its own javadoc for why) -
+	 * into the full configuration string {@link #step2} pre-fills for that commit, by accumulating
+	 * forward: commit i's default starts from commit i-1's already-accumulated feature set and adds
+	 * whatever new feature(s) commit i's own suggestion names, rather than showing only what that one
+	 * diff touched. A blank suggestion (LLM failed for that commit, or suggestions were skipped
+	 * entirely) carries the running set forward unchanged instead of blanking the row - ECCO's
+	 * Configuration represents the full variant at that point, not a delta, so "no new feature
+	 * detected" should never look like "no features at all". A genuine feature removal is something
+	 * a human still has to notice and edit out by hand here, same as every other suggestion - this
+	 * class never commits anything itself (see the class javadoc).
+	 *
+	 * @return a new list, same size/order as {@code suggestedConfigurations}.
+	 */
+	static List<String> accumulateConfigurations(List<String> suggestedConfigurations) {
+		List<String> accumulated = new ArrayList<>(suggestedConfigurations.size());
+		LinkedHashSet<String> running = new LinkedHashSet<>();
+		for (String suggestion : suggestedConfigurations) {
+			if (suggestion != null) {
+				for (String token : suggestion.split(",")) {
+					String trimmed = token.trim();
+					if (!trimmed.isEmpty()) {
+						running.add(trimmed);
+					}
+				}
+			}
+			accumulated.add(String.join(", ", running));
+		}
+		return accumulated;
 	}
 
 	/**
@@ -349,13 +410,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.rightButtons.getChildren().setAll(importButton);
 
 
+		List<String> accumulatedConfigurations = accumulateConfigurations(suggestedConfigurations);
 		ObservableList<CommitEntry> commitData = FXCollections.observableArrayList();
 		for (int i = 0; i < commitsOldestFirst.size(); i++) {
-			String suggestion = i < suggestedConfigurations.size() ? suggestedConfigurations.get(i) : "";
+			String suggestion = i < accumulatedConfigurations.size() ? accumulatedConfigurations.get(i) : "";
 			CommitEntry commitEntry = new CommitEntry(commitsOldestFirst.get(i), suggestion);
 			commitData.add(commitEntry);
-			refreshConstraintWarning(commitEntry);
 		}
+		refreshAllConstraintWarnings(commitData);
 
 		GridPane gridPane = new GridPane();
 		gridPane.setHgap(10);
@@ -518,6 +580,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				ImportGitView.this.service.removeListener(ImportGitView.this);
 				ImportGitView.this.commitDetailView.showCommit(this.getValue());
 				ImportGitView.this.splitPane.getItems().setAll(ImportGitView.this.logArea, ImportGitView.this.commitDetailView);
+				ImportGitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 				ImportGitView.this.showSuccessHeader();
 				if (!allConstraintWarnings.isEmpty()) {
 					Alert alert = new Alert(Alert.AlertType.WARNING,
@@ -532,6 +595,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				ImportGitView.this.service.removeListener(ImportGitView.this);
 				ImportGitView.this.commitDetailView.showCommit(null);
 				ImportGitView.this.splitPane.getItems().setAll(ImportGitView.this.logArea, new ExceptionTextArea(this.getException()));
+				ImportGitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 				ImportGitView.this.showErrorHeader();
 			}
 
@@ -541,6 +605,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				ImportGitView.this.service.removeListener(ImportGitView.this);
 				ImportGitView.this.commitDetailView.showCommit(null);
 				ImportGitView.this.splitPane.getItems().setAll(ImportGitView.this.logArea, new ExceptionTextArea(this.getException()));
+				ImportGitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 				ImportGitView.this.showErrorHeader();
 			}
 		};
@@ -579,6 +644,26 @@ public class ImportGitView extends OperationView implements EccoListener {
 		new Thread(() -> {
 			String description = describeConstraintViolations(configurationString);
 			Platform.runLater(() -> entry.setWarning(description));
+		}).start();
+	}
+
+	/**
+	 * Same as {@link #refreshConstraintWarning}, but for every row in the initial review-table
+	 * population at once, on a SINGLE background thread that processes them one at a time - not one
+	 * thread per row. A large "Import from Git" range (dozens to hundreds of commits) would otherwise
+	 * fire that many threads into {@link EccoService} simultaneously, which has a known history of
+	 * unsynchronized-state bugs under concurrent access (see e.g. the Association/AssociationCounter
+	 * race this project already hit once).
+	 */
+	private void refreshAllConstraintWarnings(List<CommitEntry> entries) {
+		new Thread(() -> {
+			for (CommitEntry entry : entries) {
+				String configurationString = entry.getConfiguration();
+				String description = (configurationString == null || configurationString.isBlank()
+						|| !this.service.isInitialized() || this.service.isWriteInProgress())
+						? "" : describeConstraintViolations(configurationString);
+				Platform.runLater(() -> entry.setWarning(description));
+			}
 		}).start();
 	}
 
