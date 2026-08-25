@@ -1,0 +1,8 @@
+conda install -n pythonII protobuf=3.20
+pip install tensorboard
+conda list
+
+
+conda activate pythonML
+tensorboard --logdir "E:\repos\python\ass2\ex5\results\tensorboard"
+tensorboard --logdir "G:\Meine Ablage\8. Semester\results\tensorboard"
