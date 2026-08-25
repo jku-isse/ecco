@@ -123,12 +123,25 @@ public final class LlmFeatureSuggestionClient {
 
 	private final String endpointUrl;
 	private final String modelName;
-	private final HttpClient httpClient;
 
 	public LlmFeatureSuggestionClient(String endpointUrl, String modelName) {
 		this.endpointUrl = endpointUrl;
 		this.modelName = modelName;
-		this.httpClient = HttpClient.newBuilder()
+	}
+
+	/**
+	 * A fresh {@link HttpClient} per call, closed by the caller (try-with-resources; {@code
+	 * HttpClient} has implemented {@link AutoCloseable} since JDK 21) rather than one shared instance
+	 * reused across an entire batch - observed directly: after one request hung for far longer than
+	 * either timeout below should have allowed (a real network outage, not a bug in this class) every
+	 * later request on the same shared client immediately failed with {@code BindException: Can't
+	 * assign requested address}, i.e. local port/connection-pool exhaustion from the one stuck
+	 * connection took the rest of the batch down with it. A fresh client per request can't carry that
+	 * kind of damage forward - worth the (negligible, next to LLM response latency) cost of not
+	 * reusing connections.
+	 */
+	private static HttpClient newHttpClient() {
+		return HttpClient.newBuilder()
 				.connectTimeout(Duration.ofSeconds(10))
 				.build();
 	}
@@ -147,7 +160,10 @@ public final class LlmFeatureSuggestionClient {
 				.timeout(Duration.ofSeconds(10))
 				.GET()
 				.build();
-		HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+		HttpResponse<String> response;
+		try (HttpClient httpClient = newHttpClient()) {
+			response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+		}
 		if (response.statusCode() / 100 != 2) {
 			throw new IOException("LLM endpoint " + modelsUri + " returned HTTP " + response.statusCode() + ": " + response.body());
 		}
@@ -197,6 +213,17 @@ public final class LlmFeatureSuggestionClient {
 	}
 
 	/**
+	 * Reports progress through {@link #suggestConfigurations} - one call per commit, right before
+	 * that commit's request is sent (not after), since a single request can take minutes (see
+	 * {@link #suggestOneConfiguration}'s timeout) and a caller driving a progress bar/label wants to
+	 * show which commit is currently in flight, not just a count of ones already finished.
+	 */
+	@FunctionalInterface
+	public interface ProgressListener {
+		void onCommitStarting(int commitIndex, int totalCommits, String commitId);
+	}
+
+	/**
 	 * Suggests one configuration string per commit, in the same order as {@code commitsOldestFirst},
 	 * via one LLM call per commit. Deliberately does NOT grow {@code knownFeatureNames} with
 	 * results discovered earlier in the same call: a local model was observed over-eagerly
@@ -205,19 +232,27 @@ public final class LlmFeatureSuggestionClient {
 	 * otherwise avoid, since every suggestion here is human-reviewed anyway. Every commit is judged
 	 * only against the feature names that genuinely already existed before this import started.
 	 * Never throws.
+	 *
+	 * @param onProgress may be {@code null} if the caller doesn't care about progress.
 	 */
-	public SuggestionBatch suggestConfigurations(List<CommitForSuggestion> commitsOldestFirst, Collection<String> knownFeatureNames) {
+	public SuggestionBatch suggestConfigurations(List<CommitForSuggestion> commitsOldestFirst, Collection<String> knownFeatureNames, ProgressListener onProgress) {
 		List<String> configurations = new ArrayList<>(commitsOldestFirst.size());
 		List<String> failedCommitIds = new ArrayList<>();
 		String lastFailureReason = null;
 
+		int total = commitsOldestFirst.size();
+		int index = 0;
 		for (CommitForSuggestion commit : commitsOldestFirst) {
+			if (onProgress != null) {
+				onProgress.onCommitStarting(index, total, commit.commitId());
+			}
 			OneResult result = suggestOneConfiguration(commit, knownFeatureNames);
 			configurations.add(result.configuration() == null ? "" : result.configuration());
 			if (result.failureReason() != null) {
 				failedCommitIds.add(commit.commitId());
 				lastFailureReason = result.failureReason();
 			}
+			index++;
 		}
 
 		String overallFailureReason = failedCommitIds.isEmpty() ? null :
@@ -243,7 +278,10 @@ public final class LlmFeatureSuggestionClient {
 					.timeout(Duration.ofMinutes(5))
 					.POST(HttpRequest.BodyPublishers.ofString(requestBody))
 					.build();
-			HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+			HttpResponse<String> response;
+			try (HttpClient httpClient = newHttpClient()) {
+				response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+			}
 			if (response.statusCode() / 100 != 2) {
 				String reason = "LLM endpoint " + chatCompletionsUri + " returned HTTP " + response.statusCode() + ": " + response.body();
 				LOGGER.log(Level.WARNING, reason);
