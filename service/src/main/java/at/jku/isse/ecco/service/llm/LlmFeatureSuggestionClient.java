@@ -133,6 +133,54 @@ public final class LlmFeatureSuggestionClient {
 				.build();
 	}
 
+	/**
+	 * Lists the model ids the endpoint's OpenAI-compatible {@code GET /v1/models} advertises
+	 * (Ollama and most other OpenAI-compatible servers implement this), for the Settings dialog's
+	 * model picker. Unlike {@link #suggestConfigurations}, this deliberately throws rather than
+	 * swallowing failures - it's a direct, synchronous user action (clicking "Refresh"), not a
+	 * background batch step that must keep going despite one bad commit.
+	 */
+	public List<String> listModels() throws IOException, InterruptedException {
+		URI modelsUri = resolveModelsUri(this.endpointUrl);
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(modelsUri)
+				.timeout(Duration.ofSeconds(10))
+				.GET()
+				.build();
+		HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+		if (response.statusCode() / 100 != 2) {
+			throw new IOException("LLM endpoint " + modelsUri + " returned HTTP " + response.statusCode() + ": " + response.body());
+		}
+		List<String> models = parseModelsResponse(response.body());
+		if (models.isEmpty()) {
+			throw new IOException("The endpoint's response did not list any models.");
+		}
+		return models;
+	}
+
+	/** {@code scheme://authority} of {@code endpointUrl} with {@code /v1/models} appended - mirrors {@link #resolveChatCompletionsUri}. Package-visible for testing. */
+	static URI resolveModelsUri(String endpointUrl) {
+		URI endpoint = URI.create(endpointUrl);
+		return URI.create(endpoint.getScheme() + "://" + endpoint.getAuthority() + "/v1/models");
+	}
+
+	/** Parses an OpenAI-compatible {@code {"data":[{"id":"..."}]}} response into a sorted list of model ids. Package-visible for testing. */
+	static List<String> parseModelsResponse(String responseBody) throws IOException {
+		JsonNode root = MAPPER.readTree(responseBody);
+		JsonNode data = root.path("data");
+		List<String> modelIds = new ArrayList<>();
+		if (data.isArray()) {
+			for (JsonNode entry : data) {
+				String id = entry.path("id").asText(null);
+				if (id != null && !id.isBlank()) {
+					modelIds.add(id);
+				}
+			}
+		}
+		modelIds.sort(String.CASE_INSENSITIVE_ORDER);
+		return modelIds;
+	}
+
 	/** One commit's message/diff, as fed into the suggestion prompt. */
 	public record CommitForSuggestion(String commitId, String message, String diff) {
 	}
@@ -182,10 +230,11 @@ public final class LlmFeatureSuggestionClient {
 	}
 
 	private OneResult suggestOneConfiguration(CommitForSuggestion commit, Collection<String> knownFeatureNames) {
+		URI chatCompletionsUri = resolveChatCompletionsUri(this.endpointUrl);
 		try {
 			String requestBody = buildRequestBody(commit, knownFeatureNames, this.modelName);
 			HttpRequest request = HttpRequest.newBuilder()
-					.uri(URI.create(this.endpointUrl))
+					.uri(chatCompletionsUri)
 					.header("Content-Type", "application/json")
 					// generous on purpose: a local model that's been idle can take a while just to
 					// load into memory before it answers at all, and that cold-start cost lands on
@@ -196,7 +245,7 @@ public final class LlmFeatureSuggestionClient {
 					.build();
 			HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 			if (response.statusCode() / 100 != 2) {
-				String reason = "LLM endpoint " + this.endpointUrl + " returned HTTP " + response.statusCode() + ": " + response.body();
+				String reason = "LLM endpoint " + chatCompletionsUri + " returned HTTP " + response.statusCode() + ": " + response.body();
 				LOGGER.log(Level.WARNING, reason);
 				return new OneResult(null, reason);
 			}
@@ -211,10 +260,22 @@ public final class LlmFeatureSuggestionClient {
 			if (e instanceof InterruptedException) {
 				Thread.currentThread().interrupt();
 			}
-			String reason = "Error calling LLM endpoint " + this.endpointUrl + " for commit " + commit.commitId() + ": " + e;
+			String reason = "Error calling LLM endpoint " + chatCompletionsUri + " for commit " + commit.commitId() + ": " + e;
 			LOGGER.log(Level.WARNING, reason, e);
 			return new OneResult(null, reason);
 		}
+	}
+
+	/**
+	 * {@code scheme://authority} of {@code endpointUrl} with {@code /v1/chat/completions} appended -
+	 * mirrors {@link #resolveModelsUri}, so the configured "endpoint" is always just the server's
+	 * base address (whatever path the user happens to type after it, including none, is ignored and
+	 * replaced) rather than something the user must get exactly right for chat vs. model-listing
+	 * separately. Package-visible for testing.
+	 */
+	static URI resolveChatCompletionsUri(String endpointUrl) {
+		URI endpoint = URI.create(endpointUrl);
+		return URI.create(endpoint.getScheme() + "://" + endpoint.getAuthority() + "/v1/chat/completions");
 	}
 
 	/** Pure, network-free: the exact JSON body {@link #suggestConfigurations} POSTs for one commit. Package-visible for testing. */
