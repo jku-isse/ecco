@@ -11,8 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@link LlmFeatureSuggestionClient#buildRequestBody}, {@link LlmFeatureSuggestionClient#parseResponse}
- * and {@link LlmFeatureSuggestionClient#stripDiffNoise} are pure, network-free functions
+ * {@link LlmFeatureSuggestionClient#buildRequestBody}, {@link LlmFeatureSuggestionClient#parseResponse},
+ * {@link LlmFeatureSuggestionClient#stripDiffNoise}, {@link LlmFeatureSuggestionClient#resolveModelsUri}
+ * and {@link LlmFeatureSuggestionClient#parseModelsResponse} are pure, network-free functions
  * specifically so they can be exercised like this - no real LLM endpoint (local or otherwise)
  * needs to be running for these tests to mean something.
  */
@@ -126,6 +127,52 @@ public class LlmFeatureSuggestionClientTest {
 	@Test
 	public void parseResponse_emptyChoicesArray_yieldsNull() {
 		assertNull(LlmFeatureSuggestionClient.parseResponse("{\"choices\": []}"));
+	}
+
+	@Test
+	public void resolveModelsUri_appendsV1ModelsToSchemeAndAuthority() {
+		assertEquals("http://localhost:11434/v1/models",
+				LlmFeatureSuggestionClient.resolveModelsUri("http://localhost:11434/v1/chat/completions").toString());
+	}
+
+	@Test
+	public void resolveModelsUri_ignoresEndpointPath() {
+		assertEquals("https://api.example.com:8443/v1/models",
+				LlmFeatureSuggestionClient.resolveModelsUri("https://api.example.com:8443/some/custom/path").toString());
+	}
+
+	@Test
+	public void resolveChatCompletionsUri_appendsV1ChatCompletionsToSchemeAndAuthority() {
+		assertEquals("http://localhost:11434/v1/chat/completions",
+				LlmFeatureSuggestionClient.resolveChatCompletionsUri("http://localhost:11434").toString());
+	}
+
+	@Test
+	public void resolveChatCompletionsUri_ignoresEndpointPath() {
+		// the exact real-world regression this guards against: the endpoint field held just the
+		// server's bare base URL (as saved via the "Refresh" models picker), and suggestions broke
+		// with HTTP 405 because the POST went straight to that root path instead of /v1/chat/completions
+		assertEquals("http://10.78.115.5:11434/v1/chat/completions",
+				LlmFeatureSuggestionClient.resolveChatCompletionsUri("http://10.78.115.5:11434/").toString());
+	}
+
+	@Test
+	public void parseModelsResponse_returnsIdsSortedCaseInsensitively() throws Exception {
+		String response = "{\"object\": \"list\", \"data\": [{\"id\": \"llama3.1\"}, {\"id\": \"Gemma2\"}, {\"id\": \"mistral\"}]}";
+
+		assertEquals(List.of("Gemma2", "llama3.1", "mistral"), LlmFeatureSuggestionClient.parseModelsResponse(response));
+	}
+
+	@Test
+	public void parseModelsResponse_ignoresEntriesWithoutId() throws Exception {
+		String response = "{\"data\": [{\"id\": \"llama3.1\"}, {\"object\": \"model\"}]}";
+
+		assertEquals(List.of("llama3.1"), LlmFeatureSuggestionClient.parseModelsResponse(response));
+	}
+
+	@Test
+	public void parseModelsResponse_noDataArray_returnsEmptyList() throws Exception {
+		assertEquals(List.of(), LlmFeatureSuggestionClient.parseModelsResponse("{}"));
 	}
 
 	/** Wraps {@code content} as the "message.content" of a single choice, matching a real OpenAI-compatible chat-completions response shape. */

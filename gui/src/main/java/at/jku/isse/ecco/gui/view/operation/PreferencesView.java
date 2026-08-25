@@ -7,10 +7,13 @@ import at.jku.isse.ecco.service.AdapterPreferences;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LilypondPreferences;
 import at.jku.isse.ecco.service.LlmPreferences;
+import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -205,12 +208,12 @@ public class PreferencesView extends OperationView {
 		int row = 0;
 
 		Label llmHelpLabel = new Label("Used by \"Import from Git\" to suggest a feature configuration per commit. " +
-				"Expects a local, unauthenticated OpenAI-compatible chat-completions endpoint (e.g. Ollama).");
+				"Expects a local, unauthenticated OpenAI-compatible server (e.g. Ollama).");
 		llmHelpLabel.setWrapText(true);
 		llmGridPane.add(llmHelpLabel, 0, row, 2, 1);
 		row++;
 
-		Label endpointLabel = new Label("Endpoint URL: ");
+		Label endpointLabel = new Label("Server URL: ");
 		llmGridPane.add(endpointLabel, 0, row, 1, 1);
 		TextField llmEndpointUrlField = new TextField(LlmPreferences.getEndpointUrl());
 		llmGridPane.add(llmEndpointUrlField, 1, row, 1, 1);
@@ -218,12 +221,63 @@ public class PreferencesView extends OperationView {
 
 		Label modelLabel = new Label("Model Name: ");
 		llmGridPane.add(modelLabel, 0, row, 1, 1);
-		TextField llmModelNameField = new TextField(LlmPreferences.getModelName());
-		llmGridPane.add(llmModelNameField, 1, row, 1, 1);
+		ComboBox<String> llmModelNameComboBox = new ComboBox<>();
+		llmModelNameComboBox.setEditable(true);
+		llmModelNameComboBox.setMaxWidth(Double.MAX_VALUE);
+		String savedModelName = LlmPreferences.getModelName();
+		if (!savedModelName.isBlank()) {
+			// so the previously-saved model still shows selected even before "Refresh" is clicked
+			// (e.g. the endpoint is briefly unreachable, or the user just wants to Save unrelated fields)
+			llmModelNameComboBox.getItems().add(savedModelName);
+		}
+		llmModelNameComboBox.setValue(savedModelName);
+		HBox.setHgrow(llmModelNameComboBox, Priority.ALWAYS);
+
+		Button refreshModelsButton = new Button("Refresh");
+		Label modelStatusLabel = new Label();
+		modelStatusLabel.setWrapText(true);
+		refreshModelsButton.setOnAction(event -> {
+			refreshModelsButton.setDisable(true);
+			modelStatusLabel.setText("Loading models...");
+			Task<List<String>> listModelsTask = new Task<>() {
+				@Override
+				protected List<String> call() throws Exception {
+					return new LlmFeatureSuggestionClient(llmEndpointUrlField.getText(), "").listModels();
+				}
+
+				@Override
+				protected void succeeded() {
+					super.succeeded();
+					refreshModelsButton.setDisable(false);
+					// read via the editor, not getValue(): an editable ComboBox only commits typed
+					// text to getValue()/setValue() on Enter or focus-loss, same reasoning as the
+					// EditableSpinner workaround elsewhere in this dialog
+					String currentText = llmModelNameComboBox.getEditor().getText();
+					List<String> models = this.getValue();
+					llmModelNameComboBox.getItems().setAll(models);
+					llmModelNameComboBox.setValue(currentText != null && !currentText.isBlank() ? currentText : models.get(0));
+					modelStatusLabel.setText(models.size() + " model(s) found.");
+				}
+
+				@Override
+				protected void failed() {
+					super.failed();
+					refreshModelsButton.setDisable(false);
+					modelStatusLabel.setText("Could not list models: " + this.getException().getMessage());
+				}
+			};
+			new Thread(listModelsTask).start();
+		});
+
+		HBox modelBox = new HBox(6, llmModelNameComboBox, refreshModelsButton);
+		llmGridPane.add(modelBox, 1, row, 1, 1);
+		row++;
+		llmGridPane.add(modelStatusLabel, 0, row, 2, 1);
 
 		Runnable save = () -> {
 			LlmPreferences.setEndpointUrl(llmEndpointUrlField.getText());
-			LlmPreferences.setModelName(llmModelNameField.getText());
+			String modelText = llmModelNameComboBox.getEditor().getText();
+			LlmPreferences.setModelName(modelText == null ? "" : modelText.trim());
 		};
 
 		return new SectionUi(llmGridPane, save);
