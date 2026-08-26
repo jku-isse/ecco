@@ -32,17 +32,25 @@ public class ListenerRegistry {
 
     /**
      * Advisory-only signal for GUI code: true while a write operation that mutates the live, shared
-     * {@code Association}/{@code AssociationCounter} object graph (or persists other repository
-     * state) is in flight. Does NOT provide mutual exclusion by itself -- {@code commit()} etc. are
-     * already {@code synchronized} on the owning {@code EccoService} instance, which serializes THEM
-     * against each other, but NOT against GUI code that holds a direct reference to an
-     * {@code Association} object and calls methods on it later, entirely outside any
-     * {@code EccoService} synchronization (e.g. {@code ArtifactsView} rendering
-     * {@code association.computeCondition()} on the FX thread). That is a real, pre-existing
-     * unsynchronized-access gap in the core object model, not fixed here -- this flag only lets
-     * speculative GUI background reads (constraint-violation checks, etc.) opt to skip themselves
-     * while a write is in progress, reducing how often background read traffic overlaps that
-     * unprotected window, without pretending to close it.
+     * repository object graph is in flight. Does NOT provide mutual exclusion by itself --
+     * {@code commit()} etc. are already {@code synchronized} on the owning {@code EccoService}
+     * instance, which serializes THEM against each other, but NOT against GUI code that holds a
+     * direct reference to an {@code Association} object and calls methods on it later, entirely
+     * outside any {@code EccoService} synchronization (e.g. {@code ArtifactsView} rendering
+     * {@code association.computeCondition()} on the FX thread).
+     * <p>
+     * The part of this that used to actually crash (association-counter-unsynchronized-race in
+     * project memory: {@code SerAssociationCounter}/{@code SerModuleCounter}/
+     * {@code SerModuleRevisionCounter}'s {@code children} maps being read via
+     * {@code computeCondition()} while a commit's background write mutated them concurrently) is
+     * fixed now -- those three classes synchronize every read/write and {@code getChildren()}
+     * returns a defensive copy, see their own class javadocs. What's left, reachable from that exact
+     * same {@code computeCondition()} call chain, is narrower: {@code SerModuleRevision}'s (and
+     * {@code SerModule}'s) own plain {@code int count} field is still read/written without
+     * synchronization -- a theoretical stale-read risk (a presence-condition computation might not
+     * see a just-incremented count), not a crash risk, since a lone {@code int} read/write can't tear
+     * mid-word. Deliberately left open twice already after being offered as a larger fix -- see that
+     * same memory entry for the full history before touching it again.
      */
     private volatile boolean writeInProgress = false;
 

@@ -53,23 +53,29 @@ public class SerModuleRevision implements ModuleRevision {
 		return this.neg;
 	}
 
+	// Synchronized for the same reason as SerModuleCounter/SerModuleRevisionCounter's count (see
+	// association-counter-unsynchronized-race in project memory): getCount() is read via
+	// Association.Op#computeLikelyCondition()/#computeCertainCondition()'s
+	// moduleRevisionCounter.getObject().getCount() comparison, on the FX thread, while incCount() is
+	// written elsewhere during a commit's background write - the same race the counter tree itself
+	// was already fixed for, one level further down into the object each counter wraps.
 	@Override
-	public int getCount() {
+	public synchronized int getCount() {
 		return this.count;
 	}
 
 	@Override
-	public void setCount(int count) {
+	public synchronized void setCount(int count) {
 		this.count = count;
 	}
 
 	@Override
-	public void incCount() {
+	public synchronized void incCount() {
 		this.count++;
 	}
 
 	@Override
-	public void incCount(int count) {
+	public synchronized void incCount(int count) {
 		this.count += count;
 	}
 

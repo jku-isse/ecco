@@ -48,23 +48,26 @@ public class SerModule implements Module {
 		return this.neg;
 	}
 
+	// Synchronized for the same reason as SerModuleRevision's count (see
+	// association-counter-unsynchronized-race in project memory) - a plain field on an object a GUI
+	// thread may hold a live reference to and read concurrently with a commit's background write.
 	@Override
-	public int getCount() {
+	public synchronized int getCount() {
 		return this.count;
 	}
 
 	@Override
-	public void setCount(int count) {
+	public synchronized void setCount(int count) {
 		this.count = count;
 	}
 
 	@Override
-	public void incCount() {
+	public synchronized void incCount() {
 		this.count++;
 	}
 
 	@Override
-	public void incCount(int count) {
+	public synchronized void incCount(int count) {
 		this.count += count;
 	}
 

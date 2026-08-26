@@ -112,6 +112,13 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	private LayoutMode layoutMode = LayoutMode.FORCE_DIRECTED;
 	/** The mode the graph was actually last rendered in, so {@link #applySnapshot} can tell a mode switch from an ordinary refresh. */
 	private LayoutMode lastAppliedLayoutMode = null;
+	/**
+	 * Incremented every {@link #applySnapshot}, so a delayed {@link #scheduleForceDirectedFreeze}
+	 * callback scheduled for an earlier render can tell it's stale (a rebuild already happened,
+	 * which already called {@code disableAutoLayout()} itself and may have started its own fresh
+	 * layout/freeze cycle) and skip freezing anything.
+	 */
+	private int layoutGeneration = 0;
 
 	public FeaturesView(EccoService service, MinimizationResults minimizationResults) {
 		this.service = service;
@@ -429,10 +436,12 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 
 			this.updateGraphStylesheet();
 
+			this.layoutGeneration++;
 			if (this.layoutMode == LayoutMode.FORCE_DIRECTED) {
 				this.graph.addSink(this.forceDirectedLayout);
 				this.forceDirectedLayout.addAttributeSink(this.graph);
 				this.viewer.enableAutoLayout(this.forceDirectedLayout);
+				this.scheduleForceDirectedFreeze(this.layoutGeneration);
 			}
 
 			boolean layoutModeChanged = this.layoutMode != this.lastAppliedLayoutMode;
@@ -469,6 +478,46 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			SwingUtilities.invokeLater(() -> {
 				if (this.view != null && this.layoutMode == LayoutMode.FORCE_DIRECTED) {
 					this.view.getCamera().resetView();
+				}
+			});
+		});
+		thread.setDaemon(true);
+		thread.start();
+	}
+
+	/**
+	 * GraphStream's {@code enableAutoLayout()} runs {@link #forceDirectedLayout}'s physics thread
+	 * indefinitely with no built-in "stop once settled" behavior of its own - fine for a normal,
+	 * sparse feature graph (settles in well under a second, then keeps computing effectively-free
+	 * near-zero-movement steps forever), but a PATHOLOGICALLY DENSE one has no stable resting
+	 * configuration to settle into at all. Observed directly: a real 32-feature repository with 467
+	 * accepted REQUIRES/EXCLUDES constraints (i.e. edges) between them - close to the maximum
+	 * possible for that many features - kept this thread (and the FX/Swing thread applying its
+	 * constant stream of position updates) busy for as long as the tab stayed open, which is what
+	 * actually caused a reported "Feature Model view is terrible" slowdown; everything else measured
+	 * for that same repository ({@link FeatureModelTree#compute}, {@code ConstraintMiner.mine()})
+	 * ran in single-digit milliseconds. Force a freeze after a generous timeout regardless of how
+	 * well the graph is settling, so no graph, however dense, can peg CPU/rendering indefinitely -
+	 * same delayed-background-thread shape as {@link #scheduleDelayedCameraReset}, scheduled right
+	 * alongside it.
+	 *
+	 * @param scheduledGeneration {@link #layoutGeneration} at scheduling time, so a rebuild in the
+	 *                            meantime (which already calls {@code disableAutoLayout()} itself,
+	 *                            and may start its own fresh layout with its own freeze timer) makes
+	 *                            this callback a safe no-op instead of stopping the NEW layout early.
+	 */
+	private void scheduleForceDirectedFreeze(int scheduledGeneration) {
+		Thread thread = new Thread(() -> {
+			try {
+				Thread.sleep(FORCE_DIRECTED_FREEZE_TIMEOUT_MS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			}
+			SwingUtilities.invokeLater(() -> {
+				if (this.viewer != null && this.layoutMode == LayoutMode.FORCE_DIRECTED
+						&& this.layoutGeneration == scheduledGeneration) {
+					this.viewer.disableAutoLayout();
 				}
 			});
 		});
@@ -556,6 +605,8 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	/** Matches KnowledgeGraphView's force-directed node size - a physics-friendly scale, unlike TREE mode's much larger label-bearing boxes. */
 	private static final int FORCE_DIRECTED_NODE_SIZE = 24;
 	private static final long FORCE_DIRECTED_SETTLE_DELAY_MS = 900;
+	/** See {@link #scheduleForceDirectedFreeze} - generous on purpose, since it only ever matters for a pathologically dense graph that would otherwise never stop computing. */
+	private static final long FORCE_DIRECTED_FREEZE_TIMEOUT_MS = 8000;
 
 	private static final class FeatureModelSnapshot {
 		final List<FeatureNodeSnapshot> nodes = new ArrayList<>();
@@ -631,9 +682,12 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 	/**
 	 * Re-mines/re-lays-out and re-renders the graph right away, off the calling thread. Unlike
 	 * {@link #statusChangedEvent}, this isn't triggered by a real {@link EccoService} event (no
-	 * commit/checkout happened) -- it's called by {@link ConstraintSuggestionsView} whenever a
-	 * suggestion is accepted/rejected/undone, since none of those go through a code path that fires
-	 * an {@link at.jku.isse.ecco.service.listener.EccoListener} event.
+	 * commit/checkout happened) -- it's called by {@link ConstraintSuggestionsView} only for a
+	 * suggestion REJECT/un-reject, which stays purely local ({@code ConstraintSuggestionPreferences})
+	 * and never touches the repository. An ACCEPT/un-accept does persist into the repository and
+	 * already fires a real {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed
+	 * event that {@link #statusChangedEvent} reacts to on its own, so {@code ConstraintSuggestionsView}
+	 * deliberately does NOT call this a second time for those - see its {@code acceptSelected}.
 	 */
 	private void refreshNow() {
 		if (!this.service.isInitialized() || !this.tabVisible) return;

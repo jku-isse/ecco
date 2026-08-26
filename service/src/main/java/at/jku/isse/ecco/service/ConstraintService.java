@@ -70,6 +70,31 @@ public class ConstraintService {
         });
     }
 
+    /**
+     * Accepts every suggestion in {@code suggestions} as ONE repository transaction - one
+     * {@code repositoryDao.store()}, one {@code fireStatusChangedEvent()} - instead of calling
+     * {@link #acceptConstraint(ConstraintMiner.Suggestion)} once per suggestion. That per-item
+     * version was observed to make accepting many suggestions at once (e.g. from
+     * {@code ConstraintSuggestionsView}'s multi-select) take a long time on the FX thread: each
+     * individual accept does a full repository persist AND fires a real
+     * {@link at.jku.isse.ecco.service.listener.EccoListener} event that every open tab (the Feature
+     * Model graph, this class's own {@code ConstraintSuggestionsView} re-mining, ...) reacts to with
+     * its own full, O(commits x features) re-scan - so N accepted suggestions did N of those
+     * re-scans, not one. No-op if {@code suggestions} is empty (no transaction, no event).
+     */
+    public void acceptConstraints(List<ConstraintMiner.Suggestion> suggestions) {
+        owner.checkInitialized();
+        checkNotNull(suggestions);
+        if (suggestions.isEmpty()) return;
+        safeTransaction(repository -> {
+            for (ConstraintMiner.Suggestion suggestion : suggestions) {
+                checkNotNull(suggestion);
+                repository.addConstraint(toConstraintKind(suggestion.kind), suggestion.a, suggestion.b);
+            }
+            return repository;
+        });
+    }
+
     public void unacceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
         owner.checkInitialized();
         checkNotNull(kind);
@@ -78,6 +103,22 @@ public class ConstraintService {
             String id = Constraint.buildId(kind.name(), featureA, featureB);
             Constraint existing = repository.getConstraint(id);
             if (existing != null) repository.removeConstraint(existing);
+            return repository;
+        });
+    }
+
+    /** Batched "move back to pending" for multiple accepted constraints - see {@link #acceptConstraints}. */
+    public void unacceptConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
+        owner.checkInitialized();
+        checkNotNull(constraints);
+        if (constraints.isEmpty()) return;
+        safeTransaction(repository -> {
+            for (ConstraintSuggestionPreferences.AcceptedConstraint constraint : constraints) {
+                checkNotNull(constraint);
+                String id = Constraint.buildId(constraint.kind.name(), constraint.a, constraint.b);
+                Constraint existing = repository.getConstraint(id);
+                if (existing != null) repository.removeConstraint(existing);
+            }
             return repository;
         });
     }
