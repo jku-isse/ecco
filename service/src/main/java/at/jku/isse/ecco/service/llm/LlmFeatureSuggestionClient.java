@@ -95,6 +95,16 @@ public final class LlmFeatureSuggestionClient {
 			structure that another known feature also depends on, consider that feature affected too \
 			and list it as well (comma-separated) - but only based on what the diff actually shows \
 			here, never speculation about code not shown to you.
+			- If the diff clearly shows a KNOWN feature's own implementation being deleted, removed, \
+			or fully replaced by something unrelated - the feature genuinely stops existing as of \
+			this commit, not merely refactored, renamed, or modified in place - list that feature \
+			prefixed with a minus sign instead of its bare name, e.g. "-login", so it drops out of \
+			the tracked configuration going forward. Be CONSERVATIVE here: only ever do this when the \
+			diff itself is unambiguous about removal (its files/functions are deleted outright, or a \
+			commit message like "remove X"/"drop X" is directly confirmed by the diff). A feature \
+			simply not being touched by this commit is the ordinary case for almost every commit and \
+			must NEVER be listed at all, with or without a minus sign - only mention a feature when \
+			this commit is actually adding to it or removing it, nothing else needs to be repeated.
 
 			Base your classification primarily on the actual code change in "change" - what files, \
 			functions, and logic were actually added or modified - not just the wording of \
@@ -127,9 +137,13 @@ public final class LlmFeatureSuggestionClient {
 			Respond with ONLY a JSON object shaped exactly like the example below - always exactly \
 			the one key "configuration" (a single string, never an object or array) - and nothing \
 			else: no prose, no markdown code fences, no explanation, no questions back to the user, \
-			no analysis report, no table. Never reformat or repeat the commit's "id", "summary" or \
-			"change" back as JSON fields of your own - your only job is to output a "configuration" \
-			guess, nothing about the commit itself.
+			no analysis report, no table. "configuration" is a comma-separated list of feature names \
+			to ADD, each optionally prefixed with "-" for a feature to REMOVE (see above) - leave it \
+			an empty string "" if this commit neither adds nor removes anything a human should notice \
+			(rare - almost every commit belongs to at least "documentation" or "misc" if nothing more \
+			specific fits). Never reformat or repeat the commit's "id", "summary" or "change" back as \
+			JSON fields of your own - your only job is to output a "configuration" guess, nothing \
+			about the commit itself.
 
 			Example input:
 			Known feature names, each with the more general feature it was built on top of, when known:
@@ -157,7 +171,23 @@ public final class LlmFeatureSuggestionClient {
 			+def reset_password(token, new_password): ...
 
 			Example output:
-			{"configuration": "password-reset"}""";
+			{"configuration": "password-reset"}
+
+			Example input (later commit, "login" and "password-reset" both known):
+			Known feature names, each with the more general feature it was built on top of, when known:
+			- login
+			- password-reset (built on: login)
+
+			Commit:
+			id: f7a8b9c
+			summary: Drop password-reset flow
+			change:
+			-def send_password_reset_email(user): ...
+			-def reset_password(token, new_password): ...
+			+# password reset removed - handled by SSO provider now
+
+			Example output:
+			{"configuration": "-password-reset"}""";
 
 	private final String endpointUrl;
 	private final String modelName;
