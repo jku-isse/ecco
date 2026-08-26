@@ -26,7 +26,7 @@ public class LlmFeatureSuggestionClientTest {
 
 	@Test
 	public void buildRequestBody_includesModelCommitAndKnownFeatures() throws Exception {
-		String body = LlmFeatureSuggestionClient.buildRequestBody(COMMIT, List.of("setup"), "llama3.1");
+		String body = LlmFeatureSuggestionClient.buildRequestBody(COMMIT, List.of(new LlmFeatureSuggestionClient.KnownFeature("setup", null)), "llama3.1");
 
 		JsonNode root = MAPPER.readTree(body);
 		assertEquals("llama3.1", root.path("model").asText());
@@ -43,6 +43,17 @@ public class LlmFeatureSuggestionClientTest {
 		assertTrue(userContent.contains("setup"), "known feature name should appear in the prompt");
 		assertTrue(userContent.contains("aaa1111"), "commit id should appear in the prompt");
 		assertTrue(userContent.contains("add setup"), "commit message should appear in the prompt");
+	}
+
+	@Test
+	public void buildRequestBody_includesParentFeatureWhenKnown() throws Exception {
+		String body = LlmFeatureSuggestionClient.buildRequestBody(COMMIT,
+				List.of(new LlmFeatureSuggestionClient.KnownFeature("password-reset", "login")), "llama3.1");
+
+		JsonNode root = MAPPER.readTree(body);
+		String userContent = root.path("messages").get(1).path("content").asText();
+		assertTrue(userContent.contains("password-reset"), "known feature name should appear in the prompt");
+		assertTrue(userContent.contains("built on: login"), "parent feature should appear in the prompt");
 	}
 
 	@Test
