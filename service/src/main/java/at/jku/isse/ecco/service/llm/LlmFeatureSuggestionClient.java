@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Asks a local, OpenAI-compatible chat-completions endpoint (e.g. Ollama) to suggest a feature
@@ -29,11 +30,15 @@ import java.util.logging.Logger;
  * "index" line, instead of classifying) - always on some commit that hadn't been part of whatever
  * batch had been tested before, i.e. an unbounded tail of failure modes rather than one fixable
  * bug. Per-commit calls remove the failure category entirely instead of chasing further instances
- * of it. Each commit is judged only against feature names that genuinely already existed before
- * the import started - growing that list with results discovered earlier in the same import was
- * tried and reverted: a local model would over-eagerly force-fit a later, unrelated commit into
- * whatever name had just been suggested, purely because it was the only one available yet, which
- * is worse than the naming drift it was meant to avoid.
+ * of it. Each commit is judged only against {@link KnownFeature}s that reflect commits ALREADY
+ * IMPORTED (human-reviewed, actually committed) before this one - never against this same commit's
+ * own suggestion, and never against a later commit's. Growing the known-feature list with results
+ * merely SUGGESTED (not yet reviewed/imported) earlier in the same run was tried and reverted: a
+ * local model would over-eagerly force-fit a later, unrelated commit into whatever name had just
+ * been suggested, purely because it was the only one available yet, which is worse than the naming
+ * drift it was meant to avoid. It's the caller's job (see {@code ImportGitView}) to only ever
+ * (re)compute the known-feature list from the repository's real, already-committed state between
+ * one commit's review and the next commit's suggestion request.
  * <p>
  * Every suggestion is only ever a STARTING POINT a human reviews/edits before anything is
  * committed into ecco (see {@code ImportGitView}) - never applied automatically - so this class
@@ -55,24 +60,41 @@ public final class LlmFeatureSuggestionClient {
 			deciding anything, the way you would investigate a real commit, not just skim its title.
 
 			You will be given one commit's short id, its commit message, and a truncated diff, plus \
-			the list of feature names already known in the target repository (may be empty for a \
-			first import). Base your answer only on this given data - you have no ability to run \
-			commands or fetch anything else, so never assume prior knowledge of this specific \
-			project and never claim to have looked at files not shown here; everything you need is \
-			already provided below.
+			the feature names already known in the target repository, each shown together with the \
+			more general feature it was inferred to be built on top of (its parent, when one is \
+			known - may be empty for a first import). Base your answer only on this given data - \
+			you have no ability to run commands or fetch anything else, so never assume prior \
+			knowledge of this specific project and never claim to have looked at files not shown \
+			here; everything you need is already provided below.
 
-			A "feature" is a user- or system-facing capability (e.g. "file-save", \
-			"incremental-search"), not a single line, variable, or function in isolation. Read \
-			through the whole diff - every changed file, function, and hunk - before deciding:
-			- Genuinely NEW capability gets a new feature name.
+			A "feature" is a user- or system-facing capability, not a single line, variable, or \
+			function in isolation. Read through the whole diff - every changed file, function, and \
+			hunk - before deciding:
+			- Aim for the MOST SPECIFIC capability the diff actually supports, not the broadest area \
+			it happens to live in - prefer "password-reset" over "auth", "csv-export" over "export", \
+			"dark-mode" over "settings". A broad, umbrella-sized name is usually a sign you stopped \
+			reading the diff too early, not a correct classification. Only use a broader name when \
+			the diff is genuinely about that broad thing itself (e.g. a change to the login flow's \
+			shared entry point, not to one specific thing login does).
+			- Genuinely NEW capability gets a new feature name - including one that specializes or \
+			extends an EXISTING feature into something distinct. Use the given parent information: if \
+			this commit's diff clearly builds a new, narrower capability on top of a known feature \
+			(rather than modifying that feature's own existing behavior), name it as a new feature - \
+			never fold it back into the broader parent's name just because it's related or lives \
+			nearby in the code. The parent's own name is reserved for that base capability itself.
 			- A change that MODIFIES, FIXES a bug in, REFACTORS (behavior-preserving), or improves \
 			the PERFORMANCE of something that already exists belongs to that EXISTING feature's \
-			name, even if the diff looks quite different from the feature's original introduction - \
-			do not invent a new name just because the code shape changed.
-			- If the diff itself shows the change touching shared state, a shared file, or a common \
-			data structure that another known feature also depends on, consider that feature \
-			affected too and list it as well (comma-separated) - but only based on what the diff \
-			actually shows here, never speculation about code not shown to you.
+			name (parent or child, whichever one the diff is actually changing), even if the diff \
+			looks quite different from that feature's original introduction - do not invent a new \
+			name just because the code shape changed, and do not reuse a name for a genuinely \
+			different, newly-appearing capability just because it's convenient.
+			- If the diff shows two or more genuinely SEPARATE capabilities being added or changed - \
+			not just one feature's own internals touching a shared file - list all of them, \
+			comma-separated, rather than picking only the most prominent one.
+			- If the diff shows the change touching shared state, a shared file, or a common data \
+			structure that another known feature also depends on, consider that feature affected too \
+			and list it as well (comma-separated) - but only based on what the diff actually shows \
+			here, never speculation about code not shown to you.
 
 			Base your classification primarily on the actual code change in "change" - what files, \
 			functions, and logic were actually added or modified - not just the wording of \
@@ -83,13 +105,14 @@ public final class LlmFeatureSuggestionClient {
 
 			Pick a short, descriptive name of only ONE TO THREE words joined by underscore or \
 			hyphen, using only letters, digits, underscore or hyphen - no spaces or other \
-			punctuation - e.g. "login" or "shopping-cart", never something long or overspecific \
-			like "add-password-hashing-to-login-form". Only reuse an existing name if this commit's \
-			actual code change genuinely continues that same feature - never reuse one just because \
-			it happens to be the only (or most recent) name already known; an unrelated change must \
-			get its own new, accurately-descriptive name even when just one feature is known so far. \
-			This applies even to a small or seemingly trivial commit (a version bump, a typo fix, a \
-			comment tweak, ...) - never refuse to classify it.
+			punctuation - e.g. "login" or "password-reset", never something long or overspecific \
+			like "add-password-hashing-to-login-form". Only reuse an existing name (parent or child) \
+			if this commit's actual code change genuinely continues that exact same capability - \
+			never reuse one just because it happens to be the only (or most recent, or nearest \
+			parent) name already known; a distinct capability must get its own new, \
+			accurately-descriptive name even when just one feature is known so far. This applies \
+			even to a small or seemingly trivial commit (a version bump, a typo fix, a comment \
+			tweak, ...) - never refuse to classify it.
 
 			"documentation" and "misc" are two DIFFERENT fallbacks - do not blur them together: \
 			- Use "documentation" ONLY when the changed file itself is a docs file: a README, a \
@@ -109,7 +132,8 @@ public final class LlmFeatureSuggestionClient {
 			guess, nothing about the commit itself.
 
 			Example input:
-			Known feature names: (none yet)
+			Known feature names, each with the more general feature it was built on top of, when known:
+			(none yet)
 
 			Commit:
 			id: a1b2c3d
@@ -119,7 +143,21 @@ public final class LlmFeatureSuggestionClient {
 			+def login(username, password): ...
 
 			Example output:
-			{"configuration": "login"}""";
+			{"configuration": "login"}
+
+			Example input (later commit, "login" now known):
+			Known feature names, each with the more general feature it was built on top of, when known:
+			- login
+
+			Commit:
+			id: e4f5a6b
+			summary: Add reset link
+			change:
+			+def send_password_reset_email(user): ...
+			+def reset_password(token, new_password): ...
+
+			Example output:
+			{"configuration": "password-reset"}""";
 
 	private final String endpointUrl;
 	private final String modelName;
@@ -202,6 +240,17 @@ public final class LlmFeatureSuggestionClient {
 	}
 
 	/**
+	 * One feature already known in the target repository, together with the more general feature
+	 * it was inferred to be built on top of ({@code parentName}, or {@code null} for a root/unknown
+	 * parent) - lets the prompt judge how specific a NEW feature name should be (see SYSTEM_PROMPT's
+	 * granularity guidance) instead of only ever seeing a flat list of names. This class has no
+	 * opinion on how {@code parentName} is computed; the caller supplies it (e.g. from a feature
+	 * hierarchy inferred from commit history).
+	 */
+	public record KnownFeature(String name, String parentName) {
+	}
+
+	/**
 	 * One batch's outcome: {@code configurations} always has one entry per input commit, in the
 	 * same order (blank where no suggestion is available), so callers can always populate a full,
 	 * if partially-empty, review table. {@code failureReason} is non-null if the call for at least
@@ -225,17 +274,16 @@ public final class LlmFeatureSuggestionClient {
 
 	/**
 	 * Suggests one configuration string per commit, in the same order as {@code commitsOldestFirst},
-	 * via one LLM call per commit. Deliberately does NOT grow {@code knownFeatureNames} with
-	 * results discovered earlier in the same call: a local model was observed over-eagerly
-	 * force-fitting a later, unrelated commit into whatever name had just been suggested, purely
-	 * because it was the only (or most recent) one available - worse than the naming-drift it would
-	 * otherwise avoid, since every suggestion here is human-reviewed anyway. Every commit is judged
-	 * only against the feature names that genuinely already existed before this import started.
-	 * Never throws.
+	 * via one LLM call per commit. Deliberately does NOT grow {@code knownFeatures} with results
+	 * discovered earlier in the same call: a local model was observed over-eagerly force-fitting a
+	 * later, unrelated commit into whatever name had just been suggested, purely because it was the
+	 * only (or most recent) one available - worse than the naming-drift it would otherwise avoid,
+	 * since every suggestion here is human-reviewed anyway. Every commit is judged only against the
+	 * {@link KnownFeature}s the caller passed in for THIS call. Never throws.
 	 *
 	 * @param onProgress may be {@code null} if the caller doesn't care about progress.
 	 */
-	public SuggestionBatch suggestConfigurations(List<CommitForSuggestion> commitsOldestFirst, Collection<String> knownFeatureNames, ProgressListener onProgress) {
+	public SuggestionBatch suggestConfigurations(List<CommitForSuggestion> commitsOldestFirst, Collection<KnownFeature> knownFeatures, ProgressListener onProgress) {
 		List<String> configurations = new ArrayList<>(commitsOldestFirst.size());
 		List<String> failedCommitIds = new ArrayList<>();
 		String lastFailureReason = null;
@@ -246,7 +294,7 @@ public final class LlmFeatureSuggestionClient {
 			if (onProgress != null) {
 				onProgress.onCommitStarting(index, total, commit.commitId());
 			}
-			OneResult result = suggestOneConfiguration(commit, knownFeatureNames);
+			OneResult result = suggestOneConfiguration(commit, knownFeatures);
 			configurations.add(result.configuration() == null ? "" : result.configuration());
 			if (result.failureReason() != null) {
 				failedCommitIds.add(commit.commitId());
@@ -264,10 +312,10 @@ public final class LlmFeatureSuggestionClient {
 	private record OneResult(String configuration, String failureReason) {
 	}
 
-	private OneResult suggestOneConfiguration(CommitForSuggestion commit, Collection<String> knownFeatureNames) {
+	private OneResult suggestOneConfiguration(CommitForSuggestion commit, Collection<KnownFeature> knownFeatures) {
 		URI chatCompletionsUri = resolveChatCompletionsUri(this.endpointUrl);
 		try {
-			String requestBody = buildRequestBody(commit, knownFeatureNames, this.modelName);
+			String requestBody = buildRequestBody(commit, knownFeatures, this.modelName);
 			HttpRequest request = HttpRequest.newBuilder()
 					.uri(chatCompletionsUri)
 					.header("Content-Type", "application/json")
@@ -317,7 +365,7 @@ public final class LlmFeatureSuggestionClient {
 	}
 
 	/** Pure, network-free: the exact JSON body {@link #suggestConfigurations} POSTs for one commit. Package-visible for testing. */
-	static String buildRequestBody(CommitForSuggestion commit, Collection<String> knownFeatureNames, String modelName) {
+	static String buildRequestBody(CommitForSuggestion commit, Collection<KnownFeature> knownFeatures, String modelName) {
 		ObjectNode root = MAPPER.createObjectNode();
 		root.put("model", modelName);
 		root.put("stream", false);
@@ -334,15 +382,23 @@ public final class LlmFeatureSuggestionClient {
 
 		ObjectNode userMessage = messages.addObject();
 		userMessage.put("role", "user");
-		userMessage.put("content", buildUserContent(commit, knownFeatureNames));
+		userMessage.put("content", buildUserContent(commit, knownFeatures));
 
 		return root.toString();
 	}
 
-	private static String buildUserContent(CommitForSuggestion commit, Collection<String> knownFeatureNames) {
+	private static String buildUserContent(CommitForSuggestion commit, Collection<KnownFeature> knownFeatures) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("Known feature names: ");
-		sb.append(knownFeatureNames.isEmpty() ? "(none yet)" : String.join(", ", knownFeatureNames));
+		sb.append("Known feature names, each with the more general feature it was built on top of, when known:\n");
+		if (knownFeatures.isEmpty()) {
+			sb.append("(none yet)");
+		} else {
+			sb.append(knownFeatures.stream()
+					.map(feature -> feature.parentName() == null || feature.parentName().isBlank()
+							? "- " + feature.name()
+							: "- " + feature.name() + " (built on: " + feature.parentName() + ")")
+					.collect(Collectors.joining("\n")));
+		}
 		// deliberately NOT "commitId:"/"message:" as labels - those match output JSON keys closely
 		// enough that a local model has been observed just reformatting this input record verbatim
 		// into JSON instead of classifying it (see SYSTEM_PROMPT)

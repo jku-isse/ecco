@@ -5,10 +5,10 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.TableColumns;
+import at.jku.isse.ecco.gui.view.FeatureModelTree;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.LlmPreferences;
@@ -16,12 +16,11 @@ import at.jku.isse.ecco.service.git.GitCommitInfo;
 import at.jku.isse.ecco.service.git.GitHistoryReader;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
-import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -44,6 +43,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,27 +63,40 @@ import java.util.stream.Collectors;
 
 /**
  * Imports a contiguous range of commits from a LOCAL git clone as a sequence of ecco commits -
- * the "Import from Git" dialog. Same overall wizard shape as {@link CommitView}, reusing that
- * class's exact patterns (editable {@code TableView} row model, background {@link Task} +
- * {@code Platform.runLater} log lines, {@code succeeded()/cancelled()/failed()} wiring into
- * {@link OperationView}'s success/error header helpers) rather than inventing a new one:
+ * the "Import from Git" dialog. Deliberately interactive rather than a batch pipeline: a large
+ * range is imported one commit at a time, pausing for the user before EVERY commit, since a
+ * wrong automatic label silently corrupts every later analysis of the repository and a batch of
+ * dozens/hundreds of commits reviewed all at once (the previous design) makes that easy to
+ * rubber-stamp past.
  * <ol>
  *     <li>{@link #step1()} - pick the local repo and a commit range from a table of its history,
  *     and optionally opt out of LLM suggestions via a checkbox (disabled when no model is
  *     configured, checked by default otherwise).</li>
- *     <li>{@link #suggestFeatures(List)} - if suggestions weren't opted out of, a background
- *     {@link Task} asks a local LLM (via {@link LlmFeatureSuggestionClient}, configured through
- *     {@link LlmPreferences}) to suggest a feature configuration for each selected commit, given
- *     its message/diff and the features already known in the target repository.</li>
- *     <li>{@link #step2(List, List)} - review/edit each commit's feature configuration string,
- *     pre-filled with the LLM's suggestion (or blank if suggestion failed/was skipped) - nothing
- *     is committed into ecco until this step is confirmed, since a wrong automatic label would
- *     silently corrupt every later analysis of the repository.</li>
- *     <li>{@link #step3(List)} - the actual import: each commit's tree is extracted to a fresh
- *     temp directory (never the clone's own working directory, which may be in active use) and
- *     committed via the same {@code service.setBaseDir(...)}/{@code service.commit(...)} calls
- *     {@link CommitView} uses, oldest commit first (later ecco commits must build on earlier
- *     ones - see this repository's Feature Model tab).</li>
+ *     <li>{@link #startImport(List, boolean)} kicks off a loop, driven by
+ *     {@link #processNextCommit(List, int, boolean)}, that for each commit in turn:
+ *     <ul>
+ *         <li>{@link #suggestOneCommit(List, int, boolean)} - if suggestions weren't opted out
+ *         of, asks a local LLM (via {@link LlmFeatureSuggestionClient}, configured through
+ *         {@link LlmPreferences}) for JUST that one commit's suggested feature(s), given its
+ *         message/diff and the feature hierarchy inferred so far from commits already imported in
+ *         this run ({@link FeatureModelTree}, the same computation behind the Feature Model tab -
+ *         a growing knowledge graph, not just a flat name list, so the LLM can tell a genuinely new
+ *         capability built on an existing feature from a change to that feature itself) - one
+ *         request per commit rather than one batched request up front, so the user reviews each
+ *         suggestion before the next one is even asked for.</li>
+ *         <li>{@link #showCommitReview(List, int, boolean, String, String)} - shows that single
+ *         commit's message and an editable configuration field, pre-filled with the LLM's
+ *         suggestion merged onto whatever was actually imported so far (or blank if suggestions
+ *         were skipped/failed), with live constraint-violation feedback. The user picks Import,
+ *         Skip (leave this commit out, move on), or Stop (end the import here, keeping whatever
+ *         was already imported).</li>
+ *         <li>{@link #importOneCommit(List, int, boolean, String)} - only on Import: the commit's
+ *         tree is extracted to a fresh temp directory (never the clone's own working directory,
+ *         which may be in active use) and committed via the same
+ *         {@code service.setBaseDir(...)}/{@code service.commit(...)} calls {@link CommitView}
+ *         uses, then the loop advances to the next commit.</li>
+ *     </ul>
+ *     </li>
  * </ol>
  */
 public class ImportGitView extends OperationView implements EccoListener {
@@ -95,6 +108,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 	private final GitHistoryReader gitHistoryReader = new GitHistoryReader();
 
 	private Path repoDir;
+
+	// state accumulated across the per-commit loop started by startImport() - reset there on
+	// every run (a "Back" from the first commit's screen returns to step1(), which can start a
+	// fresh run)
+	private LinkedHashSet<String> runningFeatures = new LinkedHashSet<>();
+	private List<String> allConstraintWarnings = new ArrayList<>();
+	private Commit lastCommit;
+	private int importedCount;
 
 	private SplitPane splitPane;
 	private CommitDetailView commitDetailView;
@@ -223,11 +244,17 @@ public class ImportGitView extends OperationView implements EccoListener {
 			int maxIndex = Collections.max(selectedIndices);
 			// table is already oldest-first, matching the order the import itself needs
 			List<GitCommitInfo> oldestFirst = new ArrayList<>(commitsTable.getItems().subList(minIndex, maxIndex + 1));
-			if (suggestFeaturesCheckBox.isSelected()) {
-				this.suggestFeatures(oldestFirst);
-			} else {
-				this.step2(oldestFirst, Collections.nCopies(oldestFirst.size(), ""), null);
+
+			boolean useLlm = suggestFeaturesCheckBox.isSelected();
+			if (useLlm && LlmPreferences.getModelName().isBlank()) {
+				Alert alert = new Alert(Alert.AlertType.WARNING,
+						"No LLM model name is configured (Preferences → LLM Settings), so feature suggestions " +
+								"would fail for every commit. Skipping suggestions - you can still fill in each " +
+								"commit's configuration by hand on the next screen.");
+				alert.showAndWait();
+				useLlm = false;
 			}
+			this.startImport(oldestFirst, useLlm);
 		});
 
 		this.fit();
@@ -265,38 +292,55 @@ public class ImportGitView extends OperationView implements EccoListener {
 	}
 
 	/**
-	 * Asks a local LLM to suggest a feature configuration per commit before showing the editable
-	 * review table - a background {@link Task} so the (network) call never blocks the FX thread,
-	 * with a minimal "please wait" UI of its own since this can take a while for a large range and
-	 * there's nothing more specific to show progress against (unlike {@link #step3}'s per-commit
-	 * log, this is genuinely one request for the whole batch).
-	 * <p>
-	 * Only called when {@link #step1()}'s "Suggest features using a local LLM" checkbox is checked
-	 * (unchecked skips straight to {@link #step2} - see {@code nextButton}'s handler); a user can
-	 * always opt out per-import, even with a model configured. The blank-model-name guard below is
-	 * now just a defensive fallback, since the checkbox is disabled whenever no model is configured.
+	 * Kicks off the interactive per-commit loop over {@code commitsOldestFirst}, resetting all
+	 * state accumulated by a previous run of this same dialog (reachable via "Back" from the first
+	 * commit's screen, see {@link #navButtons(int, List)}).
 	 */
-	private void suggestFeatures(List<GitCommitInfo> commitsOldestFirst) {
-		if (LlmPreferences.getModelName().isBlank()) {
-			Alert alert = new Alert(Alert.AlertType.WARNING,
-					"No LLM model name is configured (Preferences → LLM Settings), so feature suggestions " +
-							"would fail for every commit. Skipping suggestions - you can still fill in each " +
-							"commit's configuration by hand on the next screen.");
-			alert.showAndWait();
-			this.step2(commitsOldestFirst, Collections.nCopies(commitsOldestFirst.size(), ""), null);
+	private void startImport(List<GitCommitInfo> commitsOldestFirst, boolean useLlm) {
+		this.runningFeatures = new LinkedHashSet<>();
+		this.allConstraintWarnings = new ArrayList<>();
+		this.lastCommit = null;
+		this.importedCount = 0;
+
+		this.logArea.clear();
+		this.service.addListener(this);
+
+		this.processNextCommit(commitsOldestFirst, 0, useLlm);
+	}
+
+	/**
+	 * Advances the per-commit loop: either finishes (all commits processed), asks the LLM for the
+	 * next commit's suggestion, or - if suggestions are off - goes straight to that commit's review
+	 * screen with a blank/carried-forward default.
+	 */
+	private void processNextCommit(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm) {
+		if (index >= commitsOldestFirst.size()) {
+			this.finishImport(commitsOldestFirst.size(), false);
 			return;
 		}
+		if (useLlm) {
+			this.suggestOneCommit(commitsOldestFirst, index, useLlm);
+		} else {
+			this.showCommitReview(commitsOldestFirst, index, useLlm, defaultConfigurationText(this.runningFeatures, ""), null);
+		}
+	}
 
-		Button backButton = new Button("Back");
-		backButton.setOnAction(event -> this.step1());
-		this.leftButtons.getChildren().setAll(backButton);
+	/**
+	 * Asks the LLM for just ONE commit's suggested configuration (a background {@link Task}, since
+	 * the network call must never block the FX thread) before showing that commit's review screen -
+	 * unlike the previous batch design, later commits aren't even asked about until this one has
+	 * been reviewed.
+	 */
+	private void suggestOneCommit(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm) {
+		GitCommitInfo commit = commitsOldestFirst.get(index);
 
-		this.headerLabel.setText("Suggesting Features...");
+		this.navButtons(index, commitsOldestFirst);
+		this.headerLabel.setText("Suggesting Feature (commit " + (index + 1) + " of " + commitsOldestFirst.size() + ")");
 		this.rightButtons.getChildren().clear();
 
 		ProgressIndicator progressIndicator = new ProgressIndicator();
 		progressIndicator.setMaxSize(60, 60);
-		Label progressLabel = new Label("Asking the local LLM to suggest feature configurations...");
+		Label progressLabel = new Label("Asking the local LLM to suggest a feature configuration for commit " + commit.getShortId() + "...");
 		progressLabel.setWrapText(true);
 		VBox progressBox = new VBox(10, progressIndicator, progressLabel);
 		progressBox.setAlignment(Pos.CENTER);
@@ -308,116 +352,63 @@ public class ImportGitView extends OperationView implements EccoListener {
 		Task<LlmFeatureSuggestionClient.SuggestionBatch> suggestTask = new Task<>() {
 			@Override
 			protected LlmFeatureSuggestionClient.SuggestionBatch call() {
-				int total = commitsOldestFirst.size();
-				this.updateProgress(0, total);
-				this.updateMessage("Reading commit diffs...");
+				String diff = ImportGitView.this.gitHistoryReader.getDiff(ImportGitView.this.repoDir, commit.getId());
+				List<LlmFeatureSuggestionClient.CommitForSuggestion> commitForSuggestion = List.of(
+						new LlmFeatureSuggestionClient.CommitForSuggestion(commit.getShortId(), commit.getMessage(), diff));
 
-				List<LlmFeatureSuggestionClient.CommitForSuggestion> commitsForSuggestion = commitsOldestFirst.stream()
-						.map(commit -> new LlmFeatureSuggestionClient.CommitForSuggestion(
-								commit.getShortId(), commit.getMessage(),
-								ImportGitView.this.gitHistoryReader.getDiff(ImportGitView.this.repoDir, commit.getId())))
-						.collect(Collectors.toList());
-
-				List<String> knownFeatureNames = ImportGitView.this.service.getRepository().getFeatures().stream()
-						.map(Feature::getName)
+				// the feature hierarchy inferred so far from the commits actually imported in this
+				// run (see FeatureModelTree, also what drives the Feature Model tab's tree) - not
+				// just a flat list of names, so the model can tell a genuinely new, narrower
+				// capability built on an existing feature from a change to that feature itself
+				List<LlmFeatureSuggestionClient.KnownFeature> knownFeatures = FeatureModelTree.compute(ImportGitView.this.service.getRepository()).stream()
+						.map(placement -> new LlmFeatureSuggestionClient.KnownFeature(
+								placement.feature.getName(),
+								placement.parent == null ? null : placement.parent.getName()))
 						.collect(Collectors.toList());
 
 				LlmFeatureSuggestionClient client = new LlmFeatureSuggestionClient(LlmPreferences.getEndpointUrl(), LlmPreferences.getModelName());
-				return client.suggestConfigurations(commitsForSuggestion, knownFeatureNames, (commitIndex, totalCommits, commitId) -> {
-					this.updateProgress(commitIndex, totalCommits);
-					this.updateMessage("Suggesting configuration for commit " + (commitIndex + 1) + " of " + totalCommits + " (" + commitId + ")...");
-				});
+				return client.suggestConfigurations(commitForSuggestion, knownFeatures, null);
 			}
 
 			@Override
 			public void succeeded() {
 				super.succeeded();
-				ImportGitView.this.step2(commitsOldestFirst, this.getValue().configurations(), this.getValue().failureReason());
+				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue();
+				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, batch.configurations().get(0));
+				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, defaultConfig, batch.failureReason());
 			}
 
 			@Override
 			public void failed() {
 				super.failed();
 				// LlmFeatureSuggestionClient itself never throws (see its javadoc), but gathering
-				// its inputs above (reading each commit's diff, listing known features) can - e.g. a
+				// its inputs above (reading this commit's diff, listing known features) can - e.g. a
 				// commit JGit can't diff cleanly, or a repository access problem. Surface it instead
-				// of silently landing on a review table that looks like the LLM just had no
-				// suggestions, then still let the user fill configurations in by hand.
+				// of silently landing on a review screen that looks like the LLM just had no
+				// suggestion, then still let the user fill the configuration in by hand.
 				new ExceptionAlert(this.getException()).show();
-				ImportGitView.this.step2(commitsOldestFirst, Collections.nCopies(commitsOldestFirst.size(), ""), null);
+				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, "");
+				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, defaultConfig, String.valueOf(this.getException()));
 			}
 		};
-		// indeterminate (spinning) until the first commit actually starts, then switches to a
-		// determinate fraction - progressProperty() is -1 (ProgressIndicator's indeterminate value)
-		// until the task's first updateProgress() call above
-		progressIndicator.progressProperty().bind(suggestTask.progressProperty());
-		// a listener rather than a direct bind: messageProperty() starts out empty (no updateMessage()
-		// call yet has landed on the FX thread), and binding directly would blank progressLabel's
-		// initial text for that brief window instead of leaving it showing until the first real update
-		suggestTask.messageProperty().addListener((observable, oldMessage, newMessage) -> {
-			if (newMessage != null && !newMessage.isEmpty()) {
-				progressLabel.setText(newMessage);
-			}
-		});
 		new Thread(suggestTask).start();
 	}
 
 	/**
-	 * Turns each commit's LLM-suggested configuration - {@link LlmFeatureSuggestionClient} classifies
-	 * which feature(s) THAT COMMIT'S DIFF belongs to, in isolation (see its own javadoc for why) -
-	 * into the full configuration string {@link #step2} pre-fills for that commit, by accumulating
-	 * forward: commit i's default starts from commit i-1's already-accumulated feature set and adds
-	 * whatever new feature(s) commit i's own suggestion names, rather than showing only what that one
-	 * diff touched. A blank suggestion (LLM failed for that commit, or suggestions were skipped
-	 * entirely) carries the running set forward unchanged instead of blanking the row - ECCO's
-	 * Configuration represents the full variant at that point, not a delta, so "no new feature
-	 * detected" should never look like "no features at all". A genuine feature removal is something
-	 * a human still has to notice and edit out by hand here, same as every other suggestion - this
-	 * class never commits anything itself (see the class javadoc).
-	 *
-	 * @return a new list, same size/order as {@code suggestedConfigurations}.
+	 * Editable review of ONE commit's feature configuration string, pre-filled with
+	 * {@code defaultConfig} - nothing is committed into ecco until this screen's Import button is
+	 * clicked, and only for this one commit.
 	 */
-	static List<String> accumulateConfigurations(List<String> suggestedConfigurations) {
-		List<String> accumulated = new ArrayList<>(suggestedConfigurations.size());
-		LinkedHashSet<String> running = new LinkedHashSet<>();
-		for (String suggestion : suggestedConfigurations) {
-			if (suggestion != null) {
-				for (String token : suggestion.split(",")) {
-					String trimmed = token.trim();
-					if (!trimmed.isEmpty()) {
-						running.add(trimmed);
-					}
-				}
-			}
-			accumulated.add(String.join(", ", running));
-		}
-		return accumulated;
-	}
+	private void showCommitReview(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, String defaultConfig, String suggestionFailureReason) {
+		GitCommitInfo commit = commitsOldestFirst.get(index);
 
-	/**
-	 * Editable review of the feature configuration string that will be used for each selected
-	 * commit, oldest first, pre-filled from {@code suggestedConfigurations} (same order/size as
-	 * {@code commitsOldestFirst}) - nothing is committed into ecco until "Import" is clicked here.
-	 */
-	private void step2(List<GitCommitInfo> commitsOldestFirst, List<String> suggestedConfigurations, String suggestionFailureReason) {
-		Button backButton = new Button("Back");
-		backButton.setOnAction(event -> this.step1());
-		this.leftButtons.getChildren().setAll(backButton);
+		this.navButtons(index, commitsOldestFirst);
+		this.headerLabel.setText("Review Commit (" + (index + 1) + " of " + commitsOldestFirst.size() + ")");
 
-		this.headerLabel.setText("Review Feature Configuration");
-
+		Button skipButton = new Button("Skip");
 		Button importButton = new Button("Import");
-		this.rightButtons.getChildren().setAll(importButton);
-
-
-		List<String> accumulatedConfigurations = accumulateConfigurations(suggestedConfigurations);
-		ObservableList<CommitEntry> commitData = FXCollections.observableArrayList();
-		for (int i = 0; i < commitsOldestFirst.size(); i++) {
-			String suggestion = i < accumulatedConfigurations.size() ? accumulatedConfigurations.get(i) : "";
-			CommitEntry commitEntry = new CommitEntry(commitsOldestFirst.get(i), suggestion);
-			commitData.add(commitEntry);
-		}
-		refreshAllConstraintWarnings(commitData);
+		importButton.setDefaultButton(true);
+		this.rightButtons.getChildren().setAll(skipButton, importButton);
 
 		GridPane gridPane = new GridPane();
 		gridPane.setHgap(10);
@@ -434,182 +425,203 @@ public class ImportGitView extends OperationView implements EccoListener {
 		int row = 0;
 
 		if (suggestionFailureReason != null) {
-			Label warningLabel = new Label("LLM feature suggestions failed, so Configuration is blank below - " +
-					"fill it in by hand, or go Back and retry once this is fixed. Reason: " + suggestionFailureReason);
+			Label warningLabel = new Label("LLM feature suggestion failed for this commit, so Configuration is " +
+					"blank/unchanged below - fill it in by hand. Reason: " + suggestionFailureReason);
 			warningLabel.setWrapText(true);
 			warningLabel.setStyle("-fx-text-fill: #cc6600;");
 			gridPane.add(warningLabel, 0, row, 1, 1);
 			row++;
 		}
 
-		Label label = new Label("Commits to import, oldest first - edit Configuration before importing:");
-		gridPane.add(label, 0, row, 1, 1);
+		Label commitLabel = new Label(commit.getShortId() + " — " + commit.getMessage());
+		commitLabel.setWrapText(true);
+		commitLabel.setStyle("-fx-font-weight: bold;");
+		gridPane.add(commitLabel, 0, row, 1, 1);
 		row++;
 
-		TableView<CommitEntry> reviewTable = this.buildReviewTable(commitData);
-		gridPane.add(reviewTable, 0, row, 1, 1);
-		GridPane.setVgrow(reviewTable, Priority.ALWAYS);
+		Label configLabel = new Label("Configuration:");
+		gridPane.add(configLabel, 0, row, 1, 1);
 		row++;
+
+		TextField configField = new TextField(defaultConfig == null ? "" : defaultConfig);
+		gridPane.add(configField, 0, row, 1, 1);
+		row++;
+
+		Label constraintWarningLabel = new Label();
+		constraintWarningLabel.setWrapText(true);
+		constraintWarningLabel.setStyle("-fx-text-fill: firebrick;");
+		gridPane.add(constraintWarningLabel, 0, row, 1, 1);
+		row++;
+
+		// live constraint-violation feedback as the configuration is edited, debounced so typing
+		// doesn't spawn a background check per keystroke -- only one commit's field is ever live at
+		// once here, unlike the previous batch review table, so a short debounce is enough (no need
+		// for that table's single-background-thread queueing).
+		PauseTransition debounce = new PauseTransition(Duration.millis(400));
+		debounce.setOnFinished(event -> {
+			String configurationText = configField.getText();
+			new Thread(() -> {
+				String description = (configurationText == null || configurationText.isBlank()
+						|| !this.service.isInitialized() || this.service.isWriteInProgress())
+						? "" : this.describeConstraintViolations(configurationText);
+				Platform.runLater(() -> constraintWarningLabel.setText(description));
+			}).start();
+		});
+		configField.textProperty().addListener((observable, oldValue, newValue) -> debounce.playFromStart());
+		debounce.playFromStart();
+
+		skipButton.setOnAction(event -> this.processNextCommit(commitsOldestFirst, index + 1, useLlm));
 
 		importButton.setOnAction(event -> {
-			if (!confirmProceedDespiteViolations(commitData)) return;
-			this.step3(new ArrayList<>(commitData));
-		});
-
-		this.fit();
-	}
-
-	/**
-	 * Builds the editable review table (id/message/configuration/warning columns) shown in
-	 * {@link #step2}. Split out of {@link #step2} purely for readability -- no behavior change from
-	 * the previous single-method version.
-	 */
-	private TableView<CommitEntry> buildReviewTable(ObservableList<CommitEntry> commitData) {
-		TableView<CommitEntry> reviewTable = new TableView<>();
-		reviewTable.setEditable(true);
-		reviewTable.setItems(commitData);
-		reviewTable.setPrefHeight(300);
-
-		TableColumn<CommitEntry, String> idCol = new TableColumn<>("Commit");
-		idCol.setCellValueFactory(param -> param.getValue().shortIdProperty());
-		idCol.setEditable(false);
-
-		TableColumn<CommitEntry, String> messageCol = new TableColumn<>("Message");
-		messageCol.setCellValueFactory(param -> param.getValue().messageProperty());
-		messageCol.setEditable(false);
-
-		TableColumn<CommitEntry, String> configCol = new TableColumn<>("Configuration");
-		configCol.setCellValueFactory(param -> param.getValue().configurationProperty());
-		configCol.setCellFactory(OperationView.editableStringCellFactory());
-		configCol.setOnEditCommit(event -> {
-			event.getRowValue().setConfiguration(event.getNewValue());
-			refreshConstraintWarning(event.getRowValue());
-		});
-
-		// live constraint-violation feedback as a configuration is entered/edited -- see
-		// EccoService.checkConstraintViolations; refreshed above and on initial population.
-		TableColumn<CommitEntry, String> warningCol = new TableColumn<>("Constraint Warning");
-		warningCol.setCellValueFactory(param -> param.getValue().warningProperty());
-		warningCol.setCellFactory(col -> new javafx.scene.control.TableCell<CommitEntry, String>() {
-			@Override
-			protected void updateItem(String item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty || item == null || item.isEmpty()) {
-					setText(null);
-					setStyle("");
-				} else {
-					setText(item);
-					setStyle("-fx-text-fill: firebrick; -fx-wrap-text: true;");
-				}
+			String warning = constraintWarningLabel.getText();
+			if (warning != null && !warning.isEmpty()) {
+				Alert alert = new Alert(Alert.AlertType.CONFIRMATION, warning + "\n\nDo you want to import anyway?");
+				alert.setHeaderText("Constraint violation");
+				Optional<ButtonType> result = alert.showAndWait();
+				if (result.isEmpty() || result.get() != ButtonType.OK) return;
 			}
+			this.importOneCommit(commitsOldestFirst, index, useLlm, configField.getText());
 		});
 
-		reviewTable.getColumns().setAll(idCol, messageCol, configCol, warningCol);
-
-		TableColumns.defaultWidth(idCol, 90);
-		TableColumns.fitToContent(configCol, commitData);
-		TableColumns.fitToContent(warningCol, commitData);
-		TableColumns.growToFill(reviewTable, messageCol);
-
-		return reviewTable;
+		this.fit();
 	}
 
 	/**
-	 * The actual import: extract, {@code setBaseDir}, {@code commit} - one iteration per reviewed
-	 * commit, oldest first - exactly mirroring {@link CommitView}'s commit-loop {@link Task}.
+	 * The actual import of ONE commit - extract, {@code setBaseDir}, {@code commit} - then advances
+	 * {@link #processNextCommit(List, int, boolean)} to the next one on success.
 	 */
-	private void step3(List<CommitEntry> reviewedEntries) {
-		Button cancelButton = new Button("Cancel");
-		this.leftButtons.getChildren().setAll(cancelButton);
+	private void importOneCommit(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, String configurationText) {
+		GitCommitInfo commit = commitsOldestFirst.get(index);
 
-		this.headerLabel.setText("Importing ...");
-
+		this.leftButtons.getChildren().clear();
 		this.rightButtons.getChildren().clear();
+		this.headerLabel.setText("Importing (commit " + (index + 1) + " of " + commitsOldestFirst.size() + ")");
 
-
-		this.splitPane.setPadding(new Insets(0, 10, 10, 10));
-		this.setCenter(this.splitPane);
+		ProgressIndicator progressIndicator = new ProgressIndicator();
+		progressIndicator.setMaxSize(60, 60);
+		Label progressLabel = new Label("Importing commit " + commit.getShortId() + "...");
+		VBox progressBox = new VBox(10, progressIndicator, progressLabel);
+		progressBox.setAlignment(Pos.CENTER);
+		progressBox.setPadding(new Insets(30));
+		this.setCenter(progressBox);
 
 		this.fit();
-
-		this.logArea.clear();
-		this.service.addListener(this);
-
-		// Batch import can span many commits; a modal Alert per violating commit would be
-		// disruptive, so violations are logged inline (like the "Imported ..." lines) and only
-		// summarized in one Alert after the whole import finishes.
-		List<String> allConstraintWarnings = new ArrayList<>();
 
 		Task<Commit> importTask = new Task<Commit>() {
 			@Override
 			public Commit call() throws IOException {
-				Commit lastCommit = null;
-				for (CommitEntry entry : reviewedEntries) {
-					Path tempDir = Files.createTempDirectory("ecco-git-import");
-					try {
-						ImportGitView.this.gitHistoryReader.extractCommitTree(ImportGitView.this.repoDir, entry.getCommitId(), tempDir);
-						ImportGitView.this.service.setBaseDir(tempDir);
-						String configurationString = entry.getConfiguration();
-						long startMillis = System.currentTimeMillis();
-						lastCommit = (configurationString != null && !configurationString.isEmpty())
-								? ImportGitView.this.service.commit(entry.getMessage(), configurationString)
-								: ImportGitView.this.service.commit(entry.getMessage());
-						double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
-						Platform.runLater(() -> ImportGitView.this.logArea.appendText(
-								String.format("Imported %s (%s) in %.2f seconds.%n", entry.getShortId(), entry.getMessage(), durationSeconds)));
+				Path tempDir = Files.createTempDirectory("ecco-git-import");
+				try {
+					ImportGitView.this.gitHistoryReader.extractCommitTree(ImportGitView.this.repoDir, commit.getId(), tempDir);
+					ImportGitView.this.service.setBaseDir(tempDir);
+					long startMillis = System.currentTimeMillis();
+					Commit result = (configurationText != null && !configurationText.isEmpty())
+							? ImportGitView.this.service.commit(commit.getMessage(), configurationText)
+							: ImportGitView.this.service.commit(commit.getMessage());
+					double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
+					Platform.runLater(() -> ImportGitView.this.logArea.appendText(
+							String.format("Imported %s (%s) in %.2f seconds.%n", commit.getShortId(), commit.getMessage(), durationSeconds)));
 
-						Commit committedEntry = lastCommit;
-						List<String> violations = ImportGitView.this.service.checkConstraintViolations(committedEntry.getConfiguration());
-						if (!violations.isEmpty()) {
-							allConstraintWarnings.addAll(violations);
-							Platform.runLater(() -> {
-								for (String violation : violations)
-									ImportGitView.this.logArea.appendText("CONSTRAINT: " + entry.getShortId() + ": " + violation + System.lineSeparator());
-							});
-						}
-					} finally {
-						deleteRecursively(tempDir);
+					List<String> violations = ImportGitView.this.service.checkConstraintViolations(result.getConfiguration());
+					if (!violations.isEmpty()) {
+						ImportGitView.this.allConstraintWarnings.addAll(violations);
+						Platform.runLater(() -> {
+							for (String violation : violations)
+								ImportGitView.this.logArea.appendText("CONSTRAINT: " + commit.getShortId() + ": " + violation + System.lineSeparator());
+						});
 					}
+					return result;
+				} finally {
+					deleteRecursively(tempDir);
 				}
-				return lastCommit;
 			}
 
 			@Override
 			public void succeeded() {
 				super.succeeded();
-				ImportGitView.this.service.removeListener(ImportGitView.this);
-				ImportGitView.this.commitDetailView.showCommit(this.getValue());
-				ImportGitView.this.splitPane.getItems().setAll(ImportGitView.this.logArea, ImportGitView.this.commitDetailView);
-				ImportGitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
-				ImportGitView.this.showSuccessHeader();
-				if (!allConstraintWarnings.isEmpty()) {
-					Alert alert = new Alert(Alert.AlertType.WARNING,
-							"Imported commits violate accepted constraint(s):\n" + String.join("\n", allConstraintWarnings));
-					alert.showAndWait();
-				}
+				ImportGitView.this.lastCommit = this.getValue();
+				ImportGitView.this.importedCount++;
+				applyConfigurationToRunning(ImportGitView.this.runningFeatures, configurationText);
+				ImportGitView.this.processNextCommit(commitsOldestFirst, index + 1, useLlm);
 			}
 
 			@Override
 			public void cancelled() {
 				super.cancelled();
-				ImportGitView.this.service.removeListener(ImportGitView.this);
-				ImportGitView.this.commitDetailView.showCommit(null);
-				ImportGitView.this.splitPane.getItems().setAll(ImportGitView.this.logArea, new ExceptionTextArea(this.getException()));
-				ImportGitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
-				ImportGitView.this.showErrorHeader();
+				ImportGitView.this.reportImportFailure(this.getException());
 			}
 
 			@Override
 			public void failed() {
 				super.failed();
-				ImportGitView.this.service.removeListener(ImportGitView.this);
-				ImportGitView.this.commitDetailView.showCommit(null);
-				ImportGitView.this.splitPane.getItems().setAll(ImportGitView.this.logArea, new ExceptionTextArea(this.getException()));
-				ImportGitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
-				ImportGitView.this.showErrorHeader();
+				ImportGitView.this.reportImportFailure(this.getException());
 			}
 		};
 		new Thread(importTask).start();
+	}
+
+	/**
+	 * Left-hand nav button for the currently-shown commit's suggest/review screen: "Back" to
+	 * {@link #step1()} while the very first commit hasn't been imported yet (nothing to lose), or
+	 * "Stop" once at least one commit may already be imported (those stay imported either way - see
+	 * {@link #finishImport(int, boolean)} - so going back to repository selection would be
+	 * misleading).
+	 */
+	private void navButtons(int index, List<GitCommitInfo> commitsOldestFirst) {
+		if (index == 0) {
+			Button backButton = new Button("Back");
+			backButton.setOnAction(event -> {
+				// startImport() already registered this listener; undo that here since this run is
+				// being abandoned before importOneCommit()/finishImport() would otherwise remove it,
+				// so a later run doesn't end up double-registered.
+				this.service.removeListener(this);
+				this.step1();
+			});
+			this.leftButtons.getChildren().setAll(backButton);
+		} else {
+			Button stopButton = new Button("Stop");
+			stopButton.setOnAction(event -> this.finishImport(commitsOldestFirst.size(), true));
+			this.leftButtons.getChildren().setAll(stopButton);
+		}
+	}
+
+	/**
+	 * Ends the per-commit loop, successfully - either all commits were processed, or the user
+	 * clicked "Stop" partway through. Whatever was already imported (via {@link #importOneCommit})
+	 * is already persisted in ecco either way; this just shows it.
+	 */
+	private void finishImport(int totalCommits, boolean stoppedEarly) {
+		this.service.removeListener(this);
+
+		if (stoppedEarly) {
+			this.logArea.appendText(String.format("Stopped: imported %d of %d commit(s).%n", this.importedCount, totalCommits));
+		}
+
+		this.commitDetailView.showCommit(this.lastCommit);
+		this.splitPane.getItems().setAll(this.logArea, this.commitDetailView);
+		this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
+		this.splitPane.setPadding(new Insets(0, 10, 10, 10));
+		this.setCenter(this.splitPane);
+		this.showSuccessHeader();
+		this.fit();
+
+		if (!this.allConstraintWarnings.isEmpty()) {
+			Alert alert = new Alert(Alert.AlertType.WARNING,
+					"Imported commits violate accepted constraint(s):\n" + String.join("\n", this.allConstraintWarnings));
+			alert.showAndWait();
+		}
+	}
+
+	/** Ends the per-commit loop on a real failure (as opposed to {@link #finishImport}'s success/stop). */
+	private void reportImportFailure(Throwable exception) {
+		this.service.removeListener(this);
+		this.commitDetailView.showCommit(null);
+		this.splitPane.getItems().setAll(this.logArea, new ExceptionTextArea(exception));
+		this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
+		this.splitPane.setPadding(new Insets(0, 10, 10, 10));
+		this.setCenter(this.splitPane);
+		this.showErrorHeader();
+		this.fit();
 	}
 
 	private static void deleteRecursively(Path directory) throws IOException {
@@ -628,45 +640,6 @@ public class ImportGitView extends OperationView implements EccoListener {
 		});
 	}
 
-
-	/**
-	 * Live constraint-violation feedback (see {@code EccoService#checkConstraintViolations}) for one
-	 * row's configuration, computed off the FX thread and written back into {@code entry}'s
-	 * {@code warningProperty()} -- the review table's cell factory renders it in place.
-	 */
-	private void refreshConstraintWarning(CommitEntry entry) {
-		String configurationString = entry.getConfiguration();
-		if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()
-				|| this.service.isWriteInProgress()) {
-			entry.setWarning("");
-			return;
-		}
-		new Thread(() -> {
-			String description = describeConstraintViolations(configurationString);
-			Platform.runLater(() -> entry.setWarning(description));
-		}).start();
-	}
-
-	/**
-	 * Same as {@link #refreshConstraintWarning}, but for every row in the initial review-table
-	 * population at once, on a SINGLE background thread that processes them one at a time - not one
-	 * thread per row. A large "Import from Git" range (dozens to hundreds of commits) would otherwise
-	 * fire that many threads into {@link EccoService} simultaneously, which has a known history of
-	 * unsynchronized-state bugs under concurrent access (see e.g. the Association/AssociationCounter
-	 * race this project already hit once).
-	 */
-	private void refreshAllConstraintWarnings(List<CommitEntry> entries) {
-		new Thread(() -> {
-			for (CommitEntry entry : entries) {
-				String configurationString = entry.getConfiguration();
-				String description = (configurationString == null || configurationString.isBlank()
-						|| !this.service.isInitialized() || this.service.isWriteInProgress())
-						? "" : describeConstraintViolations(configurationString);
-				Platform.runLater(() -> entry.setWarning(description));
-			}
-		}).start();
-	}
-
 	/** Empty string if no violations (or the configuration can't be parsed, e.g. mid-typing). */
 	private String describeConstraintViolations(String configurationString) {
 		try {
@@ -679,26 +652,45 @@ public class ImportGitView extends OperationView implements EccoListener {
 	}
 
 	/**
-	 * Aggregates each commit's already-computed warning (kept live by {@link #refreshConstraintWarning})
-	 * and, if any violates an accepted constraint, asks the user to confirm before importing -- advisory
-	 * only (see {@code EccoService#checkConstraintViolations}), never a hard block.
-	 *
-	 * @return true if there were no violations, or the user confirmed anyway; false to abort.
+	 * Parses a comma-separated configuration string into its feature-name tokens, trimmed and with
+	 * blanks dropped, preserving first-seen order. Pure and package-visible for testing.
 	 */
-	private boolean confirmProceedDespiteViolations(List<CommitEntry> entries) {
-		List<String> lines = new ArrayList<>();
-		for (CommitEntry entry : entries) {
-			String warning = entry.getWarning();
-			if (warning != null && !warning.isEmpty()) {
-				lines.add(entry.getShortId() + ": " + warning);
+	static LinkedHashSet<String> parseFeatureTokens(String configurationString) {
+		LinkedHashSet<String> tokens = new LinkedHashSet<>();
+		if (configurationString != null) {
+			for (String token : configurationString.split(",")) {
+				String trimmed = token.trim();
+				if (!trimmed.isEmpty()) {
+					tokens.add(trimmed);
+				}
 			}
 		}
-		if (lines.isEmpty()) return true;
-		Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
-				String.join("\n", lines) + "\n\nDo you want to import anyway?");
-		alert.setHeaderText("Constraint violation");
-		Optional<ButtonType> result = alert.showAndWait();
-		return result.isPresent() && result.get() == ButtonType.OK;
+		return tokens;
+	}
+
+	/**
+	 * The default configuration text to pre-fill a commit's review field with: whatever has
+	 * actually been imported so far ({@code runningFeatures}), plus any new feature(s) named in
+	 * {@code suggestion} - accumulated forward rather than replaced, since ECCO's Configuration
+	 * represents the full variant at that point, not a delta, so "no new feature detected" should
+	 * never look like "no features at all". A genuine feature removal is something a human still has
+	 * to notice and edit out by hand on the review screen. Pure and package-visible for testing.
+	 */
+	static String defaultConfigurationText(LinkedHashSet<String> runningFeatures, String suggestion) {
+		LinkedHashSet<String> combined = new LinkedHashSet<>(runningFeatures);
+		combined.addAll(parseFeatureTokens(suggestion));
+		return String.join(", ", combined);
+	}
+
+	/**
+	 * Updates {@code runningFeatures} to reflect a commit that was actually imported with
+	 * {@code configurationString} (the user's final, possibly hand-edited text) - called only from
+	 * {@link #importOneCommit}'s {@code succeeded()}, never for a skipped commit, so later commits'
+	 * defaults build on what's actually in the repository rather than what was merely suggested.
+	 */
+	static void applyConfigurationToRunning(LinkedHashSet<String> runningFeatures, String configurationString) {
+		runningFeatures.clear();
+		runningFeatures.addAll(parseFeatureTokens(configurationString));
 	}
 
 	@Override
@@ -718,70 +710,6 @@ public class ImportGitView extends OperationView implements EccoListener {
 		if (pluginId == null) return null;
 		int lastDot = pluginId.lastIndexOf('.');
 		return lastDot < 0 ? pluginId : pluginId.substring(lastDot + 1);
-	}
-
-
-	/**
-	 * One commit awaiting import, and its (editable) configuration string, as shown in the review
-	 * table.
-	 */
-	public static class CommitEntry {
-		private final String commitId;
-		private final SimpleStringProperty shortId;
-		private final SimpleStringProperty message;
-		private final SimpleStringProperty configuration;
-		private final SimpleStringProperty warning = new SimpleStringProperty("");
-
-		private CommitEntry(GitCommitInfo commit, String configuration) {
-			this.commitId = commit.getId();
-			this.shortId = new SimpleStringProperty(commit.getShortId());
-			this.message = new SimpleStringProperty(commit.getMessage());
-			this.configuration = new SimpleStringProperty(configuration == null ? "" : configuration);
-		}
-
-		public String getWarning() {
-			return this.warning.get();
-		}
-
-		public void setWarning(String warning) {
-			this.warning.set(warning == null ? "" : warning);
-		}
-
-		public SimpleStringProperty warningProperty() {
-			return this.warning;
-		}
-
-		public String getCommitId() {
-			return this.commitId;
-		}
-
-		public String getShortId() {
-			return this.shortId.get();
-		}
-
-		public SimpleStringProperty shortIdProperty() {
-			return this.shortId;
-		}
-
-		public String getMessage() {
-			return this.message.get();
-		}
-
-		public SimpleStringProperty messageProperty() {
-			return this.message;
-		}
-
-		public String getConfiguration() {
-			return this.configuration.get();
-		}
-
-		public void setConfiguration(String configuration) {
-			this.configuration.set(configuration);
-		}
-
-		public SimpleStringProperty configurationProperty() {
-			return this.configuration;
-		}
 	}
 
 }
