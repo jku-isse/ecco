@@ -1359,6 +1359,18 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * Batched variant of {@link #acceptConstraint(ConstraintMiner.Suggestion)} - accepts every
+     * suggestion as one repository transaction/event instead of one each, so accepting many at once
+     * (e.g. a multi-select in the GUI) doesn't redo a full re-mine/re-render per item. See
+     * {@link ConstraintService#acceptConstraints} for why that mattered in practice.
+     *
+     * @param suggestions the mined suggestions to accept; a no-op if empty.
+     */
+    public synchronized void acceptConstraints(List<ConstraintMiner.Suggestion> suggestions) {
+        this.constraintService.acceptConstraints(suggestions);
+    }
+
+    /**
      * "Move back to pending" / undo-accept: removes a persisted constraint, if present.
      *
      * @param kind     of the constraint.
@@ -1367,6 +1379,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     public synchronized void unacceptConstraint(Constraint.Kind kind, String featureA, String featureB) {
         this.constraintService.unacceptConstraint(kind, featureA, featureB);
+    }
+
+    /**
+     * Batched variant of {@link #unacceptConstraint} - see {@link #acceptConstraints}/
+     * {@link ConstraintService#acceptConstraints} for why batching matters.
+     *
+     * @param constraints the previously-accepted constraints to move back to pending; a no-op if empty.
+     */
+    public synchronized void unacceptConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
+        this.constraintService.unacceptConstraints(constraints);
     }
 
     /**

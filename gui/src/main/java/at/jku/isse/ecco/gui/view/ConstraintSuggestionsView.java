@@ -205,14 +205,20 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         Platform.runLater(() -> statusChangedEvent(service));
     }
 
-    /** Accept persists a real {@link Constraint} in the repository -- see {@code EccoService#acceptConstraint}. */
+    /**
+     * Accept persists real {@link Constraint}s in the repository, all in ONE transaction -- see
+     * {@code EccoService#acceptConstraints}. Deliberately does NOT also call {@link #refresh()} or
+     * {@code onReviewChanged} here (unlike {@link #review}/{@link #undoRejected}, which stay local
+     * to {@link ConstraintSuggestionPreferences} and never fire a real event): accepting already
+     * fires a real {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed event
+     * through {@code EccoService}, which this view's own {@link #statusChangedEvent} already reacts
+     * to by calling {@link #refresh()} (and which {@code FeaturesView} reacts to on its own, since
+     * it's a listener too) -- calling either again here would just be a second, redundant re-scan of
+     * the same accept.
+     */
     private void acceptSelected(List<ConstraintMiner.Suggestion> suggestions) {
         if (suggestions.isEmpty()) return;
-        for (ConstraintMiner.Suggestion suggestion : suggestions) {
-            service.acceptConstraint(suggestion);
-        }
-        refresh();
-        if (onReviewChanged != null) onReviewChanged.run();
+        service.acceptConstraints(suggestions);
         // the accepted-constraint set just changed, which minimization's feature-model reasoning
         // depends on -- re-run automatically instead of requiring a separate manual click. No-op if
         // a run is already in progress (see MinimizationResults#run).
@@ -230,17 +236,16 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         if (onReviewChanged != null) onReviewChanged.run();
     }
 
+    /** Batched, one transaction/event for the whole selection -- see {@link #acceptSelected}. */
     private void undoAccepted(ListView<String> listView) {
         List<String> selected = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
         if (selected.isEmpty()) return;
+        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = new ArrayList<>();
         for (String signature : selected) {
-            ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
-            if (parsed == null) continue;
-            Constraint.Kind kind = Constraint.Kind.valueOf(parsed.kind.name());
-            service.unacceptConstraint(kind, parsed.a, parsed.b);
+            ConstraintSuggestionPreferences.AcceptedConstraint constraint = ConstraintSuggestionPreferences.parseSignature(signature);
+            if (constraint != null) parsed.add(constraint);
         }
-        refresh();
-        if (onReviewChanged != null) onReviewChanged.run();
+        service.unacceptConstraints(parsed);
         // see acceptSelected -- same reasoning, un-accepting also changes the accepted-constraint set.
         minimizationResults.run();
     }
