@@ -3,6 +3,7 @@ package at.jku.isse.ecco.adapter.file;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
@@ -29,6 +30,15 @@ public class FileModule extends AbstractModule {
                 new TypeLiteral<>() {
                 });
 		viewerMultibinder.addBinding().to(FileViewer.class);
+
+		// separate multibinder set, same class - see FileViewer's own javadoc: without this,
+		// KnowledgeGraphView's hover/detached association preview (which looks specifically in this
+		// set, not the plain ArtifactViewer one above) silently fell back to a bare label for every
+		// association handled by this plugin, unlike every other adapter's viewer.
+		final Multibinder<AssociationInfoArtifactViewer> assInfoViewerMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<>() {
+				});
+		assInfoViewerMultibinder.addBinding().to(FileViewer.class);
 	}
 
 }
