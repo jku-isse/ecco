@@ -107,7 +107,7 @@ public class MainView extends BorderPane implements EccoListener {
 		RibbonAction commitMultipleAction = new RibbonAction("Commit Multiple Versions...", Feather.CHECK_SQUARE,
 				() -> this.openDialog("Commit Multiple Versions", new CommitView(eccoService)), true);
 		RibbonAction importGitAction = new RibbonAction("Import From Git...", Feather.DOWNLOAD,
-				() -> this.openDialog("Import from Git", new ImportGitView(eccoService)), true);
+				() -> this.openDialog("Import from Git", new ImportGitView(eccoService), Modality.NONE), true);
 		RibbonAction checkoutAction = new RibbonAction("Checkout...", Feather.GIT_BRANCH,
 				() -> this.openDialog("Checkout", new CheckoutView(eccoService)), true);
 		RibbonAction openDirectoryAction = new RibbonAction("Open Directory...", Feather.EXTERNAL_LINK,
@@ -374,9 +374,29 @@ public class MainView extends BorderPane implements EccoListener {
 
 
 	private void openDialog(String title, Parent content) {
+		this.openDialog(title, content, Modality.WINDOW_MODAL);
+	}
+
+	/**
+	 * @param modality {@link Modality#WINDOW_MODAL} for the usual quick, one-shot operations (New,
+	 *                 Open, Commit, ...) where blocking the main window is harmless and arguably
+	 *                 safer; {@link Modality#NONE} for a long-running, review-driven operation
+	 *                 (Import from Git) where forcing the user to sit and wait through possibly
+	 *                 dozens of review/auto-import steps before touching the rest of the app is the
+	 *                 actual complaint. The main window and this dialog both still react to the same
+	 *                 {@link at.jku.isse.ecco.service.listener.EccoListener} broadcasts either way -
+	 *                 modality only ever controlled whether the OS let the user click into the main
+	 *                 window while a background write was in flight, never whether that was safe;
+	 *                 see {@code at.jku.isse.ecco.service.ListenerRegistry}'s own javadoc for the
+	 *                 one still-open gap in that (GUI code holding a direct reference to a live
+	 *                 {@code Association}/artifact and calling methods on it entirely outside
+	 *                 {@code EccoService}'s own synchronization) - non-modal makes that overlap
+	 *                 happen in practice far more often than before, not a new category of risk.
+	 */
+	private void openDialog(String title, Parent content, Modality modality) {
 		final Stage dialog = new Stage();
 		dialog.initStyle(StageStyle.UTILITY);
-		dialog.initModality(Modality.WINDOW_MODAL);
+		dialog.initModality(modality);
 		dialog.initOwner(MainView.this.getScene().getWindow());
 
 		Scene dialogScene = new Scene(content);
