@@ -164,6 +164,13 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	private LayoutMode layoutMode = LayoutMode.FORCE_DIRECTED;
 	/** The mode the graph was actually last rendered in, so {@link #applySnapshot} can tell a mode switch from an ordinary refresh. */
 	private LayoutMode lastAppliedLayoutMode = null;
+	/**
+	 * Incremented every {@link #applySnapshot}, so a delayed {@link #scheduleForceDirectedFreeze}
+	 * callback scheduled for an earlier render can tell it's stale (a rebuild already happened,
+	 * which already called {@code disableAutoLayout()} itself and may have started its own fresh
+	 * layout/freeze cycle) and skip freezing anything. See {@code FeaturesView.layoutGeneration}.
+	 */
+	private int layoutGeneration = 0;
 
 	public KnowledgeGraphView(EccoService service) {
 		this.service = service;
@@ -988,10 +995,12 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 
 			this.updateGraphStylesheet();
 
+			this.layoutGeneration++;
 			if (this.layoutMode == LayoutMode.FORCE_DIRECTED) {
 				this.graph.addSink(this.forceDirectedLayout);
 				this.forceDirectedLayout.addAttributeSink(this.graph);
 				this.viewer.enableAutoLayout(this.forceDirectedLayout);
+				this.scheduleForceDirectedFreeze(this.layoutGeneration);
 			}
 
 			boolean layoutModeChanged = this.layoutMode != this.lastAppliedLayoutMode;
@@ -1030,6 +1039,45 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 			SwingUtilities.invokeLater(() -> {
 				if (this.view != null && this.layoutMode == LayoutMode.FORCE_DIRECTED) {
 					this.view.getCamera().resetView();
+				}
+			});
+		});
+		thread.setDaemon(true);
+		thread.start();
+	}
+
+	/**
+	 * GraphStream's {@code enableAutoLayout()} runs {@link #forceDirectedLayout}'s physics thread
+	 * indefinitely with no built-in "stop once settled" behavior of its own - fine for a normal,
+	 * sparse graph (settles in well under a second, then keeps computing effectively-free
+	 * near-zero-movement steps forever), but a PATHOLOGICALLY DENSE one (many commits/associations/
+	 * features all cross-linked, e.g. after importing hundreds of commits) has no stable resting
+	 * configuration to settle into at all - keeping this thread (and the FX/Swing thread applying
+	 * its constant stream of position updates) busy for as long as the tab stayed open, well after
+	 * the import itself finished, which is exactly the "browsing the graph after import is slow"
+	 * symptom. See {@code FeaturesView#scheduleForceDirectedFreeze} for the original diagnosis (a
+	 * real 32-feature/467-constraint-edge repository) - same fix, ported here since this view has
+	 * the identical unbounded-SpringBox shape but was missing the freeze. Force a freeze after a
+	 * generous timeout regardless of how well the graph is settling, so no graph, however dense,
+	 * can peg CPU/rendering indefinitely.
+	 *
+	 * @param scheduledGeneration {@link #layoutGeneration} at scheduling time, so a rebuild in the
+	 *                            meantime (which already calls {@code disableAutoLayout()} itself,
+	 *                            and may start its own fresh layout with its own freeze timer) makes
+	 *                            this callback a safe no-op instead of stopping the NEW layout early.
+	 */
+	private void scheduleForceDirectedFreeze(int scheduledGeneration) {
+		Thread thread = new Thread(() -> {
+			try {
+				Thread.sleep(FORCE_DIRECTED_FREEZE_TIMEOUT_MS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			}
+			SwingUtilities.invokeLater(() -> {
+				if (this.viewer != null && this.layoutMode == LayoutMode.FORCE_DIRECTED
+						&& this.layoutGeneration == scheduledGeneration) {
+					this.viewer.disableAutoLayout();
 				}
 			});
 		});
@@ -1134,6 +1182,8 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 	private static final int DEFAULT_COMMIT_LIMIT = 50;
 	private static final int COMMIT_LIMIT_MAX = 1000;
 	private static final long FORCE_DIRECTED_SETTLE_DELAY_MS = 900;
+	/** See {@link #scheduleForceDirectedFreeze} - generous on purpose, since it only ever matters for a pathologically dense graph that would otherwise never stop computing. */
+	private static final long FORCE_DIRECTED_FREEZE_TIMEOUT_MS = 8000;
 	private static final long HOVER_DELAY_MS = 200;
 	private static final double HOVER_OVERLAY_OFFSET = 12;
 	/** Matches every AssociationInfoArtifactViewer's own internal ListView#setFixedCellSize(20). */
