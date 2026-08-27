@@ -1095,7 +1095,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             long extractTime = System.currentTimeMillis();
             Commit commit = repository.extract(configuration, nodes, committer);
             repository.setRetroactiveConditions();
-            repository.buildMainTree();
+            // invalidate (don't eagerly rebuild) rather than call buildMainTree() here: within a
+            // single long-lived session, loadDatabase()'s invalidateMainTree() never runs again
+            // after the first load (REUSE_DB_ACROSS_TRANSACTIONS short-circuits it), so this is the
+            // only thing that keeps a later compose()/getMainTree() call (Repository.java's
+            // compose(Configuration) reads it directly) from silently reusing a tree that predates
+            // this commit. getMainTree() rebuilds lazily on next actual use.
+            repository.invalidateMainTree();
             extractTime = System.currentTimeMillis() - extractTime;
 
             //storing new variant
