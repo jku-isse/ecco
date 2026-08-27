@@ -73,7 +73,16 @@ public final class SerRepository implements Repository, Repository.Op {
 	private List<Map<SerModule, SerModule>> modules;
 	private Collection<Commit> commits;
 	private int maxOrder;
-	private Node.Op mainTree;
+	// purely derived from associations (see buildMainTree()) and unusable as persisted anyway - a
+	// freshly-loaded mainTree's node/artifact references aren't wired up by
+	// SerTransactionStrategy's post-load resolution pass (that only walks repo.getAssociations()),
+	// so loadDatabase() already discards whatever was here via invalidateMainTree() on every load.
+	// Serializing it was therefore always pure waste, and since SerRootNode.writeObject() BFS-walks
+	// and explicitly re-serializes every node in the tree regardless of the transient marker on
+	// children, an eagerly-built mainTree (see the removed EccoService.commit() call) made the
+	// "core" database write silently O(whole-repo-tree-size) instead of O(metadata), causing an
+	// OutOfMemoryError partway through a 60+ commit Git import.
+	private transient Node.Op mainTree;
 	private MainTreeBuildingStrategy mainTreeBuildingStrategy;
 	private EvaluationStrategy evaluationStrategy;
 

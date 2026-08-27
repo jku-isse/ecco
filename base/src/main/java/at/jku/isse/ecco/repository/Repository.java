@@ -235,6 +235,8 @@ public interface Repository extends Persistable {
 
 		Node.Op getMainTree();
 
+		void invalidateMainTree();
+
 		default Collection<FeatureRevision> addFeatureRevisions(FeatureRevision[] featureRevisions){
 			Collection<FeatureRevision> repoFeatureRevisions = new ArrayList<>();
 			for (FeatureRevision featureRevision : featureRevisions) {
