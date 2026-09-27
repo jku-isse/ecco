@@ -52,7 +52,7 @@ public interface ModuleRevision extends Persistable {
 				if (pos[i].equals(pos[j]))
 					throw new EccoException("ERROR: The same feature revision is contained twice in pos.");
 			}
-			for (int j = i + 1; j < neg.length; j++) {
+			for (int j = 0; j < neg.length; j++) {
 				if (pos[i].getFeature().equals(neg[j]))
 					throw new EccoException("ERROR: A feature that has a revision in pos is also in neg.");
 			}
@@ -125,13 +125,18 @@ public interface ModuleRevision extends Persistable {
 			if (!found)
 				return false;
 		}
-		// check that none of the negative features of this are contained in other
-		for (FeatureRevision thisFeatureRevision : this.getPos()) {
+		// check that all negative features of this are contained in other as well - see
+		// Module.implies(Module)
+		for (Feature thisFeature : this.getNeg()) {
+			boolean found = false;
 			for (Feature otherFeature : other.getNeg()) {
-				if (thisFeatureRevision.getFeature().equals(otherFeature)) {
-					return false;
+				if (thisFeature.equals(otherFeature)) {
+					found = true;
+					break;
 				}
 			}
+			if (!found)
+				return false;
 		}
 		return true;
 	}

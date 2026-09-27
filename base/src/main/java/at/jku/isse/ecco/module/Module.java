@@ -54,7 +54,7 @@ public interface Module extends Persistable {
 				if (pos[i].equals(pos[j]))
 					throw new EccoException("ERROR: The same feature is contained twice in pos.");
 			}
-			for (int j = i + 1; j < neg.length; j++) {
+			for (int j = 0; j < neg.length; j++) {
 				if (pos[i].equals(neg[j]))
 					throw new EccoException("ERROR: A feature that is in pos is also in neg.");
 			}
@@ -159,13 +159,19 @@ public interface Module extends Persistable {
 			if (!found)
 				return false;
 		}
-		// check that none of the negative features of this are contained in other
-		for (Feature thisFeature : this.getPos()) {
+		// check that all negative features of this are contained in other as well - a module is a
+		// conjunction of literals, so this implies other (whenever other holds, this holds) exactly
+		// when every literal of this occurs in other
+		for (Feature thisFeature : this.getNeg()) {
+			boolean found = false;
 			for (Feature otherFeature : other.getNeg()) {
 				if (thisFeature.equals(otherFeature)) {
-					return false;
+					found = true;
+					break;
 				}
 			}
+			if (!found)
+				return false;
 		}
 		return true;
 	}
