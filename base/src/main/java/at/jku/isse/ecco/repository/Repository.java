@@ -1295,12 +1295,82 @@ public interface Repository extends Persistable {
 				this.addCommit(commit); // extract(Association.Op, Commit) does not register the commit itself, unlike extract(Configuration, ...) - see mergeRegistersAMergeCommitPerMergedAssociation (RepositoryOpExtractTest / FileRepositoryServiceTest)
 			}
 
+			this.repairPartialOrderGraphArtifacts();
+
 			// finish like a commit does (CommitService): the merged-in nodes' feature traces need their
 			// retroactive conditions, or composition's evaluation drops them all - a fork/pull
 			// checked out EMPTY (ForkReopenTest); and the main tree must be rebuilt from the new
 			// associations
 			this.setRetroactiveConditions();
 			this.invalidateMainTree();
+		}
+
+
+		/**
+		 * Points every partial order graph node at an artifact that a tree node actually holds.
+		 * <p>
+		 * merge() deep-copies the other repository one association at a time. An ordered artifact's
+		 * graph is copied with the first association that holds the artifact, pointing at the SOURCE
+		 * artifacts and redirected only to the copies made in that same call - lines that belong to
+		 * another association's tree were copied separately later, so the graph kept referring to
+		 * source objects that no tree holds. Those were never persisted, and the repository could not
+		 * be opened again ("Could not resolve POG node artifact", ForkReopenTest). (Copying all
+		 * associations in one context instead collides with Trees.slice()'s use of replacingArtifact.)
+		 * <p>
+		 * Such a node is redirected to the live child artifact of that ordered artifact - across all
+		 * associations - with equal data at the same sequence number, or, failing that, the only live
+		 * child with equal data. Anything ambiguous is left untouched.
+		 */
+		private void repairPartialOrderGraphArtifacts() {
+			// every ordered artifact -> the artifacts held by the children of the nodes holding it
+			Map<Artifact.Op<?>, List<Artifact.Op<?>>> childrenByOrderedArtifact = new IdentityHashMap<>();
+			Set<Artifact.Op<?>> live = Collections.newSetFromMap(new IdentityHashMap<>());
+			for (Association.Op association : this.getAssociations()) {
+				Deque<Node.Op> stack = new ArrayDeque<>();
+				stack.push(association.getRootNode());
+				while (!stack.isEmpty()) {
+					Node.Op node = stack.pop();
+					Artifact.Op<?> artifact = node.getArtifact();
+					if (artifact != null) {
+						live.add(artifact);
+						if (artifact.isOrdered() && artifact.getPartialOrderGraph() != null) {
+							List<Artifact.Op<?>> children = childrenByOrderedArtifact.computeIfAbsent(artifact, k -> new ArrayList<>());
+							for (Node.Op child : node.getChildren()) {
+								if (child.getArtifact() != null)
+									children.add(child.getArtifact());
+							}
+						}
+					}
+					for (Node.Op child : node.getChildren())
+						stack.push(child);
+				}
+			}
+
+			for (Map.Entry<Artifact.Op<?>, List<Artifact.Op<?>>> entry : childrenByOrderedArtifact.entrySet()) {
+				PartialOrderGraph.Op graph = entry.getKey().getPartialOrderGraph();
+				for (PartialOrderGraph.Node.Op graphNode : graph.collectNodes()) {
+					Artifact.Op<?> artifact = graphNode.getArtifact();
+					if (artifact == null || live.contains(artifact))
+						continue;
+					Artifact.Op<?> replacement = null;
+					int bySequenceNumber = 0, byData = 0;
+					Artifact.Op<?> dataMatch = null;
+					for (Artifact.Op<?> candidate : entry.getValue()) {
+						if (!artifact.getData().equals(candidate.getData()))
+							continue;
+						byData++;
+						dataMatch = candidate;
+						if (candidate.getSequenceNumber() == graphNode.getSequenceNumber()) {
+							bySequenceNumber++;
+							replacement = candidate;
+						}
+					}
+					if (bySequenceNumber == 1)
+						graphNode.setArtifact(replacement);
+					else if (bySequenceNumber == 0 && byData == 1)
+						graphNode.setArtifact(dataMatch);
+				}
+			}
 		}
 
 
