@@ -43,6 +43,8 @@ public class PushView extends OperationView {
 			this.setDisable(true);
 
 			Remote remote = this.remoteComboBox.getValue();
+			// read on the FX thread, not in call()
+			String deselection = deselectionTextField.getText();
 
 			Task pushTask = new Task<Void>() {
 				@Override
@@ -50,7 +52,7 @@ public class PushView extends OperationView {
 					updateProgress(Double.NaN, 1.0);
 					PushView.this.service.fetch(remote.getName());
 					updateProgress(0.0, 1.0);
-					PushView.this.service.push(remote.getName(), deselectionTextField.getText());
+					PushView.this.service.push(remote.getName(), deselection);
 					updateProgress(1.0, 1.0);
 					return null;
 				}

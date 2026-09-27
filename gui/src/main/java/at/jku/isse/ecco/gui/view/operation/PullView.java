@@ -41,6 +41,8 @@ public class PullView extends OperationView {
 
 		this.pullButton.setOnAction(event -> {
 			Remote remote = this.remoteComboBox.getValue();
+			// read on the FX thread, not in call()
+			String deselection = deselectionTextField.getText();
 
 			Task pullTask = new Task<Void>() {
 				@Override
@@ -48,7 +50,7 @@ public class PullView extends OperationView {
 					updateProgress(Double.NaN, 1.0);
 					PullView.this.service.fetch(remote.getName());
 					updateProgress(0.0, 1.0);
-					PullView.this.service.pull(remote.getName(), deselectionTextField.getText());
+					PullView.this.service.pull(remote.getName(), deselection);
 					updateProgress(1.0, 1.0);
 					return null;
 				}

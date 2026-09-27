@@ -239,10 +239,11 @@ public class PreferencesView extends OperationView {
 		refreshModelsButton.setOnAction(event -> {
 			refreshModelsButton.setDisable(true);
 			modelStatusLabel.setText("Loading models...");
+			String endpointUrl = llmEndpointUrlField.getText(); // read on the FX thread, not in call()
 			Task<List<String>> listModelsTask = new Task<>() {
 				@Override
 				protected List<String> call() throws Exception {
-					return new LlmFeatureSuggestionClient(llmEndpointUrlField.getText(), "").listModels();
+					return new LlmFeatureSuggestionClient(endpointUrl, "").listModels();
 				}
 
 				@Override
