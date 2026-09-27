@@ -4,6 +4,8 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.util.Permutation;
+import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
 import org.eclipse.collections.api.map.primitive.IntObjectMap;
 import org.eclipse.collections.api.map.primitive.MutableIntIntMap;
 import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
@@ -952,11 +954,92 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 
+		/**
+		 * LCS alignment of two paths: which node of {@code otherNodesArray} each node of
+		 * {@code thisNodesArray} is matched to (by artifact data), keyed by this node's sequence
+		 * number.
+		 * <p>
+		 * An int DP matrix plus a traceback over the recorded choices. This used to keep, in every DP
+		 * cell, a full copy of the sequence number -> index map built so far - O(n * m * LCS) time,
+		 * which made committing a changed text file of a few thousand lines take tens of seconds. The
+		 * choices (a match always extends the diagonal, otherwise the longer of up/left, ties to left)
+		 * are exactly the old ones, so the result is identical, including which of several equally
+		 * long alignments is picked when content repeats - see AlignPathsEquivalenceTest, which keeps
+		 * the old implementation as its oracle.
+		 */
 		default MutableIntObjectMap<Node.Op> alignPaths(Node.Op[] thisNodesArray, Node.Op[] otherNodesArray){
 
 			if (thisNodesArray.length == 0 || otherNodesArray.length == 0){
 				return IntObjectMaps.mutable.empty();
 			}
+
+			// the old implementation measured an alignment's length as the SIZE of its map, so a
+			// sequence number occurring twice among this path's matchable nodes would overwrite
+			// instead of extending it. Not expected in a consistent graph; keep the exact old
+			// semantics for it rather than reasoning about them in the int version.
+			MutableIntSet seenSequenceNumbers = new IntHashSet();
+			for (Node.Op thisNode : thisNodesArray) {
+				if (thisNode.getArtifact() != null && thisNode.getArtifact().getData() != null && !seenSequenceNumbers.add(thisNode.getSequenceNumber())) {
+					return this.alignPathsByMaps(thisNodesArray, otherNodesArray);
+				}
+			}
+
+			final byte MATCH = 1, UP = 2, LEFT = 3;
+			int n = thisNodesArray.length;
+			int m = otherNodesArray.length;
+			byte[][] choice = new byte[n][m];
+			int[] lastRow = new int[m];
+			int[] currentRow = new int[m];
+			for (int i = 0; i < n; i++) {
+				Artifact<?> thisArtifact = thisNodesArray[i].getArtifact();
+				Object thisData = thisArtifact == null ? null : thisArtifact.getData();
+				for (int j = 0; j < m; j++) {
+					Artifact<?> otherArtifact = otherNodesArray[j].getArtifact();
+					if (thisData != null && otherArtifact != null && thisData.equals(otherArtifact.getData())) {
+						choice[i][j] = MATCH;
+						currentRow[j] = (i == 0 || j == 0) ? 1 : lastRow[j - 1] + 1;
+					} else if (i == 0 && j == 0) {
+						currentRow[j] = 0; // empty; choice stays 0
+					} else if (j == 0 || (i != 0 && lastRow[j] > currentRow[j - 1])) {
+						choice[i][j] = UP;
+						currentRow[j] = lastRow[j];
+					} else {
+						choice[i][j] = LEFT;
+						currentRow[j] = currentRow[j - 1];
+					}
+				}
+				int[] swap = lastRow;
+				lastRow = currentRow;
+				currentRow = swap;
+			}
+
+			MutableIntObjectMap<Node.Op> resultMap = IntObjectMaps.mutable.empty();
+			int i = n - 1;
+			int j = m - 1;
+			while (true) {
+				byte c = choice[i][j];
+				if (c == MATCH) {
+					resultMap.put(thisNodesArray[i].getSequenceNumber(), otherNodesArray[j]);
+					if (i == 0 || j == 0)
+						break;
+					i--;
+					j--;
+				} else if (c == UP) {
+					i--;
+				} else if (c == LEFT) {
+					j--;
+				} else {
+					break;
+				}
+			}
+			return resultMap;
+		}
+
+		/**
+		 * The previous, map-per-cell implementation of {@link #alignPaths}, now only used for paths
+		 * with repeated sequence numbers (see there).
+		 */
+		private MutableIntObjectMap<Node.Op> alignPathsByMaps(Node.Op[] thisNodesArray, Node.Op[] otherNodesArray){
 
 			// consider a matrix with the first dimension being the nodes in this pog
 			// and the second dimension being the nodes in the other pog
