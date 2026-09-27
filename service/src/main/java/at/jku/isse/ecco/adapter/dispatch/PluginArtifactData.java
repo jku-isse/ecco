@@ -56,6 +56,16 @@ public class PluginArtifactData implements ArtifactData {
 		this.endsWithNewline = endsWithNewline;
 	}
 
+	/**
+	 * The newest commit's text format wins (see ArtifactData.adoptMetadataFrom()) - also how files
+	 * committed before formats were recorded get one.
+	 */
+	@Override
+	public void adoptMetadataFrom(ArtifactData newer) {
+		if (newer instanceof PluginArtifactData newerData && newerData.hasTextFormat())
+			this.setTextFormat(newerData.charset, newerData.lineSeparator, newerData.endsWithNewline);
+	}
+
 	public boolean hasTextFormat() {
 		return this.charset != null && this.lineSeparator != null && this.endsWithNewline != null;
 	}

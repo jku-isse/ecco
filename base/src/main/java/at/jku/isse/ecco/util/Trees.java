@@ -158,6 +158,7 @@ public class Trees {
 				Trees.matchAtomicArtifacts(left, right);
 				return left;
 			} else if (left.getArtifact() != right.getArtifact()) {
+				adoptNewerMetadata(left.getArtifact(), right.getArtifact());
 				right.getArtifact().setReplacingArtifact(left.getArtifact());
 
 				if (left.getArtifact().hasReplacingArtifact()) {
@@ -253,8 +254,18 @@ public class Trees {
 		return intersection;
 	}
 
+	/**
+	 * The left (stored) artifact is kept and the right (newer, equal) one discarded - let the stored
+	 * data adopt the newer data's non-identity metadata first (see ArtifactData.adoptMetadataFrom()).
+	 */
+	private static void adoptNewerMetadata(Artifact.Op<?> stored, Artifact.Op<?> newer) {
+		if (stored != newer && stored.getData() != null && newer.getData() != null)
+			stored.getData().adoptMetadataFrom(newer.getData());
+	}
+
 	private static void matchAtomicArtifacts(Node.Op left, Node.Op right) {
 		//right.getArtifact().putProperty(Artifact.PROPERTY_REPLACING_ARTIFACT, left.getArtifact());
+		adoptNewerMetadata(left.getArtifact(), right.getArtifact());
 		right.getArtifact().setReplacingArtifact(left.getArtifact());
 
 		if (left.getArtifact().hasReplacingArtifact()) {
