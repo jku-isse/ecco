@@ -99,11 +99,23 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	public class Mapping {
 		private String pattern;
+		private String pluginId;
+		// null if this repository's .adapters maps the pattern to a plugin that isn't available (disabled
+		// or no longer installed) - kept in place rather than dropped, see getReaderForFile()
 		private ArtifactReader<Path, Set<Node.Op>> reader;
 
 		public Mapping(String pattern, ArtifactReader<Path, Set<Node.Op>> reader) {
+			this(pattern, reader.getPluginId(), reader);
+		}
+
+		private Mapping(String pattern, String pluginId, ArtifactReader<Path, Set<Node.Op>> reader) {
 			this.pattern = pattern;
+			this.pluginId = pluginId;
 			this.reader = reader;
+		}
+
+		public String getPluginId() {
+			return this.pluginId;
 		}
 
 		public String getPattern() {
@@ -149,12 +161,22 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				List<CharSequence> adapterMappingsStrings = prioritizedMappings.entrySet().stream().sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())).map(Map.Entry::getValue).flatMap(Collection::stream).map(m -> m.getReader().getPluginId() + ";" + m.getPattern()).collect(Collectors.toList());
 				Files.write(adaptersFile, adapterMappingsStrings);
 			}
-			// load adapter mappings from file
+			// load adapter mappings from file. The routing is fixed per repository on purpose (the
+			// adapter determines the shape of a file's artifact tree, so re-routing a file later would
+			// make its history look rewritten) - so a mapping to an unavailable adapter is kept, in
+			// order, and fails loudly when it matches a file (getReaderForFile), instead of being
+			// dropped and letting its files fall through to the next matching adapter unnoticed.
 			List<String> adapterPatterns = Files.readAllLines(adaptersFile);
+			Set<String> mappedPluginIds = new HashSet<>();
 			for (String adapterPattern : adapterPatterns) {
-				String[] pair = adapterPattern.split(";");
-				String pluginId = pair[0];
-				String pattern = pair[1];
+				if (adapterPattern.trim().isEmpty())
+					continue;
+				int separator = adapterPattern.indexOf(';');
+				if (separator <= 0 || separator == adapterPattern.length() - 1)
+					throw new EccoException("Malformed line in " + adaptersFile + " (expected <plugin id>;<glob pattern>): " + adapterPattern);
+				String pluginId = adapterPattern.substring(0, separator);
+				String pattern = adapterPattern.substring(separator + 1);
+				mappedPluginIds.add(pluginId);
 
 				ArtifactReader<Path, Set<Node.Op>> reader = null;
 				for (ArtifactReader<Path, Set<Node.Op>> tempReader : this.readers) {
@@ -163,8 +185,11 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 						break;
 					}
 				}
-				if (reader != null)
-					this.adapterMappings.add(new Mapping(pattern, reader));
+				this.adapterMappings.add(new Mapping(pattern, pluginId, reader));
+			}
+			for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
+				if (!mappedPluginIds.contains(reader.getPluginId()))
+					LOGGER.info("Adapter " + reader.getPluginId() + " is enabled but not used by this repository: its file routing (" + adaptersFile + ") was fixed when the repository was created.");
 			}
 		} catch (IOException e) {
 			throw new EccoException("Error creating or reading adapters file.", e);
@@ -203,6 +228,10 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		for (Mapping mapping : this.adapterMappings) {
 			PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + mapping.getPattern());
 			if (pathMatcher.matches(file)) {
+				if (mapping.getReader() == null)
+					throw new EccoException("File " + file + " is read by adapter " + mapping.getPluginId() + " in this repository (pattern " + mapping.getPattern()
+							+ " in " + this.repositoryDir.resolve(ADAPTERS_FILE_NAME) + "), but that adapter is not enabled or not installed. Enable it in the preferences"
+							+ " - falling back to another adapter would change how the file is represented and make its history look rewritten.");
 				return mapping.getReader();
 			}
 		}
