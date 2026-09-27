@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation.checkout;
 
+import at.jku.isse.ecco.gui.ConstraintWarnings;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Association;
@@ -195,7 +196,7 @@ public class CheckoutView extends OperationView implements EccoListener {
                 java.util.List<at.jku.isse.ecco.core.Variant> variants =
                         new java.util.ArrayList<>(this.service.getRepository().getVariants());
                 for (at.jku.isse.ecco.core.Variant variant : variants) {
-                    String warning = describeConstraintViolations(variant.getConfiguration());
+                    String warning = ConstraintWarnings.describe(this.service, variant.getConfiguration());
                     if (!warning.isEmpty()) knownVariantWarnings.put(variant, warning);
                 }
                 Platform.runLater(() -> {
@@ -222,7 +223,7 @@ public class CheckoutView extends OperationView implements EccoListener {
                 return;
             }
             new Thread(() -> {
-                String text = describeConstraintViolations(configurationString);
+                String text = ConstraintWarnings.describe(this.service, configurationString);
                 Platform.runLater(() -> constraintWarningLabel.setText(text));
             }).start();
         });
@@ -289,25 +290,6 @@ public class CheckoutView extends OperationView implements EccoListener {
         Platform.runLater(configurationStringTextField::requestFocus);
     }
 
-    /** Empty string if no violations (or the configuration can't be parsed yet, e.g. mid-typing). */
-    private String describeConstraintViolations(String configurationString) {
-        try {
-            return describeConstraintViolations(this.service.parseConfigurationString(configurationString));
-        } catch (RuntimeException e) {
-            return "";
-        }
-    }
-
-    /** Empty string if no violations. */
-    private String describeConstraintViolations(Configuration configuration) {
-        try {
-            List<String> violations = this.service.checkConstraintViolations(configuration);
-            return violations.isEmpty() ? "" : "Violates accepted constraint(s): " + String.join("; ", violations);
-        } catch (RuntimeException e) {
-            return "";
-        }
-    }
-
     /**
      * Checks the configuration against accepted constraints and, if it violates any, asks the user
      * to confirm before proceeding -- constraint violations are advisory (see
@@ -318,7 +300,7 @@ public class CheckoutView extends OperationView implements EccoListener {
      */
     private boolean confirmProceedDespiteViolations(String configurationString, String actionVerb) {
         if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()) return true;
-        String description = describeConstraintViolations(configurationString);
+        String description = ConstraintWarnings.describe(this.service, configurationString);
         if (description.isEmpty()) return true;
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
                 description + "\n\nDo you want to " + actionVerb + " anyway?");

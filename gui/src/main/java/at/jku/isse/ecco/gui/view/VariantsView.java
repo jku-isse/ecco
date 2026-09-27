@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.ConstraintWarnings;
 import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
@@ -486,7 +487,7 @@ public class VariantsView extends BorderPane implements EccoListener {
         new Thread(() -> {
             for (VariantsInfo info : infos) {
                 if (this.service.isWriteInProgress()) break;
-                String warning = describeConstraintViolations(info.getVariant().getConfiguration());
+                String warning = ConstraintWarnings.describe(this.service, info.getVariant().getConfiguration());
                 String matchingCommits = describeMatchingCommits(info.getVariant().getConfiguration());
                 Platform.runLater(() -> {
                     info.setWarning(warning);
@@ -510,23 +511,13 @@ public class VariantsView extends BorderPane implements EccoListener {
             return;
         }
         new Thread(() -> {
-            String warning = describeConstraintViolations(info.getVariant().getConfiguration());
+            String warning = ConstraintWarnings.describe(this.service, info.getVariant().getConfiguration());
             String matchingCommits = describeMatchingCommits(info.getVariant().getConfiguration());
             Platform.runLater(() -> {
                 info.setWarning(warning);
                 info.setMatchingCommits(matchingCommits);
             });
         }).start();
-    }
-
-    /** Empty string if no violations. */
-    private String describeConstraintViolations(Configuration configuration) {
-        try {
-            java.util.List<String> violations = this.service.checkConstraintViolations(configuration);
-            return violations.isEmpty() ? "" : "Violates accepted constraint(s): " + String.join("; ", violations);
-        } catch (RuntimeException e) {
-            return "";
-        }
     }
 
     /**
@@ -623,6 +614,5 @@ public class VariantsView extends BorderPane implements EccoListener {
         }
 
     }
-
 
 }
