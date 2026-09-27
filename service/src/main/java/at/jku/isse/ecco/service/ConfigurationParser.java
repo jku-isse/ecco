@@ -198,7 +198,7 @@ class ConfigurationParser {
 
                 Feature feature;
                 if (featureName.startsWith("[") && featureName.endsWith("]")) { // id
-                    feature = repository.getFeature(featureName);
+                    feature = repository.getFeature(featureName.substring(1, featureName.length() - 1));
                     if (feature == null) {
                         throw new EccoException("Feature with id does not exist: " + featureName);
                     }
@@ -214,6 +214,10 @@ class ConfigurationParser {
                 }
 
                 FeatureRevision featureRevision = feature.getRevision(featureRevisionId);
+                if (featureRevision == null) {
+                    // the displayed, truncated id - see parseConfigurationString
+                    featureRevision = findRevisionByIdPrefix(feature, featureRevisionId);
+                }
                 if (featureRevision != null) {
                     featureRevisions.add(featureRevision);
                 } else {
