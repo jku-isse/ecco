@@ -2,10 +2,8 @@ package at.jku.isse.ecco.module;
 
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.logic.LogicUtils;
-import at.jku.isse.ecco.logic.FormulaFactoryProvider;
-import org.logicng.formulas.Formula;
-import org.logicng.formulas.FormulaFactory;
+import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureRevision;
 
 
 import java.util.*;
@@ -65,25 +63,70 @@ public interface Condition extends Persistable {
 		return false;
 	}
 
+	/**
+	 * The condition as a LogicNG-parsable formula: the disjunction of its module revisions, each
+	 * the conjunction of its positive feature revisions and the negation of every revision of its
+	 * negative features (see {@link ModuleRevision#getConditionString()}).
+	 * <p>
+	 * Module revisions made redundant by another one with a subset of its literals are left out
+	 * ({@code X | X & Y = X}, an identity - the formula is equivalent to the disjunction of all of
+	 * them). computeCondition() yields a whole lattice of such supersets: with 40 commits, one
+	 * association had 32,684 module revisions that absorb to about 20, and writing all of them made
+	 * a 4.2 million character string - stored on every node as its retroactive condition, rewritten
+	 * with every commit (169 MB of association files) and parsed at every checkout. Terms and
+	 * literals are sorted, so an unchanged condition gives an identical string.
+	 */
 	default String toLogicString(){
-		// Condition is true if one module-revision-formula is true for every module
-		FormulaFactory formulaFactory = FormulaFactoryProvider.getFormulaFactory();
-		Map<Module, Collection<ModuleRevision>> moduleMap = this.getModules();
+		List<ModuleRevision> moduleRevisions = new ArrayList<>();
+		for (Collection<ModuleRevision> revisions : this.getModules().values())
+			moduleRevisions.addAll(revisions);
+		// smallest first: a term can only be absorbed by one with at most as many literals, which
+		// then is already among the kept ones - so each term is compared with the kept terms only
+		moduleRevisions.sort(Comparator.comparingInt(r -> r.getPos().length + r.getNeg().length));
 
-		// if a module-revision holds, the respective module holds as well
-		// or(or(all module-revision-conditions related to the same module))
-		Collection<Formula> moduleFormulas = new LinkedList<>();
-		for (Collection<ModuleRevision> moduleRevisions : moduleMap.values()) {
-			Collection<Formula> moduleRevisionFormulas = moduleRevisions.stream()
-					.map(ModuleRevision::getConditionString)
-					.map(LogicUtils::parseString)
-					.collect(Collectors.toList());
-			moduleFormulas.add(formulaFactory.or(moduleRevisionFormulas));
+		List<ModuleRevision> kept = new ArrayList<>();
+		for (ModuleRevision candidate : moduleRevisions) {
+			boolean absorbed = false;
+			for (ModuleRevision smaller : kept) {
+				if (containsAll(candidate.getPos(), smaller.getPos()) && containsAll(candidate.getNeg(), smaller.getNeg())) {
+					absorbed = true;
+					break;
+				}
+			}
+			if (!absorbed)
+				kept.add(candidate);
 		}
 
-		Formula conditionFormula;
-		conditionFormula = formulaFactory.or(moduleFormulas);
-		return conditionFormula.toString();
+		if (kept.isEmpty())
+			return "$false";
+		SortedSet<String> terms = new TreeSet<>();
+		for (ModuleRevision moduleRevision : kept) {
+			SortedSet<String> literals = new TreeSet<>();
+			for (FeatureRevision featureRevision : moduleRevision.getPos())
+				literals.add(featureRevision.getLogicLiteralRepresentation());
+			for (Feature feature : moduleRevision.getNeg())
+				for (FeatureRevision featureRevision : feature.getRevisions())
+					literals.add("~" + featureRevision.getLogicLiteralRepresentation());
+			if (literals.isEmpty())
+				return "$true"; // an empty module revision always holds
+			terms.add(literals.size() == 1 ? literals.first() : "(" + String.join(" & ", literals) + ")");
+		}
+		return String.join(" | ", terms);
+	}
+
+	private static boolean containsAll(Object[] larger, Object[] smaller) {
+		for (Object element : smaller) {
+			boolean found = false;
+			for (Object other : larger) {
+				if (element.equals(other)) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		return true;
 	}
 
 	/**
