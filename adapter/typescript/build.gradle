@@ -44,4 +44,7 @@ node {
 test {
     useJUnitPlatform()
 }
+// npm install writes node_modules into src/main/resources/script, which processResources copies -
+// declare that, or Gradle fails the build on the undeclared implicit dependency
+processResources.dependsOn npmInstall
 build.dependsOn npmInstall
