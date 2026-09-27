@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.command.property;
 
+import at.jku.isse.ecco.cli.CliException;
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;
@@ -35,8 +36,8 @@ public class GetCommand implements Command {
                 writer.println("baseDir=" + eccoService.getBaseDir());
                 break;
             default:
-                writer.println("ERROR: No property named \"" + property + "\".");
-                break;
+                eccoService.close();
+                throw new CliException("No property named \"" + property + "\".");
         }
 
         eccoService.close();
