@@ -27,8 +27,10 @@ public class VevosConditionHandler {
     private void parsePresenceConditions() {
         try {
             List<String> vevosFileLines = Files.readAllLines(this.vevosFilePath);
-            // first line in a VEVOS file just showcases structure
-            vevosFileLines.remove(0);
+            // first line in a VEVOS file just showcases structure (an empty file has none)
+            if (!vevosFileLines.isEmpty())
+                vevosFileLines.remove(0);
+            vevosFileLines.removeIf(line -> line.isBlank());
             this.parseVevosFileLines(vevosFileLines);
         } catch (IOException e){
             throw new RuntimeException(String.format("VEVOS file (%s) could not be read: %s", this.vevosFilePath,e.getMessage()));

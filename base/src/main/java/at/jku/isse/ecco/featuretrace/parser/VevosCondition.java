@@ -36,8 +36,9 @@ public class VevosCondition {
         stringCondition = stringCondition.replace("!", "~");
         stringCondition = stringCondition.replace("||", "|");
         stringCondition = stringCondition.replace("&&", "&");
-        stringCondition = stringCondition.replace("True", "$true");
-        stringCondition = stringCondition.replace("False", "$false");
+        // whole words only - a feature name like IsTrueColor must stay intact
+        stringCondition = stringCondition.replaceAll("\\bTrue\\b", "\\$true");
+        stringCondition = stringCondition.replaceAll("\\bFalse\\b", "\\$false");
         return stringCondition;
     }
 
