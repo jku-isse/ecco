@@ -15,6 +15,8 @@ import at.jku.isse.ecco.storage.common.dao.Database;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifact;
 import at.jku.isse.ecco.storage.ser.artifact.SerArtifactReference;
 import at.jku.isse.ecco.storage.ser.core.SerCommit;
+import at.jku.isse.ecco.storage.ser.counter.CompactCounters;
+import at.jku.isse.ecco.storage.ser.counter.SerAssociationCounter;
 import at.jku.isse.ecco.storage.ser.counter.SerModuleCounter;
 import at.jku.isse.ecco.storage.ser.counter.SerModuleRevisionCounter;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
@@ -135,6 +137,15 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		return serialized.toByteArray();
 	}
 
+	/** Like {@link #serialize}, with the association's counters in compact form - see {@link CompactCounters}. */
+	private static byte[] serializeAssociation(Object association) throws IOException {
+		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
+		try (ObjectOutputStream oos = new CompactCounters.Stream(serialized)) {
+			oos.writeObject(association);
+		}
+		return serialized.toByteArray();
+	}
+
 	private static byte[] digest(byte[] bytes) {
 		try {
 			return MessageDigest.getInstance("SHA-256").digest(bytes);
@@ -152,7 +163,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * one file per artifact dominated commit time (see UnchangedArtifactRewriteTest).
 	 */
 	private void stageIfChanged(Object entity, Path stableFile, String pendingSuffix, Map<Path, byte[]> staged) throws IOException {
-		byte[] bytes = serialize(entity);
+		byte[] bytes = entity instanceof Association ? serializeAssociation(entity) : serialize(entity);
 		byte[] digest = digest(bytes);
 		if (Arrays.equals(digest, this.persistedDigests.get(stableFile)) && Files.exists(stableFile))
 			return;
@@ -755,6 +766,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * counter's reference with the repository's own lookup result.
 	 */
 	private void resolveModuleReferences(SerRepository repo) {
+		// counters read in compact form are built on the repository's modules right away
+		for (Association.Op association : repo.getAssociations()) {
+			if (association.getCounter() instanceof SerAssociationCounter serAssociationCounter)
+				serAssociationCounter.resolveCompactChildren(repo);
+		}
 		for (Association.Op association : repo.getAssociations()) {
 			for (ModuleCounter moduleCounter : association.getCounter().getChildren()) {
 				if (!(moduleCounter instanceof SerModuleCounter serModuleCounter)) continue;
