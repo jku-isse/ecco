@@ -1,5 +1,7 @@
 package at.jku.cdl.ecco.adapter.java;
 
+import java.util.Comparator;
+import com.github.javaparser.ast.comments.Comment;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -171,6 +173,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 				// reconstruction of the original AST Elements
 				CompilationUnit cu = parseResult.getResult().orElse(null);
 				if (cu != null) {
+					attributeOrphanComments(cu);
 					// module-info.java parses cleanly (no problems) but its content lives in
 					// cu.getModule(), a ModuleDeclaration - a file shaped nothing like a regular
 					// class file (no package/imports/types), so it's handled entirely separately.
@@ -317,6 +320,39 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 				bodyNode.putProperty(PROPERTY_LINE_START, getStartLine(body));
 				bodyNode.putProperty(PROPERTY_LINE_END, getEndLine(body));
 				enumNode.addChild(bodyNode);
+			}
+		}
+	}
+
+	/**
+	 * JavaParser leaves a comment followed by an empty line attributed to no node (e.g. a file's
+	 * header, or a "section" comment between methods). Kept with their container, such comments
+	 * could only be written at its end - a file header ended up below the class. Each is given to
+	 * the next declaration or statement after it instead, if that has no comment of its own; only
+	 * comments after the last one stay with the container.
+	 */
+	private static void attributeOrphanComments(CompilationUnit cu) {
+		List<com.github.javaparser.ast.Node> containers = new ArrayList<>();
+		cu.walk(node -> {
+			if (!node.getOrphanComments().isEmpty())
+				containers.add(node);
+		});
+		for (com.github.javaparser.ast.Node container : containers) {
+			for (Comment orphan : new ArrayList<>(container.getOrphanComments())) {
+				if (orphan.getRange().isEmpty())
+					continue;
+				com.github.javaparser.ast.Node next = container.getChildNodes().stream()
+						.filter(child -> child instanceof BodyDeclaration<?> || child instanceof Statement
+								|| child instanceof ImportDeclaration || child instanceof PackageDeclaration
+								|| child instanceof ModuleDirective)
+						.filter(child -> child.getRange().isPresent()
+								&& child.getRange().get().begin.isAfterOrEqual(orphan.getRange().get().end))
+						.min(Comparator.comparing(child -> child.getRange().get().begin))
+						.orElse(null);
+				if (next != null && next.getComment().isEmpty()) {
+					container.removeOrphanComment(orphan);
+					next.setComment(orphan);
+				}
 			}
 		}
 	}

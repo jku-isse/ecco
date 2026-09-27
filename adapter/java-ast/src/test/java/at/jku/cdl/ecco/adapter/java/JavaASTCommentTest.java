@@ -35,6 +35,16 @@ public class JavaASTCommentTest {
     }
 
     @Test
+    public void commentsFollowedByAnEmptyLineStayInPlace() throws IOException {
+        // JavaParser attributes these to no node; they used to be written at the end of their file/class
+        String written = readWrite("/**\n * File header.\n */\n\nimport java.util.List;\n\npublic class H {\n\n"
+                + "    void first() {\n    }\n\n    // ---- section ----\n\n    void second() {\n    }\n}\n");
+        assertTrue(written.indexOf("File header.") < written.indexOf("import java.util.List"), written);
+        assertTrue(written.indexOf("void first()") < written.indexOf("---- section ----")
+                && written.indexOf("---- section ----") < written.indexOf("void second()"), written);
+    }
+
+    @Test
     public void everyCommentIsKept() throws IOException {
         String source = "/* License header */\npackage p;\n\n// imports\nimport java.util.List;\n\n/** Doc. */\npublic class A {\n\n    // a field\n    private int x = 1;\n\n"
                 + "    /** Javadoc of toString. */\n    @Override\n    public String toString() {\n        return \"A\"; // trailing\n    }\n\n"
