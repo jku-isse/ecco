@@ -11,7 +11,6 @@ import at.jku.isse.ecco.repository.Repository;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.UUID;
-import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -73,13 +72,13 @@ public class VariantManager {
     public void removeVariant(String id) {
         owner.checkInitialized();
         checkNotNull(id);
-        safeTransaction(repository -> removeVariantById(repository, id));
+        owner.writeTransaction(repository -> removeVariantById(repository, id));
     }
 
     public void removeVariant(Configuration configuration) {
         owner.checkInitialized();
         checkNotNull(configuration);
-        safeTransaction(repository -> removeVariantByConfiguration(repository, configuration));
+        owner.writeTransaction(repository -> removeVariantByConfiguration(repository, configuration));
     }
 
     private Repository.Op removeVariantById(Repository.Op repository, String id) {
@@ -100,27 +99,6 @@ public class VariantManager {
         }
 
         return repository;
-    }
-
-    private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
-        owner.listeners.setWriteInProgress(true);
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            Repository.Op repository = owner.repositoryDao.load();
-
-            repository = transaction.apply(repository);
-
-            owner.repositoryDao.store(repository);
-            owner.transactionStrategy.end();
-
-            owner.listeners.fireStatusChangedEvent();
-        } catch (Exception e) {
-            owner.transactionStrategy.rollback();
-
-            throw new EccoException("Error during repository write transaction.", e);
-        } finally {
-            owner.listeners.setWriteInProgress(false);
-        }
     }
 
     public void updateVariant(Configuration configuration, String name, String id) {

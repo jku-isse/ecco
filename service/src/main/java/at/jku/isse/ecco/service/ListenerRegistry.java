@@ -25,7 +25,7 @@ public class ListenerRegistry {
     private final EccoService owner;
 
     // CopyOnWriteArrayList: fire*Event methods can now run on background threads (e.g.
-    // addVariant()/safeTransaction() firing after a GUI action's own background Thread/Task), while
+    // addVariant()/EccoService.writeTransaction() firing after a GUI action's own background Thread/Task), while
     // GUI dialogs add/removeListener from the FX thread -- a plain ArrayList would risk
     // ConcurrentModificationException across those threads.
     private final Collection<EccoListener> listeners = new CopyOnWriteArrayList<>();
@@ -79,7 +79,7 @@ public class ListenerRegistry {
 
     // A listener throwing must never abort the broadcast to the remaining listeners -- and, since
     // fire*Event methods are called from inside write-transaction try blocks (e.g. addVariant(),
-    // safeTransaction()), an uncaught exception here would be caught by that method's own
+    // EccoService.writeTransaction()), an uncaught exception here would be caught by that method's own
     // catch-and-rollback, incorrectly rolling back a transaction that already committed
     // (repositoryDao.store()/transactionStrategy.end() already ran). Isolating each listener call
     // makes that impossible.

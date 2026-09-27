@@ -14,7 +14,6 @@ import at.jku.isse.ecco.repository.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -64,7 +63,7 @@ public class ConstraintService {
         owner.checkInitialized();
         checkNotNull(kind);
         checkNotNull(featureA);
-        safeTransaction(repository -> {
+        owner.writeTransaction(repository -> {
             repository.addConstraint(toConstraintKind(kind), featureA, featureB);
             return repository;
         });
@@ -86,7 +85,7 @@ public class ConstraintService {
         owner.checkInitialized();
         checkNotNull(suggestions);
         if (suggestions.isEmpty()) return;
-        safeTransaction(repository -> {
+        owner.writeTransaction(repository -> {
             for (ConstraintMiner.Suggestion suggestion : suggestions) {
                 checkNotNull(suggestion);
                 repository.addConstraint(toConstraintKind(suggestion.kind), suggestion.a, suggestion.b);
@@ -99,7 +98,7 @@ public class ConstraintService {
         owner.checkInitialized();
         checkNotNull(kind);
         checkNotNull(featureA);
-        safeTransaction(repository -> {
+        owner.writeTransaction(repository -> {
             String id = Constraint.buildId(kind.name(), featureA, featureB);
             Constraint existing = repository.getConstraint(id);
             if (existing != null) repository.removeConstraint(existing);
@@ -112,7 +111,7 @@ public class ConstraintService {
         owner.checkInitialized();
         checkNotNull(constraints);
         if (constraints.isEmpty()) return;
-        safeTransaction(repository -> {
+        owner.writeTransaction(repository -> {
             for (ConstraintSuggestionPreferences.AcceptedConstraint constraint : constraints) {
                 checkNotNull(constraint);
                 String id = Constraint.buildId(constraint.kind.name(), constraint.a, constraint.b);
@@ -139,27 +138,6 @@ public class ConstraintService {
         } catch (RuntimeException e) {
             owner.rollbackIfTransactionActive();
             throw e;
-        }
-    }
-
-    private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
-        owner.listeners.setWriteInProgress(true);
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            Repository.Op repository = owner.repositoryDao.load();
-
-            repository = transaction.apply(repository);
-
-            owner.repositoryDao.store(repository);
-            owner.transactionStrategy.end();
-
-            owner.listeners.fireStatusChangedEvent();
-        } catch (Exception e) {
-            owner.transactionStrategy.rollback();
-
-            throw new EccoException("Error during repository write transaction.", e);
-        } finally {
-            owner.listeners.setWriteInProgress(false);
         }
     }
 

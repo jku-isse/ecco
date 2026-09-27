@@ -1070,6 +1070,33 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * Runs {@code transaction} on the repository inside a READ_WRITE transaction, stores the result
+     * and fires a status change - the shared write path of VariantManager and ConstraintService (both
+     * used to carry their own identical copy). Rolls back quietly on failure, so a failed begin()
+     * can't replace the real error with "No transaction active".
+     */
+    synchronized void writeTransaction(java.util.function.Function<Repository.Op, Repository.Op> transaction) {
+        this.listeners.setWriteInProgress(true);
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            Repository.Op repository = this.repositoryDao.load();
+
+            repository = transaction.apply(repository);
+
+            this.repositoryDao.store(repository);
+            this.transactionStrategy.end();
+
+            this.listeners.fireStatusChangedEvent();
+        } catch (Exception e) {
+            this.rollbackIfTransactionActive();
+
+            throw new EccoException("Error during repository write transaction.", e);
+        } finally {
+            this.listeners.setWriteInProgress(false);
+        }
+    }
+
+    /**
      * Rolls back the current transaction if there is one. TransactionStrategy has no "is a
      * transaction active" query, so this probes via rollback() and ignores the "no transaction
      * active" case (as RemoteSyncService does); also safe before open() ever injected a strategy.
