@@ -580,13 +580,18 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					InputStream is = new BufferedInputStream(Channels.newInputStream(dbFileChannel));
 					ZipInputStream zis = new ZipInputStream(is);
 					ZipEntry e = null;
+					Database loaded = null;
 					while ((e = zis.getNextEntry()) != null) {
-						if (e.getName().equals("ecco.ser")) {
+						if (e.getName().equals(ZIP_ENTRY_NAME)) {
 							ObjectInputStream ois = new ObjectInputStream(zis);
-							this.database = (Database) ois.readObject();
+							loaded = (Database) ois.readObject();
 							break;
 						}
 					}
+					// used to leave the previous (or no) database in place and fail later with an NPE
+					if (loaded == null)
+						throw new EccoException("Repository core file " + dbFile + " is damaged: it has no " + ZIP_ENTRY_NAME + " entry.");
+					this.database = loaded;
 				}
 
 				// delete db file if we can get exclusive lock and it does not match id file
@@ -602,7 +607,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					}
 				}
 			} else {
-				throw new EccoException("DB file does not exist: " + this.dbFile);
+				throw new EccoException("DB file does not exist: " + dbFile);
 			}
 		} else {
 			this.database = new Database();
