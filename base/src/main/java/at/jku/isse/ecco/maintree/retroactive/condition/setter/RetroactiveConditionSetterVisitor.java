@@ -19,7 +19,9 @@ public class RetroactiveConditionSetterVisitor implements Node.Op.NodeVisitor{
     @Override
     public void visit(Node.Op node) {
         if (node instanceof RootNode){ return; }
-        if (node.isUnique()){
+        // a node without a feature trace has nothing to set - skipped like in SerNode's own trace
+        // methods and BoostVisitor (this used to NPE and fail the commit)
+        if (node.isUnique() && node.getFeatureTrace() != null){
             node.getFeatureTrace().setRetroactiveCondition(retroactiveConditionString);
         }
     }
