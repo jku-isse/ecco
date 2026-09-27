@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.EccoListenerLifecycle;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.TableColumns;
@@ -82,6 +83,9 @@ public class CommitComparisonView extends OperationView implements EccoListener 
 
 
         service.addListener(this);
+        // opened as its own window, once per comparison - unregister this view and its embedded
+        // detail view (which registered itself too) when that window closes
+        EccoListenerLifecycle.removeWhenWindowHidden(this, service, this, artifactDetailView);
 
         if (!service.isInitialized()) {
             this.setDisable(true);

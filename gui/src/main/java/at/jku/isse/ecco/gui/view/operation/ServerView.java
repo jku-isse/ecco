@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.gui.EccoListenerLifecycle;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
@@ -33,6 +34,8 @@ public class ServerView extends OperationView implements EccoListener {
 		this.portTextField = new Spinner<>(0, Integer.MAX_VALUE, 3770);
 
 		service.addListener(this);
+		// a new ServerView is created every time Preferences opens - don't leak one listener per open
+		EccoListenerLifecycle.removeWhenWindowHidden(this, service, this);
 
 		if (service.serverRunning())
 			this.stepStop(-1);
@@ -49,7 +52,8 @@ public class ServerView extends OperationView implements EccoListener {
 
 	@Override
 	public void serverEvent(EccoService service, String message) {
-		this.logData.add(message);
+		// fired from the server's accept loop, i.e. off the FX thread - logData backs a TableView
+		Platform.runLater(() -> this.logData.add(message));
 	}
 
 	@Override
