@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.gui.PluginNames;
+import at.jku.isse.ecco.gui.ConstraintWarnings;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -475,21 +477,14 @@ public class CommitView extends OperationView implements EccoListener {
 
 	@Override
 	public void fileReadEvent(Path file, ArtifactReader reader) {
-		String plugin = shortPluginName(reader.getPluginId());
+		String plugin = PluginNames.shortName(reader.getPluginId());
 		Platform.runLater(() -> this.logArea.appendText(String.format("Read %s using (%s)%n", file, plugin)));
 	}
 
 	@Override
 	public void fileWriteEvent(Path file, ArtifactWriter writer) {
-		String plugin = shortPluginName(writer.getPluginId());
+		String plugin = PluginNames.shortName(writer.getPluginId());
 		Platform.runLater(() -> this.logArea.appendText(String.format("Wrote %s using (%s)%n", file, plugin)));
-	}
-
-	/** getPluginId() returns a fully-qualified class name (e.g. "at.jku.isse.ecco.adapter.lilypond.LilypondPlugin") - just the simple class name is enough to display. */
-	private static String shortPluginName(String pluginId) {
-		if (pluginId == null) return null;
-		int lastDot = pluginId.lastIndexOf('.');
-		return lastDot < 0 ? pluginId : pluginId.substring(lastDot + 1);
 	}
 
 	/**
@@ -540,7 +535,7 @@ public class CommitView extends OperationView implements EccoListener {
 						return;
 					}
 					new Thread(() -> {
-						String description = describeConstraintViolations(text);
+						String description = ConstraintWarnings.describe(CommitView.this.service, text);
 						Platform.runLater(() -> entry.setWarning(description));
 					}).start();
 				});
@@ -611,20 +606,9 @@ public class CommitView extends OperationView implements EccoListener {
 			return;
 		}
 		new Thread(() -> {
-			String description = describeConstraintViolations(configurationString);
+			String description = ConstraintWarnings.describe(this.service, configurationString);
 			Platform.runLater(() -> entry.setWarning(description));
 		}).start();
-	}
-
-	/** Empty string if no violations (or the configuration can't be parsed, e.g. mid-typing). */
-	private String describeConstraintViolations(String configurationString) {
-		try {
-			Configuration configuration = this.service.parseConfigurationString(configurationString);
-			List<String> violations = this.service.checkConstraintViolations(configuration);
-			return violations.isEmpty() ? "" : "Violates accepted constraint(s): " + String.join("; ", violations);
-		} catch (RuntimeException e) {
-			return "";
-		}
 	}
 
 	/**
