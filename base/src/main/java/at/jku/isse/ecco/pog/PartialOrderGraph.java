@@ -670,14 +670,27 @@ public interface PartialOrderGraph extends Persistable {
 		 * @param symbols Symbols to keep.
 		 */
 		default void trim(Collection<? extends Artifact.Op<?>> symbols) {
-			// for every node
+			// symbols by hash code, each bucket scanned with equals(): the same matches as
+			// symbols.contains() (Artifact.equals isn't transitive, so a plain HashSet's
+			// de-duplication could change them), without a linear scan per node
+			Map<Integer, List<Artifact.Op<?>>> symbolsByHash = new HashMap<>();
+			for (Artifact.Op<?> symbol : symbols)
+				symbolsByHash.computeIfAbsent(symbol == null ? 0 : symbol.hashCode(), k -> new ArrayList<>()).add(symbol);
+
+			// each node is processed once: this walk used to revisit a node once per path leading to
+			// it - exponential in the number of sequential diamonds (see
+			// PartialOrderGraphTrimEquivalenceTest). Revisiting never changed anything: a removed node
+			// has no edges left, and edges into a kept node are rewired by the removed parent.
+			Set<Node.Op> visited = Collections.newSetFromMap(new IdentityHashMap<>());
 			LinkedList<Node.Op> stack = new LinkedList<>();
 			stack.push(this.getHead());
 			while (!stack.isEmpty()) {
 				Node.Op current = stack.pop();
+				if (!visited.add(current))
+					continue;
 
 				// if it is not contained in symbols remove node and connect all its parents to all its children
-				if (current.getArtifact() != null && !symbols.contains(current.getArtifact())) {
+				if (current.getArtifact() != null && !containsEqual(symbolsByHash, current.getArtifact())) {
 
 					// connect every parent
 					for (Node.Op parent : new ArrayList<>(current.getPrevious())) {
@@ -703,6 +716,18 @@ public interface PartialOrderGraph extends Persistable {
 					}
 				}
 			}
+		}
+
+
+		private static boolean containsEqual(Map<Integer, List<Artifact.Op<?>>> symbolsByHash, Artifact.Op<?> artifact) {
+			List<Artifact.Op<?>> bucket = symbolsByHash.get(artifact.hashCode());
+			if (bucket == null)
+				return false;
+			for (Artifact.Op<?> symbol : bucket) {
+				if (artifact.equals(symbol))
+					return true;
+			}
+			return false;
 		}
 
 
