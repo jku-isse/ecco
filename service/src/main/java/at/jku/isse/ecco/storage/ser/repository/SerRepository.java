@@ -61,6 +61,12 @@ public final class SerRepository implements Repository, Repository.Op {
 	// trees at write time instead, via registerArtifact() below.
 	private Set<String> artifactIds = new LinkedHashSet<>();
 	private transient Map<String, Artifact.Op<?>> artifactsById = new LinkedHashMap<>();
+	// Artifacts are stored in pack files (see SerTransactionStrategy): artifact id -> the pack in
+	// artifacts/ that holds it, and each pack's number of entries (to tell when it is mostly
+	// superseded). An artifact without a pack has a file of its own - repositories written before
+	// packs, whose cores have neither map (null).
+	private Map<String, String> artifactPacks = new HashMap<>();
+	private Map<String, Integer> packSizes = new HashMap<>();
 	// identity-keyed (Collections.newSetFromMap(new IdentityHashMap<>()), same pattern
 	// Trees.java's newIdentitySet() already uses for the same reason): SerArtifact.equals()/
 	// hashCode() are deliberately data-based (Trees.slice() relies on it), so a plain
@@ -235,6 +241,20 @@ public final class SerRepository implements Repository, Repository.Op {
 	/** Artifacts touched since the last {@link #clearDirtyTracking()} - need writing. */
 	public Set<Artifact.Op<?>> getDirtyArtifacts() {
 		return Collections.unmodifiableSet(this.dirtyArtifacts);
+	}
+
+	/** Artifact id -> the pack file holding it; artifacts not in it have a file of their own. */
+	public Map<String, String> getArtifactPacks() {
+		if (this.artifactPacks == null)
+			this.artifactPacks = new HashMap<>();
+		return this.artifactPacks;
+	}
+
+	/** Pack file -> the number of artifacts written into it. */
+	public Map<String, Integer> getPackSizes() {
+		if (this.packSizes == null)
+			this.packSizes = new HashMap<>();
+		return this.packSizes;
 	}
 
 	public Artifact.Op<?> getArtifact(String id) {
