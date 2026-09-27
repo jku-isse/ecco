@@ -503,7 +503,12 @@ public interface PartialOrderGraph extends Persistable {
 				Node current = stack.pop();
 
 				// process node
-				if ((targetArtifact == null && current.getArtifact() == null) || (targetArtifact != null && current.getArtifact() != null && current.getSequenceNumber() == target.getSequenceNumber()))
+				// by sequence number only when it is actually assigned: NOT_MATCHED/UNASSIGNED (negative)
+				// used to make any two such nodes "equal", so unrelated siblings reached each other and
+				// merge()'s checks reported false cycles (see CanReachUnassignedTest)
+				if (current == target
+						|| (targetArtifact == null && current.getArtifact() == null)
+						|| (targetArtifact != null && current.getArtifact() != null && target.getSequenceNumber() >= 0 && current.getSequenceNumber() == target.getSequenceNumber()))
 					return true;
 
 				// add children of current node
