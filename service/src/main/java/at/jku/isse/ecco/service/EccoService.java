@@ -867,6 +867,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             this.transactionStrategy.end();
         } catch (Exception e) {
+            this.abandonNewRepository(e);
             throw new EccoException("Error during remote fork.", e);
         }
     }
@@ -909,7 +910,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             originService.transactionStrategy.end();
         } catch (Exception e) {
-            originService.transactionStrategy.rollback();
+            // quietly: open() itself may have failed, with no transaction (or strategy) to roll back -
+            // an unconditional rollback() then replaced the real error
+            originService.rollbackIfTransactionActive();
+            this.abandonNewRepository(e);
 
             throw new EccoException("Error during local fork.", e);
         } finally {
@@ -931,7 +935,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
             this.transactionStrategy.end();
         } catch (Exception e) {
-            this.transactionStrategy.rollback();
+            this.abandonNewRepository(e);
 
             throw new EccoException("Error during local fork.", e);
         }
@@ -947,6 +951,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             subsetOriginRepository = originRepository.subset(origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
             origService.transactionStrategy.end();
         } catch (Exception e) {
+            // otherwise the ORIGIN's read transaction stays open, breaking that service for good
+            origService.rollbackIfTransactionActive();
             throw new EccoException("Error during local fork.", e);
         }
 
@@ -958,6 +964,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.repositoryDao.store(repository);
             this.transactionStrategy.end();
         } catch (Exception e) {
+            // the target already existed (unlike fork()), so only release the transaction
+            this.rollbackIfTransactionActive();
             throw new EccoException("Error during local fork.", e);
         }
     }
@@ -1010,23 +1018,60 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         try {
             Files.createDirectory(this.repositoryDir);
-            this.open();
-            try {
-                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                Repository.Op repository = this.repositoryDao.load();
-                repository.setMaxOrder(this.defaultMaxOrder);
-                repository.setEvaluationStrategy(this.defaultEvaluationStrategy);
-                repository.setMaintreeBuildingStrategy(this.defaultMainTreeBuildingStrategy);
-                this.repositoryDao.store(repository);
-                this.transactionStrategy.end();
-            } catch (Exception e) {
-                this.transactionStrategy.rollback();
-                throw new EccoException("Error setting default values.", e);
-            }
         } catch (IOException e) {
             throw new EccoException("Error while creating repository.", e);
         }
+        try {
+            this.open();
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+            Repository.Op repository = this.repositoryDao.load();
+            repository.setMaxOrder(this.defaultMaxOrder);
+            repository.setEvaluationStrategy(this.defaultEvaluationStrategy);
+            repository.setMaintreeBuildingStrategy(this.defaultMainTreeBuildingStrategy);
+            this.repositoryDao.store(repository);
+            this.transactionStrategy.end();
+        } catch (Exception e) {
+            this.abandonNewRepository(e);
+            throw new EccoException("Error setting default values.", e);
+        }
         return true;
+    }
+
+    /**
+     * Rolls back the current transaction if there is one. TransactionStrategy has no "is a
+     * transaction active" query, so this probes via rollback() and ignores the "no transaction
+     * active" case (as RemoteSyncService does); also safe before open() ever injected a strategy.
+     */
+    void rollbackIfTransactionActive() {
+        if (this.transactionStrategy == null)
+            return;
+        try {
+            this.transactionStrategy.rollback();
+        } catch (EccoException ignored) {
+            // no transaction was active
+        }
+    }
+
+    /**
+     * Undoes a repository creation (init/fork) that failed part way: releases the transaction and
+     * write lock, closes the service and deletes the repository directory again, so that the
+     * operation can simply be retried. Only called by operations that require that no repository
+     * existed at this location beforehand - i.e. the directory is entirely theirs. Cleanup failures
+     * are attached to {@code cause} instead of hiding it.
+     */
+    private void abandonNewRepository(Exception cause) {
+        this.rollbackIfTransactionActive();
+        try {
+            this.close();
+        } catch (RuntimeException e) {
+            cause.addSuppressed(e);
+        }
+        try (java.util.stream.Stream<Path> files = Files.walk(this.repositoryDir)) {
+            for (Path file : (Iterable<Path>) files.sorted(java.util.Comparator.reverseOrder())::iterator)
+                Files.deleteIfExists(file);
+        } catch (IOException | RuntimeException e) {
+            cause.addSuppressed(e);
+        }
     }
 
 
