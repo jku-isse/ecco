@@ -333,16 +333,18 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             @Override
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);
+                // snapshot the selection on the FX thread: associationsData is the table's observable
+                // list, which a concurrent refresh() clears - iterating it inside the task (as this
+                // used to) could fail or see a half-rebuilt list
+                Collection<Association> selectedAssociations = new ArrayList<>();
+                for (AssociationInfoImpl associationInfo : ArtifactsView.this.associationsData) {
+                    if (associationInfo.isSelected())
+                        selectedAssociations.add(associationInfo.getAssociation());
+                }
 
                 Task<Void> composeTask = new Task<>() {
                     @Override
                     public Void call() throws EccoException {
-                        Collection<Association> selectedAssociations = new ArrayList<>();
-                        for (AssociationInfoImpl associationInfo : ArtifactsView.this.associationsData) {
-                            if (associationInfo.isSelected())
-                                selectedAssociations.add(associationInfo.getAssociation());
-                        }
-
                         // use composition here to merge selected associations
                         LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
                         for (Association association : selectedAssociations) {
@@ -401,13 +403,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     return;
                 }
                 Configuration config = result.get();
+                // snapshot on the FX thread - see the compose action
+                List<AssociationInfoImpl> associationInfos = new ArrayList<>(associationsData);
 
                 Task<Void> selectionTask = new Task<>() {
                     @Override
                     public Void call() throws EccoException {
                         Set<Association> ass = service.getAssociations(config);
                         LinkedList<AssociationInfoImpl> toSelect = new LinkedList<AssociationInfoImpl>();
-                        for (AssociationInfoImpl ai : associationsData) {
+                        for (AssociationInfoImpl ai : associationInfos) {
                             if (ass.contains(ai.getAssociation())) {
                                 toSelect.add(ai);
                             }

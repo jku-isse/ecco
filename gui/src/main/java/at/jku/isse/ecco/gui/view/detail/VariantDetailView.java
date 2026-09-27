@@ -44,17 +44,18 @@ public class VariantDetailView extends BorderPane {
 			@Override
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
+				// read the UI state here, on the FX thread; the repository write runs in the task below
+				// (it used to be wrapped in Platform.runLater, i.e. ran on the FX thread, and a failure
+				// there bypassed the task's failure handling and still re-enabled the toolbar)
+				String configuration = variantConfiguration.getText();
+				String name = variantName.getText();
+				String id = variantId.getText();
 
 				Task variantsUpdateTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						Platform.runLater(() -> {
-							String configuration = variantConfiguration.getText();
-							String name = variantName.getText();
-							String id = variantId.getText();
-							Configuration config = VariantDetailView.this.service.parseConfigurationString(configuration);
-							VariantDetailView.this.service.updateVariant(config,name,id);
-						});
+						Configuration config = VariantDetailView.this.service.parseConfigurationString(configuration);
+						VariantDetailView.this.service.updateVariant(config, name, id);
 						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;
 					}
@@ -71,15 +72,14 @@ public class VariantDetailView extends BorderPane {
 			@Override
 			public void handle(ActionEvent e) {
 				toolBar.setDisable(true);
+				// UI state read on the FX thread, repository write in the task - see the update action
+				String configuration = variantConfiguration.getText();
 
 				Task variantsRemoveTask = new Task<Void>() {
 					@Override
 					public Void call() throws EccoException {
-						Platform.runLater(() -> {
-							String configuration = variantConfiguration.getText();
-							Configuration config = VariantDetailView.this.service.parseConfigurationString(configuration);
-							VariantDetailView.this.service.removeVariant(config);
-						});
+						Configuration config = VariantDetailView.this.service.parseConfigurationString(configuration);
+						VariantDetailView.this.service.removeVariant(config);
 						Platform.runLater(() -> toolBar.setDisable(false));
 						return null;
 					}
