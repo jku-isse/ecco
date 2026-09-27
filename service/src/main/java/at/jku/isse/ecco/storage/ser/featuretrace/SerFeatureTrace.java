@@ -131,6 +131,10 @@ public class SerFeatureTrace implements FeatureTrace {
         // as opposed to documentation, "#" and "@" do not parse, which is why only "_" is used
         // conditions replace "-" with "_" for UUIDs (Feature-revision-IDs)
         if (formulaString == null) { return null; }
+        // fast path: condition strings get very large (hundreds of KB) and are sanitized for every
+        // node on every main-tree fusion; most are already clean, and two replace() scans of each
+        // were most of a checkout's time
+        if (formulaString.indexOf('.') < 0 && formulaString.indexOf('-') < 0) { return formulaString; }
         formulaString = formulaString.replace(".", "_");
         formulaString = formulaString.replace("-", "_");
         return formulaString;
