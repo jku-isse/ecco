@@ -1108,6 +1108,24 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 
     /**
+     * Sets and persists a feature's description.
+     *
+     * @param featureId   The id of the feature.
+     * @param description The new description.
+     */
+    public synchronized void setFeatureDescription(String featureId, String description) {
+        this.checkInitialized();
+        checkNotNull(featureId);
+        this.writeTransaction("Error updating the feature description.", repository -> {
+            Feature feature = repository.getFeature(featureId);
+            if (feature == null)
+                throw new EccoException("Feature does not exist: " + featureId);
+            feature.setDescription(description);
+            return repository;
+        });
+    }
+
+    /**
      * Switches the repository to the feature-trace-boosting main tree building strategy, persistently
      * (this used to set it on the loaded repository without a write transaction, so it only stuck if
      * some later write happened to persist it - see FeatureTraceBoostingPersistenceTest).
