@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.Configuration;
@@ -59,6 +60,7 @@ public class VariantDetailView extends BorderPane {
 					}
 				};
 
+				TaskFailures.reportAndReenable(variantsUpdateTask, toolBar);
 				new Thread(variantsUpdateTask).start();
 			}
 		});
@@ -83,6 +85,7 @@ public class VariantDetailView extends BorderPane {
 					}
 				};
 
+				TaskFailures.reportAndReenable(variantsRemoveTask, toolBar);
 				new Thread(variantsRemoveTask).start();
 			}
 		});

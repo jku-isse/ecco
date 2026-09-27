@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.gui.EditableSpinner;
 import at.jku.isse.ecco.gui.MinimizationResults;
@@ -323,6 +324,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
                 return null;
             }
         };
+        TaskFailures.reportAndReenable(refreshTask, toolBar);
         new Thread(refreshTask).start();
     }
 

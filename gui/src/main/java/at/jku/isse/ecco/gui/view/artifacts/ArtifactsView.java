@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.artifacts;
 
+import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.Association;
@@ -356,6 +357,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     }
                 };
 
+                TaskFailures.reportAndReenable(composeTask, toolBar);
                 new Thread(composeTask).start();
             }
         });
@@ -423,6 +425,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     }
                 };
 
+                TaskFailures.reportAndReenable(selectionTask, toolBar);
                 new Thread(selectionTask).start();
             }
         });
@@ -512,6 +515,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 return null;
             }
         };
+        TaskFailures.reportAndReenable(composeTask);
         new Thread(composeTask).start();
     }
 
