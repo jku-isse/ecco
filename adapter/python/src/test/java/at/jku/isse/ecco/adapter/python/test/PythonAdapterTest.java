@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.python.test;
 
 import at.jku.isse.ecco.adapter.python.PythonReader;
 import at.jku.isse.ecco.adapter.python.PythonWriter;
-import at.jku.isse.ecco.storage.mem.dao.MemEntityFactory;
+import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,9 +23,20 @@ import java.util.stream.Stream;
 
 import static at.jku.isse.ecco.adapter.python.test.PythonAdapterTestUtil.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 
 public class PythonAdapterTest {
+
+    private static boolean pythonWithLibcstAvailable() {
+        try {
+            Process process = new ProcessBuilder("python", "-c", "import libcst").redirectErrorStream(true).start();
+            process.getInputStream().readAllBytes();
+            return process.waitFor() == 0;
+        } catch (IOException | InterruptedException e) {
+            return false;
+        }
+    }
 
     private static Path readPath;
     private static Path writePath;
@@ -39,7 +50,11 @@ public class PythonAdapterTest {
 
     @BeforeAll
     static void start() {
-        reader = new PythonReader(new MemEntityFactory());
+        // the adapter parses through a `python` subprocess that needs the libcst module - skip rather
+        // than fail on machines without it (every file would fail to parse)
+        assumeTrue(pythonWithLibcstAvailable(), "needs `python` with the libcst module on the PATH");
+
+        reader = new PythonReader(new SerEntityFactory());
         writer = new PythonWriter();
 
         Path cwd = Paths.get("").toAbsolutePath();
@@ -77,7 +92,7 @@ public class PythonAdapterTest {
     @Test
     @Disabled
     void testSingleFile() {
-        reader = new PythonReader(new MemEntityFactory());
+        reader = new PythonReader(new SerEntityFactory());
         writer = new PythonWriter();
 
         Path cwd = Paths.get("").toAbsolutePath();
