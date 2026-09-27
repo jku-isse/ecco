@@ -3,6 +3,12 @@ plugins {
     id 'java'
     id 'idea' // optional (to generate IntelliJ IDEA project files)
     id "org.ajoberstar.grgit" version "5.3.0"
+    alias(libs.plugins.openjfx.javafxplugin)
+}
+
+javafx {
+    version = libs.versions.javafx.get()
+    modules = ['javafx.base', 'javafx.controls', 'javafx.graphics']
 }
 
 dependencies {
