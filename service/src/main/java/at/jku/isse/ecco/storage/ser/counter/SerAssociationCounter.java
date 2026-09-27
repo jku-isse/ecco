@@ -8,6 +8,12 @@ import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.storage.ser.module.SerModule;
 import org.eclipse.collections.impl.factory.Maps;
 
+import at.jku.isse.ecco.storage.ser.repository.SerRepository;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamField;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
@@ -37,6 +43,22 @@ public class SerAssociationCounter implements AssociationCounter {
 	private int count;
 	private Map<Module, SerModuleCounter> children;
 
+	/**
+	 * The serialized form: the fields above, except that in an association file (written with
+	 * {@link CompactCounters.Stream}) the children are {@code compactChildren} instead - resolved
+	 * against the repository by {@link #resolveCompactChildren} once it is loaded. Files written
+	 * before carry {@code children} and are read as they were.
+	 */
+	private static final ObjectStreamField[] serialPersistentFields = {
+			new ObjectStreamField("association", Association.class),
+			new ObjectStreamField("count", int.class),
+			new ObjectStreamField("children", Map.class),
+			new ObjectStreamField("compactChildren", byte[].class)
+	};
+
+	/** Read compact children not yet resolved against the repository - see {@link #resolveCompactChildren}. */
+	private transient byte[] unresolvedChildren;
+
 
 	public SerAssociationCounter(Association association) {
 		checkNotNull(association);
@@ -46,8 +68,54 @@ public class SerAssociationCounter implements AssociationCounter {
 	}
 
 
+	private synchronized void writeObject(ObjectOutputStream out) throws IOException {
+		ObjectOutputStream.PutField fields = out.putFields();
+		fields.put("association", this.association);
+		fields.put("count", this.count);
+		if (out instanceof CompactCounters.Stream) {
+			this.checkResolved();
+			fields.put("compactChildren", CompactCounters.encode(this.children.values()));
+		} else {
+			fields.put("children", this.children);
+		}
+		out.writeFields();
+	}
+
+	@SuppressWarnings("unchecked")
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+		ObjectInputStream.GetField fields = in.readFields();
+		this.association = (Association) fields.get("association", null);
+		this.count = fields.get("count", 0);
+		byte[] compactChildren = (byte[]) fields.get("compactChildren", null);
+		if (compactChildren != null) {
+			this.unresolvedChildren = compactChildren;
+			this.children = Maps.mutable.empty();
+		} else {
+			this.children = (Map<Module, SerModuleCounter>) fields.get("children", null);
+		}
+	}
+
+	/**
+	 * Builds the children read in compact form on the repository's own features, modules and
+	 * module revisions. Called by SerTransactionStrategy once the repository is loaded; a no-op
+	 * for counters read in the old form or created in this session.
+	 */
+	public synchronized void resolveCompactChildren(SerRepository repository) {
+		if (this.unresolvedChildren == null)
+			return;
+		this.children = CompactCounters.decode(this.unresolvedChildren, repository, this.association.getId());
+		this.unresolvedChildren = null;
+	}
+
+	/** Children read in compact form are not there until resolved - reading them before would silently find none. */
+	private void checkResolved() {
+		if (this.unresolvedChildren != null)
+			throw new IllegalStateException("The counter of association " + this.association.getId() + " was read but not resolved against its repository.");
+	}
+
 	@Override
 	public synchronized ModuleCounter addChild(Module child) {
+		this.checkResolved();
 		if (!(child instanceof SerModule))
 			throw new EccoException("Only MemModule can be added as a child to MemAssociationCounter!");
 		SerModule memChild = (SerModule) child;
@@ -60,11 +128,13 @@ public class SerAssociationCounter implements AssociationCounter {
 
 	@Override
 	public synchronized ModuleCounter getChild(Module child) {
+		this.checkResolved();
 		return this.children.get(child);
 	}
 
 	@Override
 	public synchronized Collection<ModuleCounter> getChildren() {
+		this.checkResolved();
 		return new ArrayList<>(this.children.values());
 	}
 
