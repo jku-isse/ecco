@@ -88,24 +88,27 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
             throw new RuntimeException("could not initialize parser", e);
         }
 
-        for (Path path : input) {
-            Path resolvedPath = base.resolve(path);
-            Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-            Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
-            nodes.add(pluginNode);
+        try {
+            for (Path path : input) {
+                Path resolvedPath = base.resolve(path);
+                Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+                Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+                nodes.add(pluginNode);
 
-            LilypondNode<ParceToken> head = parser.parse(resolvedPath, tokenMetric);
-            if (head == null) {
-                LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", resolvedPath);
-            } else {
-                head = LilyEccoTransformer.transform(head);
-                generateEccoTree(head, pluginNode);
+                LilypondNode<ParceToken> head = parser.parse(resolvedPath, tokenMetric);
+                if (head == null) {
+                    LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", resolvedPath);
+                } else {
+                    head = LilyEccoTransformer.transform(head);
+                    generateEccoTree(head, pluginNode);
+                }
+
+                listeners.forEach(l -> l.fileReadEvent(resolvedPath, this));
             }
-
-            listeners.forEach(l -> l.fileReadEvent(resolvedPath, this));
+        } finally {
+            // also when a parse fails, so the parser's gateway doesn't leak
+            parser.shutdown();
         }
-
-        parser.shutdown();
 
         return nodes;
     }

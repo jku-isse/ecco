@@ -73,11 +73,12 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             Path resolvedPath = base.resolve(path);
             File file = resolvedPath.toFile();
             //System.out.println(file.getName());
-            String fileCont = null;
+            String fileCont;
             try {
                 fileCont = new String(Files.readAllBytes(resolvedPath), StandardCharsets.UTF_8);
             } catch (IOException e) {
-                e.printStackTrace();
+                // fail the commit rather than committing an empty file (see UnreadableFileCommitTest)
+                throw new EccoException("Could not read file: " + resolvedPath, e);
             }
             String[] lines = fileCont.split("\\r?\\n");
 
@@ -131,7 +132,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
                     translationUnit = GPPLanguage.getDefault().getASTTranslationUnit(fileContent, info, emptyIncludes, null, opts, log);
 
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    throw new EccoException("Could not parse file: " + resolvedPath, e);
                 }
 
                 // create includes artifact/node

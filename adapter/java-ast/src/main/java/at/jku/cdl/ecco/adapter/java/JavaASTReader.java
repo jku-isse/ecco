@@ -191,8 +191,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 				}
 
 			} catch (IOException e) {
-				LOGGER.severe("Unable to parse java file: " + javafile.toString());
-				LOGGER.severe(e.getMessage());
+				// fail the commit rather than committing an empty file (see UnreadableFileCommitTest)
+				throw new EccoException("Unable to parse java file: " + javafile, e);
 			}
 
 			// add java file node to result set
