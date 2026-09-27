@@ -121,4 +121,21 @@ public class DependencyGraphTest {
         assertTrue(gml.contains("source " + a.association().getId()));
         assertTrue(gml.contains("target " + b.association().getId()));
     }
+
+    /**
+     * A referenced artifact that isn't contained in any node (e.g. dangling after a partial load)
+     * failed with a bare NullPointerException from ar.getTarget().getContainingNode() - the check
+     * right below it, meant for exactly this ("Artifacts must be contained in an association"),
+     * was never reached.
+     */
+    @Test
+    public void aReferenceToAnUncontainedArtifactFailsWithAClearError() {
+        AssociationWithArtifact a = associationWithArtifact("A");
+        Artifact.Op<TestArtifactData> dangling = ef.createArtifact(new TestArtifactData("dangling"));
+        a.artifact().addUses(dangling, "references");
+
+        at.jku.isse.ecco.EccoException exception = assertThrows(at.jku.isse.ecco.EccoException.class,
+                () -> new DependencyGraph(List.of(a.association())));
+        assertTrue(exception.getMessage().contains("must be contained"), exception.getMessage());
+    }
 }

@@ -88,7 +88,10 @@ public class DependencyGraph {
 			while (it.hasNext()) {
 				ArtifactReference ar = it.next();
 
-				Association toA = ar.getTarget().getContainingNode().getContainingAssociation();
+				// null-safe: an uncontained target used to NPE here instead of reaching the
+				// "must be contained in an association" check below
+				Node targetNode = ar.getTarget().getContainingNode();
+				Association toA = targetNode == null ? null : targetNode.getContainingAssociation();
 
 				if (toA != null) {
 					if (this.associations.contains(toA) || referencesResolveMode != ReferencesResolveMode.TRIM_UNRESOLVED_ARTIFACT_REFERENCES) {
