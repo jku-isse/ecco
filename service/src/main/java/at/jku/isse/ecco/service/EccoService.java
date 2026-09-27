@@ -561,10 +561,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized Collection<Commit> getCommits() {
         this.checkInitialized();
 
+        // no rollback here: this never begins a transaction itself, and getRepository() already rolls
+        // its own back - a second rollback() throws "No transaction active", replacing the real error
         try {
             return getRepository().getCommits();
         } catch (EccoException e) {
-            this.transactionStrategy.rollback();
             throw new EccoException("Error when retrieving commits.", e);
         }
     }
@@ -1249,7 +1250,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             BoostedAssociationMerger merger = this.entityFactory.createBoostedAssociationMerger();
             this.getRepository().setMaintreeBuildingStrategy(merger);
         } catch (EccoException e) {
-            this.transactionStrategy.rollback();
+            // no rollback: no transaction begun here (see getCommits())
             throw new EccoException("Error while enabling feature trace boosting.", e);
         }
     }
@@ -1260,7 +1261,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             AssociationMerger merger = this.entityFactory.createAssociationMerger();
             this.getRepository().setMaintreeBuildingStrategy(merger);
         } catch (EccoException e) {
-            this.transactionStrategy.rollback();
+            // no rollback: no transaction begun here (see getCommits())
             throw new EccoException("Error while disabling feature trace boosting.", e);
         }
     }
