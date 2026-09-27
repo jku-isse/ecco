@@ -30,6 +30,17 @@ public class VariableAssignmentData extends AbstractArtifactData {
         return this.getLeadingText();
     }
 
+    /**
+     * Repositories committed before the reader kept what follows a variable statement's last
+     * declaration (its ";") hold an empty trailing text; the next commit of the statement fills it
+     * in. The trailing text is not part of equals().
+     */
+    @Override
+    public void adoptMetadataFrom(ArtifactData newer) {
+        if (this.getTrailingComment().isEmpty() && newer instanceof VariableAssignmentData other)
+            this.setTrailingComment(other.getTrailingComment());
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(this.id);
