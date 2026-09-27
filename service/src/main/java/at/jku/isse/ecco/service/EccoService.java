@@ -436,6 +436,27 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         if (!this.repositoryDirectoryExists()) {
             throw new EccoException("Repository does not exist.");
         }
+        // a repository directory is never empty - init() writes into it right away. Opening an empty
+        // (or any non-repository) folder used to succeed as an empty repository, writing .ignores/
+        // .adapters into it, and forking from one produced an empty repository.
+        if (!Files.isDirectory(this.repositoryDir)) {
+            throw new EccoException("Not an ECCO repository (not a directory): " + this.repositoryDir);
+        }
+        try (java.util.stream.Stream<Path> entries = Files.list(this.repositoryDir)) {
+            if (entries.findAny().isEmpty())
+                throw new EccoException("Not an ECCO repository (empty directory): " + this.repositoryDir);
+        } catch (IOException e) {
+            throw new EccoException("Could not read repository directory: " + this.repositoryDir, e);
+        }
+
+        this.openRepository();
+    }
+
+    /**
+     * Opens the repository directory without checking that it already is a repository - for init(),
+     * which opens the directory it just created.
+     */
+    private void openRepository() {
 
         LOGGER.config("BASE_DIR: " + this.baseDir);
         LOGGER.config("REPOSITORY_DIR: " + this.repositoryDir);
@@ -1033,7 +1054,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             throw new EccoException("Error while creating repository.", e);
         }
         try {
-            this.open();
+            this.openRepository();
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             Repository.Op repository = this.repositoryDao.load();
             repository.setMaxOrder(this.defaultMaxOrder);
