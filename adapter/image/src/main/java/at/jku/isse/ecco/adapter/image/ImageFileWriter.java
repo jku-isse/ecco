@@ -47,20 +47,49 @@ public class ImageFileWriter implements ArtifactWriter<Set<Node>, Path> {
 
 				BufferedImage outputImage = ImageUtil.createBufferedImage(pluginNode, this.backgroundColor, this.enableBlending);
 
+				String fileName = outputPath.getFileName().toString();
+				String fileType = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
 				try {
-					if (!Files.exists(outputPath)) {
-						Files.createFile(outputPath);
-					}
-					String fileName = outputPath.getFileName().toString();
-					String fileType = fileName.substring(fileName.lastIndexOf(".") + 1, fileName.length());
-					ImageIO.write(outputImage, fileType, outputPath.toFile());
+					writeImage(outputImage, fileType, outputPath);
 				} catch (IOException e) {
-					e.printStackTrace();
+					throw new EccoException("Could not write image " + outputPath, e);
 				}
 			}
 		}
 
 		return output.toArray(new Path[output.size()]);
+	}
+
+	/**
+	 * Writes {@code image} (which has an alpha channel) in the file's format. JPEG and BMP have no
+	 * alpha channel, and ImageIO's encoders for them write nothing for an image with one - they
+	 * return false, and every checked-out .jpg and .bmp used to be an empty file. They get the image
+	 * without its alpha channel (the writer already blended transparent pixels onto the background),
+	 * JPEG at the highest quality, since every checkout encodes it again.
+	 */
+	private static void writeImage(BufferedImage image, String fileType, Path outputPath) throws IOException {
+		BufferedImage toWrite = image;
+		if (fileType.equals("jpg") || fileType.equals("jpeg") || fileType.equals("bmp")) {
+			toWrite = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+			java.awt.Graphics2D graphics = toWrite.createGraphics();
+			graphics.drawImage(image, 0, 0, java.awt.Color.WHITE, null);
+			graphics.dispose();
+		}
+		if (fileType.equals("jpg") || fileType.equals("jpeg")) {
+			javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+			javax.imageio.ImageWriteParam param = writer.getDefaultWriteParam();
+			param.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+			param.setCompressionQuality(1.0f);
+			try (javax.imageio.stream.ImageOutputStream out = ImageIO.createImageOutputStream(Files.newOutputStream(outputPath))) {
+				writer.setOutput(out);
+				writer.write(null, new javax.imageio.IIOImage(toWrite, null, null), param);
+			} finally {
+				writer.dispose();
+			}
+			return;
+		}
+		if (!ImageIO.write(toWrite, fileType, outputPath.toFile()))
+			throw new EccoException("No image writer for the format of " + outputPath);
 	}
 
 	private Collection<WriteListener> listeners = new ArrayList<>();
