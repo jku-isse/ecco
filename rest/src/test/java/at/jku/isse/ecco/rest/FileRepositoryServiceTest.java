@@ -159,7 +159,8 @@ public class FileRepositoryServiceTest {
         Path storage = Files.createTempDirectory("file-repository-service-add-commit-unknown");
         FileRepositoryService service = new FileRepositoryService(storage);
 
-        assertThrows(NullPointerException.class, () -> service.addCommit(1, "msg", "Core", "alice", List.of()));
+        HttpStatusException exception = assertThrows(HttpStatusException.class, () -> service.addCommit(1, "msg", "Core", "alice", List.of()));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
     }
 
     @Test
@@ -282,5 +283,57 @@ public class FileRepositoryServiceTest {
         HttpStatusException exception = assertThrows(HttpStatusException.class, () -> service.cloneRepository(1, "../outside"));
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         assertFalse(Files.exists(workDir.resolve("outside")));
+    }
+
+    // Concurrency / lookup robustness: every operation used to call repositories.get(id).x() - an
+    // unknown id was a NullPointerException (500) instead of a 404; handlers discovered by the
+    // directory scan were never opened, so committing to one failed with an NPE until something
+    // happened to call getRepository() first; and requests to the same repository ran concurrently
+    // on one EccoService, sharing the fixed lastCommit/ and checkout/ folders.
+
+    @Test
+    @Timeout(30)
+    public void anUnknownRepositoryIdIsNotFound() throws IOException {
+        FileRepositoryService service = new FileRepositoryService(Files.createTempDirectory("file-repository-service-404"));
+        HttpStatusException exception = assertThrows(HttpStatusException.class, () -> service.addVariant(42, "v", "A", "d"));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+    }
+
+    @Test
+    @Timeout(60)
+    public void aRepositoryFoundByTheDirectoryScanCanBeCommittedToDirectly() throws IOException {
+        Path storage = Files.createTempDirectory("file-repository-service-discovered");
+        new FileRepositoryService(storage).createRepository("existing-repo");
+
+        FileRepositoryService freshService = new FileRepositoryService(storage);
+        int id = freshService.getRepositories().keySet().iterator().next();
+        RestRepository result = freshService.addCommit(id, "first commit", "Core", "alice", List.of(mockUpload("\\file.txt", "hello\n")));
+        assertEquals(1, result.getCommits().size());
+    }
+
+    @Test
+    @Timeout(120)
+    public void concurrentCommitsToOneRepositoryAreSerialized() throws Exception {
+        Path storage = Files.createTempDirectory("file-repository-service-concurrent");
+        FileRepositoryService service = new FileRepositoryService(storage);
+        service.createRepository("my-repo");
+        int threads = 4;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+        for (int t = 0; t < threads; t++) {
+            int n = t;
+            futures.add(pool.submit(() -> {
+                start.await();
+                List<CompletedFileUpload> uploads = new java.util.ArrayList<>();
+                for (int f = 0; f < 20; f++) uploads.add(mockUpload("\\t" + n + "_" + f + ".txt", "thread " + n + " file " + f + "\n"));
+                service.addCommit(1, "commit " + n, "F" + n, "alice", uploads);
+                return null;
+            }));
+        }
+        start.countDown();
+        for (java.util.concurrent.Future<?> future : futures) future.get();
+        pool.shutdown();
+        assertEquals(threads, service.getRepository(1).getCommits().size());
     }
 }

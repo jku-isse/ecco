@@ -16,7 +16,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -31,7 +32,8 @@ import static at.jku.isse.ecco.rest.Settings.STORAGE_LOCATION_OF_REPOSITORIES;
 @Singleton
 public class FileRepositoryService implements RepositoryService {
     private final Path repoStorage;
-    private final Map<Integer, RepositoryHandler> repositories = new TreeMap<>();
+    // concurrent: requests read it while getRepositories() adds discovered repositories
+    private final Map<Integer, RepositoryHandler> repositories = new ConcurrentSkipListMap<>();
     private final AtomicInteger repositoryHandlerId = new AtomicInteger();
     private final EccoService generalService = new EccoService();
     private static final Logger LOGGER = Logger.getLogger(FileRepositoryService.class.getName());
@@ -54,7 +56,7 @@ public class FileRepositoryService implements RepositoryService {
     @Override
     public RestRepository getRepository(int repositoryHandlerId) {
         if (repositories.containsKey(repositoryHandlerId)) {
-            return repositories.get(repositoryHandlerId).getRepository();
+            return handler(repositoryHandlerId).getRepository();
         } else {
             throw new HttpStatusException(HttpStatus.NOT_FOUND, "repository with the id does not exist");
         }
@@ -95,8 +97,20 @@ public class FileRepositoryService implements RepositoryService {
         return dir;
     }
 
+    /**
+     * The handler for an id, or 404 - lookups used to be plain handler(id).x() calls, so an
+     * unknown id was a NullPointerException (500).
+     */
+    private RepositoryHandler handler(int repositoryHandlerId) {
+        RepositoryHandler handler = repositories.get(repositoryHandlerId);
+        if (handler == null) {
+            throw new HttpStatusException(HttpStatus.NOT_FOUND, "repository with the id does not exist");
+        }
+        return handler;
+    }
+
     @Override
-    public RepositoryHandler createRepository(String name) {
+    public synchronized RepositoryHandler createRepository(String name) {
         Path p = resolveRepositoryDir(name);
         if (p.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
@@ -116,12 +130,12 @@ public class FileRepositoryService implements RepositoryService {
     @Override
     public void forkRepository(int oldRepositoryHandlerId, String name, String disabledFeatures) {
         RepositoryHandler newRepo = createRepository(name);
-        newRepo.fork(repositories.get(oldRepositoryHandlerId), disabledFeatures);
+        newRepo.fork(handler(oldRepositoryHandlerId), disabledFeatures);
     }
 
     @Override
     public void cloneRepository(int oldRepositoryHandlerId, String name) {
-        Path oldDir = repositories.get(oldRepositoryHandlerId).getPath();
+        Path oldDir = handler(oldRepositoryHandlerId).getPath();
         Path newDir = resolveRepositoryDir(name);
 
         if (newDir.toFile().exists()) {
@@ -143,13 +157,13 @@ public class FileRepositoryService implements RepositoryService {
 
     @Override
     public void deleteRepository(final int repositoryHandlerId) {
-        deleteDirectory(repositories.get(repositoryHandlerId).getPath().toFile());
+        deleteDirectory(handler(repositoryHandlerId).getPath().toFile());
         repositories.remove(repositoryHandlerId);
         LOGGER.info(repositoryHandlerId + ": repository deleted");
     }
 
     @Override
-    public Map<Integer, RepositoryHandler> getRepositories() {
+    public synchronized Map<Integer, RepositoryHandler> getRepositories() {
         File folder = new File(repoStorage.toString());
         File[] files = folder.listFiles();
 
@@ -172,13 +186,15 @@ public class FileRepositoryService implements RepositoryService {
     // Commit ----------------------------------------------------------------------------------------------------------
     @Override
     public RestRepository addCommit(int repositoryHandlerId, String message, String config, String committer, List<CompletedFileUpload> commitFiles) {
-        RepositoryHandler repository = repositories.get(repositoryHandlerId);
-
-        if (repository == null) {
-            throw new NullPointerException(String.format("repository with id '%d' does not exist", repositoryHandlerId));
+        RepositoryHandler repository = handler(repositoryHandlerId);
+        // one request at a time per repository: they share its EccoService and the lastCommit folder
+        synchronized (repository) {
+            return addCommitLocked(repository, repositoryHandlerId, message, config, committer, commitFiles);
         }
+    }
 
-        Path commitFolder = repositories.get(repositoryHandlerId).getPath().resolve("lastCommit");
+    private RestRepository addCommitLocked(RepositoryHandler repository, int repositoryHandlerId, String message, String config, String committer, List<CompletedFileUpload> commitFiles) {
+        Path commitFolder = repository.getPath().resolve("lastCommit");
         if(commitFolder.toFile().exists()){
             deleteDirectory(commitFolder.toFile());     //remove existing files recursively
         }
@@ -213,90 +229,104 @@ public class FileRepositoryService implements RepositoryService {
             }
         }
 
-        repositories.get(repositoryHandlerId).addCommit(message, config, commitFolder, committer);      //handler commit
+        repository.addCommit(message, config, commitFolder, committer);      //handler commit
 
         LOGGER.info(repositoryHandlerId + ": committed");
-        return repositories.get(repositoryHandlerId).getRepository();
+        return repository.getRepository();
     }
 
     // Variant ---------------------------------------------------------------------------------------------------------
     @Override
     public RestRepository addVariant(int repositoryHandlerId, String name, String config, String description) {
         LOGGER.info("Adding Variant");
-        return repositories.get(repositoryHandlerId).addVariant(name, config, description);
+        return handler(repositoryHandlerId).addVariant(name, config, description);
     }
 
     @Override
     public RestRepository removeVariant(int repositoryHandlerId, String variantId) {
-        return repositories.get(repositoryHandlerId).removeVariant(variantId);
+        return handler(repositoryHandlerId).removeVariant(variantId);
     }
 
     @Override
     public RestRepository variantSetNameDescription(int repositoryHandlerId, String variantId, String name, String description){
-        return repositories.get(repositoryHandlerId).variantSetNameDescription(variantId, name, description);
+        return handler(repositoryHandlerId).variantSetNameDescription(variantId, name, description);
     }
 
     @Override
     public RestRepository variantAddFeature(int repositoryHandlerId, String variantId, String featureId) {
-        return repositories.get(repositoryHandlerId).variantAddFeature(variantId, featureId);
+        return handler(repositoryHandlerId).variantAddFeature(variantId, featureId);
     }
 
     @Override
     public RestRepository variantUpdateFeature(int repositoryHandlerId, String variantId, String featureName, String id) {
-        return repositories.get(repositoryHandlerId).variantUpdateFeature(variantId, featureName, id);
+        return handler(repositoryHandlerId).variantUpdateFeature(variantId, featureName, id);
     }
 
     @Override
     public RestRepository variantRemoveFeature(int repositoryHandlerId, String variantId, String featureName) {
-        return repositories.get(repositoryHandlerId).variantRemoveFeature(variantId, featureName);
+        return handler(repositoryHandlerId).variantRemoveFeature(variantId, featureName);
     }
 
     @Override
     public Path checkout(final int repositoryHandlerId, final String variantId) {
-        Path checkoutFolder = repositories.get(repositoryHandlerId).getPath().resolve("checkout");
-        Path checkoutZip = checkoutFolder.getParent().resolve("checkout.zip");
+        RepositoryHandler repository = handler(repositoryHandlerId);
+        // each checkout gets its own folder and zip: the zip is streamed to the client after this
+        // method returns, so a fixed checkout.zip could be replaced mid-download by a concurrent
+        // checkout of the same repository
+        String checkoutName = "checkout-" + UUID.randomUUID();
+        Path checkoutFolder = repository.getPath().resolve(checkoutName);
+        Path checkoutZip = repository.getPath().resolve(checkoutName + ".zip");
+        deleteStaleCheckoutZips(repository.getPath());
 
-        if(checkoutFolder.toFile().exists()){       //delete old checkout folder
-            if(!deleteDirectory(checkoutFolder.toFile())) {
-                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old directory is not possible: " + checkoutFolder.getParent().getFileName().toString());
+        synchronized (repository) {
+            if (!checkoutFolder.toFile().mkdir()) {
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutFolder.getFileName());
             }
-        }
-        if(checkoutZip.toFile().exists()){      //delete old checkout zip file
-            if(!deleteDirectory(checkoutZip.toFile())) {
-                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Deleting old zip-file is not possible: " + checkoutZip.getParent().getFileName().toString());
+            try {
+                repository.checkout(variantId, checkoutFolder);      //handler checkout
+                zipFolder(checkoutFolder, checkoutZip);
+            } catch (HttpStatusException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create checkout zip file");
+            } finally {
+                deleteDirectory(checkoutFolder.toFile());
             }
-        }
-
-        if(!checkoutFolder.toFile().mkdir()) {      //create new checkout folder
-            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Creation failed: " + checkoutZip.getParent().getFileName().toString());
-        }
-
-        repositories.get(repositoryHandlerId).checkout(variantId, checkoutFolder);      //handler checkout
-
-        try {
-            zipFolder(checkoutFolder, checkoutZip);
-        } catch (Exception e) {
-            throw new HttpStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create checkout zip file");
         }
 
         LOGGER.info(repositoryHandlerId + ": checked out");
         return checkoutZip;
     }
 
+    /**
+     * Checkout zips are left for the client download that happens after checkout() returns; remove
+     * those old enough that any download of them has long finished.
+     */
+    private static void deleteStaleCheckoutZips(Path repositoryPath) {
+        long cutoff = System.currentTimeMillis() - 10 * 60 * 1000;
+        File[] zips = repositoryPath.toFile().listFiles((dir, name) -> name.startsWith("checkout") && name.endsWith(".zip"));
+        if (zips == null) return;
+        for (File zip : zips) {
+            if (zip.lastModified() < cutoff) {
+                zip.delete();
+            }
+        }
+    }
+
     // Feature ---------------------------------------------------------------------------------------------------------
     @Override
     public RestRepository setFeatureDescription(int repositoryHandlerId, String featureId, String description) {
-        return repositories.get(repositoryHandlerId).setFeatureDescription(featureId, description);
+        return handler(repositoryHandlerId).setFeatureDescription(featureId, description);
     }
 
     @Override
     public RestRepository setFeatureRevisionDescription(int repositoryHandlerId, String featureId, String revisionId, String description) {
-        return repositories.get(repositoryHandlerId).setFeatureRevisionDescription(featureId, revisionId, description);
+        return handler(repositoryHandlerId).setFeatureRevisionDescription(featureId, revisionId, description);
     }
 
     @Override
     public void pullFeaturesRepository(final int toRepositoryHandlerId, final int oldRepositoryHandlerId, final String deselectedFeatures) {
-        repositories.get(toRepositoryHandlerId).fork(repositories.get(oldRepositoryHandlerId), deselectedFeatures);     //handler fork
+        handler(toRepositoryHandlerId).fork(handler(oldRepositoryHandlerId), deselectedFeatures);     //handler fork
     }
 
     private void zipFolder(Path sourceFolderPath, Path zipPath) throws Exception {
