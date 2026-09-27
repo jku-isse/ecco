@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.file;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -63,7 +64,8 @@ public class FileReader implements ArtifactReader<Path, Set<Node.Op>> {
 				Node.Op fileNode = this.entityFactory.createNode(this.entityFactory.createArtifact(fileArtifactData));
 				pluginNode.addChild(fileNode);
 			} catch (IOException e) {
-				e.printStackTrace();
+				// fail the commit rather than committing an empty file (see UnreadableFileCommitTest)
+				throw new EccoException("Could not read file: " + base.resolve(path), e);
 			}
 		}
 		return nodes;

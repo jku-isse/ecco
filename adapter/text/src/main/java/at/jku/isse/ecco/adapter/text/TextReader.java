@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.text;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.artifact.Artifact;
@@ -75,7 +76,8 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 					pluginNode.addChild(lineNode);
 				}
 			} catch (IOException e) {
-				e.printStackTrace();
+				// fail the commit rather than committing an empty file (see UnreadableFileCommitTest)
+				throw new EccoException("Could not read file: " + resolvedPath, e);
 			}
 
 		}

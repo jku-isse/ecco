@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.adapter.python.parse.py4j.cst.reader;
 
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.python.PythonParser;
 import at.jku.isse.ecco.adapter.python.parse.py4j.PY4JParser;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -44,19 +45,21 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
                                     String.valueOf((System.nanoTime() - tm) / 1000000)});
                     return readerGateway.getRoot();
                 } else {
-                    LOGGER.severe("Parce exited with code " + exitCode + "!");
+                    throw new EccoException("Python parser exited with code " + exitCode + " for file " + path);
                 }
             } else {
-                LOGGER.severe("parsing process timed out after " + MAX_SCRIPT_TIMEOUT_SECONDS + " seconds");
+                throw new EccoException("Python parser timed out after " + MAX_SCRIPT_TIMEOUT_SECONDS + " seconds for file " + path);
             }
 
-        } catch (IOException | InterruptedException e) {
-            LOGGER.log(Level.SEVERE, e.getMessage(), e);
-
+        } catch (IOException e) {
+            // e.g. no python executable - fail the commit rather than committing an empty file
+            // (see UnreadableFileCommitTest), as returning null here used to
+            throw new EccoException("Could not run the python parser for file " + path, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new EccoException("Interrupted while parsing file " + path, e);
         } finally {
             if (process != null) process.destroy();
         }
-
-        return null;
     }
 }

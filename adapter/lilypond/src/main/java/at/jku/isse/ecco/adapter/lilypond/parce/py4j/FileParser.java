@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondParser;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
@@ -104,17 +105,19 @@ public class FileParser implements LilypondParser<ParceToken> {
                 return Gateway.getInstance().getRoot();
 
             } else {
-                LOGGER.severe("Parce exited with code " + exitCode + ":\n" + sjErr);
+                throw new EccoException("Parce exited with code " + exitCode + " for file " + path + ":\n" + sjErr);
             }
 
-        } catch (IOException | InterruptedException e) {
-            LOGGER.log(Level.SEVERE, e.getMessage(), e);
-
+        } catch (IOException e) {
+            // e.g. no python executable - fail the commit rather than committing an empty file
+            // (see UnreadableFileCommitTest), as returning null here used to
+            throw new EccoException("Could not run parce for file " + path, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new EccoException("Interrupted while parsing file " + path, e);
         } finally {
             if (process != null) process.destroy();
         }
-
-        return null;
     }
 
     public void shutdown() {

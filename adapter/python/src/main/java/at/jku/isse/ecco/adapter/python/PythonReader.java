@@ -64,32 +64,35 @@ public class PythonReader implements ArtifactReader<Path, Set<Node.Op>> {
             throw new RuntimeException("could not initialize parser", e);
         }
 
-        for (Path path : input) {
-            // Absolute path for the parser required
-            Path pythonFile = base.resolve(path);
-            // as ECCO is still in development, retrieving relative or absolute path changed
-            // once, check is to be save for potential future changes
-            if (pythonFile.equals(path)) {
-                // for the Plug-in artifact nodes, relative path is required
-                path = base.relativize(path);
+        try {
+            for (Path path : input) {
+                // Absolute path for the parser required
+                Path pythonFile = base.resolve(path);
+                // as ECCO is still in development, retrieving relative or absolute path changed
+                // once, check is to be save for potential future changes
+                if (pythonFile.equals(path)) {
+                    // for the Plug-in artifact nodes, relative path is required
+                    path = base.relativize(path);
+                }
+
+                Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+                Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+                nodes.add(pluginNode);
+
+                Node.Op head = parser.parse(pythonFile, entityFactory);
+
+                if (head == null) {
+                    LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", pythonFile);
+                } else {
+                    pluginNode.addChild(head);
+                }
+
+                listeners.forEach(l -> l.fileReadEvent(pythonFile, this));
             }
-
-            Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-            Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
-            nodes.add(pluginNode);
-
-            Node.Op head = parser.parse(pythonFile, entityFactory);
-
-            if (head == null) {
-                LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", pythonFile);
-            } else {
-                pluginNode.addChild(head);
-            }
-
-            listeners.forEach(l -> l.fileReadEvent(pythonFile, this));
+        } finally {
+            // also when a parse fails, so the parser's gateway doesn't leak
+            parser.shutdown();
         }
-
-        parser.shutdown();
         return nodes;
     }
 
