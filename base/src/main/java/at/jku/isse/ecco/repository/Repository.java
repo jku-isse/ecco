@@ -1294,6 +1294,13 @@ public interface Repository extends Persistable {
 				this.extract(association, commit);
 				this.addCommit(commit); // extract(Association.Op, Commit) does not register the commit itself, unlike extract(Configuration, ...) - see mergeRegistersAMergeCommitPerMergedAssociation (RepositoryOpExtractTest / FileRepositoryServiceTest)
 			}
+
+			// finish like a commit does (CommitService): the merged-in nodes' feature traces need their
+			// retroactive conditions, or composition's evaluation drops them all - a fork/pull
+			// checked out EMPTY (ForkReopenTest); and the main tree must be rebuilt from the new
+			// associations
+			this.setRetroactiveConditions();
+			this.invalidateMainTree();
 		}
 
 
