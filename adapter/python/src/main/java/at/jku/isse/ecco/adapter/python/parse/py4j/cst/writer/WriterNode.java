@@ -17,9 +17,16 @@ import java.util.List;
 public class WriterNode {
 
     private final Node node;
+    private final WriterEntryPoint entryPoint;
 
-    public WriterNode(Node node) {
+    public WriterNode(Node node, WriterEntryPoint entryPoint) {
         this.node = node;
+        this.entryPoint = entryPoint;
+    }
+
+    /** Identifies the node to the script's render mode (see WriterEntryPoint#setRenderedSpans). */
+    public int getId() {
+        return entryPoint.idOf(node);
     }
     // provides methods to be called from python writer script
 
@@ -31,7 +38,7 @@ public class WriterNode {
     public List<WriterNode> getChildren() {
         List<WriterNode> list = new ArrayList<>();
         for (Node n : node.getChildren()) {
-            list.add(new WriterNode((n)));
+            list.add(new WriterNode(n, entryPoint));
         }
         return list;
     }

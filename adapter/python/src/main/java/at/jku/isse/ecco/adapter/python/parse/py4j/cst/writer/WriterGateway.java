@@ -16,4 +16,8 @@ public class WriterGateway extends Gateway {
     public void reset(Path path, Node root) {
         entrypoint.reset(path, root);
     }
+
+    WriterEntryPoint getEntryPoint() {
+        return entrypoint;
+    }
 }

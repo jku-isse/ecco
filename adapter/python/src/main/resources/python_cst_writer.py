@@ -4,12 +4,14 @@ import sys
 import traceback
 
 from libcst import *
+from libcst.metadata import MetadataWrapper, PositionProvider
 from py4j.java_gateway import JavaGateway
 
 from timeit import default_timer as timer
 
 
-def parsePython(java_node: object) -> CSTNode:
+def parsePython(java_node: object, record: list = None) -> CSTNode:
+    """record (render mode): gets a (CST node, Java node id) pair for every node built"""
     artifactBytes = java_node.getTypeArtifactBytes()
     cst_current_node = pickle.loads(artifactBytes)
 
@@ -24,7 +26,7 @@ def parsePython(java_node: object) -> CSTNode:
         attributes = None
         for childIdx in range(len(java_child_nodes)):
             java_child = java_child_nodes[childIdx]
-            cst_child_node = parsePython(java_child)
+            cst_child_node = parsePython(java_child, record)
 
             try:
                 if attributes is not None:
@@ -50,7 +52,27 @@ def parsePython(java_node: object) -> CSTNode:
                 # add to dict for later update
                 fields.update({cst_attribute_name: attributes})
 
-    return cst_current_node.with_changes(**fields)
+    result = cst_current_node.with_changes(**fields)
+    if record is not None:
+        record.append((result, java_node.getId()))
+    return result
+
+
+def render(root: object, ep: object):
+    """Render mode: reports the code the Java node tree produces and, per node, where its code is -
+    for ECCO's association preview. Nothing is written."""
+    record = []
+    module = parsePython(root, record)
+    # no copy: the positions must be keyed by the very nodes recorded above
+    positions = MetadataWrapper(module, unsafe_skip_copy=True).resolve(PositionProvider)
+    spans = []
+    for cst_node, java_id in record:
+        position = positions.get(cst_node)
+        if position is not None:
+            spans.append(f"{java_id},{position.start.line},{position.start.column},{position.end.line},{position.end.column}")
+    # one call each: a call per node over py4j would be far slower
+    ep.setRenderedSpans(";".join(spans))
+    ep.setRenderedCode(module.code)
 
 
 def parseJsonOrJupyter(java_node: object):
@@ -188,7 +210,11 @@ if __name__ == '__main__':
     main_start = timer()
     logger = JavaGateway().entry_point.getLogger()
     try:
-        write(sys.argv[1])
+        if len(sys.argv) > 2 and sys.argv[2] == "--render":
+            entry_point = JavaGateway().entry_point
+            render(entry_point.getRoot(), entry_point)
+        else:
+            write(sys.argv[1])
     except Exception as e:
         logger.severe(traceback.format_exc())
         exit(1)

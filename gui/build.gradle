@@ -79,6 +79,7 @@ dependencies {
 	testRuntimeOnly project(':ecco-adapter-lilypond')
 	testRuntimeOnly project(':ecco-adapter-image')
 	testRuntimeOnly project(':ecco-adapter-typescript')
+	testRuntimeOnly project(':ecco-adapter-python')
 	testRuntimeOnly project(':ecco-adapter-challenge')
 	testRuntimeOnly project(':ecco-adapter-java')
 	testRuntimeOnly project(':ecco-adapter-java-ast')
