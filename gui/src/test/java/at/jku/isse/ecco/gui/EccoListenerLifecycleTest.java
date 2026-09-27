@@ -33,6 +33,9 @@ public class EccoListenerLifecycleTest {
             latch.countDown();
         }
         assertTrue(latch.await(10, TimeUnit.SECONDS));
+        // closing the only window below would otherwise shut the FX thread down for every later
+        // test class in this JVM (their Platform.runLater calls would never run)
+        Platform.setImplicitExit(false);
     }
 
     @Test
