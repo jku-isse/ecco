@@ -45,4 +45,14 @@ public interface ArtifactData extends Serializable {
 	default void adoptMetadataFrom(ArtifactData newer) {
 	}
 
+	/**
+	 * Whether artifacts with this data must be ordered, i.e. keep the order of their children - an
+	 * adapter that used to create them unordered makes repositories written before inconsistent with
+	 * what it reads now (see Repository.Op#checkOrderedArtifacts). False by default: the reader
+	 * decides per node.
+	 */
+	default boolean requiresOrderedArtifact() {
+		return false;
+	}
+
 }

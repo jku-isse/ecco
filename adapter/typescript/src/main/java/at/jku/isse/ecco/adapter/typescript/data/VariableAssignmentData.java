@@ -59,4 +59,10 @@ public class VariableAssignmentData extends AbstractArtifactData {
             return other.id == null;
         } else return id.equals(other.id);
     }
+
+    /** Its children's order matters (cases, members, declarations) - see ArtifactData#requiresOrderedArtifact. */
+    @Override
+    public boolean requiresOrderedArtifact() {
+        return true;
+    }
 }
