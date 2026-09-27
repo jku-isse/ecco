@@ -93,6 +93,20 @@ public class SerNode implements Node, Node.Op {
 		this.numberOfChildren = this.children.size();
 	}
 
+	/**
+	 * SerRootNode.readObject() reads back exactly numberOfChildren children per node, so the count
+	 * written must match the actual children - but it goes stale when children are changed through
+	 * the live getChildren() list or setChildren() (Trees does both), and a stale count made the
+	 * whole tree unreadable. Refreshed here rather than in SerRootNode.writeObject(): this class's
+	 * fields are written before a subclass's writeObject() runs, so the root's own count could not be
+	 * fixed there (see SerRootNodeSerializationTest). Same stream format as the default.
+	 */
+	private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
+		if (this.children != null)
+			this.updateNumberOfChildren();
+		out.defaultWriteObject();
+	}
+
 	@Override
 	public FeatureTrace getFeatureTrace() {
 		return this.featureTrace;
