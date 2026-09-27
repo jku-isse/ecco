@@ -127,10 +127,19 @@ public class ConstraintService {
         owner.checkInitialized();
         checkNotNull(configuration);
         if (!owner.constraintViolationWarningsEnabled) return List.of();
-        Repository.Op repository = owner.repositoryDao.load();
-        List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
-        Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
-        return ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
+        // inside a transaction, like EccoService.compose() - see ReadWithoutTransactionTest
+        try {
+            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            Repository.Op repository = owner.repositoryDao.load();
+            List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
+            Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
+            List<String> violations = ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
+            owner.transactionStrategy.end();
+            return violations;
+        } catch (RuntimeException e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
+        }
     }
 
     private void safeTransaction(Function<Repository.Op, Repository.Op> transaction) {
