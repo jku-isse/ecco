@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
@@ -131,6 +132,7 @@ public class ChartsView extends BorderPane implements EccoListener {
 				}
 			};
 
+			TaskFailures.reportAndReenable(refreshTask, toolBar);
 			new Thread(refreshTask).start();
 		});
 

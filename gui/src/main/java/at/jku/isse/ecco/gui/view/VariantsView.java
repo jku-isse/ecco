@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
@@ -254,6 +255,7 @@ public class VariantsView extends BorderPane implements EccoListener {
                     }
                 };
 
+                TaskFailures.reportAndReenable(searchTask, toolBar);
                 new Thread(searchTask).start();
             }
         });
@@ -402,6 +404,7 @@ public class VariantsView extends BorderPane implements EccoListener {
             }
         };
 
+        TaskFailures.reportAndReenable(task, this.toolBar);
         new Thread(task).start();
     }
 

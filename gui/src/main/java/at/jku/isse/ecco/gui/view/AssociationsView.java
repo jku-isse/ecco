@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view;
 
+import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.TableColumns;
@@ -88,6 +89,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 				}
 			};
 
+			TaskFailures.reportAndReenable(refreshTask, toolBar);
 			new Thread(refreshTask).start();
 		});
 
