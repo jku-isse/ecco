@@ -9,19 +9,6 @@ javafx {
     modules = ['javafx.controls', 'javafx.fxml']
 }
 
-jar {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    } {
-        exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-    }
-
-    configure {
-        dependsOn(":ecco-base:jar", ":ecco-service:jar")
-    }
-}
-
 dependencies {
     implementation project(':ecco-service')
 }

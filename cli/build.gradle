@@ -17,6 +17,12 @@ graalvmNative {
 	}
 }
 
+configurations.runtimeClasspath {
+	// no GUI here (ecco.headless): the adapters' JavaFX viewers are not loaded, so JavaFX is left
+	// out - it used to come along bundled into the file adapter's jar
+	exclude group: 'org.openjfx'
+}
+
 dependencies {
 	implementation libs.argparse4j
 	implementation libs.logicng.core

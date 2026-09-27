@@ -28,19 +28,22 @@ public class ImageModule extends AbstractModule {
 				});
 		writerMultibinder.addBinding().to(ImageFileWriter.class);
 
-		final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<ArtifactViewer>() {
-				});
-		viewerMultibinder.addBinding().to(ImageViewer.class);
+		// no JavaFX viewers without a GUI (the command line and the REST server set ecco.headless)
+		if (!Boolean.getBoolean("ecco.headless")) {
+			final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<ArtifactViewer>() {
+					});
+			viewerMultibinder.addBinding().to(ImageViewer.class);
 
-		// separate multibinder set, same class - see ImageViewer's own javadoc: without this,
-		// KnowledgeGraphView's hover/detached association preview (which looks specifically in this
-		// set, not the plain ArtifactViewer one above) silently fell back to a bare label for every
-		// image-backed association, unlike every code-file adapter's viewer.
-		final Multibinder<AssociationInfoArtifactViewer> assInfoViewerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<AssociationInfoArtifactViewer>() {
-				});
-		assInfoViewerMultibinder.addBinding().to(ImageViewer.class);
+			// separate multibinder set, same class - see ImageViewer's own javadoc: without this,
+			// KnowledgeGraphView's hover/detached association preview (which looks specifically in this
+			// set, not the plain ArtifactViewer one above) silently fell back to a bare label for every
+			// image-backed association, unlike every code-file adapter's viewer.
+			final Multibinder<AssociationInfoArtifactViewer> assInfoViewerMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<AssociationInfoArtifactViewer>() {
+					});
+			assInfoViewerMultibinder.addBinding().to(ImageViewer.class);
+		}
 
 
 		final Multibinder<ArtifactWriter<Set<Node>, BufferedImage>> awtImageWriterMultibinder = Multibinder.newSetBinder(binder(),
@@ -48,10 +51,13 @@ public class ImageModule extends AbstractModule {
 				});
 		awtImageWriterMultibinder.addBinding().to(AwtImageWriter.class);
 
-		final Multibinder<ArtifactWriter<Set<Node>, Image>> fxImageWriterMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<ArtifactWriter<Set<Node>, Image>>() {
-				});
-		fxImageWriterMultibinder.addBinding().to(FxImageWriter.class);
+		// no JavaFX image writer without a GUI (the command line and the REST server set ecco.headless)
+		if (!Boolean.getBoolean("ecco.headless")) {
+			final Multibinder<ArtifactWriter<Set<Node>, Image>> fxImageWriterMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<ArtifactWriter<Set<Node>, Image>>() {
+					});
+			fxImageWriterMultibinder.addBinding().to(FxImageWriter.class);
+		}
 	}
 
 }

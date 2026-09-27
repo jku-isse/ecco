@@ -26,19 +26,22 @@ public class FileModule extends AbstractModule {
                 });
 		writerMultibinder.addBinding().to(FileWriter.class);
 
-		final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-                new TypeLiteral<>() {
-                });
-		viewerMultibinder.addBinding().to(FileViewer.class);
+		// no JavaFX viewers without a GUI (the command line and the REST server set ecco.headless)
+		if (!Boolean.getBoolean("ecco.headless")) {
+			final Multibinder<ArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<>() {
+					});
+			viewerMultibinder.addBinding().to(FileViewer.class);
 
-		// separate multibinder set, same class - see FileViewer's own javadoc: without this,
-		// KnowledgeGraphView's hover/detached association preview (which looks specifically in this
-		// set, not the plain ArtifactViewer one above) silently fell back to a bare label for every
-		// association handled by this plugin, unlike every other adapter's viewer.
-		final Multibinder<AssociationInfoArtifactViewer> assInfoViewerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<>() {
-				});
-		assInfoViewerMultibinder.addBinding().to(FileViewer.class);
+			// separate multibinder set, same class - see FileViewer's own javadoc: without this,
+			// KnowledgeGraphView's hover/detached association preview (which looks specifically in this
+			// set, not the plain ArtifactViewer one above) silently fell back to a bare label for every
+			// association handled by this plugin, unlike every other adapter's viewer.
+			final Multibinder<AssociationInfoArtifactViewer> assInfoViewerMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<>() {
+					});
+			assInfoViewerMultibinder.addBinding().to(FileViewer.class);
+		}
 	}
 
 }
