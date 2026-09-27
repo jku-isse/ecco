@@ -65,20 +65,22 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 		if (this.previous == null){ this.previous = new ArrayList<>(); }
 	}
 
-	public void prepareSerialization(){
+	public void prepareSerialization(PartialOrderGraph.Node.Op head, PartialOrderGraph.Node.Op tail){
 		this.nextSequenceNumbers = new ArrayList<>();
 		this.previousSequenceNumbers = new ArrayList<>();
 		// fill integer collections, that will be serialized - keyed by each neighbor's own
-		// node-owned sequence number now, not its artifact's (see the field javadoc above)
+		// node-owned sequence number now, not its artifact's (see the field javadoc above). Head and
+		// tail are recognized by identity, like readObject() does, not by a null artifact (transient,
+		// possibly not yet resolved - see SerPartialOrderGraph.writeObject())
 		this.previous.forEach(n -> {
-			if (n.getArtifact() != null){
+			if (n != head && n != tail){
 				// head and tail will be put into deserialized node in separate step
 				this.previousSequenceNumbers.add(n.getSequenceNumber());
 			}
 		});
 
 		this.next.forEach(n -> {
-			if (n.getArtifact() != null){
+			if (n != head && n != tail){
 				// head and tail will be put into deserialized node in separate step
 				this.nextSequenceNumbers.add(n.getSequenceNumber());
 			}

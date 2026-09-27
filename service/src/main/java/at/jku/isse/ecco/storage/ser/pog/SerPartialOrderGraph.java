@@ -32,12 +32,12 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 	private void writeObject(ObjectOutputStream out) throws IOException {
 		this.sequenceNumberNodeMap = new HashMap<>();
 		List<Node.Op> nodes = this.collectNodes();
-		if (nodes.size() > 2){
-			System.out.print("");
-		}
 		for(Node.Op node : nodes){
 			SerPartialOrderGraphNode serPartialOrderGraphNode = (SerPartialOrderGraphNode) node;
-			if (serPartialOrderGraphNode.getArtifact() != null) {
+			// head/tail by identity, not "artifact == null": the artifact reference is transient and
+			// only filled in by the post-load resolution pass, and a real node without one used to be
+			// dropped here together with its edges (see SerPartialOrderGraphUnresolvedNodeSerializationTest)
+			if (node != this.head && node != this.tail) {
 				// head and tail will be serialized as field and must not be in the map. Keyed by the
 				// node's own sequence number now, not its artifact's - see the field javadoc on
 				// SerPartialOrderGraphNode.sequenceNumber for why the artifact's own value can't be
@@ -48,7 +48,7 @@ public class SerPartialOrderGraph implements PartialOrderGraph, PartialOrderGrap
 				}
 				this.sequenceNumberNodeMap.put(sequenceNumber, serPartialOrderGraphNode);
 			}
-			serPartialOrderGraphNode.prepareSerialization();
+			serPartialOrderGraphNode.prepareSerialization(this.head, this.tail);
 		}
 		out.defaultWriteObject();
 	}
