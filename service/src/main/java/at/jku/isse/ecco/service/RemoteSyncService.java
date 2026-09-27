@@ -442,7 +442,7 @@ public class RemoteSyncService {
                 // whatever open()/init() acquired on the parent repository indefinitely.
                 Collection<Feature> copiedFeatures;
                 try (EccoService parentService = new EccoService()) {
-                    parentService.setRepositoryDir(Paths.get(remote.getAddress()));
+                    parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
                     parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
 
                     // copy features
@@ -536,7 +536,7 @@ public class RemoteSyncService {
                 // parentService instead of leaking whatever open()/init() acquired indefinitely.
                 Repository.Op subsetParentRepository;
                 try (EccoService parentService = new EccoService()) {
-                    parentService.setRepositoryDir(Paths.get(remote.getAddress()));
+                    parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
                     parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
 
                     // create subset repository
@@ -651,7 +651,7 @@ public class RemoteSyncService {
                 // open parent repo - try-with-resources so a failure below still closes
                 // parentService instead of leaking whatever open()/init() acquired indefinitely.
                 try (EccoService parentService = new EccoService()) {
-                    parentService.setRepositoryDir(Paths.get(remote.getAddress()));
+                    parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
                     parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
 
                     // create subset repository
