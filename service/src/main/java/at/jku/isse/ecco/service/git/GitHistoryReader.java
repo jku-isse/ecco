@@ -3,6 +3,7 @@ package at.jku.isse.ecco.service.git;
 import at.jku.isse.ecco.EccoException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
@@ -37,6 +38,8 @@ import java.util.List;
  * running.
  */
 public final class GitHistoryReader {
+
+	private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(GitHistoryReader.class.getName());
 
 	private static final int MAX_DIFF_LINES = 400;
 
@@ -76,6 +79,13 @@ public final class GitHistoryReader {
 					treeWalk.setRecursive(true);
 					ObjectReader reader = treeWalk.getObjectReader();
 					while (treeWalk.next()) {
+						// a submodule is a gitlink: it points at a commit of ANOTHER repository, which
+						// isn't in this object database - reading it failed the whole extraction. Its
+						// content isn't part of this repository, so it is skipped (.gitmodules stays).
+						if (treeWalk.getFileMode(0) == FileMode.GITLINK) {
+							LOGGER.info("Skipping submodule " + treeWalk.getPathString() + " in commit " + commitId);
+							continue;
+						}
 						// a tree entry name is a single path component and can legally be ".." at the
 						// raw-object level even though porcelain git refuses to create one - reject
 						// anything that would resolve outside targetDir instead of trusting it blindly
