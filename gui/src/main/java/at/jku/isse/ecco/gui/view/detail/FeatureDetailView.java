@@ -69,15 +69,19 @@ public class FeatureDetailView extends BorderPane {
 
 
 		saveButton.setOnAction(e -> {
+			if (this.currentFeature == null)
+				return;
 			toolBar.setDisable(true);
+			// read the UI state here, on the FX thread, not inside the task
+			String featureId = this.currentFeature.getId();
+			String description = this.featureDescription.getText();
 
 			Task saveTask = new Task<Void>() {
 				@Override
 				public Void call() throws EccoException {
-					if (FeatureDetailView.this.currentFeature != null) {
-						FeatureDetailView.this.currentFeature.setDescription(FeatureDetailView.this.featureDescription.getText());
-						// TODO: implement saving/updating features
-					}
+					// persisted through the service - this used to only set the description on the
+					// in-memory feature, which was lost on reopen
+					FeatureDetailView.this.service.setFeatureDescription(featureId, description);
 					Platform.runLater(() -> toolBar.setDisable(false));
 					return null;
 				}
