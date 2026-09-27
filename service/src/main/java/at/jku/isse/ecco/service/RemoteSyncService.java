@@ -563,7 +563,7 @@ public class RemoteSyncService {
 
 
     public void push(String remoteName) {
-        this.push("", remoteName);
+        this.push(remoteName, "");
     }
 
     /**

@@ -118,6 +118,47 @@ public class RemoteSyncCharacterizationTest {
         originService.close();
     }
 
+    /**
+     * push(remoteName) - the overload without a deselection string - delegated as
+     * push("", remoteName), i.e. with its two arguments swapped, so it looked up a remote named ""
+     * and always failed with "Remote  does not exist". The round trip above only uses the
+     * two-argument form.
+     */
+    @Test
+    @Timeout(30)
+    public void pushWithoutDeselectionUsesTheGivenRemote() throws Exception {
+        Path originWorkDir = Files.createTempDirectory("remote-sync-push1-origin");
+        Path targetWorkDir = Files.createTempDirectory("remote-sync-push1-target");
+        int port = findFreePort();
+
+        EccoService originService = new EccoService();
+        originService.setRepositoryDir(originWorkDir.resolve(".ecco"));
+        originService.init();
+        commitFeature(originService, originWorkDir, "core", "Core");
+
+        Thread serverThread = new Thread(() -> originService.startServer(port), "test-ecco-server");
+        serverThread.start();
+        waitForPortOpen(port, 10_000);
+
+        try (EccoService targetService = new EccoService()) {
+            targetService.setRepositoryDir(targetWorkDir.resolve(".ecco"));
+            targetService.init();
+            targetService.addRemote("origin", "localhost:" + port, Remote.Type.REMOTE);
+            targetService.pull("origin");
+            commitFeature(targetService, targetWorkDir, "extra", "Extra");
+
+            targetService.push("origin");
+        } finally {
+            originService.stopServer();
+            serverThread.join(10_000);
+        }
+
+        Collection<String> originFeatureNames = originService.getRepository().getFeatures().stream()
+                .map(Feature::getName).collect(Collectors.toList());
+        assertTrue(originFeatureNames.contains("Extra"), "push(remoteName) should have pushed the new 'Extra' feature to origin");
+        originService.close();
+    }
+
     private static void commitFeature(EccoService service, Path workDir, String dirName, String featureName) throws IOException {
         Path p = workDir.resolve(dirName);
         Files.createDirectories(p);
