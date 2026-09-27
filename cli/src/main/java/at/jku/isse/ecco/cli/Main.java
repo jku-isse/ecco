@@ -35,14 +35,44 @@ public class Main {
     private static final EccoService eccoService = new EccoService(Path.of("."));
 
     public static void main(String[] args) {
-        registerCommands();
+        int exitCode = run(args);
+        if (exitCode != 0)
+            System.exit(exitCode);
+    }
+
+    /**
+     * Runs the CLI and returns its exit status: 0 on success, 2 for invalid arguments, 1 when the
+     * command failed. It used to be 0 in every case (errors were only printed), so scripts couldn't
+     * detect a failure. Errors go to stderr; -Decco.debug=true adds the stack trace.
+     */
+    static int run(String[] args) {
+        registerCommandsOnce();
 
         try {
             Namespace namespace = parser.parseArgs(args);
             String command = namespace.getString("command");
             commandRegister.run(command, namespace);
+            return 0;
         } catch (ArgumentParserException e) {
-            parser.printHelp();
+            parser.handleError(e);
+            return 2;
+        } catch (RuntimeException e) {
+            StringBuilder message = new StringBuilder("ERROR: ").append(e.getMessage());
+            for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause())
+                message.append(System.lineSeparator()).append("  caused by: ").append(cause);
+            System.err.println(message);
+            if (Boolean.getBoolean("ecco.debug"))
+                e.printStackTrace();
+            return 1;
+        }
+    }
+
+    private static boolean commandsRegistered = false;
+
+    private static synchronized void registerCommandsOnce() {
+        if (!commandsRegistered) {
+            registerCommands();
+            commandsRegistered = true;
         }
     }
 

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.command.fork;
 
+import at.jku.isse.ecco.cli.CliException;
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;
@@ -55,7 +56,7 @@ public class ForkCommand implements Command {
             eccoService.fork(path, exclude);
             eccoService.close();
         } else {
-            writer.println("ERROR: Invalid remote address provided.");
+            throw new CliException("Invalid remote address provided.");
         }
     }
 }

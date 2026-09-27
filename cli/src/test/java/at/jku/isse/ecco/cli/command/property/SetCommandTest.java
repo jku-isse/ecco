@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.command.property;
 
+import at.jku.isse.ecco.cli.CliException;
 import at.jku.isse.ecco.cli.writer.StringWriter;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -10,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 public class SetCommandTest {
@@ -37,12 +39,12 @@ public class SetCommandTest {
         StringWriter stringWriter = new StringWriter();
         SetCommand command = new SetCommand(service, stringWriter);
 
-        command.run(new Namespace(Map.of(
+        CliException exception = assertThrows(CliException.class, () -> command.run(new Namespace(Map.of(
                 SetCommand.PROPERTY_KEY, "unknown",
                 SetCommand.VALUE_KEY, "value"
-        )));
+        ))));
 
-        assertEquals(1, stringWriter.getLines().size());
-        assertEquals("ERROR: No property named \"unknown\".", stringWriter.getLines().get(0));
+        assertEquals("No property named \"unknown\".", exception.getMessage());
+        assertEquals(0, stringWriter.getLines().size());
     }
 }
