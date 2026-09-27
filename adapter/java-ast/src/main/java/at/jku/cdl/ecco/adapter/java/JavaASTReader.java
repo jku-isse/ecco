@@ -47,6 +47,8 @@ import com.github.javaparser.ast.stmt.TryStmt;
 import com.github.javaparser.printer.configuration.PrettyPrinterConfiguration;
 import com.google.inject.Inject;
 
+import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTComment;
+import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTData;
 import at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTConstructorData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTModuleData;
@@ -94,12 +96,15 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private final EntityFactory entityFactory;
 	private final PrettyPrinterConfiguration PPC;
+	/** For blocks stored as one text (initializers, finally): their comments are part of that text. */
+	private final PrettyPrinterConfiguration PPC_WITH_COMMENTS;
 
 	@Inject
 	public JavaASTReader(final EntityFactory entityFactory) {
 		this.entityFactory = entityFactory;
 		PPC = new PrettyPrinterConfiguration();
 		PPC.setPrintComments(false);
+		PPC_WITH_COMMENTS = new PrettyPrinterConfiguration();
 	}
 
 	@Override
@@ -180,6 +185,12 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 						// Important Data is stored in an ArtifactData element
 						JavaASTSimpleStringData packDeclData = new JavaASTSimpleStringData(packageName);
 						packDeclData.setType(ASTNodeType.PACKAGEDECLARATION);
+						if (pd != null)
+							commented(packDeclData, pd);
+						// a comment heading the file (e.g. a license) belongs to the compilation unit
+						if (packDeclData.getComment() == null)
+							commented(packDeclData, cu);
+						orphans(packDeclData, cu);
 						Artifact.Op<JavaASTSimpleStringData> packDeclArtifact = this.entityFactory
 								.createArtifact(packDeclData);
 						// The artifact data is encapsulated in the ECCO Node
@@ -218,6 +229,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		for (ModuleDirective directive : module.getDirectives()) {
 			JavaASTSimpleStringData directiveData = new JavaASTSimpleStringData(directive.toString(PPC));
 			directiveData.setType(ASTNodeType.MODULE_DIRECTIVE);
+			commented(directiveData, directive);
 			Artifact.Op<JavaASTSimpleStringData> directiveArtifact = this.entityFactory.createArtifact(directiveData);
 			Node.Op directiveNode = this.entityFactory.createOrderedNode(directiveArtifact);
 			directiveNode.putProperty(PROPERTY_LINE_START, getStartLine(directive));
@@ -232,6 +244,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		tempClazz.ifEnumDeclaration(ed -> ed.setEntries(new NodeList<>()));
 		JavaASTSimpleStringData clazzData = new JavaASTSimpleStringData(tempClazz.toString(PPC));
 		clazzData.setType(ASTNodeType.TYPE_DECLARATION);
+		commented(clazzData, clazz);
+		orphans(clazzData, clazz);
 		Artifact.Op<JavaASTSimpleStringData> clazzArtifact = this.entityFactory.createArtifact(clazzData);
 		Node.Op clazzNode = this.entityFactory.createNode(clazzArtifact);
 		// These 2 statements are a requirement of the FORCE^2 environment and have no
@@ -252,6 +266,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 				JavaASTSimpleStringData fdData = new JavaASTSimpleStringData(fd.toString(PPC));
 				Artifact.Op<JavaASTSimpleStringData> fdArtifact = this.entityFactory.createArtifact(fdData);
 				fdData.setType(ASTNodeType.FIELD_DECLARATION);
+				commented(fdData, fd);
 				Node.Op fieldNode = this.entityFactory.createNode(fdArtifact);
 				fieldNode.putProperty(PROPERTY_LINE_START, getStartLine(fd));
 				fieldNode.putProperty(PROPERTY_LINE_END, getEndLine(fd));
@@ -268,7 +283,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 	private void addInitializer(InitializerDeclaration init, Op clazzNode) {
-		JavaASTSimpleStringData initData = new JavaASTSimpleStringData(init.toString(PPC));
+		JavaASTSimpleStringData initData = new JavaASTSimpleStringData(init.toString(PPC_WITH_COMMENTS));
 		initData.setType(ASTNodeType.INITIALIZER_DECLARATION);
 		Artifact.Op<JavaASTSimpleStringData> initArtifact = this.entityFactory.createArtifact(initData);
 		Node.Op initNode = this.entityFactory.createOrderedNode(initArtifact);
@@ -279,6 +294,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		for (EnumConstantDeclaration ecd : enumdec.getEntries()) {
 			JavaASTSimpleStringData enumData = new JavaASTSimpleStringData(ecd.getNameAsString());
 			enumData.setType(ASTNodeType.ENUM_CONSTANTS);
+			commented(enumData, ecd);
 			Artifact.Op<JavaASTSimpleStringData> enumArtifact = this.entityFactory.createArtifact(enumData);
 			Node.Op enumNode = this.entityFactory.createOrderedNode(enumArtifact);
 			enumNode.putProperty(PROPERTY_LINE_START, getStartLine(ecd));
@@ -305,6 +321,21 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		}
 	}
 
+	/** Keeps the comment JavaParser attributed to {@code source} with {@code data} - see JavaASTData. */
+	private static <T extends JavaASTData> T commented(T data, com.github.javaparser.ast.Node source) {
+		source.getComment().ifPresent(comment -> data.setComment(JavaASTComment.of(comment)));
+		return data;
+	}
+
+	/** Keeps the comments directly inside {@code container} that belong to no node of their own with {@code data}. */
+	private static void orphans(JavaASTData data, com.github.javaparser.ast.Node container) {
+		if (container.getOrphanComments().isEmpty())
+			return;
+		List<JavaASTComment> orphans = new ArrayList<>(data.getOrphanComments());
+		container.getOrphanComments().forEach(comment -> orphans.add(JavaASTComment.of(comment)));
+		data.setOrphanComments(orphans);
+	}
+
 	private int getEndLine(com.github.javaparser.ast.Node node) {
 		return node.getEnd().orElse(new Position(-1, -1)).line;
 	}
@@ -316,7 +347,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private Collection<Node.Op> extractConstructors(TypeDeclaration<?> clazz) {
 		List<Node.Op> constrNodes = new ArrayList<>(clazz.getConstructors().size());
 		for (ConstructorDeclaration constructor : clazz.getConstructors()) {
-			JavaASTConstructorData constrData = new JavaASTConstructorData(constructor.getNameAsString());
+			JavaASTConstructorData constrData = commented(new JavaASTConstructorData(constructor.getNameAsString()), constructor);
+			orphans(constrData, constructor.getBody());
 			Artifact.Op<JavaASTConstructorData> constrArtifact = this.entityFactory.createArtifact(constrData);
 			Node.Op constrNode = this.entityFactory.createOrderedNode(constrArtifact);
 			constrNode.putProperty(PROPERTY_LINE_START, getStartLine(constructor));
@@ -334,7 +366,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		// this, its body was silently dropped on every round trip.
 		if (clazz instanceof RecordDeclaration) {
 			for (CompactConstructorDeclaration compact : ((RecordDeclaration) clazz).getCompactConstructors()) {
-				JavaASTConstructorData constrData = new JavaASTConstructorData(compact.getNameAsString());
+				JavaASTConstructorData constrData = commented(new JavaASTConstructorData(compact.getNameAsString()), compact);
+				orphans(constrData, compact.getBody());
 				constrData.setCompact(true);
 				Artifact.Op<JavaASTConstructorData> constrArtifact = this.entityFactory.createArtifact(constrData);
 				Node.Op constrNode = this.entityFactory.createOrderedNode(constrArtifact);
@@ -358,6 +391,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			temp.setBody(null);
 			JavaASTSimpleStringData mdData = new JavaASTSimpleStringData(temp.toString(PPC));
 			mdData.setType(ASTNodeType.METHOD_DECLARATION);
+			commented(mdData, mdec);
+			mdec.getBody().ifPresent(methodBody -> orphans(mdData, methodBody));
 			Artifact.Op<JavaASTSimpleStringData> constrArtifact = this.entityFactory.createArtifact(mdData);
 			Node.Op methNode = this.entityFactory.createOrderedNode(constrArtifact);
 			methNode.putProperty(PROPERTY_LINE_START, getStartLine(mdec));
@@ -378,6 +413,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			((NodeWithBody<?>)tmp).setBody(new EmptyStmt());
 			JavaASTSimpleStringData sdData = new JavaASTSimpleStringData(tmp.toString(PPC));
 			sdData.setType(ASTNodeType.STATEMENT);
+			commented(sdData, body);
+			orphans(sdData, ((NodeWithBody<?>) body).getBody());
 			Artifact.Op<JavaASTSimpleStringData> sdArtifact = this.entityFactory.createArtifact(sdData);
 			Node.Op node = this.entityFactory.createOrderedNode(sdArtifact);
 			node.putProperty(PROPERTY_LINE_START, getStartLine(body));
@@ -395,6 +432,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		} else {
 			JavaASTSimpleStringData sdData = new JavaASTSimpleStringData(body.toString(PPC));
 			sdData.setType(ASTNodeType.STATEMENT);
+			commented(sdData, body);
 			Artifact.Op<JavaASTSimpleStringData> sdArtifact = this.entityFactory.createArtifact(sdData);
 			Node.Op node = this.entityFactory.createNode(sdArtifact);
 			node.putProperty(PROPERTY_LINE_START, getStartLine(body));
@@ -409,6 +447,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		JavaASTTryData tryData = new JavaASTTryData();
 		tryData.setType(ASTNodeType.TRYBLOCK);
+		commented(tryData, trystmt);
+		orphans(tryData, trystmt.getTryBlock());
 		Artifact.Op<JavaASTTryData> sdArtifact = this.entityFactory.createArtifact(tryData);
 		Node.Op tryNode = this.entityFactory.createOrderedNode(sdArtifact);
 		tryNode.putProperty(PROPERTY_LINE_START, getStartLine(trystmt));
@@ -428,6 +468,8 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			}
 			JavaASTSimpleStringData catchclause = new JavaASTSimpleStringData(cc.getParameter().toString(PPC));
 			catchclause.setType(ASTNodeType.CATCHCLAUSE);
+			commented(catchclause, cc);
+			orphans(catchclause, cc.getBody());
 			Artifact.Op<JavaASTSimpleStringData> ccArtifact = this.entityFactory.createArtifact(catchclause);
 			Node.Op ccNode = this.entityFactory.createOrderedNode(ccArtifact);
 			ccNode.putProperty(PROPERTY_LINE_START, getStartLine(cc));
@@ -438,7 +480,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		if (trystmt.getFinallyBlock().isPresent()) {
 			JavaASTSimpleStringData finData = new JavaASTSimpleStringData(
-					trystmt.getFinallyBlock().get().toString(PPC));
+					trystmt.getFinallyBlock().get().toString(PPC_WITH_COMMENTS));
 			finData.setType(ASTNodeType.FINALLY);
 			Artifact.Op<JavaASTSimpleStringData> finArtifact = this.entityFactory.createArtifact(finData);
 			Node.Op finNode = this.entityFactory.createNode(finArtifact);
@@ -457,6 +499,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private void addSwitch(SwitchNode sw, Op parent) {
 		JavaASTSimpleStringData switchData = new JavaASTSimpleStringData(sw.getSelector().toString(PPC));
 		switchData.setType(ASTNodeType.SWITCH_STATEMENT);
+		commented(switchData, (com.github.javaparser.ast.Node) sw);
 		Artifact.Op<JavaASTSimpleStringData> switchArtifact = this.entityFactory.createArtifact(switchData);
 		Node.Op switchNode = this.entityFactory.createOrderedNode(switchArtifact);
 		switchNode.putProperty(PROPERTY_LINE_START, getStartLine(sw.getSelector()));
@@ -470,6 +513,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			}
 			JavaASTSimpleStringData entryData = new JavaASTSimpleStringData(label);
 			entryData.setType(ASTNodeType.SWITCH_ENTRIES);
+			commented(entryData, se);
 			Artifact.Op<JavaASTSimpleStringData> entryArtifact = this.entityFactory.createArtifact(entryData);
 			Node.Op entryNode = this.entityFactory.createOrderedNode(entryArtifact);
 			entryNode.putProperty(PROPERTY_LINE_START, getStartLine(se));
@@ -482,6 +526,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private void addIfStatement(IfStmt ifstmt, Op parent) {
 		JavaASTSimpleStringData ifData = new JavaASTSimpleStringData("if " + ifstmt.getCondition().toString(PPC));
 		ifData.setType(ASTNodeType.IF_STATEMENT);
+		commented(ifData, ifstmt);
 		Artifact.Op<JavaASTSimpleStringData> ifArtifact = this.entityFactory.createArtifact(ifData);
 		Node.Op ifNode = this.entityFactory.createOrderedNode(ifArtifact);
 		ifNode.putProperty(PROPERTY_LINE_START, getStartLine(ifstmt));
@@ -489,6 +534,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		parent.addChild(ifNode);
 		JavaASTSimpleStringData conditionData = new JavaASTSimpleStringData(ifstmt.getCondition().toString(PPC));
 		conditionData.setType(ASTNodeType.IF_CONDITION);
+		orphans(conditionData, ifstmt.getThenStmt());
 		Artifact.Op<JavaASTSimpleStringData> conditionArtifact = this.entityFactory.createArtifact(conditionData);
 		Node.Op conditionNode = this.entityFactory.createOrderedNode(conditionArtifact);
 		addChildren(ifstmt.getThenStmt(), conditionNode);
@@ -498,6 +544,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		} else if (ifstmt.hasElseBranch()) {
 			JavaASTSimpleStringData elseData = new JavaASTSimpleStringData("else " + ifstmt.getCondition());
 			elseData.setType(ASTNodeType.ELSE_BRANCH);
+			orphans(elseData, ifstmt.getElseStmt().get());
 			Artifact.Op<JavaASTSimpleStringData> elseArtifact = this.entityFactory.createArtifact(elseData);
 			Node.Op elseNode = this.entityFactory.createOrderedNode(elseArtifact);
 			elseNode.putProperty(PROPERTY_LINE_START, getStartLine(ifstmt.getElseStmt().get()));
@@ -510,6 +557,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private void addIfCondition(IfStmt ifstmt, Op ifNode) {
 		JavaASTSimpleStringData conditionData = new JavaASTSimpleStringData(ifstmt.getCondition().toString(PPC));
 		conditionData.setType(ASTNodeType.IF_CONDITION);
+		orphans(conditionData, ifstmt.getThenStmt());
 		Artifact.Op<JavaASTSimpleStringData> conditionArtifact = this.entityFactory.createArtifact(conditionData);
 		Node.Op conditionNode = this.entityFactory.createOrderedNode(conditionArtifact);
 		conditionNode.putProperty(PROPERTY_LINE_START, getStartLine(ifstmt));
@@ -521,6 +569,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		} else if (ifstmt.hasElseBranch()) {
 			JavaASTSimpleStringData elseData = new JavaASTSimpleStringData("else" + ifstmt.getCondition());
 			elseData.setType(ASTNodeType.ELSE_BRANCH);
+			orphans(elseData, ifstmt.getElseStmt().get());
 			Artifact.Op<JavaASTSimpleStringData> elseArtifact = this.entityFactory.createArtifact(elseData);
 			Node.Op elseNode = this.entityFactory.createOrderedNode(elseArtifact);
 			elseNode.putProperty(PROPERTY_LINE_START, getStartLine(ifstmt.getElseStmt().get()));
@@ -536,6 +585,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		for (ImportDeclaration id : cu.getImports()) {
 			JavaASTSimpleStringData importData = new JavaASTSimpleStringData(id.toString(PPC));
 			importData.setType(ASTNodeType.IMPORT_DECLARATION);
+			commented(importData, id);
 			Artifact.Op<JavaASTSimpleStringData> importArtifact = this.entityFactory.createArtifact(importData);
 			Node.Op importNode = this.entityFactory.createNode(importArtifact);
 			importNode.putProperty(PROPERTY_LINE_START, getStartLine(id));

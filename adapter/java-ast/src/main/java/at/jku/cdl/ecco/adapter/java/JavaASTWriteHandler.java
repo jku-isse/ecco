@@ -1,5 +1,11 @@
 package at.jku.cdl.ecco.adapter.java;
 
+import java.util.ArrayList;
+import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTComment;
+import com.github.javaparser.printer.configuration.PrinterConfiguration;
+import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration;
+import com.github.javaparser.printer.DefaultPrettyPrinterVisitor;
+import com.github.javaparser.printer.DefaultPrettyPrinter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -70,6 +76,20 @@ public class JavaASTWriteHandler {
 	}
 
 	public static void writeJavaFile(Node fileRoot, Path outputPath) {
+		try {
+			Files.write(outputPath, toJavaSource(fileRoot).getBytes(), StandardOpenOption.CREATE,
+					StandardOpenOption.TRUNCATE_EXISTING);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void writeJavaString(Node root, String outputString) {
+		outputString = toJavaSource(root);
+	}
+
+	/** The file's Java source: its tree rebuilt as a JavaParser compilation unit, with its comments, printed. */
+	static String toJavaSource(Node fileRoot) {
 		configureStaticJavaParser();
 		CompilationUnit cu = new CompilationUnit();
 		for (Node child : fileRoot.getChildren()) {
@@ -79,49 +99,92 @@ public class JavaASTWriteHandler {
 					JavaASTSimpleStringData cuData = (JavaASTSimpleStringData) astData;
 					if (!cuData.getData().isEmpty()) {
 						cu.setPackageDeclaration(cuData.getData());
+						cu.getPackageDeclaration().ifPresent(pd -> pd.setComment(comment(cuData)));
+					} else {
+						cu.setComment(comment(cuData));
 					}
 				}
 			}
 		}
-		List<ImportDeclaration> imports = fileRoot.getChildren().stream().map(n -> n.getArtifact().getData())
+		List<ImportDeclaration> imports = new ArrayList<>();
+		fileRoot.getChildren().stream().map(n -> n.getArtifact().getData())
 				.filter(JavaASTData.class::isInstance).map(JavaASTData.class::cast)
 				.filter(data -> data.getType() == ASTNodeType.IMPORT_DECLARATION)
-				.map(idata -> StaticJavaParser.parseImport(idata.toString())).collect(Collectors.toList());
+				.forEach(idata -> {
+					ImportDeclaration importDeclaration = StaticJavaParser.parseImport(idata.toString());
+					attachComments(idata, importDeclaration);
+					imports.add(importDeclaration);
+				});
 		cu.setImports(new NodeList<>(imports));
 		fileRoot.getChildren().forEach(c -> addNode(c, cu));
-		try {
-			Files.write(outputPath, cu.toString().getBytes(), StandardOpenOption.CREATE,
-					StandardOpenOption.TRUNCATE_EXISTING);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		// comments of the file attributed to no node, e.g. one at its end - after the types: without
+		// source positions, JavaParser prints them in the order they were added
+		fileRoot.getChildren().stream().map(n -> n.getArtifact().getData())
+				.filter(JavaASTData.class::isInstance).map(JavaASTData.class::cast)
+				.filter(data -> data.getType() == ASTNodeType.PACKAGEDECLARATION)
+				.forEach(cuData -> cuData.getOrphanComments().forEach(orphan -> cu.addOrphanComment(orphan.toComment())));
+		return new DefaultPrettyPrinter(MemberSpacingVisitor::new, new DefaultPrinterConfiguration()).print(cu);
 	}
-	
-	public static void writeJavaString(Node root, String outputString) {
-		configureStaticJavaParser();
-		CompilationUnit cu = new CompilationUnit();
-		for (Node child : root.getChildren()) {
-			if (child.getArtifact().getData() instanceof JavaASTData) {
-				JavaASTData astData = (JavaASTData) child.getArtifact().getData();
-				if (astData.getType() == ASTNodeType.PACKAGEDECLARATION) {
-					JavaASTSimpleStringData cuData = (JavaASTSimpleStringData) astData;
-					if (!cuData.getData().isEmpty()) {
-						cu.setPackageDeclaration(cuData.getData());
-					}
-				}
+
+	/**
+	 * JavaParser's printer puts an empty line before every member of a type - including the first,
+	 * so every class body started with an empty line. Members are separated by one here instead.
+	 */
+	private static final class MemberSpacingVisitor extends DefaultPrettyPrinterVisitor {
+		MemberSpacingVisitor(PrinterConfiguration configuration) {
+			super(configuration);
+		}
+
+		@Override
+		protected void printMembers(NodeList<BodyDeclaration<?>> members, Void arg) {
+			for (int i = 0; i < members.size(); i++) {
+				if (i > 0)
+					this.printer.println();
+				members.get(i).accept(this, arg);
+				this.printer.println();
 			}
 		}
-		List<ImportDeclaration> imports = root.getChildren().stream().map(n -> n.getArtifact().getData())
-				.filter(JavaASTData.class::isInstance).map(JavaASTData.class::cast)
-				.filter(data -> data.getType() == ASTNodeType.IMPORT_DECLARATION)
-				.map(idata -> StaticJavaParser.parseImport(idata.toString())).collect(Collectors.toList());
-		cu.setImports(new NodeList<>(imports));
-		root.getChildren().forEach(c -> addNode(c, cu));
-		outputString = cu.toString();
-		
+	}
+
+	/**
+	 * Gives {@code node} the comments kept with {@code data} (see JavaASTReader): its own comment,
+	 * and the comments that belonged to no node inside its body.
+	 */
+	private static com.github.javaparser.ast.comments.Comment comment(JavaASTData data) {
+		return data.getComment() == null ? null : data.getComment().toComment();
+	}
+
+	private static void attachComments(JavaASTData data, com.github.javaparser.ast.Node node) {
+		if (data.getComment() != null)
+			node.setComment(data.getComment().toComment());
+		if (data.getOrphanComments().isEmpty())
+			return;
+		com.github.javaparser.ast.Node container = node;
+		if (node instanceof MethodDeclaration method && method.getBody().isPresent())
+			container = method.getBody().get();
+		else if (node instanceof ConstructorDeclaration constructor)
+			container = constructor.getBody();
+		else if (node instanceof CompactConstructorDeclaration constructor)
+			container = constructor.getBody();
+		else if (node instanceof TryStmt tryStmt)
+			container = tryStmt.getTryBlock();
+		else if (node instanceof CatchClause catchClause)
+			container = catchClause.getBody();
+		else if (node instanceof NodeWithBody<?> withBody && withBody.getBody() instanceof BlockStmt block)
+			container = block;
+		for (JavaASTComment orphan : data.getOrphanComments())
+			container.addOrphanComment(orphan.toComment());
 	}
 
 	private static com.github.javaparser.ast.Node addNode(Node child, com.github.javaparser.ast.Node parent) {
+		com.github.javaparser.ast.Node added = addNodeWithoutComments(child, parent);
+		// a field group adds its fields to the parent and returns the parent
+		if (added != null && added != parent && child.getArtifact().getData() instanceof JavaASTData data)
+			attachComments(data, added);
+		return added;
+	}
+
+	private static com.github.javaparser.ast.Node addNodeWithoutComments(Node child, com.github.javaparser.ast.Node parent) {
 		if (child.getArtifact().getData() instanceof JavaASTData) {
 			JavaASTData childData = (JavaASTData) child.getArtifact().getData();
 			switch (childData.getType()) {
@@ -441,6 +504,7 @@ public class JavaASTWriteHandler {
 				.filter(data -> ((JavaASTData) data.getArtifact().getData()).getType() == ASTNodeType.IF_CONDITION)
 				.collect(Collectors.toList());
 		IfStmt ifStmt = new IfStmt();
+		IfStmt outermost = ifStmt;
 		addStatement(ifStmt, parent);
 		for (int i = 0; i < conditionNodes.size(); i++) {
 			addIfCondition(conditionNodes.get(i), ifStmt);
@@ -450,7 +514,7 @@ public class JavaASTWriteHandler {
 				ifStmt = cascadeIf;
 			}
 		}
-		return ifStmt;
+		return outermost;
 	}
 
 	private static void addIfCondition(Node child, IfStmt parent) {
@@ -461,6 +525,7 @@ public class JavaASTWriteHandler {
 			BlockStmt thenBlock = new BlockStmt();
 			parent.setThenStmt(thenBlock);
 			thenBranch.forEach(tb -> addNode(tb, thenBlock));
+			attachComments((JavaASTData) child.getArtifact().getData(), thenBlock);
 		} else {
 			parent.setThenStmt(new EmptyStmt());
 		}
@@ -469,6 +534,7 @@ public class JavaASTWriteHandler {
 			BlockStmt elseBlock = new BlockStmt();
 			parent.setElseStmt(elseBlock);
 			elseBranch.getChildren().forEach(eb -> addNode(eb, elseBlock));
+			attachComments((JavaASTData) elseBranch.getArtifact().getData(), elseBlock);
 		}
 	}
 
@@ -529,6 +595,7 @@ public class JavaASTWriteHandler {
 			Parameter param = StaticJavaParser.parseParameter(ccData.getData());
 			catchClause.setParameter(param);
 			cc.getChildren().forEach(c -> addNode(c, catchClause));
+			attachComments(ccData, catchClause);
 			catchClauses.add(catchClause);
 		}
 		tryStmt.setCatchClauses(catchClauses);
@@ -555,6 +622,7 @@ public class JavaASTWriteHandler {
 			}
 			SwitchEntry encloseEntry = entry;
 			swEntryNode.getChildren().forEach(stmts -> addNode(stmts, encloseEntry));
+			attachComments(entryData, entry);
 			entries.add(entry);
 		}
 		switchStmt.setEntries(entries);
