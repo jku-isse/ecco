@@ -1,6 +1,8 @@
 package at.jku.cdl.ecco.adapter.java.artifactData;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
 
@@ -11,6 +13,40 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 	private ASTNodeType type = ASTNodeType.UNKNOWN;
+
+	/**
+	 * The comment JavaParser attributed to the node (e.g. a method's Javadoc, or a line comment above
+	 * or behind a statement), and comments inside the node attributed to no node of their own (e.g.
+	 * one at the end of a method body). Not part of the artifact's identity: a changed comment does
+	 * not make a new artifact, the newest commit's comments are kept (adoptMetadataFrom). Before
+	 * they were kept, every checkout lost all comments of the file.
+	 */
+	private JavaASTComment comment;
+	private List<JavaASTComment> orphanComments;
+
+	public JavaASTComment getComment() {
+		return this.comment;
+	}
+
+	public void setComment(JavaASTComment comment) {
+		this.comment = comment;
+	}
+
+	public List<JavaASTComment> getOrphanComments() {
+		return this.orphanComments == null ? List.of() : this.orphanComments;
+	}
+
+	public void setOrphanComments(List<JavaASTComment> orphanComments) {
+		this.orphanComments = orphanComments == null || orphanComments.isEmpty() ? null : new ArrayList<>(orphanComments);
+	}
+
+	@Override
+	public void adoptMetadataFrom(ArtifactData newer) {
+		if (newer instanceof JavaASTData other) {
+			this.comment = other.comment;
+			this.orphanComments = other.orphanComments;
+		}
+	}
 	
 	/**
 	 * Used to collapse a captured fragment's tabs/newlines to spaces, which silently corrupted any

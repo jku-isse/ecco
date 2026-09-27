@@ -161,10 +161,10 @@ public class JavaASTReaderWriterTest {
     }
 
     @Test
-    public void dropsCommentsOnWrite() throws IOException {
-        // Reader is constructed with PrettyPrinterConfiguration.setPrintComments(false), so
-        // comments never make it into any artifact - characterizing this as a known, deliberate
-        // (per the config) but real fidelity loss versus source, not a bug to fix here.
+    public void keepsCommentsOnWrite() throws IOException {
+        // Comments used to never make it into any artifact (the reader prints without comments),
+        // so every checkout dropped all of them. They are now kept with the artifacts - see
+        // JavaASTData and JavaASTCommentTest.
         String out = readWrite(
                 "package com.example;\n" +
                         "public class Foo {\n" +
@@ -174,8 +174,8 @@ public class JavaASTReaderWriterTest {
                         "    }\n" +
                         "}\n");
 
-        assertFalse(out.contains("a comment explaining bar"));
-        assertFalse(out.contains("inline"));
+        assertTrue(out.contains("a comment explaining bar"));
+        assertTrue(out.contains("inline"));
         assertTrue(out.contains("doSomething()"));
     }
 
