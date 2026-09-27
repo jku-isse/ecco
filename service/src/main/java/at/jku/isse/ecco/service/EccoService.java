@@ -23,7 +23,6 @@ import at.jku.isse.ecco.tree.*;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.name.*;
-import org.logicng.formulas.Formula;
 
 import java.io.*;
 import java.net.*;
@@ -72,7 +71,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public static final Path HASHES_FILE_NAME = Paths.get(".hashes");
 
     private final Properties properties = new Properties();
-    private Path baseDir;
+    Path baseDir;
     private Path repositoryDir;
     private Collection<ArtifactPlugin> artifactPlugins;
     private Collection<StoragePlugin> dataPlugins;
@@ -88,9 +87,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private MainTreeBuildingStrategy defaultMainTreeBuildingStrategy;
     private int defaultMaxOrder;
     @Inject
-    private DispatchReader reader;
+    DispatchReader reader;
     @Inject
-    private DispatchWriter writer;
+    DispatchWriter writer;
     @Inject
     EntityFactory entityFactory;
     @Inject
@@ -230,6 +229,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private final RemoteSyncService remoteSyncService = new RemoteSyncService(this);
 
     private final ConfigurationParser configurationParser = new ConfigurationParser(this);
+
+    private final CheckoutService checkoutService = new CheckoutService(this);
 
     public boolean isWriteInProgress() {
         return this.listeners.isWriteInProgress();
@@ -1185,7 +1186,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
-    private volatile boolean surplusSuppressionEnabled = true;
+    volatile boolean surplusSuppressionEnabled = true;
 
     /**
      * Controls whether {@link #compose} suppresses {@link Checkout#getSurplusModules()} entries
@@ -1199,7 +1200,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.surplusSuppressionEnabled = enabled;
     }
 
-    private volatile boolean surplusAbsorptionEnabled = true;
+    volatile boolean surplusAbsorptionEnabled = true;
 
     /**
      * Controls whether {@link #compose} removes {@link Checkout#getSurplusModules()} entries that are
@@ -1377,63 +1378,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
-    /**
-     * Composes checkout with given configuration.
-     *
-     * @param configuration Configuration to be composed.
-     * @return Checkout with composed artifacts.
-     */
-    private synchronized Checkout compose(Configuration configuration) {
-        this.checkInitialized();
-        checkNotNull(configuration);
-        // read inside a transaction like every other read: outside of one, load() returns whatever
-        // database the last transaction left loaded - none right after open() (NPE), or a stale one
-        // if another process committed since (see ReadWithoutTransactionTest)
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-            Checkout checkout = this.composeInTransaction(configuration);
-            this.transactionStrategy.end();
-            return checkout;
-        } catch (RuntimeException e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        }
-    }
 
-    private Checkout composeInTransaction(Configuration configuration) {
-        Repository.Op repository = this.repositoryDao.load();
-        Checkout checkout = repository.compose(configuration);
-        if (this.surplusAbsorptionEnabled && !checkout.getSurplusModules().isEmpty()) {
-            try {
-                SurplusLatticeAbsorber.suppressAbsorbed(checkout, repository);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Surplus-lattice absorption failed; leaving surplus warnings as-is.", e);
-            }
-        }
-        if (this.surplusSuppressionEnabled && !checkout.getSurplusModules().isEmpty()) {
-            try {
-                List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
-                Formula revisionAwareFeatureModel =
-                        FeatureModelFormula.compileRevisionAware(acceptedSuggestions, repository.getFeatures());
-                Set<ModuleRevision> desiredModules =
-                        new HashSet<>(repository.getOrphanedConfigurationModules(configuration));
-                SurplusModuleSuppressor.suppressEntailed(checkout, desiredModules, revisionAwareFeatureModel);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Surplus-module suppression failed; leaving surplus warnings as-is.", e);
-            }
-        }
-        if (this.constraintViolationWarningsEnabled) {
-            try {
-                List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
-                Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
-                checkout.getConstraintWarnings().addAll(
-                        ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions));
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "Constraint-violation check failed; skipping.", e);
-            }
-        }
-        return checkout;
-    }
+
+
 
     /**
      * Checks whether the given configuration's selected features violate any accepted, currently
@@ -1444,6 +1391,39 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configuration The configuration to check.
      * @return Human-readable descriptions of violated constraints; empty if none.
      */
+    /**
+     * Composes checkout with given configuration - see {@link CheckoutService#compose}.
+     */
+    private synchronized Checkout compose(Configuration configuration) {
+        return this.checkoutService.compose(configuration);
+    }
+
+    /**
+     * Checks out the implementation of the given configuration into the base directory, together with
+     * its .config and .warnings files - see {@link CheckoutService#checkout(Configuration)}.
+     *
+     * @param configuration The configuration to be checked out.
+     * @return The checkout object.
+     */
+    public synchronized Checkout checkout(Configuration configuration) {
+        return this.checkoutService.checkout(configuration);
+    }
+
+    public synchronized Checkout checkout(Node node) {
+        return this.checkoutService.checkout(node);
+    }
+
+    /**
+     * Re-writes the file enclosing {@code node} - see {@link CheckoutService#writeCheckoutFile}.
+     */
+    public synchronized Path[] writeCheckoutFile(Node node) {
+        return this.checkoutService.writeCheckoutFile(node);
+    }
+
+    private synchronized Set<Node> compareArtifacts(Checkout checkout) {
+        return this.checkoutService.selectArtifacts(checkout);
+    }
+
     public synchronized List<String> checkConstraintViolations(Configuration configuration) {
         return this.constraintService.checkConstraintViolations(configuration);
     }
@@ -1489,126 +1469,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     // TODO: check if 'compareArtifacts' is proper name for method (fires association-selected events and returns artifact nodes)
-    private synchronized Set<Node> compareArtifacts(Checkout checkout) {
-        for (Association selectedAssociation : checkout.getSelectedAssociations()) {
-            this.listeners.fireAssociationSelectedEvent(selectedAssociation);
-        }
-        // nodes (artifacts) to write to files
-        return new HashSet<>(checkout.getNode().getChildren());
-    }
 
-    /**
-     * Checks out the implementation of the given configuration into the base directory.
-     *
-     * @param configuration The configuration to be checked out.
-     * @return The checkout object.
-     */
-    public synchronized Checkout checkout(Configuration configuration) {
-        this.listeners.setWriteInProgress(true);
-        try {
-            Checkout checkout = compose(configuration);
 
-            Set<Node> nodes = compareArtifacts(checkout);
-            this.writer.write(this.baseDir, nodes);
 
-            // TODO: check if rest of method is affected by code change to compose
-            // write config file into base directory
-            Path configFile = this.baseDir.resolve(CONFIG_FILE_NAME);
-            if (Files.exists(configFile)) {
-                throw new EccoException("Configuration file already exists in base directory.");
-            } else {
-                try {
-                    Files.write(configFile, configuration.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                } catch (IOException e) {
-                    throw new EccoException("Could not create configuration file.", e);
-                }
-                this.listeners.fireWriteEvent(configFile, this.writer);
-            }
 
-            // write warnings file into base directory
-            Path warningsFile = this.baseDir.resolve(WARNINGS_FILE_NAME);
-            if (Files.exists(warningsFile)) {
-                throw new EccoException("Warnings file already exists in base directory.");
-            } else {
-                try {
-                    StringBuilder sb = new StringBuilder();
-                    List<ModuleRevision> sortedMissing = new ArrayList<>(checkout.getMissing());
-                    sortedMissing.sort(ModuleRevisions.RELEVANCE_ORDER);
-                    for (ModuleRevision mr : sortedMissing) {
-                        sb.append("MISSING: ").append(ModuleRevisions.describe(mr));
-                        String location = checkout.getMissingLocations().get(mr);
-                        if (location != null && !location.isEmpty()) {
-                            sb.append(" (").append(location).append(")");
-                        }
-                        sb.append(" -- suggested fix: ").append(ModuleRevisions.suggestFix(mr, checkout.getConfiguration()));
-                        sb.append(System.lineSeparator());
-                    }
-                    for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
-                        sb.append("SURPLUS: ").append(mr.getKey()).append(" trace id: ")
-                                .append(mr.getValue()).append(System.lineSeparator());
-                    }
-                    for (Node orderNode : checkout.getOrderWarnings()) {
-                        sb.append("ORDER: ").append(ArtifactDiagnostics.describePath(orderNode))
-                                .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(orderNode)).append(")")
-                                .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix(orderNode))
-                                .append(System.lineSeparator());
-                    }
-                    for (Association association : checkout.getUnresolvedAssociations()) {
-                        sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());
-                    }
-                    for (String constraintWarning : checkout.getConstraintWarnings()) {
-                        sb.append("CONSTRAINT: ").append(constraintWarning).append(System.lineSeparator());
-                    }
-                    Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                } catch (IOException e) {
-                    throw new EccoException("Could not create warnings file.", e);
-                }
-                this.listeners.fireWriteEvent(warningsFile, this.writer);
-            }
 
-            return checkout;
-        } finally {
-            this.listeners.setWriteInProgress(false);
-        }
-    }
 
-    public synchronized Checkout checkout(Node node) {
-        this.checkInitialized();
 
-        Checkout checkout = new Checkout();
-        checkout.setNode(node);
-
-        Set<Node> nodes = new HashSet<>(node.getChildren());
-        this.writer.write(this.baseDir, nodes);
-
-        return checkout;
-    }
-
-    /**
-     * Locates the nearest file-level ancestor (inclusive) of {@code node} -- walking up via {@code
-     * Node#getParent()} until reaching a node whose artifact data is {@link PluginArtifactData}
-     * (the granularity {@code ArtifactWriter}s actually write; intermediate ancestors may be plain
-     * {@code DirectoryArtifactData} folder nodes, or structural nodes nested inside a file, e.g. a
-     * method body) -- and re-writes just that one file to disk under the current base directory. See
-     * {@link DispatchWriter#writeFile(Path, Node)}. Used by the GUI's ORDER-warning reorder dialog to
-     * materialize a user-chosen child order (already applied via {@code Node.Op#setChildren}
-     * somewhere in this node's subtree) before committing it.
-     *
-     * @param node Any node from the currently-shown checkout's tree, e.g. the ambiguous ORDER-warning
-     *             node itself.
-     * @return The path(s) written.
-     */
-    public synchronized Path[] writeCheckoutFile(Node node) {
-        this.checkInitialized();
-        Node fileNode = node;
-        while (fileNode != null && !(fileNode.getArtifact().getData() instanceof PluginArtifactData)) {
-            fileNode = fileNode.getParent();
-        }
-        if (fileNode == null) {
-            throw new EccoException("Could not locate an enclosing file node (PluginArtifactData) for the given node.");
-        }
-        return this.writer.writeFile(this.baseDir, fileNode);
-    }
 
 
     /**
