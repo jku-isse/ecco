@@ -50,7 +50,7 @@ public class UnchangedArtifactRewriteTest {
             service.setBaseDir(content);
             service.commit("one", "A");
         }
-        Map<String, String> before = digests(repoDir.resolve("artifacts"));
+        Map<String, Long> before = digests(repoDir.resolve("artifacts"));
 
         Files.writeString(content.resolve("f0.txt"), Files.readString(content.resolve("f0.txt")) + "one more line\n");
         try (EccoService service = new EccoService()) {
@@ -59,12 +59,13 @@ public class UnchangedArtifactRewriteTest {
             service.setBaseDir(content);
             service.commit("two", "A.2");
         }
-        Map<String, String> after = digests(repoDir.resolve("artifacts"));
+        Map<String, Long> after = digests(repoDir.resolve("artifacts"));
 
         // artifacts are stored in packs, one per write: what the second commit wrote is in its new pack
-        long rewritten = after.keySet().stream().filter(entry -> !before.containsKey(entry)).count();
-        assertTrue(before.size() > 200, "precondition: " + before.size() + " artifacts");
-        assertTrue(rewritten <= 10, "only artifacts that actually changed may be rewritten, but " + rewritten + " of " + before.size() + " were");
+        long rewritten = after.entrySet().stream().filter(entry -> !before.containsKey(entry.getKey())).mapToLong(Map.Entry::getValue).sum();
+        long stored = before.values().stream().mapToLong(Long::longValue).sum();
+        assertTrue(stored > 200, "precondition: " + stored + " artifacts");
+        assertTrue(rewritten <= 10, "only artifacts that actually changed may be rewritten, but " + rewritten + " of " + stored + " were");
     }
 
     @Test
@@ -114,18 +115,14 @@ public class UnchangedArtifactRewriteTest {
         return result;
     }
 
-    /** pack file + "/" + entry (one per artifact written) -> digest of the entry's bytes */
-    private static Map<String, String> digests(Path dir) throws Exception {
-        Map<String, String> result = new HashMap<>();
-        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+    /** pack file -> number of artifacts in it (a pack holds a 16 byte digest per artifact) */
+    private static Map<String, Long> digests(Path dir) throws Exception {
+        Map<String, Long> result = new HashMap<>();
         try (Stream<Path> files = Files.list(dir)) {
             for (Path file : (Iterable<Path>) files::iterator) {
-                try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(file.toFile())) {
-                    for (java.util.zip.ZipEntry entry : java.util.Collections.list(zip.entries())) {
-                        try (java.io.InputStream in = zip.getInputStream(entry)) {
-                            result.put(file.getFileName() + "/" + entry.getName(), HexFormat.of().formatHex(sha.digest(in.readAllBytes())));
-                        }
-                    }
+                try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(file.toFile());
+                     java.io.InputStream in = zip.getInputStream(zip.getEntry("digests"))) {
+                    result.put(file.getFileName().toString(), (long) in.readAllBytes().length / 16);
                 }
             }
         }

@@ -104,7 +104,11 @@ public class CompactCounterPersistenceTest {
         Path workDir = commitSome(Files.createTempDirectory("compact-counters-files"));
         try (Stream<Path> files = Files.list(workDir.resolve(".ecco").resolve("associations"))) {
             for (Path file : files.toList()) {
-                String content = new String(Files.readAllBytes(file), java.nio.charset.StandardCharsets.ISO_8859_1);
+                String content;
+                try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(file.toFile());
+                     java.io.InputStream in = zip.getInputStream(zip.entries().nextElement())) {
+                    content = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.ISO_8859_1);
+                }
                 assertTrue(content.contains("compactChildren"), file + " has no compact counters");
                 assertFalse(content.contains("SerModuleRevisionCounter"), file + " still holds serialized counter objects");
             }
