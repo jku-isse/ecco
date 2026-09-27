@@ -350,12 +350,9 @@ public interface PartialOrderGraph extends Persistable {
 			if (numNodesAfter != numNodesBefore + numUnmatchedNodes)
 				throw new EccoException("POG node count mismatch! BEFORE: " + numNodesBefore + ", MATCHED: " + numMatchedNodes + ", UNMATCHED: " + numUnmatchedNodes + ", AFTER: " + numNodesAfter);
 
-			// CONSISTENCY: check cycles: for every node: can it reach itself?
-			for (Node.Op thisNode : this.collectNodes())
-				if (thisNode.getArtifact() != null)
-					for (Node.Op nextNode : thisNode.getNext())
-						if (canReach(nextNode, thisNode))
-							throw new EccoException("There is a cycle in the POG!");
+			// CONSISTENCY: check cycles
+			if (hasCycle(this.collectNodes()))
+				throw new EccoException("There is a cycle in the POG!");
 
 			// CONSISTENCY: check for redundant connections: can any node be reached from any of the other nodes?
 			for (Node.Op thisNode : this.collectNodes())
@@ -366,6 +363,50 @@ public interface PartialOrderGraph extends Persistable {
 
 			// CONSISTENCY: check if graph has cycles and throw exception if it does
 			this.checkConsistency();
+		}
+
+
+		/**
+		 * Whether some node can reach itself, i.e. for some edge {@code u -> v}, {@code canReach(v, u)}
+		 * - the check merge() used to run literally, one full graph walk per edge: O(E * (V + E)), half
+		 * of a large ordered file's commit time. This is a single topological sort instead, which is
+		 * equivalent as long as no two distinct real nodes share an assigned sequence number (canReach
+		 * matches by identity or by an equal assigned sequence number); otherwise the literal check
+		 * runs. See PartialOrderGraphCycleCheckEquivalenceTest.
+		 */
+		static boolean hasCycle(Collection<Node.Op> nodes) {
+			Set<Integer> assignedSequenceNumbers = new HashSet<>();
+			for (Node.Op node : nodes) {
+				if (node.getArtifact() != null && node.getSequenceNumber() >= 0 && !assignedSequenceNumbers.add(node.getSequenceNumber())) {
+					for (Node.Op thisNode : nodes)
+						if (thisNode.getArtifact() != null)
+							for (Node.Op nextNode : thisNode.getNext())
+								if (canReach(nextNode, thisNode))
+									return true;
+					return false;
+				}
+			}
+
+			// Kahn's algorithm: a cycle leaves nodes that never reach in-degree 0
+			Map<Node.Op, Integer> inDegree = new IdentityHashMap<>();
+			for (Node.Op node : nodes)
+				inDegree.putIfAbsent(node, 0);
+			for (Node.Op node : nodes)
+				for (Node.Op next : node.getNext())
+					inDegree.merge(next, 1, Integer::sum);
+			Deque<Node.Op> ready = new ArrayDeque<>();
+			for (Map.Entry<Node.Op, Integer> entry : inDegree.entrySet())
+				if (entry.getValue() == 0)
+					ready.add(entry.getKey());
+			int processed = 0;
+			while (!ready.isEmpty()) {
+				Node.Op node = ready.poll();
+				processed++;
+				for (Node.Op next : node.getNext())
+					if (inDegree.merge(next, -1, Integer::sum) == 0)
+						ready.add(next);
+			}
+			return processed < inDegree.size();
 		}
 
 
