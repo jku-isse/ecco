@@ -21,8 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Repository.Op.subset() (base/src/main/java/at/jku/isse/ecco/repository/Repository.java) is what
  * fork/pullFeaturesRepository actually use to build the subset repository merged into the target
  * (see EccoService#forkAlreadyOpen -> Repository.Op#subset, and Repository.Op#copy, a thin wrapper
- * around it). subset_old()/merge_old() are dead code - grepped, nothing outside Repository.java
- * itself calls them - so deliberately not tested here.
+ * around it).
  */
 public class RepositoryOpSubsetTest {
 

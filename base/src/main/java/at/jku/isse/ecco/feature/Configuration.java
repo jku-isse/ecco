@@ -1,12 +1,9 @@
 package at.jku.isse.ecco.feature;
 
-import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
-import at.jku.isse.ecco.module.Condition;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
-import at.jku.isse.ecco.repository.Repository;
 import org.logicng.datastructures.Assignment;
 import org.logicng.formulas.Literal;
 
@@ -45,82 +42,6 @@ public interface Configuration extends Persistable {
     String getOriginalConfigString();
 
     void setFeatureRevisions(FeatureRevision[] featureRevisions);
-
-    default Set<ModuleRevision> computeModules(int maxOrder, Repository.Op repository, Configuration configuration) {
-        Set<ModuleRevision> desiredModules = new HashSet<>();
-        FeatureRevision[] featuresRevisions = configuration.getFeatureRevisions();
-        ArrayList<Feature> features = new ArrayList<>();
-        for (FeatureRevision featurerevision : featuresRevisions) {
-            features.add(featurerevision.getFeature());
-        }
-        for (Association association : repository.getAssociations()) {
-            Condition moduleCondition = association.computeCondition();
-            if (moduleCondition.getType() == Condition.TYPE.AND) {
-                Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
-                for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
-                    if (entry.getValue() != null) {
-                        for (ModuleRevision existingModuleRevision : entry.getValue()) {
-                            Boolean addmodule = true;
-                            for (Feature negfeat : existingModuleRevision.getNeg()) {
-                                if (features.contains(negfeat)) {
-                                    addmodule = false;
-                                    break;
-                                }
-                            }
-                            if (addmodule) {
-                                FeatureRevision[] featmodule = existingModuleRevision.getPos();
-                                for (FeatureRevision featm : featmodule) {
-                                    if (Arrays.stream(featuresRevisions).anyMatch(featureRevision -> featureRevision.equals(featm))) {
-                                        //System.out.println(featm);
-                                        desiredModules.add(existingModuleRevision);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return desiredModules;
-    }
-
-    default Set<ModuleRevision> computeModulesMissing(int maxOrder, Repository.Op repository, Configuration configuration) {
-        Set<ModuleRevision> missinModules = new HashSet<>();
-        FeatureRevision[] featuresRevisions = configuration.getFeatureRevisions();
-        List<FeatureRevision> featrev =Arrays.asList(configuration.getFeatureRevisions());
-        ArrayList<Feature> features = new ArrayList<>();
-        for (FeatureRevision featurerevision : featuresRevisions) {
-            features.add(featurerevision.getFeature());
-        }
-        for (Association association : repository.getAssociations()) {
-            Condition moduleCondition = association.computeCondition();
-            Map<Module, Collection<ModuleRevision>> moduleMap = moduleCondition.getModules();
-            for (Map.Entry<Module, Collection<ModuleRevision>> entry : moduleMap.entrySet()) {
-                if (entry.getValue() != null) {
-                    for (ModuleRevision existingModuleRevision : entry.getValue()) {
-                        Boolean addmodule = false;
-                        for (FeatureRevision posfeat : existingModuleRevision.getPos()) {
-                            if (featrev.contains(posfeat)) {
-                                addmodule = true;
-                                break;
-                            }
-                        }
-                        if (addmodule) {
-                            Feature[] negfeatmodule = existingModuleRevision.getNeg();
-                            for (Feature feat : negfeatmodule) {
-                                if (!features.contains(feat))
-                                    //System.out.println(featm);
-                                    missinModules.add(existingModuleRevision);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return missinModules;
-    }
 
     default boolean contains(Module module) {
         // check if all positive features of the module are contained in the configuration
