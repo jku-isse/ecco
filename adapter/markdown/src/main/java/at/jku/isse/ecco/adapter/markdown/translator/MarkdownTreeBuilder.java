@@ -174,8 +174,10 @@ public final class MarkdownTreeBuilder {
 
 	private void addLeaf(Node.Op parentEccoNode, ArtifactData data, org.commonmark.node.Node block) {
 		Node.Op node = this.createOrderedChild(parentEccoNode, data);
-		for (SourceSpan span : block.getSourceSpans()) {
-			this.addLineChild(node, span.getLineIndex());
+		// every line from the block's first to its last: its source spans leave out blank lines inside
+		// it - a fenced code block lost its empty lines
+		for (int line = firstLine(block); line <= lastLine(block); line++) {
+			this.addLineChild(node, line);
 		}
 	}
 

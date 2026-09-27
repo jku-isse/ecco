@@ -36,6 +36,10 @@ public class MarkdownFileWriterTest {
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"",
+			// blank lines inside code blocks are not in CommonMark's source spans - they used to be lost
+			"# T\n\n```\nfirst\n\nsecond\n```\n\ntext\n",
+			"Para\n\n    indented\n\n    code\n",
+			"- item\n\n  ```\n  a\n\n  b\n  ```\n",
 			"Some paragraph\ntext that spans two lines.\n",
 			"""
 					# Title
