@@ -15,7 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Reading a TypeScript file and writing it back must give the same text. Variable statements lost
- * everything after their last declaration - `let x = 1;` came back as `let x = 1`.
+ * everything after their last declaration - `let x = 1;` came back as `let x = 1` - and a file with
+ * a JSDoc comment could not be read at all.
  */
 public class TypeScriptRoundTripTest {
 
@@ -28,6 +29,10 @@ public class TypeScriptRoundTripTest {
             "export const c = 3; // the answer\nvar d = 4;\n",
             "const f = (s: string) => s.length;\n",
             "let x = 1;\nfunction g(a: string) {\n  const z = a;\n  return z;\n}\n",
+            // JSDoc comments made every commit fail (a circular structure in the parser's output)
+            "/** A function. */\nfunction f(a: number) {\n    return a;\n}\n",
+            "class K {\n    /** A method. */\n    m() {\n        return 1;\n    }\n}\n",
+            "interface D {\n    /** The description. */\n    readonly d: string;\n}\n",
     })
     public void aFileIsWrittenBackAsItWasRead(String source) throws Exception {
         Path base = Files.createTempDirectory("typescript-round-trip");
