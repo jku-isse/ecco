@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.channels.AsynchronousCloseException;
@@ -142,9 +143,10 @@ public class RemoteSyncService {
 
     // DISTRIBUTED OPERATIONS //////////////////////////////////////////////////////////////////////////////////////////
 
-    private ServerSocketChannel ssChannel = null;
-    private boolean serverShutdown = false;
-    private boolean serverRunning = false;
+    // volatile: written by the server thread, read/written by whoever calls stopServer()/serverRunning()
+    private volatile ServerSocketChannel ssChannel = null;
+    private volatile boolean serverShutdown = false;
+    private volatile boolean serverRunning = false;
     private final Lock serverLock = new ReentrantLock();
 
     public boolean serverRunning() {
@@ -162,13 +164,32 @@ public class RemoteSyncService {
      */
     private void rollbackIfTransactionInProgress() {
         try {
-            owner.transactionStrategy.rollback();
+            synchronized (owner) {
+                owner.transactionStrategy.rollback();
+            }
         } catch (EccoException ignored) {
             // no transaction was active -- nothing to roll back
         }
     }
 
+    /**
+     * Starts the fetch/pull/push server, listening on the loopback interface only - the protocol
+     * has no authentication, so accepting connections from other machines has to be an explicit
+     * choice, see {@link #startServer(int, boolean)}.
+     */
     public void startServer(int port) {
+        this.startServer(port, false);
+    }
+
+    /**
+     * Starts the fetch/pull/push server and blocks, running its accept loop, until
+     * {@link #stopServer()} is called.
+     *
+     * @param allInterfaces listen on all network interfaces instead of loopback only. The protocol
+     *                      is unauthenticated: anyone who can reach the port can read the whole
+     *                      repository and push into it.
+     */
+    public void startServer(int port, boolean allInterfaces) {
         owner.checkInitialized();
 
         if (!this.serverLock.tryLock())
@@ -180,16 +201,17 @@ public class RemoteSyncService {
             this.serverShutdown = false;
 
             ssChannel.configureBlocking(true);
-            ssChannel.socket().bind(new InetSocketAddress(port));
+            ssChannel.socket().bind(allInterfaces ? new InetSocketAddress(port) : new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
 
-            LOGGER.info("Server started on port " + port + ".");
-            owner.listeners.fireServerEvent("Server started on port " + port + ".");
+            String scope = allInterfaces ? " (all interfaces)" : " (local connections only)";
+            LOGGER.info("Server started on port " + port + scope + ".");
+            owner.listeners.fireServerEvent("Server started on port " + port + scope + ".");
             owner.listeners.fireServerStartedEvent(port);
 
             while (!serverShutdown) {
                 try (SocketChannel sChannel = ssChannel.accept()) {
                     ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                    ObjectInputStream ois = new ObjectInputStream(sChannel.socket().getInputStream());
+                    ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream());
 
 
                     // determine if it is a push (receive data) or a pull (send data)
@@ -197,13 +219,24 @@ public class RemoteSyncService {
                     LOGGER.info("COMMAND: " + command);
                     owner.listeners.fireServerEvent("New connection from " + sChannel.getRemoteAddress() + " with command '" + command + "'.");
 
+                    // Every repository/transaction section below runs under the EccoService monitor,
+                    // like EccoService's own synchronized operations: the transaction strategy keeps
+                    // one shared transaction state, so a request interleaving with e.g. a commit from
+                    // the GUI would corrupt it. Only those sections - the network I/O stays outside,
+                    // so a slow peer can't stall the rest of the application. (EccoService.
+                    // startServer() used to be synchronized instead, holding the monitor for the
+                    // server's whole lifetime and blocking every other operation until it stopped.)
                     switch (command) {
                         case "FETCH": { // if fetch, send data
-                            // copy features using mem entity factory
-                            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-                            Repository.Op repository = owner.repositoryDao.load();
-                            Collection<Feature> copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), owner.entityFactory);
-                            owner.transactionStrategy.end();
+                            // copy features using mem entity factory - under the service monitor
+                            // (see the comment above the switch)
+                            Collection<Feature> copiedFeatures;
+                            synchronized (owner) {
+                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                Repository.Op repository = owner.repositoryDao.load();
+                                copiedFeatures = EccoUtil.deepCopyFeatures(repository.getFeatures(), owner.entityFactory);
+                                owner.transactionStrategy.end();
+                            }
 
                             // send features, size-prefixed for the client's progress bar. The size is
                             // only an estimate (measured via a scratch ObjectOutputStream) -- the actual
@@ -239,13 +272,17 @@ public class RemoteSyncService {
                         case "PULL": { // if pull, send data
                             // retrieve deselection
                             String deselectedFeatureRevisionsString = (String) ois.readObject();
-                            Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
 
-                            // compute subset repository using mem entity factory
-                            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-                            Repository.Op repository = owner.repositoryDao.load();
-                            Repository.Op subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.entityFactory);
-                            owner.transactionStrategy.end();
+                            // compute subset repository using mem entity factory - under the service
+                            // monitor (see the comment above the switch)
+                            Repository.Op subsetRepository;
+                            synchronized (owner) {
+                                Collection<FeatureRevision> deselected = owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString);
+                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                                Repository.Op repository = owner.repositoryDao.load();
+                                subsetRepository = repository.subset(deselected, repository.getMaxOrder(), owner.entityFactory);
+                                owner.transactionStrategy.end();
+                            }
 
                             // send subset repository, size-prefixed -- see the FETCH case above for why
                             // the payload is written through `oos` rather than spliced in separately.
@@ -283,12 +320,15 @@ public class RemoteSyncService {
                             // copy it using this entity factory
                             Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
 
-                            // merge into this repository
-                            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-                            Repository.Op repository = owner.repositoryDao.load();
-                            repository.merge(copiedRepository);
-                            owner.repositoryDao.store(repository);
-                            owner.transactionStrategy.end();
+                            // merge into this repository - under the service monitor (see the
+                            // comment above the switch)
+                            synchronized (owner) {
+                                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+                                Repository.Op repository = owner.repositoryDao.load();
+                                repository.merge(copiedRepository);
+                                owner.repositoryDao.store(repository);
+                                owner.transactionStrategy.end();
+                            }
                             break;
                         }
                     }
@@ -356,7 +396,7 @@ public class RemoteSyncService {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                        ObjectInputStream ois = new ObjectInputStream(progressInputStream);
+                        ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
 
                         oos.writeObject("FETCH");
                         oos.flush();
@@ -444,7 +484,7 @@ public class RemoteSyncService {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                        ObjectInputStream ois = new ObjectInputStream(progressInputStream);
+                        ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
 
                         oos.writeObject("PULL");
                         oos.writeObject(deselectedFeatureRevisionsString);

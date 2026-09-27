@@ -771,8 +771,22 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.remoteSyncService.serverRunning();
     }
 
-    public synchronized void startServer(int port) {
+    /**
+     * Starts the sync server on the loopback interface and blocks until {@link #stopServer()}.
+     * Deliberately not synchronized: it runs the server's accept loop for as long as the server is
+     * up, and holding this service's monitor that whole time blocked every other synchronized call
+     * (commit, checkout, getRepository, ...). RemoteSyncService guards against concurrent starts
+     * itself, and request handling uses the transaction strategy like any other operation.
+     */
+    public void startServer(int port) {
         this.remoteSyncService.startServer(port);
+    }
+
+    /**
+     * See {@link RemoteSyncService#startServer(int, boolean)}.
+     */
+    public void startServer(int port, boolean allInterfaces) {
+        this.remoteSyncService.startServer(port, allInterfaces);
     }
 
     public void stopServer() {
@@ -800,7 +814,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                 ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
-                ObjectInputStream ois = new ObjectInputStream(progressInputStream);
+                ObjectInputStream ois = SyncObjectStreams.newObjectInputStream(progressInputStream);
 
                 oos.writeObject("PULL");
                 oos.writeObject(deselectedFeatureRevisionsString);
