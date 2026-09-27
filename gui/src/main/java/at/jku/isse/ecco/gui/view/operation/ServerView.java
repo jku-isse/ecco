@@ -58,14 +58,19 @@ public class ServerView extends OperationView implements EccoListener {
 
 	@Override
 	public void serverStartEvent(EccoService service, int port) {
-		if (!this.stopStep)
-			Platform.runLater(() -> this.stepStop(port));
+		// stopStep is FX-thread state (set by stepStart/stepStop) - test it there, not on the server thread
+		Platform.runLater(() -> {
+			if (!this.stopStep)
+				this.stepStop(port);
+		});
 	}
 
 	@Override
 	public void serverStopEvent(EccoService service) {
-		if (this.stopStep)
-			Platform.runLater(() -> this.stepStart());
+		Platform.runLater(() -> {
+			if (this.stopStep)
+				this.stepStart();
+		});
 	}
 
 

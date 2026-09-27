@@ -279,8 +279,11 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 	@Override
 	public void statusChangedEvent(EccoService service) {
 		if (!service.isInitialized()) {
-			initialized = false;
-			Platform.runLater(this::reset);
+			// initialized is read and written by getArtifactViewers() on the FX thread
+			Platform.runLater(() -> {
+				initialized = false;
+				this.reset();
+			});
 		}
 	}
 
