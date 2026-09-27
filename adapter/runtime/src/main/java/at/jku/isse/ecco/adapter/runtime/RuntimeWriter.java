@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.runtime;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.runtime.data.*;
@@ -40,6 +41,9 @@ public class RuntimeWriter implements ArtifactWriter<Set<Node>, Path> {
         return this.write(Paths.get("."), input);
     }
 
+    // per-file output buffers, filled by visitingNodes() - which is why files are written one at a
+    // time: this used to be a parallelStream(), so concurrently written files appended into the
+    // same buffers and got each other's content (see RuntimeWriterTest)
     String[] code = {""};
     String[] imports = {""};
     String[] packageName = {""};
@@ -48,16 +52,12 @@ public class RuntimeWriter implements ArtifactWriter<Set<Node>, Path> {
 
     @Override
     public Path[] write(Path base, Set<Node> input) {
-        Path[] toreturn = input.parallelStream().map(node -> {
+        Path[] toreturn = input.stream().map(node -> {
             try {
-                imports[0] = "";
-                packageName[0] = "";
-                javaDoc[0] = "";
                 //dir = "C:\\Users\\gabil\\Desktop\\teste\\ActualECCO\\Method_comparison\\results\\"+ base.getFileName().toString()+".txt";
                 return processNode(node, base);
             } catch (IOException e) {
-                e.printStackTrace();
-                return null;
+                throw new EccoException("Could not write file for node: " + node, e);
             }
         }).filter(Objects::nonNull).toArray(Path[]::new);
         if (toreturn.length != input.size())
@@ -76,6 +76,12 @@ public class RuntimeWriter implements ArtifactWriter<Set<Node>, Path> {
         final List<? extends Node> children = baseNode.getChildren();
         if (children.size() < 1)
             return null;
+
+        code = new String[]{""};
+        imports = new String[]{""};
+        packageName = new String[]{""};
+        javaDoc = new String[]{""};
+        fields = new String[]{""};
 
         Node childNode = null;
         Path returnPath = basePath.resolve(rootData.getPath());
@@ -125,8 +131,6 @@ public class RuntimeWriter implements ArtifactWriter<Set<Node>, Path> {
                     try (BufferedWriter writer = Files.newBufferedWriter(returnPath, StandardCharsets.UTF_8)) {
                         writer.write(code[0]);
                         //writer.write(cu.toString());
-                    } catch (IOException x) {
-                        System.err.format("IOException: %s%n", x);
                     }
                     code = new String[]{""};
                     packageName = new String[]{""};
@@ -157,8 +161,6 @@ public class RuntimeWriter implements ArtifactWriter<Set<Node>, Path> {
             try (BufferedWriter writer = Files.newBufferedWriter(returnPath, StandardCharsets.UTF_8)) {
                 //writer.write(cu.toString());
                 writer.write(code[0]);
-            } catch (IOException x) {
-                System.err.format("IOException: %s%n", x);
             }
 
             code = new String[]{""};
