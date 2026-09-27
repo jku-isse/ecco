@@ -33,7 +33,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
 
-    protected static final Logger LOGGER = Logger.getLogger(DispatchWriter.class.getName());
+    protected static final Logger LOGGER = Logger.getLogger(CppReader.class.getName());
     public static final String NODE_OFFSET = "offset";
     private final EntityFactory entityFactory;
 
@@ -297,10 +297,8 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             //return "struct " + ((IASTCompositeTypeSpecifier) node).getName().getRawSignature();
         } else if (node instanceof IASTIfStatement) {
             if (((IASTIfStatement) node).getConditionExpression() != null) {
-                System.out.println("if(" + ((IASTIfStatement) node).getConditionExpression().getRawSignature() + ")");
                 //return "if(" + ((IASTIfStatement) node).getConditionExpression().getRawSignature() + ")";
             } else {
-                System.out.println("if(" + ((ICPPASTIfStatement) node).getConditionDeclaration().getRawSignature() + ")");
                 //return "if(" + ((ICPPASTIfStatement) node).getConditionDeclaration().getRawSignature() + ")";
             }
         } else if (node instanceof IASTSwitchStatement) {
@@ -532,7 +530,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             Node.Op lineNode = this.entityFactory.createOrderedNode(lineArtifact);
             functionNode.addChild(lineNode);
         } else {
-            System.out.println("+++++++++++++++++++++ corner case +++++++++++ " + node.getRawSignature() + " " + node.getFileLocation().getFileName() + " " + node.getFileLocation().getStartingLineNumber());
+            LOGGER.fine("Unhandled C++ construct " + node.getRawSignature() + " in " + node.getFileLocation().getFileName() + ":" + node.getFileLocation().getStartingLineNumber());
         }
 
     }
@@ -1013,7 +1011,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             Artifact.Op<BlockArtifactData> blockArtifact = this.entityFactory.createArtifact(new BlockArtifactData(node.getRawSignature()));
             Node.Op blockNode = this.entityFactory.createOrderedNode(blockArtifact);
             parentNode.addChild(blockNode);
-            System.out.println(node.toString() + "  " + node.getRawSignature());
+            LOGGER.fine("Generic block for " + node + ": " + node.getRawSignature());
         }
 
     }

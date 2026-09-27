@@ -76,7 +76,6 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 				pluginNode.addChild(this.entityFactory.createNode(new ImageArtifactData(new int[]{image.getTransparency()}, "TRANSPARENCY")));
 
 				// TODO: also store other image properties like global background color and metadata!
-				System.out.println(image.getColorModel());
 			} catch (IOException e) {
 				throw new EccoException("Could not read the image: " + resolvedPath, e);
 			}
