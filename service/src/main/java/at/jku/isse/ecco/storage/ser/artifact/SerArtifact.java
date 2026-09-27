@@ -216,11 +216,14 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 	// exactly what "non-unique" means here), so it can't be serialized directly without pulling in
 	// a foreign object graph via a side channel that bypasses that association's own controlled
 	// tree walk (SerRootNode's BFS writeObject/readObject) - producing an orphaned, improperly
-	// reconstructed copy on reload. containingNodeId is the serialized surrogate; the transient
-	// field is populated by SerTransactionStrategy's post-load resolution pass, once every
-	// association's tree has been properly reconstructed and a global node-id index exists.
+	// reconstructed copy on reload. Not persisted at all anymore, not even as an id: it is the unique
+	// tree node holding this artifact, which SerTransactionStrategy's post-load pass derives from the
+	// reconstructed trees. Persisting the id (as containingNodeId used to be) made every artifact's
+	// file change on every commit, because Trees.slice() creates new intersection nodes (new ids) even
+	// where nothing changed - see UnchangedArtifactRewriteTest. Old files still carry the id; it is
+	// ignored on read.
 	private transient Node.Op containingNode;
-	private String containingNodeId;
+	private transient String containingNodeId;
 
 	@Override
 	public Node.Op getContainingNode() {
@@ -237,7 +240,7 @@ public class SerArtifact<DataType extends ArtifactData> implements Artifact<Data
 		return this.containingNodeId;
 	}
 
-	/** Used only by SerTransactionStrategy's post-load resolution pass - sets the live reference without touching containingNodeId (already correct, just loaded from the stream). */
+	/** Used only by SerTransactionStrategy's post-load resolution pass, which derives the containing node from the reconstructed trees. */
 	public void resolveContainingNode(final Node.Op node) {
 		this.containingNode = node;
 	}
