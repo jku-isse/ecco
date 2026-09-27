@@ -430,9 +430,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 		repo.clearDirtyTracking();
 
-		// release exclusive write lock automatically after try block
-		this.writeFileLock.close();
-		this.writeFileChannel.close();
+		// release exclusive write lock - via releaseWriteLock() rather than closing directly, so the
+		// fields are nulled too; otherwise the next reset() (e.g. close()) tried to release the
+		// already-closed lock again and printed "Error releasing write lock: null" after every write
+		this.releaseWriteLock();
 
 		this.transaction = null;
 	}
