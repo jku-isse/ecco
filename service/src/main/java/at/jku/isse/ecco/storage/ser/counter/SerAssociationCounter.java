@@ -99,12 +99,16 @@ public class SerAssociationCounter implements AssociationCounter {
 	 * Builds the children read in compact form on the repository's own features, modules and
 	 * module revisions. Called by SerTransactionStrategy once the repository is loaded; a no-op
 	 * for counters read in the old form or created in this session.
+	 *
+	 * @return true if the children were read in compact form - they are then on the repository's
+	 * own instances already
 	 */
-	public synchronized void resolveCompactChildren(SerRepository repository) {
+	public synchronized boolean resolveCompactChildren(SerRepository repository) {
 		if (this.unresolvedChildren == null)
-			return;
+			return false;
 		this.children = CompactCounters.decode(this.unresolvedChildren, repository, this.association.getId());
 		this.unresolvedChildren = null;
+		return true;
 	}
 
 	/** Children read in compact form are not there until resolved - reading them before would silently find none. */
