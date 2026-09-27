@@ -9,10 +9,8 @@ import java.util.*;
 public class Checkout {
 
 	private Configuration configuration;
-	private Collection<Warning> warnings;
 
 	private Set<ModuleRevision> missing;
-	private Set<ModuleRevision> surplus;
 	private Map<ModuleRevision,String> surplusModules;
 	private Map<ModuleRevision,String> missingLocations;
 
@@ -27,9 +25,7 @@ public class Checkout {
 	private Node node;
 
 	public Checkout() {
-		this.warnings = new ArrayList<>();
 		this.missing = new HashSet<>();
-		this.surplus = new HashSet<>();
 		this.surplusModules = new HashMap<>();
 		this.missingLocations = new HashMap<>();
 		this.orderWarnings = new ArrayList<>();
@@ -53,14 +49,6 @@ public class Checkout {
 
 	public Configuration getConfiguration() {
 		return this.configuration;
-	}
-
-	public Collection<Warning> getWarnings() {
-		return this.warnings;
-	}
-
-	public Set<ModuleRevision> getSurplus() {
-		return this.surplus;
 	}
 
 	public Map<ModuleRevision,String> getSurplusModules() {

@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Characterization tests for Trees.slice()/matchAtomicArtifacts()/merge()/subtract()/equals()/map(),
+ * Characterization tests for Trees.slice()/matchAtomicArtifacts()/merge()/equals()/map(),
  * pinning down exact current behavior for scenarios the pre-existing TreesTest doesn't cover -
  * particularly duplicate sibling artifacts (multiple children of a node that are equal to each
  * other) - before replacing the underlying List.indexOf()-based matching with a hash-based one for

@@ -41,10 +41,6 @@ public class LazyCompositionNode implements Node {
 	private transient Map<String, Object> properties;
 
 
-	public LazyCompositionNode() {
-		this(null);
-	}
-
 	public LazyCompositionNode(OrderSelector orderSelector) {
 		checkNotNull(orderSelector);
 		this.activated = false;

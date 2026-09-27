@@ -11,10 +11,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Configuration.computeModules()/computeModulesMissing() are dead code (grepped: never called
- * outside Configuration.java itself) and are deliberately not tested here.
- */
 public class ConfigurationTest {
 
     private final EntityFactory ef = new SerEntityFactory();

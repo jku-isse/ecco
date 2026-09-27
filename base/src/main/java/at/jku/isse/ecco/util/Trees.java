@@ -3,7 +3,6 @@ package at.jku.isse.ecco.util;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
-import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
@@ -366,45 +365,6 @@ public class Trees {
 	}
 
 	/**
-	 * Merges the right node into the left node and combines Traces of equal nodes.
-	 *
-	 * @param left  The left node to which is added.
-	 * @param right The right node which is added.
-	 */
-	public static void mergeTraceTrees(Node.Op left, Node.Op right) {
-		// do some basic checks
-		if (left.getArtifact() != right.getArtifact()) {
-			throw new EccoException("Artifact instance must be identical, i.e. trees must originate from the same repository.");
-		}
-
-		// deal with current node
-		if (right.isUnique()) {
-			left.setUnique(true); // TODO: the "unique" field is redundant. we could determine uniqueness via the artifact's containing node (i.e. whether node and containing node are identical).
-			if (left.getArtifact() != null)
-				left.getArtifact().setContainingNode(left);
-		}
-
-		// deal with children
-		Iterator<? extends Node.Op> iterator = right.getChildren().iterator();
-		while (iterator.hasNext()) {
-			Node.Op rightChild = iterator.next();
-			int li = left.getChildren().indexOf(rightChild);
-			if (li != -1) {
-				Node.Op leftChild = left.getChildren().get(li);
-
-				merge(leftChild, rightChild);
-
-				// detatch right child from right node. this should not be necessary, but to be safe we clean up here.
-				iterator.remove();
-				rightChild.setParent(null);
-			} else {
-				left.addChild(rightChild);
-			}
-		}
-	}
-
-
-	/**
 	 * Sequences all ordered nodes in the tree rooted at the given node.
 	 *
 	 * @param node The root of the tree.
@@ -495,39 +455,6 @@ public class Trees {
 		} else { // neither the node itself nor any of its successors are unique/marked
 			return null;
 		}
-	}
-
-
-	/**
-	 * Subtracts the right tree from the left tree. The right tree is not modified.
-	 *
-	 * @param left  The left tree to be subtracted from, which is modified.
-	 * @param right The right tree to subtract, which is not modified.
-	 */
-	public static void subtract(Node.Op left, Node.Op right) {
-		// do some basic checks
-		if (left.getArtifact() != null && !left.getArtifact().equals(right.getArtifact()))
-			throw new EccoException("Artifacts must be equal.");
-
-		// deal with current node
-		if (right.isUnique())
-			left.setUnique(false);
-
-		// deal with children (right is never modified, so a plain non-consuming lookup suffices)
-		Map<Node.Op, Node.Op> rightByArtifact = buildFirstOccurrenceIndex(right.getChildren());
-		Set<Node.Op> leftChildrenToRemove = newIdentitySet();
-
-		for (Node.Op leftChild : left.getChildren()) {
-			Node.Op rightChild = rightByArtifact.get(leftChild);
-			if (rightChild != null) {
-				subtract(leftChild, rightChild);
-
-				if (!leftChild.isUnique() && leftChild.getChildren().isEmpty())
-					leftChildrenToRemove.add(leftChild);
-			}
-		}
-
-		removeAll(left.getChildren(), leftChildrenToRemove);
 	}
 
 

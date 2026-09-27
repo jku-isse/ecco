@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Covers the smaller Repository.Op default methods not already exercised by
  * RepositoryOpExtractTest/RepositoryOpSubsetTest: getFeaturesByName(), setRetroactiveConditions(),
- * collectArtifacts(), and diff(). SerRepository does not override any of these (grepped), so they
+ * and collectArtifacts(). SerRepository does not override any of these (grepped), so they
  * genuinely run the base interface's default implementation, not a subclass override.
  * <p>
  * map(RootNode.Op) - real production use at EccoService.java:1637 (re-mapping a reader's freshly
@@ -109,13 +109,5 @@ public class RepositoryOpMiscTest {
         repository.extract(singleFeatureConfiguration("B"), Set.of(fileNode("fileB.txt")), "alice");
 
         assertEquals(2, repository.collectArtifacts().size());
-    }
-
-    @Test
-    @Timeout(10)
-    public void diffIsNotYetImplemented() {
-        Repository.Op repository = newRepository();
-
-        assertThrows(UnsupportedOperationException.class, repository::diff);
     }
 }

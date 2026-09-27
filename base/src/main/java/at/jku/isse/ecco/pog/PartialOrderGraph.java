@@ -329,10 +329,6 @@ public interface PartialOrderGraph extends Persistable {
 			// align other graph to this graph
 			this.align(other);
 
-			// CONSISTENCY: check if alignment is valid
-			// TODO
-			this.checkAlignment(other);
-
 			// CONSISTENCY: count number of nodes before merge
 			Collection<Node.Op> thisNodes = this.collectNodes();
 			Collection<Node.Op> otherNodes = other.collectNodes();
@@ -615,17 +611,6 @@ public interface PartialOrderGraph extends Persistable {
 					nodes[0].addChild(leftChild);
 				}
 			}
-		}
-
-
-		/**
-		 * Checks if the alignments of this pog and the other pog are compatible.
-		 */
-		//private
-		default void checkAlignment(PartialOrderGraph.Op other) {
-			// try to traverse other pog until the very end. if this is not possible the alignments are not compatible.
-			// NOTE: use NOT_MATCHED_SEQUENCE_NUMBER instead of shared. anything in other that is not NOT_MATCHED_SEQUENCE_NUMBER is shared.
-
 		}
 
 
