@@ -8,10 +8,8 @@ public class VevosFileConditionContainer {
     Collection<VevosCondition> fileSpecificConditions;
 
     public VevosFileConditionContainer(Collection<VevosCondition> conditions){
-        this.fileSpecificConditions = conditions;
-        if (conditions == null){
-            System.out.println("this.");
-        }
+        // a file without any conditions has none to match (this used to keep null and NPE on lookup)
+        this.fileSpecificConditions = conditions == null ? java.util.List.of() : conditions;
     }
 
     public Collection<VevosCondition> getMatchingPresenceConditions(int startLine, int endLine){

@@ -34,4 +34,29 @@ public class VevosConditionTest {
 				() -> new VevosCondition(sixFieldLine));
 		assertEquals("VEVOS file entry has less than 7 comma-separated parts: " + sixFieldLine, exception.getMessage());
 	}
+
+	/**
+	 * True/False were replaced as plain substrings, so a feature name containing them was mangled
+	 * (IsTrueColor -> Is$trueColor); only the constants themselves may be replaced.
+	 */
+	@Test
+	public void onlyTheBooleanConstantsAreReplacedNotPartsOfFeatureNames() {
+		VevosCondition condition = new VevosCondition("src/Main.c;True;True;IsTrueColor && !FalseStart || True;code;1;2");
+		assertEquals("IsTrueColor & ~FalseStart | $true", condition.getConditionString());
+	}
+
+	/** An empty VEVOS file failed on removing its (missing) header line. */
+	@Test
+	public void anEmptyVevosFileHasNoConditions() throws Exception {
+		java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("vevos-empty");
+		java.nio.file.Files.writeString(dir.resolve("pcs.variant.csv"), "");
+		VevosConditionHandler handler = new VevosConditionHandler(dir);
+		assertEquals(0, handler.getFileConditionsMap().size());
+	}
+
+	/** A file without conditions yielded a container that NPE'd on the first lookup. */
+	@Test
+	public void aFileWithoutConditionsMatchesNothing() {
+		assertEquals(0, new VevosFileConditionContainer(null).getMatchingPresenceConditions(1, 10).size());
+	}
 }
