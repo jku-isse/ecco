@@ -10,10 +10,12 @@ apply plugin: 'java-library'
 // artifacts the javafx plugin's variant-aware resolution provides - plain transitive
 // project-dependency resolution pulls in the classifier-less (contentless) javafx-web
 // jar and fails with NoClassDefFoundError once Guice reflects over that plugin's classes.
+// compileOnly: the shared adapter viewer (at.jku.isse.ecco.adapter.view.SourceSpanViewer) is only
+// ever loaded inside the GUI, which brings JavaFX - cli and rest never touch it.
 javafx {
 	version = "22.0.2"
 	modules = ['javafx.base', 'javafx.controls', 'javafx.graphics', 'javafx.swing', 'javafx.web']
-	configuration = 'testImplementation'
+	configurations = ['compileOnly', 'testImplementation']
 }
 
 dependencies {
