@@ -12,7 +12,8 @@ public class ReaderGateway extends Gateway {
     private final ReaderEntryPoint entrypoint;
     ReaderGateway() {
         entrypoint = new ReaderEntryPoint();
-        server = new GatewayServer(entrypoint);
+        // port 0: any free port - the fixed default made concurrent ECCO processes fail ("Address already in use")
+        server = new GatewayServer(entrypoint, 0);
     }
 
     public void reset(Path path, EntityFactory entityFactory){

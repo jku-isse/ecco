@@ -1,9 +1,11 @@
-from py4j.java_gateway import JavaGateway
+import os
 import sys
+from py4j.java_gateway import JavaGateway, GatewayParameters
 import parce
 from parce.lang.lilypond import LilyPond
 
-gateway = JavaGateway()
+# the ECCO process's gateway - on the port it passes in ECCO_PY4J_PORT (py4j's default otherwise)
+gateway = JavaGateway(gateway_parameters=GatewayParameters(port=int(os.environ.get("ECCO_PY4J_PORT", "25333"))))
 ep = gateway.entry_point
 
 f = open(sys.argv[1], "r", -1, "UTF-8")

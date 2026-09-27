@@ -1,3 +1,4 @@
+import os
 import json
 import pickle
 import sys
@@ -5,9 +6,15 @@ import traceback
 
 from libcst import *
 from libcst.metadata import MetadataWrapper, PositionProvider
-from py4j.java_gateway import JavaGateway
+from py4j.java_gateway import JavaGateway, GatewayParameters
+
 
 from timeit import default_timer as timer
+
+
+def _java_gateway():
+    """The ECCO process's gateway - on the port it passes in ECCO_PY4J_PORT (py4j's default otherwise)."""
+    return JavaGateway(gateway_parameters=GatewayParameters(port=int(os.environ.get("ECCO_PY4J_PORT", "25333"))))
 
 
 def parsePython(java_node: object, record: list = None) -> CSTNode:
@@ -177,7 +184,7 @@ def parseJupyterCellNode(java_cell_node: object):
 def write(filename: str):
     logger.info(f"PY: Starting Writer Script for {filename}")
 
-    gateway = JavaGateway()
+    gateway = _java_gateway()
     ep = gateway.entry_point
 
     # parse code from Java Artifact Tree
@@ -208,10 +215,10 @@ def write(filename: str):
 
 if __name__ == '__main__':
     main_start = timer()
-    logger = JavaGateway().entry_point.getLogger()
+    logger = _java_gateway().entry_point.getLogger()
     try:
         if len(sys.argv) > 2 and sys.argv[2] == "--render":
-            entry_point = JavaGateway().entry_point
+            entry_point = _java_gateway().entry_point
             render(entry_point.getRoot(), entry_point)
         else:
             write(sys.argv[1])

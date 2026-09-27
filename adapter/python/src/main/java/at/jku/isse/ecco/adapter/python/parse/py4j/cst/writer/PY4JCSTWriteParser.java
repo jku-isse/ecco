@@ -34,7 +34,7 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
          * https://docs.python.org/3/using/cmdline.html
          *  -B prevents __pycache__ folders
          */
-        ProcessBuilder parsePython = new ProcessBuilder("python", "-B", pythonScript, path.toString());
+        ProcessBuilder parsePython = pythonProcess(path.toString());
         Process process = null;
 
         try {
@@ -69,7 +69,7 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
         // the script's output (errors, e.g. a missing module) goes to a file: reading a pipe could
         // block for as long as the script runs
         Path output = Files.createTempFile("ecco-python-render", ".log");
-        ProcessBuilder renderPython = new ProcessBuilder("python", "-B", pythonScript, path.toString(), "--render")
+        ProcessBuilder renderPython = pythonProcess(path.toString(), "--render")
                 .redirectErrorStream(true).redirectOutput(output.toFile());
         Process process = null;
         try {

@@ -12,7 +12,8 @@ public class Gateway {
 
     private Gateway() {
         entrypoint = new EntryPoint();
-        server = new GatewayServer(entrypoint);
+        // port 0: any free port - the fixed default made concurrent ECCO processes fail ("Address already in use")
+        server = new GatewayServer(entrypoint, 0);
     }
 
     public static Gateway getInstance() {
@@ -47,6 +48,11 @@ public class Gateway {
      */
     public void start() {
         server.start();
+    }
+
+    /** The port the server listens on, handed to the parser script. */
+    public int getPort() {
+        return server.getListeningPort();
     }
 
     public void shutdown() {
