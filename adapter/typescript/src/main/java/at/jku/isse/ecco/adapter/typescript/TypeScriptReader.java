@@ -97,6 +97,9 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 }
                 var variable = new VariableAssignmentData(text);
                 variable.setId(sb.toString());
+                // what follows the last declaration, e.g. the ";" - used to be dropped, so every
+                // checkout lost the semicolons of variable statements
+                variable.setTrailingComment(getTrailingText(currNode, decls.get(decls.size() - 1)));
                 Artifact.Op<VariableAssignmentData> vData = this.entityFactory.createArtifact(variable);
                 Node.Op vNode = this.entityFactory.createNode(vData);
                 for (HashMap<String, Object> decl : decls) {
@@ -114,6 +117,10 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                         node = this.entityFactory.createOrderedNode(arrow);
                         node.addChild(makeNode(body));
                     }
+                    // the writer separates declarations by ","; what followed it (e.g. the space in
+                    // "a = 1, b = 2") is the next declaration's leading text
+                    if (decl != decls.get(0))
+                        insertTrivia(decl, node);
                     vNode.addChild(node);
                 }
                 node = vNode;
