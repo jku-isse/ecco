@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class IfBlockArtifactData extends AbstractArtifactData {
 
+	private static final long serialVersionUID = -1139887120453447500L;
+
 	private final String block;
 
 	public IfBlockArtifactData(String block) {

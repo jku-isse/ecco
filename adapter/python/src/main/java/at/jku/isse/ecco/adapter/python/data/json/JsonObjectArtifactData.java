@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class JsonObjectArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = 2996625386037617610L;
+
     @Override
     public String toString() {
         return "JsonObjectArtifactData";

@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class BlockArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -8387050073066907548L;
+
 	private String block;
 
 	public BlockArtifactData(String block) {

@@ -11,6 +11,8 @@ import java.io.Serializable;
 
 public class SerProactiveAdditionEvaluation implements ProactiveAdditionEvaluation, Serializable {
 
+    private static final long serialVersionUID = 5949227201431284966L;
+
     @Override
     public boolean holds (Configuration configuration,
                           String proactiveCondition,

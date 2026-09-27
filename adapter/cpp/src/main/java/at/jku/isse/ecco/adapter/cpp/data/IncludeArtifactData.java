@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class IncludeArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 9194500645110290295L;
+
 	private String includeName;
 
 	public IncludeArtifactData(String importName) {

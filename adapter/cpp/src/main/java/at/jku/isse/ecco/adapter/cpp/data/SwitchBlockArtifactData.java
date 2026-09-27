@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class SwitchBlockArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -3615661964611477350L;
+
     private String switchblock;
 
     public SwitchBlockArtifactData(String switchblock) {

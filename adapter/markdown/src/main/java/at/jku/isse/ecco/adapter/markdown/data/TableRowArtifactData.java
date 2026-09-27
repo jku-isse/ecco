@@ -10,6 +10,8 @@ import java.util.Objects;
  */
 public class TableRowArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 298743153436038735L;
+
 	private final boolean header;
 
 	public TableRowArtifactData(boolean header) {

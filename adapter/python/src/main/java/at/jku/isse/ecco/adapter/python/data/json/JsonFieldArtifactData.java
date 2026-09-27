@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class JsonFieldArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -3734863665752497227L;
+
     private String fieldName;
 
     public JsonFieldArtifactData(String fieldName) {

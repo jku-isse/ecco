@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class RuntimeArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -8959177174801858969L;
+
 	private String file;
 	private long lineNumber;
 

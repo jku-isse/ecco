@@ -9,6 +9,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DirectoryArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -1527274644822697080L;
+
 	private transient Path path = null;
 	private String pathString = null;
 

@@ -6,6 +6,8 @@ import java.util.Arrays;
 
 public class ImageArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -2400641501751757340L;
+
 	private final int[] values;
 
 	private String type;

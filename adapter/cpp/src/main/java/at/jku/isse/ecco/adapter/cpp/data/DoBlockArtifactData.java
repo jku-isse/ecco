@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class DoBlockArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = 3668342182894388590L;
+
     private String doblock;
 
     public DoBlockArtifactData(String doblock) {

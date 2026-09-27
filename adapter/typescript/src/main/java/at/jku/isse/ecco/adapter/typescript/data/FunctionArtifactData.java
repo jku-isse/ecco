@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class FunctionArtifactData extends AbstractArtifactData {
 
+	private static final long serialVersionUID = -2453223370916274283L;
+
 	private String signature;
 
 	public FunctionArtifactData(String signature) {

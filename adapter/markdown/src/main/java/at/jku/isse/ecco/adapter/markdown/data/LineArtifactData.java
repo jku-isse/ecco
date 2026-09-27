@@ -7,6 +7,8 @@ import java.util.Objects;
 /** A single raw source line, verbatim (no trailing line terminator) - same shape as the text/C adapters' own line type, kept as a local copy rather than shared (matching their existing precedent). */
 public class LineArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 2310922533808440717L;
+
 	private final String line;
 
 	public LineArtifactData(String line) {

@@ -7,6 +7,8 @@ import java.util.Objects;
 /** An unordered (bullet) list, wrapping {@code ListItemArtifactData} children. The bullet marker (e.g. {@code -}, {@code *}, {@code +}) is diagnostic/distinguishing only, not needed for reconstruction. */
 public class BulletListArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -468357200174117200L;
+
 	private final String marker;
 
 	public BulletListArtifactData(String marker) {

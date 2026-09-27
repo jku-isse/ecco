@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class ClassArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 3514822216594590333L;
+
 	private String name;
 
 	public ClassArtifactData(String name) {

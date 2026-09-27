@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class JupyterLineArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -4591601463535027965L;
+
     private String line;
     public JupyterLineArtifactData(String line) {
         this.line = line;

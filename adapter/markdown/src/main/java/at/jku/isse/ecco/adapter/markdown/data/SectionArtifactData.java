@@ -13,6 +13,8 @@ import java.util.Objects;
  */
 public class SectionArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 7227958053996265069L;
+
 	private final int level;
 	private final String headingLine;
 

@@ -5,6 +5,8 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 /** A {@code >}-quoted block, wrapping its own recursively-translated nested blocks. Marker type - see {@link ParagraphArtifactData}'s javadoc for why. */
 public class BlockQuoteArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -6170195195539931869L;
+
 	@Override
 	public String toString() {
 		return "(block quote)";

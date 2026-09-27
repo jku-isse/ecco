@@ -8,6 +8,8 @@ import java.util.Objects;
 
 public class AbstractArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -1827662682250569108L;
+
 	private String id;
 	private String source;
 	private boolean executed = false;

@@ -10,6 +10,8 @@ import java.util.Collection;
 
 public class SerAssociationMerger implements AssociationMerger, Persistable {
 
+    private static final long serialVersionUID = -7935307738586109318L;
+
     @Override
     public Node.Op buildMainTree(Collection<Association.Op> associations) {
         Node.Op mergedTree = null;

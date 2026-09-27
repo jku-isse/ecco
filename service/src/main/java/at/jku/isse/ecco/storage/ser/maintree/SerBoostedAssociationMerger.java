@@ -13,6 +13,8 @@ import java.util.logging.Logger;
 
 public class SerBoostedAssociationMerger implements BoostedAssociationMerger, Persistable {
 
+    private static final long serialVersionUID = 7423817316956145102L;
+
     private static final Logger LOGGER = Logger.getLogger(SerBoostedAssociationMerger.class.getName());
 
     @Override

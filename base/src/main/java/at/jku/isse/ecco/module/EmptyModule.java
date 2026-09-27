@@ -9,6 +9,8 @@ import java.util.Collections;
 
 public class EmptyModule implements Module {
 
+	private static final long serialVersionUID = -3255021132948243804L;
+
 	private Feature[] pos;
 	private Feature[] neg;
 	private int count;

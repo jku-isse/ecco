@@ -11,6 +11,8 @@ import java.io.Serializable;
 
 public class SerProactiveSubtractionEvaluation implements ProactiveSubtractionEvaluation, Serializable {
 
+    private static final long serialVersionUID = -8243167417859486003L;
+
     @Override
     public boolean holds (Configuration configuration,
                           String proactiveCondition,

@@ -12,6 +12,8 @@ import java.util.Objects;
 import static at.jku.isse.ecco.logic.LogicUtils.parseString;
 
 public class SerFeatureTrace implements FeatureTrace {
+
+    private static final long serialVersionUID = 1621713735051207581L;
     private Node node;
     private String proactiveCondition;
     private String retroactiveCondition;

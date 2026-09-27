@@ -7,6 +7,8 @@ import java.util.Objects;
 /** An ordered (numbered) list, wrapping {@code ListItemArtifactData} children. Start number and delimiter (e.g. {@code .} or {@code )}) are diagnostic/distinguishing only, not needed for reconstruction. */
 public class OrderedListArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -7991891237783596837L;
+
 	private final Integer startNumber;
 	private final String delimiter;
 

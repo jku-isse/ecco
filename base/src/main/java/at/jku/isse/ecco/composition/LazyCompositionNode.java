@@ -18,6 +18,8 @@ import static java.util.stream.Collectors.toList;
  */
 public class LazyCompositionNode implements Node {
 
+	private static final long serialVersionUID = -822842659325295036L;
+
 	private boolean activated = false;
 
 	private List<Node> origNodes;

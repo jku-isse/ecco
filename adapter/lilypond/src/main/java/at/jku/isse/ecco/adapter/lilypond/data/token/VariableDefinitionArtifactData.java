@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class VariableDefinitionArtifactData extends DefaultTokenArtifactData {
 
+    private static final long serialVersionUID = -1340107010861349794L;
+
     private final String variableName;
 
     public VariableDefinitionArtifactData(ParceToken token) {

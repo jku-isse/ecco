@@ -4,6 +4,8 @@ import java.util.Objects;
 
 public class ArrowFunctionArtifactData extends AbstractArtifactData {
 
+    private static final long serialVersionUID = 6683141434998403238L;
+
     private final String nameAndParams;
 
     public ArrowFunctionArtifactData(String block) {

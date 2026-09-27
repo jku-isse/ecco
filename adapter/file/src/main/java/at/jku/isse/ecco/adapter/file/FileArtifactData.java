@@ -14,6 +14,8 @@ import java.util.Arrays;
 
 public class FileArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -4646503848120457212L;
+
 	private static byte[] getSHADigest(Path path) throws IOException, NoSuchAlgorithmException {
 		MessageDigest complete = MessageDigest.getInstance("SHA1");
 

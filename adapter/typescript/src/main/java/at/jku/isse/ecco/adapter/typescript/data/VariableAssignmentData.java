@@ -5,6 +5,8 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import java.util.Objects;
 
 public class VariableAssignmentData extends AbstractArtifactData {
+
+    private static final long serialVersionUID = 763234648826440872L;
     private String id, leadingText;
 
     public VariableAssignmentData(String name) {
