@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.ser.core;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -118,9 +119,12 @@ public class SerCommit implements Commit {
 		Collection<Association> result = new ArrayList<>(associationIds.size());
 		for (String associationId : associationIds) {
 			Association association = associationResolver.getAssociation(associationId);
-			if (association != null) {
-				result.add(association);
-			}
+			// Repository.extract() keeps commits' ids in step with the associations it replaces, so
+			// an id the repository doesn't know is damage - skipping it hid associations from every
+			// view of the commit (like the other id resolutions of this storage, report it instead)
+			if (association == null)
+				throw new EccoException("Commit " + id + " refers to association " + associationId + ", which the repository does not contain.");
+			result.add(association);
 		}
 		return result;
 	}
