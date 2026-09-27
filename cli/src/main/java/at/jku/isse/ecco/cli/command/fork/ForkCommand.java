@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.cli.command.fork;
 
+import at.jku.isse.ecco.service.RemoteAddress;
 import at.jku.isse.ecco.cli.CliException;
 import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
@@ -36,11 +37,9 @@ public class ForkCommand implements Command {
         String remoteUriString = namespace.getString(REMOTE_KEY);
         String exclude = namespace.getString(EXCLUDE_KEY);
 
-        if (remoteUriString.matches("[a-zA-Z]+:[0-9]+")) {
-            String[] pair = remoteUriString.split(":");
-            String hostname = pair[0];
-            int port = Integer.parseInt(pair[1]);
-            eccoService.fork(hostname, port, exclude);
+        java.util.Optional<java.net.InetSocketAddress> hostPort = RemoteAddress.parseHostPort(remoteUriString);
+        if (hostPort.isPresent()) {
+            eccoService.fork(hostPort.get().getHostString(), hostPort.get().getPort(), exclude);
             eccoService.close();
             return;
         }
