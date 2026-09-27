@@ -9,7 +9,6 @@ logicng = "2.6.0"
 eclipse-collections = "11.1.0"
 guava = "33.2.1-jre"
 guice-core = "7.0.0"
-guice-multibindings = "4.2.3"
 javaparser = "3.25.8"
 commons-io = "2.15.1"
 
@@ -54,10 +53,9 @@ graalvm-polyglot-tck = "23.1.1"
 
 # rest (versions not managed by the Micronaut BOM)
 micronaut-openapi = "6.3.0"
-rxjava = "2.2.21"
 
 # plugins
-plugin-nebula-ospackage = "12.+"
+plugin-nebula-ospackage = "12.3.0"
 plugin-openjfx = "0.1.0"
 plugin-graalvm-native = "0.10.3"
 plugin-node-gradle = "7.0.1"
@@ -76,7 +74,6 @@ eclipse-collections-core = { module = "org.eclipse.collections:eclipse-collectio
 eclipse-collections-api = { module = "org.eclipse.collections:eclipse-collections-api", version.ref = "eclipse-collections" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 guice-core = { module = "com.google.inject:guice", version.ref = "guice-core" }
-guice-multibindings = { module = "com.google.inject.extensions:guice-multibindings", version.ref = "guice-multibindings" }
 javaparser-core = { module = "com.github.javaparser:javaparser-core", version.ref = "javaparser" }
 javaparser-symbol-solver-core = { module = "com.github.javaparser:javaparser-symbol-solver-core", version.ref = "javaparser" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
@@ -120,7 +117,6 @@ py4j = { module = "net.sf.py4j:py4j", version.ref = "py4j" }
 graalvm-polyglot-tck = { module = "org.graalvm.sdk:polyglot-tck", version.ref = "graalvm-polyglot-tck" }
 
 micronaut-openapi = { module = "io.micronaut.openapi:micronaut-openapi", version.ref = "micronaut-openapi" }
-rxjava2 = { module = "io.reactivex.rxjava2:rxjava", version.ref = "rxjava" }
 
 [plugins]
 nebula-ospackage = { id = "com.netflix.nebula.ospackage", version.ref = "plugin-nebula-ospackage" }
