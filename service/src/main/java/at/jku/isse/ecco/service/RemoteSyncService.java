@@ -57,13 +57,22 @@ public class RemoteSyncService {
         } catch (InvalidPathException | NullPointerException ex) {
             path = null;
         }
-        if (address.matches("[a-zA-Z]+:[0-9]+")) {
+        if (RemoteAddress.parseHostPort(address).isPresent()) {
             return this.addRemote(name, address, Remote.Type.REMOTE);
         } else if (path != null) {
             return this.addRemote(name, address, Remote.Type.LOCAL);
         } else {
             throw new EccoException("Invalid remote address provided.");
         }
+    }
+
+    /**
+     * Resolves a REMOTE remote's "host:port" address (see {@link RemoteAddress}).
+     */
+    private static InetSocketAddress socketAddressOf(Remote remote) {
+        InetSocketAddress address = RemoteAddress.parseHostPort(remote.getAddress())
+                .orElseThrow(() -> new EccoException("Invalid remote address: " + remote.getAddress()));
+        return new InetSocketAddress(address.getHostString(), address.getPort());
     }
 
     public Remote addRemote(String name, String address, Remote.Type type) {
@@ -391,8 +400,7 @@ public class RemoteSyncService {
 
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    String[] pair = remote.getAddress().split(":");
-                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.parseInt(pair[1])))) {
+                    if (sChannel.connect(socketAddressOf(remote))) {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
@@ -422,7 +430,7 @@ public class RemoteSyncService {
                         remote.getFeatures().addAll(copiedFeatures);
                         owner.remoteDao.storeRemote(remote);
                     } else {
-                        throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + pair[0] + ":" + pair[1]);
+                        throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
                     }
                 } catch (Exception e) {
                     throw new EccoException("Error during remote fetch.", e);
@@ -479,8 +487,7 @@ public class RemoteSyncService {
 
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    String[] pair = remote.getAddress().split(":");
-                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.parseInt(pair[1])))) {
+                    if (sChannel.connect(socketAddressOf(remote))) {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
@@ -518,7 +525,7 @@ public class RemoteSyncService {
                         repository.merge(copiedRepository);
                         owner.repositoryDao.store(repository);
                     } else {
-                        throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + pair[0] + ":" + pair[1]);
+                        throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
                     }
                 } catch (Exception e) {
                     throw new EccoException("Error during remote pull.", e);
@@ -586,8 +593,7 @@ public class RemoteSyncService {
 
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    String[] pair = remote.getAddress().split(":");
-                    if (sChannel.connect(new InetSocketAddress(pair[0], Integer.parseInt(pair[1])))) {
+                    if (sChannel.connect(socketAddressOf(remote))) {
                         // oos wraps the progress-tracking stream (not the raw socket stream directly) so
                         // that the actual payload write below -- not just a separate scratch stream used
                         // only to estimate size, see below -- is what the progress listener observes.
@@ -635,7 +641,7 @@ public class RemoteSyncService {
                         pos.removeListener(owner);
 
                     } else {
-                        throw new EccoException("Error connecting to remote: " + pair[0] + ":" + pair[1]);
+                        throw new EccoException("Error connecting to remote: " + remote.getAddress());
                     }
                 } catch (Exception e) {
                     throw new EccoException("Error during remote push.", e);

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.service.RemoteAddress;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Association;
@@ -56,10 +57,11 @@ public class ForkView extends OperationView {
 					}
 				}
 
-				if (path != null) {
-					this.service.addRemote(EccoService.ORIGIN_REMOTE_NAME, remoteAddress, Remote.Type.LOCAL);
-				} else if (remoteAddress.matches("[a-zA-Z]+:[0-9]+")) {
+				// host:port first: "127.0.0.1:3770" is also a syntactically valid path
+				if (RemoteAddress.parseHostPort(remoteAddress).isPresent()) {
 					this.service.addRemote(EccoService.ORIGIN_REMOTE_NAME, remoteAddress, Remote.Type.REMOTE);
+				} else if (path != null) {
+					this.service.addRemote(EccoService.ORIGIN_REMOTE_NAME, remoteAddress, Remote.Type.LOCAL);
 				} else {
 					throw new EccoException("ERROR: Invalid remote address provided."); // TODO: disable fork button if this is not the case?
 				}
