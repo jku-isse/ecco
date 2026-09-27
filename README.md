@@ -109,7 +109,7 @@ ecco checkout -c "Base, Cart, Wishlist"    # composed from both commits; see .wa
 
 The exit code is 0 on success, 1 if a command fails, and 2 for invalid arguments.
 
-The command line distribution includes the file, text, markdown, image, and Go adapters; the GUI includes [all of them](#artifact-adapters).
+The command line distribution includes the same [artifact adapters](#artifact-adapters) as the GUI (without their viewers), so it can work on repositories created with the GUI.
 
 
 ## Graphical User Interface
