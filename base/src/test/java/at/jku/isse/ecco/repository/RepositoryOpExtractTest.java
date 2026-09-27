@@ -193,4 +193,48 @@ public class RepositoryOpExtractTest {
         // takes a username) - Repository.MERGE ("merge") ends up as the merge commit's "committer".
         assertEquals(Repository.MERGE, target.getCommits().iterator().next().getUsername());
     }
+
+    /**
+     * merge() copied the other repository's modules only up to THIS repository's maxOrder, but then
+     * copied every module counter of every merged association - so merging a repository with a
+     * higher maxOrder (e.g. pull/fork across repositories created with different settings) hit a
+     * higher-order module that was never copied and threw "contains module null". Modules above this
+     * repository's maxOrder are now left out of the merged counters, which is exactly what committing
+     * the same configuration in this repository would have recorded.
+     */
+    @Test
+    @Timeout(10)
+    public void mergeFromARepositoryWithAHigherMaxOrderKeepsOnlyModulesThisRepositoryTracks() {
+        FeatureRevision[] revisions = new FeatureRevision[4];
+        String[] names = {"A", "B", "C", "D"};
+        for (int i = 0; i < 4; i++) {
+            Feature feature = ef.createFeature("id-" + names[i], names[i]);
+            revisions[i] = feature.addRevision("rev-" + names[i]);
+        }
+
+        Repository.Op source = ef.createRepository();
+        source.setMaxOrder(3);
+        source.extract(ef.createConfiguration(revisions), Set.of(fileNode("fileABCD.txt")), "alice");
+        assertTrue(source.getModules(3).iterator().hasNext(), "precondition: the source tracks order-3 modules");
+
+        Repository.Op target = newRepository(); // maxOrder 2
+        target.merge(source);
+
+        Repository.Op direct = newRepository(); // maxOrder 2, same commit made directly
+        direct.extract(ef.createConfiguration(revisions), Set.of(fileNode("fileABCD.txt")), "alice");
+
+        assertEquals(2, target.getMaxOrder(), "merging must not change this repository's maxOrder");
+        assertEquals(1, target.getAssociations().size());
+        assertEquals(moduleCounterSignatures(direct.getAssociations().iterator().next()),
+                moduleCounterSignatures(target.getAssociations().iterator().next()),
+                "the merged association must count the same modules as the same commit made directly");
+    }
+
+    private static java.util.Set<String> moduleCounterSignatures(at.jku.isse.ecco.core.Association.Op association) {
+        java.util.Set<String> signatures = new java.util.TreeSet<>();
+        for (at.jku.isse.ecco.counter.ModuleCounter moduleCounter : association.getCounter().getChildren()) {
+            signatures.add(moduleCounter.getObject().getModuleString() + " x" + moduleCounter.getCount());
+        }
+        return signatures;
+    }
 }

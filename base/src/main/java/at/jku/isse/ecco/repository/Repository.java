@@ -1266,10 +1266,16 @@ public interface Repository extends Persistable {
 				for (ModuleCounter otherModuleCounter : otherAssociation.getCounter().getChildren()) {
 					// set module counter
 					Module otherModule = otherModuleCounter.getObject();
+					// only modules up to this repository's maxOrder were copied above (and are tracked
+					// here at all) - the other repository may have been created with a higher one.
+					// Leaving those out records exactly what committing the same content here would
+					// have; looking them up used to fail the whole merge instead.
+					if (otherModule.getOrder() > this.getMaxOrder())
+						continue;
 					Module module = this.getModule(otherModule.getPos(), otherModule.getNeg());
 
 					if (module == null)
-						throw new EccoException("Association to be merged into this repository contains module " + module + " which is not part of this repository.");
+						throw new EccoException("Association to be merged into this repository contains module " + otherModule + " which is not part of this repository.");
 
 					ModuleCounter moduleCounter = association.getCounter().addChild(module);
 					moduleCounter.setCount(otherModuleCounter.getCount());
