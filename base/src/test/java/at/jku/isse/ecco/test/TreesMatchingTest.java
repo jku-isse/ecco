@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.test;
 
+import java.util.ArrayList;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
@@ -212,13 +213,21 @@ public class TreesMatchingTest {
 		Node.Op rightParent = ef.createNode(leftParent.getArtifact());
 		rightRoot.addChild(rightParent);
 
+		// built with one addChildren() call per side: addChild() checks each new child against all
+		// existing ones (unordered nodes reject duplicates), so adding 40000 children one at a time
+		// took ~12s - nearly the whole run, flaking against the timeout under a loaded full build -
+		// while slice() itself, the thing under test, takes well under a second
+		List<Node.Op> leftChildren = new ArrayList<>();
+		List<Node.Op> rightChildren = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
-			leftParent.addChild(ef.createNode(new TestArtifactData("n" + i)));
+			leftChildren.add(ef.createNode(new TestArtifactData("n" + i)));
 			// only every other one matches, so some survive on each side too
 			if (i % 2 == 0) {
-				rightParent.addChild(ef.createNode(new TestArtifactData("n" + i)));
+				rightChildren.add(ef.createNode(new TestArtifactData("n" + i)));
 			}
 		}
+		leftParent.addChildren(leftChildren.toArray(new Node.Op[0]));
+		rightParent.addChildren(rightChildren.toArray(new Node.Op[0]));
 
 		long start = System.nanoTime();
 		Node.Op intersection = Trees.slice(leftRoot, rightRoot);
