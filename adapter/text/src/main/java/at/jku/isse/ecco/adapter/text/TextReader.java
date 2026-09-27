@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.text;
 
+import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -60,24 +61,29 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Set<Node.Op> nodes = new HashSet<>();
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
-			Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
-			Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
-			nodes.add(pluginNode);
-
-			try (BufferedReader br = new BufferedReader(new FileReader(resolvedPath.toFile()))) {
-				String line;
-				int i = 0;
-				while ((line = br.readLine()) != null) {
-					i++;
-					Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
-					Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
-					lineNode.putProperty(PROPERTY_LINE_START, i);
-					lineNode.putProperty(PROPERTY_LINE_END, i);
-					pluginNode.addChild(lineNode);
-				}
+			TextFileFormat.Decoded decoded;
+			try {
+				// charset/line separator/final newline are recorded so checkout reproduces the file byte
+				// for byte - see TextFileFormat
+				decoded = TextFileFormat.read(resolvedPath);
 			} catch (IOException e) {
 				// fail the commit rather than committing an empty file (see UnreadableFileCommitTest)
 				throw new EccoException("Could not read file: " + resolvedPath, e);
+			}
+			PluginArtifactData pluginArtifactData = new PluginArtifactData(this.getPluginId(), path);
+			decoded.recordOn(pluginArtifactData);
+			Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(pluginArtifactData);
+			Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
+			nodes.add(pluginNode);
+
+			int i = 0;
+			for (String line : decoded.lines()) {
+				i++;
+				Artifact.Op<LineArtifactData> lineArtifact = this.entityFactory.createArtifact(new LineArtifactData(line));
+				Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
+				lineNode.putProperty(PROPERTY_LINE_START, i);
+				lineNode.putProperty(PROPERTY_LINE_END, i);
+				pluginNode.addChild(lineNode);
 			}
 
 		}

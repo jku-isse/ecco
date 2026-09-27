@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.markdown;
 
+import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -79,11 +80,16 @@ public class MarkdownReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Set<Node.Op> nodes = new HashSet<>();
 		for (Path path : input) {
 			Path resolvedPath = base.resolve(path);
-			Node.Op pluginNode = this.entityFactory.createOrderedNode(new PluginArtifactData(this.getPluginId(), path));
+			PluginArtifactData pluginArtifactData = new PluginArtifactData(this.getPluginId(), path);
+			Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifactData);
 			nodes.add(pluginNode);
 
 			try {
-				List<String> sourceLines = Files.readAllLines(resolvedPath, StandardCharsets.UTF_8);
+				// charset/line separator/final newline are recorded so checkout reproduces the file byte
+				// for byte - see TextFileFormat
+				TextFileFormat.Decoded decoded = TextFileFormat.read(resolvedPath);
+				decoded.recordOn(pluginArtifactData);
+				List<String> sourceLines = decoded.lines();
 				String content = String.join("\n", sourceLines);
 				Document document = (Document) this.parser.parse(content);
 				new MarkdownTreeBuilder(this.entityFactory, sourceLines).translate(document, pluginNode);

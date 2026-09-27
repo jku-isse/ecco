@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.text;
 
+import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -43,12 +44,12 @@ public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 			PluginArtifactData pluginArtifactData = (PluginArtifactData) artifactData;
 			Path outputPath = base.resolve(pluginArtifactData.getPath());
 
-			try (BufferedWriter bw = Files.newBufferedWriter(outputPath)) {
+			// reproduces the charset/line separator/final newline recorded at commit time (TextFileFormat)
+			try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(outputPath, pluginArtifactData)) {
 				for (Node lineNode : fileNode.getChildren()) {
 					LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
 
-					bw.write(lineArtifactData.getLine());
-					bw.newLine();
+					writer.writeLine(lineArtifactData.getLine());
 				}
 			} catch (IOException e) {
 				throw new EccoException("Could not write file: " + outputPath, e);
