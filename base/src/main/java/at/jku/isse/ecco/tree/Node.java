@@ -399,11 +399,16 @@ public interface Node extends Persistable {
 		Op copySingleNode(boolean copyFeatureTrace);
 
 		default Op copyTreeDownwards(boolean copyFeatureTraces){
-			// copy this node and all descendants
+			// copy this node and all descendants - the children as one batch: added one by one, each
+			// was checked against all earlier ones, quadratic in their number (an image node has one
+			// child per pixel: a 71,000 pixel image took over two minutes to check out)
 			Op node = this.copySingleNode(copyFeatureTraces);
-			for (Op child : this.getChildren()){
-				node.addChild(child.copyTreeDownwards(copyFeatureTraces));
+			List<? extends Op> children = this.getChildren();
+			Op[] copies = new Op[children.size()];
+			for (int i = 0; i < copies.length; i++){
+				copies[i] = children.get(i).copyTreeDownwards(copyFeatureTraces);
 			}
+			node.addChildren(copies);
 			return node;
 		}
 

@@ -813,18 +813,22 @@ public class Trees {
 		// currently offers (an association re-fusing just one voice's content back in) - see
 		// TreeFusionOrderedSiblingMatchingTest for the exact scenario this fixes.
 		ChildIndex mainIndex = new ChildIndex(mainTree.getChildren());
+		// new children are added as one batch after the loop: added one by one, each was checked
+		// against all earlier ones - quadratic in their number (an image node has a child per pixel)
+		List<Node.Op> newChildren = new ArrayList<>();
+		List<Node.Op> newChildSources = new ArrayList<>();
 		for (Node.Op child : fusionNode.getChildren()) {
 			Node.Op mainChild = mainIndex.findPreferringEmpty(child);
 			if (mainChild == null) {
 				Node.Op newChild = child.copySingleNode(false);
 				newChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
 				newChild.setUnique(child.isUnique());
-				mainTree.addChild(newChild);
 				// deliberately NOT added to mainIndex - a newly-created child must stay available
 				// only for a later cross-association re-fusion (a future treeFusion() call, with its
 				// own fresh ChildIndex), not for a second content-equal sibling arriving LATER in
 				// THIS SAME fusionNode's children, which needs its own distinct new child too
-				treeFusion(newChild, child);
+				newChildren.add(newChild);
+				newChildSources.add(child);
 			} else {
 				mainIndex.remove(mainChild);
 				mainChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
@@ -838,6 +842,11 @@ public class Trees {
 				mainChild.putProperties(child.getProperties());
 				treeFusion(mainChild, child);
 			}
+		}
+		if (!newChildren.isEmpty()) {
+			mainTree.addChildren(newChildren.toArray(new Node.Op[0]));
+			for (int i = 0; i < newChildren.size(); i++)
+				treeFusion(newChildren.get(i), newChildSources.get(i));
 		}
 
 		return mainTree;
