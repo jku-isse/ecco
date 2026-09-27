@@ -26,6 +26,8 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 	}
 
 	private void writeObject(ObjectOutputStream out) throws IOException {
+		// (the root's own numberOfChildren is a SerNode field, refreshed by SerNode.writeObject(), which
+		// runs before this - see there)
 		out.defaultWriteObject();
 		// breadth first
 		Queue<Node.Op> currentLevel = new LinkedList<>(this.getChildren());
