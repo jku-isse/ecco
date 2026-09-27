@@ -110,14 +110,22 @@ public class ServerView extends OperationView implements EccoListener {
 		}); // workaround for not committing value when editing value
 		portLabel.setLabelFor(portTextField);
 		gridPane.add(portTextField, 1, row, 1, 1);
+		row++;
+
+		// the sync protocol is unauthenticated, so the server only accepts local connections unless
+		// this is ticked explicitly
+		CheckBox allInterfacesCheckBox = new CheckBox("Accept connections from other machines");
+		allInterfacesCheckBox.setTooltip(new Tooltip("There is no authentication: anyone who can reach this port can read the whole repository and push into it."));
+		gridPane.add(allInterfacesCheckBox, 1, row, 1, 1);
 
 
 		startButton.setOnAction(event -> {
 			int port = portTextField.getValue();
+			boolean allInterfaces = allInterfacesCheckBox.isSelected();
 			Task serverTask = new Task<Void>() {
 				@Override
 				public Void call() {
-					ServerView.this.service.startServer(port);
+					ServerView.this.service.startServer(port, allInterfaces);
 					return null;
 				}
 
