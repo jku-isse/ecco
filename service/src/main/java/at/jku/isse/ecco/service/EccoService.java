@@ -616,7 +616,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                         featureRevision = findRevisionByIdPrefix(feature, featureRevisionId);
                     }
                     if (featureRevision == null) {
-                        featureRevision = feature.addRevision(featureRevisionId);
+                        featureRevision = this.temporaryCopyOf(feature).addRevision(featureRevisionId);
                     }
 
                     featureRevisions.add(featureRevision);
@@ -625,7 +625,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
                     Feature feature = getFeature(repository, featureName);
 
-                    FeatureRevision featureRevision = feature.addRevision(UUID.randomUUID().toString());
+                    FeatureRevision featureRevision = this.temporaryCopyOf(feature).addRevision(UUID.randomUUID().toString());
                     featureRevisions.add(featureRevision);
                 } else { // use most recent feature revision of feature (or create a new one if none existed so far)
                     String featureName = featureRevisionString;
@@ -634,7 +634,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
                     FeatureRevision featureRevision = feature.getLatestRevision();
                     if (featureRevision == null) {
-                        featureRevision = feature.addRevision(UUID.randomUUID().toString());
+                        featureRevision = this.temporaryCopyOf(feature).addRevision(UUID.randomUUID().toString());
                     }
 
                     featureRevisions.add(featureRevision);
@@ -670,6 +670,17 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
         }
         return match;
+    }
+
+    /**
+     * A detached copy of {@code feature} to hang a not-yet-committed revision on. getFeature() can
+     * return the repository's live Feature, and adding the revision to that (as parsing used to)
+     * persisted it with the next write even if it was never committed - see
+     * ParseConfigurationPhantomRevisionTest. Committing adds the revision to the repository by id,
+     * exactly as for features given by [id], which were always resolved to such a copy.
+     */
+    private Feature temporaryCopyOf(Feature feature) {
+        return this.entityFactory.createFeature(feature.getId(), feature.getName());
     }
 
     private Feature getFeature(Repository.Op repository, String featureName) {
