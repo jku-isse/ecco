@@ -610,6 +610,15 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		SerRepository repo = (SerRepository) this.database.getRepository();
 
+		// repositories written before associations (520155c1) and then artifacts (d92c439e) got their
+		// own files deserialize without these id sets. Their embedded content lives in fields that are
+		// transient now, so they can't be migrated here - say so instead of failing with an NPE.
+		if (repo.isOldStorageFormat()) {
+			throw new EccoException("This repository (" + this.repositoryDir + ") was written in an older storage format "
+					+ "(before " + (repo.hasAssociationIds() ? "artifacts" : "associations") + " were stored in their own files) "
+					+ "that this version of ECCO cannot read. Open it with the ECCO version that created it to export its variants.");
+		}
+
 		// finish a committed transaction whose staged files weren't all moved into place yet (see
 		// endReadWrite()); pending files of aborted transactions are only discarded while holding
 		// the write lock, as they might belong to a concurrent writer otherwise

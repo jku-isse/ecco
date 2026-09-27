@@ -178,6 +178,18 @@ public final class SerRepository implements Repository, Repository.Op {
 	}
 
 	/** The full set of association IDs that should have a file on disk - what {@link #restoreAssociations} needs loaded. */
+	/**
+	 * Whether this repository was deserialized from a storage format that predates per-association
+	 * (520155c1) or per-artifact (d92c439e) files - the id sets didn't exist then.
+	 */
+	public boolean isOldStorageFormat() {
+		return this.associationIds == null || this.artifactIds == null;
+	}
+
+	public boolean hasAssociationIds() {
+		return this.associationIds != null;
+	}
+
 	public Set<String> getAssociationIds() {
 		return Collections.unmodifiableSet(this.associationIds);
 	}
