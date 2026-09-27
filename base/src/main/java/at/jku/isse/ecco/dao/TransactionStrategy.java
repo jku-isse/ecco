@@ -9,6 +9,15 @@ public interface TransactionStrategy {
 
 	public void open();
 
+	/**
+	 * Whether the repository location holds repository data, checked before open() - which, like
+	 * the rest of opening a repository, may write into the location. True by default, for storage
+	 * without a location of its own.
+	 */
+	public default boolean containsRepository() {
+		return true;
+	}
+
 	public void close();
 
 

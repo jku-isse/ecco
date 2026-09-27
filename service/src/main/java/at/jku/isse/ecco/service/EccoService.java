@@ -441,27 +441,31 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         if (!this.repositoryDirectoryExists()) {
             throw new EccoException("Repository does not exist.");
         }
-        // a repository directory is never empty - init() writes into it right away. Opening an empty
-        // (or any non-repository) folder used to succeed as an empty repository, writing .ignores/
-        // .adapters into it, and forking from one produced an empty repository.
+        // opening any other folder (an empty one, or a working directory picked instead of its .ecco)
+        // used to succeed as an empty repository, writing .ignores/.adapters into it - and forking or
+        // fetching from one silently produced nothing. openRepository(true) checks for repository
+        // data before anything is written.
         if (!Files.isDirectory(this.repositoryDir)) {
             throw new EccoException("Not an ECCO repository (not a directory): " + this.repositoryDir);
         }
-        try (java.util.stream.Stream<Path> entries = Files.list(this.repositoryDir)) {
-            if (entries.findAny().isEmpty())
-                throw new EccoException("Not an ECCO repository (empty directory): " + this.repositoryDir);
-        } catch (IOException e) {
-            throw new EccoException("Could not read repository directory: " + this.repositoryDir, e);
-        }
 
-        this.openRepository();
+        this.openRepository(true);
     }
 
     /**
-     * Opens the repository directory without checking that it already is a repository - for init(),
-     * which opens the directory it just created.
+     * The repository directory for a path given by a user, e.g. the origin of a fork or a local
+     * remote: a repository's working directory stands for the .ecco directory in it.
      */
-    private void openRepository() {
+    public static Path resolveRepositoryDir(Path path) {
+        Path nested = path.resolve(REPOSITORY_DIR_NAME);
+        return Files.isDirectory(nested) ? nested : path;
+    }
+
+    /**
+     * Opens the repository directory - an existing repository if {@code mustExist}, otherwise the
+     * one init() just created, which has no repository data yet.
+     */
+    private void openRepository(boolean mustExist) {
 
         LOGGER.config("BASE_DIR: " + this.baseDir);
         LOGGER.config("REPOSITORY_DIR: " + this.repositoryDir);
@@ -488,6 +492,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             injector.injectMembers(this.mainTreeBuildingStrategyFactory);
         } catch (CreationException creationException) {
             throw new EccoException("Error during dependency injection. The storage plugin may be faulty.", creationException);
+        }
+        if (mustExist && !this.transactionStrategy.containsRepository()) {
+            Path nested = this.repositoryDir.resolve(REPOSITORY_DIR_NAME);
+            throw new EccoException("Not an ECCO repository: " + this.repositoryDir
+                    + (Files.isDirectory(nested) ? " (did you mean " + nested + "?)" : ""));
         }
 
         String evaluationStrategyName = this.properties.getProperty(ECCO_PROPERTIES_EVALUATION_STRATEGY);
@@ -747,7 +756,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         // create another ecco service and init it on the parent repository directory.
         EccoService originService = new EccoService();
-        originService.setRepositoryDir(originRepositoryDir);
+        originService.setRepositoryDir(resolveRepositoryDir(originRepositoryDir));
         // create subset repository
         Repository.Op subsetOriginRepository;
         try {
@@ -872,7 +881,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             throw new EccoException("Error while creating repository.", e);
         }
         try {
-            this.openRepository();
+            this.openRepository(false);
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             Repository.Op repository = this.repositoryDao.load();
             repository.setMaxOrder(this.defaultMaxOrder);

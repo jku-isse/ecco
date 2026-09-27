@@ -273,6 +273,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.reset();
 	}
 
+	/** The id file is written by init() and names the current core file - no id file, no repository. */
+	@Override
+	public boolean containsRepository() {
+		return Files.exists(this.idFile);
+	}
+
 	@Override
 	public synchronized void close() {
 		if (this.transaction != null || this.transactionCounter != 0)
