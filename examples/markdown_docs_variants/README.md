@@ -10,9 +10,10 @@ blockquotes, and a GFM table with feature-conditional rows.
 ## Document
 
 Every variant declares a `# Glean` title, an intro paragraph, and an `## Installation` section with a
-base install script - the `CORE` content, present in every variant (no separate `CORE` feature token;
-it's just what's left once every optional feature is turned off, same as `V01`). Nine optional features
-each add a block of their own:
+base install script - the `CORE` content, present in every variant. It has a feature of its own,
+`CORE`, in every configuration: ECCO does not accept a commit without any feature, since content
+committed that way could never be checked out again. Nine optional features each add a block of their
+own:
 
 * **WINDOWS** / **DOCKER** each add a `### Windows` / `### Docker` subsection *nested inside*
   Installation, with their own install command.
@@ -33,18 +34,18 @@ direction.
 
 | Variant | `.config`                                                                          | Edition                                 |
 |---------|-------------------------------------------------------------------------------------|------------------------------------------|
-| `V01`   | *(empty)*                                                                            | bare minimum docs                        |
-| `V02`   | `WINDOWS.1`                                                                          | + Windows install                        |
-| `V03`   | `DOCKER.1`                                                                           | + Docker install                         |
-| `V04`   | `WINDOWS.1, DOCKER.1`                                                                | + Windows + Docker install               |
-| `V05`   | `WINDOWS.1, DOCKER.1, API.1, API_SEARCH.1`                                           | + API reference (search only)            |
-| `V06`   | `WINDOWS.1, DOCKER.1, API.1, API_SEARCH.1, API_EXPORT.1`                             | + API reference (search + export)        |
-| `V07`   | `..., FAQ.1`                                                                         | + FAQ                                    |
-| `V08`   | `..., FAQ.1, CHANGELOG.1`                                                            | + Changelog                              |
-| `V09`   | `..., CHANGELOG.1, TROUBLESHOOTING.1`                                                | + Troubleshooting                        |
-| `V10`   | `..., TROUBLESHOOTING.1, ENTERPRISE.1`                                               | **Enterprise Edition** (everything)      |
-| `V11`   | `DOCKER.1, TROUBLESHOOTING.1`                                                        | Docker-only minimal edition              |
-| `V12`   | `WINDOWS.1, API.1, API_SEARCH.1`                                                     | Windows + basic API edition (no Docker, no export) |
+| `V01`   | `CORE.1`                                                                             | bare minimum docs                        |
+| `V02`   | `CORE.1, WINDOWS.1`                                                                          | + Windows install                        |
+| `V03`   | `CORE.1, DOCKER.1`                                                                           | + Docker install                         |
+| `V04`   | `CORE.1, WINDOWS.1, DOCKER.1`                                                                | + Windows + Docker install               |
+| `V05`   | `CORE.1, WINDOWS.1, DOCKER.1, API.1, API_SEARCH.1`                                           | + API reference (search only)            |
+| `V06`   | `CORE.1, WINDOWS.1, DOCKER.1, API.1, API_SEARCH.1, API_EXPORT.1`                             | + API reference (search + export)        |
+| `V07`   | `CORE.1, ..., FAQ.1`                                                                         | + FAQ                                    |
+| `V08`   | `CORE.1, ..., FAQ.1, CHANGELOG.1`                                                            | + Changelog                              |
+| `V09`   | `CORE.1, ..., CHANGELOG.1, TROUBLESHOOTING.1`                                                | + Troubleshooting                        |
+| `V10`   | `CORE.1, ..., TROUBLESHOOTING.1, ENTERPRISE.1`                                               | **Enterprise Edition** (everything)      |
+| `V11`   | `CORE.1, DOCKER.1, TROUBLESHOOTING.1`                                                        | Docker-only minimal edition              |
+| `V12`   | `CORE.1, WINDOWS.1, API.1, API_SEARCH.1`                                                     | Windows + basic API edition (no Docker, no export) |
 
 Every variant's `docs.md` round-trips byte-exact through `adapter-markdown`'s reader/writer (verified
 directly against the real `MarkdownReader`/`MarkdownFileWriter` classes while building this example).

@@ -44,7 +44,7 @@ A configuration is a comma-separated list of feature revisions, e.g. `Base, Audi
 | `A.<revision>` | a specific revision of `A` - the full id, or a unique prefix such as the 7 characters ECCO displays |
 | `[<feature id>]` | a feature by id instead of by name (for features with non-unique names) |
 
-Committing with `A'` marks feature `A` as modified in that variant.
+Committing with `A'` marks feature `A` as modified in that variant. A commit needs at least one feature: content committed without any could never be selected by a checkout, so ECCO refuses it - give the content every variant has a feature of its own (e.g. `BASE`) in every configuration.
 
 
 ## Getting Started
