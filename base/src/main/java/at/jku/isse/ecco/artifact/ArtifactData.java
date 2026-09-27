@@ -33,4 +33,16 @@ public interface ArtifactData extends Serializable {
 	@Override
 	public String toString();
 
+	/**
+	 * Called when this (stored) data's artifact is unified with an equal artifact read by a newer
+	 * commit, which is then discarded (see Trees.slice()). Data that carries information outside of
+	 * its identity (not part of equals()) can adopt the newer values here, so the repository reflects
+	 * the latest commit rather than the first one - e.g. a text file's recorded line separator.
+	 * Must not change anything equals()/hashCode() depend on. Does nothing by default.
+	 *
+	 * @param newer The equal data from the newer commit.
+	 */
+	default void adoptMetadataFrom(ArtifactData newer) {
+	}
+
 }
