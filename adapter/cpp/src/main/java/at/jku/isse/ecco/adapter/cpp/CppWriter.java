@@ -189,7 +189,7 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
             }
 
         } else {
-            System.out.println("*************** Forgot to treat an artificat data type");
+            java.util.logging.Logger.getLogger(CppWriter.class.getName()).warning("Unhandled artifact data type, not written: " + childNode.getArtifact().getData().getClass().getName());
         }
     }
 
