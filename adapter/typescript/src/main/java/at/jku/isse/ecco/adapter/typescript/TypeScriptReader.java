@@ -101,7 +101,9 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 // checkout lost the semicolons of variable statements
                 variable.setTrailingComment(getTrailingText(currNode, decls.get(decls.size() - 1)));
                 Artifact.Op<VariableAssignmentData> vData = this.entityFactory.createArtifact(variable);
-                Node.Op vNode = this.entityFactory.createNode(vData);
+                // ordered, like every node whose children's order matters (also enums, switches):
+                // unordered, a composed checkout could put them in any order
+                Node.Op vNode = this.entityFactory.createOrderedNode(vData);
                 for (HashMap<String, Object> decl : decls) {
                     var init = (HashMap<String,Object>) decl.get("initializer");
                     if (!init.get("kind").equals("ArrowFunction")){
@@ -146,7 +148,7 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 text = !eMembers.isEmpty() ? this.getLeadingText(currNode,eMembers.get(0)) : this.getLeadingText(currNode,null);
                 var enu = new EnumArtifactData(text);
                 Artifact.Op<EnumArtifactData> eData = this.entityFactory.createArtifact(enu);
-                Node.Op eNode = this.entityFactory.createNode(eData);
+                Node.Op eNode = this.entityFactory.createOrderedNode(eData);
                 eMembers.forEach(x-> eNode.addChild(this.makeNode(x)));
                 var lastEnumEntry = eMembers.get(eMembers.size()-1);
                 endText = this.getTrailingText(currNode,lastEnumEntry);
@@ -159,7 +161,7 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 text = !caseClauses.isEmpty() ? this.getLeadingText(currNode,caseClauses.get(0)) : this.getLeadingText(currNode,null);
                 var switchData = new SwitchBlockArtifactData(text);
                 Artifact.Op<SwitchBlockArtifactData> switchOp = this.entityFactory.createArtifact(switchData);
-                Node.Op swNode = this.entityFactory.createNode(switchOp);
+                Node.Op swNode = this.entityFactory.createOrderedNode(switchOp);
                 caseClauses.forEach(x-> swNode.addChild(this.makeNode(x)));
                 var lastSwitchEntry = caseClauses.get(caseClauses.size()-1);
                 endText = this.getTrailingText(currNode,lastSwitchEntry);

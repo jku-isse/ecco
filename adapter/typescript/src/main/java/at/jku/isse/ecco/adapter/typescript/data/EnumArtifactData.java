@@ -38,4 +38,10 @@ public class EnumArtifactData extends AbstractArtifactData {
         } else return enumName.equals(other.enumName);
     }
 
+
+    /** Its children's order matters (cases, members, declarations) - see ArtifactData#requiresOrderedArtifact. */
+    @Override
+    public boolean requiresOrderedArtifact() {
+        return true;
+    }
 }

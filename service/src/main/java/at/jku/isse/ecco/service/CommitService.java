@@ -60,6 +60,7 @@ class CommitService {
             ArrayList<Variant> variants = repository.getVariants();
 
             long extractTime = System.currentTimeMillis();
+            repository.checkOrderedArtifacts();
             Commit commit = repository.extract(configuration, nodes, committer);
             repository.setRetroactiveConditions();
             // invalidate (don't eagerly rebuild) rather than call buildMainTree() here: within a

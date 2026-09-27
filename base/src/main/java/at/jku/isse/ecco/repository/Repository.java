@@ -1035,8 +1035,36 @@ public interface Repository extends Persistable {
 			return this.subset(new ArrayList<>(), this.getMaxOrder(), entityFactory);
 		}
 
+		/**
+		 * Fails if an artifact whose data requires ordering (ArtifactData#requiresOrderedArtifact)
+		 * is stored unordered - written by an older version of its adapter. Such an artifact does not
+		 * equal the ordered one the adapter reads now, and adding a commit (or merging) with both made
+		 * checkouts silently drop them: the order selector places only children it finds in the
+		 * parent's order graph. Checkouts of the repository as it is still work.
+		 */
+		default void checkOrderedArtifacts() {
+			for (Association.Op association : this.getAssociations()) {
+				if (association.getRootNode() != null)
+					checkOrderedArtifacts(association.getRootNode());
+			}
+		}
+
+		private static void checkOrderedArtifacts(Node.Op node) {
+			if (node.getArtifact() != null && !node.getArtifact().isOrdered()
+					&& node.getArtifact().getData() != null && node.getArtifact().getData().requiresOrderedArtifact()) {
+				throw new EccoException("This repository holds " + node.getArtifact().getData().getClass().getSimpleName()
+						+ " artifacts written by an older version of their adapter, which did not keep the order of"
+						+ " their children (e.g. the cases of a TypeScript switch). Adding to it would make checkouts"
+						+ " lose them - re-create the repository by committing its variants with this version.");
+			}
+			for (Node.Op child : node.getChildren())
+				checkOrderedArtifacts(child);
+		}
+
 		default void merge(Repository.Op otherRepository) {
 			checkNotNull(otherRepository);
+			this.checkOrderedArtifacts();
+			otherRepository.checkOrderedArtifacts();
 
 			// copy every constraint from other repository into this one that doesn't already exist
 			// here (by natural kind|a|b id). Kept deliberately independent of the module/association
