@@ -232,6 +232,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     private final CheckoutService checkoutService = new CheckoutService(this);
 
+    private final CommitService commitService = new CommitService(this);
+
     public boolean isWriteInProgress() {
         return this.listeners.isWriteInProgress();
     }
@@ -979,15 +981,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return the configuration string.
      */
     public String getConfigStringFromFile(Path path) {
-        Path configFile = path.resolve(CONFIG_FILE_NAME);
-        try {
-            String configurationString = "";
-            if (Files.exists(configFile))
-                configurationString = new String(Files.readAllBytes(configFile)).trim();
-            return configurationString;
-        } catch (IOException e) {
-            throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
-        }
+        return this.commitService.getConfigStringFromFile(path);
     }
 
 
@@ -1015,62 +1009,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The resulting commit object or null in case of an error.
      */
     public synchronized Commit commit(String commitMessage, Configuration configuration, String committer) {
-        this.checkInitialized();
-        checkNotNull(configuration);
-
-        this.listeners.setWriteInProgress(true);
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = this.repositoryDao.load();
-            repository.addFeatureRevisions(configuration.getFeatureRevisions());
-            Set<Node.Op> nodes = readFiles();
-            ArrayList<Variant> variants = repository.getVariants();
-
-            long extractTime = System.currentTimeMillis();
-            Commit commit = repository.extract(configuration, nodes, committer);
-            repository.setRetroactiveConditions();
-            // invalidate (don't eagerly rebuild) rather than call buildMainTree() here: within a
-            // single long-lived session, loadDatabase()'s invalidateMainTree() never runs again
-            // after the first load (REUSE_DB_ACROSS_TRANSACTIONS short-circuits it), so this is the
-            // only thing that keeps a later compose()/getMainTree() call (Repository.java's
-            // compose(Configuration) reads it directly) from silently reusing a tree that predates
-            // this commit. getMainTree() rebuilds lazily on next actual use.
-            repository.invalidateMainTree();
-            extractTime = System.currentTimeMillis() - extractTime;
-
-            //storing new variant
-            boolean hasConfiguration = false;
-            for (Variant v : variants) {
-                if (v.getConfiguration().equals(configuration)) {
-                    hasConfiguration = true;
-                }
-            }
-            if (!hasConfiguration) {
-                Variant memVariant = this.entityFactory.createVariant("Commit", configuration, UUID.randomUUID().toString());
-                memVariant.setDescription(commitMessage);
-                repository.addVariant(memVariant);
-            }
-            commit.setCommitMessage(commitMessage);
-
-            this.repositoryDao.store(repository);
-
-            long endStrategyTime = System.currentTimeMillis();
-            this.transactionStrategy.end();
-            endStrategyTime = System.currentTimeMillis() - endStrategyTime;
-
-            LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
-                    "ms, .transactionStrategy.end(): " + endStrategyTime + "ms");
-
-            this.listeners.fireStatusChangedEvent();
-
-            return commit;
-        } catch (Exception e) {
-            this.transactionStrategy.rollback();
-            throw new EccoException("Error during commit.", e);
-        } finally {
-            this.listeners.setWriteInProgress(false);
-        }
+        return this.commitService.commit(commitMessage, configuration, committer);
     }
 
     /**
@@ -1156,7 +1095,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
 
     public synchronized Set<Node.Op> readFiles() {
-        return this.reader.read(this.baseDir, new Path[]{Paths.get("")});
+        return this.commitService.readFiles();
     }
 
 
