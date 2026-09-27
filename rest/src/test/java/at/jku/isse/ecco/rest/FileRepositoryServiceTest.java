@@ -220,4 +220,67 @@ public class FileRepositoryServiceTest {
         assertTrue(forked.getFeatures().stream().anyMatch(f -> "Core".equals(f.getName())), "the original's feature data should have been merged in");
         assertEquals(1, forked.getCommits().size(), "forking one association should register one merge commit");
     }
+
+    // Upload file names and repository names come straight from the client and used to be resolved
+    // without any containment check - "/../../x" as an upload name, or "../x" as a repository name,
+    // wrote/created files outside the repository storage (an arbitrary file write for any logged-in
+    // user). They must be rejected as a bad request, without touching the file system.
+
+    @Test
+    @Timeout(30)
+    public void addCommitRejectsUploadNamesEscapingTheCommitFolder() throws IOException {
+        Path workDir = Files.createTempDirectory("file-repository-service-upload-traversal");
+        Path storage = Files.createDirectories(workDir.resolve("storage"));
+        FileRepositoryService service = new FileRepositoryService(storage);
+        service.createRepository("my-repo");
+
+        // a legitimate file first, so lastCommit/ exists and "../" can actually be walked through it
+        CompletedFileUpload legit = mockUpload("/file.txt", "hello\n");
+        CompletedFileUpload upload = mockUpload("/../../../escaped.txt", "pwned\n");
+        HttpStatusException exception = assertThrows(HttpStatusException.class,
+                () -> service.addCommit(1, "evil commit", "Core", "alice", List.of(legit, upload)));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertFalse(Files.exists(workDir.resolve("escaped.txt")), "nothing may be written outside the commit folder");
+        assertEquals(0, service.getRepository(1).getCommits().size(), "the rejected upload must not produce a commit");
+    }
+
+    @Test
+    @Timeout(30)
+    public void addCommitStillAcceptsNestedUploadNames() throws IOException {
+        Path storage = Files.createTempDirectory("file-repository-service-upload-nested");
+        FileRepositoryService service = new FileRepositoryService(storage);
+        service.createRepository("my-repo");
+
+        CompletedFileUpload upload = mockUpload("/sub/dir/../file.txt", "hello\n");
+        service.addCommit(1, "nested commit", "Core", "alice", List.of(upload));
+
+        assertTrue(Files.exists(storage.resolve("my-repo").resolve("lastCommit").resolve("sub").resolve("file.txt")));
+    }
+
+    @Test
+    @Timeout(30)
+    public void createRepositoryRejectsNamesEscapingTheStorage() throws IOException {
+        Path workDir = Files.createTempDirectory("file-repository-service-create-traversal");
+        Path storage = Files.createDirectories(workDir.resolve("storage"));
+        FileRepositoryService service = new FileRepositoryService(storage);
+
+        for (String name : List.of("../outside", "a/b", "/abs", "..", ".", "")) {
+            HttpStatusException exception = assertThrows(HttpStatusException.class, () -> service.createRepository(name), name);
+            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus(), name);
+        }
+        assertFalse(Files.exists(workDir.resolve("outside")));
+    }
+
+    @Test
+    @Timeout(30)
+    public void cloneRepositoryRejectsNamesEscapingTheStorage() throws IOException {
+        Path workDir = Files.createTempDirectory("file-repository-service-clone-traversal");
+        Path storage = Files.createDirectories(workDir.resolve("storage"));
+        FileRepositoryService service = new FileRepositoryService(storage);
+        service.createRepository("my-repo");
+
+        HttpStatusException exception = assertThrows(HttpStatusException.class, () -> service.cloneRepository(1, "../outside"));
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertFalse(Files.exists(workDir.resolve("outside")));
+    }
 }

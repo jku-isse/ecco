@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -59,9 +60,44 @@ public class FileRepositoryService implements RepositoryService {
         }
     }
 
+    /**
+     * Resolves a client-supplied relative path against {@code base}, rejecting anything that would
+     * end up outside it ("../" segments, absolute paths). Upload file names and repository names
+     * come straight from the request and used to be resolved unchecked - an arbitrary file write
+     * for any authenticated user.
+     */
+    static Path resolveInside(Path base, String relative) {
+        Path normalizedBase = base.toAbsolutePath().normalize();
+        Path resolved;
+        try {
+            Path relativePath = Path.of(relative);
+            if (relativePath.isAbsolute()) {
+                throw new HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid path: " + relative);
+            }
+            resolved = normalizedBase.resolve(relativePath).normalize();
+        } catch (InvalidPathException e) {
+            throw new HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid path: " + relative);
+        }
+        if (!resolved.startsWith(normalizedBase) || resolved.equals(normalizedBase)) {
+            throw new HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid path: " + relative);
+        }
+        return resolved;
+    }
+
+    /**
+     * A repository name must denote exactly one directory directly inside the repository storage.
+     */
+    private Path resolveRepositoryDir(String name) {
+        Path dir = resolveInside(repoStorage, name == null ? "" : name);
+        if (!dir.getParent().equals(repoStorage.toAbsolutePath().normalize())) {
+            throw new HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid repository name: " + name);
+        }
+        return dir;
+    }
+
     @Override
     public RepositoryHandler createRepository(String name) {
-        Path p = repoStorage.resolve(name);
+        Path p = resolveRepositoryDir(name);
         if (p.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
         }
@@ -86,7 +122,7 @@ public class FileRepositoryService implements RepositoryService {
     @Override
     public void cloneRepository(int oldRepositoryHandlerId, String name) {
         Path oldDir = repositories.get(oldRepositoryHandlerId).getPath();
-        Path newDir = oldDir.getParent().resolve(name);
+        Path newDir = resolveRepositoryDir(name);
 
         if (newDir.toFile().exists()) {
             throw new HttpStatusException(HttpStatus.IM_USED, "Repository with this name already exists");
@@ -147,12 +183,17 @@ public class FileRepositoryService implements RepositoryService {
             deleteDirectory(commitFolder.toFile());     //remove existing files recursively
         }
 
-        // create files from uploaded Commit
+        // validate every target before writing anything, so a rejected upload leaves no partial commit folder behind
+        List<File> targetFiles = new ArrayList<>(commitFiles.size());
         for(CompletedFileUpload uploadedFile : commitFiles) {
             String filename = uploadedFile.getFilename().substring(1);      //substring removes the \ before the filename
-            File file = commitFolder
-                            .resolve(Path.of(filename))
-                            .toFile();
+            targetFiles.add(resolveInside(commitFolder, filename).toFile());
+        }
+
+        // create files from uploaded Commit
+        for(int i = 0; i < commitFiles.size(); i++) {
+            CompletedFileUpload uploadedFile = commitFiles.get(i);
+            File file = targetFiles.get(i);
 
             // create folders if they don't exist
             File folder = file.getParentFile();
