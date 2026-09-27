@@ -181,4 +181,35 @@ public class GitHistoryReaderTest {
 			Files.deleteIfExists(escapedFile);
 		}
 	}
+
+	/**
+	 * A submodule is a "gitlink" tree entry pointing at a commit of ANOTHER repository, so its id
+	 * isn't in this repository's object database - reading it as a file failed the whole extraction
+	 * (and with it Import from Git) for any repository using submodules. Gitlinks are skipped.
+	 */
+	@Test
+	@Timeout(60)
+	public void extractCommitTree_skipsSubmodules() throws Exception {
+		Path subDir = Files.createTempDirectory("git-history-reader-submodule-sub");
+		try (Git sub = Git.init().setDirectory(subDir.toFile()).call()) {
+			Files.writeString(subDir.resolve("lib.txt"), "library\n");
+			sub.add().addFilepattern("lib.txt").call();
+			sub.commit().setMessage("lib").setAuthor("Test", "test@example.com").call();
+		}
+		Path repoDir = Files.createTempDirectory("git-history-reader-submodule-main");
+		String commitId;
+		try (Git git = Git.init().setDirectory(repoDir.toFile()).call()) {
+			Files.writeString(repoDir.resolve("main.txt"), "main\n");
+			git.add().addFilepattern("main.txt").call();
+			git.submoduleAdd().setURI(subDir.toUri().toString()).setPath("lib").call().close();
+			commitId = git.commit().setMessage("with submodule").setAuthor("Test", "test@example.com").call().getId().name();
+		}
+
+		Path target = Files.createTempDirectory("git-history-reader-submodule-target");
+		new GitHistoryReader().extractCommitTree(repoDir, commitId, target);
+
+		assertEquals("main\n", Files.readString(target.resolve("main.txt")));
+		assertTrue(Files.exists(target.resolve(".gitmodules")));
+		assertFalse(Files.exists(target.resolve("lib")), "the submodule itself is not part of this repository's content");
+	}
 }
