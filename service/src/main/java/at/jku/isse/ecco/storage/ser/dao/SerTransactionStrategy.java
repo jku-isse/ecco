@@ -766,12 +766,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * counter's reference with the repository's own lookup result.
 	 */
 	private void resolveModuleReferences(SerRepository repo) {
-		// counters read in compact form are built on the repository's modules right away
+		// counters read in compact form are built on the repository's modules right away; only
+		// those read in the old form hold copies to replace
 		for (Association.Op association : repo.getAssociations()) {
-			if (association.getCounter() instanceof SerAssociationCounter serAssociationCounter)
-				serAssociationCounter.resolveCompactChildren(repo);
-		}
-		for (Association.Op association : repo.getAssociations()) {
+			if (association.getCounter() instanceof SerAssociationCounter serAssociationCounter
+					&& serAssociationCounter.resolveCompactChildren(repo))
+				continue;
 			for (ModuleCounter moduleCounter : association.getCounter().getChildren()) {
 				if (!(moduleCounter instanceof SerModuleCounter serModuleCounter)) continue;
 
