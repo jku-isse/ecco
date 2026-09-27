@@ -894,6 +894,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * can't replace the real error with "No transaction active".
      */
     synchronized void writeTransaction(java.util.function.Function<Repository.Op, Repository.Op> transaction) {
+        this.writeTransaction("Error during repository write transaction.", transaction);
+    }
+
+    synchronized void writeTransaction(String errorMessage, java.util.function.Function<Repository.Op, Repository.Op> transaction) {
         this.listeners.setWriteInProgress(true);
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
@@ -908,7 +912,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         } catch (Exception e) {
             this.rollbackIfTransactionActive();
 
-            throw new EccoException("Error during repository write transaction.", e);
+            throw new EccoException(errorMessage, e);
         } finally {
             this.listeners.setWriteInProgress(false);
         }
@@ -1103,26 +1107,31 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     // CHECKOUT ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    public void enableFeatureTraceBoosting(){
+    /**
+     * Switches the repository to the feature-trace-boosting main tree building strategy, persistently
+     * (this used to set it on the loaded repository without a write transaction, so it only stuck if
+     * some later write happened to persist it - see FeatureTraceBoostingPersistenceTest).
+     */
+    public synchronized void enableFeatureTraceBoosting(){
         this.checkInitialized();
-        try {
-            BoostedAssociationMerger merger = this.entityFactory.createBoostedAssociationMerger();
-            this.getRepository().setMaintreeBuildingStrategy(merger);
-        } catch (EccoException e) {
-            // no rollback: no transaction begun here (see getCommits())
-            throw new EccoException("Error while enabling feature trace boosting.", e);
-        }
+        BoostedAssociationMerger merger = this.entityFactory.createBoostedAssociationMerger();
+        this.writeTransaction("Error while enabling feature trace boosting.", repository -> {
+            repository.setMaintreeBuildingStrategy(merger);
+            return repository;
+        });
     }
 
-    public void disableFeatureTraceBoosting(){
+    /**
+     * Switches the repository back to the plain main tree building strategy, persistently - see
+     * {@link #enableFeatureTraceBoosting()}.
+     */
+    public synchronized void disableFeatureTraceBoosting(){
         this.checkInitialized();
-        try {
-            AssociationMerger merger = this.entityFactory.createAssociationMerger();
-            this.getRepository().setMaintreeBuildingStrategy(merger);
-        } catch (EccoException e) {
-            // no rollback: no transaction begun here (see getCommits())
-            throw new EccoException("Error while disabling feature trace boosting.", e);
-        }
+        AssociationMerger merger = this.entityFactory.createAssociationMerger();
+        this.writeTransaction("Error while disabling feature trace boosting.", repository -> {
+            repository.setMaintreeBuildingStrategy(merger);
+            return repository;
+        });
     }
 
     volatile boolean surplusSuppressionEnabled = true;
@@ -1288,11 +1297,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         checkNotNull(minimizedByAssociationId);
         if (minimizedByAssociationId.isEmpty()) return;
 
-        this.listeners.setWriteInProgress(true);
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = this.repositoryDao.load();
+        this.writeTransaction("Error persisting minimized conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
                 String minimizedCondition = minimizedByAssociationId.get(association.getId());
                 if (minimizedCondition != null) {
@@ -1302,34 +1307,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                     repository.addAssociation(association);
                 }
             }
-
-            this.repositoryDao.store(repository);
-
-            this.transactionStrategy.end();
-
-            this.listeners.fireStatusChangedEvent();
-        } catch (Exception e) {
-            this.transactionStrategy.rollback();
-
-            throw new EccoException("Error persisting minimized conditions.", e);
-        } finally {
-            this.listeners.setWriteInProgress(false);
-        }
+            return repository;
+        });
     }
 
-
-
-
-
-    /**
-     * Checks whether the given configuration's selected features violate any accepted, currently
-     * hard constraint (see {@link ConstraintViolationChecker}). Purely advisory: does not affect
-     * {@code commit()}/{@code checkout()}; callers (e.g. the GUI, right after a successful commit)
-     * decide how to surface the result.
-     *
-     * @param configuration The configuration to check.
-     * @return Human-readable descriptions of violated constraints; empty if none.
-     */
     /**
      * Composes checkout with given configuration - see {@link CheckoutService#compose}.
      */
@@ -1363,6 +1344,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.checkoutService.selectArtifacts(checkout);
     }
 
+    /**
+     * Checks whether the given configuration's selected features violate any accepted, currently
+     * hard constraint (see {@link ConstraintViolationChecker}). Purely advisory: does not affect
+     * {@code commit()}/{@code checkout()}; callers (e.g. the GUI, right after a successful commit)
+     * decide how to surface the result.
+     *
+     * @param configuration The configuration to check.
+     * @return Human-readable descriptions of violated constraints; empty if none.
+     */
     public synchronized List<String> checkConstraintViolations(Configuration configuration) {
         return this.constraintService.checkConstraintViolations(configuration);
     }
@@ -1408,13 +1398,6 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     // TODO: check if 'compareArtifacts' is proper name for method (fires association-selected events and returns artifact nodes)
-
-
-
-
-
-
-
 
 
     /**
