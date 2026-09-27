@@ -29,6 +29,11 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 
+import java.io.BufferedInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.BufferedOutputStream;
+import java.util.zip.Deflater;
 import java.util.Comparator;
 import java.util.Set;
 import java.util.HashSet;
@@ -76,6 +81,9 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private static final String PACK_SUFFIX = ".zip";
 	/** Once a write would leave more packs than this, the smallest are merged down to half of it. */
 	private static final int MAX_PACKS = 20;
+	private static final String PACK_ARTIFACTS_ENTRY = "artifacts";
+	private static final String PACK_DIGESTS_ENTRY = "digests";
+	private static final int ARTIFACT_DIGEST_LENGTH = 16;
 	private static final String ZIP_ENTRY_NAME = "ecco.ser";
 	private static final String PENDING_SUFFIX = ".pending";
 
@@ -182,16 +190,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 	private static void writeStoredBytes(byte[] serializedBytes, Path file) throws IOException {
-		CRC32 crc32 = new CRC32();
-		crc32.update(serializedBytes);
 		Path tmpFile = file.resolveSibling(file.getFileName() + "." + UUID.randomUUID() + ".tmp");
-		try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE))) {
-			ZipEntry entry = new ZipEntry(ZIP_ENTRY_NAME);
-			entry.setMethod(ZipEntry.STORED);
-			entry.setSize(serializedBytes.length);
-			entry.setCompressedSize(serializedBytes.length);
-			entry.setCrc(crc32.getValue());
-			zos.putNextEntry(entry);
+		// compressed at the fastest level, the whole array at once, into a buffered stream: 2-3.6x
+		// smaller for about 0.1 s per 15 MB. (Compressing used to cost 10-15 s per commit and was
+		// turned off - streamed through ZipOutputStream's 512 byte buffer into an unbuffered file.)
+		try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE), 1 << 16))) {
+			zos.setLevel(Deflater.BEST_SPEED);
+			zos.putNextEntry(new ZipEntry(ZIP_ENTRY_NAME));
 			zos.write(serializedBytes);
 		}
 		try {
@@ -265,25 +270,50 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		throw new EccoException("No " + ZIP_ENTRY_NAME + " entry found in " + file);
 	}
 
-	/** Reads the given artifacts from a pack (see {@link #writeArtifactPack}), recording their digests. */
+	/** Reads the given artifacts from a pack (see {@link #writePack}), recording their digests. */
 	private void readPack(Path pack, List<String> artifactIds, Map<String, Artifact.Op<?>> loadedById) throws IOException, ClassNotFoundException {
 		if (!Files.exists(pack))
 			throw new EccoException("The artifact pack " + pack.getFileName() + " is missing - the repository is damaged.");
+		Set<String> wanted = new HashSet<>(artifactIds);
 		try (ZipFile zip = new ZipFile(pack.toFile())) {
-			for (String id : artifactIds) {
-				ZipEntry entry = zip.getEntry(id);
-				if (entry == null)
-					throw new EccoException("Artifact " + id + " is missing from " + pack.getFileName() + " - the repository is damaged.");
-				byte[] bytes;
-				try (InputStream in = zip.getInputStream(entry)) {
-					bytes = in.readAllBytes();
+			ZipEntry artifactsEntry = zip.getEntry(PACK_ARTIFACTS_ENTRY);
+			if (artifactsEntry != null) {
+				ZipEntry digestsEntry = zip.getEntry(PACK_DIGESTS_ENTRY);
+				byte[] digests;
+				try (InputStream in = zip.getInputStream(digestsEntry)) {
+					digests = in.readAllBytes();
 				}
-				this.persistedDigests.put(this.artifactFile(id), digest(bytes));
-				try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-					loadedById.put(id, (Artifact.Op<?>) ois.readObject());
+				try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
+					int count = ois.readInt();
+					for (int i = 0; i < count; i++) {
+						SerArtifact<?> artifact = (SerArtifact<?>) ois.readObject();
+						String id = artifact.getStorageId();
+						if (!wanted.contains(id))
+							continue; // superseded by a later pack
+						loadedById.put(id, artifact);
+						this.persistedDigests.put(this.artifactFile(id), Arrays.copyOfRange(digests, i * ARTIFACT_DIGEST_LENGTH, (i + 1) * ARTIFACT_DIGEST_LENGTH));
+					}
+				}
+			} else {
+				// the first packs: one entry per artifact
+				for (String id : artifactIds) {
+					ZipEntry entry = zip.getEntry(id);
+					if (entry == null)
+						continue;
+					byte[] bytes;
+					try (InputStream in = zip.getInputStream(entry)) {
+						bytes = in.readAllBytes();
+					}
+					this.persistedDigests.put(this.artifactFile(id), artifactDigest(bytes));
+					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+						loadedById.put(id, (Artifact.Op<?>) ois.readObject());
+					}
 				}
 			}
 		}
+		for (String id : artifactIds)
+			if (!loadedById.containsKey(id))
+				throw new EccoException("Artifact " + id + " is missing from " + pack.getFileName() + " - the repository is damaged.");
 	}
 
 	private static Object readZipped(Path file) throws IOException, ClassNotFoundException {
@@ -291,7 +321,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			ZipEntry e;
 			while ((e = zis.getNextEntry()) != null) {
 				if (e.getName().equals(ZIP_ENTRY_NAME)) {
-					try (ObjectInputStream ois = new ObjectInputStream(zis)) {
+					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(zis.readAllBytes()))) {
 						return ois.readObject();
 					}
 				}
@@ -574,7 +604,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
 			String id = serArtifact.getStorageId();
 			byte[] bytes = serialize(artifact);
-			byte[] digest = digest(bytes);
+			byte[] digest = artifactDigest(bytes);
 			Path key = this.artifactFile(id);
 			if (Arrays.equals(digest, this.persistedDigests.get(key)) && this.isArtifactStored(repo, id))
 				continue;
@@ -604,7 +634,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		if (!entries.isEmpty()) {
 			String packName = PACK_PREFIX + newId + PACK_SUFFIX;
-			writePack(entries, this.artifactsDir.resolve(packName));
+			writePack(repo, entries, this.artifactsDir.resolve(packName));
 			for (String id : entries.keySet())
 				repo.getArtifactPacks().put(id, packName);
 			repo.getPackSizes().put(packName, entries.size());
@@ -622,29 +652,45 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		for (String id : artifactIds) {
 			byte[] bytes = serialize(repo.getArtifact(id));
 			entries.put(id, bytes);
-			staged.put(this.artifactFile(id), digest(bytes));
+			staged.put(this.artifactFile(id), artifactDigest(bytes));
 		}
 		return true;
 	}
 
-	private static void writePack(Map<String, byte[]> entries, Path pack) throws IOException {
-		Path tmpFile = pack.resolveSibling(pack.getFileName() + "." + UUID.randomUUID() + ".tmp");
-		try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW)))) {
+	/**
+	 * Writes a pack: entry {@value #PACK_ARTIFACTS_ENTRY} holds the artifacts in one serialization
+	 * stream - class descriptions written once, not per artifact (4.6x smaller for pixels) - compressed
+	 * at the fastest level (another 3-4x); entry {@value #PACK_DIGESTS_ENTRY} the digest of each
+	 * artifact's own serialization in the same order, so that a later write can still tell unchanged
+	 * artifacts without serializing everything it loaded. The first packs held one entry per artifact
+	 * instead; they are still read.
+	 */
+	private static void writePack(SerRepository repo, Map<String, byte[]> entries, Path pack) throws IOException {
+		ByteArrayOutputStream artifacts = new ByteArrayOutputStream();
+		ByteArrayOutputStream digests = new ByteArrayOutputStream();
+		try (ObjectOutputStream out = new ObjectOutputStream(artifacts)) {
+			out.writeInt(entries.size());
 			for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
-				byte[] bytes = entry.getValue();
-				CRC32 crc32 = new CRC32();
-				crc32.update(bytes);
-				ZipEntry zipEntry = new ZipEntry(entry.getKey());
-				zipEntry.setMethod(ZipEntry.STORED);
-				zipEntry.setSize(bytes.length);
-				zipEntry.setCompressedSize(bytes.length);
-				zipEntry.setCrc(crc32.getValue());
-				zos.putNextEntry(zipEntry);
-				zos.write(bytes);
-				zos.closeEntry();
+				out.writeObject(repo.getArtifact(entry.getKey()));
+				digests.write(artifactDigest(entry.getValue()));
 			}
 		}
+		Path tmpFile = pack.resolveSibling(pack.getFileName() + "." + UUID.randomUUID() + ".tmp");
+		try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW), 1 << 16))) {
+			zos.setLevel(Deflater.BEST_SPEED);
+			zos.putNextEntry(new ZipEntry(PACK_ARTIFACTS_ENTRY));
+			artifacts.writeTo(zos);
+			zos.closeEntry();
+			zos.putNextEntry(new ZipEntry(PACK_DIGESTS_ENTRY));
+			digests.writeTo(zos);
+			zos.closeEntry();
+		}
 		Files.move(tmpFile, pack, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+	}
+
+	/** A digest of an artifact's own serialization - the first half of its SHA-256, to keep packs small. */
+	private static byte[] artifactDigest(byte[] bytes) {
+		return Arrays.copyOf(digest(bytes), ARTIFACT_DIGEST_LENGTH);
 	}
 
 	/** The file an artifact had of its own before packs - also the key of its digest. */
@@ -760,7 +806,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					Database loaded = null;
 					while ((e = zis.getNextEntry()) != null) {
 						if (e.getName().equals(ZIP_ENTRY_NAME)) {
-							ObjectInputStream ois = new ObjectInputStream(zis);
+							ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(zis.readAllBytes()));
 							loaded = (Database) ois.readObject();
 							break;
 						}
@@ -818,8 +864,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		Map<String, List<String>> idsByPack = new LinkedHashMap<>();
 		for (String artifactId : repo.getArtifactIds()) {
 			String pack = repo.getArtifactPacks().get(artifactId);
-			if (pack == null)
+			if (pack == null) {
 				loadedById.put(artifactId, (Artifact.Op<?>) this.readZippedTracked(this.artifactFile(artifactId)));
+				this.persistedDigests.computeIfPresent(this.artifactFile(artifactId), (file, digest) -> Arrays.copyOf(digest, ARTIFACT_DIGEST_LENGTH));
+			}
 			else
 				idsByPack.computeIfAbsent(pack, p -> new ArrayList<>()).add(artifactId);
 		}
