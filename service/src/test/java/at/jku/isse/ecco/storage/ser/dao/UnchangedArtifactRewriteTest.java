@@ -61,7 +61,8 @@ public class UnchangedArtifactRewriteTest {
         }
         Map<String, String> after = digests(repoDir.resolve("artifacts"));
 
-        long rewritten = before.entrySet().stream().filter(e -> after.containsKey(e.getKey()) && !after.get(e.getKey()).equals(e.getValue())).count();
+        // artifacts are stored in packs, one per write: what the second commit wrote is in its new pack
+        long rewritten = after.keySet().stream().filter(entry -> !before.containsKey(entry)).count();
         assertTrue(before.size() > 200, "precondition: " + before.size() + " artifacts");
         assertTrue(rewritten <= 10, "only artifacts that actually changed may be rewritten, but " + rewritten + " of " + before.size() + " were");
     }
@@ -113,12 +114,19 @@ public class UnchangedArtifactRewriteTest {
         return result;
     }
 
+    /** pack file + "/" + entry (one per artifact written) -> digest of the entry's bytes */
     private static Map<String, String> digests(Path dir) throws Exception {
         Map<String, String> result = new HashMap<>();
         MessageDigest sha = MessageDigest.getInstance("SHA-256");
         try (Stream<Path> files = Files.list(dir)) {
             for (Path file : (Iterable<Path>) files::iterator) {
-                result.put(file.getFileName().toString(), HexFormat.of().formatHex(sha.digest(Files.readAllBytes(file))));
+                try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(file.toFile())) {
+                    for (java.util.zip.ZipEntry entry : java.util.Collections.list(zip.entries())) {
+                        try (java.io.InputStream in = zip.getInputStream(entry)) {
+                            result.put(file.getFileName() + "/" + entry.getName(), HexFormat.of().formatHex(sha.digest(in.readAllBytes())));
+                        }
+                    }
+                }
             }
         }
         return result;
