@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.typescript;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.typescript.data.*;
@@ -41,12 +42,19 @@ public class TypeScriptWriter implements ArtifactWriter<Set<Node>, Path> {
             for (Node lineNode : fileNode.getChildren()) {
                 writeNodes(sb, lineNode);
             }
-            try (BufferedWriter writer = Files.newBufferedWriter(base.resolve(((PluginArtifactData) fileNode.getArtifact().getData()).getFileName()), StandardCharsets.UTF_8)) {
-                writer.write(sb.toString());
+            // the file's full relative path - resolving just getFileName() used to put every file at
+            // the checkout root, whatever folder it belonged to (see TypeScriptWriterTest)
+            Path outputFile = base.resolve(rootData.getPath());
+            try {
+                if (outputFile.getParent() != null)
+                    Files.createDirectories(outputFile.getParent());
+                try (BufferedWriter writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8)) {
+                    writer.write(sb.toString());
+                }
             } catch (IOException x) {
-                LOGGER.severe("IOException: " + x);
+                throw new EccoException("Could not write file: " + outputFile, x);
             }
-            output.add(base.resolve(rootData.getPath()));
+            output.add(outputFile);
         }
         return output.toArray(new Path[0]);
     }

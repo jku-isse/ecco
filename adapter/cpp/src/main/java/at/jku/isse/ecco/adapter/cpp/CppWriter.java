@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.cpp;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.cpp.data.*;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -28,6 +29,9 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
         return this.write(Paths.get("."), input);
     }
 
+    // per-file output buffers, filled by visitingNodes() - which is why files are written one at a
+    // time: this used to be a parallelStream(), so concurrently written files appended into the
+    // same buffers and got each other's content (see CppWriterTest)
     String[] code = {""};
     String[] includes = {""};
     String[] fields = {""};
@@ -35,13 +39,11 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
 
     @Override
     public Path[] write(Path base, Set<Node> input) {
-        Path[] toreturn = input.parallelStream().map(node -> {
+        Path[] toreturn = input.stream().map(node -> {
             try {
-                includes[0] = "";
                 return processNode(node, base);
             } catch (IOException e) {
-                e.printStackTrace();
-                return null;
+                throw new EccoException("Could not write file for node: " + node, e);
             }
         }).filter(Objects::nonNull).toArray(Path[]::new);
         if (toreturn.length != input.size())
@@ -64,6 +66,11 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
 
         Path returnPath = basePath.resolve(rootData.getPath());
 
+        code = new String[]{""};
+        includes = new String[]{""};
+        fields = new String[]{""};
+        defines = new String[]{""};
+
         if (baseNode.getChildren().size() > 0) {
             for (Node node : baseNode.getChildren()) {
                 visitingNodes(node);
@@ -72,14 +79,7 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
         code[0] = includes[0] + "\n" + defines[0] + "\n" + fields[0] + "\n" + code[0];
         try (BufferedWriter writer = Files.newBufferedWriter(returnPath, StandardCharsets.UTF_8)) {
             writer.write(code[0]);
-        } catch (IOException x) {
-            System.err.format("IOException: %s%n", x);
         }
-
-        code = new String[]{""};
-        includes = new String[]{""};
-        fields = new String[]{""};
-        defines = new String[]{""};
 
         return returnPath;
     }
