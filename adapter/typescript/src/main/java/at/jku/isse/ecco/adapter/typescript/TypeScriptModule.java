@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.typescript;
 
 import at.jku.isse.ecco.adapter.ArtifactExporter;
 import at.jku.isse.ecco.adapter.ArtifactReader;
-import at.jku.isse.ecco.adapter.ArtifactViewer;
+import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
@@ -27,6 +27,11 @@ public class TypeScriptModule extends AbstractModule {
                 new TypeLiteral<>() {
                 });
 		writerMultibinder.addBinding().to(TypeScriptWriter.class);
+
+		final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+				new TypeLiteral<AssociationInfoArtifactViewer>() {
+				});
+		viewerMultibinder.addBinding().to(TypeScriptViewer.class);
 
 	}
 

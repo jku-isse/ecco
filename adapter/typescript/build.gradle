@@ -1,8 +1,14 @@
 plugins {
     id 'java'
     alias(libs.plugins.node.gradle)
+    alias(libs.plugins.openjfx.javafxplugin)
 }
 ecco.adapter = true
+
+javafx {
+    version = libs.versions.javafx.get()
+    modules = ['javafx.base', 'javafx.controls', 'javafx.graphics']
+}
 group = 'at.jku.isse.ecco'
 version = '0.1.9'
 npmInstall
