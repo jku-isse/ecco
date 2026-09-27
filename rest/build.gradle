@@ -14,7 +14,7 @@ repositories {
 dependencies {
     annotationProcessor("io.micronaut:micronaut-http-validation")
 
-    implementation("io.micronaut:micronaut-http-client")
+    testImplementation("io.micronaut:micronaut-http-client") // only RestTest uses the client
     implementation("io.micronaut:micronaut-jackson-databind")
     implementation("io.micronaut:micronaut-runtime")
     implementation("jakarta.annotation:jakarta.annotation-api")
@@ -22,9 +22,7 @@ dependencies {
     annotationProcessor("io.micronaut.validation:micronaut-validation-processor")
     implementation("io.micronaut.validation:micronaut-validation")
 
-    annotationProcessor("io.micronaut.data:micronaut-data-processor")
     annotationProcessor("io.micronaut.security:micronaut-security-annotations")
-    implementation("io.micronaut.data:micronaut-data-jdbc")
     implementation("io.micronaut.reactor:micronaut-reactor")
     implementation("io.micronaut.security:micronaut-security-jwt")
 
@@ -48,7 +46,6 @@ dependencies {
     testImplementation libs.junit.jupiter
     testImplementation libs.mockito.core
 
-    implementation(libs.rxjava2) // file upload to server
 }
 
 test {

@@ -33,7 +33,6 @@ dependencies {
     implementation project(':ecco-logic')
 
 	api libs.guice.core
-	api libs.guice.multibindings
 	api project(':ecco-base')
 
 	testImplementation libs.junit.jupiter
