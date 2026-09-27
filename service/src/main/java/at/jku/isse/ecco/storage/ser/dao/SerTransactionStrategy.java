@@ -38,7 +38,10 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +92,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private FileChannel writeFileChannel;
 	// write file lock
 	private FileLock writeFileLock;
+	// SHA-256 of the serialized bytes of every stable artifact/association file as last read or
+	// written by this process - lets endReadWrite() skip entities whose bytes didn't change. Cleared
+	// by reset(); rebuilt by the full reload that follows.
+	private final Map<Path, byte[]> persistedDigests = new HashMap<>();
 
 
 	@Inject
@@ -117,11 +124,43 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * the rename is on the same filesystem, a precondition for {@link StandardCopyOption#ATOMIC_MOVE}.
 	 */
 	private static void writeStored(Object object, Path file) throws IOException {
+		writeStoredBytes(serialize(object), file);
+	}
+
+	private static byte[] serialize(Object object) throws IOException {
 		ByteArrayOutputStream serialized = new ByteArrayOutputStream();
 		try (ObjectOutputStream oos = new ObjectOutputStream(serialized)) {
 			oos.writeObject(object);
 		}
-		byte[] serializedBytes = serialized.toByteArray();
+		return serialized.toByteArray();
+	}
+
+	private static byte[] digest(byte[] bytes) {
+		try {
+			return MessageDigest.getInstance("SHA-256").digest(bytes);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EccoException("SHA-256 not available.", e);
+		}
+	}
+
+	/**
+	 * Stages a dirty entity's file for the transaction tagged {@code pendingSuffix} (see
+	 * {@link #endReadWrite()}) - unless its serialized bytes are identical to the stable file already
+	 * on disk (known from {@link #persistedDigests}), in which case nothing is written at all. Most
+	 * "dirty" entities of a commit are unchanged: Trees.slice() re-slices every touched association
+	 * against the whole working tree, so far more is marked dirty than actually differs, and writing
+	 * one file per artifact dominated commit time (see UnchangedArtifactRewriteTest).
+	 */
+	private void stageIfChanged(Object entity, Path stableFile, String pendingSuffix, Map<Path, byte[]> staged) throws IOException {
+		byte[] bytes = serialize(entity);
+		byte[] digest = digest(bytes);
+		if (Arrays.equals(digest, this.persistedDigests.get(stableFile)) && Files.exists(stableFile))
+			return;
+		writeStoredBytes(bytes, stableFile.resolveSibling(stableFile.getFileName() + pendingSuffix));
+		staged.put(stableFile, digest);
+	}
+
+	private static void writeStoredBytes(byte[] serializedBytes, Path file) throws IOException {
 		CRC32 crc32 = new CRC32();
 		crc32.update(serializedBytes);
 		Path tmpFile = file.resolveSibling(file.getFileName() + "." + UUID.randomUUID() + ".tmp");
@@ -183,6 +222,26 @@ public class SerTransactionStrategy implements TransactionStrategy {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Like {@link #readZipped}, and remembers the digest of the serialized bytes, so an unchanged
+	 * entity isn't written again (see {@link #stageIfChanged}).
+	 */
+	private Object readZippedTracked(Path file) throws IOException, ClassNotFoundException {
+		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
+			ZipEntry e;
+			while ((e = zis.getNextEntry()) != null) {
+				if (e.getName().equals(ZIP_ENTRY_NAME)) {
+					byte[] bytes = zis.readAllBytes();
+					this.persistedDigests.put(file, digest(bytes));
+					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+						return ois.readObject();
+					}
+				}
+			}
+		}
+		throw new EccoException("No " + ZIP_ENTRY_NAME + " entry found in " + file);
 	}
 
 	private static Object readZipped(Path file) throws IOException, ClassNotFoundException {
@@ -352,10 +411,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// hold the exclusive write lock, so no other writer can have files in flight
 		this.recoverPendingFiles(this.id, true);
 
+		Map<Path, byte[]> staged = new HashMap<>();
 		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts()) {
 			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
-			Path artifactFile = this.artifactsDir.resolve(serArtifact.getStorageId() + DB_FILE_SUFFIX + pendingSuffix);
-			writeStored(artifact, artifactFile);
+			this.stageIfChanged(artifact, this.artifactsDir.resolve(serArtifact.getStorageId() + DB_FILE_SUFFIX), pendingSuffix, staged);
 		}
 
 		// write only the associations actually touched this transaction, one file each, rather
@@ -369,8 +428,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			Files.createDirectories(this.associationsDir);
 		}
 		for (Association association : repo.getDirtyAssociations()) {
-			Path associationFile = this.associationsDir.resolve(association.getId() + DB_FILE_SUFFIX + pendingSuffix);
-			writeStored(association, associationFile);
+			this.stageIfChanged(association, this.associationsDir.resolve(association.getId() + DB_FILE_SUFFIX), pendingSuffix, staged);
 		}
 
 		// serialize to new db file
@@ -421,12 +479,15 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// the swap above committed the transaction: move its staged files over their stable names.
 		// If this fails or the process dies part way, the next load finishes it (loadDatabase()).
 		this.recoverPendingFiles(newId, false);
+		this.persistedDigests.putAll(staged);
 
 		// best-effort cleanup of association files no longer referenced by the now-current core -
 		// after the id-file swap above, so a failure here never leaves the repository in a state
 		// where the current core references a file that got deleted
 		for (String removedId : repo.getRemovedAssociationIds()) {
-			Files.deleteIfExists(this.associationsDir.resolve(removedId + DB_FILE_SUFFIX));
+			Path removedFile = this.associationsDir.resolve(removedId + DB_FILE_SUFFIX);
+			Files.deleteIfExists(removedFile);
+			this.persistedDigests.remove(removedFile);
 		}
 		repo.clearDirtyTracking();
 
@@ -449,6 +510,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 
 	private void reset() {
+		this.persistedDigests.clear();
 		this.id = null;
 		this.dbFile = null;
 		this.database = null;
@@ -564,7 +626,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		List<Artifact.Op<?>> loadedArtifacts = new ArrayList<>(repo.getArtifactIds().size());
 		for (String artifactId : repo.getArtifactIds()) {
 			Path artifactFile = this.artifactsDir.resolve(artifactId + DB_FILE_SUFFIX);
-			loadedArtifacts.add((Artifact.Op<?>) readZipped(artifactFile));
+			loadedArtifacts.add((Artifact.Op<?>) this.readZippedTracked(artifactFile));
 		}
 		repo.restoreArtifacts(loadedArtifacts);
 
@@ -575,7 +637,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		List<Association.Op> loadedAssociations = new ArrayList<>(repo.getAssociationIds().size());
 		for (String associationId : repo.getAssociationIds()) {
 			Path associationFile = this.associationsDir.resolve(associationId + DB_FILE_SUFFIX);
-			loadedAssociations.add((Association.Op) readZipped(associationFile));
+			loadedAssociations.add((Association.Op) this.readZippedTracked(associationFile));
 		}
 		repo.restoreAssociations(loadedAssociations);
 		// NOTE: deliberately NOT this.database.getCommitIndex().values() here - that map is only
@@ -615,15 +677,16 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	/**
 	 * Each association was just deserialized from its own, independent file/stream, so any
 	 * reference that points OUTSIDE that association's own tree (SerNode.artifactId,
-	 * SerArtifact.containingNode, SerArtifactReference.source/target - all transient, carrying only
-	 * an id) was not restored by the default deserialization of that file. artifactsById comes
+	 * SerArtifactReference.source/target - transient, carrying only an id; and
+	 * SerArtifact.containingNode, not persisted at all but derived from the trees) was not restored
+	 * by the default deserialization of that file. artifactsById comes
 	 * directly from the global artifact store (restoreArtifacts(), already loaded above) rather than
 	 * being harvested by walking nodes - that's what actually fixes
 	 * pog-mismatch-real-cause-duplicate-storageid, since it means there is structurally exactly one
 	 * instance per artifact id, not "whichever association's independently-deserialized copy
 	 * happened to be indexed last". This walks every loaded association's tree once to wire each
-	 * node's artifactId to that instance and build a node id -> instance index, then uses both to
-	 * fill in the remaining transient fields - always resolving to a real, properly-reconstructed
+	 * node's artifactId to that instance (and each artifact's containing node to the unique node
+	 * holding it), then fills in the remaining transient fields - always resolving to a real, properly-reconstructed
 	 * instance, never a dangling or independently-duplicated fragment. See
 	 * TreesObjectIdentityDependencyTest and incremental-persistence-node-sharing-blocker for why
 	 * this matters.
@@ -637,24 +700,14 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			}
 		}
 
-		Map<String, Node.Op> nodesById = new HashMap<>();
 		for (Association.Op association : repo.getAssociations()) {
 			if (association.getRootNode() != null) {
-				this.indexNodeAndResolveArtifact(association.getRootNode(), nodesById, artifactsById);
+				this.resolveNodeArtifacts(association.getRootNode(), artifactsById);
 			}
 		}
 
 		for (Artifact.Op<?> artifact : artifactsById.values()) {
 			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
-
-			String containingNodeId = serArtifact.getContainingNodeId();
-			if (containingNodeId != null) {
-				Node.Op containingNode = nodesById.get(containingNodeId);
-				if (containingNode == null) {
-					throw new EccoException("Could not resolve containing node " + containingNodeId + " for artifact " + serArtifact.getStorageId() + " after loading all associations.");
-				}
-				serArtifact.resolveContainingNode(containingNode);
-			}
 
 			this.resolveReferences(serArtifact.getUses(), artifactsById);
 			this.resolveReferences(serArtifact.getUsedBy(), artifactsById);
@@ -727,9 +780,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 	}
 
-	private void indexNodeAndResolveArtifact(Node.Op node, Map<String, Node.Op> nodesById, Map<String, Artifact.Op<?>> artifactsById) {
+	private void resolveNodeArtifacts(Node.Op node, Map<String, Artifact.Op<?>> artifactsById) {
 		if (node instanceof SerNode serNode) {
-			nodesById.put(serNode.getStorageId(), node);
 
 			String artifactId = serNode.getArtifactId();
 			if (artifactId != null) {
@@ -738,10 +790,15 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					throw new EccoException("Could not resolve node artifact " + artifactId + " after loading all associations.");
 				}
 				serNode.resolveArtifact(artifact);
+				// an artifact's containing node is the unique node holding it - derived here rather than
+				// persisted (see SerArtifact's containingNode field); verified to equal the previously
+				// persisted value on every repository examined
+				if (node.isUnique() && artifact instanceof SerArtifact<?> serArtifact)
+					serArtifact.resolveContainingNode(node);
 			}
 		}
 		for (Node.Op child : node.getChildren()) {
-			this.indexNodeAndResolveArtifact(child, nodesById, artifactsById);
+			this.resolveNodeArtifacts(child, artifactsById);
 		}
 	}
 
