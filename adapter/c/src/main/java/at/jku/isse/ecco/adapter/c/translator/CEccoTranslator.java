@@ -60,12 +60,8 @@ public class CEccoTranslator {
 
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine){
         for(int i = startLine; i <= endLine; i++){
+            // empty lines too: they are part of the file (identical siblings are fine, e.g. the many "}" lines)
             String codeLine = this.codeLines[i - 1];
-
-            if (codeLine.isEmpty()){
-                continue;
-            }
-
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
             Location location = new Location(i, i, this.path, this.configuration);
             Node.Op lineNode = this.createNodeWithLocation(lineArtifactData, location);
