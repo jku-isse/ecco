@@ -49,6 +49,12 @@ class CommitService {
     Commit commit(String commitMessage, Configuration configuration, String committer) {
         owner.checkInitialized();
         checkNotNull(configuration);
+        // presence conditions are built from the features of the commits an artifact occurs in: what
+        // is committed without any feature gets no condition that can ever hold, so no checkout
+        // would contain it - it was accepted and silently lost
+        if (configuration.getFeatureRevisions().length == 0)
+            throw new EccoException("A commit needs at least one feature: what is committed without any cannot be checked out again."
+                    + " For content every variant has, use a feature of its own in every configuration (e.g. BASE).");
 
         owner.listeners.setWriteInProgress(true);
         try {

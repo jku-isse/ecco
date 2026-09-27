@@ -12,6 +12,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.EnumSet;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,9 +47,10 @@ public class DispatchReaderUnreadableDirectoryTest {
             service.init();
             service.setBaseDir(contentDir);
 
-            EccoException exception = assertThrows(EccoException.class, () -> service.commit("commit", ""));
+            EccoException exception = assertThrows(EccoException.class, () -> service.commit("commit", "A"));
             assertTrue(exception.getMessage() != null || exception.getCause() != null,
                     "the failure must be surfaced as a real error, not silently swallowed");
+            assertFalse(String.valueOf(exception.getMessage()).contains("at least one feature"), "it must fail for the directory");
         } finally {
             // restore permissions so temp-directory cleanup can actually delete it afterward
             Files.setPosixFilePermissions(secretDir, Set.of(

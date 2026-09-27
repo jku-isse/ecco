@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Checkout;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -11,6 +12,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -33,7 +35,9 @@ public class RepositoryCheckoutTest {
 	 */
 	@Test
 	@Timeout(30)
-	public void checkout_afterUnconditionalCommit_selectsNoAssociations() throws IOException {
+	public void anUnconditionalCommitIsRefused() throws IOException {
+		// content committed without any feature got no condition that could ever hold: the commit was
+		// accepted and no checkout ever contained it - it is refused now
 		Path base = Files.createTempDirectory("ecco-checkout-repro");
 		EccoService service = new EccoService();
 		service.setRepositoryDir(base.resolve(".ecco"));
@@ -43,16 +47,9 @@ public class RepositoryCheckoutTest {
 		Files.createDirectories(commitDir);
 		Files.writeString(commitDir.resolve("file.txt"), "unconditional content\n", StandardCharsets.UTF_8);
 		service.setBaseDir(commitDir);
-		var commit = service.commit("initial commit", "");
-		assertEquals(1, commit.getAssociations().size());
-
-		Path checkoutDir = base.resolve("checkout");
-		Files.createDirectories(checkoutDir);
-		service.setBaseDir(checkoutDir);
-		Checkout checkout = service.checkout("");
-
-		assertTrue(checkout.getSelectedAssociations().isEmpty());
-		assertFalse(Files.exists(checkoutDir.resolve("file.txt")));
+		EccoException refused = assertThrows(EccoException.class, () -> service.commit("initial commit", ""));
+		assertTrue(refused.getMessage().contains("at least one feature"), refused.getMessage());
+		assertTrue(service.getCommits().isEmpty());
 
 		service.close();
 	}

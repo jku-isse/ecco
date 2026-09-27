@@ -49,7 +49,7 @@ public class CommitAssociationReproTest {
 			Files.write(variantDir.resolve("file.txt"), content.toString().getBytes());
 
 			service.setBaseDir(variantDir);
-			service.commit(variant);
+			service.commit(variant, "A");
 		}
 
 		List<String> summary = summarizeCommits(service);

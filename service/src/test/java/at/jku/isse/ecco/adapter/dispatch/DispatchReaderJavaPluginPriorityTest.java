@@ -50,7 +50,7 @@ public class DispatchReaderJavaPluginPriorityTest {
             service.setBaseDir(contentDir);
             service.addListener(listener);
 
-            service.commit("commit", "");
+            service.commit("commit", "A");
         }
 
         assertEquals("at.jku.cdl.ecco.adapter.java.JavaASTPlugin", pluginIdByFile.get(Path.of("Foo.java")),

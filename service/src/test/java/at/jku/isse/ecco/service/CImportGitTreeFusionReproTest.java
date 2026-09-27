@@ -67,10 +67,10 @@ public class CImportGitTreeFusionReproTest {
 		service.init();
 
 		service.setBaseDir(v1);
-		service.commit("commit 1");
+		service.commit("commit 1", "A");
 
 		service.setBaseDir(v2);
-		service.commit("commit 2");
+		service.commit("commit 2", "A");
 
 		service.close();
 	}
