@@ -5,7 +5,6 @@ include 'service'
 include 'cli'
 include 'gui'
 include 'rest'
-include 'experiment'
 include 'util'
 include 'logic'
 
@@ -22,7 +21,6 @@ include 'adapter-cpp'
 include 'adapter-typescript'
 include 'adapter-runtime'
 include 'adapter-golang'
-include 'adapter-c'
 include 'adapter-lilypond'
 include 'extras-ly'
 
@@ -48,6 +46,5 @@ project(':adapter-typescript').projectDir = file('adapter/typescript')
 project(':adapter-runtime').projectDir = file('adapter/runtime')
 project(':adapter-golang').projectDir = file('adapter/golang')
 project(':adapter-c').projectDir = file('adapter/c')
-project(':adapter-lilypond').projectDir = file('adapter/lilypond')
 
 rootProject.children.each { it.name = rootProject.name + '-' + it.name }
