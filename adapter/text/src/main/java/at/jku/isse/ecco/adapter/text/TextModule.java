@@ -31,10 +31,13 @@ public class TextModule extends AbstractModule {
 				});
 		writerMultibinder.addBinding().to(TextFileWriter.class);
 
-		final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<AssociationInfoArtifactViewer>() {
-				});
-		viewerMultibinder.addBinding().to(TextViewer.class);
+		// no JavaFX viewers without a GUI (the command line and the REST server set ecco.headless)
+		if (!Boolean.getBoolean("ecco.headless")) {
+			final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<AssociationInfoArtifactViewer>() {
+					});
+			viewerMultibinder.addBinding().to(TextViewer.class);
+		}
 
 		final Multibinder<ArtifactExporter<Set<Node>, Path>> exporterMultibinder = Multibinder.newSetBinder(binder(),
 				new TypeLiteral<ArtifactExporter<Set<Node>, Path>>() {

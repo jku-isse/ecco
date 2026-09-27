@@ -26,10 +26,13 @@ public class MarkdownModule extends AbstractModule {
 				});
 		writerMultibinder.addBinding().to(MarkdownFileWriter.class);
 
-		final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<AssociationInfoArtifactViewer>() {
-				});
-		viewerMultibinder.addBinding().to(MarkdownViewer.class);
+		// no JavaFX viewers without a GUI (the command line and the REST server set ecco.headless)
+		if (!Boolean.getBoolean("ecco.headless")) {
+			final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<AssociationInfoArtifactViewer>() {
+					});
+			viewerMultibinder.addBinding().to(MarkdownViewer.class);
+		}
 	}
 
 }

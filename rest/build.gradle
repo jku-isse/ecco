@@ -11,6 +11,12 @@ repositories {
     mavenLocal()
 }
 
+configurations.runtimeClasspath {
+    // no GUI here (ecco.headless): the adapters' JavaFX viewers are not loaded, so JavaFX is left
+    // out - it used to come along bundled into the file adapter's jar
+    exclude group: 'org.openjfx'
+}
+
 dependencies {
     annotationProcessor("io.micronaut:micronaut-http-validation")
 
@@ -49,6 +55,8 @@ dependencies {
 }
 
 test {
+    // like Application.main: no GUI, so the adapters leave out their JavaFX viewers
+    systemProperty 'ecco.headless', 'true'
     useJUnitPlatform()
 }
 
