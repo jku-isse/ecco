@@ -23,10 +23,22 @@ dependencies {
 
 	implementation project(':ecco-service')
 
+	// the same adapters as the GUI: a repository's .adapters maps files to adapters by id, and a
+	// commit fails if a mapped adapter is missing - with fewer adapters the CLI could not commit to
+	// repositories created with the GUI
 	runtimeOnly project(':ecco-adapter-file')
 	runtimeOnly project(':ecco-adapter-text')
 	runtimeOnly project(':ecco-adapter-markdown')
+	runtimeOnly project(':ecco-adapter-lilypond')
 	runtimeOnly project(':ecco-adapter-image')
+	runtimeOnly project(':ecco-adapter-typescript')
+	runtimeOnly project(':ecco-adapter-python')
+	runtimeOnly project(':ecco-adapter-challenge')
+	runtimeOnly project(':ecco-adapter-java')
+	runtimeOnly project(':ecco-adapter-java-ast')
+	runtimeOnly project(':ecco-adapter-c')
+	runtimeOnly project(':ecco-adapter-cpp')
+	runtimeOnly project(':ecco-adapter-runtime')
 	runtimeOnly project(':ecco-adapter-golang')
 
 	testImplementation project(':ecco-adapter-file')

@@ -30,6 +30,12 @@ import java.nio.file.Path;
  */
 public class Main {
 
+    static {
+        // no GUI here: adapters leave out their JavaFX viewers (whose classes, e.g. the LilyPond
+        // adapter's WebView, the command line distribution does not have)
+        System.setProperty("ecco.headless", "true");
+    }
+
     public static final ArgumentParser parser = ArgumentParsers.newFor(ProgramConstants.ECCO).build();
     private static final CommandRegister commandRegister = new CommandRegister();
     private static final EccoService eccoService = new EccoService(Path.of("."));

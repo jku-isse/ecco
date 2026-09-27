@@ -25,9 +25,11 @@ public class PythonModule extends AbstractModule {
                 });
         writerMultibinder.addBinding().to(PythonWriter.class);
 
-        final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-                new TypeLiteral<AssociationInfoArtifactViewer>() {
-                });
-        viewerMultibinder.addBinding().to(PythonViewer.class);
+        if (!Boolean.getBoolean("ecco.headless")) {
+            final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+                    new TypeLiteral<AssociationInfoArtifactViewer>() {
+                    });
+            viewerMultibinder.addBinding().to(PythonViewer.class);
+        }
     }
 }

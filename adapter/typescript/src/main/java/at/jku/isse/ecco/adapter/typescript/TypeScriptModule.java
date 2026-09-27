@@ -28,10 +28,12 @@ public class TypeScriptModule extends AbstractModule {
                 });
 		writerMultibinder.addBinding().to(TypeScriptWriter.class);
 
-		final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
-				new TypeLiteral<AssociationInfoArtifactViewer>() {
-				});
-		viewerMultibinder.addBinding().to(TypeScriptViewer.class);
+		if (!Boolean.getBoolean("ecco.headless")) {
+			final Multibinder<AssociationInfoArtifactViewer> viewerMultibinder = Multibinder.newSetBinder(binder(),
+					new TypeLiteral<AssociationInfoArtifactViewer>() {
+					});
+			viewerMultibinder.addBinding().to(TypeScriptViewer.class);
+		}
 
 	}
 
