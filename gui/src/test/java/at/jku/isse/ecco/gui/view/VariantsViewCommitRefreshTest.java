@@ -24,7 +24,12 @@ public class VariantsViewCommitRefreshTest {
     private static void ensureFxStarted() throws InterruptedException {
         if (fxStarted) return;
         CountDownLatch latch = new CountDownLatch(1);
-        Platform.startup(latch::countDown);
+        try {
+            Platform.startup(latch::countDown);
+        } catch (IllegalStateException alreadyStarted) {
+            // another test class in this JVM started the toolkit first
+            latch.countDown();
+        }
         latch.await();
         fxStarted = true;
     }
