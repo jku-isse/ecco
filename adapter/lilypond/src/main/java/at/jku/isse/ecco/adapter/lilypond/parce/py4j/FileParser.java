@@ -29,13 +29,14 @@ public class FileParser implements LilypondParser<ParceToken> {
         Gateway.getInstance().addListener(gatewayListener);
         Gateway.getInstance().start();
 
-        Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
-        Path file = tempDir.resolve(PARSER_SCRIPT_NAME);
+        // a copy of its own: a shared one in the temp directory was only written if missing, so an
+        // outdated copy from an older version kept being used
+        Path file = Files.createTempFile("ecco-" + PARSER_SCRIPT_NAME.replace(".py", "-"), ".py");
         pythonScript = file.toString();
 
-        if (!Files.exists(file)) {
+        {
             try (InputStream is = ClassLoader.getSystemResourceAsStream(PARSER_SCRIPT_NAME);
-                OutputStream os = Files.newOutputStream(file, StandardOpenOption.CREATE)) {
+                OutputStream os = Files.newOutputStream(file, StandardOpenOption.TRUNCATE_EXISTING)) {
 
                 if (is != null) {
                     os.write(is.readAllBytes());
@@ -59,6 +60,7 @@ public class FileParser implements LilypondParser<ParceToken> {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
         Gateway.getInstance().reset();
         ProcessBuilder lilyparce = new ProcessBuilder("python", pythonScript, path.toString());
+        lilyparce.environment().put("ECCO_PY4J_PORT", String.valueOf(Gateway.getInstance().getPort()));
         Process process = null;
         try {
             process = lilyparce.start();
@@ -124,6 +126,13 @@ public class FileParser implements LilypondParser<ParceToken> {
         Gateway gateway = Gateway.getInstance();
         gateway.shutdown();
         gateway.removeListener(gatewayListener);
+        if (pythonScript != null) {
+            try {
+                Files.deleteIfExists(Path.of(pythonScript));
+            } catch (IOException ignored) {
+                // a leftover temporary file
+            }
+        }
     }
 
     private static GatewayServerListener getGatewayListener() {

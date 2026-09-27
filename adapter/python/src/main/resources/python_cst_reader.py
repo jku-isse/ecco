@@ -1,12 +1,18 @@
+import os
 import inspect
 import json
 import pickle
 import sys
 import traceback
 from libcst import *
-from py4j.java_gateway import JavaGateway
+from py4j.java_gateway import JavaGateway, GatewayParameters
 from timeit import default_timer as timer
 from typing import Union
+
+
+def _java_gateway():
+    """The ECCO process's gateway - on the port it passes in ECCO_PY4J_PORT (py4j's default otherwise)."""
+    return JavaGateway(gateway_parameters=GatewayParameters(port=int(os.environ.get("ECCO_PY4J_PORT", "25333"))))
 
 # no visiting, but dumped entirely
 dumpNodes = (EmptyLine, BaseExpression)
@@ -219,7 +225,7 @@ def read(filename: str):
     logger.info(f"PY: Starting Reader Script for {filename}")
 
     # access java gateway and entry point
-    gateway = JavaGateway()
+    gateway = _java_gateway()
     ep = gateway.entry_point
 
     f = open(filename, "r", -1, "UTF-8")  # open file
@@ -264,7 +270,7 @@ def read(filename: str):
 if __name__ == '__main__':
     main_start = timer()
 
-    logger = JavaGateway().entry_point.getLogger()
+    logger = _java_gateway().entry_point.getLogger()
     try:
         read(sys.argv[1])
     except Exception as e:

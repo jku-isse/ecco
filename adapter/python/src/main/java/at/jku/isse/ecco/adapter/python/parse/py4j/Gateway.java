@@ -11,6 +11,11 @@ public abstract class Gateway
         server.start();
     }
 
+    /** The port the server listens on - chosen by the system (see the subclasses), handed to the script. */
+    public int getPort() {
+        return server.getListeningPort();
+    }
+
     public void shutdown() {
         server.shutdown();
     }

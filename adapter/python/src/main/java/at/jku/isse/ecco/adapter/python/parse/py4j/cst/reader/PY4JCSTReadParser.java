@@ -30,7 +30,7 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
          * https://docs.python.org/3/using/cmdline.html
          *  -B prevents __pycache__ folders
          */
-        ProcessBuilder parsePython = new ProcessBuilder("python", "-B", pythonScript, path.toString());
+        ProcessBuilder parsePython = pythonProcess(path.toString());
         Process process = null;
 
         try {

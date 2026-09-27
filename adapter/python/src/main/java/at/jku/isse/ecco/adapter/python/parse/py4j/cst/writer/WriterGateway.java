@@ -10,7 +10,8 @@ public class WriterGateway extends Gateway {
     private final WriterEntryPoint entrypoint;
     WriterGateway() {
         entrypoint = new WriterEntryPoint();
-        server = new GatewayServer(entrypoint);
+        // port 0: any free port - the fixed default made concurrent ECCO processes fail ("Address already in use")
+        server = new GatewayServer(entrypoint, 0);
     }
 
     public void reset(Path path, Node root) {
