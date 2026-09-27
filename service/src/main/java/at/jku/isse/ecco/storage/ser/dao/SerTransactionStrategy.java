@@ -34,6 +34,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -61,6 +62,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private static final String ASSOCIATIONS_DIRNAME = "associations";
 	private static final String ARTIFACTS_DIRNAME = "artifacts";
 	private static final String ZIP_ENTRY_NAME = "ecco.ser";
+	private static final String PENDING_SUFFIX = ".pending";
 
 	// repository directory
 	private final Path repositoryDir;
@@ -137,6 +139,49 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		} catch (IOException e) {
 			Files.deleteIfExists(tmpFile);
 			throw e;
+		}
+	}
+
+	/**
+	 * Suffix of a dirty association/artifact file staged by {@link #endReadWrite()} for the
+	 * transaction that will make {@code txId} the current core id - see {@link #endReadWrite()}.
+	 */
+	private static String pendingSuffix(String txId) {
+		return "." + txId + PENDING_SUFFIX;
+	}
+
+	/**
+	 * Resolves the staged files of an interrupted-but-committed transaction and discards those of
+	 * aborted ones, in both per-entity directories - see {@link #endReadWrite()} for the protocol.
+	 * <p>
+	 * Pending files tagged with {@code currentId} belong to a transaction whose id-file swap (its
+	 * commit point) already happened, so they are the authoritative versions and are renamed over
+	 * their stable names (roll forward). Any other pending file belongs to a transaction that never
+	 * reached its swap; those are only deleted when {@code discardAborted} is set, i.e. when the
+	 * caller holds the exclusive write lock - otherwise they might be the in-flight files of a
+	 * concurrent writer in another process, which must not be touched.
+	 */
+	private void recoverPendingFiles(String currentId, boolean discardAborted) throws IOException {
+		for (Path dir : List.of(this.associationsDir, this.artifactsDir)) {
+			if (!Files.isDirectory(dir)) continue;
+			List<Path> pendingFiles;
+			try (var files = Files.list(dir)) {
+				pendingFiles = files.filter(f -> f.getFileName().toString().endsWith(PENDING_SUFFIX)).toList();
+			}
+			String committedSuffix = currentId == null ? null : pendingSuffix(currentId);
+			for (Path pending : pendingFiles) {
+				String name = pending.getFileName().toString();
+				if (committedSuffix != null && name.endsWith(committedSuffix)) {
+					Path stable = pending.resolveSibling(name.substring(0, name.length() - committedSuffix.length()));
+					try {
+						Files.move(pending, stable, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+					} catch (NoSuchFileException e) {
+						// another process rolled this one forward concurrently - nothing left to do
+					}
+				} else if (discardAborted) {
+					Files.deleteIfExists(pending);
+				}
+			}
 		}
 	}
 
@@ -253,6 +298,23 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.loadDatabase();
 	}
 
+	/**
+	 * Persists the transaction with a small roll-forward journal, so that a failure or crash at any
+	 * point leaves either the old or the new state loadable, never a mix of both:
+	 * <ol>
+	 * <li>every dirty artifact/association is written to {@code <stable name>.<newId>.pending}, never
+	 * over its stable file - those are still what the current core loads;</li>
+	 * <li>the new core is written to {@code <newId>.ser.zip};</li>
+	 * <li>the id file is switched to {@code newId} - the commit point;</li>
+	 * <li>the pending files are renamed over their stable names.</li>
+	 * </ol>
+	 * Dirty entities that already existed used to be rewritten in place in step 1, so failing before
+	 * step 3 left the old core loading some new files (e.g. an artifact whose containing node or POG
+	 * now referenced things only the new core knows about) - an unopenable repository. See
+	 * SerTransactionStrategyInterruptedCommitTest. A failure before step 3 now just leaves pending
+	 * files behind, discarded by the next writer; a failure during step 4 is finished by the next
+	 * {@link #loadDatabase()}.
+	 */
 	private void endReadWrite() throws IOException {
 		// check if we still have exclusive write lock and take it
 		if (!this.writeFileLock.isValid())
@@ -281,9 +343,18 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		if (!repo.getDirtyArtifacts().isEmpty()) {
 			Files.createDirectories(this.artifactsDir);
 		}
+		// compute the new core id up front: every dirty file below is staged under a name tagged with
+		// it, so that the id-file swap further down is the single commit point for the whole
+		// transaction (see the javadoc on this method)
+		String newId = UUID.randomUUID().toString();
+		String pendingSuffix = pendingSuffix(newId);
+		// discard leftovers of earlier transactions that failed before their swap - safe here, we
+		// hold the exclusive write lock, so no other writer can have files in flight
+		this.recoverPendingFiles(this.id, true);
+
 		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts()) {
 			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
-			Path artifactFile = this.artifactsDir.resolve(serArtifact.getStorageId() + DB_FILE_SUFFIX);
+			Path artifactFile = this.artifactsDir.resolve(serArtifact.getStorageId() + DB_FILE_SUFFIX + pendingSuffix);
 			writeStored(artifact, artifactFile);
 		}
 
@@ -292,20 +363,16 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// before this, being fully reserialized every single time anyway. See the class javadoc on
 		// SerCommit for why commits/the repository hold association IDs rather than direct
 		// references (that's what makes it safe to leave everything else out of the "core" write
-		// below). Written BEFORE the core/id-file swap: if we crash after writing some of these but
-		// before the swap, the old core (which doesn't reference the new files yet) is still valid,
-		// and the new files are just harmless, unreferenced garbage - the same "write new, then
-		// atomically flip a pointer to it" safety property the core file already had.
+		// below). Staged under pending names like the artifacts above, never over the stable files
+		// the still-current core loads.
 		if (!repo.getDirtyAssociations().isEmpty()) {
 			Files.createDirectories(this.associationsDir);
 		}
 		for (Association association : repo.getDirtyAssociations()) {
-			Path associationFile = this.associationsDir.resolve(association.getId() + DB_FILE_SUFFIX);
+			Path associationFile = this.associationsDir.resolve(association.getId() + DB_FILE_SUFFIX + pendingSuffix);
 			writeStored(association, associationFile);
 		}
 
-		// compute new random id
-		String newId = UUID.randomUUID().toString();
 		// serialize to new db file
 		Path newDbFile = this.repositoryDir.resolve(newId + DB_FILE_SUFFIX);
 		//this.serialize(this.database, newDbFile);
@@ -350,6 +417,10 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 			// release exclusive id lock automatically when exiting try block
 		}
+
+		// the swap above committed the transaction: move its staged files over their stable names.
+		// If this fails or the process dies part way, the next load finishes it (loadDatabase()).
+		this.recoverPendingFiles(newId, false);
 
 		// best-effort cleanup of association files no longer referenced by the now-current core -
 		// after the id-file swap above, so a failure here never leaves the repository in a state
@@ -475,6 +546,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 
 		SerRepository repo = (SerRepository) this.database.getRepository();
+
+		// finish a committed transaction whose staged files weren't all moved into place yet (see
+		// endReadWrite()); pending files of aborted transactions are only discarded while holding
+		// the write lock, as they might belong to a concurrent writer otherwise
+		this.recoverPendingFiles(this.id, this.transaction == TRANSACTION.READ_WRITE && this.writeFileLock != null);
 
 		// load every artifact from its own file BEFORE any association - association trees' nodes
 		// only carry an artifactId now (see SerNode.artifactId's javadoc), so the global artifact
