@@ -578,7 +578,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @param configurationString The configuration string to parse.
      * @return The configuration object.
      */
-    public Configuration parseConfigurationString(String configurationString) {
+    public synchronized Configuration parseConfigurationString(String configurationString) {
         checkNotNull(configurationString);
 
         if (!configurationString.matches(Configuration.CONFIGURATION_STRING_REGULAR_EXPRESSION))
@@ -711,7 +711,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
 
-    public Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
+    public synchronized Collection<FeatureRevision> parseFeatureRevisionsString(String featureRevisionsString) {
         if (featureRevisionsString == null)
             throw new EccoException("No feature revisions string provided.");
 
@@ -1255,7 +1255,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.variantManager.removeVariant(configuration);
     }
 
-    public void store() {
+    public synchronized void store() {
         this.checkInitialized();
 
         try {
@@ -1523,6 +1523,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private synchronized Checkout compose(Configuration configuration) {
         this.checkInitialized();
         checkNotNull(configuration);
+        // read inside a transaction like every other read: outside of one, load() returns whatever
+        // database the last transaction left loaded - none right after open() (NPE), or a stale one
+        // if another process committed since (see ReadWithoutTransactionTest)
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            Checkout checkout = this.composeInTransaction(configuration);
+            this.transactionStrategy.end();
+            return checkout;
+        } catch (RuntimeException e) {
+            this.rollbackIfTransactionActive();
+            throw e;
+        }
+    }
+
+    private Checkout composeInTransaction(Configuration configuration) {
         Repository.Op repository = this.repositoryDao.load();
         Checkout checkout = repository.compose(configuration);
         if (this.surplusAbsorptionEnabled && !checkout.getSurplusModules().isEmpty()) {
