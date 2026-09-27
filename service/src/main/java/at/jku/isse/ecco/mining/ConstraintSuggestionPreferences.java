@@ -94,15 +94,49 @@ public final class ConstraintSuggestionPreferences {
         writeSet(REJECTED_KEY_PREFIX + repoScope(repositoryDir), rejected);
     }
 
+    // A Preferences value may be at most Preferences.MAX_VALUE_LENGTH characters, and the rejected
+    // set used to be stored as ONE joined value - after a few hundred rejections put() threw
+    // IllegalArgumentException. The joined value is now split across "<key>:chunk:<i>" entries.
+    private static final int CHUNK_LENGTH = Preferences.MAX_VALUE_LENGTH / 2;
+    private static final String CHUNK_COUNT_SUFFIX = ":chunks";
+    private static final String CHUNK_SUFFIX = ":chunk:";
+
     private static Set<String> readSet(String key) {
-        String stored = prefs().get(key, "");
+        Preferences prefs = prefs();
+        int chunks = prefs.getInt(key + CHUNK_COUNT_SUFFIX, -1);
+        String stored;
+        if (chunks < 0) {
+            stored = prefs.get(key, ""); // stored before chunking existed
+        } else {
+            StringBuilder joined = new StringBuilder();
+            for (int i = 0; i < chunks; i++)
+                joined.append(prefs.get(key + CHUNK_SUFFIX + i, ""));
+            stored = joined.toString();
+        }
         if (stored.isEmpty()) return new HashSet<>();
         return Arrays.stream(stored.split(SEPARATOR)).collect(Collectors.toCollection(HashSet::new));
     }
 
     private static void writeSet(String key, Set<String> values) {
         Preferences prefs = prefs();
-        prefs.put(key, String.join(SEPARATOR, values));
+        removeSet(prefs, key);
+        String joined = String.join(SEPARATOR, values);
+        int chunks = (joined.length() + CHUNK_LENGTH - 1) / CHUNK_LENGTH;
+        for (int i = 0; i < chunks; i++)
+            prefs.put(key + CHUNK_SUFFIX + i, joined.substring(i * CHUNK_LENGTH, Math.min(joined.length(), (i + 1) * CHUNK_LENGTH)));
+        prefs.putInt(key + CHUNK_COUNT_SUFFIX, chunks);
+        flush(prefs);
+    }
+
+    private static void removeSet(Preferences prefs, String key) {
+        int chunks = prefs.getInt(key + CHUNK_COUNT_SUFFIX, 0);
+        for (int i = 0; i < chunks; i++)
+            prefs.remove(key + CHUNK_SUFFIX + i);
+        prefs.remove(key + CHUNK_COUNT_SUFFIX);
+        prefs.remove(key); // the pre-chunking single value
+    }
+
+    private static void flush(Preferences prefs) {
         try {
             // without an explicit flush, a write is only guaranteed to reach the backing store
             // asynchronously -- fine within one long-running GUI session (reads see the in-memory
@@ -112,6 +146,13 @@ public final class ConstraintSuggestionPreferences {
         } catch (BackingStoreException e) {
             throw new RuntimeException("Failed to persist constraint suggestion preferences", e);
         }
+    }
+
+    /** Removes everything recorded for this repository (e.g. test cleanup). */
+    static void forget(Path repositoryDir) {
+        Preferences prefs = prefs();
+        removeSet(prefs, REJECTED_KEY_PREFIX + repoScope(repositoryDir));
+        flush(prefs);
     }
 
     private static String repoScope(Path repositoryDir) {
