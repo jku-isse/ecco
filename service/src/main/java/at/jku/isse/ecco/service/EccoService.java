@@ -1137,11 +1137,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
 
-    public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id) {
+    public synchronized void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id) {
         this.variantManager.updateFeatureRevision(featureRevision, featureRevisionUpdate, id);
     }
 
-    public void removeFeatureRevision(FeatureRevision featureRevision, String id) {
+    public synchronized void removeFeatureRevision(FeatureRevision featureRevision, String id) {
         this.variantManager.removeFeatureRevision(featureRevision, id);
     }
 
