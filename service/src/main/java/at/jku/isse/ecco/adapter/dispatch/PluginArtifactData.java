@@ -16,6 +16,13 @@ public class PluginArtifactData implements ArtifactData {
 	private transient Path path;
 	private String pathString;
 
+	// the text format of the file as last read by a line-based adapter (see TextFileFormat), so that
+	// checkout reproduces it byte for byte; null for non-text adapters and for files committed before
+	// this was recorded. Deliberately not part of equals()/hashCode(): the file's identity is its path.
+	private String charset;
+	private String lineSeparator;
+	private Boolean endsWithNewline;
+
 	protected PluginArtifactData() {
 		this.pluginId = null;
 		this.path = null;
@@ -41,6 +48,28 @@ public class PluginArtifactData implements ArtifactData {
 			this.path = Paths.get(this.pathString);
 		}
 		return this.path;
+	}
+
+	public void setTextFormat(String charset, String lineSeparator, boolean endsWithNewline) {
+		this.charset = charset;
+		this.lineSeparator = lineSeparator;
+		this.endsWithNewline = endsWithNewline;
+	}
+
+	public boolean hasTextFormat() {
+		return this.charset != null && this.lineSeparator != null && this.endsWithNewline != null;
+	}
+
+	public String getCharset() {
+		return this.charset;
+	}
+
+	public String getLineSeparator() {
+		return this.lineSeparator;
+	}
+
+	public boolean endsWithNewline() {
+		return Boolean.TRUE.equals(this.endsWithNewline);
 	}
 
 	@Override
