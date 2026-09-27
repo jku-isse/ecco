@@ -52,4 +52,27 @@ public class OldStorageFormatTest {
         for (Throwable t = exception; t != null; t = t.getCause()) messages += t.getMessage() + "\n";
         assertTrue(messages.contains("older storage format"), messages);
     }
+
+    /** A core file without its ecco.ser entry (damaged/truncated) used to end in a NullPointerException. */
+    @Test
+    @Timeout(30)
+    public void aCoreFileWithoutItsEntryIsReportedAsDamaged() throws Exception {
+        Path repoDir = Files.createTempDirectory("damaged-core-file");
+        SerTransactionStrategy strategy = new SerTransactionStrategy(repoDir);
+        strategy.open();
+        strategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+        strategy.end();
+        strategy.close();
+        String id = Files.readString(repoDir.resolve("id")).trim();
+        try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(Files.newOutputStream(repoDir.resolve(id + ".ser.zip")))) {
+            zip.putNextEntry(new java.util.zip.ZipEntry("something-else"));
+        }
+
+        SerTransactionStrategy reopened = new SerTransactionStrategy(repoDir);
+        reopened.open();
+        EccoException exception = assertThrows(EccoException.class, () -> reopened.begin(TransactionStrategy.TRANSACTION.READ_ONLY));
+        String messages = "";
+        for (Throwable t = exception; t != null; t = t.getCause()) messages += t.getMessage() + "\n";
+        assertTrue(messages.contains("damaged"), messages);
+    }
 }
