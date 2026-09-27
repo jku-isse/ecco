@@ -46,32 +46,40 @@ public class PartialOrderGraphView extends BorderPane {
 
 		setCursor(Cursor.WAIT);
 		Thread th = new Thread(() -> {
-			try {
-				this.viewer.disableAutoLayout();
-				this.graph.removeSink(this.layout);
-				this.layout.removeAttributeSink(this.graph);
-				this.layout.clear();
-
-				this.graph.clear();
-				this.graph.setStrict(false);
-				this.graph.setAttribute("ui.quality");
-				this.graph.setAttribute("ui.antialias");
-				this.graph.setAttribute("ui.stylesheet",
-						" node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
-
-				this.traversePartialOrderGraph(pog.getHead(), null, new HashMap<>());
-
-				this.graph.addSink(this.layout);
-				this.layout.addAttributeSink(this.graph);
-				this.viewer.enableAutoLayout(this.layout);
-
-				this.view.getCamera().resetView();
-
-			} finally {
-				Platform.runLater(() -> setCursor(Cursor.DEFAULT));
+			// one rebuild at a time: selecting another node before the previous rebuild finished used
+			// to start a second thread clearing and filling the same (not thread-safe) graph
+			synchronized (this.graph) {
+				this.rebuildGraph(pog);
 			}
 		});
 		th.start();
+	}
+
+	private void rebuildGraph(PartialOrderGraph pog) {
+		try {
+			this.viewer.disableAutoLayout();
+			this.graph.removeSink(this.layout);
+			this.layout.removeAttributeSink(this.graph);
+			this.layout.clear();
+
+			this.graph.clear();
+			this.graph.setStrict(false);
+			this.graph.setAttribute("ui.quality");
+			this.graph.setAttribute("ui.antialias");
+			this.graph.setAttribute("ui.stylesheet",
+					" node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
+
+			this.traversePartialOrderGraph(pog.getHead(), null, new HashMap<>());
+
+			this.graph.addSink(this.layout);
+			this.layout.addAttributeSink(this.graph);
+			this.viewer.enableAutoLayout(this.layout);
+
+			this.view.getCamera().resetView();
+
+		} finally {
+			Platform.runLater(() -> setCursor(Cursor.DEFAULT));
+		}
 	}
 
 	private void initView() {
