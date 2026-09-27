@@ -367,7 +367,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 			// this reader itself is responsible for the directory tree structure (unless there is an adapter that deals with a directory)
 			Map<Path, Node.Op> directoryNodes = new HashMap<>();
-			Node.Op baseDirectoryNode = this.readDirectories(base, base.resolve(path), hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes);
+			Node.Op baseDirectoryNode = this.readDirectories(base, base.resolve(path), hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes, new HashSet<>());
 			nodes.add(baseDirectoryNode);
 
 			// let readers read the assigned, modified files
@@ -428,11 +428,23 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return nodes;
 	}
 
-	private Node.Op readDirectories(Path base, Path current, Properties hashes, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToUnmodifiedFilesMap, Map<Path, Node.Op> directoryNodes) {
+	/**
+	 * @param activeDirectories real paths of the directories currently being walked (this one's
+	 *                          ancestors): directory symlinks are followed, so a symlink resolving
+	 *                          to one of them would otherwise recurse forever (StackOverflowError,
+	 *                          or an apparent hang with the CLI's huge thread stack) - see
+	 *                          SymlinkLoopCommitTest.
+	 */
+	private Node.Op readDirectories(Path base, Path current, Properties hashes, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToFilesMap, Map<ArtifactReader<Path, Set<Node.Op>>, ArrayList<Path>> readerToUnmodifiedFilesMap, Map<Path, Node.Op> directoryNodes, Set<Path> activeDirectories) {
 		Path relativeCurrent = base.relativize(current);
 
 		try {
 			if (Files.isDirectory(current)) { // deal with directories
+				Path realCurrent = current.toRealPath();
+				if (activeDirectories.contains(realCurrent)) {
+					LOGGER.warning("Skipping " + relativeCurrent + ": symlink back to a directory that is already being read (" + realCurrent + ").");
+					return null;
+				}
 				if (!this.isIgnored(relativeCurrent)) { // if directory is not ignored add it to directories
 					Artifact.Op<?> directoryArtifact = this.entityFactory.createArtifact(new DirectoryArtifactData(relativeCurrent.getFileName()));
 					Node.Op directoryNode = this.entityFactory.createNode(directoryArtifact);
@@ -441,12 +453,15 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					this.fireReadEvent(base.relativize(current), this);
 
 					// go into sub directories
+					activeDirectories.add(realCurrent);
 					try (Stream<Path> filesStream = Files.list(current)) {
 						filesStream.forEach(d -> {
-							Node.Op child = this.readDirectories(base, d, hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes);
+							Node.Op child = this.readDirectories(base, d, hashes, readerToFilesMap, readerToUnmodifiedFilesMap, directoryNodes, activeDirectories);
 							if (child != null)
 								directoryNode.addChild(child);
 						});
+					} finally {
+						activeDirectories.remove(realCurrent);
 					}
 
 					return directoryNode;
