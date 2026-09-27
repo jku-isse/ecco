@@ -441,11 +441,33 @@ public class JavaASTWriteHandler {
 	 * "record" production at all - independent of configured LanguageLevel, this is a hard gap in
 	 * that specific entry point, confirmed empirically (parsing the exact same text as a full
 	 * compilation unit succeeds and does include the RecordDeclaration). Parsing as a throwaway
-	 * compilation unit instead and pulling the single resulting top-level type back out works around
-	 * it uniformly for every TypeDeclaration subtype, not just records.
+	 * compilation unit instead and pulling the single resulting type back out works around it
+	 * uniformly for every TypeDeclaration subtype, not just records. The type is parsed as a member
+	 * of a class: a nested type's modifiers (private, protected, static) are not allowed on a
+	 * top-level type, and every file with such a nested type used to fail its checkout.
 	 */
 	private static TypeDeclaration<?> parseTypeDeclarationText(String text) {
-		return StaticJavaParser.parse(text).getTypes().get(0);
+		TypeDeclaration<?> wrapper = StaticJavaParser.parse("class EccoTypeWrapper {\n" + text + "\n}").getType(0);
+		TypeDeclaration<?> type = (TypeDeclaration<?>) wrapper.getMember(0);
+		type.remove();
+		return type;
+	}
+
+	/**
+	 * A try statement's resource - a declaration such as {@code Reader r = open()} or a variable -
+	 * parsed in a try statement, since it is not an expression: parseExpression() failed on the
+	 * declarations, i.e. on every try-with-resources statement.
+	 */
+	private static Expression parseTryResource(String text) {
+		return StaticJavaParser.parseStatement("try (" + text + ") {}").asTryStmt().getResources().get(0);
+	}
+
+	/**
+	 * A catch clause's parameter parsed in a catch clause: parseParameter() failed on the union type
+	 * of a multi-catch ({@code IOException | InterruptedException e}).
+	 */
+	private static Parameter parseCatchParameter(String text) {
+		return StaticJavaParser.parseStatement("try {} catch (" + text + ") {}").asTryStmt().getCatchClauses().get(0).getParameter();
 	}
 
 	private static EnumDeclaration addEnumDeclaration(Node child, com.github.javaparser.ast.Node parent) {
@@ -556,7 +578,7 @@ public class JavaASTWriteHandler {
 		if (!tryData.getExpressions().isEmpty()) {
 			NodeList<Expression> resourceList = new NodeList<>();
 			for (String catchParam : tryData.getExpressions()) {
-				Expression e = StaticJavaParser.parseExpression(catchParam);
+				Expression e = parseTryResource(catchParam);
 				resourceList.add(e);
 			}
 			tryStmt.setResources(resourceList);
@@ -592,7 +614,7 @@ public class JavaASTWriteHandler {
 				&& ((JavaASTData) cc.getArtifact().getData()).getType() == ASTNodeType.CATCHCLAUSE) {
 			JavaASTSimpleStringData ccData = (JavaASTSimpleStringData) cc.getArtifact().getData();
 			CatchClause catchClause = new CatchClause();
-			Parameter param = StaticJavaParser.parseParameter(ccData.getData());
+			Parameter param = parseCatchParameter(ccData.getData());
 			catchClause.setParameter(param);
 			cc.getChildren().forEach(c -> addNode(c, catchClause));
 			attachComments(ccData, catchClause);
