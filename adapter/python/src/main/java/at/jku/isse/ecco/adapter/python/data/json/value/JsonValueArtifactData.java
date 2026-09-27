@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public abstract class JsonValueArtifactData<T> implements ArtifactData {
 
+    private static final long serialVersionUID = -1635909886135775262L;
+
     private T value;
     public JsonValueArtifactData(T value) {
         this.value = value;

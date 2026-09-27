@@ -10,6 +10,8 @@ import at.jku.isse.ecco.artifact.ArtifactData;
  */
 public class TableArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 7690328339630352670L;
+
 	@Override
 	public String toString() {
 		return "(table)";

@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class PythonFieldArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -531141492394158136L;
+
     private String parentFieldName;
     private String fieldName;
 

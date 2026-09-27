@@ -9,6 +9,8 @@ import java.util.List;
 
 public class Location implements Persistable {
 
+    private static final long serialVersionUID = -4470657727253921276L;
+
     private int startLine;
     private int endLine;
     private String filePath;

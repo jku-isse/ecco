@@ -14,6 +14,8 @@ import java.util.Objects;
  * @see GoReader#parseGoFile(Node.Op, Path)
  */
 public class ContextArtifactData implements ArtifactData {
+
+    private static final long serialVersionUID = 8608171585578892133L;
     @Override
     public boolean equals(Object o) {
         return this == o || o != null && getClass() == o.getClass();

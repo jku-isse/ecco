@@ -7,6 +7,8 @@ import java.util.Objects;
 /** A raw HTML block embedded in the document. Wraps its raw source lines verbatim as {@code LineArtifactData} children; the literal here (CommonMark's own concatenated copy) is diagnostic/distinguishing only. */
 public class HtmlBlockArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -4494955592286152722L;
+
 	private final String literal;
 
 	public HtmlBlockArtifactData(String literal) {

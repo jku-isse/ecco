@@ -9,6 +9,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class EmptyModuleRevision implements ModuleRevision {
 
+	private static final long serialVersionUID = -3340724730969824238L;
+
 	private FeatureRevision[] pos;
 	private Feature[] neg;
 	private int count;

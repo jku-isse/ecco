@@ -7,6 +7,8 @@ import java.util.Objects;
 /** A thematic break (e.g. {@code ---}, {@code ***}, {@code ___}). Wraps a single {@code LineArtifactData} child; the literal here is diagnostic/distinguishing only, not needed for reconstruction. */
 public class ThematicBreakArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -3596660416224293153L;
+
 	private final String literal;
 
 	public ThematicBreakArtifactData(String literal) {

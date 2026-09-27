@@ -11,6 +11,8 @@ import java.util.Objects;
  */
 public class CodeBlockArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 2747149763048866964L;
+
 	private final boolean fenced;
 	private final String info;
 

@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class JupyterCellArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -6985319730829978902L;
+
     private String cellType;
     private String parseType;
 

@@ -8,6 +8,8 @@ import at.jku.isse.ecco.tree.RootNode;
  */
 public class LazyCompositionRootNode extends LazyCompositionNode implements RootNode {
 
+	private static final long serialVersionUID = 4532913841660791041L;
+
 	public LazyCompositionRootNode() {
 		this(new DefaultOrderSelector());
 	}

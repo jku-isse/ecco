@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class LeafArtifactData extends AbstractArtifactData {
 
+	private static final long serialVersionUID = -2803616912364320304L;
+
 	private String line;
 
 	public LeafArtifactData(String line) {

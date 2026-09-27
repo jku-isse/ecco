@@ -10,6 +10,8 @@ import at.jku.isse.ecco.artifact.ArtifactData;
  */
 public class ParagraphArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 4742126492409446676L;
+
 	@Override
 	public String toString() {
 		return "(paragraph)";

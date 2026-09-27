@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class CaseBlockArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -7333597943527789824L;
+
     private String caseblock;
 
     private Boolean sameline;

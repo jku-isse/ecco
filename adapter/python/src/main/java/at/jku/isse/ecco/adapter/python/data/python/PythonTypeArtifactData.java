@@ -6,6 +6,8 @@ import java.util.Arrays;
 
 public class PythonTypeArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = 712921907304465376L;
+
     private byte[] bytes;
 
     public void setBytes(byte[] bytes) {

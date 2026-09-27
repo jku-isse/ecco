@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class WhileBlockArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -5846886824476625418L;
+
     private String whileblock;
 
     public WhileBlockArtifactData(String whileblock) {

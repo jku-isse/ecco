@@ -4,6 +4,8 @@ import java.util.Objects;
 
 public class ClassArtifactData extends AbstractArtifactData {
 
+    private static final long serialVersionUID = 4239417938195510632L;
+
     private final String classDecl;
 
 

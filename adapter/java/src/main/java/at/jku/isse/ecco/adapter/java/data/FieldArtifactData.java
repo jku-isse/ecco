@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class FieldArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = -3166392469167997640L;
+
 	private String field;
 
 	public FieldArtifactData(String field) {

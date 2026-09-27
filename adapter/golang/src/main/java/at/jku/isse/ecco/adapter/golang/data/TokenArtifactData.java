@@ -5,6 +5,8 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import java.util.Objects;
 
 public class TokenArtifactData implements ArtifactData {
+
+    private static final long serialVersionUID = 53015854903552992L;
     private final String token;
     private final int row;
     private final int column;

@@ -4,6 +4,8 @@ import java.util.Objects;
 
 public class EnumArtifactData extends AbstractArtifactData {
 
+    private static final long serialVersionUID = 4571054512951020122L;
+
     private final String enumName;
 
 

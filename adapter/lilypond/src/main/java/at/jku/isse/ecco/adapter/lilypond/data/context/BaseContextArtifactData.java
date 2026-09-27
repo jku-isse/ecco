@@ -8,6 +8,8 @@ import java.util.Objects;
  * Represents a base class for a Lilypond context (lexicon in python <a href="https://parce.info">parce</a> parser).
  */
 public abstract class BaseContextArtifactData implements ArtifactData {
+
+    private static final long serialVersionUID = -2857020999325881825L;
     private final String context;
 
     public BaseContextArtifactData(String context)

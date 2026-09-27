@@ -10,6 +10,8 @@ import java.nio.file.Paths;
 
 public class PluginArtifactData implements ArtifactData {
 
+	private static final long serialVersionUID = 113880049592859344L;
+
 	private String pluginId;
 	private transient Path path;
 	private String pathString;

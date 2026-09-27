@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public class JsonArrayArtifactData implements ArtifactData {
 
+    private static final long serialVersionUID = -3155514632839976778L;
+
     @Override
     public String toString() {
         return "JsonArrayArtifactData";

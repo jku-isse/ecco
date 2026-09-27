@@ -4,6 +4,8 @@ import java.util.Objects;
 
 public class LoopArtifactData extends AbstractArtifactData {
 
+    private static final long serialVersionUID = -989978489103079974L;
+
     private final String loopBlock;
 
     public LoopArtifactData(String loopHead) {

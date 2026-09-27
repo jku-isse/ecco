@@ -4,6 +4,8 @@ import java.util.Objects;
 
 public class CaseClauseArtifactData extends AbstractArtifactData {
 
+    private static final long serialVersionUID = -2096189020226664575L;
+
     private final String caseClause;
 
 

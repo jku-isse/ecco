@@ -4,6 +4,8 @@ import java.util.Objects;
 
 public class BlockArtifactData extends AbstractArtifactData {
 
+	private static final long serialVersionUID = 9051218881542497396L;
+
 	private final String block;
 
 
