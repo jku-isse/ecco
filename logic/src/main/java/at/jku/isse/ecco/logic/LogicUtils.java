@@ -43,7 +43,7 @@ public class LogicUtils {
         } catch (ParserException e){
             throw new LogicException("String could not be parsed according to grammar " +
                     "https://github.com/logic-ng/parser/blob/main/src/main/antlr/LogicNGPropositional.g4: " +
-                    e.getMessage());
+                    e.getMessage(), e);
         }
     }
 }
