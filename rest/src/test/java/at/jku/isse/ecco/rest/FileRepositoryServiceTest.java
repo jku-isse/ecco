@@ -19,10 +19,9 @@ import static org.mockito.Mockito.*;
 
 /**
  * FileRepositoryService.repoStorage used to be a hardcoded static field resolving to a real,
- * persistent path under this repo's own working tree (see Settings.STORAGE_LOCATION_OF_REPOSITORIES,
- * and examples/newTestRepro/ - a leftover from RestTest.createNewRepo(), which exercises exactly that
- * path). It's now constructor-injectable (see FileRepositoryService(Path)), so these point it at a
- * temp directory instead.
+ * persistent path under this repo's own working tree (see Settings.STORAGE_LOCATION_OF_REPOSITORIES).
+ * It's now constructor-injectable (see FileRepositoryService(Path)), so these (and RestTest) point it
+ * at a temp directory instead.
  */
 public class FileRepositoryServiceTest {
 
