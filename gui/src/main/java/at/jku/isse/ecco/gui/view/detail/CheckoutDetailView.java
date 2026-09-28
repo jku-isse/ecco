@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.featuretrace.RejectedTrace;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -230,6 +231,14 @@ public class CheckoutDetailView extends BorderPane {
 			// against a requires/excludes rule it violates) - not a resolved/moot warning, so unfiltered.
 			for (String constraintWarning : checkout.getConstraintWarnings()) {
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("CONSTRAINT", constraintWarning, "", "", null));
+			}
+
+			// proactive feature traces that contradict the commit history (see ProactiveTraceCheck) -
+			// not used for this checkout; the fix is correcting the trace at its source (e.g. the
+			// VEVOS presence-condition file), so there is no Apply Fix action
+			for (RejectedTrace rejectedTrace : checkout.getRejectedTraces()) {
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("TRACE", rejectedTrace.describe(), rejectedTrace.location(),
+						rejectedTrace.suggestion() == null ? "" : "use the trace \"" + rejectedTrace.suggestion() + "\"", null));
 			}
 		} else {
 			this.setCenter(null);

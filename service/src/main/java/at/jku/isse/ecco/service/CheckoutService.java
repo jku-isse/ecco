@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.featuretrace.RejectedTrace;
 import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.*;
 import at.jku.isse.ecco.adapter.dispatch.*;
@@ -161,6 +162,9 @@ class CheckoutService {
                     }
                     for (String constraintWarning : checkout.getConstraintWarnings()) {
                         sb.append("CONSTRAINT: ").append(constraintWarning).append(System.lineSeparator());
+                    }
+                    for (RejectedTrace rejectedTrace : checkout.getRejectedTraces()) {
+                        sb.append("TRACE: ").append(rejectedTrace.describe()).append(System.lineSeparator());
                     }
                     Files.write(warningsFile, sb.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                 } catch (IOException e) {

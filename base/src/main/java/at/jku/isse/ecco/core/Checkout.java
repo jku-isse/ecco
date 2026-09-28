@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.featuretrace.RejectedTrace;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.module.ModuleRevision;
 import at.jku.isse.ecco.tree.Node;
@@ -22,6 +23,8 @@ public class Checkout {
 
 	private List<String> constraintWarnings;
 
+	private List<RejectedTrace> rejectedTraces;
+
 	private Node node;
 
 	public Checkout() {
@@ -32,6 +35,7 @@ public class Checkout {
 		this.unresolvedAssociations = new HashSet<>();
 		this.selectedAssociations = new HashSet<>();
 		this.constraintWarnings = new ArrayList<>();
+		this.rejectedTraces = new ArrayList<>();
 		this.node = null;
 	}
 
@@ -87,4 +91,8 @@ public class Checkout {
 		return this.constraintWarnings;
 	}
 
+	/** Proactive feature traces that were not used because they contradict the commit history. */
+	public List<RejectedTrace> getRejectedTraces() {
+		return this.rejectedTraces;
+	}
 }

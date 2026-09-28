@@ -4,6 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
+import at.jku.isse.ecco.featuretrace.RejectedTrace;
 import at.jku.isse.ecco.composition.CheckoutComposer;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
@@ -233,6 +234,14 @@ public interface Repository extends Persistable {
 		}
 
 		void buildMainTree();
+
+		/**
+		 * The proactive feature traces the main tree does not use because they contradict the
+		 * commit history (see ProactiveTraceCheck) - none for strategies that do not check.
+		 */
+		default List<RejectedTrace> getRejectedTraces() {
+			return List.of();
+		}
 
 		Node.Op getMainTree();
 
@@ -757,6 +766,7 @@ public interface Repository extends Persistable {
 			Node.Op mainTree = this.getMainTree();
 			CheckoutComposer composer = new CheckoutComposer(configuration, this.getEvaluationStrategy());
 			Checkout checkout = composer.composeCheckout(mainTree, selectedAssociations);
+			checkout.getRejectedTraces().addAll(this.getRejectedTraces());
 
 			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
 			Set<ModuleRevision> missingModules = new HashSet<>();
