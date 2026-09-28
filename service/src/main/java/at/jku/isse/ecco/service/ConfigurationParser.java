@@ -23,6 +23,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 class ConfigurationParser {
 
+    /** The length revision ids are truncated to for display (FeatureRevision#getFeatureRevisionString). */
+    private static final int DISPLAYED_ID_LENGTH = 7;
+
     private final EccoService owner;
 
     ConfigurationParser(EccoService owner) {
@@ -116,8 +119,15 @@ class ConfigurationParser {
      * Finds the unique revision of {@code feature} whose full id starts with {@code idPrefix}, or
      * null if none or more than one match (an ambiguous prefix is treated the same as no match -
      * callers fall back to creating a new revision rather than guessing).
+     * <p>
+     * Only prefixes at least as long as a displayed id count: shorter ids are displayed in full (and
+     * found exactly), and a short id like the "2" of "A.2" names a new revision - matched as a prefix
+     * it hit a random revision id starting with "2" one time in 16, and the commit went to that
+     * revision instead.
      */
     private FeatureRevision findRevisionByIdPrefix(Feature feature, String idPrefix) {
+        if (idPrefix.length() < DISPLAYED_ID_LENGTH)
+            return null;
         FeatureRevision match = null;
         for (FeatureRevision candidate : feature.getRevisions()) {
             if (candidate.getId().startsWith(idPrefix)) {
