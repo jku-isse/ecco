@@ -110,7 +110,9 @@ public abstract class OperationView extends BorderPane {
 
 
 	protected void fit() {
-		this.autosize();
+		// no autosize() first: it set this view to its preferred size, and where the window then
+		// kept its size (macOS keeps a utility window's width when its content gets smaller) the
+		// scene never laid the view out again - it stayed that narrow inside the wider window
 		if (this.getScene() != null && this.getScene().getWindow() != null) {
 			this.getScene().getWindow().sizeToScene();
 		} else {
@@ -123,6 +125,30 @@ public abstract class OperationView extends BorderPane {
 			// actually non-null, however many pumps that takes, instead of assuming exactly one.
 			Platform.runLater(this::fit);
 		}
+	}
+
+
+	/**
+	 * Like {@link #fit()}, but only ever makes the window larger (up to the screen), never smaller:
+	 * for content that appears after the window is up (e.g. a result below a log), without undoing
+	 * a size the user chose.
+	 */
+	protected void growToFit() {
+		if (this.getScene() == null || !(this.getScene().getWindow() instanceof Stage stage))
+			return;
+		this.applyCss();
+		this.layout();
+		double decorationWidth = stage.getWidth() - this.getScene().getWidth();
+		double decorationHeight = stage.getHeight() - this.getScene().getHeight();
+		double width = this.prefWidth(-1) + decorationWidth;
+		double height = this.prefHeight(width - decorationWidth) + decorationHeight;
+		javafx.geometry.Rectangle2D screen = javafx.stage.Screen.getPrimary().getVisualBounds();
+		stage.setWidth(Math.min(Math.max(stage.getWidth(), width), screen.getWidth()));
+		stage.setHeight(Math.min(Math.max(stage.getHeight(), height), screen.getHeight()));
+		if (stage.getY() + stage.getHeight() > screen.getMaxY())
+			stage.setY(Math.max(screen.getMinY(), screen.getMaxY() - stage.getHeight()));
+		if (stage.getX() + stage.getWidth() > screen.getMaxX())
+			stage.setX(Math.max(screen.getMinX(), screen.getMaxX() - stage.getWidth()));
 	}
 
 

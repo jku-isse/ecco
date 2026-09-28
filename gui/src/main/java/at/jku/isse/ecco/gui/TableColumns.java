@@ -4,7 +4,8 @@ import javafx.application.Platform;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
-import javafx.scene.control.Label;
+import javafx.beans.property.ReadOnlyDoubleProperty;
+import javafx.scene.control.Cell;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -169,24 +170,34 @@ public final class TableColumns {
 	 */
 	public static <S> Callback<TableColumn<S, String>, TableCell<S, String>> wrappingCellFactory() {
 		return column -> new TableCell<>() {
-			private final Label label = new Label();
-
-			{
-				label.setWrapText(true);
-				label.prefWidthProperty().bind(column.widthProperty().subtract(10));
-			}
+			private final Text text = wrappingText(this, column.widthProperty());
 
 			@Override
 			protected void updateItem(String item, boolean empty) {
 				super.updateItem(item, empty);
+				setText(null);
 				if (empty || item == null) {
 					setGraphic(null);
 				} else {
-					label.setText(item);
-					setGraphic(label);
+					text.setText(item);
+					setGraphic(text);
 				}
 			}
 		};
+	}
+
+	/**
+	 * A text node for {@code cell}'s graphic that wraps at {@code columnWidth} and looks like the
+	 * cell's own text (font, and color - also when the row is selected). A wrapping Label does not
+	 * do: a row takes its cells' preferred height at no particular width, where a Label is a single
+	 * line, so its text was cut off instead of growing the row.
+	 */
+	public static Text wrappingText(Cell<?> cell, ReadOnlyDoubleProperty columnWidth) {
+		Text text = new Text();
+		text.wrappingWidthProperty().bind(columnWidth.subtract(12));
+		text.fontProperty().bind(cell.fontProperty());
+		text.fillProperty().bind(cell.textFillProperty());
+		return text;
 	}
 
 
@@ -271,21 +282,17 @@ public final class TableColumns {
 	/** Same as {@link #wrappingCellFactory()}, for a {@link TreeTableCell}. */
 	public static <S> Callback<TreeTableColumn<S, String>, TreeTableCell<S, String>> wrappingTreeCellFactory() {
 		return column -> new TreeTableCell<>() {
-			private final Label label = new Label();
-
-			{
-				label.setWrapText(true);
-				label.prefWidthProperty().bind(column.widthProperty().subtract(10));
-			}
+			private final Text text = wrappingText(this, column.widthProperty());
 
 			@Override
 			protected void updateItem(String item, boolean empty) {
 				super.updateItem(item, empty);
+				setText(null);
 				if (empty || item == null) {
 					setGraphic(null);
 				} else {
-					label.setText(item);
-					setGraphic(label);
+					text.setText(item);
+					setGraphic(text);
 				}
 			}
 		};

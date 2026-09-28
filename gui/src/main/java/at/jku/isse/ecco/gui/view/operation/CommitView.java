@@ -24,12 +24,17 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.util.converter.DefaultStringConverter;
+import javafx.scene.text.Text;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -53,9 +58,9 @@ public class CommitView extends OperationView implements EccoListener {
 
 	// SplitPane defaults to an even 50/50 split whenever a second item joins (commitDetailView on
 	// success, an ExceptionTextArea on failure/cancellation), with no regard for logArea's own
-	// preferred size - squeezing the log the user is here to check straight back down. Give it a
-	// clear majority share instead.
-	private static final double LOG_DIVIDER_POSITION = 0.65;
+	// preferred size - squeezing the log the user is here to check straight back down. An even
+	// share keeps the commit's associations (below it) visible too.
+	private static final double LOG_DIVIDER_POSITION = 0.5;
 
 	private EccoService service;
 
@@ -171,7 +176,9 @@ public class CommitView extends OperationView implements EccoListener {
 		foldersTable.setEditable(true);
 		foldersTable.setItems(this.folderData);
 		foldersTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-		foldersTable.setPrefHeight(200);
+		foldersTable.setPrefHeight(280);
+		// wide enough for a few folder names and wrapped configurations without squeezing columns
+		foldersTable.setPrefWidth(1060);
 
 		TableColumn<FolderEntry, Integer> orderCol = new TableColumn<>("#");
 		orderCol.setSortable(false);
@@ -184,8 +191,21 @@ public class CommitView extends OperationView implements EccoListener {
 			}
 		});
 
+		// the folder's name - they usually share a long parent path; the full path is its tooltip
 		TableColumn<FolderEntry, String> folderCol = new TableColumn<>("Folder");
-		folderCol.setCellValueFactory(param -> param.getValue().folderProperty());
+		folderCol.setCellValueFactory(param -> {
+			Path name = Paths.get(param.getValue().getFolder()).getFileName();
+			return new ReadOnlyStringWrapper(name == null ? param.getValue().getFolder() : name.toString());
+		});
+		folderCol.setCellFactory(col -> new TableCell<>() {
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				FolderEntry entry = empty || this.getTableRow() == null ? null : this.getTableRow().getItem();
+				setText(empty ? null : item);
+				setTooltip(entry == null ? null : new Tooltip(entry.getFolder()));
+			}
+		});
 
 		TableColumn<FolderEntry, String> configCol = new TableColumn<>("Configuration");
 		configCol.setCellValueFactory(param -> param.getValue().configurationProperty());
@@ -199,7 +219,7 @@ public class CommitView extends OperationView implements EccoListener {
 		// LINE.1"), independently editable per row -- there's no single global commit message anymore.
 		TableColumn<FolderEntry, String> commitMessageCol = new TableColumn<>("Commit Message");
 		commitMessageCol.setCellValueFactory(param -> param.getValue().commitMessageProperty());
-		commitMessageCol.setCellFactory(this.editableStringCellFactory());
+		commitMessageCol.setCellFactory(this.wrappingEditableStringCellFactory());
 		commitMessageCol.setOnEditCommit(event -> event.getRowValue().setCommitMessage(event.getNewValue()));
 
 		// live constraint-violation feedback as a configuration is entered/edited -- see
@@ -223,10 +243,11 @@ public class CommitView extends OperationView implements EccoListener {
 		foldersTable.getColumns().setAll(orderCol, folderCol, configCol, commitMessageCol, warningCol);
 
 		TableColumns.defaultWidth(orderCol, 36);
-		TableColumns.fitToContent(configCol, this.folderData);
-		TableColumns.fitToContent(commitMessageCol, this.folderData);
+		TableColumns.fitToContent(folderCol, this.folderData);
+		TableColumns.defaultWidth(configCol, 380);
+		TableColumns.defaultWidth(commitMessageCol, 320);
 		TableColumns.fitToContent(warningCol, this.folderData);
-		TableColumns.growToFill(foldersTable, folderCol);
+		TableColumns.growToFill(foldersTable, configCol);
 
 		return foldersTable;
 	}
@@ -243,6 +264,7 @@ public class CommitView extends OperationView implements EccoListener {
 	 */
 	private VBox buildFolderButtons(TableView<FolderEntry> foldersTable) {
 		Button selectParentFolderButton = new Button("Select Parent Folder...");
+		selectParentFolderButton.setMinWidth(Region.USE_PREF_SIZE);
 
 		selectParentFolderButton.setOnAction(event -> {
 			final DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -327,7 +349,7 @@ public class CommitView extends OperationView implements EccoListener {
 							lastCommit = CommitView.this.service.commit(commitMessage);
 						double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
 						Platform.runLater(() -> CommitView.this.logArea.appendText(
-								String.format("Committed %s in %.2f seconds.%n", entry.getFolder(), durationSeconds)));
+								String.format("Committed %s in %.2f seconds.%n", Paths.get(entry.getFolder()).getFileName(), durationSeconds)));
 
 						Commit committedEntry = lastCommit;
 						List<String> constraintViolations =
@@ -355,6 +377,7 @@ public class CommitView extends OperationView implements EccoListener {
 					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, CommitView.this.commitDetailView);
 					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 					CommitView.this.showSuccessHeader();
+					CommitView.this.growToFit();
 				}
 
 				@Override
@@ -366,6 +389,7 @@ public class CommitView extends OperationView implements EccoListener {
 					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
 					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 					CommitView.this.showErrorHeader();
+					CommitView.this.growToFit();
 				}
 
 				@Override
@@ -377,6 +401,7 @@ public class CommitView extends OperationView implements EccoListener {
 					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
 					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
 					CommitView.this.showErrorHeader();
+					CommitView.this.growToFit();
 				}
 			};
 			new Thread(commitTask).start();
@@ -467,18 +492,22 @@ public class CommitView extends OperationView implements EccoListener {
 		this.rightButtons.getChildren().clear();
 
 
-		this.splitPane.setPadding(new Insets(0, 10, 10, 10));
+		this.splitPane.setPadding(new Insets(10));
+		this.commitDetailView.setPadding(new Insets(10, 0, 0, 0));
 		this.setCenter(this.splitPane);
 
 
-		this.fit();
+		// keeps the width the folders table needed
+		this.growToFit();
 	}
 
 
 	@Override
 	public void fileReadEvent(Path file, ArtifactReader reader) {
 		String plugin = PluginNames.shortName(reader.getPluginId());
-		Platform.runLater(() -> this.logArea.appendText(String.format("Read %s using (%s)%n", file, plugin)));
+		// the folder itself is read as an empty relative path
+		String name = file.toString().isEmpty() ? "." : file.toString();
+		Platform.runLater(() -> this.logArea.appendText(String.format("Read %s using (%s)%n", name, plugin)));
 	}
 
 	@Override
@@ -503,6 +532,7 @@ public class CommitView extends OperationView implements EccoListener {
 	 */
 	private javafx.util.Callback<TableColumn<FolderEntry, String>, TableCell<FolderEntry, String>> configCellFactoryWithLiveWarning() {
 		return column -> new TableCell<FolderEntry, String>() {
+			private final Text displayText = TableColumns.wrappingText(this, column.widthProperty());
 			private TextArea textArea;
 
 			private TextArea editor() {
@@ -563,8 +593,9 @@ public class CommitView extends OperationView implements EccoListener {
 			@Override
 			public void cancelEdit() {
 				super.cancelEdit();
-				this.setText(this.getItem());
-				this.setGraphic(null);
+				this.setText(null);
+				this.displayText.setText(this.getItem());
+				this.setGraphic(this.displayText);
 			}
 
 			@Override
@@ -586,12 +617,52 @@ public class CommitView extends OperationView implements EccoListener {
 					this.setText(null);
 					this.setGraphic(editor());
 				} else {
-					this.setText(item);
-					this.setGraphic(null);
+					this.setText(null);
+					this.displayText.setText(item);
+					this.setGraphic(this.displayText);
 				}
 			}
 		};
 	}
+
+	/**
+	 * Like {@link OperationView#editableStringCellFactory()} (commit on focus lost), but showing the
+	 * value wrapped while not editing - a long commit message grows its row instead of being cut off.
+	 */
+	private javafx.util.Callback<TableColumn<FolderEntry, String>, TableCell<FolderEntry, String>> wrappingEditableStringCellFactory() {
+		return column -> new TextFieldTableCell<FolderEntry, String>(new DefaultStringConverter()) {
+			private final Text displayText = TableColumns.wrappingText(this, column.widthProperty());
+
+			@Override
+			public void startEdit() {
+				super.startEdit();
+				if (this.getGraphic() instanceof TextField textField) {
+					textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+						if (!isNowFocused && this.isEditing()) {
+							this.commitEdit(textField.getText());
+						}
+					});
+				}
+			}
+
+			@Override
+			public void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				if (!empty && item != null && !this.isEditing()) {
+					this.displayText.setText(item);
+					this.setText(null);
+					this.setGraphic(this.displayText);
+				}
+			}
+
+			@Override
+			public void cancelEdit() {
+				super.cancelEdit();
+				this.updateItem(this.getItem(), this.isEmpty());
+			}
+		};
+	}
+
 
 	/**
 	 * Live constraint-violation feedback (see {@code EccoService#checkConstraintViolations}) for one
