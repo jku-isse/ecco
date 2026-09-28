@@ -47,6 +47,8 @@ public class EccoGui extends Application implements EccoListener {
 	public void start(Stage primaryStage) {
 		this.stage = primaryStage;
 
+		// ecco.css on every window the app opens (dialogs create their own scenes)
+		AppStylesheet.applyToAllWindows();
 		Stage splashStage = this.buildSplashStage();
 		splashStage.show();
 		splashStage.toFront();
@@ -127,7 +129,7 @@ public class EccoGui extends Application implements EccoListener {
 		// Import From Git... | Open Directory...) - the band is a plain HBox with no scrolling of
 		// its own, so anything narrower than its content just gets cut off at the window edge.
 		Scene scene = new Scene(root, 1200, 700);
-		scene.getStylesheets().add("ecco.css");
+		scene.getStylesheets().add(AppStylesheet.FILE);
 		primaryStage.setMinWidth(1000);
 		primaryStage.setMinHeight(500);
 
