@@ -10,7 +10,9 @@ import org.junit.jupiter.api.Timeout;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,7 +45,9 @@ public class TaskFailuresTest {
                 throw new IllegalStateException("boom");
             }
         };
-        TaskFailures.reportAndReenable(task, toolBar);
+        // a real dialog would pop up on every test run
+        AtomicReference<Throwable> reported = new AtomicReference<>();
+        TaskFailures.reportAndReenable(task, reported::set, toolBar);
         new Thread(task).start();
 
         AtomicBoolean disabled = new AtomicBoolean(true);
@@ -58,5 +62,6 @@ public class TaskFailuresTest {
             Thread.sleep(50);
         }
         assertFalse(disabled.get(), "the toolbar must be re-enabled after the task failed");
+        assertEquals("boom", reported.get().getMessage());
     }
 }
