@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.feature;
 
+import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.module.Module;
 import at.jku.isse.ecco.module.ModuleRevision;
@@ -97,17 +98,37 @@ public class ConfigurationTest {
     }
 
     @Test
-    public void toAssignmentProducesOnePositiveLiteralPerFeatureRevision() {
+    public void toAssignmentMakesEachSelectedRevisionTrue() {
         FeatureRevision revisionA = revisionOf("A");
         Configuration configuration = ef.createConfiguration(new FeatureRevision[]{revisionA});
 
         var assignment = configuration.toAssignment();
 
-        assertEquals(1, assignment.positiveVariables().size());
-        // toAssignment() replaces '.' and '-' with '_' in "name.id" (Configuration.java:175-177) so the
-        // literal is a valid LogicNG identifier - UUIDs contain '-', so this is exercising real input,
-        // not an edge case that happens not to occur in practice.
+        // toAssignment() replaces '.' and '-' with '_' in "name.id" so the literal is a valid LogicNG
+        // identifier - UUIDs contain '-', so this is exercising real input, not an edge case that
+        // happens not to occur in practice.
         String expectedLiteral = (revisionA.getFeature().getName() + "." + revisionA.getId()).replace(".", "_").replace("-", "_");
-        assertEquals(expectedLiteral, assignment.positiveVariables().get(0).name());
+        assertTrue(assignment.positiveVariables().stream().anyMatch(v -> v.name().equals(expectedLiteral)), assignment.toString());
+    }
+
+    /**
+     * Proactive feature traces (e.g. VEVOS presence conditions) name features, not revisions: "LOG".
+     * Only revision literals used to be true, so such a condition never held - the traced lines, and
+     * with boosting their whole association, were dropped from every checkout.
+     */
+    @Test
+    public void toAssignmentMakesEachSelectedFeatureNameTrue() {
+        FeatureRevision revisionA = revisionOf("A");
+        FeatureRevision revisionB = revisionOf("my-feature");
+        Configuration configuration = ef.createConfiguration(new FeatureRevision[]{revisionA, revisionB});
+
+        var assignment = configuration.toAssignment();
+
+        assertTrue(LogicUtils.parseString("A").evaluate(assignment));
+        // sanitized like proactive conditions are ('-' -> '_')
+        assertTrue(LogicUtils.parseString("my_feature").evaluate(assignment));
+        assertTrue(LogicUtils.parseString("A & my_feature").evaluate(assignment));
+        assertFalse(LogicUtils.parseString("B").evaluate(assignment));
+        assertEquals(4, assignment.positiveVariables().size());
     }
 }

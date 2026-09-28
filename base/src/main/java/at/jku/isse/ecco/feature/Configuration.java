@@ -89,6 +89,12 @@ public interface Configuration extends Persistable {
         return true;
     }
 
+    /**
+     * The assignment feature-trace conditions are evaluated with: for each selected feature revision,
+     * its revision ("name_id", as retroactive conditions name it) and its feature ("name", as
+     * proactive conditions such as VEVOS presence conditions name it) are true. Names are sanitized
+     * like condition strings ('.' and '-' become '_').
+     */
     default Assignment toAssignment(){
         Assignment assignment = new Assignment();
         for (FeatureRevision featureRevision: this.getFeatureRevisions()){
@@ -98,6 +104,9 @@ public interface Configuration extends Persistable {
             literalString = literalString.replace("-", "_");
             Literal revisionLiteral = FormulaFactoryProvider.getFormulaFactory().literal(literalString, true);
             assignment.addLiteral(revisionLiteral);
+            // and so is the feature - whichever revision is selected
+            String featureLiteralString = featureRevision.getFeature().getName().replace(".", "_").replace("-", "_");
+            assignment.addLiteral(FormulaFactoryProvider.getFormulaFactory().literal(featureLiteralString, true));
         }
         return assignment;
     }
