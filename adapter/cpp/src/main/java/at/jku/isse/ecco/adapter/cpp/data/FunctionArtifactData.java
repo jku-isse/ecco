@@ -49,4 +49,8 @@ public class FunctionArtifactData implements ArtifactData {
 		return true;
 	}
 
+	@Override
+	public String retiredFormat() {
+		return RetiredFormat.EXPLANATION;
+	}
 }

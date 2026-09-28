@@ -49,4 +49,8 @@ public class BlockArtifactData implements ArtifactData {
         return true;
     }
 
+	@Override
+	public String retiredFormat() {
+		return RetiredFormat.EXPLANATION;
+	}
 }

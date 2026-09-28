@@ -45,4 +45,8 @@ public class LineArtifactData implements ArtifactData {
 		return true;
 	}
 
+	@Override
+	public String retiredFormat() {
+		return RetiredFormat.EXPLANATION;
+	}
 }
