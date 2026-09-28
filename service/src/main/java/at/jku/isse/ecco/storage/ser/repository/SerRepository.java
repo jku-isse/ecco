@@ -1,5 +1,8 @@
 package at.jku.isse.ecco.storage.ser.repository;
 
+import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
+import at.jku.isse.ecco.featuretrace.RejectedTrace;
+
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
 import at.jku.isse.ecco.featuretrace.evaluation.ProactiveBasedEvaluation;
@@ -89,6 +92,8 @@ public final class SerRepository implements Repository, Repository.Op {
 	// "core" database write silently O(whole-repo-tree-size) instead of O(metadata), causing an
 	// OutOfMemoryError partway through a 60+ commit Git import.
 	private transient Node.Op mainTree;
+	// the proactive traces the last main-tree build rejected (see ProactiveTraceCheck), derived with it
+	private transient List<RejectedTrace> rejectedTraces;
 	private MainTreeBuildingStrategy mainTreeBuildingStrategy;
 	private EvaluationStrategy evaluationStrategy;
 
@@ -475,7 +480,15 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	@Override
 	public void buildMainTree() {
-		this.mainTree = this.mainTreeBuildingStrategy.buildMainTree(this.getAssociations());
+		ProactiveTraceCheck traceCheck = new ProactiveTraceCheck(this.getCommits());
+		this.mainTree = this.mainTreeBuildingStrategy.buildMainTree(this.getAssociations(), traceCheck);
+		this.rejectedTraces = traceCheck.getRejected();
+	}
+
+	@Override
+	public List<RejectedTrace> getRejectedTraces() {
+		this.getMainTree();
+		return this.rejectedTraces == null ? List.of() : this.rejectedTraces;
 	}
 
 	/**
@@ -489,6 +502,7 @@ public final class SerRepository implements Repository, Repository.Op {
 	 */
 	public void invalidateMainTree() {
 		this.mainTree = null;
+		this.rejectedTraces = null;
 	}
 
 	 @Override
