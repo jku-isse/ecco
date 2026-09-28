@@ -7,15 +7,48 @@ import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.runtime.EmbeddedApplication;
 import io.micronaut.security.authentication.UsernamePasswordCredentials;
 import io.micronaut.security.token.render.BearerAccessRefreshToken;
+import io.micronaut.test.annotation.MockBean;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @MicronautTest
 class RestTest {
+
+    // repositories created through the API go here instead of the real storage under examples/
+    private static final Path REPO_STORAGE;
+
+    static {
+        try {
+            REPO_STORAGE = Files.createTempDirectory("ecco-rest-test");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @MockBean(FileRepositoryService.class)
+    FileRepositoryService repositoryService() {
+        return new FileRepositoryService(REPO_STORAGE);
+    }
+
+    @AfterAll
+    static void deleteRepoStorage() throws IOException {
+        try (Stream<Path> paths = Files.walk(REPO_STORAGE)) {
+            for (Path path : paths.sorted(Comparator.reverseOrder()).toList())
+                Files.delete(path);
+        }
+    }
 
     @Inject
     EmbeddedApplication<?> application;
