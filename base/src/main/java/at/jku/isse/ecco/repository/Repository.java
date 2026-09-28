@@ -3,6 +3,7 @@ package at.jku.isse.ecco.repository;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
+import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.composition.CheckoutComposer;
 import at.jku.isse.ecco.composition.LazyCompositionRootNode;
 import at.jku.isse.ecco.core.*;
@@ -1036,35 +1037,46 @@ public interface Repository extends Persistable {
 		}
 
 		/**
-		 * Fails if an artifact whose data requires ordering (ArtifactData#requiresOrderedArtifact)
-		 * is stored unordered - written by an older version of its adapter. Such an artifact does not
-		 * equal the ordered one the adapter reads now, and adding a commit (or merging) with both made
-		 * checkouts silently drop them: the order selector places only children it finds in the
-		 * parent's order graph. Checkouts of the repository as it is still work.
+		 * Fails if the repository holds artifacts an older version of their adapter wrote in a way
+		 * the adapter no longer reads, so adding a commit (or merging) would mix both:
+		 * <ul>
+		 * <li>data that requires ordering (ArtifactData#requiresOrderedArtifact) stored unordered - it
+		 * does not equal the ordered artifact read now, and with both, checkouts silently dropped them
+		 * (the order selector places only children it finds in the parent's order graph);</li>
+		 * <li>data of a retired format (ArtifactData#retiredFormat).</li>
+		 * </ul>
+		 * Checkouts of the repository as it is still work.
 		 */
-		default void checkOrderedArtifacts() {
+		default void checkArtifactFormats() {
 			for (Association.Op association : this.getAssociations()) {
 				if (association.getRootNode() != null)
-					checkOrderedArtifacts(association.getRootNode());
+					checkArtifactFormats(association.getRootNode());
 			}
 		}
 
-		private static void checkOrderedArtifacts(Node.Op node) {
-			if (node.getArtifact() != null && !node.getArtifact().isOrdered()
-					&& node.getArtifact().getData() != null && node.getArtifact().getData().requiresOrderedArtifact()) {
-				throw new EccoException("This repository holds " + node.getArtifact().getData().getClass().getSimpleName()
-						+ " artifacts written by an older version of their adapter, which did not keep the order of"
-						+ " their children (e.g. the cases of a TypeScript switch). Adding to it would make checkouts"
-						+ " lose them - re-create the repository by committing its variants with this version.");
+		private static void checkArtifactFormats(Node.Op node) {
+			if (node.getArtifact() != null && node.getArtifact().getData() != null) {
+				ArtifactData data = node.getArtifact().getData();
+				if (!node.getArtifact().isOrdered() && data.requiresOrderedArtifact()) {
+					throw new EccoException("This repository holds " + data.getClass().getSimpleName()
+							+ " artifacts written by an older version of their adapter, which did not keep the order of"
+							+ " their children (e.g. the cases of a TypeScript switch). Adding to it would make checkouts"
+							+ " lose them - re-create the repository by committing its variants with this version.");
+				}
+				if (data.retiredFormat() != null) {
+					throw new EccoException("This repository holds artifacts written by an older version of their adapter: "
+							+ data.retiredFormat() + " Adding to it would mix both - re-create the repository by committing"
+							+ " its variants with this version (checking out of it still works).");
+				}
 			}
 			for (Node.Op child : node.getChildren())
-				checkOrderedArtifacts(child);
+				checkArtifactFormats(child);
 		}
 
 		default void merge(Repository.Op otherRepository) {
 			checkNotNull(otherRepository);
-			this.checkOrderedArtifacts();
-			otherRepository.checkOrderedArtifacts();
+			this.checkArtifactFormats();
+			otherRepository.checkArtifactFormats();
 
 			// copy every constraint from other repository into this one that doesn't already exist
 			// here (by natural kind|a|b id). Kept deliberately independent of the module/association

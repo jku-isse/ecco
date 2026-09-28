@@ -173,8 +173,8 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | Text | `*.txt`, `*.xml`, `*.html`, `*.css`, `*.js`, `*.java` | lines; keeps the encoding, line separators, and final newline |
 | Markdown | `*.md`, `*.markdown` | markdown blocks |
 | Java (AST) | `*.java` | Java syntax tree (before the text adapter's `*.java`) |
-| C | `*.c`, `*.h` | lines, grouped by function |
-| C++ | `*.cpp`, `*.hpp` (and `*.c`, `*.h` after the C adapter) | C/C++ syntax tree |
+| C | `*.c`, `*.h` | lines, grouped by function; keeps the encoding, line separators, and final newline. Preprocessor directives are ordinary lines; VEVOS presence conditions (`pcs.variant.csv`) become proactive feature traces |
+| C++ | `*.cpp`, `*.hpp` (and `*.c`, `*.h` after the C adapter) | lines, grouped by namespace, class, enum and function; like the C adapter otherwise. Repositories committed with its first version (which reordered files and dropped comments, namespaces, classes and `#if` directives) can be checked out but not committed to |
 | TypeScript | `*.ts` | statements and blocks; parsed with the TypeScript compiler running in an embedded Node.js (Javet) |
 | Python | `*.py`, `*.ipynb`, `*.json` | Python syntax tree (libcst), notebook cells, JSON values. **Needs `python` 3 with the modules `libcst` and `py4j` on the `PATH`** |
 | LilyPond | `*.ly`, `*.ily` | LilyPond tokens. **Needs `python` 3 with the module `parce`**; rendering scores in the GUI needs LilyPond (see [its README](adapter/lilypond/README.md)) |

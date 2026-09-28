@@ -48,11 +48,21 @@ public interface ArtifactData extends Serializable {
 	/**
 	 * Whether artifacts with this data must be ordered, i.e. keep the order of their children - an
 	 * adapter that used to create them unordered makes repositories written before inconsistent with
-	 * what it reads now (see Repository.Op#checkOrderedArtifacts). False by default: the reader
+	 * what it reads now (see Repository.Op#checkArtifactFormats). False by default: the reader
 	 * decides per node.
 	 */
 	default boolean requiresOrderedArtifact() {
 		return false;
+	}
+
+	/**
+	 * Non-null for data that only an older version of its adapter creates - the adapter now reads
+	 * files into different trees, which cannot be combined with these. Checkouts still write such
+	 * artifacts, but a commit or merge into a repository holding them is refused with this
+	 * explanation (see Repository.Op#checkArtifactFormats). Null by default.
+	 */
+	default String retiredFormat() {
+		return null;
 	}
 
 }
