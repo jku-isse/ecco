@@ -1,11 +1,13 @@
 package at.jku.isse.ecco.adapter.c;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.c.translator.CEccoVisitor;
 import at.jku.isse.ecco.adapter.c.parser.generated.CLexer;
 import at.jku.isse.ecco.adapter.c.parser.generated.CParser;
 import at.jku.isse.ecco.adapter.dispatch.DispatchWriter;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
+import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.featuretrace.parser.VevosConditionHandler;
@@ -60,9 +62,17 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
         Set<Node.Op> nodes = new HashSet<>();
         for (Path path : input) {
             VevosFileConditionContainer fileConditionContainer = vevosConditionHandler.getFileSpecificPresenceConditions(path);
-            Node.Op pluginNode = addPluginNode(nodes, path);
             Path absolutePath = base.resolve(path);
-            this.parseFile(pluginNode, absolutePath, fileConditionContainer, path, configuration);
+            TextFileFormat.Decoded decoded;
+            try {
+                // charset/line separator/final newline are recorded so checkout reproduces the file byte
+                // for byte - see TextFileFormat
+                decoded = TextFileFormat.read(absolutePath);
+            } catch (IOException e) {
+                throw new EccoException("Could not read file: " + absolutePath, e);
+            }
+            Node.Op pluginNode = addPluginNode(nodes, path, decoded);
+            this.parseFile(pluginNode, decoded, fileConditionContainer, path, configuration);
             nodes.add(pluginNode);
         }
         return nodes;
@@ -82,43 +92,38 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
         }
     }
 
-    private Node.Op addPluginNode(Set<Node.Op> nodes, Path path){
-        Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
+    private Node.Op addPluginNode(Set<Node.Op> nodes, Path path, TextFileFormat.Decoded decoded){
+        PluginArtifactData pluginArtifactData = new PluginArtifactData(this.getPluginId(), path);
+        decoded.recordOn(pluginArtifactData);
+        Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(pluginArtifactData);
         Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
         nodes.add(pluginNode);
         return pluginNode;
     }
 
     private void parseFile(Node.Op pluginNode,
-                           Path absolutePath,
+                           TextFileFormat.Decoded decoded,
                            VevosFileConditionContainer fileConditionContainer,
                            Path relPath,
                            String configuration){
-        try {
-            List<String> lineList = Files.readAllLines(absolutePath);
-            String[] lines = lineList.toArray(new String[0]);
-            CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath, configuration);
-            CParser parser = this.createParser(absolutePath);
-            // in order to suppress log output
-            parser.removeErrorListeners();
-            ParseTree tree = parser.translationUnit();
-            translator.translate(tree);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        String[] lines = decoded.lines().toArray(new String[0]);
+        CEccoVisitor translator = new CEccoVisitor(pluginNode, lines, this.entityFactory, fileConditionContainer, relPath, configuration);
+        // the parser sees the same lines (joined with \n, so its line numbers match them whatever the
+        // file's line separator or charset)
+        CParser parser = this.createParser(String.join("\n", lines));
+        // in order to suppress log output
+        parser.removeErrorListeners();
+        ParseTree tree = parser.translationUnit();
+        translator.translate(tree);
     }
 
-    private CParser createParser(Path absolutePath){
-        try {
-            CharStream contentStream = CharStreams.fromFileName(String.valueOf(absolutePath));
-            CLexer lexer = new CLexer(contentStream);
-            // in order to suppress log output
-            lexer.removeErrorListeners();
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            return new CParser(tokens);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    private CParser createParser(String content){
+        CharStream contentStream = CharStreams.fromString(content);
+        CLexer lexer = new CLexer(contentStream);
+        // in order to suppress log output
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        return new CParser(tokens);
     }
 
     @Override
