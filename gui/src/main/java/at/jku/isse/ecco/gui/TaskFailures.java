@@ -3,6 +3,8 @@ package at.jku.isse.ecco.gui;
 import javafx.concurrent.Task;
 import javafx.scene.Node;
 
+import java.util.function.Consumer;
+
 /**
  * Failure handling for the background tasks behind toolbar actions. Most views disable their
  * toolbar, start a Task, and re-enable the toolbar at the end of call() - so any exception left the
@@ -18,10 +20,15 @@ public final class TaskFailures {
 	 * before the task is started.
 	 */
 	public static void reportAndReenable(Task<?> task, Node... controls) {
+		reportAndReenable(task, exception -> new ExceptionAlert(exception).show(), controls);
+	}
+
+	/** As above, with the exception going to {@code report} instead of a dialog (tests). */
+	static void reportAndReenable(Task<?> task, Consumer<Throwable> report, Node... controls) {
 		task.setOnFailed(event -> {
 			for (Node control : controls)
 				control.setDisable(false);
-			new ExceptionAlert(task.getException()).show();
+			report.accept(task.getException());
 		});
 	}
 }
