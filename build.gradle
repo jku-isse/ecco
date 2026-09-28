@@ -36,11 +36,15 @@ subprojects {
 	apply plugin: 'com.netflix.nebula.ospackage'
 	//apply plugin: 'checkstyle'
 
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	java {
+		sourceCompatibility = JavaVersion.VERSION_21
+		targetCompatibility = JavaVersion.VERSION_21
+	}
 
 	dependencies {
 		testImplementation libs.junit.jupiter
+		// Gradle 9 no longer puts the launcher on the test classpath by itself
+		testRuntimeOnly libs.junit.platform.launcher
 	}
 
 	jar {
@@ -115,12 +119,12 @@ subprojects {
 	}
 
 	tasks.withType(Test) {
-		reports.html.destination = file("${reporting.baseDir}/${name}")
+		reports.html.outputLocation = reporting.baseDirectory.dir(name)
 	}
 
 	idea {
 		module {
-			testSourceDirs += file('src/integrationTest/java')
+			testSources.from(file('src/integrationTest/java'))
 			scopes.TEST.plus += [configurations.integrationTestCompile]
 			downloadJavadoc = true
 			downloadSources = true
@@ -147,9 +151,9 @@ subprojects {
 	publishing {
 		publications {
 			eccoMaven(MavenPublication) {
-				groupId project.group
-				artifactId project.name
-				version project.version
+				groupId = project.group
+				artifactId = project.name
+				version = project.version
 
 				from project.components.java
 
@@ -197,12 +201,12 @@ subprojects {
 				project.configurations.findAll { it.name.equals("runtimeClasspath") }.collectMany {
 					it.allDependencies
 				}.findAll { it instanceof ProjectDependency }.collect {
-					(it as ProjectDependency).dependencyProject.configurations.runtimeClasspath
+					project.project((it as ProjectDependency).path).configurations.runtimeClasspath
 				}.each { temp = temp - it }
 
 				project.configurations.findAll { it.name.equals("runtimeClasspath") }.collectMany {
 					it.allDependencies
-				}.findAll { it instanceof ProjectDependency }.collect { (it as ProjectDependency).dependencyProject.jar.outputs.files }.each {
+				}.findAll { it instanceof ProjectDependency }.collect { project.project((it as ProjectDependency).path).jar.outputs.files }.each {
 					temp = temp - it
 				}
 
@@ -370,27 +374,25 @@ task combinedjavadoc(type: Javadoc, group: "documentation") {
 	classpath = files(project.subprojects.collect { it.sourceSets.main.compileClasspath })
 	options.memberLevel = JavadocMemberLevel.PRIVATE
 	options.links = ['https://docs.oracle.com/en/java/javase/13/docs/api/']
-	destinationDir = file("${buildDir}/docs/javadoc")
+	destinationDir = layout.buildDirectory.dir('docs/javadoc').get().asFile
 }
 
 task combinedrpm(type: Copy, group: 'packaging') {
 	dependsOn subprojects.rpm
-	into "$project.distsDirectory/rpm"
-	//from project.subprojects.collect { it.rpm.archivePath }
-	from subprojects.rpm.archivePath
+	into base.distsDirectory.dir('rpm')
+	from subprojects.rpm.archiveFile
 }
 
 task combineddeb(type: Copy, group: 'packaging') {
 	dependsOn subprojects.deb
-	into "$project.distsDirectory/deb"
-	//from project.subprojects.collect { it.deb.archivePath }
-	from subprojects.deb.archivePath
+	into base.distsDirectory.dir('deb')
+	from subprojects.deb.archiveFile
 }
 
 task combinedLinuxZip(type: Zip, group: 'packaging') {
 	into project.name
 	archiveClassifier = 'linux'
-	destinationDirectory = file("$project.distsDirectory/zip")
+	destinationDirectory = base.distsDirectory.dir('zip')
 	from { subprojects.linuxZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
@@ -398,7 +400,7 @@ task combinedLinuxZip(type: Zip, group: 'packaging') {
 task combinedWindowsZip(type: Zip, group: 'packaging') {
 	into project.name
 	archiveClassifier = 'windows'
-	destinationDirectory = file("$project.distsDirectory/zip")
+	destinationDirectory = base.distsDirectory.dir('zip')
 	from { subprojects.windowsZip.source }
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

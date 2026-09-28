@@ -20,5 +20,5 @@ dependencies {
 
 // https://stackoverflow.com/questions/67265308/gradle-entry-classpath-is-a-duplicate-but-no-duplicate-handling-strategy-has-b
 jar {
-    duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

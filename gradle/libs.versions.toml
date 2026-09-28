@@ -61,7 +61,7 @@ plugin-nebula-ospackage = "12.3.0"
 plugin-openjfx = "0.1.0"
 plugin-graalvm-native = "0.10.3"
 plugin-node-gradle = "7.0.1"
-plugin-shadow = "8.1.1"
+plugin-shadow = "8.3.9"
 plugin-micronaut-app = "4.2.1"
 
 [libraries]
@@ -126,5 +126,5 @@ nebula-ospackage = { id = "com.netflix.nebula.ospackage", version.ref = "plugin-
 openjfx-javafxplugin = { id = "org.openjfx.javafxplugin", version.ref = "plugin-openjfx" }
 graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "plugin-graalvm-native" }
 node-gradle = { id = "com.github.node-gradle.node", version.ref = "plugin-node-gradle" }
-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "plugin-shadow" }
+shadow = { id = "com.gradleup.shadow", version.ref = "plugin-shadow" }
 micronaut-minimal-application = { id = "io.micronaut.minimal.application", version.ref = "plugin-micronaut-app" }

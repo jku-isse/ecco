@@ -3,9 +3,11 @@ plugins {
 }
 
 apply plugin: 'application'
-mainClassName = "at.jku.isse.ecco.cli.Main"
-applicationName = "ecco"
-applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
+application {
+	mainClass = "at.jku.isse.ecco.cli.Main"
+	applicationName = "ecco"
+	applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
+}
 
 graalvmNative {
 	binaries {
@@ -59,8 +61,8 @@ dependencies {
 }
 
 ospackage {
-	summary 'CLI (Command Line Interface) for ECCO.'
-	packageDescription 'This package provides a CLI (Command Line Interface) for ECCO.'
+	summary = 'CLI (Command Line Interface) for ECCO.'
+	packageDescription = 'This package provides a CLI (Command Line Interface) for ECCO.'
 
 	requires('ecco-base', version, EQUAL)
 	requires('ecco-service', version, EQUAL)
