@@ -149,6 +149,8 @@ public class CommitView extends OperationView implements EccoListener {
 
 		HBox foldersBox = new HBox(10, foldersTable, folderButtons);
 		HBox.setHgrow(foldersTable, Priority.ALWAYS);
+		// the table takes any extra height when the window is made larger
+		GridPane.setVgrow(foldersBox, Priority.ALWAYS);
 		gridPane.add(foldersBox, 0, row, 2, 1);
 		row++;
 
