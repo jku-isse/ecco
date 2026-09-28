@@ -28,6 +28,9 @@ dependencies {
 	implementation libs.opencsv
 	implementation libs.guava
 	implementation libs.jgit
+	// jgit logs through slf4j; without a binding every run prints the "StaticLoggerBinder" warning.
+	// This sends its log output to java.util.logging, which ecco uses everywhere else
+	runtimeOnly libs.slf4j.jdk14
 	implementation libs.jackson.databind
 	implementation libs.jackson.core
 

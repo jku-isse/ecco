@@ -15,6 +15,11 @@ configurations.runtimeClasspath {
     // no GUI here (ecco.headless): the adapters' JavaFX viewers are not loaded, so JavaFX is left
     // out - it used to come along bundled into the file adapter's jar
     exclude group: 'org.openjfx'
+    // logs through logback (below), not ecco-service's slf4j-to-java.util.logging binding
+    exclude group: 'org.slf4j', module: 'slf4j-jdk14'
+}
+configurations.testRuntimeClasspath {
+    exclude group: 'org.slf4j', module: 'slf4j-jdk14'
 }
 
 dependencies {

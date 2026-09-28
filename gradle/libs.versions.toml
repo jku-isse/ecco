@@ -17,6 +17,8 @@ lombok = "1.18.30"
 java-diff-utils = "4.12"
 opencsv = "5.9"
 jgit = "6.10.0.202406032230-r"
+# the slf4j-api version jgit brings along
+slf4j-jdk14 = "1.7.36"
 jackson-databind = "2.15.3"
 jackson-core = "2.15.3"
 
@@ -82,6 +84,7 @@ lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 java-diff-utils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "java-diff-utils" }
 opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
 jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
+slf4j-jdk14 = { module = "org.slf4j:slf4j-jdk14", version.ref = "slf4j-jdk14" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson-databind" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson-core" }
 
