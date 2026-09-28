@@ -5,7 +5,7 @@ plugins {
 }
 
 application {
-	mainClassName = "at.jku.isse.ecco.gui.Launcher"
+	mainClass = "at.jku.isse.ecco.gui.Launcher"
 	applicationDefaultJvmArgs = ["-Xss1024m", "-Xmx8g"]
 }
 
@@ -260,8 +260,8 @@ tasks.register('jpackageAppWindows', Exec) {
 }
 
 ospackage {
-	summary 'GUI (Graphical User Interface) for ECCO.'
-	packageDescription 'This package provides a GUI (Graphical User Interface) for ECCO.'
+	summary = 'GUI (Graphical User Interface) for ECCO.'
+	packageDescription = 'This package provides a GUI (Graphical User Interface) for ECCO.'
 
 	requires('ecco-base', version, EQUAL)
 	requires('ecco-service', version, EQUAL)
