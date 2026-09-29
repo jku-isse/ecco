@@ -4,8 +4,7 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.DesignspaceReader;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.DesignspaceWriter;
-import at.jku.isse.ecco.adapter.designspace.Java.JavaReader;
-import at.jku.isse.ecco.adapter.designspace.Java.JavaWriter;
+
 import at.jku.isse.ecco.adapter.designspace.util.DesignSpaceInfo;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.AbstractModule;
@@ -35,8 +34,6 @@ public class DesignSpaceModule extends AbstractModule {
                         new TypeLiteral<>() {
                         });
 
-        readerMultibinder.addBinding().to(WorkSpaceReader.class);
-        readerMultibinder.addBinding().to(JavaReader.class);
         readerMultibinder.addBinding().to(DesignspaceReader.class);
 
         final Multibinder<ArtifactWriter<Set<Node>, DesignSpaceInfo>> writerMultibinder =
@@ -45,8 +42,6 @@ public class DesignSpaceModule extends AbstractModule {
                         new TypeLiteral<>() {
                         });
 
-        writerMultibinder.addBinding().to(WorkSpaceWriter.class);
-        writerMultibinder.addBinding().to(JavaWriter.class);
         writerMultibinder.addBinding().to(DesignspaceWriter.class);
     }
 

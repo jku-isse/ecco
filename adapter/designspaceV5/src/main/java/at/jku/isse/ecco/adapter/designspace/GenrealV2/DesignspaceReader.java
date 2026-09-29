@@ -10,7 +10,7 @@ import at.jku.isse.ecco.adapter.designspace.DesignSpacePlugin;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.artefacts.ReferenceArtefact;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.artefacts.WorkspaceElementArtefact;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.artefacts.PropTypeArtefact;
-import at.jku.isse.ecco.adapter.designspace.Java.Filter;
+import at.jku.isse.ecco.adapter.designspace.util.Filter;
 import at.jku.isse.ecco.adapter.designspace.artifact.StringArtefact;
 import at.jku.isse.ecco.adapter.designspace.artifact.value.SimpleValueArtifact;
 import at.jku.isse.ecco.adapter.designspace.util.DesignSpaceInfo;
@@ -30,7 +30,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static at.jku.isse.ecco.adapter.designspace.DesignSpaceModule.generalAdpaterV2String;
-import static at.jku.isse.ecco.adapter.designspace.DesignSpaceModule.javaAdpaterString;
 
 public class DesignspaceReader implements ArtifactReader<DesignSpaceInfo, Set<Node.Op>> {
     private final EntityFactory entityFactory;
@@ -65,7 +64,6 @@ public class DesignspaceReader implements ArtifactReader<DesignSpaceInfo, Set<No
 
         Node.Op pluginNode;
         try {
-            if (Java8.JAVA_PROJECT == null) throw new EccoException("Java8 is properly not initialised ");
             if (info.debugOptions().javaConsole()) System.out.println("javareader commit");
             workspace = info.workspace();
             Folder commitFolder = info.folder();
@@ -122,9 +120,6 @@ public class DesignspaceReader implements ArtifactReader<DesignSpaceInfo, Set<No
     }
 
     private void handleProject(Folder folder, Node.Op pluginNode) {
-        if (Java8.JAVA_PROJECT == null) {
-            throw new EccoException("java 8 not initialized");
-        }
         Set<at.jku.isse.designspace.core.model.WorkspaceElement> starterElements = getStarterElements(workspace, folder);
         for (at.jku.isse.designspace.core.model.WorkspaceElement project : starterElements) {
             Node.Op projectNode = handleWorkspaceElement(project);

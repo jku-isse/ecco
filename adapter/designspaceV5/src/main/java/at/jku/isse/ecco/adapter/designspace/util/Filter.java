@@ -1,10 +1,6 @@
-package at.jku.isse.ecco.adapter.designspace.Java;
+package at.jku.isse.ecco.adapter.designspace.util;
 
 import at.jku.isse.designspace.core.model.WorkspacePropertyType;
-
-import java.util.Set;
-
-import static at.jku.isse.designspace.domains.Java8.*;
 
 public class Filter {
 

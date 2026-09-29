@@ -11,7 +11,6 @@ import at.jku.isse.ecco.adapter.designspace.GenrealV2.TreeLogger;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.refFixUp.CollectionFixUp;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.refFixUp.MapFixUp;
 import at.jku.isse.ecco.adapter.designspace.GenrealV2.refFixUp.SingleFixUp;
-import at.jku.isse.ecco.adapter.designspace.WorkSpaceWriter;
 import at.jku.isse.ecco.adapter.designspace.artifact.StringArtefact;
 import at.jku.isse.ecco.adapter.designspace.artifact.value.ReferenceValueArtefact;
 import at.jku.isse.ecco.adapter.designspace.artifact.value.SimpleValueArtifact;
