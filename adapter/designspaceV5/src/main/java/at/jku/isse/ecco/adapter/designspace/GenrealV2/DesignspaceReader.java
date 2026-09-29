@@ -71,7 +71,7 @@ public class DesignspaceReader implements ArtifactReader<DesignSpaceInfo, Set<No
             Folder commitFolder = info.folder();
             TreeLogger.debugOptions = info.debugOptions();
 
-            pluginNode = entityFactory.createOrderedNode(new StringArtefact("plugin Node Designspace Java"));
+            pluginNode = entityFactory.createOrderedNode(new StringArtefact("plugin Node Designspace"));
             handleProject(commitFolder, pluginNode);
 
             if (info.debugOptions().javaConsole()) {
@@ -134,7 +134,12 @@ public class DesignspaceReader implements ArtifactReader<DesignSpaceInfo, Set<No
         remainingElements.removeAll(processedElements);
         // other  elements that have not been translated yet
         for(WorkspaceElement remaining : remainingElements ){
+
+            if (processedElements.contains(remaining)) {
+                continue;
+            }
             Node.Op projectNode = handleWorkspaceElement(remaining);
+            //remainingElements.removeAll(processedElements);
             pluginNode.addChild(projectNode);
         }
 

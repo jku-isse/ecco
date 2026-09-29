@@ -58,7 +58,9 @@ public class DesignspaceWriter implements ArtifactWriter<Set<Node>, DesignSpaceI
 
             for (Node node : pluginNode.getChildren()) {
                 if (node.getArtifact().getData() instanceof WorkspaceElementArtefact starterElements) {
+                   System.out.println("handeling starter element " + starterElements.name);
                     starterElements.build(node, this);
+
                 }
             }
 
@@ -72,7 +74,7 @@ public class DesignspaceWriter implements ArtifactWriter<Set<Node>, DesignSpaceI
         } catch (Exception e) {
             e.printStackTrace();
 
-            throw new RuntimeException(e);
+            //throw new RuntimeException(e);
         } finally {
             TreeLogger.reset();
 
