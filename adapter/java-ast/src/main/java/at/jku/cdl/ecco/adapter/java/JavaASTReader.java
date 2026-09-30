@@ -40,6 +40,7 @@ import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithBody;
 import com.github.javaparser.ast.nodeTypes.NodeWithStatements;
 import com.github.javaparser.ast.nodeTypes.SwitchNode;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.CatchClause;
 import com.github.javaparser.ast.stmt.EmptyStmt;
 import com.github.javaparser.ast.stmt.IfStmt;
@@ -73,6 +74,9 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	// Attaching these properties to nodes for line number feature mappings
 	public static final String PROPERTY_LINE_START = "LINE_START";
 	public static final String PROPERTY_LINE_END = "LINE_END";
+
+	/** Ends the data of a switch entry written with an arrow ({@code case A -> ...}). */
+	public static final String ARROW = " ->";
 
 	private static Map<Integer, String[]> prioritizedPatterns;
 
@@ -188,6 +192,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 						// Important Data is stored in an ArtifactData element
 						JavaASTSimpleStringData packDeclData = new JavaASTSimpleStringData(packageName);
 						packDeclData.setType(ASTNodeType.PACKAGEDECLARATION);
+						packDeclData.setTreeFormat(JavaASTData.TREE_FORMAT);
 						if (pd != null)
 							commented(packDeclData, pd);
 						// a comment heading the file (e.g. a license) belongs to the compilation unit
@@ -442,13 +447,17 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 	private void addChildren(Statement body, Node.Op parent) {
-		if (body instanceof NodeWithBlockStmt<?>) {
-			addChildren(((NodeWithBlockStmt<?>) body).getBody(), parent);
+		if (body instanceof NodeWithBlockStmt<?> withBlock) {
+			// synchronized: used to be dropped, only the statements of its block were kept
+			Statement tmp = body.clone();
+			((NodeWithBlockStmt<?>) tmp).setBody(new BlockStmt());
+			addNesting(body, tmp.toString(PPC), withBlock.getBody(), parent);
 		} else if (body instanceof NodeWithBody<?>) {
 			Statement tmp = body.clone();
 			((NodeWithBody<?>)tmp).setBody(new EmptyStmt());
 			JavaASTSimpleStringData sdData = new JavaASTSimpleStringData(tmp.toString(PPC));
 			sdData.setType(ASTNodeType.STATEMENT);
+			sdData.setBlockBody(((NodeWithBody<?>) body).getBody() instanceof BlockStmt);
 			commented(sdData, body);
 			orphans(sdData, ((NodeWithBody<?>) body).getBody());
 			Artifact.Op<JavaASTSimpleStringData> sdArtifact = this.entityFactory.createArtifact(sdData);
@@ -458,7 +467,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			parent.addChild(node);
 			addChildren(((NodeWithBody<?>) body).getBody(), node);
 		} else if (body instanceof NodeWithStatements<?>) {
-			((NodeWithStatements<?>) body).getStatements().forEach(stmt -> addChildren(stmt, parent));
+			((NodeWithStatements<?>) body).getStatements().forEach(stmt -> addStatement(stmt, parent));
 		} else if (body instanceof IfStmt) {
 			addIfStatement((IfStmt) body, parent);
 		} else if (body instanceof SwitchNode) {
@@ -476,6 +485,32 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			parent.addChild(node);
 		}
 
+	}
+
+	/**
+	 * A statement of a statement list: a block among the statements (e.g. {@code case 0: { int x; }})
+	 * is a node of its own. Its statements used to be added to the list, which lost the block's
+	 * scope - two such blocks declaring the same variable no longer compiled.
+	 */
+	private void addStatement(Statement stmt, Node.Op parent) {
+		if (stmt instanceof BlockStmt block)
+			addNesting(block, new BlockStmt().toString(PPC), block, parent);
+		else
+			addChildren(stmt, parent);
+	}
+
+	/** A statement written as {@code text} with an empty block, and the statements of {@code block} as its children. */
+	private void addNesting(Statement stmt, String text, BlockStmt block, Node.Op parent) {
+		JavaASTSimpleStringData data = new JavaASTSimpleStringData(text);
+		data.setType(ASTNodeType.STATEMENT);
+		commented(data, stmt);
+		orphans(data, block);
+		Artifact.Op<JavaASTSimpleStringData> artifact = this.entityFactory.createArtifact(data);
+		Node.Op node = this.entityFactory.createOrderedNode(artifact);
+		node.putProperty(PROPERTY_LINE_START, getStartLine(stmt));
+		node.putProperty(PROPERTY_LINE_END, getEndLine(stmt));
+		parent.addChild(node);
+		addChildren(block, node);
 	}
 
 	private void addTryStatement(TryStmt trystmt, Op parent) {
@@ -547,6 +582,10 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			if (label.equals("")) {
 				label = "DEFAULT";
 			}
+			// "case A -> ..." does not fall through, unlike "case A:" - it used to be written as the latter
+			if (se.getType() != SwitchEntry.Type.STATEMENT_GROUP) {
+				label += ARROW;
+			}
 			JavaASTSimpleStringData entryData = new JavaASTSimpleStringData(label);
 			entryData.setType(ASTNodeType.SWITCH_ENTRIES);
 			commented(entryData, se);
@@ -555,7 +594,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			entryNode.putProperty(PROPERTY_LINE_START, getStartLine(se));
 			entryNode.putProperty(PROPERTY_LINE_END, getEndLine(se));
 			switchNode.addChild(entryNode);
-			se.getStatements().forEach(stmt -> addChildren(stmt, entryNode));
+			se.getStatements().forEach(stmt -> addStatement(stmt, entryNode));
 		}
 	}
 
@@ -570,6 +609,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		parent.addChild(ifNode);
 		JavaASTSimpleStringData conditionData = new JavaASTSimpleStringData(ifstmt.getCondition().toString(PPC));
 		conditionData.setType(ASTNodeType.IF_CONDITION);
+		conditionData.setBlockBody(ifstmt.getThenStmt() instanceof BlockStmt);
 		orphans(conditionData, ifstmt.getThenStmt());
 		Artifact.Op<JavaASTSimpleStringData> conditionArtifact = this.entityFactory.createArtifact(conditionData);
 		Node.Op conditionNode = this.entityFactory.createOrderedNode(conditionArtifact);
@@ -580,6 +620,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		} else if (ifstmt.hasElseBranch()) {
 			JavaASTSimpleStringData elseData = new JavaASTSimpleStringData("else " + ifstmt.getCondition());
 			elseData.setType(ASTNodeType.ELSE_BRANCH);
+			elseData.setBlockBody(ifstmt.getElseStmt().get() instanceof BlockStmt);
 			orphans(elseData, ifstmt.getElseStmt().get());
 			Artifact.Op<JavaASTSimpleStringData> elseArtifact = this.entityFactory.createArtifact(elseData);
 			Node.Op elseNode = this.entityFactory.createOrderedNode(elseArtifact);
@@ -593,6 +634,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	private void addIfCondition(IfStmt ifstmt, Op ifNode) {
 		JavaASTSimpleStringData conditionData = new JavaASTSimpleStringData(ifstmt.getCondition().toString(PPC));
 		conditionData.setType(ASTNodeType.IF_CONDITION);
+		conditionData.setBlockBody(ifstmt.getThenStmt() instanceof BlockStmt);
 		orphans(conditionData, ifstmt.getThenStmt());
 		Artifact.Op<JavaASTSimpleStringData> conditionArtifact = this.entityFactory.createArtifact(conditionData);
 		Node.Op conditionNode = this.entityFactory.createOrderedNode(conditionArtifact);
@@ -605,6 +647,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		} else if (ifstmt.hasElseBranch()) {
 			JavaASTSimpleStringData elseData = new JavaASTSimpleStringData("else" + ifstmt.getCondition());
 			elseData.setType(ASTNodeType.ELSE_BRANCH);
+			elseData.setBlockBody(ifstmt.getElseStmt().get() instanceof BlockStmt);
 			orphans(elseData, ifstmt.getElseStmt().get());
 			Artifact.Op<JavaASTSimpleStringData> elseArtifact = this.entityFactory.createArtifact(elseData);
 			Node.Op elseNode = this.entityFactory.createOrderedNode(elseArtifact);

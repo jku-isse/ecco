@@ -10,9 +10,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -43,11 +43,15 @@ import com.github.javaparser.ast.nodeTypes.NodeWithMembers;
 import com.github.javaparser.ast.nodeTypes.NodeWithStatements;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.CatchClause;
+import com.github.javaparser.ast.stmt.DoStmt;
 import com.github.javaparser.ast.stmt.EmptyStmt;
+import com.github.javaparser.ast.stmt.ExpressionStmt;
 import com.github.javaparser.ast.stmt.IfStmt;
+import com.github.javaparser.ast.stmt.LabeledStmt;
 import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.stmt.SwitchEntry;
 import com.github.javaparser.ast.stmt.SwitchStmt;
+import com.github.javaparser.ast.stmt.ThrowStmt;
 import com.github.javaparser.ast.stmt.TryStmt;
 
 import at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType;
@@ -172,6 +176,8 @@ public class JavaASTWriteHandler {
 			container = catchClause.getBody();
 		else if (node instanceof NodeWithBody<?> withBody && withBody.getBody() instanceof BlockStmt block)
 			container = block;
+		else if (node instanceof NodeWithBlockStmt<?> withBlock)
+			container = withBlock.getBody();
 		for (JavaASTComment orphan : data.getOrphanComments())
 			container.addOrphanComment(orphan.toComment());
 	}
@@ -280,7 +286,43 @@ public class JavaASTWriteHandler {
 		}
 		Statement lambdaStmt = stmt;
 		child.getChildren().forEach(c -> addNode(c, lambdaStmt));
+		if (stmt instanceof NodeWithBody<?> withBody)
+			shapeBody(stmtData, withBody.getBody(), withBody::setBody, false);
 		return stmt;
+	}
+
+	/**
+	 * Writes a body with or without braces as it was read (JavaASTData#getBlockBody): the tree does
+	 * not hold the braces, and a single statement used to lose them (loops) or gain them (ifs).
+	 * Braces are kept when dropping them would change the code: with comments inside, more than one
+	 * statement, or an if without else that would take over a following else.
+	 */
+	private static void shapeBody(JavaASTData data, Statement body, Consumer<Statement> setBody, boolean elseFollows) {
+		if (data.getBlockBody() == null)
+			return;
+		if (data.getBlockBody()) {
+			if (!(body instanceof BlockStmt)) {
+				BlockStmt block = new BlockStmt();
+				setBody.accept(block);
+				if (!(body instanceof EmptyStmt))
+					block.addStatement(body);
+			}
+		} else if (body instanceof BlockStmt block && block.getStatements().size() == 1 && data.getOrphanComments().isEmpty()) {
+			Statement only = block.getStatement(0);
+			if (!(elseFollows && endsWithShortIf(only)))
+				setBody.accept(only);
+		}
+	}
+
+	/** Whether an else written after {@code stmt} would belong to an if inside it. */
+	private static boolean endsWithShortIf(Statement stmt) {
+		if (stmt instanceof IfStmt ifStmt)
+			return ifStmt.getElseStmt().map(JavaASTWriteHandler::endsWithShortIf).orElse(true);
+		if (stmt instanceof NodeWithBody<?> withBody && !(stmt instanceof DoStmt))
+			return endsWithShortIf(withBody.getBody());
+		if (stmt instanceof LabeledStmt labeled)
+			return endsWithShortIf(labeled.getStatement());
+		return false;
 	}
 
 	private static void addStatement(Statement child, com.github.javaparser.ast.Node parent) {
@@ -325,9 +367,9 @@ public class JavaASTWriteHandler {
 		
 		/* In case of an abstract method, we must not add a method body. If we do so, an abstract method gets an empty
 		 * body which results in compilation errors.*/
-		if (!methodDecl.isAbstract() && !isInterfaceMethod(child, parent)) {
+		if (hasBody(methodDecl, parent)) {
 			methodDecl.setBody(body);
-		} 
+		}
 		if (parent instanceof TypeDeclaration<?>) {
 			((TypeDeclaration<?>) parent).addMember(methodDecl);
 		} else {
@@ -337,14 +379,18 @@ public class JavaASTWriteHandler {
 		return methodDecl;
 	}
 	
-	private static boolean isInterfaceMethod(Node child, com.github.javaparser.ast.Node parent) {
-		if (parent instanceof ClassOrInterfaceDeclaration) {
-			ClassOrInterfaceDeclaration _parent = (ClassOrInterfaceDeclaration) parent;
-			if(_parent.isInterface() && child.getChildren().isEmpty()) {
-				return true;
-			}
-		}
-		return false;
+	/**
+	 * Whether a method has a body - known from its declaration: not abstract or native methods, and
+	 * in an interface only default, static and private ones. It used to depend on the body having
+	 * statements, so an empty default method lost its body ("default void f();" does not compile)
+	 * and a native one got one.
+	 */
+	private static boolean hasBody(MethodDeclaration methodDecl, com.github.javaparser.ast.Node parent) {
+		if (methodDecl.isAbstract() || methodDecl.isNative())
+			return false;
+		if (parent instanceof ClassOrInterfaceDeclaration type && type.isInterface())
+			return methodDecl.isDefault() || methodDecl.isStatic() || methodDecl.isPrivate();
+		return true;
 	}
 
 	private static FieldDeclaration addFieldDeclaration(Node child, com.github.javaparser.ast.Node parent) {
@@ -528,13 +574,25 @@ public class JavaASTWriteHandler {
 		IfStmt ifStmt = new IfStmt();
 		IfStmt outermost = ifStmt;
 		addStatement(ifStmt, parent);
+		List<IfStmt> cascade = new ArrayList<>();
 		for (int i = 0; i < conditionNodes.size(); i++) {
 			addIfCondition(conditionNodes.get(i), ifStmt);
+			cascade.add(ifStmt);
 			if (i + 1 < conditionNodes.size()) {
 				IfStmt cascadeIf = new IfStmt();
 				ifStmt.setElseStmt(cascadeIf);
 				ifStmt = cascadeIf;
 			}
+		}
+		// braces only once the whole chain is known: whether an else follows decides whether they can go
+		for (int i = 0; i < cascade.size(); i++) {
+			IfStmt current = cascade.get(i);
+			Node conditionNode = conditionNodes.get(i);
+			shapeBody((JavaASTData) conditionNode.getArtifact().getData(), current.getThenStmt(), current::setThenStmt,
+					current.getElseStmt().isPresent());
+			Node elseBranch = getElseBranch(conditionNode);
+			if (elseBranch != null && current.getElseStmt().isPresent())
+				shapeBody((JavaASTData) elseBranch.getArtifact().getData(), current.getElseStmt().get(), current::setElseStmt, false);
 		}
 		return outermost;
 	}
@@ -623,6 +681,28 @@ public class JavaASTWriteHandler {
 		tryStmt.setCatchClauses(catchClauses);
 	}
 
+	/**
+	 * The labels of a switch entry, parsed in a switch: they used to be split at every comma, which
+	 * broke a label containing one ({@code case "a,b":}).
+	 */
+	private static NodeList<Expression> parseSwitchLabels(String text) {
+		return StaticJavaParser.parseStatement("switch (x) { case " + text + ": }").asSwitchStmt().getEntry(0).getLabels();
+	}
+
+	/** Writes {@code entry} as {@code case A -> ...}: an expression, a throw, or a block. */
+	private static void makeArrowEntry(SwitchEntry entry) {
+		NodeList<Statement> statements = entry.getStatements();
+		if (statements.size() == 1 && statements.get(0) instanceof ExpressionStmt) {
+			entry.setType(SwitchEntry.Type.EXPRESSION);
+		} else if (statements.size() == 1 && statements.get(0) instanceof ThrowStmt) {
+			entry.setType(SwitchEntry.Type.THROWS_STATEMENT);
+		} else {
+			if (statements.size() != 1 || !(statements.get(0) instanceof BlockStmt))
+				entry.setStatements(new NodeList<>(new BlockStmt(new NodeList<>(statements))));
+			entry.setType(SwitchEntry.Type.BLOCK);
+		}
+	}
+
 	private static SwitchStmt addSwitchStatement(Node child, com.github.javaparser.ast.Node parent) {
 		SwitchStmt switchStmt = new SwitchStmt();
 		Expression e = StaticJavaParser.parseExpression(child.getArtifact().getData().toString());
@@ -630,12 +710,13 @@ public class JavaASTWriteHandler {
 		NodeList<SwitchEntry> entries = new NodeList<>();
 		for (Node swEntryNode : child.getChildren()) {
 			JavaASTSimpleStringData entryData = (JavaASTSimpleStringData) swEntryNode.getArtifact().getData();
+			String label = entryData.getData();
+			boolean arrow = label.endsWith(JavaASTReader.ARROW);
+			if (arrow)
+				label = label.substring(0, label.length() - JavaASTReader.ARROW.length());
 			SwitchEntry entry = new SwitchEntry();
-			if (!entryData.getData().equals("DEFAULT")) {
-				String[] labelStrs = entryData.getData().split(",");
-				NodeList<Expression> labels = new NodeList<>();
-				Arrays.stream(labelStrs).forEach(l -> labels.add(StaticJavaParser.parseExpression(l)));
-				entry.setLabels(labels);
+			if (!label.equals("DEFAULT")) {
+				entry.setLabels(parseSwitchLabels(label));
 			} else {
 				Optional<SwitchEntry> def = entries.stream().filter(se -> se.getLabels().size() == 0).findAny();
 				if (def.isPresent()) {
@@ -644,6 +725,8 @@ public class JavaASTWriteHandler {
 			}
 			SwitchEntry encloseEntry = entry;
 			swEntryNode.getChildren().forEach(stmts -> addNode(stmts, encloseEntry));
+			if (arrow)
+				makeArrowEntry(entry);
 			attachComments(entryData, entry);
 			entries.add(entry);
 		}
