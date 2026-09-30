@@ -1,6 +1,7 @@
 package at.jku.cdl.ecco.adapter.java.view;
 
 import at.jku.cdl.ecco.adapter.java.JavaASTPlugin;
+import at.jku.cdl.ecco.adapter.java.JavaASTReader;
 import at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTConstructorData;
 import at.jku.cdl.ecco.adapter.java.artifactData.JavaASTData;
@@ -379,10 +380,20 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 			addLine(n, association, text, indent, lines, indexByNode);
 			return;
 		}
-		// a STATEMENT with children is a loop/labeled/synchronized header (see JavaASTReader's
-		// NodeWithBody case) - its captured text already carries a trailing ";" from the EmptyStmt
-		// the reader substituted for the real body, which reads oddly right before an opening brace.
-		renderBlock(n, association, dropTrailingSemicolon(text), indent, lines, indexByNode);
+		// a STATEMENT with children is a loop/labeled header (see JavaASTReader's NodeWithBody case) -
+		// its captured text already carries a trailing ";" from the EmptyStmt the reader substituted
+		// for the real body, which reads oddly right before an opening brace - or a synchronized
+		// statement or a block, captured with an empty "{ }" body
+		String header = stripTrailingEmptyBody(dropTrailingSemicolon(text));
+		if (header.isEmpty()) {
+			addLine(n, association, "{", indent, lines, indexByNode);
+			for (Node child : n.getChildren()) {
+				renderNode(child, indent + 1, lines, indexByNode);
+			}
+			addLine(null, null, "}", indent, lines, indexByNode);
+			return;
+		}
+		renderBlock(n, association, header, indent, lines, indexByNode);
 	}
 
 	/**
@@ -418,7 +429,12 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 	}
 
 	private void renderSwitchEntry(Node n, Association association, String label, int indent, List<JavaCodeLine> lines, Map<Node, Integer> indexByNode) {
-		String line = "DEFAULT".equals(label) ? "default:" : "case " + label + ":";
+		String separator = ":";
+		if (label.endsWith(JavaASTReader.ARROW)) {
+			label = label.substring(0, label.length() - JavaASTReader.ARROW.length());
+			separator = " ->";
+		}
+		String line = ("DEFAULT".equals(label) ? "default" : "case " + label) + separator;
 		addLine(n, association, line, indent, lines, indexByNode);
 		for (Node child : n.getChildren()) {
 			renderNode(child, indent + 1, lines, indexByNode);

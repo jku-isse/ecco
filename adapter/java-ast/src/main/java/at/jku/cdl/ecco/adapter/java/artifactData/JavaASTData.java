@@ -24,6 +24,23 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	private JavaASTComment comment;
 	private List<JavaASTComment> orphanComments;
 
+	/**
+	 * For a node with a body (loop, if condition, else branch): whether the body was written as a
+	 * block ({@code for (...) { x(); }}) or as a single statement ({@code for (...) x();}). Like the
+	 * comments, not part of the artifact's identity. Null in repositories committed before it was
+	 * kept: the writer then chooses as it always did.
+	 */
+	private Boolean blockBody;
+
+	/**
+	 * How the reader builds a file's tree: 1 since synchronized statements and blocks among
+	 * statements are nodes of their own (they used to be dropped / flattened into the enclosing
+	 * statements) and arrow switch entries are told apart from "case A:" ones. Kept on the file's package declaration; 0 (absent) in repositories committed
+	 * before, whose trees cannot be combined with the new ones - see retiredFormat().
+	 */
+	public static final int TREE_FORMAT = 1;
+	private int treeFormat;
+
 	public JavaASTComment getComment() {
 		return this.comment;
 	}
@@ -40,11 +57,32 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 		this.orphanComments = orphanComments == null || orphanComments.isEmpty() ? null : new ArrayList<>(orphanComments);
 	}
 
+	public Boolean getBlockBody() {
+		return this.blockBody;
+	}
+
+	public void setBlockBody(Boolean blockBody) {
+		this.blockBody = blockBody;
+	}
+
+	public void setTreeFormat(int treeFormat) {
+		this.treeFormat = treeFormat;
+	}
+
+	@Override
+	public String retiredFormat() {
+		if (this.getType() == ASTNodeType.PACKAGEDECLARATION && this.treeFormat < TREE_FORMAT)
+			return "its Java files are stored in a format that lost their synchronized statements, the blocks among"
+					+ " their statements (e.g. case 0: { ... }) and the arrows of switch cases (case A -> ...).";
+		return null;
+	}
+
 	@Override
 	public void adoptMetadataFrom(ArtifactData newer) {
 		if (newer instanceof JavaASTData other) {
 			this.comment = other.comment;
 			this.orphanComments = other.orphanComments;
+			this.blockBody = other.blockBody;
 		}
 	}
 	
