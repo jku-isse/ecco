@@ -87,11 +87,13 @@ Doing it properly means: (i) invalidate a stored minimized condition when its as
 
 ### #7 partial order graph alignment is factorial
 
-This has the biggest unbounded worst case in the system, and the most fragile code: POG fixes have repeatedly exposed other bugs.
+**Characterized 2026-10-03; no change to the algorithm.**
 
-1. Build a benchmark that grows concurrent unresolved branches until it slows down, and record the curve.
-2. Fix the known correctness bug in the capped fallback (`directPoaAlignment`) first, with an isolated reproduction.
-3. Only then consider replacing the exact alignment above a threshold, with a test that checks orderings against the exact algorithm below the threshold.
+1. **Benchmark.** 30 variants, each adding a unique line at the same place (and, in a second run, at two places): commits stay at 10-53 ms, with one peak of 122 ms just below the cap. The July fallback (`directPoaAlignment` above 100,000 orderings) is what keeps it there: with the exact algorithm alone, the same test runs out of memory.
+2. **The fallback's known bug.** It can find fewer matches than the exact algorithm when a branch's order conflicts with the one it assumes (`DirectPoaAlignmentSpikeTest`); the code notes that this leaves an extra unmerged branch rather than corrupting anything. Checked where it would matter, in the files: committed variants with unique lines at one or two places or with random subsets of shared lines (75 checkouts), and, with the fallback confirmed to run, every ordered pair of 10 concurrent lines fixed by a later variant (90 cases, 990 checkouts). Every checkout matched what was committed.
+3. **Replacing the exact algorithm** is therefore not needed now. If it ever is: when each artifact occurs at most once in each graph, the best alignment keeps the largest set of shared artifacts with no pair ordered one way in one graph and the other way in the other. Those pairs form a partial order (the intersection of one graph's order with the other's reverse order), so the largest such set is a maximum antichain of that order: polynomial by Dilworth's theorem (bipartite matching), with no enumeration of orderings. Repeated equal artifacts would need more than that.
+
+`ConcurrentBranchScalingTest` pins the first two points: it fails (out of memory) without the fallback, and checks every checkout, including both orders of two concurrent lines.
 
 ### #10 Java 21 language support in the Java (AST) adapter
 
@@ -112,11 +114,11 @@ This has the biggest unbounded worst case in the system, and the most fragile co
 
 | Order | Gaps | Effort | Risk |
 | --- | --- | --- | --- |
-| 1 | #16, #15, #12, #11, #4, #14 | ~1 day | low |
-| 2 | #2, #9 | ~1 day | low |
-| 3 | #1 + #5 | ~1 day | medium (adapter routing) |
+| 1 | #16, #15, #12, #11, #4, #14 | done | - |
+| 2 | #2, #9 | done | - |
+| 3 | #1 + #5 | done | - |
 | 4 | #3 measured; skip deferred to a design session | done / 1-2 days | - / high |
-| 5 | #6, #8, #13 after decisions | 1-3 days each | medium |
-| 6 | #10 | 1-2 days | medium |
-| 7 | #7 | own session(s) | high |
+| 5 | #6, #8, #13 after decisions | done | - |
+| 6 | #10 | done | - |
+| 7 | #7 characterized; algorithm unchanged | done | - |
 | ongoing | #17 | with every commit | none |
