@@ -141,7 +141,7 @@ A *remote* is either a local path - the repository's directory or its `.ecco` di
 
 ## REST API
 
-[`rest`](rest) is a REST server (Micronaut) for web clients, e.g. [ecco-client](https://github.com/MatthiasPreuner/ecco-client.git). It serves the repositories in a configurable storage directory on port 8081 (`PORT` environment variable) with an OpenAPI description and Swagger UI - see its [README](rest/README.md). Its user management is a demonstration setup (fixed users, default JWT secret): configure it before exposing the server.
+[`rest`](rest) is a REST server (Micronaut) for web clients, e.g. [ecco-client](https://github.com/MatthiasPreuner/ecco-client.git). It serves the repositories in a storage directory (`ECCO_STORAGE_DIR` environment variable) on port 8081 (`PORT` environment variable) with an OpenAPI description and Swagger UI - see its [README](rest/README.md). Its user management is a demonstration setup (fixed users, default JWT secret): configure it before exposing the server.
 
 
 ## Repository and Working Directory

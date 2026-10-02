@@ -7,7 +7,7 @@ To run the API use the Gradle commands from the repository root:
 - ecco-rest:build for the first initialization 
 - ecco-rest:run to start the server
 
-The server storage can be changed in the "Settings" class.  
+The server keeps its repositories in the directory named by the `ECCO_STORAGE_DIR` environment variable (or the `ecco.storage-dir` system property). Without it, the directory is guessed: `/media/serverRepositories` in Docker, `/home/jenkins/host` for a `jenkins` user, otherwise the `examples` folder of the source tree. The server prints the directory it uses at startup.  
 Users can be added by changing the "DummyUserDB" class or add your own user database.
 micronaut-cli.yml contains the config for possible CLI usage.
 
