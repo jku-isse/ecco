@@ -47,8 +47,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
 
-    private static final Map<Integer, String[]> prioritizedPatterns =
-            Map.of(Integer.MAX_VALUE, new String[]{"**.c", "**.h", "**.cpp", "**.hpp"});
+    // *.c and *.h one below the top, so they go to the C adapter when both are enabled
+    private static final Map<Integer, String[]> prioritizedPatterns = Map.of(
+            Integer.MAX_VALUE, new String[]{"**.cpp", "**.hpp"},
+            Integer.MAX_VALUE - 1, new String[]{"**.c", "**.h"});
 
     private final EntityFactory entityFactory;
     private final Collection<ReadListener> listeners = new ArrayList<>();

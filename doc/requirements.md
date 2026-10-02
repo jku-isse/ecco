@@ -191,7 +191,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | --- | --- | --- |
 | AD-1 | An adapter shall be a `ArtifactPlugin` registered through `ServiceLoader`, binding its reader, writer and optional viewers through Guice; `getPluginId()` returns the plugin class name. | Code; `adapter/README.md`; per-adapter plugin-id tests |
 | AD-2 | A reader shall return one root node per file carrying `PluginArtifactData`; a writer is chosen by that plugin id. | Code DR, DW |
-| AD-3 | A reader shall declare prioritized glob patterns; higher priority wins when `.adapters` is first written. | Code; Test `DispatchReaderJavaPluginPriorityTest` |
+| AD-3 | A reader shall declare prioritized glob patterns; higher priority wins when `.adapters` is first written, and a tie between enabled adapters is broken by plugin id and logged. | Code; Test `DispatchReaderJavaPluginPriorityTest`, `DispatchReaderPriorityTieTest` |
 | AD-4 | Adapters shall be enabled or disabled per user; at least one must be enabled. | Code `AdapterPreferences`, ES |
 | AD-5 | Viewers shall not be bound when running headless (`ecco.headless`). | Code; History 74517278 |
 | AD-6 | Line-based adapters shall round-trip byte-exact: encoding (UTF-8, else ISO-8859-1), line separator and final newline. | Test `TextFileFormatTest` (5,000 random rounds) |
@@ -207,8 +207,8 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | Markdown | `.md .markdown` | CommonMark/GFM blocks, nested by heading | byte-exact | yes | `MarkdownReaderTest`, `MarkdownFileWriterTest` |
 | Image | `.png .jpg .jpeg .bmp .gif` | pixels | exact colours for PNG/BMP; JPEG lossy; never an empty file | yes | `ImageFormatWriteTest` |
 | Java (AST) | `.java` | JavaParser AST, Java 18 level | every comment kept; braces, `synchronized`, arrow cases kept; layout pretty-printed, not byte-exact | yes | `JavaASTCommentTest`, `JavaASTStatementFidelityTest`, `JavaASTTreeFormatTest` |
-| C | `.c .h` | lines grouped by function; `#if` as lines; VEVOS traces | byte-exact incl. blank lines, CRLF, Latin-1 | **no** | `CRoundTripTest` |
-| C++ | `.cpp .hpp` (+ `.c .h`) | lines grouped by namespace, class, enum, function | byte-exact incl. include guards and comments; first format checkout-only | **no** | `CppRoundTripTest` |
+| C | `.c .h` | lines grouped by function; `#if` as lines; VEVOS traces | byte-exact incl. blank lines, CRLF, Latin-1 | yes | `CRoundTripTest` |
+| C++ | `.cpp .hpp` (+ `.c .h` when C is off) | lines grouped by namespace, class, enum, function | byte-exact incl. include guards and comments; first format checkout-only | yes | `CppRoundTripTest` |
 | TypeScript | `.ts` | statements and blocks (TS compiler in embedded Node.js) | exact text incl. `;`, trailing comments, JSDoc; switch/enum order kept | yes | `TypeScriptRoundTripTest`, `TypeScriptOrderTest` |
 | Python | `.py .ipynb .json` | libcst syntax tree; notebook cells; JSON values | not byte-exact: whitespace-only lines normalized, JSON re-indented, notebook outputs ignored | yes | `PythonAdapterTest` |
 | LilyPond | `.ly .ily` | tokens (parce) | not byte-exact: tokens rejoined with spaces | yes | `LilypondVariantsCommitCheckoutTest` |
@@ -344,11 +344,11 @@ Requirements the code does not meet, places where the documentation and the code
 
 | # | Gap | Where | Kind |
 | --- | --- | --- | --- |
-| 1 | The README maps `*.c`/`*.h`/`*.cpp`/`*.hpp` to the C and C++ adapters by default, but both are disabled by default, so those files go to the File adapter (whole-file granularity, no VEVOS traces) unless enabled in Preferences. | `AdapterPreferences.DEFAULT_DISABLED_PLUGIN_IDS` vs README | Doc/code mismatch |
+| 1 | The README maps `*.c`/`*.h`/`*.cpp`/`*.hpp` to the C and C++ adapters by default, but both are disabled by default, so those files go to the File adapter (whole-file granularity, no VEVOS traces) unless enabled in Preferences. | `AdapterPreferences.DEFAULT_DISABLED_PLUGIN_IDS` vs README | Doc/code mismatch - **fixed 2026-10-03**: C and C++ on by default (new repositories only) |
 | 2 | The CLI only works from the repository root: it fixes the repository at `./.ecco`, though the README promises a search of parent directories (`EccoService.detectRepository` exists but is not used). | `cli/.../Main.java:41` (IF-C8) | Doc/code mismatch - **fixed 2026-10-03**: commands search upwards; the repository's directory, not the current one, is the working directory (README corrected) |
 | 3 | `.hashes` is written on checkout but never used: the unchanged-file check is commented out, so every commit re-reads every file. | DR:469-476 (FR-M11) | Partial |
 | 4 | The `java` (lines) and `challenge` adapters have no writer: a checkout of their files writes nothing. Both are off by default. | `JavaWriter.java:30` in both adapters | Partial - **fixed 2026-10-02**: both writers now refuse with a message naming the Java (AST) adapter; documented as read-only |
-| 5 | Several adapters claim `.java` (java-ast, java, challenge, runtime) and `.c`/`.h` (C, C++) at the same priority; if more than one is enabled, which one wins depends on set order. | adapter patterns | Ambiguous requirement |
+| 5 | Several adapters claim `.java` (java-ast, java, challenge, runtime) and `.c`/`.h` (C, C++) at the same priority; if more than one is enabled, which one wins depends on set order. | adapter patterns | Ambiguous requirement - **fixed 2026-10-03**: ties broken by plugin id and logged; C++ yields `.c`/`.h` to C |
 | 6 | Condition minimization is preview-only; it is not applied to checkout. | `minimize-preview`; FR-N7 | Not implemented (by choice so far) |
 | 7 | Partial-order-graph alignment is factorial in concurrent unresolved branches; no bound is enforced beyond a capped fallback. | `PartialOrderGraph` | Performance risk |
 | 8 | Remote sync is unauthenticated; the REST server has hard-coded demo users with plaintext passwords and a default JWT secret, and its roles are never checked. | README; `rest/.../DummyUserDB`, `application.yml` | Security limitation |
