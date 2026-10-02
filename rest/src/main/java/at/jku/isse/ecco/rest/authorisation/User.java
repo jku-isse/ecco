@@ -4,12 +4,13 @@ import java.util.Collection;
 
 public class User {
     private final String name;
-    private final String password;
+    private final String passwordHash;
     private final Collection<Role> roles;
 
-    public User(final String name, final String password, final Collection<Role> roles) {
+    /** @param passwordHash written by {@link PasswordHash#hash} */
+    public User(final String name, final String passwordHash, final Collection<Role> roles) {
         this.name = name;
-        this.password = password;
+        this.passwordHash = passwordHash;
         this.roles = roles;
     }
 
@@ -17,8 +18,8 @@ public class User {
         return name;
     }
 
-    public String getPassword() {
-        return password;
+    public boolean passwordMatches(String password) {
+        return PasswordHash.matches(password.toCharArray(), passwordHash);
     }
 
     public Collection<String> getRoles() {

@@ -1,30 +1,25 @@
 package at.jku.isse.ecco.rest.authorisation;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-enum Role {
-    Admin, User
-}
-
-/** Dummy User DB
- * replace by preexisting DB or change Users in this DB
- * Change usage also in @class AuthenticationProviderUserPassword
+/**
+ * The demonstration users, with well-known passwords. Used only in development mode
+ * ({@link RestSecurity#isDevMode()}); otherwise the users come from {@link RestSecurity#USERS_FILE_ENV}.
  */
 public class DummyUserDB {
-    List<User> users = new ArrayList<>();
 
-    public DummyUserDB() {
-        users.add(new User("Thomas", "firstUser", Collections.singleton(Role.User)));
-        users.add(new User("Max", "secondUser", Collections.singleton(Role.User)));
-        users.add(new User("Tobias", "admin", Arrays.asList(Role.User, Role.Admin)) );
-        users.add(new User("Matthias", "admin", Arrays.asList(Role.User, Role.Admin)));
-        users.add(new User("Paul", "admin", Arrays.asList(Role.User, Role.Admin)));
+    private DummyUserDB() {
     }
 
-    public User findUser(String name) {
-        return users.stream().filter(x -> x.getName().equals(name)).findFirst().orElse(null);
+    static List<User> users() {
+        // few iterations: these passwords are public anyway
+        return List.of(
+                new User("Thomas", PasswordHash.hash("firstUser".toCharArray(), 1_000), Collections.singleton(Role.User)),
+                new User("Max", PasswordHash.hash("secondUser".toCharArray(), 1_000), Collections.singleton(Role.User)),
+                new User("Tobias", PasswordHash.hash("admin".toCharArray(), 1_000), Arrays.asList(Role.User, Role.Admin)),
+                new User("Matthias", PasswordHash.hash("admin".toCharArray(), 1_000), Arrays.asList(Role.User, Role.Admin)),
+                new User("Paul", PasswordHash.hash("admin".toCharArray(), 1_000), Arrays.asList(Role.User, Role.Admin)));
     }
 }

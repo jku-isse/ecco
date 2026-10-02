@@ -136,12 +136,12 @@ Repositories exchange features, not whole histories: every distributed operation
 
 ![Distributed Operations](doc/distributed_operations.png "Distributed Operations")
 
-A *remote* is either a local path - the repository's directory or its `.ecco` directory - or `host:port` of an ECCO server. The server is started from the GUI (Collaborate); it only accepts connections from the local machine unless it is started for all network interfaces. Remote synchronization is not authenticated, so only serve repositories on networks you trust.
+A *remote* is either a local path - the repository's directory or its `.ecco` directory - or `host:port` of an ECCO server. The server is started from the GUI (Collaborate); it only accepts connections from the local machine unless it is started for all network interfaces. Remote synchronization is not authenticated, so only serve repositories on networks you trust; the GUI asks for confirmation before accepting connections from other machines.
 
 
 ## REST API
 
-[`rest`](rest) is a REST server (Micronaut) for web clients, e.g. [ecco-client](https://github.com/MatthiasPreuner/ecco-client.git). It serves the repositories in a storage directory (`ECCO_STORAGE_DIR` environment variable) on port 8081 (`PORT` environment variable) with an OpenAPI description and Swagger UI - see its [README](rest/README.md). Its user management is a demonstration setup (fixed users, default JWT secret): configure it before exposing the server.
+[`rest`](rest) is a REST server (Micronaut) for web clients, e.g. [ecco-client](https://github.com/MatthiasPreuner/ecco-client.git). It serves the repositories in a storage directory (`ECCO_STORAGE_DIR` environment variable) on port 8081 (`PORT` environment variable) with an OpenAPI description and Swagger UI - see its [README](rest/README.md). It refuses to start without a JWT signing secret (`JWT_GENERATOR_SIGNATURE_SECRET`) and a users file (`ECCO_REST_USERS_FILE`); `./gradlew :ecco-rest:run` starts it in development mode with demonstration users instead - see its [README](rest/README.md).
 
 
 ## Repository and Working Directory

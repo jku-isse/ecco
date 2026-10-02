@@ -326,7 +326,9 @@ One performance risk is unbounded: partial-order-graph alignment is factorial in
 | --- | --- | --- |
 | NFR-S1 | The sync server shall accept only local connections unless explicitly started on all interfaces. | Doc |
 | NFR-S2 | The REST server shall reject upload and repository names that escape their storage folder. | History d6082ea4 |
-| NFR-S3 | Neither remote sync nor REST user management is production-grade: sync is unauthenticated, REST uses hard-coded demo users and a default JWT secret. | Doc - a stated limitation, not a met requirement |
+| NFR-S3 | Remote sync is unauthenticated; the GUI shall ask for confirmation before accepting connections from other machines. | Doc; Code `ServerView` - the missing authentication is a stated limitation |
+| NFR-S4 | The REST server shall sign its tokens and refuse unsigned or wrongly signed ones. | Test `RestTokenSecurityTest`, `RestShippedConfigTokenTest` |
+| NFR-S5 | Outside development mode the REST server shall refuse to start without a JWT secret of at least 32 characters other than the default, and a users file holding password hashes. | Test `RestSecurityTest` |
 
 ### Platform and build
 
@@ -352,7 +354,7 @@ Requirements the code does not meet, places where the documentation and the code
 | 5 | Several adapters claim `.java` (java-ast, java, challenge, runtime) and `.c`/`.h` (C, C++) at the same priority; if more than one is enabled, which one wins depends on set order. | adapter patterns | Ambiguous requirement - **fixed 2026-10-03**: ties broken by plugin id and logged; C++ yields `.c`/`.h` to C |
 | 6 | Condition minimization is preview-only; it is not applied to checkout. | `minimize-preview`; FR-N7 | Not implemented (by choice so far) |
 | 7 | Partial-order-graph alignment is factorial in concurrent unresolved branches; no bound is enforced beyond a capped fallback. | `PartialOrderGraph` | Performance risk |
-| 8 | Remote sync is unauthenticated; the REST server has hard-coded demo users with plaintext passwords and a default JWT secret, and its roles are never checked. | README; `rest/.../DummyUserDB`, `application.yml` | Security limitation |
+| 8 | Remote sync is unauthenticated; the REST server has hard-coded demo users with plaintext passwords and a default JWT secret, and its roles are never checked. | README; `rest/.../DummyUserDB`, `application.yml` | Security limitation - **hardened 2026-10-03**: the JWT secret key in `application.yml` was misspelled, so tokens were unsigned and a forged unsigned token was accepted for any user - fixed; the server refuses to start without a real secret and a users file (PBKDF2 hashes) outside development mode; the GUI confirms before syncing with other machines. Still open by choice: sync authentication, role checks |
 | 9 | The REST storage directory is not configurable; it is chosen by heuristics (Docker, a `jenkins` user, else `examples/`). | `rest/.../Settings` | Missing configuration - **fixed 2026-10-03**: `ECCO_STORAGE_DIR` / `ecco.storage-dir`, heuristics as fallback, logged at startup |
 | 10 | Java 21 pattern-matching `switch` and record patterns are not supported by the Java (AST) adapter and fail loudly; comments inside lambdas and expressions are unverified. | `JavaASTReader` | Partial |
 | 11 | Non-lazy composition throws "not yet implemented". | REPO:831 | Not implemented (unused) - **fixed 2026-10-02**: the unused option and its branch removed |

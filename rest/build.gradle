@@ -62,7 +62,15 @@ dependencies {
 test {
     // like Application.main: no GUI, so the adapters leave out their JavaFX viewers
     systemProperty 'ecco.headless', 'true'
+    // demonstration users and default JWT secret - see RestSecurity
+    systemProperty 'ecco.rest.dev', 'true'
     useJUnitPlatform()
+}
+
+// gradlew :ecco-rest:run is for local development: the demonstration users and default JWT secret
+// (see RestSecurity). An installed distribution needs a real secret and a users file.
+tasks.named('run') {
+    systemProperty 'ecco.rest.dev', 'true'
 }
 
 application {
