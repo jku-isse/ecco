@@ -69,10 +69,19 @@ TypeScript and Python were not measured; they parse in Node.js and Python, so th
 
 | Gap | Decision | Options | Recommendation |
 | --- | --- | --- | --- |
-| #6 minimization not applied to checkout | Should checkout use minimized presence conditions? | (a) keep preview-only and document it; (b) apply behind an opt-in setting; (c) apply by default | (b). An equivalence test already shows selection would be identical. An opt-in setting lets real repositories confirm it before it becomes the default. |
+| #6 minimization not applied to checkout | Should checkout use minimized presence conditions? | (a) keep preview-only and document it; (b) apply behind an opt-in setting; (c) apply by default | (b) was chosen, then **stopped before implementation (2026-10-03)** - see below. |
 | #8 security | How much security does ECCO need? | (a) document the limits (today); (b) harden the defaults: REST refuses to start with the default JWT secret unless a dev flag is set, users come from configuration, and sync refuses all-interfaces mode without an explicit acknowledgement; (c) real authentication for sync and REST roles | (b), a few days of work. (c) only if the REST server will run outside trusted networks. Auth was left out by choice on 2026-09-27; (b) keeps that choice but makes the risk impossible to miss. |
 | #13 local fork opens its origin read-write | Should fork open its source read-only? | (a) add a read-only open mode to the storage layer; (b) leave it, since fork only reads | (a) if the storage layer supports it cheaply (it already has read-only transactions). Otherwise (b), with the TODO replaced by a test that fork does not modify the origin's files. |
 
+
+### #6 findings that stopped the opt-in (2026-10-03)
+
+Option (b) assumed that checkout picks associations by their condition, and that the equivalence test (`PresenceConditionMinimizerCheckoutEquivalenceTest`) covers it. Reading `Repository.Op#compose` and `CheckoutComposer` showed otherwise:
+
+1. **The files come from node conditions, not from selection.** A checkout copies the main tree and prunes it node by node (`NodeRemovalVisitor`) using the conditions stored on its nodes when the main tree is built (`SerBoostedAssociationMerger`). The selected associations only feed the diagnostics: unresolved dependencies, SURPLUS warnings and the GUI's list. Using minimized conditions for selection alone would change no file.
+2. **Persisted minimized conditions go stale.** `persistMinimizedConditions` stores them on the associations, and nothing clears them when a later commit changes an association. Checkout would then use a condition for an association that no longer exists in that form. The GUI's "Use Simplified Labels" can already show such a stale condition today.
+
+Doing it properly means: (i) invalidate a stored minimized condition when its association's condition changes (record the condition it was computed from); (ii) let the main-tree build use valid minimized conditions as node conditions, behind the opt-in; (iii) extend the equivalence test from selection to the checked-out files. Since (ii) changes how the main tree is built, it is core work for its own session, like #7. Step (i) is small and also fixes the stale GUI labels; it can be done on its own first.
 
 ## Phase 4 - high-risk core work (separate sessions)
 
