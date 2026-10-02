@@ -75,7 +75,7 @@ public class PaperTest {
 
 	private String printRepository(Repository repo) {
 		Repository.Op repoOp = (Repository.Op) repo;
-		Checkout checkout = repoOp.compose(repoOp.getAssociations(), true);
+		Checkout checkout = repoOp.compose(repoOp.getAssociations());
 		StringBuilder sb = new StringBuilder();
 		sb.append("-------------\n");
 		this.visitTree(checkout.getNode(), sb);
