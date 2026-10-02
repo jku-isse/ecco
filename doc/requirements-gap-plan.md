@@ -89,7 +89,7 @@ This has the biggest unbounded worst case in the system, and the most fragile co
 ## Ongoing - #17 documentation
 
 * Restart `CHANGELOG.md` with one entry summarizing the work since 0.1.9 (the 2026 fixes), then one line per change.
-* Each gap commit updates `requirements.md`. Rebuild `requirements.pdf` when the markdown changes (pandoc plus headless Chrome; the steps can go in a small script under `doc/`).
+* Each gap commit updates `requirements.md`. Rebuild `requirements.pdf` when the markdown changes: `python3 doc/requirements-pdf/build.py` (needs pandoc and Chrome).
 
 
 ## Order and effort

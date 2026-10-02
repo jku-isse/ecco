@@ -1,0 +1,16 @@
+@page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 9.5pt; line-height: 1.45; color: #1a1a1a; max-width: none; margin: 0; }
+h1 { font-size: 22pt; margin: 0 0 4pt; }
+h2 { font-size: 14pt; margin: 20pt 0 6pt; padding-bottom: 3pt; border-bottom: 1.5px solid #2b5797; color: #2b5797; break-after: avoid; }
+h2:not(:first-of-type) { break-before: page; }
+h3 { font-size: 11pt; margin: 14pt 0 4pt; break-after: avoid; }
+table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt; font-size: 8.3pt; }
+th, td { border: 0.6pt solid #c8c8c8; padding: 3pt 5pt; vertical-align: top; text-align: left; }
+th { background: #eef2f8; }
+tr { break-inside: avoid; }
+th:first-child, td:first-child { white-space: nowrap; width: 1%; }
+code { font-family: Menlo, monospace; font-size: 0.88em; background: #f3f3f3; padding: 0 2px; border-radius: 2px; }
+img { width: 88%; margin: 6pt 0; }
+a { color: #2b5797; text-decoration: none; }
+#TOC { margin: 14pt 0; } #TOC ul { padding-left: 16pt; } #TOC li { margin: 2pt 0; }
+header#title-block-header { display: none; }
