@@ -13,6 +13,7 @@ import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -107,7 +108,7 @@ public class PreferencesView extends OperationView {
 
 		this.sectionsById.put(Section.PLUGINS, buildPluginsSection());
 		this.sectionsById.put(Section.LLM, buildLlmSection());
-		this.sectionsById.put(Section.MINIMIZATION, buildMinimizationSection());
+		this.sectionsById.put(Section.MINIMIZATION, buildMinimizationSection(eccoService));
 		this.sectionsById.put(Section.LILYPOND, buildLilypondSection());
 		this.sectionsById.put(Section.SERVER, buildServerSection(eccoService));
 
@@ -284,7 +285,7 @@ public class PreferencesView extends OperationView {
 		return new SectionUi(llmGridPane, save);
 	}
 
-	private static SectionUi buildMinimizationSection() {
+	private static SectionUi buildMinimizationSection(EccoService eccoService) {
 		GridPane minimizationGridPane = new GridPane();
 		minimizationGridPane.setHgap(10);
 		minimizationGridPane.setVgap(10);
@@ -327,10 +328,20 @@ public class PreferencesView extends OperationView {
 			}
 		});
 		minimizationGridPane.add(minimizationConfidenceSpinner, 1, minimizationRow, 1, 1);
+		minimizationRow++;
+
+		CheckBox useInCheckoutCheckBox = new CheckBox("Use minimized conditions in checkout");
+		useInCheckoutCheckBox.setSelected(MinimizationPreferences.isUsedInCheckout());
+		useInCheckoutCheckBox.setTooltip(new Tooltip("Checkout uses the minimized conditions stored by the last \"Minimize Presence Conditions\" run, "
+				+ "where they are still valid. They give the same files for every configuration the trusted accepted constraints allow; "
+				+ "for a configuration that violates one, the result can differ."));
+		minimizationGridPane.add(useInCheckoutCheckBox, 0, minimizationRow, 2, 1);
 
 		Runnable save = () -> {
 			MinimizationPreferences.setMinWitness(minimizationMinWitnessSpinner.getValue());
 			MinimizationPreferences.setConfidence(minimizationConfidenceSpinner.getValue());
+			MinimizationPreferences.setUsedInCheckout(useInCheckoutCheckBox.isSelected());
+			eccoService.setMinimizedConditionsInCheckout(useInCheckoutCheckBox.isSelected());
 		};
 
 		return new SectionUi(minimizationGridPane, save);

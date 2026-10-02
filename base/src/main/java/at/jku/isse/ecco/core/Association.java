@@ -124,6 +124,28 @@ public interface Association extends Persistable {
 			return null;
 		}
 
+		/**
+		 * The revision-exact minimized condition a checkout may use instead of this association's own
+		 * ({@code CheckoutConditions} in the {@code service} module), or null if none is stored.
+		 * Unlike {@link #getMinimizedCondition()}, which is feature-level and only for display.
+		 */
+		default String getCheckoutCondition() {
+			return null;
+		}
+
+		/** @return The fingerprint stored with {@link #getCheckoutCondition()}, or null. */
+		default String getCheckoutConditionBasis() {
+			return null;
+		}
+
+		/**
+		 * @param condition The checkout condition (a LogicNG formula string), or null to clear it.
+		 * @param basis     A fingerprint of what it was computed from; it is only used while that matches.
+		 */
+		default void setCheckoutCondition(String condition, String basis) {
+			// no-op by default
+		}
+
 
 		default Condition computeCondition() {
 			Condition moduleCondition = this.computeLikelyCondition();

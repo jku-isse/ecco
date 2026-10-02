@@ -32,6 +32,10 @@ public class SerAssociation implements Association, Association.Op {
 	// nullable as well, absent from older files: the fingerprint of what minimizedCondition was computed
 	// from (MinimizationBasis); without one, the minimized condition is never trusted
 	private String minimizedConditionBasis;
+	// nullable, absent from older files: the revision-exact minimized condition a checkout may use
+	// instead of this association's own, and the fingerprint it is only trusted with (CheckoutConditions)
+	private String checkoutCondition;
+	private String checkoutConditionBasis;
 
 
 	public SerAssociation() {
@@ -109,6 +113,22 @@ public class SerAssociation implements Association, Association.Op {
 	@Override
 	public String getMinimizedConditionBasis() {
 		return this.minimizedConditionBasis;
+	}
+
+	@Override
+	public String getCheckoutCondition() {
+		return this.checkoutCondition;
+	}
+
+	@Override
+	public String getCheckoutConditionBasis() {
+		return this.checkoutConditionBasis;
+	}
+
+	@Override
+	public void setCheckoutCondition(String condition, String basis) {
+		this.checkoutCondition = condition;
+		this.checkoutConditionBasis = condition == null ? null : basis;
 	}
 
 	@Override

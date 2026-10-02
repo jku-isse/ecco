@@ -1195,6 +1195,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     volatile boolean constraintViolationWarningsEnabled = true;
+    // off by default: checkout uses the associations' own conditions unless asked otherwise - see
+    // setMinimizedConditionsInCheckout
+    volatile boolean minimizedConditionsInCheckout = false;
 
     /**
      * Controls whether {@link #compose} and {@link #checkConstraintViolations} warn when a
@@ -1379,6 +1382,78 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
             return repository;
         });
+    }
+
+    /**
+     * Whether checkout uses the stored revision-exact minimized conditions
+     * ({@link #minimizeConditionsForCheckout}) of the associations that have a valid one, instead of
+     * their own. They are equivalent for every configuration the trusted accepted constraints allow;
+     * for a configuration that violates one, the checkout can differ (and warns about the violation).
+     * Off by default.
+     */
+    public synchronized void setMinimizedConditionsInCheckout(boolean enabled) {
+        this.minimizedConditionsInCheckout = enabled;
+    }
+
+    public boolean isMinimizedConditionsInCheckout() {
+        return this.minimizedConditionsInCheckout;
+    }
+
+    /**
+     * Computes and stores, for every association, a revision-exact minimized condition checkout can use
+     * ({@link CheckoutConditions}), under the trusted accepted constraints ({@link #acceptedSuggestions}).
+     * The fingerprints are taken first; the minimization runs without holding this service, so it does
+     * not block other calls, and results a commit overtook are stored but never used.
+     *
+     * @return the number of associations a condition was stored for
+     */
+    public int minimizeConditionsForCheckout() {
+        Map<String, String> bases;
+        List<ConstraintMiner.Suggestion> trusted;
+        List<Association> associations;
+        List<Feature> features;
+        synchronized (this) {
+            this.checkInitialized();
+            try {
+                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                Repository.Op repository = this.repositoryDao.load();
+                bases = CheckoutConditions.bases(repository);
+                trusted = this.acceptedSuggestions(repository);
+                associations = new ArrayList<>(repository.getAssociations());
+                features = new ArrayList<>(repository.getFeatures());
+                this.transactionStrategy.end();
+            } catch (RuntimeException e) {
+                this.rollbackIfTransactionActive();
+                throw new EccoException("Error reading the repository for minimization.", e);
+            }
+        }
+        Map<String, String> minimized = CheckoutConditions.minimize(associations, trusted, features);
+        this.writeTransaction("Error persisting checkout conditions.", repository -> {
+            for (Association.Op association : repository.getAssociations()) {
+                String condition = minimized.get(association.getId());
+                String basis = bases.get(association.getId());
+                if (condition != null && basis != null) {
+                    association.setCheckoutCondition(condition, basis);
+                    repository.addAssociation(association);
+                }
+            }
+            return repository;
+        });
+        return minimized.size();
+    }
+
+    /** The stored checkout conditions that are still valid, by association id - see {@link CheckoutConditions#valid}. */
+    public synchronized Map<String, String> validCheckoutConditions() {
+        this.checkInitialized();
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            Map<String, String> valid = CheckoutConditions.valid(this.repositoryDao.load());
+            this.transactionStrategy.end();
+            return valid;
+        } catch (RuntimeException e) {
+            this.rollbackIfTransactionActive();
+            throw e;
+        }
     }
 
     /**

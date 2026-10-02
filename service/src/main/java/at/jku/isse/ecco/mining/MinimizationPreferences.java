@@ -14,6 +14,7 @@ public final class MinimizationPreferences {
 
 	private static final String MIN_WITNESS_KEY = "minimizationMinWitness";
 	private static final String CONFIDENCE_KEY = "minimizationConfidence";
+	private static final String USE_IN_CHECKOUT_KEY = "minimizationUseInCheckout";
 
 	// same defaults as SuggestConstraintsCommand/ConstraintSuggestionsView
 	private static final int DEFAULT_MIN_WITNESS = 4;
@@ -36,6 +37,15 @@ public final class MinimizationPreferences {
 
 	public static void setConfidence(double confidence) {
 		prefs().putDouble(CONFIDENCE_KEY, confidence);
+	}
+
+	/** Whether checkout uses minimized conditions (see EccoService#setMinimizedConditionsInCheckout); off by default. */
+	public static boolean isUsedInCheckout() {
+		return prefs().getBoolean(USE_IN_CHECKOUT_KEY, false);
+	}
+
+	public static void setUsedInCheckout(boolean used) {
+		prefs().putBoolean(USE_IN_CHECKOUT_KEY, used);
 	}
 
 	private static Preferences prefs() {

@@ -118,6 +118,8 @@ public class MinimizationResults implements EccoListener {
                 if (!computed.isEmpty()) {
                     service.persistMinimizedConditions(computed, bases);
                 }
+                // and the revision-exact ones checkout can use (see EccoService#minimizeConditionsForCheckout)
+                service.minimizeConditionsForCheckout();
 
                 Platform.runLater(() -> {
                     // drop entries for associations that no longer exist (e.g. the repository
@@ -162,6 +164,7 @@ public class MinimizationResults implements EccoListener {
     @Override
     public void statusChangedEvent(EccoService service) {
         if (service.isInitialized()) {
+            service.setMinimizedConditionsInCheckout(MinimizationPreferences.isUsedInCheckout());
             if (this.seededFromPersisted) return;
             this.seededFromPersisted = true;
 

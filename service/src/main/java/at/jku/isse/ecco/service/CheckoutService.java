@@ -69,7 +69,10 @@ class CheckoutService {
     }
     private Checkout composeInTransaction(Configuration configuration) {
         Repository.Op repository = owner.repositoryDao.load();
-        Checkout checkout = repository.compose(configuration);
+        Map<String, String> minimized = owner.minimizedConditionsInCheckout ? CheckoutConditions.valid(repository) : Map.of();
+        if (owner.minimizedConditionsInCheckout)
+            LOGGER.info("Checking out with minimized conditions for " + minimized.size() + " of " + repository.getAssociations().size() + " associations.");
+        Checkout checkout = repository.compose(configuration, minimized);
         if (owner.surplusAbsorptionEnabled && !checkout.getSurplusModules().isEmpty()) {
             try {
                 SurplusLatticeAbsorber.suppressAbsorbed(checkout, repository);

@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.repository;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
 import at.jku.isse.ecco.EccoUtil;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
@@ -754,7 +755,19 @@ public interface Repository extends Persistable {
 		 * @return The checkout object.
 		 */
 		default Checkout compose(Configuration configuration) {
+			return this.compose(configuration, Map.of());
+		}
+
+		/**
+		 * Like {@link #compose(Configuration)}, but the files come from a main tree in which the
+		 * associations named in {@code retroactiveConditions} carry those conditions instead of their
+		 * own (see {@link MainTreeBuildingStrategy#buildMainTree(Collection, ProactiveTraceCheck, Map)}).
+		 * That main tree is built for this checkout only; the cached one is not touched. Which
+		 * associations count as selected, and the warnings, still come from their own conditions.
+		 */
+		default Checkout compose(Configuration configuration, Map<String, String> retroactiveConditions) {
 			checkNotNull(configuration);
+			checkNotNull(retroactiveConditions);
 
 			Set<Association.Op> selectedAssociations = new HashSet<>();
 			for (Association.Op association : this.getAssociations()) {
@@ -763,10 +776,19 @@ public interface Repository extends Persistable {
 				}
 			}
 
-			Node.Op mainTree = this.getMainTree();
+			Node.Op mainTree;
+			List<RejectedTrace> rejectedTraces;
+			if (retroactiveConditions.isEmpty()) {
+				mainTree = this.getMainTree();
+				rejectedTraces = this.getRejectedTraces();
+			} else {
+				ProactiveTraceCheck traceCheck = new ProactiveTraceCheck(this.getCommits());
+				mainTree = this.getMainTreeBuildingStrategy().buildMainTree(new ArrayList<>(this.getAssociations()), traceCheck, retroactiveConditions);
+				rejectedTraces = traceCheck.getRejected();
+			}
 			CheckoutComposer composer = new CheckoutComposer(configuration, this.getEvaluationStrategy());
 			Checkout checkout = composer.composeCheckout(mainTree, selectedAssociations);
-			checkout.getRejectedTraces().addAll(this.getRejectedTraces());
+			checkout.getRejectedTraces().addAll(rejectedTraces);
 
 			Set<ModuleRevision> desiredModules = new HashSet<>(this.getOrphanedConfigurationModules(configuration));
 			Set<ModuleRevision> missingModules = new HashSet<>();
