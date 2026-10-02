@@ -158,8 +158,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					}
 				}
 				// write patterns to file, highest priority first
-				List<CharSequence> adapterMappingsStrings = prioritizedMappings.entrySet().stream().sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())).map(Map.Entry::getValue).flatMap(Collection::stream).map(m -> m.getReader().getPluginId() + ";" + m.getPattern()).collect(Collectors.toList());
-				Files.write(adaptersFile, adapterMappingsStrings);
+				Files.write(adaptersFile, orderedMappingLines(prioritizedMappings));
 			}
 			// load adapter mappings from file. The routing is fixed per repository on purpose (the
 			// adapter determines the shape of a file's artifact tree, so re-routing a file later would
@@ -194,6 +193,35 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		} catch (IOException e) {
 			throw new EccoException("Error creating or reading adapters file.", e);
 		}
+	}
+
+
+	/**
+	 * The lines of a new .adapters file: highest priority first and, within a priority, by plugin
+	 * id. The readers come from a Guice set whose order depends on how the plugins were loaded, so
+	 * two adapters claiming the same pattern at the same priority (e.g. C and C++ both at the top
+	 * for *.c) used to route the files to whichever happened to come first. Such ties are now
+	 * broken by plugin id, and logged.
+	 */
+	static List<CharSequence> orderedMappingLines(Map<Integer, Collection<Mapping>> prioritizedMappings) {
+		List<CharSequence> lines = new ArrayList<>();
+		prioritizedMappings.entrySet().stream()
+				.sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey()))
+				.forEach(entry -> {
+					List<Mapping> mappings = new ArrayList<>(entry.getValue());
+					mappings.sort(Comparator.comparing(Mapping::getPluginId));
+					Map<String, List<String>> pluginIdsByPattern = new LinkedHashMap<>();
+					for (Mapping mapping : mappings) {
+						pluginIdsByPattern.computeIfAbsent(mapping.getPattern(), k -> new ArrayList<>()).add(mapping.getPluginId());
+						lines.add(mapping.getPluginId() + ";" + mapping.getPattern());
+					}
+					pluginIdsByPattern.forEach((pattern, pluginIds) -> {
+						if (pluginIds.size() > 1)
+							LOGGER.warning("Adapters " + pluginIds + " all claim " + pattern + " at priority " + entry.getKey()
+									+ "; " + pluginIds.get(0) + " reads those files in this repository. Edit " + ADAPTERS_FILE_NAME + " to change that.");
+					});
+				});
+		return lines;
 	}
 
 

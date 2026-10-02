@@ -22,15 +22,15 @@ public final class AdapterPreferences {
 	private static final String UNSET_MARKER = "\u0000unset";
 
 	/**
-	 * Adapters that are on the classpath (so they show up as options) but were not previously
-	 * shipped as active in the GUI; disabled by default so existing behavior doesn't silently
-	 * change until the user explicitly opts in via the Preferences dialog.
+	 * Adapters that are on the classpath (so they show up as options) but are off until the user
+	 * opts in via the Preferences dialog: the line-based Java and challenge adapters cannot write
+	 * files, and these four claim *.java or *.go, mostly for experiments. C and C++ are on (the
+	 * README maps *.c, *.h, *.cpp and *.hpp to them); that only changes new repositories, since
+	 * .adapters fixes an existing repository's routing.
 	 */
 	private static final Set<String> DEFAULT_DISABLED_PLUGIN_IDS = Set.of(
 			"at.jku.isse.ecco.adapter.challenge.JavaPlugin",
 			"at.jku.isse.ecco.adapter.java.JavaPlugin",
-			"at.jku.isse.ecco.adapter.c.CPlugin",
-			"at.jku.isse.ecco.adapter.cpp.CppPlugin",
 			"at.jku.isse.ecco.adapter.runtime.RuntimePlugin",
 			"at.jku.isse.ecco.adapter.golang.GoPlugin"
 	);
