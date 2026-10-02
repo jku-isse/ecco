@@ -33,6 +33,15 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 	private Boolean blockBody;
 
 	/**
+	 * For a statement with comments inside it (in a lambda body, between the operands of an
+	 * expression): its text with those comments, which the identifying text leaves out. Like the
+	 * comments above, not part of the artifact's identity and taken from the newest commit; null when
+	 * the statement has no inner comments, and in repositories committed before it was kept (the
+	 * writer then writes the text without them, as it always did).
+	 */
+	private String textWithComments;
+
+	/**
 	 * How the reader builds a file's tree: 1 since synchronized statements and blocks among
 	 * statements are nodes of their own (they used to be dropped / flattened into the enclosing
 	 * statements) and arrow switch entries are told apart from "case A:" ones. Kept on the file's package declaration; 0 (absent) in repositories committed
@@ -65,6 +74,14 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 		this.blockBody = blockBody;
 	}
 
+	public String getTextWithComments() {
+		return this.textWithComments;
+	}
+
+	public void setTextWithComments(String textWithComments) {
+		this.textWithComments = textWithComments;
+	}
+
 	public void setTreeFormat(int treeFormat) {
 		this.treeFormat = treeFormat;
 	}
@@ -83,6 +100,7 @@ public abstract class JavaASTData implements ArtifactData, Serializable {
 			this.comment = other.comment;
 			this.orphanComments = other.orphanComments;
 			this.blockBody = other.blockBody;
+			this.textWithComments = other.textWithComments;
 		}
 	}
 	

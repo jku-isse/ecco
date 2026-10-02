@@ -23,6 +23,7 @@ public class JavaASTCommentMigrationTest {
         if (node.getArtifact() != null && node.getArtifact().getData() instanceof JavaASTData data) {
             data.setComment(null);
             data.setOrphanComments(null);
+            data.setTextWithComments(null);
         }
         for (Node child : node.getChildren())
             forget(child);
@@ -31,7 +32,7 @@ public class JavaASTCommentMigrationTest {
     @Test
     @Timeout(120)
     public void commentsStoredWithoutAreFilledInByTheNextCommit() throws Exception {
-        String source = "/** Doc. */\npublic class Main {\n    // greets\n    public static void main(String[] args) {\n        System.out.println(\"hi\");\n    }\n}\n";
+        String source = "/** Doc. */\npublic class Main {\n    // greets\n    public static void main(String[] args) {\n        System.out.println(\"hi\");\n        int two = 1 + /* one more */ 1;\n    }\n}\n";
         Path work = Files.createTempDirectory("java-ast-comment-migration");
         Path content = Files.createDirectories(work.resolve("content"));
         try (EccoService service = new EccoService()) {
@@ -50,7 +51,7 @@ public class JavaASTCommentMigrationTest {
             service.setBaseDir(checkout);
             service.checkout("A");
             String written = Files.readString(checkout.resolve("Main.java"));
-            assertTrue(written.contains("Doc.") && written.contains("greets"), written);
+            assertTrue(written.contains("Doc.") && written.contains("greets") && written.contains("one more"), written);
         }
     }
 }

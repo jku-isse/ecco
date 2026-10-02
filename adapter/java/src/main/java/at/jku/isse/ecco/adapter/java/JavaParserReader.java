@@ -527,7 +527,12 @@ public class JavaParserReader implements VoidVisitor<Void> {
     }
 
     @Override
-    public void visit(PatternExpr n, Void arg) {
+    public void visit(TypePatternExpr n, Void arg) {
+        System.out.println(n.toString());
+    }
+
+    @Override
+    public void visit(RecordPatternExpr n, Void arg) {
         System.out.println(n.toString());
     }
 

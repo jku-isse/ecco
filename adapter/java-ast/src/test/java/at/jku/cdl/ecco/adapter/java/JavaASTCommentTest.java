@@ -60,4 +60,44 @@ public class JavaASTCommentTest {
                 "end of method", "in initializer", "end of class", "end of file"})
             assertTrue(written.contains(comment), "comment \"" + comment + "\" lost:\n" + written);
     }
+
+    @Test
+    public void commentsInsideStatementsAreKept() throws IOException {
+        // they used to be lost: a statement is identified by its text without comments
+        String out = readWrite("class F {\n" +
+                "    void f(java.util.List<String> list) {\n" +
+                "        list.forEach(s -> {\n" +
+                "            // inside a lambda\n" +
+                "            System.out.println(s);\n" +
+                "        });\n" +
+                "        int sum = 1 + /* inside an expression */ 2;\n" +
+                "    }\n" +
+                "}\n");
+        assertTrue(out.contains("// inside a lambda"), out);
+        assertTrue(out.contains("/* inside an expression */"), out);
+    }
+
+    @Test
+    public void innerCommentsDoNotChangeWhichArtifactAStatementIs() throws IOException {
+        String with = "class F { void f() { int sum = 1 + /* note */ 2; } }";
+        String without = "class F { void f() { int sum = 1 + 2; } }";
+        assertEquals(statementData(without), statementData(with));
+    }
+
+    private static at.jku.isse.ecco.artifact.ArtifactData statementData(String source) throws IOException {
+        Path base = Files.createTempDirectory("java-ast-comments-identity");
+        Files.writeString(base.resolve("F.java"), source);
+        Set<Node.Op> nodes = new JavaASTReader(new SerEntityFactory()).read(base, new Path[]{Path.of("F.java")});
+        java.util.List<at.jku.isse.ecco.artifact.ArtifactData> statements = new java.util.ArrayList<>();
+        java.util.ArrayDeque<Node> todo = new java.util.ArrayDeque<>(nodes);
+        while (!todo.isEmpty()) {
+            Node node = todo.pop();
+            if (node.getArtifact() != null && node.getArtifact().getData() instanceof at.jku.cdl.ecco.adapter.java.artifactData.JavaASTData data
+                    && data.getType() == at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType.STATEMENT)
+                statements.add(data);
+            todo.addAll(node.getChildren());
+        }
+        assertEquals(1, statements.size());
+        return statements.get(0);
+    }
 }

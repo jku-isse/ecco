@@ -1,6 +1,5 @@
 package at.jku.cdl.ecco.adapter.java;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
@@ -16,14 +15,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Both JavaASTReader (new JavaParser()) and JavaASTWriteHandler (StaticJavaParser) used to default
  * to ParserConfiguration.LanguageLevel.POPULAR = JAVA_11, so common post-11 constructs failed - some
  * loudly, but pattern-matching switch and module-info.java were silently reduced to an empty file
- * with no error at all (see JavaASTReader's PARSER_CONFIGURATION javadoc). Fixed by bumping both to
- * JAVA_18 (the highest non-preview level this JavaParser version, 3.25.8, offers) and by failing
- * loudly - throwing EccoException - on any non-empty ParseResult.getProblems(), instead of silently
- * proceeding with whatever (possibly truncated) CompilationUnit happened to come back.
- *
- * This file characterizes both what that fixed and what it deliberately didn't (records, Java 21's
- * pattern-matching switch, module-info.java support) - those remain broken, but now loudly instead
- * of via silent data loss.
+ * with no error at all (see JavaASTReader's PARSER_CONFIGURATION javadoc). Fixed by raising both to
+ * JAVA_21 (JavaParser 3.27; with 3.25 the highest level was JAVA_18, without Java 21's pattern-matching
+ * switch and record patterns) and by failing loudly - throwing EccoException - on any non-empty
+ * ParseResult.getProblems(), instead of silently proceeding with whatever (possibly truncated)
+ * CompilationUnit happened to come back.
  */
 public class JavaASTLanguageLevelTest {
 
@@ -140,22 +136,44 @@ public class JavaASTLanguageLevelTest {
     }
 
     @Test
-    public void patternMatchingSwitchFailsLoudlyInsteadOfSilentlyTruncatingTheFile() throws IOException {
-        // Java 21's finalized pattern-matching switch isn't representable by this JavaParser
-        // version's grammar even at JAVA_18 (the highest non-preview level offered) - before this
-        // fix, that silently truncated the whole class to nothing with no error at all. Now it's a
-        // loud, safe failure instead.
-        Path baseDir = Files.createTempDirectory("java-ast-language-level-pms");
-        Files.writeString(baseDir.resolve("Foo.java"),
+    public void patternMatchingSwitchRoundTrips() throws IOException {
+        // Java 21; JavaParser 3.25 could not parse it, and before that a class using it silently
+        // vanished from the tree
+        String out = readWrite("Foo.java",
                 "public class Foo {\n" +
                         "    public String bar(Object o) {\n" +
                         "        return switch (o) {\n" +
+                        "            case null -> \"null\";\n" +
+                        "            case String s when s.isEmpty() -> \"empty\";\n" +
                         "            case String s -> s;\n" +
                         "            default -> \"?\";\n" +
                         "        };\n" +
                         "    }\n" +
                         "}\n");
 
-        assertThrows(EccoException.class, () -> reader.read(baseDir, new Path[]{Path.of("Foo.java")}));
+        assertTrue(out.contains("case null ->"), out);
+        assertTrue(out.contains("case String s when s.isEmpty() ->"), out);
+        assertTrue(out.contains("case String s ->"), out);
+    }
+
+    @Test
+    public void recordPatternsRoundTrip() throws IOException {
+        String out = readWrite("Foo.java",
+                "public class Foo {\n" +
+                        "    record Point(int x, int y) {}\n" +
+                        "    String describe(Object o) {\n" +
+                        "        if (o instanceof Point(int x, int y) && x == 0) {\n" +
+                        "            return \"origin \" + y;\n" +
+                        "        }\n" +
+                        "        return switch (o) {\n" +
+                        "            case Point(var x, var y) when x > 0 -> \"right\";\n" +
+                        "            default -> \"?\";\n" +
+                        "        };\n" +
+                        "    }\n" +
+                        "}\n");
+
+        assertTrue(out.contains("o instanceof Point(int x, int y) && x == 0"), out);
+        assertTrue(out.contains("case Point(var x, var y) when x > 0 ->"), out);
+        assertTrue(out.contains("record Point(int x, int y)"), out);
     }
 }
