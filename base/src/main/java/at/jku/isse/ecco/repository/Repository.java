@@ -815,22 +815,12 @@ public interface Repository extends Persistable {
 		}
 
 
-		default Checkout compose(Collection<? extends Association.Op> selectedAssociations, boolean lazy) {
-			Node compRootNode;
-			Collection<Node> orderWarnings;
-			if (lazy) {
-				LazyCompositionRootNode lazyCompRootNode = new LazyCompositionRootNode();
-
-				for (Association.Op association : selectedAssociations) {
-					lazyCompRootNode.addOrigNode(association.getRootNode());
-				}
-
-				orderWarnings = lazyCompRootNode.getOrderSelector().getUncertainOrders();
-				compRootNode = lazyCompRootNode;
-			} else {
-				// TODO: non-lazy composition and computation of order warnings!
-				throw new EccoException("Non-lazy composition not yet implemented!");
+		default Checkout compose(Collection<? extends Association.Op> selectedAssociations) {
+			LazyCompositionRootNode compRootNode = new LazyCompositionRootNode();
+			for (Association.Op association : selectedAssociations) {
+				compRootNode.addOrigNode(association.getRootNode());
 			}
+			Collection<Node> orderWarnings = compRootNode.getOrderSelector().getUncertainOrders();
 
 			// compute unresolved dependencies
 			DependencyGraph dg = new DependencyGraph(selectedAssociations, DependencyGraph.ReferencesResolveMode.INCLUDE_ALL_REFERENCED_ASSOCIATIONS);

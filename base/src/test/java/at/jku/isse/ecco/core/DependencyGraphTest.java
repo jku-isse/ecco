@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * DependencyGraph (base/src/main/java/at/jku/isse/ecco/core/DependencyGraph.java) computes
  * cross-association dependencies from ArtifactReference "uses" edges between unique artifacts -
- * used by Repository.Op.compose(Collection, boolean)/subset() to find associations a selection
+ * used by Repository.Op.compose(Collection)/subset() to find associations a selection
  * transitively depends on. These build two associations with an explicit cross-reference between
  * their artifacts (ef.createNode(artifact) wires artifact.containingNode automatically, and nodes
  * are unique=true by default - see SerEntityFactory/SerNode), independent of any adapter.
