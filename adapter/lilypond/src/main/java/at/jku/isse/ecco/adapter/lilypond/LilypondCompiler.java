@@ -245,8 +245,8 @@ public class LilypondCompiler {
 
     /**
      * The user-configurable {@link LilypondPreferences} executable path wins when set; otherwise
-     * falls back to the bundled {@code lilypond-config.properties} classpath resource, same as
-     * before this became user-editable.
+     * the bundled {@code lilypond-config.properties} classpath resource, and when that is empty
+     * too, {@code lilypond} from the PATH. Null when none of them yields an executable.
      */
     private static Path getLilypondPath() {
         String path = LilypondPreferences.getExecutablePath();
@@ -255,6 +255,31 @@ public class LilypondCompiler {
         }
         if (path != null && !path.isBlank()) {
             return Path.of(path);
+        }
+        return findOnPath(System.getenv("PATH"), isWindows() ? "lilypond.exe" : "lilypond");
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").startsWith("Windows");
+    }
+
+    /** The first executable named {@code executable} in the directories of {@code pathVariable}, or null. */
+    static Path findOnPath(String pathVariable, String executable) {
+        if (pathVariable == null || pathVariable.isBlank()) {
+            return null;
+        }
+        for (String dir : pathVariable.split(java.io.File.pathSeparator)) {
+            if (dir.isBlank()) {
+                continue;
+            }
+            try {
+                Path candidate = Path.of(dir).resolve(executable);
+                if (Files.isRegularFile(candidate) && Files.isExecutable(candidate)) {
+                    return candidate;
+                }
+            } catch (java.nio.file.InvalidPathException e) {
+                // a malformed PATH entry - skip it
+            }
         }
         return null;
     }
