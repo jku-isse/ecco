@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.java;
+package at.jku.isse.ecco.adapter.challenge;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
@@ -13,7 +13,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * JavaWriter is the writer bound for the line-based Java adapter, but it cannot rebuild Java source
+ * JavaWriter is the writer bound for the challenge adapter (SPLC feature location challenge), but it cannot rebuild Java source
  * from the tree JavaBlockReader builds. It used to write nothing and return no files, so a checkout
  * looked successful while every .java file was missing. It now refuses, naming the adapter to use.
  */
