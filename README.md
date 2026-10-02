@@ -161,7 +161,7 @@ Holds the files of one variant. `commit` reads it with the artifact adapters; `c
 
 * `.config`: the configuration of the checked-out variant. A commit without a configuration (in the GUI; the command line always takes `-c`) uses it; update it (mark modified features with `'`) when changing the variant.
 * `.warnings`: the warnings of the last checkout - feature interactions that were never committed, surplus artifacts, and ambiguous orders, each with a suggested fix.
-* `.hashes`: hashes of the checked-out files, used by `commit` to recognize unchanged files.
+* `.hashes`: hashes of the checked-out files. They are meant to let `commit` skip unchanged files, which is not implemented yet: every commit reads every file.
 
 
 ## Artifact Adapters
