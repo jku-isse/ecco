@@ -10,6 +10,7 @@ import at.jku.isse.ecco.cli.command.features.ListFeaturesCommand;
 import at.jku.isse.ecco.cli.command.fetch.FetchCommand;
 import at.jku.isse.ecco.cli.command.fork.ForkCommand;
 import at.jku.isse.ecco.cli.command.init.InitCommand;
+import at.jku.isse.ecco.cli.command.minimize.MinimizeCommand;
 import at.jku.isse.ecco.cli.command.minimizepreview.MinimizePreviewCommand;
 import at.jku.isse.ecco.cli.command.property.GetCommand;
 import at.jku.isse.ecco.cli.command.property.SetCommand;
@@ -21,6 +22,7 @@ import at.jku.isse.ecco.cli.command.suggestconstraints.SuggestConstraintsCommand
 import at.jku.isse.ecco.cli.command.traces.TracesCommand;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.*;
 
 import java.nio.file.Path;
@@ -123,6 +125,14 @@ public class Main {
         registerDependencyGraphCommand(commandParser);
         registerSuggestConstraintsCommand(commandParser);
         registerMinimizePreviewCommand(commandParser);
+        registerMinimizeCommand(commandParser);
+    }
+
+    private static void registerMinimizeCommand(Subparsers commandParser) {
+        Subparser minimizeCommandParser = commandParser.addParser(MinimizeCommand.MINIMIZE)
+                .help("store minimized conditions for checkout --minimized");
+        minimizeCommandParser.setDefault(ProgramConstants.COMMAND, MinimizeCommand.MINIMIZE);
+        commandRegister.register(MinimizeCommand.MINIMIZE, new MinimizeCommand(eccoService));
     }
 
     private static void registerCommitCommand(Subparsers commandParser) {
@@ -137,6 +147,8 @@ public class Main {
         Subparser checkoutCommandParser = commandParser.addParser(CheckoutCommand.CHECKOUT);
         checkoutCommandParser.setDefault(ProgramConstants.COMMAND, CheckoutCommand.CHECKOUT);
         checkoutCommandParser.addArgument(CheckoutCommand.FLAG_CONFIGURATION).required(true);
+        checkoutCommandParser.addArgument(CheckoutCommand.FLAG_MINIMIZED).action(Arguments.storeTrue())
+                .help("use the minimized conditions stored by 'minimize' where they are still valid");
         commandRegister.register(CheckoutCommand.CHECKOUT, new CheckoutCommand(eccoService));
     }
 

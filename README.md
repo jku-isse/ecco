@@ -106,6 +106,7 @@ ecco checkout -c "Base, Cart, Wishlist"    # composed from both commits; see .wa
 | `dg` | Prints the dependency graph between associations. |
 | `suggest-constraints [--min-witness N]` | Mines feature constraints (requires, excludes, ...) from the committed configurations. |
 | `minimize-preview [--min-witness N]` | Shows the presence conditions simplified with the mined constraints (read-only). |
+| `minimize` | Stores minimized conditions that `checkout --minimized -c <configuration>` uses instead of the associations' own, where they are still valid (until a commit changes what they were computed from). They give the same files for every configuration the trusted accepted constraints allow. |
 
 The exit code is 0 on success, 1 if a command fails, and 2 for invalid arguments.
 
