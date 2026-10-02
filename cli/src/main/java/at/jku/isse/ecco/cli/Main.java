@@ -52,11 +52,22 @@ public class Main {
      * detect a failure. Errors go to stderr; -Decco.debug=true adds the stack trace.
      */
     static int run(String[] args) {
+        return run(args, Path.of(""));
+    }
+
+    /**
+     * Runs the CLI as if started in {@code startDir}: every command except init and fork works on
+     * the repository in startDir or its nearest parent containing a .ecco directory, and that
+     * directory is the working directory - as for git, a command run in a subdirectory still
+     * commits and checks out the whole variant. init and fork create a repository in startDir.
+     */
+    static int run(String[] args, Path startDir) {
         registerCommandsOnce();
 
         try {
             Namespace namespace = parser.parseArgs(args);
             String command = namespace.getString("command");
+            locateRepository(command, startDir);
             commandRegister.run(command, namespace);
             return 0;
         } catch (ArgumentParserException e) {
@@ -71,6 +82,15 @@ public class Main {
                 e.printStackTrace();
             return 1;
         }
+    }
+
+    private static void locateRepository(String command, Path startDir) {
+        if (eccoService.isInitialized()) // left open by a command that failed in this JVM (tests)
+            eccoService.close();
+        eccoService.setBaseDir(startDir);
+        eccoService.setRepositoryDir(startDir.resolve(EccoService.REPOSITORY_DIR_NAME));
+        if (!InitCommand.INIT.equals(command) && !ForkCommand.FORK.equals(command))
+            eccoService.detectRepository(startDir);
     }
 
     private static boolean commandsRegistered = false;

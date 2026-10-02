@@ -88,7 +88,7 @@ ecco checkout -c "Base, Cart, Wishlist"    # composed from both commits; see .wa
 
 ## Command Line Interface
 
-`ecco` works on the repository in the current directory or the nearest parent directory containing a `.ecco` directory; the current directory is the working directory. `ecco <command> -h` describes each command.
+`ecco` works on the repository in the current directory or the nearest parent directory containing a `.ecco` directory. That directory is the working directory: a command run in a subdirectory still commits or checks out the whole variant. `init` and `fork` create a repository in the current directory. `ecco <command> -h` describes each command.
 
 | Command | Description |
 | --- | --- |
