@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.java;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
@@ -12,26 +13,21 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * JavaWriter is the writer actually bound for the Java adapter (JavaModule.configure() binds it
- * alongside JavaBlockReader), but its write() method is an unimplemented stub - literally
- * "// TODO: implement!" followed by returning an empty array regardless of input. Checking out a
- * Java-based variant currently writes nothing back to disk for any Java file. Characterizing that
- * real, surprising limitation as-is rather than silently padding a coverage number - not fixed here,
- * since implementing a real writer (reconstructing Java source from the class/method/field/block
- * tree JavaBlockReader builds) is substantial new functionality, not a test-only change.
+ * JavaWriter is the writer bound for the line-based Java adapter, but it cannot rebuild Java source
+ * from the tree JavaBlockReader builds. It used to write nothing and return no files, so a checkout
+ * looked successful while every .java file was missing. It now refuses, naming the adapter to use.
  */
 public class JavaWriterTest {
 
     private final JavaWriter writer = new JavaWriter();
 
     @Test
-    public void writeProducesNoOutputRegardlessOfInput() {
+    public void writingFilesFailsAndNamesTheJavaAstAdapter() {
         SerEntityFactory ef = new SerEntityFactory();
         Node.Op pluginNode = ef.createNode(ef.createArtifact(new PluginArtifactData(JavaPlugin.class.getName(), Path.of("Foo.java"))));
 
-        Path[] written = writer.write(Path.of("."), Set.<Node>of(pluginNode));
-
-        assertEquals(0, written.length, "write() is an unimplemented stub - it never produces any output file, even for real input");
+        EccoException e = assertThrows(EccoException.class, () -> writer.write(Path.of("."), Set.<Node>of(pluginNode)));
+        assertTrue(e.getMessage().contains("JavaASTPlugin"), e.getMessage());
     }
 
     @Test

@@ -181,7 +181,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels |
 | File | everything else | whole files (binary) |
 
-Further adapters are included but not mapped by default: `golang`, `java` (line-based Java), `runtime`, and `challenge` (for the SPLC feature location challenge). Map files to them in `.adapters`. See [adapter](adapter) for how adapters are built.
+Further adapters are included but not mapped by default: `golang`, `java` (line-based Java), `runtime`, and `challenge` (for the SPLC feature location challenge). Map files to them in `.adapters`. `java` and `challenge` only read files: a checkout of files committed with them fails. See [adapter](adapter) for how adapters are built.
 
 ![Artifact Adapters](doc/artifact_adapters.png "Artifact Adapters")
 
