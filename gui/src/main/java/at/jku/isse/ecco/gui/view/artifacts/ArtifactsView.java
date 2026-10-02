@@ -526,10 +526,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     private static final class RefreshResult {
         final List<? extends Association> associations;
         final int maxNumArtifacts;
+        // persisted minimized conditions still valid for the repository as it is now
+        final Map<String, String> validMinimized;
 
-        RefreshResult(List<? extends Association> associations, int maxNumArtifacts) {
+        RefreshResult(List<? extends Association> associations, int maxNumArtifacts, Map<String, String> validMinimized) {
             this.associations = associations;
             this.maxNumArtifacts = maxNumArtifacts;
+            this.validMinimized = validMinimized;
         }
     }
 
@@ -570,7 +573,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 for (Association a : associations) {
                     max = Math.max(max, a.getRootNode().countArtifacts());
                 }
-                return new RefreshResult(associations, max);
+                return new RefreshResult(associations, max, ArtifactsView.this.service.validMinimizedConditions());
             }
         };
         refreshTask.setOnSucceeded(event -> {
@@ -586,15 +589,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             this.associationsData.clear();
             int index = 0;
             for (Association a : result.associations) {
-                // prefer the persisted value (see EccoService#persistMinimizedConditions) read
-                // directly off the association itself -- no timing dependency on whether
-                // MinimizationResults' own statusChangedEvent-triggered seeding (async, via
+                // prefer the persisted value, if still valid (see EccoService#validMinimizedConditions)
+                // -- no timing dependency on whether MinimizationResults' own seeding (async, via
                 // Platform.runLater) has already run by the time this refresh's own background Task
-                // completes. Falls back to the shared live map only if the association was never
-                // persisted (e.g. a run from this exact session that, for some reason, hasn't been
-                // persisted yet); kept in sync afterward either way by the MapChangeListener
-                // registered in the constructor.
-                String minimizedCondition = ((Association.Op) a).getMinimizedCondition();
+                // completes. Falls back to the shared live map, which MinimizationResults keeps to
+                // valid results too; kept in sync afterward by the MapChangeListener registered in
+                // the constructor.
+                String minimizedCondition = result.validMinimized.get(a.getId());
                 if (minimizedCondition == null) {
                     minimizedCondition = this.minimizationResults.getMinimizedByAssociationId().get(a.getId());
                 }

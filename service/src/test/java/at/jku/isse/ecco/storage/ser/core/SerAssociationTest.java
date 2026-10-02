@@ -46,6 +46,20 @@ public class SerAssociationTest {
 	}
 
 	@Test
+	public void basis_roundTripsAndIsClearedWithTheCondition() throws Exception {
+		SerAssociation association = new SerAssociation();
+		association.setMinimizedCondition("A", "fingerprint");
+		SerAssociation restored = roundTrip(association);
+		assertEquals("A", restored.getMinimizedCondition());
+		assertEquals("fingerprint", restored.getMinimizedConditionBasis());
+
+		restored.setMinimizedCondition("B");
+		assertNull(restored.getMinimizedConditionBasis(), "a condition set without a fingerprint must not keep the old one");
+		restored.setMinimizedCondition(null, "fingerprint");
+		assertNull(restored.getMinimizedConditionBasis());
+	}
+
+	@Test
 	public void clearedAfterBeingSet_deserializesAsNull() throws Exception {
 		SerAssociation association = new SerAssociation();
 		association.setMinimizedCondition("A");

@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.gui;
 
 import at.jku.isse.ecco.core.Association;
+import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
 import at.jku.isse.ecco.mining.ConstraintMiner;
@@ -88,6 +89,8 @@ public class MinimizationResults implements EccoListener {
                 // added a counterexample since), filter to accepted signatures, then let
                 // ParallelMinimization compile the feature model once per worker thread and process
                 // every association concurrently.
+                // fingerprints first: results are only valid for the repository as it was when the run started
+                Map<String, String> bases = service.minimizationBases();
                 List<Set<String>> configs = ConfigurationBridge.readConfigurations(service);
                 List<ConstraintMiner.Suggestion> mined = new ConstraintMiner(
                         MinimizationPreferences.getMinWitness(), MinimizationPreferences.getConfidence(), null).mine(configs);
@@ -113,7 +116,7 @@ public class MinimizationResults implements EccoListener {
                 // Runs on this background thread, same as the repository reads above; a failure here
                 // is caught by the catch block below like any other failure in this run.
                 if (!computed.isEmpty()) {
-                    service.persistMinimizedConditions(computed);
+                    service.persistMinimizedConditions(computed, bases);
                 }
 
                 Platform.runLater(() -> {
@@ -142,6 +145,20 @@ public class MinimizationResults implements EccoListener {
         thread.start();
     }
 
+    /**
+     * A commit can change any association's condition, or remove a constraint a minimization relied
+     * on: keep only the results that are still valid (see EccoService#validMinimizedConditions).
+     */
+    @Override
+    public void commitsChangedEvent(EccoService service, Commit commit) {
+        if (!service.isInitialized() || running.get()) return;
+        Map<String, String> valid = service.validMinimizedConditions();
+        Platform.runLater(() -> {
+            minimizedByAssociationId.keySet().retainAll(valid.keySet());
+            minimizedByAssociationId.putAll(valid);
+        });
+    }
+
     @Override
     public void statusChangedEvent(EccoService service) {
         if (service.isInitialized()) {
@@ -153,13 +170,8 @@ public class MinimizationResults implements EccoListener {
             // session's results immediately, without needing a fresh run. Only done once per open --
             // see the seededFromPersisted field javadoc for why re-seeding on every later
             // statusChangedEvent would be wrong.
-            Map<String, String> persisted = new java.util.HashMap<>();
-            for (Association association : service.getRepository().getAssociations()) {
-                String minimized = ((Association.Op) association).getMinimizedCondition();
-                if (minimized != null) {
-                    persisted.put(association.getId(), minimized);
-                }
-            }
+            // only those still valid for the repository as it is now - see EccoService#validMinimizedConditions
+            Map<String, String> persisted = service.validMinimizedConditions();
             if (!persisted.isEmpty()) {
                 Platform.runLater(() -> minimizedByAssociationId.putAll(persisted));
             }

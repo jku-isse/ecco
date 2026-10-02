@@ -107,6 +107,23 @@ public interface Association extends Persistable {
 			// no-op by default
 		}
 
+		/**
+		 * @param condition The minimized condition string to persist, or null to clear it.
+		 * @param basis     A fingerprint of what it was computed from ({@code MinimizationBasis} in the
+		 *                  {@code service} module); the condition is only trusted while it still matches.
+		 */
+		default void setMinimizedCondition(String condition, String basis) {
+			this.setMinimizedCondition(condition);
+		}
+
+		/**
+		 * @return The fingerprint passed with {@link #setMinimizedCondition(String, String)}, or null if
+		 * none was (a condition persisted before fingerprints existed is never trusted).
+		 */
+		default String getMinimizedConditionBasis() {
+			return null;
+		}
+
 
 		default Condition computeCondition() {
 			Condition moduleCondition = this.computeLikelyCondition();

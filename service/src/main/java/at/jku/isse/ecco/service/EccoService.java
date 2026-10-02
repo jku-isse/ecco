@@ -1311,27 +1311,67 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * The fingerprint ({@link MinimizationBasis}) of every association as it is now, by association
+     * id. A minimization run takes these when it starts, before reading the repository, and passes
+     * them to {@link #persistMinimizedConditions} - taking them when persisting would bless results
+     * computed before a commit that landed during the run.
+     */
+    public synchronized Map<String, String> minimizationBases() {
+        this.checkInitialized();
+        String repositoryBasis = MinimizationBasis.ofRepository(ConfigurationBridge.readConfigurations(this),
+                AcceptedConstraints.acceptedSignatures(this.getRepository().getConstraints()));
+        Map<String, String> bases = new HashMap<>();
+        for (Association association : this.getRepository().getAssociations())
+            bases.put(association.getId(), MinimizationBasis.of(association, repositoryBasis));
+        return bases;
+    }
+
+    /**
+     * The persisted minimized conditions that still hold, by association id: those whose fingerprint
+     * ({@link MinimizationBasis}) matches the repository as it is now. A later commit can change an
+     * association's condition, or add a configuration that removes a constraint the minimization
+     * relied on; its minimized condition is then left out rather than shown or used stale.
+     */
+    public synchronized Map<String, String> validMinimizedConditions() {
+        this.checkInitialized();
+        Map<String, String> valid = new HashMap<>();
+        String repositoryBasis = null;
+        for (Association association : this.getRepository().getAssociations()) {
+            Association.Op op = (Association.Op) association;
+            if (op.getMinimizedCondition() == null || op.getMinimizedConditionBasis() == null)
+                continue;
+            if (repositoryBasis == null)
+                repositoryBasis = MinimizationBasis.ofRepository(ConfigurationBridge.readConfigurations(this),
+                        AcceptedConstraints.acceptedSignatures(this.getRepository().getConstraints()));
+            if (op.getMinimizedConditionBasis().equals(MinimizationBasis.of(association, repositoryBasis)))
+                valid.put(association.getId(), op.getMinimizedCondition());
+        }
+        return valid;
+    }
+
+    /**
      * Persists a "Minimize Presence Conditions" run's results onto the associations they were computed
-     * for (see {@code Association.Op#setMinimizedCondition}), so they survive a repository close/reopen
-     * instead of existing only in the GUI's in-memory {@code MinimizationResults}. One batched write for
-     * the whole run, not one transaction per association. Entries whose association id no longer exists
-     * in the repository (e.g. removed by a commit that ran while/after the minimization run) are
-     * silently skipped rather than treated as an error.
+     * for (see {@code Association.Op#setMinimizedCondition}), each with the fingerprint taken when the
+     * run started ({@link #minimizationBases}), so they survive a repository close/reopen and are only
+     * trusted while still valid ({@link #validMinimizedConditions}). One batched write for the whole run.
+     * Entries whose association id no longer exists, or that have no fingerprint, are skipped.
      *
      * @param minimizedByAssociationId association id -&gt; minimized condition string
-     *                                 ({@code PresenceConditionMinimizer.format(...)}), as produced by
-     *                                 {@code MinimizationResults}.
+     *                                 ({@code PresenceConditionMinimizer.format(...)})
+     * @param basisByAssociationId     association id -&gt; fingerprint, from {@link #minimizationBases}
      */
-    public synchronized void persistMinimizedConditions(Map<String, String> minimizedByAssociationId) {
+    public synchronized void persistMinimizedConditions(Map<String, String> minimizedByAssociationId, Map<String, String> basisByAssociationId) {
         this.checkInitialized();
         checkNotNull(minimizedByAssociationId);
+        checkNotNull(basisByAssociationId);
         if (minimizedByAssociationId.isEmpty()) return;
 
         this.writeTransaction("Error persisting minimized conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
                 String minimizedCondition = minimizedByAssociationId.get(association.getId());
-                if (minimizedCondition != null) {
-                    association.setMinimizedCondition(minimizedCondition);
+                String basis = basisByAssociationId.get(association.getId());
+                if (minimizedCondition != null && basis != null) {
+                    association.setMinimizedCondition(minimizedCondition, basis);
                     // re-persist an already-tracked association -- safe/idempotent, same idiom
                     // Repository.Op#extract() uses to mark a mutated-in-place association dirty.
                     repository.addAssociation(association);
