@@ -29,6 +29,9 @@ public class SerAssociation implements Association, Association.Op {
 	// not "minimizes to nothing" (which PresenceConditionMinimizer.format() itself renders as the
 	// literal string "FALSE").
 	private String minimizedCondition;
+	// nullable as well, absent from older files: the fingerprint of what minimizedCondition was computed
+	// from (MinimizationBasis); without one, the minimized condition is never trusted
+	private String minimizedConditionBasis;
 
 
 	public SerAssociation() {
@@ -94,7 +97,18 @@ public class SerAssociation implements Association, Association.Op {
 
 	@Override
 	public void setMinimizedCondition(String condition) {
+		this.setMinimizedCondition(condition, null);
+	}
+
+	@Override
+	public void setMinimizedCondition(String condition, String basis) {
 		this.minimizedCondition = condition;
+		this.minimizedConditionBasis = condition == null ? null : basis;
+	}
+
+	@Override
+	public String getMinimizedConditionBasis() {
+		return this.minimizedConditionBasis;
 	}
 
 	@Override
