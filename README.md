@@ -173,7 +173,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | --- | --- | --- |
 | Text | `*.txt`, `*.xml`, `*.html`, `*.css`, `*.js`, `*.java` | lines; keeps the encoding, line separators, and final newline |
 | Markdown | `*.md`, `*.markdown` | markdown blocks |
-| Java (AST) | `*.java` | Java syntax tree (before the text adapter's `*.java`) |
+| Java (AST) | `*.java` | Java syntax tree, Java up to 21 (before the text adapter's `*.java`); keeps every comment, laid out by JavaParser's printer |
 | C | `*.c`, `*.h` | lines, grouped by function; keeps the encoding, line separators, and final newline. Preprocessor directives are ordinary lines; VEVOS presence conditions (`pcs.variant.csv`) become proactive feature traces; a trace that contradicts the commit history is not used and is reported as a `TRACE` warning |
 | C++ | `*.cpp`, `*.hpp` (and `*.c`, `*.h` after the C adapter) | lines, grouped by namespace, class, enum and function; like the C adapter otherwise. Repositories committed with its first version (which reordered files and dropped comments, namespaces, classes and `#if` directives) can be checked out but not committed to |
 | TypeScript | `*.ts` | statements and blocks; parsed with the TypeScript compiler running in an embedded Node.js (Javet) |

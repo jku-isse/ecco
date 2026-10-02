@@ -72,11 +72,11 @@ public class JavaASTWriteHandler {
 	 * this once in a static initializer would only take effect on whichever thread happened to
 	 * trigger class loading, not necessarily the thread that later calls write() (e.g. a background
 	 * commit/import Task). Set explicitly at the top of both entry points below instead. Matches
-	 * JavaASTReader's PARSER_CONFIGURATION (see its javadoc for why JAVA_18, not higher).
+	 * JavaASTReader's PARSER_CONFIGURATION (see its javadoc).
 	 */
 	private static void configureStaticJavaParser() {
 		StaticJavaParser.setConfiguration(new ParserConfiguration()
-				.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_18));
+				.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21));
 	}
 
 	public static void writeJavaFile(Node fileRoot, Path outputPath) {
@@ -247,11 +247,21 @@ public class JavaASTWriteHandler {
 
 	private static Statement addStatement(Node child, com.github.javaparser.ast.Node parent) {
 		JavaASTSimpleStringData stmtData = (JavaASTSimpleStringData) child.getArtifact().getData();
-		Statement stmt = new EmptyStmt();
-		try {
-			stmt = StaticJavaParser.parseStatement(stmtData.getData());
-		}catch(ParseProblemException e) {
-			throw new EccoException("JavaPlugin - Writer Error - Cannot parse statement: "+stmtData.getData(), e);
+		Statement stmt = null;
+		// the text with the comments inside the statement, if there are any
+		if (stmtData.getTextWithComments() != null) {
+			try {
+				stmt = StaticJavaParser.parseStatement(stmtData.getTextWithComments());
+			} catch (ParseProblemException e) {
+				LOGGER.warning("Writing a statement without its inner comments, they do not parse: " + stmtData.getTextWithComments());
+			}
+		}
+		if (stmt == null) {
+			try {
+				stmt = StaticJavaParser.parseStatement(stmtData.getData());
+			} catch (ParseProblemException e) {
+				throw new EccoException("JavaPlugin - Writer Error - Cannot parse statement: " + stmtData.getData(), e);
+			}
 		}
 		if (parent instanceof NodeWithBlockStmt<?>) {
 			NodeWithBlockStmt<?> blockParent = (NodeWithBlockStmt<?>) parent;

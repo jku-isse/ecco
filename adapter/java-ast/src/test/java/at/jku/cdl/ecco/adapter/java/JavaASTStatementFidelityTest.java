@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class JavaASTStatementFidelityTest {
 
-    private static final JavaParser PARSER = new JavaParser(new ParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_18));
+    private static final JavaParser PARSER = new JavaParser(new ParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21));
     private static final PrettyPrinterConfiguration NO_COMMENTS = new PrettyPrinterConfiguration().setPrintComments(false);
 
     private static void assertSameCodeAfterRoundTrip(String source) throws IOException {

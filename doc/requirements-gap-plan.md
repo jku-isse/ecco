@@ -95,6 +95,8 @@ This has the biggest unbounded worst case in the system, and the most fragile co
 
 ### #10 Java 21 language support in the Java (AST) adapter
 
+**Done 2026-10-03.** JavaParser 3.27.0, language level JAVA_21; pattern-matching `switch` (guards, `case null`) and record patterns round-trip. The tree shape did not change, so `TREE_FORMAT` stays; reading all 771 Java files of this repository gave identical artifact identities (67,097 artifacts) under 3.25.8 and 3.27.0, so existing repositories are not split by the upgrade. Step 3's check found that comments inside lambdas and expressions were lost: they are now kept as metadata outside the artifact's identity (`JavaASTData#getTextWithComments`), so old repositories are not split and get them on the next commit.
+
 1. Upgrade JavaParser (3.25.8 to a release that parses Java 21) in `libs.versions.toml`.
 2. Run the java-ast fidelity tests (`JavaASTStatementFidelityTest`, `JavaASTCommentTest`, `JavaASTTreeFormatTest`). If the tree shape changes, bump `JavaASTData.TREE_FORMAT` so old repositories are refused for commit, as before.
 3. Add tests for pattern-matching `switch`, record patterns, and comments inside lambdas and expressions (still unverified).

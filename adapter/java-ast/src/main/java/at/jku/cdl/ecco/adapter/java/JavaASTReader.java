@@ -93,12 +93,10 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	// new JavaParser()'s default ParserConfiguration.languageLevel is POPULAR = JAVA_11, so records,
 	// sealed classes, pattern matching (instanceof and switch), and switch expressions all failed
-	// outright (and text blocks/module-info.java worse - see below). JAVA_18 is the highest
-	// non-preview level this JavaParser version (3.25.8) offers; it does NOT cover the Java 21
-	// finalization of pattern-matching switch/record patterns, so those remain unsupported - a
-	// JavaParser version bump would be needed to close that gap (tracked as follow-up).
+	// outright (and text blocks/module-info.java worse - see below). JAVA_21 (JavaParser 3.26+) also
+	// covers Java 21's pattern-matching switch and record patterns.
 	private static final ParserConfiguration PARSER_CONFIGURATION = new ParserConfiguration()
-			.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_18);
+			.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
 
 	private final EntityFactory entityFactory;
 	private final PrettyPrinterConfiguration PPC;
@@ -446,6 +444,21 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return methodNodes;
 	}
 
+	/**
+	 * Keeps the comments inside a statement - in a lambda body, between the operands of an expression -
+	 * which its identifying text (printed without comments) loses: the statement's own comment is kept
+	 * by commented(), so only the text without it is printed with comments.
+	 */
+	private void withInnerComments(JavaASTData data, Statement statement) {
+		if (statement.getAllContainedComments().isEmpty())
+			return;
+		Statement withoutOwnComment = statement.clone();
+		withoutOwnComment.removeComment();
+		String text = withoutOwnComment.toString(PPC_WITH_COMMENTS);
+		if (!text.equals(statement.toString(PPC)))
+			data.setTextWithComments(text);
+	}
+
 	private void addChildren(Statement body, Node.Op parent) {
 		if (body instanceof NodeWithBlockStmt<?> withBlock) {
 			// synchronized: used to be dropped, only the statements of its block were kept
@@ -478,6 +491,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			JavaASTSimpleStringData sdData = new JavaASTSimpleStringData(body.toString(PPC));
 			sdData.setType(ASTNodeType.STATEMENT);
 			commented(sdData, body);
+			withInnerComments(sdData, body);
 			Artifact.Op<JavaASTSimpleStringData> sdArtifact = this.entityFactory.createArtifact(sdData);
 			Node.Op node = this.entityFactory.createNode(sdArtifact);
 			node.putProperty(PROPERTY_LINE_START, getStartLine(body));
