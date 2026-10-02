@@ -1,113 +1,58 @@
 package at.jku.isse.ecco.gui.view.operation;
 
-import at.jku.isse.ecco.service.RemoteAddress;
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.core.Association;
-import at.jku.isse.ecco.core.Remote;
-import at.jku.isse.ecco.feature.Feature;
-import at.jku.isse.ecco.feature.FeatureRevision;
-import at.jku.isse.ecco.tree.Node;
-import javafx.beans.property.ReadOnlyBooleanWrapper;
-import javafx.beans.property.ReadOnlyStringWrapper;
+import at.jku.isse.ecco.service.RecentRepositories;
+import at.jku.isse.ecco.service.RemoteAddress;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.CheckBoxTreeTableCell;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 
-// TODO: this view is currently not in use
+/**
+ * Creates a new repository from another one - a local repository (or its working directory) or
+ * the host:port of an ECCO server - optionally leaving out feature revisions, like the command
+ * line's {@code fork [--exclude <revisions>] <remote>}. The remote is registered as origin.
+ */
 public class ForkView extends OperationView {
 
-	private EccoService service;
-
-
-	private Button forkButton;
-	private TextField repositoryDirTextField;
-	private TextField remoteAddressTextField;
-
+	private final EccoService service;
 
 	public ForkView(EccoService service) {
+		super();
 		this.service = service;
-
-		this.forkButton = new Button("Fork |");
-		this.repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
-		this.remoteAddressTextField = new TextField();
-
-		this.forkButton.setOnAction(event1 -> {
-			try {
-				Path repositoryDir = Paths.get(repositoryDirTextField.getText());
-				this.service.setRepositoryDir(repositoryDir);
-				this.service.setBaseDir(repositoryDir.getParent());
-				this.service.init();
-
-				String remoteAddress = remoteAddressTextField.getText();
-				Path path = null;
-				if (remoteAddress != null) {
-					try {
-						path = Paths.get(remoteAddress);
-					} catch (InvalidPathException ignored) {
-					}
-				}
-
-				// host:port first: "127.0.0.1:3770" is also a syntactically valid path
-				if (RemoteAddress.parseHostPort(remoteAddress).isPresent()) {
-					this.service.addRemote(EccoService.ORIGIN_REMOTE_NAME, remoteAddress, Remote.Type.REMOTE);
-				} else if (path != null) {
-					this.service.addRemote(EccoService.ORIGIN_REMOTE_NAME, remoteAddress, Remote.Type.LOCAL);
-				} else {
-					throw new EccoException("ERROR: Invalid remote address provided."); // TODO: disable fork button if this is not the case?
-				}
-
-
-				this.service.fetch(EccoService.ORIGIN_REMOTE_NAME);
-				this.service.pull(EccoService.ORIGIN_REMOTE_NAME);
-				this.stepSuccess("Repository was sucessfully forked.");
-			} catch (Exception e) {
-				this.stepError("Error forking repository.", e);
-			}
-		});
 
 		this.step1();
 	}
 
 
 	private void step1() {
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
-
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-
 		Button cancelButton = new Button("Cancel");
-		cancelButton.setOnAction(event1 -> {
-			((Stage) this.getScene().getWindow()).close();
-		});
+		cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+		this.leftButtons.getChildren().setAll(cancelButton);
 
-		Label headerLabel = new Label("Remote");
+		this.headerLabel.setText("Fork Repository");
 
-		Button selectButton = new Button("Select >");
-		selectButton.setOnAction(event1 -> {
-			this.stepSelect();
-		});
-
-		toolBar.getItems().setAll(cancelButton, spacerLeft, headerLabel, spacerRight, selectButton, forkButton);
-
-		this.setTop(toolBar);
-
-
-		// toolbar bottom
-		ToolBar toolBarBottom = new ToolBar();
-		this.setBottom(toolBarBottom);
+		Button forkButton = new Button("Fork");
+		forkButton.setDefaultButton(true);
+		this.rightButtons.getChildren().setAll(forkButton);
 
 
 		// main content
@@ -127,183 +72,154 @@ public class ForkView extends OperationView {
 
 		int row = 0;
 
-		Label repositoryDirLabel = new Label("Repository Directory: ");
+		Label remoteLabel = new Label("Fork From: ");
+		gridPane.add(remoteLabel, 0, row, 1, 1);
+
+		TextField remoteTextField = new TextField();
+		remoteTextField.setPromptText("repository directory, or host:port of an ECCO server");
+		remoteTextField.setPrefWidth(360);
+		remoteLabel.setLabelFor(remoteTextField);
+		gridPane.add(remoteTextField, 1, row, 1, 1);
+
+		Button selectRemoteButton = new Button("...");
+		gridPane.add(selectRemoteButton, 2, row, 1, 1);
+		row++;
+
+		Label repositoryDirLabel = new Label("New Repository: ");
 		gridPane.add(repositoryDirLabel, 0, row, 1, 1);
 
-		repositoryDirTextField.setDisable(false);
-		repositoryDirTextField.setPrefWidth(300);
+		TextField repositoryDirTextField = new TextField(service.getRepositoryDir().toString());
 		repositoryDirLabel.setLabelFor(repositoryDirTextField);
 		gridPane.add(repositoryDirTextField, 1, row, 1, 1);
 
 		Button selectRepositoryDirectoryButton = new Button("...");
 		gridPane.add(selectRepositoryDirectoryButton, 2, row, 1, 1);
-
 		row++;
 
+		Label excludeLabel = new Label("Exclude: ");
+		gridPane.add(excludeLabel, 0, row, 1, 1);
+
+		TextField excludeTextField = new TextField();
+		excludeTextField.setPromptText("feature revisions to leave out, e.g. Video.3f2a9c1 (optional)");
+		excludeLabel.setLabelFor(excludeTextField);
+		gridPane.add(excludeTextField, 1, row, 2, 1);
+		row++;
+
+		final ProgressBar pb = new ProgressBar();
+		pb.setMaxWidth(Double.MAX_VALUE);
+		pb.setVisible(false);
+		pb.setProgress(0.0f);
+		gridPane.add(pb, 0, row, 3, 1);
+
+		selectRemoteButton.setOnAction(event -> {
+			File selected = chooseDirectory(remoteTextField.getText());
+			if (selected != null)
+				remoteTextField.setText(selected.toString());
+		});
 		selectRepositoryDirectoryButton.setOnAction(event -> {
-			final DirectoryChooser directoryChooser = new DirectoryChooser();
+			File selected = chooseDirectory(repositoryDirTextField.getText());
+			if (selected != null)
+				repositoryDirTextField.setText(selected.toPath().resolve(EccoService.REPOSITORY_DIR_NAME).toString());
+		});
+
+		forkButton.setOnAction(event -> {
+			String remote = remoteTextField.getText() == null ? "" : remoteTextField.getText().trim();
+			String exclude = excludeTextField.getText() == null ? "" : excludeTextField.getText().trim();
+
+			// host:port first: "127.0.0.1:3770" is also a syntactically valid path
+			Optional<InetSocketAddress> hostPort = RemoteAddress.parseHostPort(remote);
+			Path originPath = null;
+			if (hostPort.isEmpty()) {
+				try {
+					originPath = remote.isEmpty() ? null : Paths.get(remote);
+				} catch (InvalidPathException ignored) {
+				}
+				if (originPath == null || !Files.isDirectory(originPath)) {
+					invalidInput("Enter the directory of an existing repository, or host:port of an ECCO server.");
+					return;
+				}
+			}
+
+			Path repositoryDir;
 			try {
-				Path directory = Paths.get(repositoryDirTextField.getText());
-				if (directory.getFileName().equals(EccoService.REPOSITORY_DIR_NAME))
-					directory = directory.getParent();
-				if (Files.exists(directory) && Files.isDirectory(directory))
-					directoryChooser.setInitialDirectory(directory.toFile());
-			} catch (Exception ignored) {
+				repositoryDir = Paths.get(repositoryDirTextField.getText());
+			} catch (InvalidPathException e) {
+				invalidInput("Invalid repository directory: " + e.getMessage());
+				return;
 			}
-			final File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
-			if (selectedDirectory != null) {
-				repositoryDirTextField.setText(selectedDirectory.toPath().resolve(EccoService.REPOSITORY_DIR_NAME).toString());
+			if (Files.exists(repositoryDir)) {
+				invalidInput("A repository already exists at\n" + repositoryDir + "\nChoose a directory without one.");
+				return;
 			}
+			Path baseDir = repositoryDir.getParent();
+			if (baseDir != null && !Files.exists(baseDir)) {
+				Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+						"The directory\n" + baseDir + "\ndoes not exist. Create it?",
+						ButtonType.YES, ButtonType.CANCEL);
+				confirm.setHeaderText("Create Directory");
+				Optional<ButtonType> result = confirm.showAndWait();
+				if (result.isEmpty() || result.get() != ButtonType.YES)
+					return;
+				try {
+					Files.createDirectories(baseDir);
+				} catch (IOException e) {
+					stepError("Error creating directory.", e);
+					return;
+				}
+			}
+
+			this.service.setRepositoryDir(repositoryDir);
+			this.service.setBaseDir(baseDir);
+
+			final Path origin = originPath;
+			Task<Void> task = new Task<>() {
+				@Override
+				protected Void call() {
+					if (hostPort.isPresent())
+						service.fork(hostPort.get().getHostString(), hostPort.get().getPort(), exclude);
+					else
+						service.fork(origin, exclude);
+					return null;
+				}
+			};
+			task.setOnFailed(e -> {
+				pb.setVisible(false);
+				stepError("Error forking repository.", task.getException());
+			});
+			task.setOnSucceeded(e -> {
+				RecentRepositories.addRecentRepository(service.getRepositoryDir());
+				stepSuccess("Repository was successfully forked.");
+			});
+
+			forkButton.setDisable(true);
+			pb.setProgress(-1.0f);
+			pb.setVisible(true);
+			Thread th = new Thread(task);
+			th.setDaemon(true);
+			th.start();
 		});
-
-		Label remoteLabel = new Label("Remote Address: ");
-		gridPane.add(remoteLabel, 0, row, 1, 1);
-
-		remoteAddressTextField.setDisable(false);
-		remoteAddressTextField.setPrefWidth(300);
-		remoteLabel.setLabelFor(remoteAddressTextField);
-		gridPane.add(remoteAddressTextField, 1, row, 2, 1);
-
-		row++;
 
 
 		this.fit();
 	}
 
-
-	private void stepSelect() {
-		// toolbar top
-		ToolBar toolBar = new ToolBar();
-
-		final Pane spacerLeft = new Pane();
-		HBox.setHgrow(spacerLeft, Priority.SOMETIMES);
-		final Pane spacerRight = new Pane();
-		HBox.setHgrow(spacerRight, Priority.SOMETIMES);
-
-		Button remoteButton = new Button("< Remote");
-		remoteButton.setOnAction(event1 -> {
-			this.step1();
-		});
-
-		Label headerLabel = new Label("Selection");
-
-		toolBar.getItems().setAll(remoteButton, spacerLeft, headerLabel, spacerRight, forkButton);
-
-		this.setTop(toolBar);
-
-
-		// toolbar bottom
-		ToolBar toolBarBottom = new ToolBar();
-		this.setBottom(toolBarBottom);
-
-
-		// main content
-		TreeTableView<FeatureInfo> featureSelectionTreeTable = new TreeTableView<>();
-
-		// create columns
-		TreeTableColumn<FeatureInfo, String> idCol = new TreeTableColumn<>("Identifier");
-		idCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<FeatureInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getValue().toString()));
-
-		TreeTableColumn<FeatureInfo, String> nameCol = new TreeTableColumn<>("Name");
-		nameCol.setCellValueFactory((TreeTableColumn.CellDataFeatures<FeatureInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getValue().toString()));
-
-		TreeTableColumn<Node, String> associationNodeCol = new TreeTableColumn<>("Association");
-		associationNodeCol.setCellValueFactory(
-				(TreeTableColumn.CellDataFeatures<Node, String> param) ->
-				{
-					if (param.getValue().getValue().getArtifact() != null) {
-						Association containingAssociation = param.getValue().getValue().getArtifact().getContainingNode().getContainingAssociation();
-						if (containingAssociation != null)
-							return new ReadOnlyStringWrapper(String.valueOf(containingAssociation.getId()));
-
-					}
-					return new ReadOnlyStringWrapper("null");
-				}
-		);
-
-		TreeTableColumn<FeatureInfo, Boolean> isSelectedCol = new TreeTableColumn<>("Selected");
-		isSelectedCol.setCellValueFactory(
-				(TreeTableColumn.CellDataFeatures<FeatureInfo, Boolean> param) ->
-				{
-					FeatureInfo featureInfo = param.getValue().getValue();
-
-//					if (artifact != null) {
-//						SimpleBooleanProperty sbp = new SimpleBooleanProperty() {
-//							@Override
-//							public boolean get() {
-//								return super.get();
-//							}
-//
-//							@Override
-//							public void set(boolean value) {
-//								if (value)
-//									artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, value);
-//								else
-//									artifact.removeProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION);
-//								super.set(value);
-//							}
-//						};
-//						sbp.set(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
-//						return sbp;
-//						//return new ReadOnlyBooleanWrapper(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
-//					} else {
-//						return new ReadOnlyBooleanWrapper(false);
-//					}
-					return new ReadOnlyBooleanWrapper(false);
-				}
-		);
-		isSelectedCol.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(isSelectedCol));
-		isSelectedCol.setEditable(true);
-
-
-		TreeTableColumn<FeatureInfo, String> featureSelectionCol = new TreeTableColumn<>("Features");
-		featureSelectionCol.getColumns().setAll(idCol, nameCol, isSelectedCol);
-
-
-		featureSelectionTreeTable.getColumns().setAll(featureSelectionCol);
-
-		featureSelectionTreeTable.setEditable(true);
-		featureSelectionTreeTable.setTableMenuButtonVisible(true);
-		featureSelectionTreeTable.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY);
-		featureSelectionTreeTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-		this.setCenter(featureSelectionTreeTable);
-
-
-		TreeItem<FeatureInfo> rootTreeItem = new TreeItem<FeatureInfo>();
-		for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
-			TreeItem<FeatureInfo> featureTreeItem = new TreeItem<FeatureInfo>();
-			featureTreeItem.setValue(new FeatureInfo(feature, null));
-			for (FeatureRevision featureVersion : feature.getRevisions()) {
-				TreeItem<FeatureInfo> featureVersionTreeItem = new TreeItem<FeatureInfo>();
-				featureVersionTreeItem.setValue(new FeatureInfo(feature, featureVersion));
-				featureTreeItem.getChildren().add(featureVersionTreeItem);
-			}
-			rootTreeItem.getChildren().add(featureTreeItem);
-		}
-
-
-		this.fit();
+	private void invalidInput(String text) {
+		Alert alert = new Alert(Alert.AlertType.WARNING, text, ButtonType.OK);
+		alert.setHeaderText("Cannot Fork");
+		alert.showAndWait();
 	}
 
-
-	public static class FeatureInfo {
-		private Feature feature;
-		private FeatureRevision featureVersion;
-
-		private FeatureInfo(Feature feature, FeatureRevision featureVersion) {
-			this.feature = feature;
-			this.featureVersion = featureVersion;
+	private File chooseDirectory(String current) {
+		final DirectoryChooser directoryChooser = new DirectoryChooser();
+		try {
+			Path directory = Paths.get(current);
+			if (EccoService.REPOSITORY_DIR_NAME.equals(directory.getFileName()))
+				directory = directory.getParent();
+			if (directory != null && Files.isDirectory(directory))
+				directoryChooser.setInitialDirectory(directory.toFile());
+		} catch (Exception ignored) {
 		}
-
-		public Feature getFeature() {
-			return this.feature;
-		}
-
-		public FeatureRevision getFeatureVersion() {
-			return this.featureVersion;
-		}
+		return directoryChooser.showDialog(this.getScene().getWindow());
 	}
-
 
 }
