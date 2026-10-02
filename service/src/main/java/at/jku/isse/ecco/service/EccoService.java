@@ -760,7 +760,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         // create subset repository
         Repository.Op subsetOriginRepository;
         try {
-            originService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+            // open() takes only shared locks and the origin is read in a read-only transaction, so a fork
+            // never writes to its origin (ForkLeavesOriginUnchangedTest) - except .ignores/.adapters,
+            // which open() creates in a repository old enough not to have them
+            originService.open();
 
             originService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
 
