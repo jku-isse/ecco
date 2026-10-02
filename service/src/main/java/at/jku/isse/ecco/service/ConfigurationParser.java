@@ -144,8 +144,7 @@ class ConfigurationParser {
      * A detached copy of {@code feature} to hang a not-yet-committed revision on. getFeature() can
      * return the repository's live Feature, and adding the revision to that (as parsing used to)
      * persisted it with the next write even if it was never committed - see
-     * ParseConfigurationPhantomRevisionTest. Committing adds the revision to the repository by id,
-     * exactly as for features given by [id], which were always resolved to such a copy.
+     * ParseConfigurationPhantomRevisionTest. Committing adds the revision to the repository by id.
      */
     private Feature temporaryCopyOf(Feature feature) {
         return owner.entityFactory.createFeature(feature.getId(), feature.getName());
@@ -157,12 +156,11 @@ class ConfigurationParser {
             featureName = featureName.substring(1, featureName.length() - 1);
             feature = repository.getFeature(featureName);
             if (feature == null) {
-                //throw new EccoException("Feature id does not exist. Use feature name instead if you want to create a new feature.");
-                // create temporary feature object
-                feature = owner.entityFactory.createFeature(featureName, featureName);
-            } else {
-                feature = owner.entityFactory.createFeature(feature.getId(), feature.getName());
+                // an unknown id silently created a feature named after the id - see UnknownFeatureIdTest
+                throw new EccoException("Feature id does not exist: " + featureName + ". Use the feature name to create a new feature.");
             }
+            // the repository's feature, as for a name: a copy without its revisions made "[id]" and
+            // "[id].<rev>" resolve to a new revision; callers copy it (temporaryCopyOf) before adding one
         } else { // feature name
             Collection<Feature> features = repository.getFeaturesByName(featureName);
             if (features.isEmpty()) {
