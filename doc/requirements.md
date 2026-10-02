@@ -239,7 +239,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| IF-G1 | The GUI shall group its functions in a ribbon: Repositories, Versions, Collaborate, View, Visualize; repository actions are disabled until a repository is open. | Code `MainView`, `RibbonBar` |
+| IF-G1 | The GUI shall group its functions in a ribbon: Repositories (new, open, fork, close), Versions, Collaborate, View, Visualize; repository actions are disabled until a repository is open, and new, open and fork while one is. | Code `MainView`, `RibbonBar` |
 | IF-G2 | Users shall be able to commit one variant folder or several at once, check out configurations, and manage named variants (add, remove, edit feature revisions, check out several into a base directory). | Code `CommitBaseDirView`, `CommitView`, `VariantsView` |
 | IF-G3 | Users shall be able to import a Git history commit by commit, oldest first, with Import, Skip and Stop per reviewed commit, auto-importing the commits between every N-th review (N 1-1000, default 1). | Code `ImportGitView` |
 | IF-G4 | Git import should suggest a configuration per commit from an LLM at any OpenAI-compatible endpoint, configured under Preferences (URL, model). | Code `PreferencesView`; Doc |
@@ -268,7 +268,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | --- | --- | --- | --- |
 | Commit / checkout | yes | yes | commit upload / variant download |
 | Named variants | no | yes | yes |
-| Fork | yes | no (`ForkView` unused) | yes |
+| Fork | yes | yes | yes |
 | Fetch / pull / push | yes | yes | pull only, between its own repositories |
 | Sync server | no | yes | no |
 | Constraint mining | suggest + preview | suggest, accept, minimize | no |
@@ -357,7 +357,7 @@ Requirements the code does not meet, places where the documentation and the code
 | 11 | Non-lazy composition throws "not yet implemented". | REPO:831 | Not implemented (unused) - **fixed 2026-10-02**: the unused option and its branch removed |
 | 12 | Unknown `[<id>]` features in a configuration silently create a temporary feature (the strict check is commented out). | `ConfigurationParser:160` | Weak validation - **fixed 2026-10-02**: unknown ids are rejected; fixing it also showed that `[<id>]` and `[<id>].<rev>` of an *existing* feature resolved to a new revision instead of the latest or the given one, fixed too |
 | 13 | A local fork opens its origin read-write (TODO "init read only!"). | ES:756 | Partial |
-| 14 | GUI leftovers: `ForkView` unused (no Fork in the GUI), `FeatureDetailView` and `PresenceConditionDetailView` unreferenced, several `ArtifactsView` toggles marked TODO. | `gui/...` | Dead / unfinished UI |
+| 14 | GUI leftovers: `ForkView` unused (no Fork in the GUI), `FeatureDetailView` and `PresenceConditionDetailView` unreferenced, several `ArtifactsView` toggles marked TODO. | `gui/...` | Dead / unfinished UI - **fixed 2026-10-03**: Fork is on the Repositories ribbon (rewritten on `EccoService.fork`, test `ForkViewTest`); the dead views and placeholder toggles removed |
 | 15 | `lilypond-config.properties` contains a hard-coded per-user path. | `adapter/lilypond/src/main/resources` | Portability - **fixed 2026-10-02**: bundled defaults empty, `lilypond` looked up on the PATH |
 | 16 | `AdapterPreferences.java` holds a raw NUL character in a string literal, so git treats the file as binary and hides its diffs. | `service/.../AdapterPreferences.java:22` | Hygiene - **fixed 2026-10-02** |
 | 17 | The changelog stops at 0.1.9 and no requirements or release notes record the work since; this document is the only consolidated statement of intent. | `CHANGELOG.md` | Documentation |

@@ -12,6 +12,7 @@ import at.jku.isse.ecco.gui.view.graph.ArtifactGraphView;
 import at.jku.isse.ecco.gui.view.graph.DependencyGraphView;
 import at.jku.isse.ecco.gui.view.graph.KnowledgeGraphView;
 import at.jku.isse.ecco.gui.view.operation.*;
+import at.jku.isse.ecco.gui.view.operation.ForkView;
 import at.jku.isse.ecco.gui.view.operation.InitView;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import de.jangassen.MenuToolkit;
@@ -80,6 +81,7 @@ public class MainView extends BorderPane implements EccoListener {
 
 	private final Button newButton;
 	private final Button openButton;
+	private final Button forkButton;
 
 	private final Label headerLabel = new Label();
 	private final BorderPane contentArea = new BorderPane();
@@ -99,6 +101,8 @@ public class MainView extends BorderPane implements EccoListener {
 				() -> this.openDialog("New", new InitView(eccoService)), false);
 		RibbonAction openAction = new RibbonAction("Open...", Feather.FOLDER,
 				() -> this.openDialog("Open", new OpenView(eccoService)), false);
+		RibbonAction forkAction = new RibbonAction("Fork...", Feather.COPY,
+				() -> this.openDialog("Fork", new ForkView(eccoService)), false);
 		RibbonAction closeAction = new RibbonAction("Close", Feather.X,
 				() -> this.eccoService.close(), true);
 
@@ -190,7 +194,7 @@ public class MainView extends BorderPane implements EccoListener {
 				() -> this.switchTo("Dependency Graph", dependencyGraphView), true);
 
 		RibbonTabSpec repositoryTab = new RibbonTabSpec("Repositories", Feather.FOLDER, List.of(
-				new RibbonGroup(List.of(newAction, openAction, closeAction))));
+				new RibbonGroup(List.of(newAction, openAction, forkAction, closeAction))));
 
 		RibbonTabSpec localTab = new RibbonTabSpec("Versions", Feather.HARD_DRIVE, List.of(
 				new RibbonGroup(List.of(commitAction, commitMultipleAction, checkoutAction)),
@@ -222,6 +226,7 @@ public class MainView extends BorderPane implements EccoListener {
 
 		this.newButton = ribbonBar.getButton(newAction);
 		this.openButton = ribbonBar.getButton(openAction);
+		this.forkButton = ribbonBar.getButton(forkAction);
 		for (RibbonTabSpec tabSpec : tabSpecs) {
 			for (RibbonGroup group : tabSpec.groups()) {
 				for (RibbonAction action : group.actions()) {
@@ -439,6 +444,7 @@ public class MainView extends BorderPane implements EccoListener {
 
 		this.newButton.setDisable(initialized);
 		this.openButton.setDisable(initialized);
+		this.forkButton.setDisable(initialized);
 		for (Button button : this.requiresOpenRepository) {
 			button.setDisable(!initialized);
 		}

@@ -116,7 +116,7 @@ The command line distribution includes the same [artifact adapters](#artifact-ad
 
 The GUI (`./gradlew :ecco-gui:run`) organizes its functions in a ribbon:
 
-* **Repositories**: create, open, and close repositories.
+* **Repositories**: create, open, fork (see [Distributed Operations](#distributed-operations)), and close repositories.
 * **Versions**: commit a variant or several variant folders at once, check out configurations, manage named *variants*, open a working directory, and **import a Git history** commit by commit - with feature suggestions for each commit from an optional LLM (any OpenAI-compatible chat completions endpoint, e.g. a local Ollama; set up under Preferences).
 * **Collaborate**: remotes, fetch, pull, push, and a server other ECCO instances can sync with.
 * **View**: features (with the feature model derived from the commits and mined constraints to accept or reject), commits (including a comparison of two commits), associations with their presence conditions (and simplified conditions), the artifact tree of any selection of associations, and charts.

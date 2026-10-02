@@ -112,17 +112,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
         CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
 
-        CheckBox showBelowAtomicCheckBox = new CheckBox("Show Artifacts Below Atomic"); // TODO
-        showBelowAtomicCheckBox.setDisable(true);
-        CheckBox showBelowFilesCheckBox = new CheckBox("Show Artifacts Below File Level"); // TODO
-        showBelowFilesCheckBox.setDisable(true);
-
         toolBar.getItems().addAll(refreshButton, new Separator(),
                 selectionMenuButton, checkoutSelectedButton, composeSelectedButton, liveFeaturesButton, new Separator(),
                 showEmptyAssociationsCheckBox, new Separator(),
-                useSimplifiedLabelsCheckBox, new Separator(),
-                showBelowAtomicCheckBox, new Separator(),
-                showBelowFilesCheckBox, new Separator());
+                useSimplifiedLabelsCheckBox, new Separator());
 
 
         FilteredList<AssociationInfoImpl> filteredData = new FilteredList<>(this.associationsData, p -> true);
