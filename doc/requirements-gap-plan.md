@@ -51,13 +51,18 @@ Verify: on a fresh repository, `.adapters` maps `.c`/`.h` to C and `.cpp`/`.hpp`
 
 Add a Micronaut property (for example `ecco.storage-dir`, environment variable `ECCO_STORAGE_DIR`). Keep the current Docker/Jenkins/`examples` heuristics as the fallback, and log the directory chosen at startup. Document it in `rest/README.md`.
 
-### #3 `.hashes` - measure, then decide
+### #3 `.hashes` - measured; the skip is deferred
 
-Skipping unchanged files is not a one-line fix. A commit must still contain the whole variant, so an unchanged file's tree has to come from somewhere other than re-reading it, and that is risky.
+**Result (2026-10-03).** 30 generated variants of ECCO's own `base` and `service` sources (122-130 files, 12 features each owning 8 files and adding lines to 10 shared files), timing `readFiles()` against the whole commit, first 3 commits left out as warm-up:
 
-1. Measure how much of a commit's time goes to reading files, on the x8 repository and a 60-variant benchmark.
-2. **If reading is a small share** (expected, since extraction and counters dominate per the profile after 2026-09-27): stop promising it. Remove the claim from the README, mark FR-M11 as dropped, and keep writing `.hashes` only if a future change will use it.
-3. **If reading is a large share:** design the skip as its own change. Cache trees by file hash and reuse them on commit, with a test that the committed associations are identical with and without the cache.
+| Files read as | Reading | Whole commit | Reading's share |
+| --- | --- | --- | --- |
+| `.txt` (text adapter) | ~11 ms | ~240 ms | 4.5% |
+| `.java` (Java AST adapter) | ~220 ms | ~325 ms | 69% |
+
+TypeScript and Python were not measured; they parse in Node.js and Python, so they are likely closer to the Java figure.
+
+**Decision so far.** The README no longer promises the skip. Implementing it is worth it only for syntax-tree adapters, and it needs a design: an unchanged file's tree must still reach the commit, either rebuilt from the repository (the checkout that wrote `.hashes` composed it) or from a cache of parsed trees that is never shared with extraction. A test must show that the committed associations are identical with and without the skip. That is its own session, like #7 and #10.
 
 
 ## Phase 3 - decisions needed before work starts
@@ -99,7 +104,7 @@ This has the biggest unbounded worst case in the system, and the most fragile co
 | 1 | #16, #15, #12, #11, #4, #14 | ~1 day | low |
 | 2 | #2, #9 | ~1 day | low |
 | 3 | #1 + #5 | ~1 day | medium (adapter routing) |
-| 4 | #3 (measure, then decide) | half a day, plus a design session if needed | low / high |
+| 4 | #3 measured; skip deferred to a design session | done / 1-2 days | - / high |
 | 5 | #6, #8, #13 after decisions | 1-3 days each | medium |
 | 6 | #10 | 1-2 days | medium |
 | 7 | #7 | own session(s) | high |
