@@ -131,6 +131,8 @@ public class ServerView extends OperationView implements EccoListener {
 		startButton.setOnAction(event -> {
 			int port = portTextField.getValue();
 			boolean allInterfaces = allInterfacesCheckBox.isSelected();
+			if (allInterfaces && !confirmAllInterfaces(port))
+				return;
 			Task serverTask = new Task<Void>() {
 				@Override
 				public Void call() {
@@ -149,6 +151,18 @@ public class ServerView extends OperationView implements EccoListener {
 
 
 		this.fit();
+	}
+
+
+	/** The tooltip alone was easy to miss: opening the repository to the network needs an explicit yes. */
+	private boolean confirmAllInterfaces(int port) {
+		Alert confirm = new Alert(Alert.AlertType.WARNING,
+				"Synchronization has no authentication. Anyone who can reach port " + port
+						+ " of this machine can read the whole repository and push into it.\n\n"
+						+ "Only do this on a network you trust.",
+				new ButtonType("Accept Connections", ButtonBar.ButtonData.OK_DONE), ButtonType.CANCEL);
+		confirm.setHeaderText("Accept connections from other machines?");
+		return confirm.showAndWait().map(button -> button.getButtonData() == ButtonBar.ButtonData.OK_DONE).orElse(false);
 	}
 
 
