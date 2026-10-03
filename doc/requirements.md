@@ -1,12 +1,13 @@
 # ECCO - Recovered Requirements
 
-As of 2026-10-02.
+As of 2026-10-03.
 
 ## Contents
 
 * [Purpose, scope and method](#purpose-scope-and-method)
 * [Stakeholders and usage contexts](#stakeholders-and-usage-contexts)
 * [Domain model](#domain-model)
+* [Use cases](#use-cases)
 * [Functional requirements](#functional-requirements)
 * [Artifact adapter requirements](#artifact-adapter-requirements)
 * [Interface requirements](#interface-requirements)
@@ -48,6 +49,8 @@ The use cases they bring:
 4. **Reactive/incremental product-line engineering** - evolve variants and individual features over time.
 5. **Feature-oriented distributed version control** - fork, pull and push with features as the unit of exchange.
 
+[Use cases](#use-cases) details them as step-by-step scenarios.
+
 
 ## Domain model
 
@@ -84,6 +87,899 @@ flowchart LR
 ```
 
 A commit never stores a variant whole: it splits the artifacts into associations, and a checkout reassembles any configuration whose associations' conditions hold.
+
+
+## Use cases
+
+The use cases describe the key usage scenarios step by step, with their normal course and their alternatives. They follow RUCM (Restricted Use Case Modeling, Yue, Briand and Labiche, 2009). They are a complement to the requirements: the requirements say what must hold, the use cases say in which order actor and system interact. Each use case names the requirements it realizes.
+
+**Template.** Each use case has a name, a brief description, a precondition, a primary actor, secondary actors, dependencies (INCLUDE USE CASE, EXTENDED BY USE CASE) and generalizations. After these come one basic flow and any number of alternative flows, and each flow ends with a postcondition. RUCM has three kinds of alternative flow:
+
+* A **specific** flow (`RFS n`) branches at one step of the basic flow.
+* A **bounded** flow (`RFS n-m`) can start at any of the steps n to m.
+* A **global** flow can start at any step.
+
+An alternative flow ends with `ABORT` (the use case ends) or `RESUME STEP n` (the flow continues at step n). This document adds two rows to the template: the front ends that offer the use case and the requirements it realizes.
+
+**Restrictions applied.**
+
+* Each step is one sentence in the simple present and the active voice, with the actor or the system as its subject.
+* Steps use no modal verbs and no pronouns.
+* There are four kinds of step: the actor requests, the system validates, the system acts internally, and the system replies.
+* Conditions and loops use the RUCM keywords: `VALIDATES THAT`, `IF ... THEN ... ELSE ... ENDIF`, `DO ... UNTIL`, `MEANWHILE`.
+* The system is written as "the system" whatever the front end.
+* Messages in quotes are the system's actual texts.
+
+### Actors
+
+| Actor | Kind | Stakeholder (see above) |
+| --- | --- | --- |
+| Variant developer | Primary | Variant developer (clone-and-own) |
+| Product-line engineer | Primary | Product-line engineer |
+| Researcher | Primary | Feature-location researcher |
+| Collaborator | Primary | Distributed team |
+| Web-client user | Primary | Web-client user, through the external ecco-client |
+| Remote repository | Secondary | Another ECCO repository, at a local path or behind a sync server (`host:port`) |
+| LLM service | Secondary | Any OpenAI-compatible endpoint configured under Preferences |
+| Git clone | Secondary | A local Git repository whose history is imported |
+
+### Overview
+
+| ID | Use case | Primary actor | Front ends | Stakeholder use case |
+| --- | --- | --- | --- | --- |
+| UC-1 | Initialize repository | Variant developer | CLI, GUI | all |
+| UC-2 | Open repository | Variant developer | CLI, GUI | all |
+| UC-3 | Commit variant | Variant developer | CLI, GUI | 1-4 |
+| UC-4 | Commit several variants | Variant developer | GUI | 1, 2 |
+| UC-5 | Check out variant | Variant developer | CLI, GUI | 3, 4 |
+| UC-6 | Resolve ambiguous order | Variant developer | GUI | 3, 4 |
+| UC-7 | Locate features | Researcher | CLI, GUI | 1 |
+| UC-8 | Review mined constraints | Product-line engineer | GUI (CLI read-only) | 2, 4 |
+| UC-9 | Minimize presence conditions | Product-line engineer | CLI, GUI | 2 |
+| UC-10 | Import Git history | Product-line engineer | GUI | 2, 4 |
+| UC-11 | Fork repository | Collaborator | CLI, GUI, REST | 5 |
+| UC-12 | Exchange features with a remote | Collaborator | CLI, GUI, REST (pull only) | 5 |
+| UC-13 | Serve repository for synchronization | Collaborator | GUI | 5 |
+| UC-14 | Commit through the web client | Web-client user | REST | 3 |
+| UC-15 | Download variant through the web client | Web-client user | REST | 3 |
+
+The stakeholder use cases are the five listed under [Stakeholders and usage contexts](#stakeholders-and-usage-contexts): 1 feature location, 2 extractive product-line engineering, 3 automated reuse for clone-and-own, 4 reactive product-line engineering, 5 feature-oriented distributed version control.
+
+### UC-1 Initialize repository
+
+| | |
+| --- | --- |
+| Brief description | The variant developer creates an empty repository for a directory. |
+| Precondition | The session has no open repository. |
+| Primary actor | Variant developer |
+| Secondary actors | None |
+| Dependency | None |
+| Generalization | None |
+| Front ends | CLI `init` (current directory); GUI Repositories > New |
+| Realizes | FR-L1, FR-L2, FR-L4 |
+
+**Basic flow**
+
+1. The variant developer requests a new repository for a directory.
+2. The system VALIDATES THAT the directory holds no repository.
+3. The system creates the `.ecco` directory.
+4. The system stores the defaults from `ecco.properties` in the repository.
+5. The system opens the new repository.
+
+Postcondition: An empty repository exists in `<directory>/.ecco` and is open.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. The system reports "Repository already exists at this location.".
+2. ABORT.
+
+Postcondition: The existing repository is unchanged.
+
+**Bounded alternative flow BA1** (RFS 3-5)
+
+1. IF the creation of the repository fails THEN the system removes the half-created repository ENDIF.
+2. The system reports the error with its cause.
+3. ABORT.
+
+Postcondition: The directory holds no repository, and the variant developer can retry.
+
+### UC-2 Open repository
+
+| | |
+| --- | --- |
+| Brief description | The variant developer opens an existing repository, which every other use case except UC-1 and UC-11 needs. |
+| Precondition | None |
+| Primary actor | Variant developer |
+| Secondary actors | None |
+| Dependency | None |
+| Generalization | None |
+| Front ends | CLI (each command opens the repository itself); GUI Repositories > Open |
+| Realizes | FR-L3, FR-L4, FR-L5, IF-C8, NFR-V1 |
+
+**Basic flow**
+
+1. The variant developer requests to open a directory.
+2. The system VALIDATES THAT the directory exists and holds repository data.
+3. The system VALIDATES THAT exactly one storage plugin and at least one enabled artifact adapter are available.
+4. The system VALIDATES THAT the repository format is supported.
+5. The system loads the repository.
+6. The system enables the repository operations.
+
+Postcondition: The repository is open, and the system has written nothing.
+
+**Specific alternative flow SA1** (RFS 1)
+
+1. IF the variant developer runs a CLI command THEN the system searches the current directory and its parents for the nearest `.ecco` ENDIF.
+2. The system uses the directory that holds `.ecco` as the working directory.
+3. RESUME STEP 2.
+
+Postcondition: The repository directory is known.
+
+**Specific alternative flow SA2** (RFS 2)
+
+1. The system reports that the path holds no repository, with a hint at a nested `.ecco` where one exists.
+2. ABORT.
+
+Postcondition: The system has written nothing.
+
+**Specific alternative flow SA3** (RFS 3)
+
+1. The system reports the missing storage plugin or the missing enabled adapter.
+2. ABORT.
+
+Postcondition: The session has no open repository.
+
+**Specific alternative flow SA4** (RFS 4)
+
+1. The system reports the older or retired format with an explanation.
+2. ABORT.
+
+Postcondition: The repository is unchanged.
+
+### UC-3 Commit variant
+
+| | |
+| --- | --- |
+| Brief description | The variant developer records the files of a working directory as a variant with a configuration; the system splits the artifacts into associations and updates their presence conditions. |
+| Precondition | A repository is open (UC-2). The working directory holds the variant's files. |
+| Primary actor | Variant developer |
+| Secondary actors | None |
+| Dependency | Included by UC-4, UC-6, UC-7, UC-10, UC-14 |
+| Generalization | None |
+| Front ends | CLI `commit -c <configuration> [-m <message>]`; GUI Versions > Commit |
+| Realizes | FR-F1 to FR-F6, FR-M1 to FR-M10, FR-T1, NFR-R1, NFR-R3 |
+
+**Basic flow**
+
+1. The variant developer enters a configuration and a commit message for the working directory.
+2. IF the configuration is empty THEN the system reads the configuration from `.config` in the working directory ENDIF.
+3. The system VALIDATES THAT the configuration is well-formed and names at least one feature.
+4. The system begins a read-write transaction.
+5. The system reads every file that `.ecco/.ignores` does not exclude, with the adapter that `.ecco/.adapters` maps the file to.
+6. The system VALIDATES THAT the repository holds no artifacts in a retired adapter format.
+7. The system intersects the artifacts with every association.
+8. The system updates the counters of every association that the commit touches.
+9. IF the configuration is new THEN the system records the configuration as a variant ENDIF.
+10. The system commits the transaction.
+11. The system VALIDATES THAT the configuration satisfies the accepted constraints.
+12. The system reports success.
+
+Postcondition: The repository holds the commit, and the presence condition of every touched association reflects the configuration. A later checkout of the same configuration reproduces the files (NFR-R3).
+
+**Specific alternative flow SA1** (RFS 3)
+
+1. The system reports the configuration error: invalid syntax, an ambiguous feature name, an unknown feature id, or "A commit needs at least one feature: ... (e.g. BASE).".
+2. ABORT.
+
+Postcondition: The repository is unchanged.
+
+**Specific alternative flow SA2** (RFS 6)
+
+1. The system rolls back the transaction.
+2. The system reports that the repository holds a retired adapter format and can only be checked out.
+3. ABORT.
+
+Postcondition: The repository is unchanged.
+
+**Specific alternative flow SA3** (RFS 11)
+
+1. The system reports each violated constraint as a warning.
+2. RESUME STEP 12.
+
+Postcondition: The commit is stored; the violation is advisory (FR-K8).
+
+**Bounded alternative flow BA1** (RFS 4-10)
+
+1. IF a file is unreadable, a file maps to a disabled or missing adapter, an adapter's Python modules are missing, or storing fails THEN the system rolls back the transaction ENDIF.
+2. The system reports the error with its cause.
+3. ABORT.
+
+Postcondition: The repository is in its state before the commit (NFR-R1).
+
+### UC-4 Commit several variants
+
+| | |
+| --- | --- |
+| Brief description | The variant developer commits several variant folders of one parent folder in a chosen order, typically to consolidate existing clones into a repository. |
+| Precondition | A repository is open (UC-2). Each variant folder holds one variant, usually with a `.config`. |
+| Primary actor | Variant developer |
+| Secondary actors | None |
+| Dependency | INCLUDE USE CASE Commit variant |
+| Generalization | None |
+| Front ends | GUI Versions > Commit Multiple Versions |
+| Realizes | IF-G2, FR-M3 |
+
+**Basic flow**
+
+1. The variant developer selects a parent folder.
+2. The system VALIDATES THAT the parent folder has subfolders.
+3. The variant developer selects the variant folders.
+4. The system lists the selected folders with the configuration from each folder's `.config`.
+5. The variant developer orders the folders and edits configurations and commit messages.
+6. The system shows the constraint violations of each configuration.
+7. The variant developer requests the commit.
+8. The system VALIDATES THAT at least one folder is listed.
+9. The system VALIDATES THAT no configuration violates an accepted constraint.
+10. DO
+11. INCLUDE USE CASE Commit variant for the next folder with the folder's configuration and message.
+12. The system logs the folder and the commit time.
+13. UNTIL every listed folder is committed.
+14. The system shows the log and the last commit.
+
+Postcondition: The repository holds one commit per listed folder, in the listed order.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. The system reports "The selected folder has no subfolders".
+2. RESUME STEP 1.
+
+Postcondition: The folder list is unchanged.
+
+**Specific alternative flow SA2** (RFS 8)
+
+1. The system reports "Add at least one folder to commit.".
+2. RESUME STEP 1.
+
+Postcondition: Nothing is committed.
+
+**Specific alternative flow SA3** (RFS 9)
+
+1. The system lists the violations and asks for confirmation.
+2. IF the variant developer confirms THEN RESUME STEP 10 ELSE RESUME STEP 5 ENDIF.
+
+Postcondition: Nothing is committed yet.
+
+**Bounded alternative flow BA1** (RFS 11-12)
+
+1. IF a commit fails THEN the system shows the error next to the log ENDIF.
+2. ABORT.
+
+Postcondition: The folders committed before the failure stay committed; the remaining folders are not committed.
+
+### UC-5 Check out variant
+
+| | |
+| --- | --- |
+| Brief description | The variant developer composes the variant for a configuration, which may be a feature combination never committed as such, and writes it into an empty working directory. |
+| Precondition | A repository is open (UC-2) and holds at least one commit. |
+| Primary actor | Variant developer |
+| Secondary actors | None |
+| Dependency | EXTENDED BY USE CASE Resolve ambiguous order; included by UC-6, UC-15 |
+| Generalization | None |
+| Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, View > Variants, View > Artifacts (compose a selection) |
+| Realizes | FR-K1 to FR-K10, FR-N9, FR-T2, AD-6 |
+
+**Basic flow**
+
+1. The variant developer enters a configuration for a working directory.
+2. The system VALIDATES THAT the configuration is well-formed.
+3. The system VALIDATES THAT the working directory is empty apart from `.ecco`.
+4. The system begins a read-only transaction.
+5. The system selects the associations whose presence condition holds for the configuration.
+6. The system prunes the composed artifact tree by the repository's evaluation strategy.
+7. The system orders sibling artifacts by the partial order graphs.
+8. The system collects MISSING, SURPLUS, ORDER, UNRESOLVED, CONSTRAINT and TRACE warnings.
+9. The system ends the transaction.
+10. The system writes the files with the adapters.
+11. The system writes `.config` and `.warnings` into the working directory.
+12. The system shows the warnings with a suggested fix for each. EXTENDED BY USE CASE Resolve ambiguous order.
+
+Postcondition: The working directory holds the composed variant, `.config` and `.warnings`; the repository is unchanged.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. The system reports the configuration error.
+2. ABORT.
+
+Postcondition: The working directory is unchanged.
+
+**Specific alternative flow SA2** (RFS 3)
+
+1. The system reports that the working directory is not empty or already holds `.config`, `.warnings` or `.hashes`.
+2. ABORT.
+
+Postcondition: The working directory is unchanged.
+
+**Specific alternative flow SA3** (RFS 5)
+
+1. IF the variant developer requested minimized conditions THEN the system selects with the stored minimized conditions that are still valid and with the full conditions for the other associations ENDIF.
+2. RESUME STEP 6.
+
+Postcondition: The selection equals the selection with full conditions for every configuration that the trusted constraints allow (FR-N9).
+
+**Specific alternative flow SA4** (RFS 12)
+
+1. IF the variant developer works with the CLI THEN the system ends with exit code 0 and leaves the warnings in `.warnings` ENDIF.
+2. ABORT.
+
+Postcondition: Same as the basic flow.
+
+### UC-6 Resolve ambiguous order
+
+| | |
+| --- | --- |
+| Brief description | After a checkout reports an ORDER warning, the variant developer fixes the order of an artifact's children and commits the fix, so that later checkouts know the order. |
+| Precondition | A checkout in the GUI (UC-5) reports an ORDER warning. |
+| Primary actor | Variant developer |
+| Secondary actors | None |
+| Dependency | Extends UC-5 at step 12; INCLUDE USE CASE Commit variant; INCLUDE USE CASE Check out variant |
+| Generalization | None |
+| Front ends | GUI checkout details |
+| Realizes | IF-G8, FR-K2, FR-K5 |
+
+**Basic flow**
+
+1. The variant developer selects the ORDER warning and requests a reorder.
+2. The system shows the children of the artifact, with the pairs whose order earlier commits fixed shown as locked.
+3. The system VALIDATES THAT at least one child can move.
+4. The variant developer moves children into the intended order.
+5. The variant developer confirms the order.
+6. The system rewrites the file in the checkout directory in the new order.
+7. The system proposes a fix commit with the checkout directory, the checkout's configuration and an empty message.
+8. The variant developer enters a commit message and confirms the fix commit.
+9. INCLUDE USE CASE Commit variant for the checkout directory.
+10. The system asks to delete the contents of the checkout directory.
+11. The variant developer confirms the deletion.
+12. INCLUDE USE CASE Check out variant with the same configuration into the same directory.
+13. The system shows the refreshed warnings.
+
+Postcondition: The repository records the chosen order, and the checkout shows no ORDER warning for the artifact.
+
+**Specific alternative flow SA1** (RFS 3)
+
+1. The system reports "Nothing to reorder: these children's relative order is already fully determined by prior commits.".
+2. The variant developer closes the dialog.
+3. ABORT.
+
+Postcondition: The checkout directory and the repository are unchanged.
+
+**Bounded alternative flow BA1** (RFS 4-5)
+
+1. IF the variant developer cancels the dialog THEN ABORT ENDIF.
+
+Postcondition: The checkout directory and the repository are unchanged.
+
+**Specific alternative flow SA2** (RFS 8)
+
+1. IF the variant developer cancels the fix commit THEN ABORT ENDIF.
+
+Postcondition: The file shows the chosen order, but the repository is unchanged.
+
+**Specific alternative flow SA3** (RFS 11)
+
+1. IF the variant developer declines the deletion THEN ABORT ENDIF.
+
+Postcondition: The fix is committed; the checkout directory is not refreshed.
+
+### UC-7 Locate features
+
+| | |
+| --- | --- |
+| Brief description | The researcher commits variants with known configurations and inspects which artifacts implement which feature or feature interaction. |
+| Precondition | A repository is open (UC-2). The researcher has a set of variants with known configurations, for example a VEVOS or SPLC challenge benchmark. |
+| Primary actor | Researcher |
+| Secondary actors | None |
+| Dependency | INCLUDE USE CASE Commit variant |
+| Generalization | None |
+| Front ends | CLI `traces [id]`, `dg`; GUI View > Associations, View > Artifacts, association preview, Visualize > Dependency Graph |
+| Realizes | FR-M1, FR-T1, FR-T2, IF-C6, IF-G6, IF-G7, IF-G9 |
+
+**Basic flow**
+
+1. DO
+2. INCLUDE USE CASE Commit variant for the next variant.
+3. UNTIL every variant is committed.
+4. The researcher requests the associations.
+5. The system lists each association with its full and simplified presence condition.
+6. The researcher selects associations.
+7. The system shows the artifacts of the selected associations in their files, coloured by association.
+
+Postcondition: The researcher has the feature-to-artifact traces; the repository holds the committed variants.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. IF a variant holds VEVOS presence conditions (`pcs.variant.csv`) and the C, C++ or challenge adapter reads the variant THEN the system records the presence conditions as proactive feature traces ENDIF.
+2. RESUME STEP 3.
+
+Postcondition: The proactive traces are stored with their associations; a trace that contradicts the commits is not used, and checkout reports the trace as a TRACE warning (FR-T2).
+
+**Specific alternative flow SA2** (RFS 4)
+
+1. IF the researcher passes an association id to `traces` THEN the system prints the association's presence condition and artifact tree ENDIF.
+2. ABORT.
+
+Postcondition: The repository is unchanged.
+
+**Specific alternative flow SA3** (RFS 4)
+
+1. The researcher requests the dependency graph.
+2. The system writes the association dependency graph as GML (CLI) or shows the graph for export (GUI).
+3. ABORT.
+
+Postcondition: The repository is unchanged.
+
+### UC-8 Review mined constraints
+
+| | |
+| --- | --- |
+| Brief description | The product-line engineer reviews feature constraints mined from the committed configurations and accepts or rejects them, which builds up a feature model. |
+| Precondition | A repository is open (UC-2) and holds commits with different configurations. |
+| Primary actor | Product-line engineer |
+| Secondary actors | None |
+| Dependency | INCLUDE USE CASE Minimize presence conditions |
+| Generalization | None |
+| Front ends | GUI View > Feature Model; CLI `suggest-constraints` (shows suggestions only) |
+| Realizes | FR-N1 to FR-N6, IF-C5, IF-G5 |
+
+**Basic flow**
+
+1. The product-line engineer opens the feature model.
+2. The system mines MANDATORY, REQUIRES and EXCLUDES constraints per feature from the committed configurations, with the minimum witness count (default 4) and the confidence (default 0.9).
+3. The system shows the pending suggestions, which are the mined ones minus the accepted and the rejected ones, hard ones first.
+4. The product-line engineer selects suggestions and accepts the selection.
+5. The system stores the accepted constraints in the repository in one transaction.
+6. INCLUDE USE CASE Minimize presence conditions.
+7. The system shows each accepted constraint with the constraint's trust state.
+
+Postcondition: The repository holds the accepted constraints, which travel with fork, pull and push. An accepted constraint is trusted only while re-mining still yields the constraint.
+
+**Specific alternative flow SA1** (RFS 3)
+
+1. The product-line engineer changes the minimum witness count or the confidence.
+2. RESUME STEP 2.
+
+Postcondition: The suggestions match the new thresholds.
+
+**Specific alternative flow SA2** (RFS 4)
+
+1. The product-line engineer rejects the selected suggestions.
+2. The system stores the rejections in the local preferences.
+3. RESUME STEP 3.
+
+Postcondition: The repository is unchanged; the rejected suggestions are no longer proposed on this machine.
+
+**Specific alternative flow SA3** (RFS 4)
+
+1. The product-line engineer moves accepted constraints back to pending.
+2. The system removes the constraints from the repository in one transaction.
+3. INCLUDE USE CASE Minimize presence conditions.
+4. RESUME STEP 3.
+
+Postcondition: The constraints are suggestions again.
+
+**Specific alternative flow SA4** (RFS 1)
+
+1. IF the product-line engineer runs `suggest-constraints` THEN the system prints the suggestions with "(suggestions only -- confirm before adding to the feature model)" ENDIF.
+2. ABORT.
+
+Postcondition: The repository is unchanged.
+
+### UC-9 Minimize presence conditions
+
+| | |
+| --- | --- |
+| Brief description | The product-line engineer simplifies the presence conditions of all associations under the accepted feature model, for reading and optionally for checkout. |
+| Precondition | A repository is open (UC-2). |
+| Primary actor | Product-line engineer |
+| Secondary actors | None |
+| Dependency | Included by UC-8 |
+| Generalization | None |
+| Front ends | CLI `minimize`, `minimize-preview`; GUI "Minimize Presence Conditions" |
+| Realizes | FR-N7, FR-N8, FR-N9, IF-C5 |
+
+**Basic flow**
+
+1. The product-line engineer requests the minimization.
+2. The system compiles the trusted accepted hard constraints into a feature model.
+3. The system minimizes the presence condition of every association, dropping a literal or term only where a SAT check proves the result equivalent under the feature model.
+4. The system stores the minimized conditions together with the inputs they were computed from.
+5. The system reports the number of associations with stored minimized conditions.
+
+Postcondition: The minimized conditions are stored and are valid until the association's condition, the committed configurations or the accepted constraints change. A checkout with minimized conditions (UC-5 SA3) uses them.
+
+**Specific alternative flow SA1** (RFS 1)
+
+1. IF the product-line engineer requests a preview (`minimize-preview`) THEN the system shows the original and the minimized condition of each association ENDIF.
+2. ABORT.
+
+Postcondition: The repository is unchanged.
+
+**Specific alternative flow SA2** (RFS 1)
+
+1. IF a minimization is already running THEN the system ignores the request ENDIF.
+2. ABORT.
+
+Postcondition: The running minimization continues.
+
+**Bounded alternative flow BA1** (RFS 2-4)
+
+1. IF the minimization fails THEN the system reports the error ENDIF.
+2. ABORT.
+
+Postcondition: The previously stored minimized conditions stay as they were.
+
+### UC-10 Import Git history
+
+| | |
+| --- | --- |
+| Brief description | The product-line engineer turns the history of a Git repository into ECCO commits, one per Git commit, choosing a configuration for each with help from an LLM. |
+| Precondition | A repository is open (UC-2). A local Git clone exists. |
+| Primary actor | Product-line engineer |
+| Secondary actors | Git clone, LLM service |
+| Dependency | INCLUDE USE CASE Commit variant |
+| Generalization | None |
+| Front ends | GUI Versions > Import From Git |
+| Realizes | FR-G1 to FR-G3, IF-G3, IF-G4 |
+
+**Basic flow**
+
+1. The product-line engineer selects a local Git clone.
+2. The system VALIDATES THAT the folder holds a `.git`.
+3. The system shows the history along first parents, oldest first.
+4. The product-line engineer selects a range of commits, the review interval N and the use of LLM suggestions.
+5. DO
+6. The system extracts the tree of the next Git commit into an empty directory.
+7. The system VALIDATES THAT the commit is due for review.
+8. The system sends the diff, the message and the features imported so far to the LLM service.
+9. The system VALIDATES THAT the LLM service returns a suggestion.
+10. The system shows the commit with a configuration made of the running feature set and the suggestion.
+11. The product-line engineer edits the configuration.
+12. The product-line engineer chooses Import.
+13. The system VALIDATES THAT the configuration satisfies the accepted constraints.
+14. INCLUDE USE CASE Commit variant for the extracted tree.
+15. The system makes the committed configuration the running feature set.
+16. UNTIL the last selected commit is processed.
+17. The system shows the log, the last commit and a summary of the warnings.
+
+Postcondition: The repository holds one commit per imported Git commit. The working tree and the index of the Git clone are unchanged.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. The system reports "Not a git repository (no .git found)".
+2. RESUME STEP 1.
+
+Postcondition: Nothing is imported.
+
+**Specific alternative flow SA2** (RFS 7)
+
+1. The system sends the commit to the LLM service.
+2. IF the LLM service returns no suggestion THEN the system logs the failure ENDIF.
+3. INCLUDE USE CASE Commit variant for the extracted tree with the running feature set and the suggestion.
+4. RESUME STEP 15.
+
+Postcondition: The commit is imported without review.
+
+**Specific alternative flow SA3** (RFS 9)
+
+1. The system shows the commit with the running feature set and the reason the suggestion failed.
+2. RESUME STEP 11.
+
+Postcondition: The product-line engineer completes the configuration by hand.
+
+**Specific alternative flow SA4** (RFS 12)
+
+1. The product-line engineer chooses Skip.
+2. RESUME STEP 16.
+
+Postcondition: The Git commit is not imported, and the running feature set is unchanged.
+
+**Specific alternative flow SA5** (RFS 12)
+
+1. The product-line engineer chooses Stop.
+2. The system logs "Stopped: imported X of Y commit(s).".
+3. ABORT.
+
+Postcondition: The commits imported so far stay in the repository.
+
+**Specific alternative flow SA6** (RFS 13)
+
+1. The system asks whether to import the commit despite the constraint violation.
+2. IF the product-line engineer confirms THEN RESUME STEP 14 ELSE RESUME STEP 11 ENDIF.
+
+Postcondition: Nothing is committed yet.
+
+**Bounded alternative flow BA1** (RFS 14-15)
+
+1. IF the commit fails THEN the system shows the error and ends the import ENDIF.
+2. ABORT.
+
+Postcondition: The commits imported before the failure stay in the repository.
+
+### UC-11 Fork repository
+
+| | |
+| --- | --- |
+| Brief description | The collaborator creates a new repository from a remote one, optionally leaving out feature revisions. |
+| Precondition | The session has no open repository. |
+| Primary actor | Collaborator |
+| Secondary actors | Remote repository |
+| Dependency | None |
+| Generalization | None |
+| Front ends | CLI `fork <remote> [--exclude ...]`; GUI Repositories > Fork; REST fork with deselected features |
+| Realizes | FR-D1, FR-D2, FR-D4, FR-D5, FR-D7, FR-L2, FR-N4, IF-R2 |
+
+**Basic flow**
+
+1. The collaborator enters a remote and the feature revisions to exclude.
+2. The system VALIDATES THAT the remote is a local path or a valid `host:port`.
+3. The system VALIDATES THAT the target location holds no repository.
+4. The system reads the remote repository's features, associations and constraints.
+5. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
+6. The system drops the features left without revisions and the modules that contain excluded features.
+7. The system stores the result as the new repository.
+8. The system registers the remote as `origin`.
+
+Postcondition: The new repository holds the remote's content without the excluded revisions; reopened, the new repository checks out the same content as the remote. The remote repository is unchanged.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. The system reports "Invalid remote address provided.".
+2. ABORT.
+
+Postcondition: Nothing is created.
+
+**Specific alternative flow SA2** (RFS 3)
+
+1. The system reports "A repository already exists at the given location".
+2. ABORT.
+
+Postcondition: The existing repository is unchanged.
+
+**Specific alternative flow SA3** (RFS 5)
+
+1. The system removes the half-created repository.
+2. The system reports "Unresolved dependencies in selection.".
+3. ABORT.
+
+Postcondition: Nothing is created.
+
+**Bounded alternative flow BA1** (RFS 4-8)
+
+1. IF the connection or the copy fails THEN the system removes the half-created repository ENDIF.
+2. The system reports the error, for example "Error connecting to remote: ...".
+3. ABORT.
+
+Postcondition: Nothing is created, and the collaborator can retry.
+
+### UC-12 Exchange features with a remote
+
+| | |
+| --- | --- |
+| Brief description | The collaborator pulls features from a remote into this repository or pushes features from this repository into the remote, optionally leaving out feature revisions; fetch only reads the remote's feature list. |
+| Precondition | A repository is open (UC-2). The remote is registered, by default as `origin`. |
+| Primary actor | Collaborator |
+| Secondary actors | Remote repository |
+| Dependency | None |
+| Generalization | None |
+| Front ends | CLI `fetch`, `pull`, `push [remote] [--exclude ...]`; GUI Collaborate > Remotes; REST pull between its own repositories |
+| Realizes | FR-D1, FR-D3, FR-D4, FR-D5, FR-M9, FR-N4, IF-C4, IF-G10, IF-R4 |
+
+**Basic flow**
+
+1. The collaborator requests a pull from a remote, with the feature revisions to exclude.
+2. The system VALIDATES THAT the remote is registered.
+3. The system reads the remote repository.
+4. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
+5. The system drops the excluded revisions and the modules that contain the excluded features.
+6. The system VALIDATES THAT this repository holds no artifacts in a retired adapter format.
+7. The system merges the selection into this repository in one transaction.
+8. The system reports success.
+
+Postcondition: This repository holds the union of both repositories' selected content, with accepted constraints merged without duplicates; reopened, this repository checks out the pulled content as the remote does.
+
+**Specific alternative flow SA1** (RFS 1)
+
+1. The collaborator requests a push to the remote instead.
+2. The system reads this repository.
+3. The system VALIDATES THAT the exclusion leaves no unresolved dependencies.
+4. The system merges the selection into the remote repository.
+5. RESUME STEP 8.
+
+Postcondition: The remote repository holds the union of both repositories' selected content; this repository is unchanged.
+
+**Specific alternative flow SA2** (RFS 1)
+
+1. The collaborator requests a fetch instead.
+2. The system reads the remote's features.
+3. The system stores the features with the remote's entry.
+4. ABORT.
+
+Postcondition: The associations of both repositories are unchanged.
+
+**Specific alternative flow SA3** (RFS 2)
+
+1. The system reports "Remote '<name>' does not exist.".
+2. ABORT.
+
+Postcondition: Both repositories are unchanged.
+
+**Specific alternative flow SA4** (RFS 4)
+
+1. The system rolls back the transaction.
+2. The system reports "Unresolved dependencies in selection.".
+3. ABORT.
+
+Postcondition: Both repositories are unchanged.
+
+**Specific alternative flow SA5** (RFS 6)
+
+1. The system reports that the repository holds a retired adapter format and can only be checked out.
+2. ABORT.
+
+Postcondition: Both repositories are unchanged.
+
+**Bounded alternative flow BA1** (RFS 3-7)
+
+1. IF the connection to the remote fails THEN the system rolls back the transaction ENDIF.
+2. The system reports "Error connecting to remote: ...".
+3. ABORT.
+
+Postcondition: Both repositories are unchanged.
+
+### UC-13 Serve repository for synchronization
+
+| | |
+| --- | --- |
+| Brief description | The collaborator makes the open repository available to other ECCO instances for fork, fetch, pull and push. |
+| Precondition | A repository is open (UC-2). |
+| Primary actor | Collaborator |
+| Secondary actors | Remote repository (the connecting ECCO instance) |
+| Dependency | None |
+| Generalization | None |
+| Front ends | GUI Preferences, server section |
+| Realizes | FR-D6, IF-G10, NFR-S1, NFR-S3 |
+
+**Basic flow**
+
+1. The collaborator enters a port (default 3770).
+2. The collaborator requests the start of the server.
+3. The system VALIDATES THAT no server is running.
+4. The system listens on the port of the loopback interface.
+5. The system shows "Server running on port P" with a log.
+6. DO
+7. A remote repository sends a fork, fetch, pull or push request.
+8. The system answers the request, deserializing only allow-listed classes.
+9. The system logs the connection with the request.
+10. UNTIL the collaborator stops the server.
+11. The system stops the server.
+
+Postcondition: The server is stopped. The repository holds what remote repositories pushed.
+
+**Specific alternative flow SA1** (RFS 3)
+
+1. The system reports "Server is already running.".
+2. ABORT.
+
+Postcondition: The running server is unchanged.
+
+**Specific alternative flow SA2** (RFS 4)
+
+1. IF the collaborator selected "Accept connections from other machines" THEN the system warns that synchronization has no authentication ENDIF.
+2. IF the collaborator confirms THEN the system listens on the port of all interfaces ELSE ABORT ENDIF.
+3. RESUME STEP 5.
+
+Postcondition: Any machine that reaches the port can read and push into the repository.
+
+### UC-14 Commit through the web client
+
+| | |
+| --- | --- |
+| Brief description | The web-client user uploads the files of a variant with a configuration, and the server commits them. |
+| Precondition | The REST server runs with a JWT secret and a users file. The web-client user has an account. |
+| Primary actor | Web-client user |
+| Secondary actors | None |
+| Dependency | INCLUDE USE CASE Commit variant |
+| Generalization | None |
+| Front ends | REST `POST /login`, `POST /api/{repository}/commit/add` |
+| Realizes | IF-R1, IF-R3, IF-R6, NFR-S2, NFR-S4, NFR-S5 |
+
+**Basic flow**
+
+1. The web-client user sends a user name and a password.
+2. The system VALIDATES THAT the credentials match a user.
+3. The system returns a signed bearer token.
+4. The web-client user uploads files, a commit message and a configuration for a repository.
+5. The system VALIDATES THAT the repository exists.
+6. The system VALIDATES THAT every file name stays inside the repository's upload folder.
+7. The system replaces the contents of the upload folder with the files.
+8. INCLUDE USE CASE Commit variant for the upload folder, with the web-client user as committer.
+9. The system returns the updated repository.
+
+Postcondition: The repository holds the commit.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. The system reports "Invalid user name or password".
+2. ABORT.
+
+Postcondition: The web-client user holds no token.
+
+**Specific alternative flow SA2** (RFS 5)
+
+1. The system returns 404, "repository with the id does not exist".
+2. ABORT.
+
+Postcondition: Nothing is written.
+
+**Specific alternative flow SA3** (RFS 6)
+
+1. The system returns 400, "Invalid path: ...".
+2. ABORT.
+
+Postcondition: Nothing is written.
+
+**Global alternative flow GA1**
+
+1. IF a request after step 3 carries no valid signed token THEN the system returns 401 ENDIF.
+2. ABORT.
+
+Postcondition: The repository is unchanged.
+
+### UC-15 Download variant through the web client
+
+| | |
+| --- | --- |
+| Brief description | The web-client user downloads a stored variant as a zip file. |
+| Precondition | The web-client user holds a token (UC-14 steps 1-3). The repository has a named variant. |
+| Primary actor | Web-client user |
+| Secondary actors | None |
+| Dependency | INCLUDE USE CASE Check out variant |
+| Generalization | None |
+| Front ends | REST `GET /api/{repository}/variant/{variant}/checkout` |
+| Realizes | IF-R5, IF-R6 |
+
+**Basic flow**
+
+1. The web-client user requests the checkout of a variant.
+2. The system VALIDATES THAT the repository exists.
+3. The system creates a fresh folder.
+4. INCLUDE USE CASE Check out variant for the variant's configuration into the folder.
+5. The system zips the folder.
+6. The system deletes the folder.
+7. The system returns the zip file.
+
+Postcondition: The web-client user has the variant's files with `.config` and `.warnings`; the repository is unchanged.
+
+**Specific alternative flow SA1** (RFS 2)
+
+1. The system returns 404.
+2. ABORT.
+
+Postcondition: Nothing is written.
+
+**Bounded alternative flow BA1** (RFS 3-5)
+
+1. IF the folder or the zip file cannot be created THEN the system returns 500 ENDIF.
+2. ABORT.
+
+Postcondition: The repository is unchanged.
+
+**Global alternative flow GA1**
+
+1. IF the request carries no valid signed token THEN the system returns 401 ENDIF.
+2. ABORT.
+
+Postcondition: The repository is unchanged.
 
 
 ## Functional requirements
