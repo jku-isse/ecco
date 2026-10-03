@@ -156,10 +156,18 @@ public class RemoteSyncService {
     private volatile ServerSocketChannel ssChannel = null;
     private volatile boolean serverShutdown = false;
     private volatile boolean serverRunning = false;
+    private volatile int serverPort = -1;
     private final Lock serverLock = new ReentrantLock();
 
     public boolean serverRunning() {
         return this.serverRunning;
+    }
+
+    /**
+     * The port the running server listens on, or -1 while none is listening.
+     */
+    public int serverPort() {
+        return this.serverPort;
     }
 
     /**
@@ -211,6 +219,7 @@ public class RemoteSyncService {
 
             ssChannel.configureBlocking(true);
             ssChannel.socket().bind(allInterfaces ? new InetSocketAddress(port) : new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
+            this.serverPort = ssChannel.socket().getLocalPort();
 
             String scope = allInterfaces ? " (all interfaces)" : " (local connections only)";
             LOGGER.info("Server started on port " + port + scope + ".");
@@ -360,6 +369,7 @@ public class RemoteSyncService {
             throw new EccoException("Error starting server.", e);
         } finally {
             this.serverRunning = false;
+            this.serverPort = -1;
             this.serverLock.unlock();
         }
 
@@ -443,7 +453,8 @@ public class RemoteSyncService {
                 Collection<Feature> copiedFeatures;
                 try (EccoService parentService = new EccoService()) {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
-                    parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+                    // only read, so the remote stays unchanged (FetchPullLeaveRemoteUnchangedTest), as for fork
+                    parentService.open();
 
                     // copy features
                     copiedFeatures = EccoUtil.deepCopyFeatures(parentService.getRepository().getFeatures(), owner.entityFactory);
@@ -537,7 +548,8 @@ public class RemoteSyncService {
                 Repository.Op subsetParentRepository;
                 try (EccoService parentService = new EccoService()) {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
-                    parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+                    // only read, in a read-only transaction, so the remote stays unchanged (FetchPullLeaveRemoteUnchangedTest)
+                    parentService.open();
 
                     // create subset repository
                     try {
@@ -652,7 +664,7 @@ public class RemoteSyncService {
                 // parentService instead of leaking whatever open()/init() acquired indefinitely.
                 try (EccoService parentService = new EccoService()) {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
-                    parentService.open(); // TODO: init read only! add read only mode for that (also useful for other read only services on a repository such as a read only web interface REST API service).
+                    parentService.open();
 
                     // create subset repository
                     Repository.Op repository = owner.repositoryDao.load();

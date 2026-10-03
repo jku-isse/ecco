@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -21,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The server log showed rows but no text: the message column always rendered "" and the time column
- * had no value at all.
+ * had no value at all. And a view opened while the server ran did not know its port.
  */
 public class ServerViewLogTest {
 
@@ -65,6 +67,37 @@ public class ServerViewLogTest {
         assertEquals(2, cells.get().size());
         assertTrue(cells.get().get(0).matches("\\d\\d:\\d\\d:\\d\\d"), cells.get().get(0));
         assertEquals("New connection from /127.0.0.1 with command 'FETCH'.", cells.get().get(1));
+    }
+
+    /**
+     * Opening the view while a server was running showed "Server running on port -1".
+     */
+    @Test
+    @Timeout(30)
+    public void viewOpenedWhileServerRunsShowsItsPort() throws Exception {
+        Path workDir = Files.createTempDirectory("server-view-port");
+        EccoService service = new EccoService();
+        service.setRepositoryDir(workDir.resolve(".ecco"));
+        service.init();
+        Thread server = new Thread(() -> service.startServer(0), "test-ecco-server");
+        server.start();
+        try {
+            long deadline = System.currentTimeMillis() + 10_000;
+            while (service.serverPort() == -1 && System.currentTimeMillis() < deadline)
+                Thread.sleep(20);
+            int port = service.serverPort();
+            assertTrue(port > 0, "the service reports the bound port");
+
+            AtomicReference<String> header = new AtomicReference<>();
+            onFxThread(() -> header.set(new ServerView(service).headerLabel.getText()));
+
+            assertEquals("Server running on port " + port, header.get());
+        } finally {
+            service.stopServer();
+            server.join(10_000);
+        }
+        assertEquals(-1, service.serverPort());
+        service.close();
     }
 
     // the table sits in a TitledPane, whose content only becomes a child once a skin exists
