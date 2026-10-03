@@ -632,6 +632,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * See {@link RemoteSyncService#serverPort()}.
+     */
+    public int serverPort() {
+        return this.remoteSyncService.serverPort();
+    }
+
+    /**
      * Starts the sync server on the loopback interface and blocks until {@link #stopServer()}.
      * Deliberately not synchronized: it runs the server's accept loop for as long as the server is
      * up, and holding this service's monitor that whole time blocked every other synchronized call

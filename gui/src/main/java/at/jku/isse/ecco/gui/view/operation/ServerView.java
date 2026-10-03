@@ -49,7 +49,7 @@ public class ServerView extends OperationView implements EccoListener {
 		EccoListenerLifecycle.removeWhenWindowHidden(this, service, this);
 
 		if (service.serverRunning())
-			this.stepStop(-1);
+			this.stepStop(service.serverPort());
 		else
 			this.stepStart();
 
@@ -74,6 +74,8 @@ public class ServerView extends OperationView implements EccoListener {
 		Platform.runLater(() -> {
 			if (!this.stopStep)
 				this.stepStop(port);
+			else // opened while the server was still binding, so the port was not known yet
+				this.headerLabel.setText("Server running on port " + port);
 		});
 	}
 
