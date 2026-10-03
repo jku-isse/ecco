@@ -323,6 +323,55 @@ public interface PartialOrderGraph extends Persistable {
 		}
 
 		/**
+		 * Records that {@code artifacts} come in this order: adds the precedences between neighbours
+		 * this graph does not have yet, so a later composition containing them orders them so. Unlike
+		 * {@link #merge(List)}, nothing is aligned and no node is added: every artifact must already be
+		 * in this graph, and the order must agree with every precedence the graph already has.
+		 * Everything is checked before the graph is changed, so a refused order leaves it as it was.
+		 *
+		 * @param artifacts Artifacts of this graph in the order to record.
+		 * @throws EccoException if an artifact is not in this graph (or not once), or the order
+		 *                       contradicts one the graph already has.
+		 */
+		default void addOrder(List<? extends Artifact<?>> artifacts) {
+			List<Node.Op> nodes = new ArrayList<>(artifacts.size());
+			for (Artifact<?> artifact : artifacts) {
+				Node.Op node = this.nodeOf(artifact);
+				if (nodes.contains(node))
+					throw new EccoException("The artifact appears twice in the order: " + artifact);
+				nodes.add(node);
+			}
+			for (int i = 0; i < nodes.size(); i++)
+				for (int j = i + 1; j < nodes.size(); j++)
+					if (canReach(nodes.get(j), nodes.get(i)))
+						throw new EccoException("The order contradicts one recorded before: " + nodes.get(j).getArtifact()
+								+ " comes before " + nodes.get(i).getArtifact() + ".");
+
+			for (int i = 0; i + 1 < nodes.size(); i++)
+				if (!canReach(nodes.get(i), nodes.get(i + 1)))
+					nodes.get(i).addChild(nodes.get(i + 1));
+			this.removeTransitiveRelations(this.getHead());
+			this.checkConsistency();
+		}
+
+		/** The one node of this graph holding {@code artifact}: the same object, else one equal to it. */
+		private Node.Op nodeOf(Artifact<?> artifact) {
+			List<Node.Op> same = new ArrayList<>();
+			List<Node.Op> equal = new ArrayList<>();
+			for (Node.Op node : this.collectNodes()) {
+				if (node.getArtifact() == null) continue;
+				if (node.getArtifact() == artifact) same.add(node);
+				else if (node.getArtifact().equals(artifact)) equal.add(node);
+			}
+			List<Node.Op> candidates = same.isEmpty() ? equal : same;
+			if (candidates.size() != 1)
+				throw new EccoException(candidates.isEmpty()
+						? "The artifact is not in this order graph: " + artifact
+						: "The artifact is in this order graph more than once: " + artifact);
+			return candidates.get(0);
+		}
+
+		/**
 		 * @param other Other partial order graph to be merged into this partial order graph.
 		 */
 		default void merge(PartialOrderGraph.Op other) {

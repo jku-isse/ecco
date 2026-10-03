@@ -1514,6 +1514,51 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.checkoutService.writeCheckoutFile(node);
     }
 
+    /**
+     * Records the order of {@code orderedChildren}, children of {@code parent} in a checkout, in the
+     * repository - typically to resolve an ORDER warning. Only the parent's partial order graph
+     * changes ({@link at.jku.isse.ecco.pog.PartialOrderGraph.Op#addOrder}): no commit is made and no presence condition
+     * changes, so the order holds in every later checkout that contains these children, whatever its
+     * configuration. A commit would instead record the whole checkout as a variant (Known gap #23).
+     *
+     * @throws EccoException if the parent has no order graph, is not part of this repository, or the
+     *                       order contradicts one recorded before; the repository is then unchanged.
+     */
+    public synchronized void recordOrder(Node parent, List<? extends Node> orderedChildren) {
+        this.checkInitialized();
+        checkNotNull(parent);
+        checkNotNull(orderedChildren);
+        if (!(parent.getArtifact() instanceof Artifact.Op<?> artifact) || !artifact.isOrdered() || artifact.getPartialOrderGraph() == null)
+            throw new EccoException("This artifact has no order to record: " + parent.getArtifact());
+        List<Artifact<?>> children = new ArrayList<>();
+        for (Node child : orderedChildren)
+            children.add(child.getArtifact());
+
+        this.writeTransaction("Error recording the order.", repository -> {
+            List<Association.Op> containing = new ArrayList<>();
+            for (Association.Op association : repository.getAssociations())
+                if (contains(association.getRootNode(), artifact))
+                    containing.add(association);
+            if (containing.isEmpty())
+                throw new EccoException("The artifact is not part of this repository: " + artifact);
+            artifact.getPartialOrderGraph().addOrder(children);
+            // the artifact (with its graph) is written with the associations whose trees hold it
+            for (Association.Op association : containing)
+                repository.addAssociation(association);
+            repository.invalidateMainTree();
+            return repository;
+        });
+    }
+
+    private static boolean contains(Node node, Artifact<?> artifact) {
+        if (node.getArtifact() == artifact)
+            return true;
+        for (Node child : node.getChildren())
+            if (contains(child, artifact))
+                return true;
+        return false;
+    }
+
     private synchronized Set<Node> compareArtifacts(Checkout checkout) {
         return this.checkoutService.selectArtifacts(checkout);
     }

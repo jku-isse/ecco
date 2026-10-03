@@ -103,7 +103,8 @@ public final class ArtifactDiagnostics {
 					+ "(this warning comes from other content elsewhere in the version history that isn't part of this composition)";
 		}
 		return "the order of these children could not be determined from commit history -- "
-				+ "manually reorder them in the checked-out file if needed, then commit to establish a precedent";
+				+ "choose it with Reorder... in the checkout details, which records it without a commit "
+				+ "(committing the reordered checkout records it too, but also records this configuration as a variant)";
 	}
 
 }
