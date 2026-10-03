@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.rest;
 
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.rest.models.RestRepository;
 import at.jku.isse.ecco.service.EccoService;
 import io.micronaut.http.HttpStatus;
@@ -194,6 +196,14 @@ public class FileRepositoryService implements RepositoryService {
     }
 
     private RestRepository addCommitLocked(RepositoryHandler repository, int repositoryHandlerId, String message, String config, String committer, List<CompletedFileUpload> commitFiles) {
+        // a configuration error is the client's, not the server's: refuse it before anything is written
+        Configuration configuration;
+        try {
+            configuration = repository.parseCommitConfiguration(config);
+        } catch (EccoException e) {
+            throw new HttpStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+
         Path commitFolder = repository.getPath().resolve("lastCommit");
         if(commitFolder.toFile().exists()){
             deleteDirectory(commitFolder.toFile());     //remove existing files recursively
@@ -229,7 +239,7 @@ public class FileRepositoryService implements RepositoryService {
             }
         }
 
-        repository.addCommit(message, config, commitFolder, committer);      //handler commit
+        repository.addCommit(message, configuration, commitFolder, committer);      //handler commit
 
         LOGGER.info(repositoryHandlerId + ": committed");
         return repository.getRepository();

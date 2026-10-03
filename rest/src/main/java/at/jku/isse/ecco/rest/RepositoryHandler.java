@@ -1,6 +1,8 @@
 package at.jku.isse.ecco.rest;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Variant;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.rest.models.RestRepository;
@@ -80,9 +82,25 @@ public class RepositoryHandler {
     }
 
     // Commit ----------------------------------------------------------------------------------------------------------
+    /**
+     * Parses a commit's configuration, so a request can be refused before any of its files are written.
+     *
+     * @throws EccoException if the string is malformed, names an unknown feature id or an ambiguous name, or names no feature
+     */
+    public synchronized Configuration parseCommitConfiguration(String config) {
+        Configuration configuration = service().parseConfigurationString(config);
+        if (configuration.getFeatureRevisions().length == 0)
+            throw new EccoException("A commit needs at least one feature.");
+        return configuration;
+    }
+
     public synchronized void addCommit(String message, String config, Path commitFolder, String committer) {
+        addCommit(message, parseCommitConfiguration(config), commitFolder, committer);
+    }
+
+    public synchronized void addCommit(String message, Configuration configuration, Path commitFolder, String committer) {
         service().setBaseDir(commitFolder);
-        service().commit(message, config, committer);
+        service().commit(message, configuration, committer);
     }
 
     //checkout
