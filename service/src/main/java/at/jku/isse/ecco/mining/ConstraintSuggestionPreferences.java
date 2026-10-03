@@ -12,19 +12,15 @@ import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 /**
- * Persists which mined {@link ConstraintMiner.Suggestion}s a human has *rejected*, so a review UI
- * doesn't keep re-proposing the same pair. Scoped per repository (feature names are only
- * meaningful within one repository), backed by {@link Preferences}, mirroring
- * {@code at.jku.isse.ecco.service.AdapterPreferences}.
+ * The signature of a mined {@link ConstraintMiner.Suggestion}, and the rejections earlier versions
+ * kept per machine in {@link Preferences}, scoped per repository.
  *
- * <p>Rejection is local/personal (a "don't re-show me this" list, per-machine, lower stakes, no
- * reason to share via fork/pull/push) -- unlike acceptance, which is now a real, repository-persisted
- * entity (see {@code at.jku.isse.ecco.core.Constraint},
- * {@code EccoService#acceptConstraint}/{@code #unacceptConstraint}) precisely so it travels with the
- * repository and is visible to every collaborator, not just the machine that accepted it. Per the
- * mining epistemic contract (see CONSTRAINT_MINING_DESIGN.md): a decision recorded here or as a
- * persisted {@code Constraint} only means "a human reviewed this suggestion" -- neither is ever
- * trusted on its own without re-verification against freshly mined data (see
+ * <p>Accepted and rejected suggestions are both stored in the repository now (see
+ * {@code at.jku.isse.ecco.core.Constraint}, {@code Repository#getRejectedConstraints}), so they travel
+ * with fork/pull/push. The rejections still found here are only read to move them into the repository
+ * ({@code EccoService#moveLocalRejectionsIntoRepository}). Per the mining epistemic contract (see
+ * CONSTRAINT_MINING_DESIGN.md): a recorded decision only means "a human reviewed this suggestion" --
+ * an acceptance is never trusted on its own without re-verification against freshly mined data (see
  * {@code EccoService#acceptedSuggestions}).
  */
 public final class ConstraintSuggestionPreferences {
@@ -72,10 +68,9 @@ public final class ConstraintSuggestionPreferences {
         }
     }
 
-    // NOTE: accepted-constraint tracking (formerly accept()/getAccepted()/getAcceptedConstraints()
-    // here) moved into the repository itself -- see at.jku.isse.ecco.core.Constraint,
-    // EccoService#acceptConstraint/#unacceptConstraint. Rejected-suggestion tracking stays here: a
-    // personal, local "don't re-show me this" list, lower stakes, no reason to share via fork/pull/push.
+    // NOTE: accepted and rejected suggestions are stored in the repository itself -- see
+    // at.jku.isse.ecco.core.Constraint and EccoService#acceptConstraints/#rejectConstraints. What is
+    // left here reads (and, for tests, writes) the per-machine rejections of earlier versions.
 
     public static Set<String> getRejected(Path repositoryDir) {
         return readSet(REJECTED_KEY_PREFIX + repoScope(repositoryDir));
@@ -148,8 +143,8 @@ public final class ConstraintSuggestionPreferences {
         }
     }
 
-    /** Removes everything recorded for this repository (e.g. test cleanup). */
-    static void forget(Path repositoryDir) {
+    /** Removes everything recorded for this repository (after moving it into the repository, or test cleanup). */
+    public static void forget(Path repositoryDir) {
         Preferences prefs = prefs();
         removeSet(prefs, REJECTED_KEY_PREFIX + repoScope(repositoryDir));
         flush(prefs);

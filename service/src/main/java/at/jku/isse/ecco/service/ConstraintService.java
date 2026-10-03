@@ -64,9 +64,22 @@ public class ConstraintService {
         checkNotNull(kind);
         checkNotNull(featureA);
         owner.writeTransaction(repository -> {
-            repository.addConstraint(toConstraintKind(kind), featureA, featureB);
+            accept(repository, toConstraintKind(kind), featureA, featureB);
             return repository;
         });
+    }
+
+    // a suggestion is accepted, rejected or neither - deciding one way withdraws the other decision
+    private static void accept(Repository.Op repository, Constraint.Kind kind, String featureA, String featureB) {
+        Constraint rejected = repository.getRejectedConstraint(Constraint.buildId(kind.name(), featureA, featureB));
+        if (rejected != null) repository.removeRejectedConstraint(rejected);
+        repository.addConstraint(kind, featureA, featureB);
+    }
+
+    private static void reject(Repository.Op repository, Constraint.Kind kind, String featureA, String featureB) {
+        Constraint accepted = repository.getConstraint(Constraint.buildId(kind.name(), featureA, featureB));
+        if (accepted != null) repository.removeConstraint(accepted);
+        repository.addRejectedConstraint(kind, featureA, featureB);
     }
 
     /**
@@ -88,7 +101,7 @@ public class ConstraintService {
         owner.writeTransaction(repository -> {
             for (ConstraintMiner.Suggestion suggestion : suggestions) {
                 checkNotNull(suggestion);
-                repository.addConstraint(toConstraintKind(suggestion.kind), suggestion.a, suggestion.b);
+                accept(repository, toConstraintKind(suggestion.kind), suggestion.a, suggestion.b);
             }
             return repository;
         });
@@ -120,6 +133,62 @@ public class ConstraintService {
             }
             return repository;
         });
+    }
+
+    /**
+     * Records the suggestions as rejected in the repository, in one transaction, so they are not
+     * proposed again - here or in any repository they reach by fork, pull or push. Withdraws an
+     * acceptance of the same suggestion. No-op if {@code suggestions} is empty.
+     */
+    public void rejectConstraints(List<ConstraintMiner.Suggestion> suggestions) {
+        owner.checkInitialized();
+        checkNotNull(suggestions);
+        if (suggestions.isEmpty()) return;
+        owner.writeTransaction(repository -> {
+            for (ConstraintMiner.Suggestion suggestion : suggestions) {
+                checkNotNull(suggestion);
+                reject(repository, toConstraintKind(suggestion.kind), suggestion.a, suggestion.b);
+            }
+            return repository;
+        });
+    }
+
+    /** "Move back to pending" for rejected suggestions, in one transaction. No-op if empty. */
+    public void unrejectConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
+        owner.checkInitialized();
+        checkNotNull(constraints);
+        if (constraints.isEmpty()) return;
+        owner.writeTransaction(repository -> {
+            for (ConstraintSuggestionPreferences.AcceptedConstraint constraint : constraints) {
+                checkNotNull(constraint);
+                Constraint existing = repository.getRejectedConstraint(Constraint.buildId(constraint.kind.name(), constraint.a, constraint.b));
+                if (existing != null) repository.removeRejectedConstraint(existing);
+            }
+            return repository;
+        });
+    }
+
+    /**
+     * Moves the rejections this machine's preferences hold for this repository - where rejections
+     * were kept before they were stored in the repository - into the repository, and forgets them
+     * there. A suggestion the repository has accepted in the meantime stays accepted.
+     *
+     * @return how many rejections the preferences held; 0 means nothing was written
+     */
+    public int moveLocalRejectionsIntoRepository() {
+        owner.checkInitialized();
+        Set<String> local = ConstraintSuggestionPreferences.getRejected(owner.getRepositoryDir());
+        if (local.isEmpty()) return 0;
+        owner.writeTransaction(repository -> {
+            for (String signature : local) {
+                ConstraintSuggestionPreferences.AcceptedConstraint parsed = ConstraintSuggestionPreferences.parseSignature(signature);
+                if (parsed != null && repository.getConstraint(signature) == null)
+                    repository.addRejectedConstraint(toConstraintKind(parsed.kind), parsed.a, parsed.b);
+            }
+            return repository;
+        });
+        ConstraintSuggestionPreferences.forget(owner.getRepositoryDir());
+        return local.size();
     }
 
     public List<String> checkConstraintViolations(Configuration configuration) {

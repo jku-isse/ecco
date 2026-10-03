@@ -1,0 +1,13 @@
+at.jku.isse.ecco.adapter.text.TextPlugin;**.txt
+at.jku.isse.ecco.adapter.text.TextPlugin;**.md
+at.jku.isse.ecco.adapter.text.TextPlugin;**.xml
+at.jku.isse.ecco.adapter.text.TextPlugin;**.html
+at.jku.isse.ecco.adapter.text.TextPlugin;**.css
+at.jku.isse.ecco.adapter.text.TextPlugin;**.js
+at.jku.isse.ecco.adapter.text.TextPlugin;**.java
+at.jku.isse.ecco.adapter.image.ImagePlugin;**.png
+at.jku.isse.ecco.adapter.image.ImagePlugin;**.jpg
+at.jku.isse.ecco.adapter.image.ImagePlugin;**.bmp
+at.jku.isse.ecco.adapter.image.ImagePlugin;**.gif
+at.jku.isse.ecco.adapter.image.ImagePlugin;**.jpeg
+at.jku.isse.ecco.adapter.file.FilePlugin;**

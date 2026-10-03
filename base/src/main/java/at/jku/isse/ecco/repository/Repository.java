@@ -52,6 +52,13 @@ public interface Repository extends Persistable {
 	 */
 	Collection<? extends Constraint> getConstraints();
 
+	/**
+	 * Rejected constraint suggestions: a reviewer decided they do not hold, so they are not proposed
+	 * again. Stored in the repository like the accepted ones, so the decision travels with
+	 * fork/pull/push. A suggestion is accepted, rejected, or neither - never both.
+	 */
+	Collection<? extends Constraint> getRejectedConstraints();
+
 	ArrayList<Variant> getVariants();
 
 	Variant getVariant(Configuration configuration);
@@ -149,6 +156,28 @@ public interface Repository extends Persistable {
 		 * @param constraint to remove.
 		 */
 		void removeConstraint(Constraint constraint);
+
+		@Override
+		Collection<? extends Constraint> getRejectedConstraints();
+
+		/**
+		 * @param id The natural {@code kind|featureA|featureB} id.
+		 * @return The rejected constraint with the given id, or null if there is none.
+		 */
+		Constraint getRejectedConstraint(String id);
+
+		/**
+		 * Records a rejected suggestion if one with the same natural id is not recorded yet; does not
+		 * touch the accepted constraints (see {@code ConstraintService}, which keeps the two apart).
+		 *
+		 * @return The newly recorded rejection, or null if it already existed.
+		 */
+		Constraint addRejectedConstraint(Constraint.Kind kind, String featureA, String featureB);
+
+		/**
+		 * Removes a rejection (e.g. GUI "move back to pending"). No-op if not present.
+		 */
+		void removeRejectedConstraint(Constraint constraint);
 
 		void addVariant(Variant variant);
 
@@ -913,6 +942,10 @@ public interface Repository extends Persistable {
 			for (Constraint constraint : this.getConstraints()) {
 				newRepository.addConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
 			}
+			// rejections likewise
+			for (Constraint constraint : this.getRejectedConstraints()) {
+				newRepository.addRejectedConstraint(constraint.getKind(), constraint.getFeatureA(), constraint.getFeatureB());
+			}
 
 			// for every association in this repository: trim condition, use it to check if matching association already exists, if not create it, add observations based on trimmed condition, copy artifact tree and trim order graphs. (basically current merge implementation)
 			Map<Set<ModuleRevision>, Association.Op> andConditionAssociationMap = new HashMap<>();
@@ -1105,9 +1138,16 @@ public interface Repository extends Persistable {
 			// counter-copying logic below (which has known fragility under certain conditions -- see
 			// write-time-pruning-confirmed-unsafe in project memory), since constraints have no
 			// counters or fusion participation to inherit that fragility from.
+			// A suggestion is accepted, rejected or neither: one this repository has already decided
+			// either way keeps its decision, the other repository's decision only fills the gaps.
 			for (Constraint otherConstraint : otherRepository.getConstraints()) {
-				if (this.getConstraint(otherConstraint.getId()) == null) {
+				if (this.getConstraint(otherConstraint.getId()) == null && this.getRejectedConstraint(otherConstraint.getId()) == null) {
 					this.addConstraint(otherConstraint.getKind(), otherConstraint.getFeatureA(), otherConstraint.getFeatureB());
+				}
+			}
+			for (Constraint otherRejected : otherRepository.getRejectedConstraints()) {
+				if (this.getConstraint(otherRejected.getId()) == null && this.getRejectedConstraint(otherRejected.getId()) == null) {
+					this.addRejectedConstraint(otherRejected.getKind(), otherRejected.getFeatureA(), otherRejected.getFeatureB());
 				}
 			}
 

@@ -44,6 +44,9 @@ public final class SerRepository implements Repository, Repository.Op {
 	// deserialized from before this field existed (serialVersionUID has never changed for exactly
 	// this reason); every accessor defensively initializes it, mirroring addVariant()'s guard below.
 	private Map<String, SerConstraint> constraints;
+	// rejected constraint suggestions - null on a repository written before they were stored here
+	// (they were per-machine preferences then); older builds ignore the field
+	private Map<String, SerConstraint> rejectedConstraints;
 	// only the association IDs are actually serialized as part of the "core" database (see the
 	// fields below) - each association's own (large) content lives in its own file, written only
 	// when dirty. See SerTransactionStrategy for the read/write side of this split.
@@ -418,6 +421,37 @@ public final class SerRepository implements Repository, Repository.Op {
 	public void removeConstraint(Constraint constraint) {
 		if (this.constraints == null) return;
 		this.constraints.remove(constraint.getId());
+	}
+
+	private Map<String, SerConstraint> rejectedConstraints() {
+		if (this.rejectedConstraints == null) {
+			this.rejectedConstraints = new LinkedHashMap<>();
+		}
+		return this.rejectedConstraints;
+	}
+
+	@Override
+	public Collection<Constraint> getRejectedConstraints() {
+		return Collections.unmodifiableCollection(this.rejectedConstraints().values());
+	}
+
+	@Override
+	public Constraint getRejectedConstraint(String id) {
+		return this.rejectedConstraints().get(id);
+	}
+
+	@Override
+	public Constraint addRejectedConstraint(Constraint.Kind kind, String featureA, String featureB) {
+		SerConstraint constraint = new SerConstraint(kind, featureA, featureB);
+		if (this.rejectedConstraints().containsKey(constraint.getId()))
+			return null;
+		this.rejectedConstraints().put(constraint.getId(), constraint);
+		return constraint;
+	}
+
+	@Override
+	public void removeRejectedConstraint(Constraint constraint) {
+		this.rejectedConstraints().remove(constraint.getId());
 	}
 
 	@Override
