@@ -89,12 +89,14 @@ import java.util.stream.Collectors;
  *         the LLM can tell a genuinely new capability built on an existing feature from a change
  *         to that feature itself) - one request per commit rather than one batched request up
  *         front, so the user reviews each suggestion before the next one is even asked for.</li>
- *         <li>{@link #showCommitReview(List, int, boolean, int, String, String)} - shows that
+ *         <li>{@link #showCommitReview(List, int, boolean, int, String, String, String)} - shows that
  *         single commit's message and an editable configuration field, pre-filled with the LLM's
  *         suggestion merged onto whatever was actually imported so far (or blank if suggestions
  *         were skipped/failed), with live constraint-violation feedback. The user picks Import,
  *         Skip (leave this commit out, move on), or Stop (end the import here, keeping whatever
- *         was already imported).</li>
+ *         was already imported). If importing the commit fails, the same screen comes back with the
+ *         error and the configuration that was tried, so the commit can be corrected and imported
+ *         again, or skipped - nothing of a failed commit is kept.</li>
  *         <li>{@link #autoImportOneCommit(List, int, boolean, int)} - on a non-review commit
  *         (review interval &gt; 1), does the same LLM lookup unattended and imports immediately
  *         with whatever it suggests (or the unchanged running configuration if suggestions are
@@ -114,6 +116,9 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	// matches CommitView's own log/detail split - see that class's identical splitPane setup
 	private static final double LOG_DIVIDER_POSITION = 0.65;
+
+	// lets tests find the failure shown on a commit's review screen
+	static final String IMPORT_FAILURE_LABEL_ID = "importFailure";
 
 	private final EccoService service;
 	private final GitHistoryReader gitHistoryReader = new GitHistoryReader();
@@ -405,6 +410,14 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 *                       every Nth commit and auto-imports the rest unattended (see
 	 *                       {@link #isReviewCommit} and {@link #autoImportOneCommit}).
 	 */
+	/**
+	 * Starts the loop on a clone chosen without {@link #step1()}'s directory chooser. Package-visible for testing.
+	 */
+	void startImport(Path repoDir, List<GitCommitInfo> commitsOldestFirst, boolean useLlm, int reviewInterval) {
+		this.repoDir = repoDir;
+		this.startImport(commitsOldestFirst, useLlm, reviewInterval);
+	}
+
 	private void startImport(List<GitCommitInfo> commitsOldestFirst, boolean useLlm, int reviewInterval) {
 		this.runningFeatures = new LinkedHashSet<>();
 		this.allConstraintWarnings = new ArrayList<>();
@@ -438,7 +451,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 		} else if (useLlm) {
 			this.suggestOneCommit(commitsOldestFirst, index, useLlm, reviewInterval);
 		} else {
-			this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfigurationText(this.runningFeatures, ""), null);
+			this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfigurationText(this.runningFeatures, ""), null, null);
 		}
 	}
 
@@ -490,7 +503,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				}
 				LlmFeatureSuggestionClient.SuggestionBatch batch = this.getValue();
 				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, batch.configurations().get(0));
-				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfig, batch.failureReason());
+				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfig, batch.failureReason(), null);
 			}
 
 			@Override
@@ -506,7 +519,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 				// suggestion, then still let the user fill the configuration in by hand.
 				new ExceptionAlert(this.getException()).show();
 				String defaultConfig = defaultConfigurationText(ImportGitView.this.runningFeatures, "");
-				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfig, String.valueOf(this.getException()));
+				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, defaultConfig, String.valueOf(this.getException()), null);
 			}
 		};
 		new Thread(suggestTask).start();
@@ -621,8 +634,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * Editable review of ONE commit's feature configuration string, pre-filled with
 	 * {@code defaultConfig} - nothing is committed into ecco until this screen's Import button is
 	 * clicked, and only for this one commit.
+	 *
+	 * @param importFailure why the last attempt to import this commit failed, or null on a first attempt
 	 */
-	private void showCommitReview(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, int reviewInterval, String defaultConfig, String suggestionFailureReason) {
+	private void showCommitReview(List<GitCommitInfo> commitsOldestFirst, int index, boolean useLlm, int reviewInterval, String defaultConfig, String suggestionFailureReason, String importFailure) {
 		GitCommitInfo commit = commitsOldestFirst.get(index);
 
 		this.navButtons(commitsOldestFirst);
@@ -646,6 +661,16 @@ public class ImportGitView extends OperationView implements EccoListener {
 		this.showStepContent(gridPane);
 
 		int row = 0;
+
+		if (importFailure != null) {
+			Label failureLabel = new Label("Importing this commit failed, so nothing of it was committed: " + importFailure +
+					" - correct the configuration and Import again, or Skip the commit.");
+			failureLabel.setId(IMPORT_FAILURE_LABEL_ID);
+			failureLabel.setWrapText(true);
+			failureLabel.setStyle("-fx-text-fill: firebrick;");
+			gridPane.add(failureLabel, 0, row, 1, 1);
+			row++;
+		}
 
 		if (suggestionFailureReason != null) {
 			Label warningLabel = new Label("LLM feature suggestion failed for this commit, so Configuration is " +
@@ -747,7 +772,8 @@ public class ImportGitView extends OperationView implements EccoListener {
 					Platform.runLater(() -> ImportGitView.this.logArea.appendText(
 							String.format("Imported %s (%s) -> [%s] in %.2f seconds.%n", commit.getShortId(), commit.getMessage(), configLabel, durationSeconds)));
 
-					List<String> violations = ImportGitView.this.service.checkConstraintViolations(result.getConfiguration());
+					// the commit is stored from here on: a failing check must not offer it for a retry
+					List<String> violations = ImportGitView.this.constraintViolations(result);
 					if (!violations.isEmpty()) {
 						ImportGitView.this.allConstraintWarnings.addAll(violations);
 						Platform.runLater(() -> {
@@ -782,7 +808,10 @@ public class ImportGitView extends OperationView implements EccoListener {
 			@Override
 			public void failed() {
 				super.failed();
-				ImportGitView.this.reportImportFailure(this.getException());
+				// commit() rolls back on failure, so the commit can be corrected and tried again
+				String reason = describeFailure(this.getException());
+				ImportGitView.this.logArea.appendText("*** IMPORT FAILED for " + commit.getShortId() + ": " + reason + System.lineSeparator());
+				ImportGitView.this.showCommitReview(commitsOldestFirst, index, useLlm, reviewInterval, configurationText, null, reason);
 			}
 		};
 		new Thread(importTask).start();
@@ -866,6 +895,32 @@ public class ImportGitView extends OperationView implements EccoListener {
 					"Imported commits violate accepted constraint(s):\n" + String.join("\n", this.allConstraintWarnings));
 			alert.showAndWait();
 		}
+	}
+
+	/**
+	 * The accepted constraints {@code commit}'s configuration violates; a failing check is reported
+	 * as a violation instead of thrown, since the commit is already stored.
+	 */
+	private List<String> constraintViolations(Commit commit) {
+		try {
+			return this.service.checkConstraintViolations(commit.getConfiguration());
+		} catch (RuntimeException e) {
+			return List.of("constraint check failed: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * The messages of {@code exception} and its causes, without repeats, e.g. "Error during commit.
+	 * - caused by: ...". Package-visible for testing.
+	 */
+	static String describeFailure(Throwable exception) {
+		List<String> messages = new ArrayList<>();
+		for (Throwable t = exception; t != null; t = t.getCause()) {
+			String message = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
+			if (!messages.contains(message))
+				messages.add(message);
+		}
+		return String.join(" - caused by: ", messages);
 	}
 
 	/** Ends the per-commit loop on a real failure (as opposed to {@link #finishImport}'s success/stop). */

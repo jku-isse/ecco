@@ -629,7 +629,7 @@ Postcondition: The previously stored minimized conditions stay as they were.
 | Dependency | INCLUDE USE CASE Commit variant |
 | Generalization | None |
 | Front ends | GUI Versions > Import From Git |
-| Realizes | FR-G1 to FR-G3, IF-G3, IF-G4 |
+| Realizes | FR-G1 to FR-G3, FR-G4, IF-G3, IF-G4 |
 
 **Basic flow**
 
@@ -664,10 +664,10 @@ Postcondition: Nothing is imported.
 
 1. The system sends the commit to the LLM service.
 2. IF the LLM service returns no suggestion THEN the system logs the failure ENDIF.
-3. INCLUDE USE CASE Commit variant for the extracted tree with the running feature set and the suggestion.
-4. RESUME STEP 15.
+3. The system takes the running feature set and the suggestion as the configuration.
+4. RESUME STEP 14.
 
-Postcondition: The commit is imported without review.
+Postcondition: The commit is imported without review; a commit that fails is shown for review (SA7).
 
 **Specific alternative flow SA3** (RFS 9)
 
@@ -698,12 +698,13 @@ Postcondition: The commits imported so far stay in the repository.
 
 Postcondition: Nothing is committed yet.
 
-**Bounded alternative flow BA1** (RFS 14-15)
+**Specific alternative flow SA7** (RFS 14)
 
-1. IF the commit fails THEN the system shows the error and ends the import ENDIF.
-2. ABORT.
+1. IF the commit fails THEN the system logs the failure ENDIF.
+2. The system shows the commit with the configuration that was tried and the reason for the failure.
+3. RESUME STEP 11.
 
-Postcondition: The commits imported before the failure stay in the repository.
+Postcondition: Nothing of the failed commit is in the repository; the product-line engineer corrects the configuration and imports again, or skips the commit.
 
 ### UC-11 Fork repository
 
@@ -1086,6 +1087,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-G1 | Git import shall read a local clone without touching its working tree or index, and apply commits oldest first along first parents. | Code `git/GitHistoryReader` |
 | FR-G2 | Each Git commit's tree shall be extracted to an empty directory, skipping submodules and refusing entries outside it. | Code `GitHistoryReader` |
 | FR-G3 | LLM suggestions shall be one request per commit (temperature 0, JSON output) judged against features already imported; a failure gives a blank suggestion, never an abort, and a suggestion is never committed without the import loop's decision. | Code `LlmFeatureSuggestionClient:398-410` |
+| FR-G4 | A Git commit that fails to import shall be shown again for review with the error and the configuration tried, to be corrected and imported again or skipped; the run goes on and nothing of the failed commit is kept. | Test `ImportGitViewRetryTest` |
 
 
 ## Artifact adapter requirements
@@ -1274,7 +1276,7 @@ Requirements the code does not meet, places where the documentation and the code
 | 18 | The CLI reported nothing on success: `commit` printed no commit id, `checkout` no hint at its warnings, and a commit violating accepted constraints said nothing (only the GUI checked). | `CommitCommand`, `CheckoutCommand` | Missing feedback - **fixed 2026-10-03** (found writing the use cases): `commit` prints the id, the configuration and `CONSTRAINT:` lines; `checkout` prints a count per warning kind (IF-C9) |
 | 19 | A REST commit with a malformed configuration or none at all failed with 500, after the files were written. | `FileRepositoryService.addCommit` | Wrong status - **fixed 2026-10-03** (use cases): refused with 400 before anything is written (IF-R3) |
 | 20 | The sync server's log in the GUI showed empty rows: the message column always rendered "" and the time column had no value. Reopening the view while a server runs still shows "port -1". | `ServerView` | UI bug - **fixed 2026-10-03** (use cases), test `ServerViewLogTest`; the port -1 header **fixed 2026-10-03** too (the service reports the bound port) |
-| 21 | One failed commit ends a Git import run (e.g. a blank configuration on a tree without `.config`); the commit cannot be corrected and retried. | `ImportGitView.reportImportFailure` | Usability - open, needs a decision (UC-10 BA1) |
+| 21 | One failed commit ends a Git import run (e.g. a blank configuration on a tree without `.config`); the commit cannot be corrected and retried. | `ImportGitView.reportImportFailure` | Usability - **fixed 2026-10-03**: the failed commit's review screen comes back with the error and the configuration tried, for Import again or Skip, also for an unattended auto-import; test `ImportGitViewRetryTest` (FR-G4, UC-10 SA7) |
 | 22 | Accepted constraints are stored in the repository and travel with fork and pull; rejected ones are only stored in the local preferences, so collaborators are offered suggestions someone else rejected. | `ConstraintSuggestionsView`, `ConstraintSuggestionPreferences` | Inconsistent design - open, needs a decision |
 | 23 | Resolving an ORDER warning commits the whole checkout directory under the checkout's configuration, so the checkout's SURPLUS content and MISSING gaps are counted as that configuration too. | `CheckoutDetailView.applyFix` | Data-quality risk - reasoned, not reproduced; open, needs a decision (UC-6) |
 | 24 | FR-D2 said fork goes "into an empty location"; the code only refuses a location that already holds a repository. | ES:666-668 | Doc/code mismatch - **fixed 2026-10-03**: FR-D2 corrected |
