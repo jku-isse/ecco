@@ -196,10 +196,9 @@ public class CheckoutDetailView extends BorderPane {
 				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("SURPLUS", surplusEntry.getKey().toString(), surplusEntry.getValue(), "", null));
 			}
 
-			// show order diagnostics (see Repository.Op.compose()) -- Apply Fix opens
-			// ReorderChildrenDialog first (see #applyFix), then falls through into the same
-			// commit/re-checkout flow MISSING uses, so the user's chosen order gets written to disk
-			// and committed instead of hand-editing the checked-out file themselves.
+			// show order diagnostics (see Repository.Op.compose()) -- Reorder... opens
+			// ReorderChildrenDialog (see #applyFix) and records the chosen order in the repository,
+			// without a commit (EccoService#recordOrder).
 			//
 			// DefaultOrderSelector flags a node the moment it walks past ANY branch point anywhere in
 			// the graph's accumulated history, even between content from variants that were never both
@@ -340,10 +339,14 @@ public class CheckoutDetailView extends BorderPane {
 	}
 
 	/**
-	 * Prompts for a directory + configuration + commit message (pre-filled with the suggestion),
-	 * commits it, then re-runs the original checkout in place to verify/refresh the diagnostics.
-	 * ECCO can't synthesize the combined content itself -- this only automates the commit +
-	 * re-checkout steps around content the user points at.
+	 * MISSING and the like: prompts for a directory + configuration + commit message (pre-filled with
+	 * the suggestion), commits it, then re-runs the original checkout in place to verify/refresh the
+	 * diagnostics. ECCO can't synthesize the combined content itself -- this only automates the
+	 * commit + re-checkout steps around content the user points at.
+	 * <p>
+	 * ORDER: the chosen order is written to the checked-out file and recorded in the repository
+	 * (EccoService#recordOrder) -- no commit, since a commit would record the whole checkout as a
+	 * variant of its configuration, hiding its other warnings (Known gap #23).
 	 */
 	private void applyFix(DiagnosticInfo diagnosticInfo) {
 		if ("ORDER".equals(diagnosticInfo.getType())) {
@@ -359,19 +362,13 @@ public class CheckoutDetailView extends BorderPane {
 			}
 			Node.Op ambiguousOpNode = (Node.Op) ambiguousNode;
 			Optional<List<Node.Op>> reorderResultOpt = new ReorderChildrenDialog(this.service, ambiguousOpNode).showAndWait();
-			if (reorderResultOpt.isEmpty()) return; // cancelled -- do not proceed to the commit step
-			ambiguousOpNode.setChildren(reorderResultOpt.get());
-			try {
-				this.service.writeCheckoutFile(ambiguousOpNode);
-			} catch (RuntimeException e) {
-				new ExceptionAlert(e).showAndWait();
-				return;
-			}
+			if (reorderResultOpt.isEmpty()) return; // cancelled
+			this.recordOrder(ambiguousOpNode, reorderResultOpt.get());
+			return;
 		}
 
-		// MISSING content usually comes from somewhere new (default: repository home dir); an ORDER
-		// fix is reordering content that already exists at the checkout's own output directory.
-		Path defaultDirectory = "ORDER".equals(diagnosticInfo.getType()) ? this.currentBaseDir : this.service.getRepositoryHomeDir();
+		// MISSING content usually comes from somewhere new (default: repository home dir)
+		Path defaultDirectory = this.service.getRepositoryHomeDir();
 		ApplyFixDialog dialog = new ApplyFixDialog(defaultDirectory, diagnosticInfo.getSuggestedConfigurationString());
 		Optional<ApplyFixDialog.Result> resultOpt = dialog.showAndWait();
 		if (resultOpt.isEmpty()) return;
@@ -410,6 +407,40 @@ public class CheckoutDetailView extends BorderPane {
 			}
 		};
 		new Thread(commitTask).start();
+	}
+
+	/**
+	 * Records the chosen order in the repository off the FX thread, then rewrites the checked-out
+	 * file in that order and refreshes the table, where the ORDER row is gone once the order is
+	 * determined (see the hasUnresolvedOrder filter in showCheckout). Package-visible for testing.
+	 */
+	void recordOrder(Node.Op node, List<Node.Op> order) {
+		Task<Void> recordTask = new Task<>() {
+			@Override
+			public Void call() {
+				CheckoutDetailView.this.service.recordOrder(node, order);
+				return null;
+			}
+
+			@Override
+			public void succeeded() {
+				super.succeeded();
+				node.setChildren(order);
+				try {
+					CheckoutDetailView.this.service.writeCheckoutFile(node);
+				} catch (RuntimeException e) {
+					new ExceptionAlert(e).showAndWait();
+				}
+				CheckoutDetailView.this.showCheckout(CheckoutDetailView.this.currentCheckout, CheckoutDetailView.this.currentBaseDir);
+			}
+
+			@Override
+			public void failed() {
+				super.failed();
+				new ExceptionAlert(getException()).showAndWait();
+			}
+		};
+		new Thread(recordTask).start();
 	}
 
 	/**

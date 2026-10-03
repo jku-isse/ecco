@@ -244,7 +244,7 @@ Postcondition: The repository is unchanged.
 | Precondition | A repository is open (UC-2). The working directory holds the variant's files. |
 | Primary actor | Variant developer |
 | Secondary actors | None |
-| Dependency | Included by UC-4, UC-6, UC-7, UC-10, UC-14 |
+| Dependency | Included by UC-4, UC-7, UC-10, UC-14 |
 | Generalization | None |
 | Front ends | CLI `commit -c <configuration> [-m <message>]` (prints the commit id and any violated constraints); GUI Versions > Commit |
 | Realizes | FR-F1 to FR-F6, FR-M1 to FR-M10, FR-T1, IF-C9, NFR-R1, NFR-R3 |
@@ -364,7 +364,7 @@ Postcondition: The folders committed before the failure stay committed; the rema
 | Precondition | A repository is open (UC-2) and holds at least one commit. |
 | Primary actor | Variant developer |
 | Secondary actors | None |
-| Dependency | EXTENDED BY USE CASE Resolve ambiguous order; included by UC-6, UC-15 |
+| Dependency | EXTENDED BY USE CASE Resolve ambiguous order; included by UC-15 |
 | Generalization | None |
 | Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, View > Variants, View > Artifacts (compose a selection) |
 | Realizes | FR-K1 to FR-K10, FR-N9, FR-T2, AD-6, IF-C9 |
@@ -418,14 +418,14 @@ Postcondition: Same as the basic flow.
 
 | | |
 | --- | --- |
-| Brief description | After a checkout reports an ORDER warning, the variant developer fixes the order of an artifact's children and commits the fix, so that later checkouts know the order. |
+| Brief description | After a checkout reports an ORDER warning, the variant developer chooses the order of an artifact's children, and the system records the order in the repository without a commit, so that later checkouts know the order. |
 | Precondition | A checkout in the GUI (UC-5) reports an ORDER warning. |
 | Primary actor | Variant developer |
 | Secondary actors | None |
-| Dependency | Extends UC-5 at step 12; INCLUDE USE CASE Commit variant; INCLUDE USE CASE Check out variant |
+| Dependency | Extends UC-5 at step 12 |
 | Generalization | None |
 | Front ends | GUI checkout details |
-| Realizes | IF-G8, FR-K2, FR-K5 |
+| Realizes | IF-G8, FR-K2, FR-K5, FR-K11 |
 
 **Basic flow**
 
@@ -434,16 +434,12 @@ Postcondition: Same as the basic flow.
 3. The system VALIDATES THAT at least one child can move.
 4. The variant developer moves children into the intended order.
 5. The variant developer confirms the order.
-6. The system rewrites the file in the checkout directory in the new order.
-7. The system proposes a fix commit with the checkout directory, the checkout's configuration and an empty message.
-8. The variant developer enters a commit message and confirms the fix commit.
-9. INCLUDE USE CASE Commit variant for the checkout directory.
-10. The system asks to delete the contents of the checkout directory.
-11. The variant developer confirms the deletion.
-12. INCLUDE USE CASE Check out variant with the same configuration into the same directory.
-13. The system shows the refreshed warnings.
+6. The system VALIDATES THAT the order agrees with every order recorded before.
+7. The system records the order in the partial order graph of the artifact.
+8. The system rewrites the file in the checkout directory in the new order.
+9. The system shows the warnings without the resolved ORDER warning.
 
-Postcondition: The repository records the chosen order, and the checkout shows no ORDER warning for the artifact.
+Postcondition: The repository records the chosen order, and later checkouts that contain these children use it, whatever their configuration. The repository holds no new commit or variant, and the presence conditions and the other warnings are unchanged.
 
 **Specific alternative flow SA1** (RFS 3)
 
@@ -459,17 +455,12 @@ Postcondition: The checkout directory and the repository are unchanged.
 
 Postcondition: The checkout directory and the repository are unchanged.
 
-**Specific alternative flow SA2** (RFS 8)
+**Specific alternative flow SA2** (RFS 6)
 
-1. IF the variant developer cancels the fix commit THEN ABORT ENDIF.
+1. The system reports that the order contradicts one recorded before.
+2. ABORT.
 
-Postcondition: The file shows the chosen order, but the repository is unchanged.
-
-**Specific alternative flow SA3** (RFS 11)
-
-1. IF the variant developer declines the deletion THEN ABORT ENDIF.
-
-Postcondition: The fix is committed; the checkout directory is not refreshed.
+Postcondition: The checkout directory and the repository are unchanged.
 
 ### UC-7 Locate features
 
@@ -1053,6 +1044,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-K8 | Constraint-violation warnings shall be advisory and never block a commit or checkout. | Code ES:1196-1207 |
 | FR-K9 | Composition shall run in a read-only transaction. | Test `ReadWithoutTransactionTest` |
 | FR-K10 | Line-based files shall be written with the newest commit's encoding, line separator and final newline. | Test `TextFormatLastCommitWinsTest` |
+| FR-K11 | The order of an artifact's children shall be recordable without a commit: only the artifact's partial order graph changes, the order must agree with every order recorded before and is refused otherwise, and it holds in every later checkout containing those children, whatever the configuration. | Test `RecordOrderTest`, `OrderResolutionCharacterizationTest` |
 
 ### Constraints and condition minimization
 
@@ -1163,7 +1155,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-G5 | The feature model view shall show the feature model derived from the commits and let users accept, reject or return mined constraints, and minimize presence conditions with them. | Code `FeaturesView`, `ConstraintSuggestionsView` |
 | IF-G6 | Users shall be able to list and compare commits, list associations with their full and simplified conditions, and browse the artifact tree of any selection of associations, then check out or compose that selection. | Code `CommitsView`, `CommitComparisonView`, `AssociationsView`, `ArtifactsView` |
 | IF-G7 | Wherever associations are listed, an association preview shall show their artifacts in their files, coloured by association, for every mapped adapter. | Doc; Code `ArtifactDetailView` viewers |
-| IF-G8 | Checkout results shall show their warnings with a suggested fix; an ambiguous order shall be resolvable by reordering in a dialog and committing. | Code `CheckoutDetailView`, `ReorderChildrenDialog` |
+| IF-G8 | Checkout results shall show their warnings with a suggested fix; an ambiguous order shall be resolvable by reordering in a dialog, which records the order without a commit (FR-K11). | Code `CheckoutDetailView`, `ReorderChildrenDialog`; Test `CheckoutDetailViewRecordOrderTest` |
 | IF-G9 | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph and the dependency graph, plus charts, each exportable. | Code `view/graph/*`, `ChartsView` |
 | IF-G10 | The GUI shall manage remotes, fetch, pull and push, and start a sync server on a chosen port, local-only unless "accept connections from other machines" is set. | Code `RemotesView`, `ServerView` |
 | IF-G11 | Users shall be able to enable or disable adapters (effective on the next open), and set minimization thresholds and LilyPond paths. | Code `PreferencesView` |
@@ -1285,7 +1277,7 @@ Requirements the code does not meet, places where the documentation and the code
 | 20 | The sync server's log in the GUI showed empty rows: the message column always rendered "" and the time column had no value. Reopening the view while a server runs still shows "port -1". | `ServerView` | UI bug - **fixed 2026-10-03** (use cases), test `ServerViewLogTest`; the port -1 header **fixed 2026-10-03** too (the service reports the bound port) |
 | 21 | One failed commit ends a Git import run (e.g. a blank configuration on a tree without `.config`); the commit cannot be corrected and retried. | `ImportGitView.reportImportFailure` | Usability - **fixed 2026-10-03**: the failed commit's review screen comes back with the error and the configuration tried, for Import again or Skip, also for an unattended auto-import; test `ImportGitViewRetryTest` (FR-G4, UC-10 SA7) |
 | 22 | Accepted constraints are stored in the repository and travel with fork and pull; rejected ones are only stored in the local preferences, so collaborators are offered suggestions someone else rejected. | `ConstraintSuggestionsView`, `ConstraintSuggestionPreferences` | Inconsistent design - **fixed 2026-10-03**: rejections are stored in the repository next to the accepted constraints and travel with fork/pull/push; a merge keeps the receiving repository's own decisions; local rejections move into the repository when the Feature Model view first loads; older builds ignore the new field; test `RejectedConstraintsTest` (FR-N4) |
-| 23 | Resolving an ORDER warning commits the whole checkout directory under the checkout's configuration, so the checkout's SURPLUS content and MISSING gaps are counted as that configuration too. | `CheckoutDetailView.applyFix` | Data-quality risk - reasoned, not reproduced; open, needs a decision (UC-6) |
+| 23 | Resolving an ORDER warning commits the whole checkout directory under the checkout's configuration, so the checkout's SURPLUS content and MISSING gaps are counted as that configuration too. | `CheckoutDetailView.applyFix` | Data-quality risk - **fixed 2026-10-03**: first pinned down (`OrderResolutionCharacterizationTest`: the commit hid the configuration's MISSING and SURPLUS warnings; committing only the reordered file instead would drop every other file from that configuration). Reorder... now records the order in the artifact's partial order graph without a commit (`EccoService#recordOrder`, FR-K11, UC-6); committing the reordered checkout still works from the command line, with the old effect |
 | 24 | FR-D2 said fork goes "into an empty location"; the code only refuses a location that already holds a repository. | ES:666-668 | Doc/code mismatch - **fixed 2026-10-03**: FR-D2 corrected |
 | 25 | The front-end matrix showed the CLI's constraint support as "suggest + preview"; it can also `minimize`, but cannot accept constraints. | [matrix](#where-the-front-ends-differ) | Doc - **fixed 2026-10-03** |
 | 26 | `fetch` also stores the remote's features with the remote's entry, which FR-D3 did not say. | `RemoteSyncService.fetch` | Doc - **fixed 2026-10-03**: FR-D3 extended |

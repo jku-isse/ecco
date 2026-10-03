@@ -125,7 +125,7 @@ The GUI (`./gradlew :ecco-gui:run`) organizes its functions in a ribbon:
 
 Wherever associations are listed, an *association preview* shows the artifacts of an association in their files, colored by association - for text, markdown, Java, C, LilyPond, TypeScript, Python, JSON, Jupyter notebooks, and images.
 
-Checkouts show their warnings in the GUI: missing feature interactions, surplus artifacts, and ambiguous orders, which can be resolved by reordering and committing.
+Checkouts show their warnings in the GUI: missing feature interactions, surplus artifacts, and ambiguous orders, which can be resolved by reordering: the chosen order is recorded in the repository without a commit.
 
 
 ## Distributed Operations
