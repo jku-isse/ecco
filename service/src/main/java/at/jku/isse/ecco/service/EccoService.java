@@ -1321,6 +1321,28 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * Rejects suggestions, so they are not proposed again; stored in the repository, so the decision
+     * travels with fork/pull/push. See {@link ConstraintService#rejectConstraints}.
+     */
+    public synchronized void rejectConstraints(List<ConstraintMiner.Suggestion> suggestions) {
+        this.constraintService.rejectConstraints(suggestions);
+    }
+
+    /**
+     * "Move back to pending" for rejected suggestions. See {@link ConstraintService#unrejectConstraints}.
+     */
+    public synchronized void unrejectConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
+        this.constraintService.unrejectConstraints(constraints);
+    }
+
+    /**
+     * See {@link ConstraintService#moveLocalRejectionsIntoRepository}.
+     */
+    public synchronized int moveLocalRejectionsIntoRepository() {
+        return this.constraintService.moveLocalRejectionsIntoRepository();
+    }
+
+    /**
      * The fingerprint ({@link MinimizationBasis}) of every association as it is now, by association
      * id. A minimization run takes these when it starts, before reading the repository, and passes
      * them to {@link #persistMinimizedConditions} - taking them when persisting would bless results

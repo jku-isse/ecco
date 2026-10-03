@@ -238,7 +238,7 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 		this.graphContainer.setBottom(horizontalScrollBar);
 		this.graphContainer.setRight(verticalScrollBar);
 
-		this.suggestionsView = new ConstraintSuggestionsView(service, this::refreshNow, minimizationResults);
+		this.suggestionsView = new ConstraintSuggestionsView(service, minimizationResults);
 		this.splitPane = new SplitPane(graphContainer, suggestionsView);
 		this.splitPane.setDividerPositions(0.7);
 		this.setCenter(this.splitPane);
@@ -677,29 +677,6 @@ public class FeaturesView extends BorderPane implements EccoListener, TabVisibil
 			snapshot.edges.add(new FeatureEdgeSnapshot(featureAId, featureBId, kind));
 		}
 		return snapshot;
-	}
-
-	/**
-	 * Re-mines/re-lays-out and re-renders the graph right away, off the calling thread. Unlike
-	 * {@link #statusChangedEvent}, this isn't triggered by a real {@link EccoService} event (no
-	 * commit/checkout happened) -- it's called by {@link ConstraintSuggestionsView} only for a
-	 * suggestion REJECT/un-reject, which stays purely local ({@code ConstraintSuggestionPreferences})
-	 * and never touches the repository. An ACCEPT/un-accept does persist into the repository and
-	 * already fires a real {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed
-	 * event that {@link #statusChangedEvent} reacts to on its own, so {@code ConstraintSuggestionsView}
-	 * deliberately does NOT call this a second time for those - see its {@code acceptSelected}.
-	 */
-	private void refreshNow() {
-		if (!this.service.isInitialized() || !this.tabVisible) return;
-		new Thread(() -> {
-			FeatureModelSnapshot snapshot = this.buildSnapshot();
-			Platform.runLater(() -> {
-				if (this.viewer == null || this.view == null) {
-					initView();
-				}
-				this.refreshGraph(snapshot);
-			});
-		}).start();
 	}
 
 	/**

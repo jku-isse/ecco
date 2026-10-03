@@ -31,11 +31,13 @@ observed together" is NOT "forbidden" — it may just be untested. Therefore:
 2. **Bridge — `ConfigurationBridge.java`** (done). The only ECCO-coupled code.
    Produces `List<Set<String>>` from committed variants (see confirmed API
    below).
-3. **Review preferences — `ConstraintSuggestionPreferences.java`** (done).
-   Persists accept/reject decisions per repository (`Preferences`-backed,
-   mirrors `AdapterPreferences`), keyed by a suggestion's
-   `signatureOf(kind, a, b)` so a decision survives re-mining and confidence
-   tuning.
+3. **Review decisions** (done). Accepted and rejected suggestions are both
+   stored in the repository (`Repository#getConstraints`/`#getRejectedConstraints`),
+   keyed by a suggestion's `signatureOf(kind, a, b)` so a decision survives
+   re-mining and confidence tuning. `ConstraintSuggestionPreferences.java`
+   keeps the signature and reads the per-machine rejections of earlier
+   versions, which `EccoService#moveLocalRejectionsIntoRepository` moves into
+   the repository.
 4. **Exposure — `SuggestConstraintsCommand`** (done, CLI) and
    `ConstraintSuggestionsView` (done, GUI — a panel inside the "Feature Model"
    tab's `FeaturesView`, split-paned next to the existing graph). REST
@@ -101,14 +103,15 @@ GUI (`ConstraintSuggestionsView`, done): lives inside the Feature Model tab
 (`FeaturesView`, right side of a `SplitPane`, graph on the left). Toolbar has
 min-witness/confidence controls + Refresh; a pending-suggestions `TableView`
 with Accept/Reject; and Accepted/Rejected `ListView`s (with a "move back to
-pending" undo). Accept and reject are asymmetric: **accept** persists a real
-`Constraint` entity (`at.jku.isse.ecco.core.Constraint`, SER-backed via
-`SerConstraint`/`SerRepository`) *in the repository itself* — via
-`EccoService#acceptConstraint`/`#unacceptConstraint` — so it travels with
-fork/pull/push and is visible to every collaborator, not just the machine
-that accepted it; **reject** stays local/personal, backed by
-`ConstraintSuggestionPreferences` (a `java.util.prefs.Preferences`-backed
-"don't re-show me this" list, lower stakes, no reason to share). Important:
+pending" undo). Both decisions persist a `Constraint` entity
+(`at.jku.isse.ecco.core.Constraint`, SER-backed via `SerConstraint`/`SerRepository`)
+*in the repository itself* — accepted ones via
+`EccoService#acceptConstraints`/`#unacceptConstraints`, rejected ones in a
+separate set via `#rejectConstraints`/`#unrejectConstraints` — so they travel
+with fork/pull/push and every collaborator sees them. A suggestion is accepted,
+rejected or neither: deciding one way withdraws the other decision, and on a
+merge the receiving repository keeps its own decision where it has one
+(until 2026-10-03 rejections were per-machine preferences). Important:
 this is still **advisory-only** — accepting a constraint does **not** write
 anything into an *enforced* feature model and does not change
 `commit()`/`checkout()` blocking behavior; it only affects which suggestions

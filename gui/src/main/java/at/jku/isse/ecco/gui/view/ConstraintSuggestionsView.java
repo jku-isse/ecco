@@ -21,7 +21,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -29,10 +28,9 @@ import java.util.stream.Collectors;
 
 /**
  * Reviews {@link ConstraintMiner} suggestions mined from committed configurations, inside the
- * Feature Model tab (see {@link FeaturesView}). An accepted suggestion is persisted as a real
- * {@link Constraint} in the repository itself (travels with fork/pull/push); a rejected one is
- * recorded locally via {@link ConstraintSuggestionPreferences} (personal, per-machine, so it's not
- * re-proposed) -- see {@code EccoService#acceptConstraint}/{@code #unacceptConstraint}.
+ * Feature Model tab (see {@link FeaturesView}). Accepted and rejected suggestions are both stored in
+ * the repository itself, so they travel with fork/pull/push and a rejected one is not re-proposed to
+ * anyone -- see {@code EccoService#acceptConstraints}/{@code #rejectConstraints}.
  *
  * <p>Per the mining epistemic contract (CONSTRAINT_MINING_DESIGN.md): "accept" here only records
  * that a human reviewed the suggestion and agrees with it -- accepted suggestions are advisory
@@ -65,15 +63,11 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
 
     private volatile boolean tabVisible = true;
 
-    /** Notified after any accept/reject/undo decision, so the feature graph can re-render. */
-    private final Runnable onReviewChanged;
-
     /** Re-triggered after every accept/unaccept -- see {@link #acceptSelected}/{@link #undoAccepted}. */
     private final MinimizationResults minimizationResults;
 
-    public ConstraintSuggestionsView(EccoService service, Runnable onReviewChanged, MinimizationResults minimizationResults) {
+    public ConstraintSuggestionsView(EccoService service, MinimizationResults minimizationResults) {
         this.service = service;
-        this.onReviewChanged = onReviewChanged;
         this.minimizationResults = minimizationResults;
 
         this.minWitnessSpinner = new EditableSpinner(1, 1000, 4);
@@ -165,7 +159,7 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         Button acceptButton = new Button("Accept");
         acceptButton.setOnAction(e -> acceptSelected(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems())));
         Button rejectButton = new Button("Reject");
-        rejectButton.setOnAction(e -> review(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems()), ConstraintSuggestionPreferences::reject));
+        rejectButton.setOnAction(e -> rejectSelected(new ArrayList<>(pendingTable.getSelectionModel().getSelectedItems())));
 
         HBox pendingActions = new HBox(8, acceptButton, rejectButton);
         pendingActions.setPadding(new javafx.geometry.Insets(6));
@@ -208,9 +202,8 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
 
     /**
      * Accept persists real {@link Constraint}s in the repository, all in ONE transaction -- see
-     * {@code EccoService#acceptConstraints}. Deliberately does NOT also call {@link #refresh()} or
-     * {@code onReviewChanged} here (unlike {@link #review}/{@link #undoRejected}, which stay local
-     * to {@link ConstraintSuggestionPreferences} and never fire a real event): accepting already
+     * {@code EccoService#acceptConstraints}. Deliberately does NOT also call {@link #refresh()} here
+     * (nor do {@link #rejectSelected}/{@link #undoRejected}): accepting already
      * fires a real {@link at.jku.isse.ecco.service.listener.EccoListener} status-changed event
      * through {@code EccoService}, which this view's own {@link #statusChangedEvent} already reacts
      * to by calling {@link #refresh()} (and which {@code FeaturesView} reacts to on its own, since
@@ -226,15 +219,14 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         minimizationResults.run();
     }
 
-    /** Reject stays local -- see {@code ConstraintSuggestionPreferences#reject}. */
-    private void review(List<ConstraintMiner.Suggestion> suggestions, java.util.function.BiConsumer<Path, String> decide) {
+    /**
+     * Stored in the repository in one transaction, like {@link #acceptSelected}, whose status event
+     * refreshes this view. Withdraws an acceptance of the same suggestion, so minimization re-runs too.
+     */
+    private void rejectSelected(List<ConstraintMiner.Suggestion> suggestions) {
         if (suggestions.isEmpty()) return;
-        Path repositoryDir = service.getRepositoryDir();
-        for (ConstraintMiner.Suggestion suggestion : suggestions) {
-            decide.accept(repositoryDir, ConstraintSuggestionPreferences.signatureOf(suggestion));
-        }
-        refresh();
-        if (onReviewChanged != null) onReviewChanged.run();
+        service.rejectConstraints(suggestions);
+        minimizationResults.run();
     }
 
     /** Batched, one transaction/event for the whole selection -- see {@link #acceptSelected}. */
@@ -251,15 +243,16 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         minimizationResults.run();
     }
 
+    /** Batched, one transaction/event for the whole selection -- see {@link #acceptSelected}. */
     private void undoRejected(ListView<String> listView) {
         List<String> selected = new ArrayList<>(listView.getSelectionModel().getSelectedItems());
         if (selected.isEmpty()) return;
-        Path repositoryDir = service.getRepositoryDir();
+        List<ConstraintSuggestionPreferences.AcceptedConstraint> parsed = new ArrayList<>();
         for (String signature : selected) {
-            ConstraintSuggestionPreferences.clearDecision(repositoryDir, signature);
+            ConstraintSuggestionPreferences.AcceptedConstraint constraint = ConstraintSuggestionPreferences.parseSignature(signature);
+            if (constraint != null) parsed.add(constraint);
         }
-        refresh();
-        if (onReviewChanged != null) onReviewChanged.run();
+        service.unrejectConstraints(parsed);
     }
 
     private void refresh() {
@@ -272,14 +265,16 @@ public class ConstraintSuggestionsView extends BorderPane implements EccoListene
         Task<Void> refreshTask = new Task<>() {
             @Override
             protected Void call() {
+                // rejections kept per machine by earlier versions (a no-op once they are moved)
+                ConstraintSuggestionsView.this.service.moveLocalRejectionsIntoRepository();
                 List<Set<String>> configs = ConfigurationBridge.readConfigurations(ConstraintSuggestionsView.this.service);
                 List<ConstraintMiner.Suggestion> mined =
                         new ConstraintMiner(minWitness, confidence, null).mine(configs);
 
-                Path repositoryDir = ConstraintSuggestionsView.this.service.getRepositoryDir();
                 Set<String> accepted = AcceptedConstraints.acceptedSignatures(
                         ConstraintSuggestionsView.this.service.getRepository().getConstraints());
-                Set<String> rejected = ConstraintSuggestionPreferences.getRejected(repositoryDir);
+                Set<String> rejected = AcceptedConstraints.acceptedSignatures(
+                        ConstraintSuggestionsView.this.service.getRepository().getRejectedConstraints());
 
                 List<ConstraintMiner.Suggestion> pending = new ArrayList<>();
                 for (ConstraintMiner.Suggestion suggestion : mined) {
