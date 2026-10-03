@@ -588,7 +588,7 @@ public class RemoteSyncService {
             // load remote
             Remote remote = owner.remoteDao.loadRemote(remoteName);
             if (remote == null) {
-                throw new EccoException("Remote " + remoteName + " does not exist");
+                throw new EccoException("Remote '" + remoteName + "' does not exist.");
             } else if (remote.getType() == Remote.Type.REMOTE) {
 
                 try (SocketChannel sChannel = SocketChannel.open()) {

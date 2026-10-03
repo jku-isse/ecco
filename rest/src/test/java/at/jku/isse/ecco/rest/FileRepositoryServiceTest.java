@@ -154,6 +154,24 @@ public class FileRepositoryServiceTest {
 
     @Test
     @Timeout(30)
+    public void addCommitWithABadConfigurationIsABadRequestAndWritesNothing() throws IOException {
+        Path storage = Files.createTempDirectory("file-repository-service-add-commit-bad-config");
+        FileRepositoryService service = new FileRepositoryService(storage);
+        service.createRepository("my-repo");
+        CompletedFileUpload upload = mockUpload("\\file.txt", "hello\n");
+
+        for (String config : List.of("", "Core,,", "[unknown-id]")) {
+            HttpStatusException exception = assertThrows(HttpStatusException.class,
+                    () -> service.addCommit(1, "msg", config, "alice", List.of(upload)), config);
+            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus(), config);
+        }
+
+        assertFalse(Files.exists(storage.resolve("my-repo").resolve("lastCommit")));
+        assertEquals(0, service.getRepository(1).getCommits().size());
+    }
+
+    @Test
+    @Timeout(30)
     public void addCommitOfUnknownRepositoryThrows() throws IOException {
         Path storage = Files.createTempDirectory("file-repository-service-add-commit-unknown");
         FileRepositoryService service = new FileRepositoryService(storage);

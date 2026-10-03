@@ -246,8 +246,8 @@ Postcondition: The repository is unchanged.
 | Secondary actors | None |
 | Dependency | Included by UC-4, UC-6, UC-7, UC-10, UC-14 |
 | Generalization | None |
-| Front ends | CLI `commit -c <configuration> [-m <message>]`; GUI Versions > Commit |
-| Realizes | FR-F1 to FR-F6, FR-M1 to FR-M10, FR-T1, NFR-R1, NFR-R3 |
+| Front ends | CLI `commit -c <configuration> [-m <message>]` (prints the commit id and any violated constraints); GUI Versions > Commit |
+| Realizes | FR-F1 to FR-F6, FR-M1 to FR-M10, FR-T1, IF-C9, NFR-R1, NFR-R3 |
 
 **Basic flow**
 
@@ -367,7 +367,7 @@ Postcondition: The folders committed before the failure stay committed; the rema
 | Dependency | EXTENDED BY USE CASE Resolve ambiguous order; included by UC-6, UC-15 |
 | Generalization | None |
 | Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, View > Variants, View > Artifacts (compose a selection) |
-| Realizes | FR-K1 to FR-K10, FR-N9, FR-T2, AD-6 |
+| Realizes | FR-K1 to FR-K10, FR-N9, FR-T2, AD-6, IF-C9 |
 
 **Basic flow**
 
@@ -409,7 +409,7 @@ Postcondition: The selection equals the selection with full conditions for every
 
 **Specific alternative flow SA4** (RFS 12)
 
-1. IF the variant developer works with the CLI THEN the system ends with exit code 0 and leaves the warnings in `.warnings` ENDIF.
+1. IF the variant developer works with the CLI THEN the system prints the configuration and the number of warnings of each kind, with a pointer to `.warnings` ENDIF.
 2. ABORT.
 
 Postcondition: Same as the basic flow.
@@ -859,7 +859,7 @@ Postcondition: Both repositories are unchanged.
 6. DO
 7. A remote repository sends a fork, fetch, pull or push request.
 8. The system answers the request, deserializing only allow-listed classes.
-9. The system logs the connection with the request.
+9. The system logs the time of the connection and the request.
 10. UNTIL the collaborator stops the server.
 11. The system stops the server.
 
@@ -900,10 +900,11 @@ Postcondition: Any machine that reaches the port can read and push into the repo
 3. The system returns a signed bearer token.
 4. The web-client user uploads files, a commit message and a configuration for a repository.
 5. The system VALIDATES THAT the repository exists.
-6. The system VALIDATES THAT every file name stays inside the repository's upload folder.
-7. The system replaces the contents of the upload folder with the files.
-8. INCLUDE USE CASE Commit variant for the upload folder, with the web-client user as committer.
-9. The system returns the updated repository.
+6. The system VALIDATES THAT the configuration is well-formed and names at least one feature.
+7. The system VALIDATES THAT every file name stays inside the repository's upload folder.
+8. The system replaces the contents of the upload folder with the files.
+9. INCLUDE USE CASE Commit variant for the upload folder, with the web-client user as committer.
+10. The system returns the updated repository.
 
 Postcondition: The repository holds the commit.
 
@@ -922,6 +923,13 @@ Postcondition: The web-client user holds no token.
 Postcondition: Nothing is written.
 
 **Specific alternative flow SA3** (RFS 6)
+
+1. The system returns 400 with the configuration error.
+2. ABORT.
+
+Postcondition: Nothing is written.
+
+**Specific alternative flow SA4** (RFS 7)
 
 1. The system returns 400, "Invalid path: ...".
 2. ABORT.
@@ -1064,8 +1072,8 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | ID | Requirement | Source |
 | --- | --- | --- |
 | FR-D1 | A remote shall be a local path (repository or its `.ecco`) or `host:port` (hostname, IPv4 or bracketed IPv6, port 1-65535); remote names are unique. | Test `RemoteAddressTest` |
-| FR-D2 | `fork` shall create a new repository from a remote into an empty location and register it as `origin`. | Code ES:663-800 |
-| FR-D3 | `fetch` shall read a remote's features; `pull` and `push` shall merge a remote into this repository or this one into the remote. | Doc |
+| FR-D2 | `fork` shall create a new repository from a remote into a location that holds no repository, and register it as `origin`. | Code ES:663-800 |
+| FR-D3 | `fetch` shall read a remote's features and store them with the remote's entry; `pull` and `push` shall merge a remote into this repository or this one into the remote; all three report an unknown remote as "Remote '<name>' does not exist.". | Doc; Code `RemoteSyncService`; Test `RemoteSyncCharacterizationTest` |
 | FR-D4 | `fork`, `pull` and `push` shall be able to exclude feature revisions: features left without revisions and modules containing excluded features are dropped, and an exclusion that leaves unresolved dependencies is refused. | Doc; Code REPO:867-1033 |
 | FR-D5 | A fork or pull, reopened, shall check out the same content as the source. | History f9cce6ba, 8a4db407 |
 | FR-D7 | A fork shall not modify its origin repository. | Test `ForkLeavesOriginUnchangedTest` |
@@ -1133,6 +1141,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C6 | `dg` shall print the association dependency graph as GML on stdout. | Code |
 | IF-C7 | The CLI shall run without JavaFX and bundle the same adapters as the GUI, so it can work on repositories made with the GUI. | Code (`ecco.headless`, openjfx excluded); Doc |
 | IF-C8 | The CLI shall find the repository in the current or nearest parent directory and use that directory as the working directory; `init` and `fork` create a repository in the current directory. | Doc; Test `MainRepositoryDiscoveryTest` |
+| IF-C9 | `commit` shall print the commit id and configuration, then each violated accepted constraint as `CONSTRAINT:`; `checkout` shall print the configuration and the number of warnings of each kind, pointing to `.warnings`. | Test `CommitCommandTest`, `CheckoutCommandTest` |
 
 ### Graphical user interface (`gui`)
 
@@ -1156,7 +1165,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | --- | --- | --- |
 | IF-R1 | The REST server shall serve the repositories of a storage directory (`ECCO_STORAGE_DIR`) to the external ecco-client on port 8081 (`PORT`), with an OpenAPI description and Swagger UI. | Doc; Code `application.yml`; Test `SettingsTest` |
 | IF-R2 | It shall let clients list, create, clone, fork (deselecting features) and delete repositories. | Code `RepositoryController` |
-| IF-R3 | It shall accept a commit as a multipart upload of files, message, configuration and user name. | Code `CommitController` |
+| IF-R3 | It shall accept a commit as a multipart upload of files, message, configuration and user name, and refuse a malformed configuration or one without features with 400 before writing any file. | Code `CommitController`; Test `FileRepositoryServiceTest` |
 | IF-R4 | It shall let clients describe features and feature revisions, and pull features from another repository while deselecting some. | Code `FeatureController` |
 | IF-R5 | It shall let clients manage variants (add, rename, add/update/remove features) and download a variant's checkout as a file. | Code `VariantController` |
 | IF-R6 | Every endpoint except Swagger shall require an authenticated JWT bearer token. | Code `@Secured(IS_AUTHENTICATED)` |
@@ -1170,7 +1179,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | Fork | yes | yes | yes |
 | Fetch / pull / push | yes | yes | pull only, between its own repositories |
 | Sync server | no | yes | no |
-| Constraint mining | suggest + preview | suggest, accept, minimize | no |
+| Constraint mining | suggest, preview, minimize (no accept) | suggest, accept, minimize | no |
 | Git import | no | yes | no |
 | Visualizations | `dg` as GML | yes | no |
 
@@ -1262,3 +1271,14 @@ Requirements the code does not meet, places where the documentation and the code
 | 15 | `lilypond-config.properties` contains a hard-coded per-user path. | `adapter/lilypond/src/main/resources` | Portability - **fixed 2026-10-02**: bundled defaults empty, `lilypond` looked up on the PATH |
 | 16 | `AdapterPreferences.java` holds a raw NUL character in a string literal, so git treats the file as binary and hides its diffs. | `service/.../AdapterPreferences.java:22` | Hygiene - **fixed 2026-10-02** |
 | 17 | The changelog stops at 0.1.9 and no requirements or release notes record the work since; this document is the only consolidated statement of intent. | `CHANGELOG.md` | Documentation |
+| 18 | The CLI reported nothing on success: `commit` printed no commit id, `checkout` no hint at its warnings, and a commit violating accepted constraints said nothing (only the GUI checked). | `CommitCommand`, `CheckoutCommand` | Missing feedback - **fixed 2026-10-03** (found writing the use cases): `commit` prints the id, the configuration and `CONSTRAINT:` lines; `checkout` prints a count per warning kind (IF-C9) |
+| 19 | A REST commit with a malformed configuration or none at all failed with 500, after the files were written. | `FileRepositoryService.addCommit` | Wrong status - **fixed 2026-10-03** (use cases): refused with 400 before anything is written (IF-R3) |
+| 20 | The sync server's log in the GUI showed empty rows: the message column always rendered "" and the time column had no value. Reopening the view while a server runs still shows "port -1". | `ServerView` | UI bug - **fixed 2026-10-03** (use cases), test `ServerViewLogTest`; the port -1 header is still open |
+| 21 | One failed commit ends a Git import run (e.g. a blank configuration on a tree without `.config`); the commit cannot be corrected and retried. | `ImportGitView.reportImportFailure` | Usability - open, needs a decision (UC-10 BA1) |
+| 22 | Accepted constraints are stored in the repository and travel with fork and pull; rejected ones are only stored in the local preferences, so collaborators are offered suggestions someone else rejected. | `ConstraintSuggestionsView`, `ConstraintSuggestionPreferences` | Inconsistent design - open, needs a decision |
+| 23 | Resolving an ORDER warning commits the whole checkout directory under the checkout's configuration, so the checkout's SURPLUS content and MISSING gaps are counted as that configuration too. | `CheckoutDetailView.applyFix` | Data-quality risk - reasoned, not reproduced; open, needs a decision (UC-6) |
+| 24 | FR-D2 said fork goes "into an empty location"; the code only refuses a location that already holds a repository. | ES:666-668 | Doc/code mismatch - **fixed 2026-10-03**: FR-D2 corrected |
+| 25 | The front-end matrix showed the CLI's constraint support as "suggest + preview"; it can also `minimize`, but cannot accept constraints. | [matrix](#where-the-front-ends-differ) | Doc - **fixed 2026-10-03** |
+| 26 | `fetch` also stores the remote's features with the remote's entry, which FR-D3 did not say. | `RemoteSyncService.fetch` | Doc - **fixed 2026-10-03**: FR-D3 extended |
+| 27 | An unknown remote was reported as "Remote 'x' does not exist." by fetch and pull but "Remote x does not exist" by push. | `RemoteSyncService.push` | Inconsistency - **fixed 2026-10-03**, test `RemoteSyncCharacterizationTest` |
+| 28 | Local fetch and pull still open the other repository with `// TODO: init read only!`; #13 settled this for fork only. | `RemoteSyncService` | Unverified - open: check that fetch and pull leave the remote unchanged, as `ForkLeavesOriginUnchangedTest` does for fork |

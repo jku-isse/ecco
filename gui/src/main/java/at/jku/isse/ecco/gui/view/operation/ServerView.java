@@ -16,11 +16,22 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.stage.Stage;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+
 public class ServerView extends OperationView implements EccoListener {
 
 	private EccoService service;
 
-	final ObservableList<String> logData = FXCollections.observableArrayList();
+	/**
+	 * One line of the server log: when it arrived and what the server reported.
+	 */
+	record LogEntry(String time, String message) {
+	}
+
+	private static final DateTimeFormatter LOG_TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+	final ObservableList<LogEntry> logData = FXCollections.observableArrayList();
 
 	private Spinner<Integer> portTextField;
 
@@ -53,7 +64,8 @@ public class ServerView extends OperationView implements EccoListener {
 	@Override
 	public void serverEvent(EccoService service, String message) {
 		// fired from the server's accept loop, i.e. off the FX thread - logData backs a TableView
-		Platform.runLater(() -> this.logData.add(message));
+		String time = LocalTime.now().format(LOG_TIME);
+		Platform.runLater(() -> this.logData.add(new LogEntry(time, message)));
 	}
 
 	@Override
@@ -203,18 +215,14 @@ public class ServerView extends OperationView implements EccoListener {
 		row++;
 
 		// server log
-		TableView<String> fileTable = new TableView<>();
+		TableView<LogEntry> fileTable = new TableView<>();
 		fileTable.setEditable(false);
 
-		TableColumn<String, String> timeCol = new TableColumn<>("Time");
-		TableColumn<String, String> messageCol = new TableColumn<>("Message");
+		TableColumn<LogEntry, String> timeCol = new TableColumn<>("Time");
+		TableColumn<LogEntry, String> messageCol = new TableColumn<>("Message");
 		fileTable.getColumns().setAll(timeCol, messageCol);
-		// pre-existing bug, not touched here: timeCol has no cell value factory at all, and
-		// messageCol's always returns "" instead of the row's actual String - so both columns are
-		// currently non-functional regardless of width. Sizing is still applied below so this
-		// behaves correctly once that's fixed.
-		messageCol.setCellValueFactory((TableColumn.CellDataFeatures<String, String> param) -> new ReadOnlyStringWrapper(""));
-		//messageCol.setCellValueFactory(new PropertyValueFactory<>("action"));
+		timeCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().time()));
+		messageCol.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().message()));
 		fileTable.setItems(this.logData);
 
 		TableColumns.controlWidth(timeCol);

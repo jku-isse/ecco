@@ -1,9 +1,11 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.function.Executable;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -11,10 +13,12 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -157,6 +161,25 @@ public class RemoteSyncCharacterizationTest {
                 .map(Feature::getName).collect(Collectors.toList());
         assertTrue(originFeatureNames.contains("Extra"), "push(remoteName) should have pushed the new 'Extra' feature to origin");
         originService.close();
+    }
+
+    /**
+     * push reported "Remote x does not exist" where fetch and pull report "Remote 'x' does not exist.".
+     */
+    @Test
+    @Timeout(30)
+    public void unknownRemoteIsReportedAlikeByFetchPullAndPush() throws Exception {
+        Path workDir = Files.createTempDirectory("remote-sync-unknown-remote");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(workDir.resolve(".ecco"));
+            service.init();
+
+            List<Executable> operations = List.of(() -> service.fetch("nowhere"), () -> service.pull("nowhere"), () -> service.push("nowhere"));
+            for (Executable operation : operations) {
+                EccoException e = assertThrows(EccoException.class, operation);
+                assertEquals("Remote 'nowhere' does not exist.", e.getCause().getMessage());
+            }
+        }
     }
 
     private static void commitFeature(EccoService service, Path workDir, String dirName, String featureName) throws IOException {
