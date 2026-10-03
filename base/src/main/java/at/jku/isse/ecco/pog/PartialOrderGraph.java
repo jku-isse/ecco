@@ -330,10 +330,36 @@ public interface PartialOrderGraph extends Persistable {
 		 * Everything is checked before the graph is changed, so a refused order leaves it as it was.
 		 *
 		 * @param artifacts Artifacts of this graph in the order to record.
+		 * @return How many precedences were added; 0 if the graph already had the order.
 		 * @throws EccoException if an artifact is not in this graph (or not once), or the order
 		 *                       contradicts one the graph already has.
 		 */
-		default void addOrder(List<? extends Artifact<?>> artifacts) {
+		default int addOrder(List<? extends Artifact<?>> artifacts) {
+			List<Node.Op> nodes = this.orderNodes(artifacts);
+			int added = 0;
+			for (int i = 0; i + 1 < nodes.size(); i++)
+				if (!canReach(nodes.get(i), nodes.get(i + 1))) {
+					nodes.get(i).addChild(nodes.get(i + 1));
+					added++;
+				}
+			if (added > 0) {
+				this.removeTransitiveRelations(this.getHead());
+				this.checkConsistency();
+			}
+			return added;
+		}
+
+		/**
+		 * Checks that {@link #addOrder} would accept {@code artifacts}, without changing the graph - so
+		 * several orders can all be checked before any is recorded.
+		 *
+		 * @throws EccoException as {@link #addOrder} would.
+		 */
+		default void checkOrder(List<? extends Artifact<?>> artifacts) {
+			this.orderNodes(artifacts);
+		}
+
+		private List<Node.Op> orderNodes(List<? extends Artifact<?>> artifacts) {
 			List<Node.Op> nodes = new ArrayList<>(artifacts.size());
 			for (Artifact<?> artifact : artifacts) {
 				Node.Op node = this.nodeOf(artifact);
@@ -346,12 +372,7 @@ public interface PartialOrderGraph extends Persistable {
 					if (canReach(nodes.get(j), nodes.get(i)))
 						throw new EccoException("The order contradicts one recorded before: " + nodes.get(j).getArtifact()
 								+ " comes before " + nodes.get(i).getArtifact() + ".");
-
-			for (int i = 0; i + 1 < nodes.size(); i++)
-				if (!canReach(nodes.get(i), nodes.get(i + 1)))
-					nodes.get(i).addChild(nodes.get(i + 1));
-			this.removeTransitiveRelations(this.getHead());
-			this.checkConsistency();
+			return nodes;
 		}
 
 		/** The one node of this graph holding {@code artifact}: the same object, else one equal to it. */

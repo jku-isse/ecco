@@ -97,6 +97,7 @@ ecco checkout -c "Base, Cart, Wishlist"    # composed from both commits; see .wa
 | `adapters` | Lists the installed artifact adapters and the file patterns mapped to them. |
 | `commit -c <configuration> [-m <message>]` | Commits the working directory as a variant with the given configuration. |
 | `checkout -c <configuration>` | Composes the variant for the configuration into the working directory. |
+| `order <file>...` | Records the order of checked-out files as they are now, without a commit: put the content of a file with an ORDER warning in the right order, then run this. Content added or removed is refused. |
 | `features [name]` | Lists the features and their revisions. |
 | `traces [id]` | Lists the associations with their presence conditions. |
 | `get <property>`, `set <property> <value>` | Reads or changes a repository setting. |
@@ -125,7 +126,7 @@ The GUI (`./gradlew :ecco-gui:run`) organizes its functions in a ribbon:
 
 Wherever associations are listed, an *association preview* shows the artifacts of an association in their files, colored by association - for text, markdown, Java, C, LilyPond, TypeScript, Python, JSON, Jupyter notebooks, and images.
 
-Checkouts show their warnings in the GUI: missing feature interactions, surplus artifacts, and ambiguous orders, which can be resolved by reordering: the chosen order is recorded in the repository without a commit.
+Checkouts show their warnings in the GUI: missing feature interactions, surplus artifacts, and ambiguous orders, which can be resolved by reordering: the chosen order is recorded in the repository without a commit (`order` on the command line).
 
 
 ## Distributed Operations

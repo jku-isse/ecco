@@ -131,6 +131,91 @@ public class RecordOrderTest {
         }
     }
 
+    @Test
+    @Timeout(60)
+    public void theOrderOfAnEditedCheckedOutFileIsRecorded(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoVariants(tmp)) {
+            Path out = Files.createDirectories(tmp.resolve("out"));
+            checkout(service, out, "BASE, A, B");
+            Files.writeString(out.resolve("f.txt"), "a\nb\nc\n");
+
+            assertEquals(1, service.recordOrderOfFiles(List.of(Path.of("f.txt"))));
+            assertEquals(0, service.recordOrderOfFiles(List.of(Path.of("f.txt"))), "already recorded");
+
+            assertEquals(2, service.getCommits().size());
+            Path again = checkoutInto(service, tmp, "BASE, A, B");
+            assertEquals("a\nb\nc\n", Files.readString(again.resolve("f.txt")));
+            assertTrue(Files.readString(again.resolve(".warnings")).lines().noneMatch(l -> l.startsWith("ORDER")));
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void anUneditedFileConfirmsTheOrderAsCheckedOut(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoVariants(tmp)) {
+            Path out = Files.createDirectories(tmp.resolve("out"));
+            checkout(service, out, "BASE, A, B");
+
+            assertEquals(1, service.recordOrderOfFiles(List.of(Path.of("f.txt"))));
+            Path again = checkoutInto(service, tmp, "BASE, A, B");
+            assertEquals("a\nc\nb\n", Files.readString(again.resolve("f.txt")));
+            assertTrue(Files.readString(again.resolve(".warnings")).lines().noneMatch(l -> l.startsWith("ORDER")));
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void aFileWithContentAddedOrRemovedOrAContradictingOrderIsRefused(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoVariants(tmp)) {
+            Path out = Files.createDirectories(tmp.resolve("out"));
+            checkout(service, out, "BASE, A, B");
+
+            Files.writeString(out.resolve("f.txt"), "a\nb\nc\nz\n");
+            assertTrue(refusal(service, "f.txt").contains("z is not in the checkout"));
+            Files.writeString(out.resolve("f.txt"), "a\nb\n");
+            assertTrue(refusal(service, "f.txt").contains("c is missing"));
+            Files.writeString(out.resolve("f.txt"), "b\na\nc\n");
+            assertTrue(refusal(service, "f.txt").contains("contradicts"));
+            assertTrue(refusal(service, "nothing.txt").contains("not part of the checkout"));
+
+            Files.delete(out.resolve(".config"));
+            Files.writeString(out.resolve("f.txt"), "a\nb\nc\n");
+            assertTrue(refusal(service, "f.txt").contains("holds no checkout"));
+
+            assertEquals("a\nc\nb\n", Files.readString(checkoutInto(service, tmp, "BASE, A, B").resolve("f.txt")), "nothing was recorded");
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void aFileInASubdirectoryIsFoundByItsRelativePath(@TempDir Path tmp) throws Exception {
+        Path repo = Files.createDirectories(tmp.resolve("repo"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repo.resolve(".ecco"));
+            service.init();
+            for (String[] variant : new String[][]{{"v1", "a\nb\n", "BASE, A"}, {"v2", "a\nc\n", "BASE, B"}}) {
+                Path dir = Files.createDirectories(tmp.resolve(variant[0]).resolve("sub"));
+                Files.writeString(dir.resolve("f.txt"), variant[1]);
+                service.setBaseDir(dir.getParent());
+                service.commit("m", variant[2]);
+            }
+            Path out = Files.createDirectories(tmp.resolve("out"));
+            checkout(service, out, "BASE, A, B");
+            Files.writeString(out.resolve("sub/f.txt"), "a\nb\nc\n");
+
+            assertEquals(1, service.recordOrderOfFiles(List.of(Path.of("sub", "f.txt"))));
+            assertEquals("a\nb\nc\n", Files.readString(checkoutInto(service, tmp, "BASE, A, B").resolve("sub/f.txt")));
+        }
+    }
+
+    private static String refusal(EccoService service, String file) {
+        EccoException e = assertThrows(EccoException.class, () -> service.recordOrderOfFiles(List.of(Path.of(file))));
+        StringBuilder messages = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause())
+            messages.append(t.getMessage()).append(" | ");
+        return messages.toString();
+    }
+
     /** the children of {@code parent} in the given order of their text */
     private static List<Node> inOrder(Node parent, String... texts) {
         return java.util.Arrays.stream(texts)

@@ -12,6 +12,7 @@ import at.jku.isse.ecco.cli.command.fork.ForkCommand;
 import at.jku.isse.ecco.cli.command.init.InitCommand;
 import at.jku.isse.ecco.cli.command.minimize.MinimizeCommand;
 import at.jku.isse.ecco.cli.command.minimizepreview.MinimizePreviewCommand;
+import at.jku.isse.ecco.cli.command.order.OrderCommand;
 import at.jku.isse.ecco.cli.command.property.GetCommand;
 import at.jku.isse.ecco.cli.command.property.SetCommand;
 import at.jku.isse.ecco.cli.command.pull.PullCommand;
@@ -26,6 +27,8 @@ import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.*;
 
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Main class for the CLI. Parses the command line parameters.
@@ -67,10 +70,12 @@ public class Main {
         registerCommandsOnce();
 
         try {
-            Namespace namespace = parser.parseArgs(args);
-            String command = namespace.getString("command");
+            Namespace parsed = parser.parseArgs(args);
+            String command = parsed.getString("command");
             locateRepository(command, startDir);
-            commandRegister.run(command, namespace);
+            Map<String, Object> attributes = new HashMap<>(parsed.getAttrs());
+            attributes.put(ProgramConstants.START_DIR, startDir);
+            commandRegister.run(command, new Namespace(attributes));
             return 0;
         } catch (ArgumentParserException e) {
             parser.handleError(e);
@@ -126,6 +131,15 @@ public class Main {
         registerSuggestConstraintsCommand(commandParser);
         registerMinimizePreviewCommand(commandParser);
         registerMinimizeCommand(commandParser);
+        registerOrderCommand(commandParser);
+    }
+
+    private static void registerOrderCommand(Subparsers commandParser) {
+        Subparser orderCommandParser = commandParser.addParser(OrderCommand.ORDER)
+                .help("record the order of checked-out files as they are now, without a commit (resolves ORDER warnings)");
+        orderCommandParser.setDefault(ProgramConstants.COMMAND, OrderCommand.ORDER);
+        orderCommandParser.addArgument(OrderCommand.FILES_KEY).nargs("+").help("files whose content was put in the right order");
+        commandRegister.register(OrderCommand.ORDER, new OrderCommand(eccoService));
     }
 
     private static void registerMinimizeCommand(Subparsers commandParser) {
