@@ -73,6 +73,9 @@ dependencies {
 	runtimeOnly project(':ecco-adapter-runtime')
 	runtimeOnly project(':ecco-adapter-golang')
 
+	// builds small Git histories for the Git import tests
+	testImplementation libs.jgit
+
 	testRuntimeOnly project(':ecco-adapter-file')
 	testRuntimeOnly project(':ecco-adapter-text')
 	testRuntimeOnly project(':ecco-adapter-markdown')
