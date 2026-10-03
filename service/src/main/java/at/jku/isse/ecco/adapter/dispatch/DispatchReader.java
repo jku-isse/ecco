@@ -349,7 +349,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		// if the current path is still below the base directory
 		if (!relative.equals(Paths.get(""))) {
 			// proceed recursively with its parent and add it as a child to that parent
-			Node.Op parent = this.createParents(base, path.getParent(), directoryNodes);
+			// a top-level directory's parent is the base directory: getParent() of "sub" is null, not ""
+			Node.Op parent = this.createParents(base, path.getParent() == null ? Paths.get("") : path.getParent(), directoryNodes);
 			parent.addChild(directoryNode);
 		}
 

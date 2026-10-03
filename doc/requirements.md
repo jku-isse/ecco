@@ -424,8 +424,8 @@ Postcondition: Same as the basic flow.
 | Secondary actors | None |
 | Dependency | Extends UC-5 at step 12 |
 | Generalization | None |
-| Front ends | GUI checkout details |
-| Realizes | IF-G8, FR-K2, FR-K5, FR-K11 |
+| Front ends | GUI checkout details; CLI `order <file>...` |
+| Realizes | IF-G8, IF-C10, FR-K2, FR-K5, FR-K11 |
 
 **Basic flow**
 
@@ -461,6 +461,18 @@ Postcondition: The checkout directory and the repository are unchanged.
 2. ABORT.
 
 Postcondition: The checkout directory and the repository are unchanged.
+
+**Specific alternative flow SA3** (RFS 1)
+
+1. IF the variant developer works with the CLI THEN the variant developer puts the content of the checked-out file in the intended order ENDIF.
+2. The variant developer runs `order` with the file.
+3. The system composes the configuration of `.config` again.
+4. The system reads the file with the adapter.
+5. IF the file holds content the checkout does not, or lacks content of it, THEN the system reports that content and ABORT ENDIF.
+6. The system prints the number of precedences recorded.
+7. RESUME STEP 6.
+
+Postcondition: As the basic flow, and the file is already in the new order; after an ABORT the repository is unchanged.
 
 ### UC-7 Locate features
 
@@ -1044,7 +1056,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-K8 | Constraint-violation warnings shall be advisory and never block a commit or checkout. | Code ES:1196-1207 |
 | FR-K9 | Composition shall run in a read-only transaction. | Test `ReadWithoutTransactionTest` |
 | FR-K10 | Line-based files shall be written with the newest commit's encoding, line separator and final newline. | Test `TextFormatLastCommitWinsTest` |
-| FR-K11 | The order of an artifact's children shall be recordable without a commit: only the artifact's partial order graph changes, the order must agree with every order recorded before and is refused otherwise, and it holds in every later checkout containing those children, whatever the configuration. | Test `RecordOrderTest`, `OrderResolutionCharacterizationTest` |
+| FR-K11 | The order of an artifact's children shall be recordable without a commit: only the artifact's partial order graph changes, the order must agree with every order recorded before and is refused otherwise, and it holds in every later checkout containing those children, whatever the configuration. | Test `RecordOrderTest`, `OrderResolutionCharacterizationTest`, `OrderCommandTest` |
 
 ### Constraints and condition minimization
 
@@ -1134,7 +1146,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| IF-C1 | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `minimize-preview` and `minimize`; `checkout` takes `--minimized`. | Code `Main.registerCommands()` |
+| IF-C1 | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `minimize-preview`, `minimize` and `order`; `checkout` takes `--minimized`. | Code `Main.registerCommands()` |
 | IF-C2 | `commit` and `checkout` shall require a configuration (`-c`). | Code |
 | IF-C3 | Exit codes shall be 0 on success, 1 on a failed command, 2 on invalid arguments; errors go to stderr with their cause chain, the stack trace only with `-Decco.debug=true`. | Code `Main.run` |
 | IF-C4 | `fetch`, `pull` and `push` shall default to the remote `origin`; `pull`, `push` and `fork` take `--exclude` feature revisions. | Code |
@@ -1143,6 +1155,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-C7 | The CLI shall run without JavaFX and bundle the same adapters as the GUI, so it can work on repositories made with the GUI. | Code (`ecco.headless`, openjfx excluded); Doc |
 | IF-C8 | The CLI shall find the repository in the current or nearest parent directory and use that directory as the working directory; `init` and `fork` create a repository in the current directory. | Doc; Test `MainRepositoryDiscoveryTest` |
 | IF-C9 | `commit` shall print the commit id and configuration, then each violated accepted constraint as `CONSTRAINT:`; `checkout` shall print the configuration and the number of warnings of each kind, pointing to `.warnings`. | Test `CommitCommandTest`, `CheckoutCommandTest` |
+| IF-C10 | `order <file>...` shall record the order of checked-out files as they are now, without a commit (FR-K11): the configuration comes from `.config`, the files are matched to its composition by content, content added or removed is refused, and paths are relative to the directory the command runs in. | Test `OrderCommandTest`, `RecordOrderTest` |
 
 ### Graphical user interface (`gui`)
 
@@ -1176,6 +1189,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | Operation | CLI | GUI | REST |
 | --- | --- | --- | --- |
 | Commit / checkout | yes | yes | commit upload / variant download |
+| Record an order (ORDER warnings) | `order <file>...` | Reorder... | no |
 | Named variants | no | yes | yes |
 | Fork | yes | yes | yes |
 | Fetch / pull / push | yes | yes | pull only, between its own repositories |
@@ -1277,7 +1291,7 @@ Requirements the code does not meet, places where the documentation and the code
 | 20 | The sync server's log in the GUI showed empty rows: the message column always rendered "" and the time column had no value. Reopening the view while a server runs still shows "port -1". | `ServerView` | UI bug - **fixed 2026-10-03** (use cases), test `ServerViewLogTest`; the port -1 header **fixed 2026-10-03** too (the service reports the bound port) |
 | 21 | One failed commit ends a Git import run (e.g. a blank configuration on a tree without `.config`); the commit cannot be corrected and retried. | `ImportGitView.reportImportFailure` | Usability - **fixed 2026-10-03**: the failed commit's review screen comes back with the error and the configuration tried, for Import again or Skip, also for an unattended auto-import; test `ImportGitViewRetryTest` (FR-G4, UC-10 SA7) |
 | 22 | Accepted constraints are stored in the repository and travel with fork and pull; rejected ones are only stored in the local preferences, so collaborators are offered suggestions someone else rejected. | `ConstraintSuggestionsView`, `ConstraintSuggestionPreferences` | Inconsistent design - **fixed 2026-10-03**: rejections are stored in the repository next to the accepted constraints and travel with fork/pull/push; a merge keeps the receiving repository's own decisions; local rejections move into the repository when the Feature Model view first loads; older builds ignore the new field; test `RejectedConstraintsTest` (FR-N4) |
-| 23 | Resolving an ORDER warning commits the whole checkout directory under the checkout's configuration, so the checkout's SURPLUS content and MISSING gaps are counted as that configuration too. | `CheckoutDetailView.applyFix` | Data-quality risk - **fixed 2026-10-03**: first pinned down (`OrderResolutionCharacterizationTest`: the commit hid the configuration's MISSING and SURPLUS warnings; committing only the reordered file instead would drop every other file from that configuration). Reorder... now records the order in the artifact's partial order graph without a commit (`EccoService#recordOrder`, FR-K11, UC-6); committing the reordered checkout still works from the command line, with the old effect |
+| 23 | Resolving an ORDER warning commits the whole checkout directory under the checkout's configuration, so the checkout's SURPLUS content and MISSING gaps are counted as that configuration too. | `CheckoutDetailView.applyFix` | Data-quality risk - **fixed 2026-10-03**: first pinned down (`OrderResolutionCharacterizationTest`: the commit hid the configuration's MISSING and SURPLUS warnings; committing only the reordered file instead would drop every other file from that configuration). Reorder... now records the order in the artifact's partial order graph without a commit (`EccoService#recordOrder`, FR-K11, UC-6); on the command line `order <file>...` (IF-C10) |
 | 24 | FR-D2 said fork goes "into an empty location"; the code only refuses a location that already holds a repository. | ES:666-668 | Doc/code mismatch - **fixed 2026-10-03**: FR-D2 corrected |
 | 25 | The front-end matrix showed the CLI's constraint support as "suggest + preview"; it can also `minimize`, but cannot accept constraints. | [matrix](#where-the-front-ends-differ) | Doc - **fixed 2026-10-03** |
 | 26 | `fetch` also stores the remote's features with the remote's entry, which FR-D3 did not say. | `RemoteSyncService.fetch` | Doc - **fixed 2026-10-03**: FR-D3 extended |

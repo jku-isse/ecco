@@ -231,6 +231,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     private final ConfigurationParser configurationParser = new ConfigurationParser(this);
 
     private final CheckoutService checkoutService = new CheckoutService(this);
+    private final OrderService orderService = new OrderService(this);
 
     private final CommitService commitService = new CommitService(this);
 
@@ -1488,7 +1489,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     /**
      * Composes checkout with given configuration - see {@link CheckoutService#compose}.
      */
-    private synchronized Checkout compose(Configuration configuration) {
+    synchronized Checkout compose(Configuration configuration) {
         return this.checkoutService.compose(configuration);
     }
 
@@ -1517,46 +1518,29 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     /**
      * Records the order of {@code orderedChildren}, children of {@code parent} in a checkout, in the
      * repository - typically to resolve an ORDER warning. Only the parent's partial order graph
-     * changes ({@link at.jku.isse.ecco.pog.PartialOrderGraph.Op#addOrder}): no commit is made and no presence condition
-     * changes, so the order holds in every later checkout that contains these children, whatever its
-     * configuration. A commit would instead record the whole checkout as a variant (Known gap #23).
+     * changes ({@link at.jku.isse.ecco.pog.PartialOrderGraph.Op#addOrder}): no commit is made and no
+     * presence condition changes, so the order holds in every later checkout that contains these
+     * children, whatever its configuration. A commit would instead record the whole checkout as a
+     * variant (Known gap #23).
      *
+     * @return how many precedences were added; 0 if the repository already had the order
      * @throws EccoException if the parent has no order graph, is not part of this repository, or the
      *                       order contradicts one recorded before; the repository is then unchanged.
      */
-    public synchronized void recordOrder(Node parent, List<? extends Node> orderedChildren) {
-        this.checkInitialized();
-        checkNotNull(parent);
-        checkNotNull(orderedChildren);
-        if (!(parent.getArtifact() instanceof Artifact.Op<?> artifact) || !artifact.isOrdered() || artifact.getPartialOrderGraph() == null)
-            throw new EccoException("This artifact has no order to record: " + parent.getArtifact());
-        List<Artifact<?>> children = new ArrayList<>();
-        for (Node child : orderedChildren)
-            children.add(child.getArtifact());
-
-        this.writeTransaction("Error recording the order.", repository -> {
-            List<Association.Op> containing = new ArrayList<>();
-            for (Association.Op association : repository.getAssociations())
-                if (contains(association.getRootNode(), artifact))
-                    containing.add(association);
-            if (containing.isEmpty())
-                throw new EccoException("The artifact is not part of this repository: " + artifact);
-            artifact.getPartialOrderGraph().addOrder(children);
-            // the artifact (with its graph) is written with the associations whose trees hold it
-            for (Association.Op association : containing)
-                repository.addAssociation(association);
-            repository.invalidateMainTree();
-            return repository;
-        });
+    public synchronized int recordOrder(Node parent, List<? extends Node> orderedChildren) {
+        return this.orderService.recordOrder(parent, orderedChildren);
     }
 
-    private static boolean contains(Node node, Artifact<?> artifact) {
-        if (node.getArtifact() == artifact)
-            return true;
-        for (Node child : node.getChildren())
-            if (contains(child, artifact))
-                return true;
-        return false;
+    /**
+     * Records the order of files as they are now in the working directory, which holds a checkout -
+     * reorder them, then record (the command line's {@code order}). See
+     * {@link OrderService#recordOrderOfFiles}.
+     *
+     * @param files paths relative to the working directory
+     * @return how many precedences were added; 0 if the repository already had the files' order
+     */
+    public synchronized int recordOrderOfFiles(List<Path> files) {
+        return this.orderService.recordOrderOfFiles(files);
     }
 
     private synchronized Set<Node> compareArtifacts(Checkout checkout) {
