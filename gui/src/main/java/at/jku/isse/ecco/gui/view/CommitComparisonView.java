@@ -97,21 +97,22 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         Collection<Association> newAssosiation = newCommit.getAssociations();
 
         //TODO there has to be a nicer way than this
+        // _1 is shown under the old commit's columns, _2 under the new commit's
         for (Association a : newAssosiation) {
             if (oldAssosiation.contains(a)) {
                 for (Association b : oldAssosiation) {
                     if (a.equals(b)) {
-                        comparisonData.add(new Tuple2<>(a, b));
+                        comparisonData.add(new Tuple2<>(b, a));
                         break;
                     }
                 }
             } else {
-                comparisonData.add(new Tuple2<>(a, null));
+                comparisonData.add(new Tuple2<>(null, a));
             }
         }
         for (Association c : oldAssosiation) {
             if (!newAssosiation.contains(c)) {
-                comparisonData.add(new Tuple2<>(null, c));
+                comparisonData.add(new Tuple2<>(c, null));
             }
         }
     }
