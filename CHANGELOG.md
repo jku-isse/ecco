@@ -2,7 +2,7 @@
 # ECCO CHANGELOG
 
 
-## Unreleased (since 0.1.9)
+## 0.2.0 (2026-10-04)
 
 About 1,080 commits from 2020 to October 2026. [doc/requirements.md](doc/requirements.md) records what the system is expected to do and which gaps were closed.
 

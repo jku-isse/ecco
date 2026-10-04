@@ -49,7 +49,6 @@ plugins {
 }
 
 group = 'at.jku.isse.ecco'
-version = '0.1.9'
 ecco.adapter = true
 
 repositories {

@@ -3,7 +3,6 @@ plugins {
     alias(libs.plugins.micronaut.minimal.application)
 }
 
-version = "0.1"
 group = "at.jku.isse.ecco.rest"
 
 repositories {
