@@ -40,6 +40,11 @@ public class MarkdownFileWriterTest {
 			"# T\n\n```\nfirst\n\nsecond\n```\n\ntext\n",
 			"Para\n\n    indented\n\n    code\n",
 			"- item\n\n  ```\n  a\n\n  b\n  ```\n",
+			// a whitespace-only line after a list belongs to the list's source span, after its last
+			// item - it used to be lost, with the empty lines before it (MarkdownRoundTripPropertyTest)
+			"- a\n   \n+ b\n",
+			"- a\n\n   \nparagraph\n",
+			"1. a\n\t\n- b\n",
 			"Some paragraph\ntext that spans two lines.\n",
 			"""
 					# Title
