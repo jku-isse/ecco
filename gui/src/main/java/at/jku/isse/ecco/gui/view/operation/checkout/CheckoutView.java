@@ -87,14 +87,19 @@ public class CheckoutView extends OperationView implements EccoListener {
         splitPane.getItems().add(logTable);
 
 
-        this.step1();
+        // default to the directory the repository lives in, not whatever service.getBaseDir()
+        // happens to still be set to from a previous, possibly unrelated operation (e.g. a Commit
+        // or Fork done from a different folder) -- still freely editable below before the actual
+        // checkout.
+        this.step1(service.getRepositoryHomeDir().toString(), "");
     }
 
 
     /**
-     * Base directory and configuration string.
+     * Base directory and configuration string, initially {@code initialBaseDir} and
+     * {@code initialConfiguration} (what was entered before when coming back to this step).
      */
-    private void step1() {
+    private void step1(String initialBaseDir, String initialConfiguration) {
         Button cancelButton = new Button("Cancel");
         cancelButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
         this.leftButtons.getChildren().setAll(cancelButton);
@@ -126,11 +131,7 @@ public class CheckoutView extends OperationView implements EccoListener {
         Label baseDirLabel = new Label("Base Directory: ");
         gridPane.add(baseDirLabel, 0, row, 1, 1);
 
-        // default to the directory the repository lives in, not whatever service.getBaseDir()
-        // happens to still be set to from a previous, possibly unrelated operation (e.g. a Commit
-        // or Fork done from a different folder) -- still freely editable below before the actual
-        // checkout.
-        TextField baseDirTextField = new TextField(service.getRepositoryHomeDir().toString());
+        TextField baseDirTextField = new TextField(initialBaseDir);
         baseDirTextField.setDisable(false);
         baseDirLabel.setLabelFor(baseDirTextField);
         gridPane.add(baseDirTextField, 1, row, 1, 1);
@@ -143,7 +144,7 @@ public class CheckoutView extends OperationView implements EccoListener {
         Label configurationStringLabel = new Label("Configuration: ");
         gridPane.add(configurationStringLabel, 0, row, 1, 1);
 
-        TextField configurationStringTextField = new TextField();
+        TextField configurationStringTextField = new TextField(initialConfiguration);
         configurationStringTextField.setDisable(false);
         configurationStringLabel.setLabelFor(configurationStringTextField);
         gridPane.add(configurationStringTextField, 1, row, 2, 1);
@@ -231,6 +232,10 @@ public class CheckoutView extends OperationView implements EccoListener {
             constraintCheckDebounce.stop();
             constraintCheckDebounce.playFromStart();
         });
+        // coming back with a configuration entered: warn about it again without waiting for an edit
+        if (!initialConfiguration.isBlank()) {
+            constraintCheckDebounce.playFromStart();
+        }
 
 
         selectBaseDirectoryButton.setOnAction(event -> {
@@ -261,8 +266,8 @@ public class CheckoutView extends OperationView implements EccoListener {
                 if (!Files.exists(baseDir)) {
                     Files.createDirectories(baseDir);
                 }
-                if (!Directory.isEmpty(baseDir) && !(new DeleteDirectoryContentsDialog(baseDir).showBlocked())) {
-                    this.step1();
+                if (!Directory.isEmpty(baseDir) && !this.confirmClearDirectory(baseDir)) {
+                    this.step1(baseDirTextField.getText(), configurationString);
                     return;
                 }
             } catch (IOException e) {
@@ -271,7 +276,7 @@ public class CheckoutView extends OperationView implements EccoListener {
             }
 
             if (!confirmProceedDespiteViolations(configurationString, "check out")) {
-                this.step1();
+                this.step1(baseDirTextField.getText(), configurationString);
                 return;
             }
 
@@ -302,11 +307,31 @@ public class CheckoutView extends OperationView implements EccoListener {
         if (configurationString == null || configurationString.isBlank() || !this.service.isInitialized()) return true;
         String description = ConstraintWarnings.describe(this.service, configurationString);
         if (description.isEmpty()) return true;
+        return this.askToProceedAnyway(description, actionVerb);
+    }
+
+    /**
+     * Asks whether to {@code actionVerb} despite the constraint violations in {@code description}.
+     * Package-visible for testing.
+     *
+     * @return true if the user confirmed.
+     */
+    boolean askToProceedAnyway(String description, String actionVerb) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
                 description + "\n\nDo you want to " + actionVerb + " anyway?");
         alert.setHeaderText("Constraint violation");
         Optional<ButtonType> result = alert.showAndWait();
         return result.isPresent() && result.get() == ButtonType.OK;
+    }
+
+    /**
+     * Asks whether to delete the contents of the non-empty {@code baseDir} before checking out into
+     * it, and deletes them if so. Package-visible for testing.
+     *
+     * @return true if the contents were deleted, false to go back to the first step.
+     */
+    boolean confirmClearDirectory(Path baseDir) throws IOException {
+        return new DeleteDirectoryContentsDialog(baseDir).showBlocked();
     }
 
     protected void checkoutSucceeded(Checkout checkout) {
