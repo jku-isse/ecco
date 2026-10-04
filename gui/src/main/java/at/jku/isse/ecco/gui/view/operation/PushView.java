@@ -85,6 +85,12 @@ public class PushView extends OperationView {
 
 		pushButton.disableProperty().bind(remoteComboBox.getSelectionModel().selectedItemProperty().isNull());
 
+		// filled once here, not in stepRemote(): going back to that step appended every remote again
+		this.remoteComboBox.getItems().add(null);
+		for (Remote remote : this.service.getRemotes()) {
+			this.remoteComboBox.getItems().add(remote);
+		}
+
 		this.stepRemote();
 	}
 
@@ -128,12 +134,6 @@ public class PushView extends OperationView {
 		gridPane.add(remoteComboBox, 1, row, 1, 1);
 
 		row++;
-
-
-		this.remoteComboBox.getItems().add(null);
-		for (Remote remote : this.service.getRemotes()) {
-			this.remoteComboBox.getItems().add(remote);
-		}
 
 
 		selectButton.disableProperty().bind(remoteComboBox.getSelectionModel().selectedItemProperty().isNull());
