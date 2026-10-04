@@ -86,7 +86,7 @@ Notable among many:
   * **Content lost or changed:**
     * unreadable files were committed empty;
     * failed writes were reported as successful;
-    * line-based files lost their charset, line endings, final newline or blank lines;
+    * line-based files lost their charset, line endings, final newline or blank lines, and Markdown files a whitespace-only line after a list (with the empty lines before it);
     * JPEG and BMP images were checked out empty;
     * the C++ adapter reordered files and dropped comments, namespaces and `#if` directives;
     * the Java (AST) adapter dropped comments and `synchronized`, mangled arrow-switch cases, and crashed on about one file in nine of a real code base;

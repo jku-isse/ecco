@@ -170,6 +170,11 @@ public final class MarkdownTreeBuilder {
 			this.translateBlock(child, eccoParent);
 			frame.lastClaimedLine = lastLine(child);
 		}
+		// the container's own span can end after its last child: CommonMark counts a whitespace-only
+		// line after a list (and the empty lines before it) as part of the list. Its parent takes the
+		// container's last line as claimed, so lines left here would be lost.
+		if (!ownSpans.isEmpty())
+			this.fillGap(frame, lastLine(commonmarkParent) + 1);
 	}
 
 	private void addLeaf(Node.Op parentEccoNode, ArtifactData data, org.commonmark.node.Node block) {
