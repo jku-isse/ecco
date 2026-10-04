@@ -100,6 +100,13 @@ Notable among many:
     * a `host:port` with an IP address was taken for a path.
   * **Concurrency:** races between the GUI and background work crashed or lost counter updates, and Python-based adapters in parallel processes collided on their port.
   * **Constraints:** un-accepting failed for most feature names, and more than about 600 rejections could not be stored.
+  * **GUI:**
+    * New could delete any existing directory typed into its field (or the current directory, for an empty field) as "an existing repository";
+    * "Delete contents?" before a checkout kept everything under a path containing ".ecco";
+    * checking out several variants put them into one folder and failed;
+    * after answering No, checkout went back to an empty form;
+    * the commit comparison showed one-sided associations under the wrong commit.
+  * **Remote sync:** a failed local pull or push reported a rollback error instead of its cause.
   * **REST:** concurrent requests to one repository interfered, and a malformed configuration gave 500 instead of 400.
 
 ### Security
