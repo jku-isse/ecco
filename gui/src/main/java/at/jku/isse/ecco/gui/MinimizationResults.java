@@ -165,7 +165,12 @@ public class MinimizationResults implements EccoListener {
     public void statusChangedEvent(EccoService service) {
         if (service.isInitialized()) {
             service.setMinimizedConditionsInCheckout(MinimizationPreferences.isUsedInCheckout());
-            if (this.seededFromPersisted) return;
+            if (this.seededFromPersisted) {
+                // EccoService never fires commitsChangedEvent - this event is what follows a commit (or
+                // a changed accepted constraint), so drop the results it invalidated here
+                this.commitsChangedEvent(service, null);
+                return;
+            }
             this.seededFromPersisted = true;
 
             // seed from each association's persisted minimized condition (see
