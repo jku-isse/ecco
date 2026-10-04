@@ -91,7 +91,7 @@ public class RemoteSyncService {
 
             return remote;
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error adding remote.", e);
         }
@@ -107,7 +107,7 @@ public class RemoteSyncService {
 
             owner.transactionStrategy.end();
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error removing remote.", e);
         }
@@ -125,7 +125,7 @@ public class RemoteSyncService {
 
             return remote;
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error retrieving remote.", e);
         }
@@ -143,7 +143,7 @@ public class RemoteSyncService {
 
             return remotes;
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error retrieving remotes.", e);
         }
@@ -468,7 +468,7 @@ public class RemoteSyncService {
 
             owner.transactionStrategy.end();
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error during fetch.", e);
         }
@@ -560,7 +560,7 @@ public class RemoteSyncService {
 
                         parentService.transactionStrategy.end();
                     } catch (Exception e) {
-                        parentService.transactionStrategy.rollback();
+                        parentService.rollbackIfTransactionActive();
 
                         throw new EccoException("Error during local pull.", e);
                     }
@@ -574,7 +574,7 @@ public class RemoteSyncService {
 
             owner.transactionStrategy.end();
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error during pull.", e);
         }
@@ -680,7 +680,7 @@ public class RemoteSyncService {
 
                         parentService.transactionStrategy.end();
                     } catch (Exception e) {
-                        parentService.transactionStrategy.rollback();
+                        parentService.rollbackIfTransactionActive();
 
                         throw new EccoException("Error during local push.", e);
                     }
@@ -689,7 +689,7 @@ public class RemoteSyncService {
 
             owner.transactionStrategy.end();
         } catch (Exception e) {
-            owner.transactionStrategy.rollback();
+            owner.rollbackIfTransactionActive();
 
             throw new EccoException("Error during push.", e);
         }
