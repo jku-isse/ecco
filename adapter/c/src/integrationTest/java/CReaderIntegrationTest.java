@@ -18,7 +18,25 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * The C reader groups lines by function and reads VEVOS presence conditions as feature traces. Since
+ * b2c3ff22 it also keeps empty lines as line artifacts, so that files check out byte for byte; the
+ * structure checks below look at the non-empty lines (see nonBlankChildren), and
+ * emptyLinesAreKept checks the empty ones.
+ */
 public class CReaderIntegrationTest {
+
+    @Test
+    public void emptyLinesAreKept() throws URISyntaxException {
+        URI resourceFolderUri = Objects.requireNonNull(getClass().getClassLoader().getResource("C_SPL/simple_file")).toURI();
+        Set<Node.Op> nodes = readFolder(Paths.get(resourceFolderUri));
+
+        Node.Op pluginNode = nodes.iterator().next();
+        // main.c has 21 lines, 6 of them empty: 3 at the top level, after the include and between
+        // the functions, and 3 inside main()
+        assertEquals(6, countEmptyLines(pluginNode));
+        assertEquals(7, pluginNode.getNumberOfChildren(), "an include, 3 functions and 3 empty lines");
+    }
 
     @Test
     public void readFileTest() throws URISyntaxException {
@@ -61,9 +79,9 @@ public class CReaderIntegrationTest {
 
         assertEquals(1, nodes.size());
         Node.Op resultPluginNode = nodes.iterator().next();
-        List<Node.Op> pluginNodeChildren = (List<Node.Op>) resultPluginNode.getChildren();
+        List<Node.Op> pluginNodeChildren = nonBlankChildren(resultPluginNode);
 
-        assertEquals(11, resultPluginNode.getNumberOfChildren());
+        assertEquals(11, nonBlankChildren(resultPluginNode).size());
         checkLineNode(pluginNodeChildren.get(0), "#include <stdio.h>");
         checkLineNode(pluginNodeChildren.get(1), "int main({");
         checkLineNode(pluginNodeChildren.get(2), "    printf(\"Base Product\\n\");");
@@ -80,8 +98,8 @@ public class CReaderIntegrationTest {
 
         Node.Op functionNode = pluginNodeChildren.get(9);
         checkFunctionNode(functionNode, "voidfeatureA()");
-        assertEquals(3, functionNode.getNumberOfChildren());
-        List<Node.Op> functionLines = (List<Node.Op>) functionNode.getChildren();
+        assertEquals(3, nonBlankChildren(functionNode).size());
+        List<Node.Op> functionLines = nonBlankChildren(functionNode);
         checkLineNode(functionLines.get(0), "void featureA() {");
         checkUserCondition(functionLines.get(0), "FEATUREA");
         checkLineNode(functionLines.get(1), "    printf(\"Hello, this is Feature A!\\n\");");
@@ -91,8 +109,8 @@ public class CReaderIntegrationTest {
 
         functionNode = pluginNodeChildren.get(10);
         checkFunctionNode(functionNode, "voidfeatureAOrB()");
-        assertEquals(3, functionNode.getNumberOfChildren());
-        functionLines = (List<Node.Op>) functionNode.getChildren();
+        assertEquals(3, nonBlankChildren(functionNode).size());
+        functionLines = nonBlankChildren(functionNode);
         checkLineNode(functionLines.get(0), "void featureAOrB() {");
         checkUserCondition(functionLines.get(0), "(FEATUREA | FEATUREB)");
         checkLineNode(functionLines.get(1), "    printf(\"Hello, this is Feature A || B!\\n\");");
@@ -113,15 +131,15 @@ public class CReaderIntegrationTest {
     }
 
     private void testSimpleFile(Node.Op pluginNode){
-        List<Node.Op> pluginNodeChildren = (List<Node.Op>) pluginNode.getChildren();
+        List<Node.Op> pluginNodeChildren = nonBlankChildren(pluginNode);
 
         assertEquals(4, pluginNodeChildren.size());
         checkLineNode(pluginNodeChildren.get(0), "#include <stdio.h>");
 
         Node.Op functionNode = pluginNodeChildren.get(1);
         checkFunctionNode(functionNode, "intmain()");
-        assertEquals(8, functionNode.getNumberOfChildren());
-        List<Node.Op> functionLines = (List<Node.Op>) functionNode.getChildren();
+        assertEquals(8, nonBlankChildren(functionNode).size());
+        List<Node.Op> functionLines = nonBlankChildren(functionNode);
         checkLineNode(functionLines.get(0), "int main() {");
         checkLineNode(functionLines.get(1), "    printf(\"Base Product\\n\");");
         checkLineNode(functionLines.get(2), "    // Feature A");
@@ -137,8 +155,8 @@ public class CReaderIntegrationTest {
 
         functionNode = pluginNodeChildren.get(2);
         checkFunctionNode(functionNode, "voidfeatureA()");
-        assertEquals(3, functionNode.getNumberOfChildren());
-        functionLines = (List<Node.Op>) functionNode.getChildren();
+        assertEquals(3, nonBlankChildren(functionNode).size());
+        functionLines = nonBlankChildren(functionNode);
         checkLineNode(functionLines.get(0), "void featureA() {");
         checkUserCondition(functionLines.get(0), "FEATUREA");
         checkLineNode(functionLines.get(1), "    printf(\"Hello, this is Feature A!\\n\");");
@@ -148,8 +166,8 @@ public class CReaderIntegrationTest {
 
         functionNode = pluginNodeChildren.get(3);
         checkFunctionNode(functionNode, "voidfeatureAOrB()");
-        assertEquals(3, functionNode.getNumberOfChildren());
-        functionLines = (List<Node.Op>) functionNode.getChildren();
+        assertEquals(3, nonBlankChildren(functionNode).size());
+        functionLines = nonBlankChildren(functionNode);
         checkLineNode(functionLines.get(0), "void featureAOrB() {");
         checkUserCondition(functionLines.get(0), "(FEATUREA | FEATUREB)");
         checkLineNode(functionLines.get(1), "    printf(\"Hello, this is Feature A || B!\\n\");");
@@ -160,7 +178,7 @@ public class CReaderIntegrationTest {
 
 
     private void testHeaderFile(Node.Op pluginNode){
-        List<Node.Op> pluginNodeChildren = (List<Node.Op>) pluginNode.getChildren();
+        List<Node.Op> pluginNodeChildren = nonBlankChildren(pluginNode);
 
         assertEquals(13, pluginNodeChildren.size());
         checkLineNode(pluginNodeChildren.get(0), "#define WPU_PER_DCM (1200.0 / 2.54)");
@@ -205,6 +223,26 @@ public class CReaderIntegrationTest {
         }
 
         return fileSet.stream().map(dir::relativize).collect(Collectors.toList());
+    }
+
+    /** the children that are not an empty line */
+    private static List<Node.Op> nonBlankChildren(Node.Op node) {
+        List<Node.Op> children = new ArrayList<>();
+        for (Node.Op child : node.getChildren())
+            if (!isEmptyLine(child))
+                children.add(child);
+        return children;
+    }
+
+    private static boolean isEmptyLine(Node.Op node) {
+        return node.getArtifact() != null && node.getArtifact().getData() instanceof LineArtifactData line && line.getLine().isBlank();
+    }
+
+    private static int countEmptyLines(Node.Op node) {
+        int count = isEmptyLine(node) ? 1 : 0;
+        for (Node.Op child : node.getChildren())
+            count += countEmptyLines(child);
+        return count;
     }
 
     private void checkLineNode(Node.Op node, String line){
