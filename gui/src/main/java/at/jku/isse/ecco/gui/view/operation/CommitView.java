@@ -64,12 +64,12 @@ public class CommitView extends OperationView implements EccoListener {
 
 	private EccoService service;
 
-	private final ObservableList<FolderEntry> folderData = FXCollections.observableArrayList();
+	final ObservableList<FolderEntry> folderData = FXCollections.observableArrayList();
 
 
 	private SplitPane splitPane;
 	private CommitDetailView commitDetailView;
-	private TextArea logArea;
+	TextArea logArea;
 
 
 	public CommitView(EccoService service) {
@@ -282,31 +282,39 @@ public class CommitView extends OperationView implements EccoListener {
 				return;
 			}
 
-			Path selectedPath = selectedDirectory.toPath();
-			List<Path> subfolders = listSubfolders(selectedPath);
-			if (subfolders.isEmpty()) {
-				Alert alert = new Alert(Alert.AlertType.WARNING, "The selected folder has no subfolders:\n" + selectedPath);
-				alert.showAndWait();
-				return;
-			}
-
-			List<Path> chosen = chooseSubfolders(selectedPath, subfolders);
-			if (chosen.isEmpty()) {
-				return; // cancelled, or nothing checked -- don't wipe out an existing selection for nothing
-			}
-
-			folderData.clear();
-			for (Path folder : chosen) {
-				String configurationString = this.service.getConfigStringFromFile(folder);
-				FolderEntry entry = new FolderEntry(folder, configurationString);
-				folderData.add(entry);
-				refreshConstraintWarning(entry);
-			}
+			this.selectFoldersUnder(selectedDirectory.toPath());
 		});
 
 		VBox folderButtons = new VBox(10, selectParentFolderButton);
 		folderButtons.setAlignment(Pos.TOP_CENTER);
 		return folderButtons;
+	}
+
+	/**
+	 * Lets the user pick which subfolders of {@code selectedPath} to commit (see
+	 * {@link #chooseSubfolders}) and replaces the folders table with them, each with the configuration
+	 * from its own {@code .config} file. Package-visible for testing.
+	 */
+	void selectFoldersUnder(Path selectedPath) {
+		List<Path> subfolders = listSubfolders(selectedPath);
+		if (subfolders.isEmpty()) {
+			Alert alert = new Alert(Alert.AlertType.WARNING, "The selected folder has no subfolders:\n" + selectedPath);
+			alert.showAndWait();
+			return;
+		}
+
+		List<Path> chosen = chooseSubfolders(selectedPath, subfolders);
+		if (chosen.isEmpty()) {
+			return; // cancelled, or nothing checked -- don't wipe out an existing selection for nothing
+		}
+
+		folderData.clear();
+		for (Path folder : chosen) {
+			String configurationString = this.service.getConfigStringFromFile(folder);
+			FolderEntry entry = new FolderEntry(folder, configurationString);
+			folderData.add(entry);
+			refreshConstraintWarning(entry);
+		}
 	}
 
 	/**
@@ -423,9 +431,10 @@ public class CommitView extends OperationView implements EccoListener {
 
 	/**
 	 * Shows a checklist of the given subfolders (of parent) and returns the ones the user checked,
-	 * in the same order, or an empty list if the dialog was cancelled.
+	 * in the same order, or an empty list if the dialog was cancelled. Package-visible for testing (a
+	 * test stands in for the user's choice).
 	 */
-	private List<Path> chooseSubfolders(Path parent, List<Path> subfolders) {
+	List<Path> chooseSubfolders(Path parent, List<Path> subfolders) {
 		Dialog<List<Path>> dialog = new Dialog<>();
 		dialog.setTitle("Select Folders");
 		dialog.setHeaderText("Select which subfolders of\n" + parent + "\nto add:");
@@ -700,8 +709,16 @@ public class CommitView extends OperationView implements EccoListener {
 			}
 		}
 		if (lines.isEmpty()) return true;
+		return this.confirmCommitAnyway(String.join("\n", lines));
+	}
+
+	/**
+	 * Asks whether to commit despite the given constraint violations. Package-visible for testing (a
+	 * test stands in for the user's answer).
+	 */
+	boolean confirmCommitAnyway(String violations) {
 		Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
-				String.join("\n", lines) + "\n\nDo you want to commit anyway?");
+				violations + "\n\nDo you want to commit anyway?");
 		alert.setHeaderText("Constraint violation");
 		Optional<ButtonType> result = alert.showAndWait();
 		return result.isPresent() && result.get() == ButtonType.OK;
