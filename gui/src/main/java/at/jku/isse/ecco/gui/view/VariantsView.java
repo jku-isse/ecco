@@ -207,23 +207,32 @@ public class VariantsView extends BorderPane implements EccoListener {
                 }
 
                 // use composition here to merge selected associations
-                if (!selectedVariants.isEmpty()) {
-                    for (Variant variant : selectedVariants) {
-                        String varname = variant.getName();
-                        if (varname.equals(""))
-                            varname = variant.getId();
-                        Path baseDir = Paths.get(baseDirTextField.getText() + File.separator + varname);
-                        File checkoutfile = new File(String.valueOf(baseDir));
-                        if (!checkoutfile.exists())
-                            checkoutfile.mkdir();
-                        VariantsView.this.service.setBaseDir(baseDir);
-                        VariantsView.this.service.checkout(variant.getConfiguration());
+                // one folder per variant, named after it - or after its id where the name is empty or
+                // shared with another selected variant (every committed variant is named "Commit"):
+                // a second checkout into the same folder fails
+                try {
+                    if (!selectedVariants.isEmpty()) {
+                        for (Variant variant : selectedVariants) {
+                            String name = variant.getName();
+                            String varname = name;
+                            if (name.equals("") || selectedVariants.stream().filter(other -> name.equals(other.getName())).count() > 1)
+                                varname = variant.getId();
+                            Path baseDir = Paths.get(baseDirTextField.getText() + File.separator + varname);
+                            File checkoutfile = new File(String.valueOf(baseDir));
+                            if (!checkoutfile.exists())
+                                checkoutfile.mkdir();
+                            VariantsView.this.service.setBaseDir(baseDir);
+                            VariantsView.this.service.checkout(variant.getConfiguration());
+                        }
+
+
                     }
-
-
+                } catch (RuntimeException ex) {
+                    // e.g. a folder that already holds a checkout - shown, not left to disable the toolbar for good
+                    new at.jku.isse.ecco.gui.ExceptionAlert(ex).show();
+                } finally {
+                    toolBar.setDisable(false);
                 }
-
-                toolBar.setDisable(false);
             }
         });
 
