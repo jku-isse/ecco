@@ -116,17 +116,19 @@ public class InitView extends OperationView {
 			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
 			Path baseDir = repositoryDir.getParent();
 
+			// a relative path resolves against wherever the GUI happens to run - an empty field is that
+			// directory itself, which was then offered for deletion below as an existing repository
+			if (!repositoryDir.isAbsolute() || baseDir == null) {
+				stepError("Not a valid repository directory (an absolute path is needed): " + repositoryDirTextField.getText(), null);
+				return;
+			}
+
 			// the text field is free-form (the user can type a path directly, not just pick an
 			// existing one via the "..." chooser above), so the target directory may not exist yet,
 			// or may still hold a ".ecco" from an earlier attempt - handle both, but only after the
 			// user explicitly confirms, since one creates on disk and the other deletes on disk
 			if (baseDir != null && !Files.exists(baseDir)) {
-				Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-						"The directory\n" + baseDir + "\ndoes not exist. Create it?",
-						ButtonType.YES, ButtonType.CANCEL);
-				confirm.setHeaderText("Create Directory");
-				Optional<ButtonType> result = confirm.showAndWait();
-				if (result.isEmpty() || result.get() != ButtonType.YES) {
+				if (!this.confirm("Create Directory", "The directory\n" + baseDir + "\ndoes not exist. Create it?")) {
 					return;
 				}
 				try {
@@ -138,12 +140,13 @@ public class InitView extends OperationView {
 			}
 
 			if (Files.exists(repositoryDir)) {
-				Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-						"A repository already exists at\n" + repositoryDir + "\nDelete it and start fresh?",
-						ButtonType.YES, ButtonType.CANCEL);
-				confirm.setHeaderText("Delete Existing Repository");
-				Optional<ButtonType> result = confirm.showAndWait();
-				if (result.isEmpty() || result.get() != ButtonType.YES) {
+				// only a repository directory is deleted and started fresh - any other existing directory
+				// (e.g. a working directory typed in instead of its .ecco) would go with everything in it
+				if (!repositoryDir.getFileName().equals(EccoService.REPOSITORY_DIR_NAME)) {
+					stepError("Not a repository directory (" + EccoService.REPOSITORY_DIR_NAME + "), not replacing it: " + repositoryDir, null);
+					return;
+				}
+				if (!this.confirm("Delete Existing Repository", "A repository already exists at\n" + repositoryDir + "\nDelete it and start fresh?")) {
 					return;
 				}
 				try {
@@ -165,6 +168,17 @@ public class InitView extends OperationView {
 
 
 		this.fit();
+	}
+
+	/**
+	 * Asks the user to confirm {@code text} (Yes/Cancel). Package-visible for testing (a test stands in
+	 * for the user's answer).
+	 */
+	boolean confirm(String header, String text) {
+		Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, text, ButtonType.YES, ButtonType.CANCEL);
+		confirm.setHeaderText(header);
+		Optional<ButtonType> result = confirm.showAndWait();
+		return result.isPresent() && result.get() == ButtonType.YES;
 	}
 
 	private static void deleteRecursively(Path directory) throws IOException {

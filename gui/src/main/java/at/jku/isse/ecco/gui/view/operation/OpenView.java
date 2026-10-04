@@ -133,6 +133,12 @@ public class OpenView extends OperationView {
 		});
 		openButton.setOnAction(event -> {
 			Path repositoryDir = Paths.get(repositoryDirTextField.getText());
+			// a relative path resolves against wherever the GUI happens to run, and one without a parent
+			// (e.g. an empty field) failed on its missing working directory without anything shown
+			if (!repositoryDir.isAbsolute() || repositoryDir.getParent() == null) {
+				stepError("Not a valid repository directory (an absolute path is needed): " + repositoryDirTextField.getText(), null);
+				return;
+			}
 			this.service.setRepositoryDir(repositoryDir);
 			this.service.setBaseDir(repositoryDir.getParent());
 			pb.setProgress(-1.0f);
