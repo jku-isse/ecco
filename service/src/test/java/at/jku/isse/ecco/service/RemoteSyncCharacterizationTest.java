@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -178,6 +179,40 @@ public class RemoteSyncCharacterizationTest {
             for (Executable operation : operations) {
                 EccoException e = assertThrows(EccoException.class, operation);
                 assertEquals("Remote 'nowhere' does not exist.", e.getCause().getMessage());
+            }
+        }
+    }
+
+    /**
+     * A local pull or push whose exclusion names an unknown feature reported "Error rolling back
+     * transaction: No transaction active" instead: parsing the exclusion already rolls its own
+     * transaction back, and the surrounding catch rolled back again unconditionally, which threw and
+     * replaced the cause.
+     */
+    @Test
+    @Timeout(30)
+    public void aLocalPullOrPushReportsWhyItFailed() throws Exception {
+        Path originDir = Files.createTempDirectory("remote-sync-error-origin");
+        Path targetDir = Files.createTempDirectory("remote-sync-error-target");
+        try (EccoService origin = new EccoService()) {
+            origin.setRepositoryDir(originDir.resolve(".ecco"));
+            origin.init();
+            commitFeature(origin, originDir, "core", "Core");
+        }
+        try (EccoService target = new EccoService()) {
+            target.setRepositoryDir(targetDir.resolve(".ecco"));
+            target.init();
+            commitFeature(target, targetDir, "core", "Core");
+            target.addRemote("origin", originDir.toString(), Remote.Type.LOCAL);
+
+            List<Executable> operations = List.of(() -> target.pull("origin", "Nope.1"), () -> target.push("origin", "Nope.1"));
+            for (Executable operation : operations) {
+                EccoException e = assertThrows(EccoException.class, operation);
+                StringBuilder chain = new StringBuilder();
+                for (Throwable t = e; t != null; t = t.getCause())
+                    chain.append(t.getMessage()).append(" | ");
+                assertTrue(chain.toString().contains("Nope"), chain.toString());
+                assertFalse(chain.toString().contains("rolling back"), chain.toString());
             }
         }
     }
