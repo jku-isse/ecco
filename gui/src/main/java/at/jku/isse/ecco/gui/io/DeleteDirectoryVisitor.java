@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
+import at.jku.isse.ecco.service.EccoService;
+
 /**
  * Deletes everything under {@code root}, including now-empty subdirectories, but never {@code root}
  * itself -- "delete contents" ({@link DeleteDirectoryContentsDialog}) means the directory stays, only
@@ -30,7 +32,7 @@ public class DeleteDirectoryVisitor implements FileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        if (!file.toAbsolutePath().toString().contains(".ecco")) {
+        if (!this.inRepository(file)) {
             Files.delete(file);
         }
 
@@ -46,10 +48,22 @@ public class DeleteDirectoryVisitor implements FileVisitor<Path> {
     public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
         File[] files = dir.toFile().listFiles();
 
-        if (files != null && files.length == 0 && !dir.equals(this.root) && !dir.toAbsolutePath().toString().contains(".ecco")) {
+        if (files != null && files.length == 0 && !dir.equals(this.root) && !this.inRepository(dir)) {
             Files.delete(dir);
         }
 
         return FileVisitResult.CONTINUE;
+    }
+
+    /**
+     * Whether {@code path} is a repository directory (.ecco) below {@code root} or inside one - those
+     * are kept. Only the part below root counts: a root under, say, ~/.ecco-work used to keep
+     * everything, since the whole absolute path was searched for ".ecco".
+     */
+    private boolean inRepository(Path path) {
+        for (Path name : this.root.relativize(path))
+            if (name.equals(EccoService.REPOSITORY_DIR_NAME))
+                return true;
+        return false;
     }
 }
