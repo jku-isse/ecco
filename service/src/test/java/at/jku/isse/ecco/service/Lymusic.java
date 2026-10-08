@@ -49,7 +49,9 @@ final class Lymusic {
 
 	private static ProcessBuilder python(String... args) {
 		String[] command = new String[args.length + 1];
-		command[0] = "python3";
+		// the interpreter the lilypond adapter runs parce with (parce/py4j/FileParser), so "available"
+		// means the adapter can read a musical repository here, not just some python3 on the PATH
+		command[0] = "python";
 		System.arraycopy(args, 0, command, 1, args.length);
 		ProcessBuilder builder = new ProcessBuilder(command);
 		String root = System.getenv("LYPYTHON");
