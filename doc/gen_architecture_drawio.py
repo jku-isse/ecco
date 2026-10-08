@@ -61,7 +61,7 @@ def items(p, parent, x0, y0, w, h, labels, kind, cols, gap=10):
 # ---------------- Page 1: layered architecture ----------------
 p = Page('Architecture', 'arch')
 p.text(40, 10, 1100, 30, '<b style="font-size:18px">ECCO – Architecture Overview</b>', fs=18)
-p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-09-27 (cabe8fc8).', fs=10)
+p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-10-08 (6c085b13).', fs=10)
 
 # Frontends
 F = p.box(40, 70, 1260, 170, 'Frontends', 'front', container=True)
@@ -89,7 +89,7 @@ rss = p.box(10, 28, 230, 45, '<b>RemoteSyncService</b><br>fetch / pull / push ov
 git = p.box(10, 83, 230, 45, '<b>git</b>: GitHistoryReader, GitCommitInfo<br>(JGit – Import from Git)', 'svc', parent=integ, fs=10)
 llm = p.box(10, 138, 230, 45, '<b>llm</b>: LlmFeatureSuggestionClient<br>(HTTP; feature suggestions on import)', 'svc', parent=integ, fs=10)
 aspi = p.box(880, 30, 370, 100, 'adapter SPI', 'svc', parent=S, container=True)
-p.text(10, 24, 350, 70, '<b>ArtifactPlugin</b> (Guice module per adapter)<br>ArtifactReader · ArtifactWriter · ArtifactViewer · ArtifactExporter<br><b>dispatch</b>: DispatchReader / DispatchWriter route files → plugin by pattern; DirectoryArtifactData, PluginArtifactData', fs=10, parent=aspi)
+p.text(10, 20, 350, 78, '<b>ArtifactPlugin</b> (Guice module per adapter)<br>ArtifactReader · ArtifactWriter · ArtifactViewer · ArtifactExporter<br><b>dispatch</b>: DispatchReader / DispatchWriter route files → plugin by pattern<br><b>PythonFinder</b>: the python a py4j adapter runs - Preferences, else python, python3, usual locations; probed for its modules', fs=9, parent=aspi)
 sspi = p.box(880, 140, 370, 100, 'storage  (StoragePlugin SPI, chosen via property)', 'store', parent=S, container=True)
 ser = p.box(10, 28, 220, 62, '<b>ser</b> – SerPlugin (default)<br>Java serialization, per-entity files, dedup. artifact store, lazy mainTree; implements base.dao', 'store', parent=sspi, fs=10)
 mem = p.box(240, 28, 120, 62, '<b>mem</b> – MemPlugin<br>in-memory (tests)', 'store', parent=sspi, fs=10)
@@ -118,8 +118,8 @@ p.box(680, 28, 570, 42, 'Third-party (see gradle/libs.versions.toml): Guice · G
 
 # Adapters (right column)
 A = p.box(1330, 70, 290, 710, 'Artifact adapters  (adapter/*)', 'adapt', container=True)
-p.text(10, 22, 270, 40, 'Each = ArtifactPlugin + Reader/Writer(+Viewer). Depend on ecco-service; loaded at runtime (runtimeOnly), enabled via AdapterPreferences.', fs=9, parent=A)
-items(p, A, 10, 70, 130, 36, ['file', 'text', 'markdown', 'image', 'java', 'java-ast', 'python', 'c', 'cpp', 'typescript',
+p.text(10, 22, 270, 48, 'Each = ArtifactPlugin + Reader/Writer(+Viewer). Depend on ecco-service; loaded at runtime (runtimeOnly), enabled via AdapterPreferences. python and lilypond run Python scripts over py4j.', fs=9, parent=A)
+items(p, A, 10, 84, 130, 36, ['file', 'text', 'markdown', 'image', 'java', 'java-ast', 'python', 'c', 'cpp', 'typescript',
       'golang', 'lilypond', 'challenge', 'runtime'], 'adapt', 2, gap=8)
 p.box(10, 440, 270, 50, '<b>extras-ly</b><br>LilyPond tooling (base + service + adapter-lilypond)', 'adapt', parent=A, fs=10)
 p.box(10, 500, 270, 90, 'Not wired into settings.gradle (kept, unbuilt):<br>adapter/ designspace · java6 · java8<br>extras/ cpp · emf · generic · jackson · jpa · perst · php · runtime · uml · xml<br>storage/ neo4j', 'ext', parent=A, dashed=True, fs=9)
@@ -131,6 +131,7 @@ gitx = p.box(320, 28, 220, 50, '<b>Git repositories</b><br>← service.git (JGit
 llmx = p.box(550, 28, 220, 50, '<b>LLM endpoint</b> (URL/model configurable)<br>← service.llm (HTTP)', 'ext', parent=X, fs=10)
 peer = p.box(780, 28, 220, 50, '<b>Remote ECCO repository</b><br>← RemoteSyncService (TCP)', 'ext', parent=X, fs=10)
 web = p.box(1010, 28, 300, 50, '<b>ecco-web-client</b> (separate repo)<br>→ ecco-rest (HTTP/JSON)', 'ext', parent=X, fs=10)
+pyx = p.box(1320, 28, 250, 50, '<b>Python</b> (libcst · parce · lymodel)<br>← python, lilypond adapters (process + py4j)', 'ext', parent=X, fs=10)
 
 # Edges: layer-to-layer only, fixed ports so they stay tidy when boxes move
 p.edge(F, S, 'call EccoService API', ex=0.12, ey=1, nx=0.12, ny=0)

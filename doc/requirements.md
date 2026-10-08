@@ -1,6 +1,6 @@
 # ECCO - Recovered Requirements
 
-As of 2026-10-03.
+As of 2026-10-08.
 
 ## Contents
 
@@ -314,7 +314,7 @@ Postcondition: The repository is in its state before the commit (NFR-R1).
 1. The variant developer selects a parent folder.
 2. The system VALIDATES THAT the parent folder has subfolders.
 3. The variant developer selects the variant folders.
-4. The system lists the selected folders with the configuration from each folder's `.config`.
+4. The system lists the selected folders with the configuration from each folder's `.config`, on one line.
 5. The variant developer orders the folders and edits configurations and commit messages.
 6. The system shows the constraint violations of each configuration.
 7. The variant developer requests the commit.
@@ -1032,7 +1032,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | --- | --- | --- |
 | FR-M1 | A commit shall read the working directory through the adapters, extract its artifacts into associations, and update each association's counters (and so its presence condition). | Doc; Code `CommitService`, `Repository.extract` |
 | FR-M2 | A commit without any feature shall be refused. | Code `CommitService:55`; History 26e445f1 |
-| FR-M3 | Without an explicit configuration, a commit shall use `<working dir>/.config`, and fail if it exists but cannot be read. | Code `CommitService:118-128` |
+| FR-M3 | Without an explicit configuration, a commit shall use `<working dir>/.config`, and fail if it exists but cannot be read. Line breaks in the file shall be collapsed into one line (`a.1, b.1`), which is also the default commit message. | Code `CommitService.getConfigStringFromFile`; Test `ConfigFileLineBreaksTest` |
 | FR-M4 | Each previously unseen configuration shall be recorded as a variant. | Code `CommitService:70-95` |
 | FR-M5 | Files matching `.ecco/.ignores` (defaults `.DS_Store`, `.gitignore`) shall be skipped; `.ecco`, `.config`, `.warnings` and `.hashes` are always skipped. | Code DR:31-39; Test `DsStoreIgnoredRegressionTest`, `GitignoreIgnoredRegressionTest` |
 | FR-M6 | Files shall be routed by `.ecco/.adapters` (`pluginId;glob`, first match wins), written on first open from the adapters' priorities and fixed for the repository from then on. | Doc; Code DR:143-197 |
@@ -1117,6 +1117,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | AD-6 | Line-based adapters shall round-trip byte-exact: encoding (UTF-8, else ISO-8859-1), line separator and final newline. | Test `TextFileFormatTest` (5,000 random rounds) |
 | AD-7 | An adapter whose tree format changes shall mark old data with `retiredFormat()` or a tree-format check, so old repositories are refused for commit, not corrupted. | Code `ArtifactData#retiredFormat`, `JavaASTData.TREE_FORMAT`, `cpp/data/RetiredFormat` |
 | AD-8 | An adapter that needs Python shall fail the commit when Python or its modules are missing, not commit an empty file, and shall pick a free py4j port. | Test `PythonGatewayPortTest`, `LilypondGatewayPortTest` |
+| AD-9 | An adapter that needs Python shall find its interpreter, not rely on `python` on the PATH: the one set in Preferences if any, else the first of `python`, `python3` and the usual install locations (MacPorts, Homebrew, python.org, `/usr/local/bin`, `/usr/bin`) that imports its modules - libcst and py4j for Python; parce and py4j for LilyPond, plus lymodel for musical tokens, from the lymodel directory in Preferences, `LYPYTHON` or installed. When none will do, the error shall name each interpreter tried and what it lacks; a module installed after a failure shall be found without restarting. | Code `PythonFinder`, `ParcePython`, `PY4JParser.python()`; Test `PythonFinderTest`, `ParcePythonTest`; History 011a34df, 6c085b13 |
 
 ### Per adapter
 
@@ -1131,7 +1132,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | C++ | `.cpp .hpp` (+ `.c .h` when C is off) | lines grouped by namespace, class, enum, function | byte-exact incl. include guards and comments; first format checkout-only | yes | `CppRoundTripTest`, `CppRoundTripPropertyTest` (2,000 generated files), `LegacyCppWriterTest` |
 | TypeScript | `.ts` | statements and blocks (TS compiler in embedded Node.js) | exact text incl. `;`, trailing comments, JSDoc; switch/enum order kept | yes | `TypeScriptRoundTripTest`, `TypeScriptOrderTest` |
 | Python | `.py .ipynb .json` | libcst syntax tree; notebook cells; JSON values | not byte-exact: whitespace-only lines normalized, JSON re-indented, notebook outputs ignored | yes | `PythonAdapterTest` |
-| LilyPond | `.ly .ily` | tokens (parce) | not byte-exact: tokens rejoined with spaces | yes | `LilypondVariantsCommitCheckoutTest` |
+| LilyPond | `.ly .ily` | tokens (parce); with musical tokens (new repositories) each note one token carrying its meaning, from lymodel | not byte-exact: tokens rejoined with spaces; the same music judged by lymusic | yes | `LilypondVariantsCommitCheckoutTest` |
 | Go | `.go` | tokens (ANTLR) | exact reconstruction | **no** | `GoWriterTest` |
 | Runtime | `.runtime .java` | Java classes/methods/lines + btrace data | not format-preserving | **no** | `RuntimeWriterTest` |
 | Java (lines) | `.java` | class, imports, members, statements | read-only: checkout refused | **no** | `JavaWriterTest` |
@@ -1171,7 +1172,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | IF-G8 | Checkout results shall show their warnings with a suggested fix; an ambiguous order shall be resolvable by reordering in a dialog, which records the order without a commit (FR-K11). | Code `CheckoutDetailView`, `ReorderChildrenDialog`; Test `CheckoutDetailViewRecordOrderTest` |
 | IF-G9 | The GUI shall visualize a knowledge graph (features, commits, variants, associations), the artifact graph and the dependency graph, plus charts, each exportable. | Code `view/graph/*`, `ChartsView` |
 | IF-G10 | The GUI shall manage remotes, fetch, pull and push, and start a sync server on a chosen port, local-only unless "accept connections from other machines" is set. | Code `RemotesView`, `ServerView` |
-| IF-G11 | Users shall be able to enable or disable adapters (effective on the next open), and set minimization thresholds and LilyPond paths. | Code `PreferencesView` |
+| IF-G11 | Users shall be able to enable or disable adapters (effective on the next open), and set minimization thresholds, LilyPond paths, and the Python the Python and LilyPond adapters run (and LilyPond's lymodel directory) when it is not found (AD-9). | Code `PreferencesView` |
 
 ### REST server (`rest`)
 
@@ -1257,7 +1258,7 @@ Partial-order-graph alignment is factorial in the number of concurrent unresolve
 | ID | Requirement | Source |
 | --- | --- | --- |
 | NFR-B1 | The system shall build and test with JDK 21+ and the bundled Gradle wrapper, with no other prerequisite. | Doc |
-| NFR-B2 | Tests that need optional Python modules (`libcst`, `parce`) shall be skipped, not failed, when the modules are absent. | Doc |
+| NFR-B2 | Tests that need optional Python modules (`libcst`, `parce`, `lymodel`) shall be skipped, not failed, when the modules are absent - decided by the adapters' own interpreter lookup (AD-9), so a test runs whenever the adapter could. | Doc; Test `Lymusic`, `PythonAvailable` |
 | NFR-B3 | CLI and REST shall run headless, without JavaFX on the classpath. | History 74517278 |
 | NFR-B4 | The GUI shall be installable as a native application on macOS, Linux and Windows. | Doc (jpackage tasks) |
 | NFR-B5 | Third-party dependency versions shall be kept in one version catalog. | Doc (`gradle/libs.versions.toml`) |
@@ -1309,3 +1310,6 @@ Requirements the code does not meet, places where the documentation and the code
 | 38 | Smaller GUI issues found by the view tests, not fixed: Cancel while committing does nothing (there is no commit cancellation); Commit Multiple Versions leaves the working directory at the last committed folder; the pull dialog's feature tree is empty until the remote was fetched once; Remove Variant could leave the toolbar disabled if removing threw. | `CommitView`, `CommitBaseDirView`, `PullView`, `VariantsView` | Open |
 | 39 | A fork over the network takes the new-repository settings (`.ecco/.settings`), not its origin's: the pull protocol does not carry them. Forking a repository from before musical tokens this way reads its LilyPond files with musical tokens, which never match its plain ones. A local fork copies the origin's settings. | `EccoService.fork(String, int, String)` | Gap - noted 2026-10-08 |
 | 40 | The LilyPond reader fails on `vocal/sleeptonight_habringer.ly` of the silverswan corpus: `NullPointerException` in `LilyEccoTransformer.transformVariableDefinitonNode` (a context node where a token was expected). With and without musical tokens; found reading the 665 corpus files. | `LilyEccoTransformer` | Bug - noted 2026-10-08, not fixed |
+| 41 | Commit Multiple Versions showed a `.config` written one feature per line (with blank lines) as ragged multi-line rows, in both the configuration and the default commit message. | `CommitService.getConfigStringFromFile` | Usability - **fixed 2026-10-08**: line breaks collapsed into one line (FR-M3) |
+| 42 | The Python and LilyPond adapters ran plain `python` from the PATH: a GUI commit of a musical LilyPond repository failed with "No module named 'lymodel'" although another python had it, and a GUI started from the Finder (no MacPorts or Homebrew on its PATH) would find no python at all. The tests checked `python3` instead, so they skipped where the adapter could read. | `FileParser`, `PY4JParser`, `Lymusic` | Bug - **fixed 2026-10-08**: interpreter lookup (AD-9), tests ask the same lookup (NFR-B2) |
+| 43 | Six LilyPond regression tests failed without lymodel instead of being skipped, and a lymusic test expected v6's ties in checkouts without `slurs.1` - the ties arrive with slurs in the example history, so ECCO's checkout was right. Both went unnoticed because the music tests only run with lymodel. | `service` tests | Test defects - **fixed 2026-10-08** (1dc01570, 9d8f1d01) |
