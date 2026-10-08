@@ -410,6 +410,50 @@ public class PreferencesView extends OperationView {
 		Label searchPathsNoteLabel = new Label("Multiple paths are separated by \"|\" (used for Lilypond's -I \\include search path).");
 		searchPathsNoteLabel.setWrapText(true);
 		lilypondGridPane.add(searchPathsNoteLabel, 0, lilypondRow, 2, 1);
+		lilypondRow++;
+
+		// reading .ly files: the python that runs parce, and lymodel for musical tokens (ParcePython)
+		Label pythonHelpLabel = new Label("Only needed if reading .ly files fails: the Python that has parce and py4j " +
+				"(and lymodel, for repositories with musical tokens), and the lilypond-idea-plugin's python/ directory " +
+				"if lymodel isn't installed into it. Leave blank to look in the usual places.");
+		pythonHelpLabel.setWrapText(true);
+		lilypondGridPane.add(pythonHelpLabel, 0, lilypondRow, 2, 1);
+		lilypondRow++;
+
+		Label pythonLabel = new Label("Python: ");
+		lilypondGridPane.add(pythonLabel, 0, lilypondRow, 1, 1);
+		TextField pythonField = new TextField(LilypondPreferences.getPythonPath());
+		HBox.setHgrow(pythonField, Priority.ALWAYS);
+		Button browsePythonButton = new Button("Browse...");
+		browsePythonButton.setOnAction(event -> {
+			FileChooser fileChooser = new FileChooser();
+			fileChooser.setTitle("Select Python");
+			preselectExistingParent(pythonField.getText())
+					.ifPresent(dir -> fileChooser.setInitialDirectory(dir.toFile()));
+			File selected = fileChooser.showOpenDialog(browsePythonButton.getScene().getWindow());
+			if (selected != null) {
+				pythonField.setText(selected.getAbsolutePath());
+			}
+		});
+		HBox pythonBox = new HBox(6, pythonField, browsePythonButton);
+		lilypondGridPane.add(pythonBox, 1, lilypondRow, 1, 1);
+		lilypondRow++;
+
+		Label lymodelLabel = new Label("lymodel Directory: ");
+		lilypondGridPane.add(lymodelLabel, 0, lilypondRow, 1, 1);
+		TextField lymodelField = new TextField(LilypondPreferences.getLymodelPath());
+		HBox.setHgrow(lymodelField, Priority.ALWAYS);
+		Button browseLymodelButton = new Button("Browse...");
+		browseLymodelButton.setOnAction(event -> {
+			DirectoryChooser directoryChooser = new DirectoryChooser();
+			directoryChooser.setTitle("Select the lilypond-idea-plugin's python/ Directory");
+			File selected = directoryChooser.showDialog(browseLymodelButton.getScene().getWindow());
+			if (selected != null) {
+				lymodelField.setText(selected.getAbsolutePath());
+			}
+		});
+		HBox lymodelBox = new HBox(6, lymodelField, browseLymodelButton);
+		lilypondGridPane.add(lymodelBox, 1, lilypondRow, 1, 1);
 
 		Runnable save = () -> {
 			LilypondPreferences.setExecutablePath(lilypondExecutableField.getText());
@@ -418,6 +462,8 @@ public class PreferencesView extends OperationView {
 					? List.of()
 					: Arrays.stream(searchPathsText.split("\\|")).filter(p -> !p.isBlank()).map(String::trim).toList();
 			LilypondPreferences.setSearchPaths(searchPaths);
+			LilypondPreferences.setPythonPath(pythonField.getText());
+			LilypondPreferences.setLymodelPath(lymodelField.getText());
 		};
 
 		return new SectionUi(lilypondGridPane, save);

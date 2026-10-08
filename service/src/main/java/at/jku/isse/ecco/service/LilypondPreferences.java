@@ -12,11 +12,17 @@ import java.util.prefs.Preferences;
  * pattern as {@link AdapterPreferences}/{@link LlmPreferences} (backed by {@link Preferences})
  * rather than the bundled properties file, which is packaged deployment config, not something a
  * user edits at runtime.
+ *
+ * <p>Also the python that runs parce and the lymodel directory (the lilypond-idea-plugin's python/)
+ * it reads musical tokens with - blank by default, in which case the adapter looks for them itself
+ * (see {@code at.jku.isse.ecco.adapter.lilypond.parce.py4j.ParcePython}).
  */
 public final class LilypondPreferences {
 
 	private static final String EXECUTABLE_PATH_KEY = "lilypondExecutablePath";
 	private static final String SEARCH_PATHS_KEY = "lilypondSearchPaths";
+	private static final String PYTHON_PATH_KEY = "lilypondPythonPath";
+	private static final String LYMODEL_PATH_KEY = "lilypondLymodelPath";
 	private static final String SEPARATOR = "|";
 
 	private LilypondPreferences() {
@@ -48,6 +54,24 @@ public final class LilypondPreferences {
 
 	public static void setSearchPaths(List<String> searchPaths) {
 		prefs().put(SEARCH_PATHS_KEY, searchPaths == null ? "" : String.join(SEPARATOR, searchPaths));
+	}
+
+	/** Blank by default, deliberately - the adapter then tries python, python3 and the usual install locations. */
+	public static String getPythonPath() {
+		return prefs().get(PYTHON_PATH_KEY, "");
+	}
+
+	public static void setPythonPath(String pythonPath) {
+		prefs().put(PYTHON_PATH_KEY, pythonPath == null ? "" : pythonPath.trim());
+	}
+
+	/** Blank by default, deliberately - the adapter then uses LYPYTHON, or the lymodel installed into its python. */
+	public static String getLymodelPath() {
+		return prefs().get(LYMODEL_PATH_KEY, "");
+	}
+
+	public static void setLymodelPath(String lymodelPath) {
+		prefs().put(LYMODEL_PATH_KEY, lymodelPath == null ? "" : lymodelPath.trim());
 	}
 
 	private static Preferences prefs() {
