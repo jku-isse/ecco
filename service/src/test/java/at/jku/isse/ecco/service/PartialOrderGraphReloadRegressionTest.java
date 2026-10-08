@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
 /**
  * Regression test for a real bug found while investigating a checkout-correctness report against a
  * user's actual repository (see memory/lytiny-treefusion-duplicate-token-bug and
@@ -36,6 +38,7 @@ public class PartialOrderGraphReloadRegressionTest {
 	@Test
 	@Timeout(30)
 	public void secondCommitAfterReopen_doesNotThrow() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		Path repoDir = Files.createTempDirectory("pog-reload-regression").resolve(".ecco");
 
 		try (EccoService service = new EccoService()) {

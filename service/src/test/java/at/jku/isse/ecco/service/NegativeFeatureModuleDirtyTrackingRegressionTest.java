@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.TreeSet;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -58,6 +59,7 @@ public class NegativeFeatureModuleDirtyTrackingRegressionTest {
 	@Test
 	@Timeout(30)
 	public void reloadedConditionsMatchSameSessionConditions() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		Path repoDir = Files.createTempDirectory("negfeature-dirty-tracking").resolve(".ecco");
 
 		TreeSet<String> sameSession = new TreeSet<>();
