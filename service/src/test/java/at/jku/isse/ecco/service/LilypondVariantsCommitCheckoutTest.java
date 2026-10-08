@@ -12,6 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Commits the LilyPond variant evolution history under examples/lilypond_variants (see its README)
@@ -104,6 +105,104 @@ public class LilypondVariantsCommitCheckoutTest {
 		assertFalse(articulationAndDynamics.contains("\\lyricmode"), "lyrics should be absent");
 
 		service.close();
+	}
+
+	/**
+	 * The same round trip, judged by the MUSIC each checkout holds rather than its tokens: notes
+	 * (absolute pitch, start, length, ties), lyrics (each syllable and where it is sung),
+	 * articulations, slurs, dynamics, and clefs/keys/meters - compared by lymusic from the
+	 * lilypond-idea-plugin (python/verify/lymusic.py), which reads a .ly file the way its MusicXML
+	 * export does. Unlike the whitespace-stripped text comparison above, it does not care how the
+	 * music is spelled (\relative octave marks, implicit durations, line breaks), only whether it
+	 * is the same music. Found through LYPYTHON (the plugin's python/ directory, which
+	 * silverswan.sh exports); skipped without it.
+	 */
+	@Test
+	@Timeout(300)
+	public void commitAllVariants_thenCheckoutEach_holdsTheOriginalsMusic() throws IOException, InterruptedException {
+		Path lymusic = lymusicRoot();
+		assumeTrue(lymusic != null, "needs LYPYTHON pointing at lilypond-idea-plugin's python/ (with verify/lymusic.py)");
+		EccoService service = commitAllVariants();
+
+		for (int i = 0; i < VARIANT_DIRS.size(); i++) {
+			Path checkedOut = checkoutFile(service, CONFIGURATIONS.get(i));
+			assertSameMusic(lymusic, EXAMPLES_DIR.resolve(VARIANT_DIRS.get(i)).resolve(FILE_NAME), checkedOut, ALL_ASPECTS,
+					CONFIGURATIONS.get(i));
+		}
+
+		service.close();
+	}
+
+	/**
+	 * The never-committed feature combinations, judged by their music: each requested feature must be
+	 * exactly as in the variant that introduced it, and each one left out exactly as in v2 (notes
+	 * only) - which also says the music is otherwise untouched. Stronger than the substring checks in
+	 * checkoutNovelCombinations_composesIndependentFeaturesCorrectly, and it includes slurs.1, which
+	 * that test leaves out because of the stray \lyricmode block it leaks: a block no \lyricsto
+	 * binds, so it adds no lyrics to the music - musically, the checkout is right.
+	 */
+	@Test
+	@Timeout(300)
+	public void checkoutNovelCombinations_holdExactlyTheRequestedFeaturesMusic() throws IOException, InterruptedException {
+		Path lymusic = lymusicRoot();
+		assumeTrue(lymusic != null, "needs LYPYTHON pointing at lilypond-idea-plugin's python/ (with verify/lymusic.py)");
+		EccoService service = commitAllVariants();
+		Path notesOnly = variant("v2_setup_notes");
+		Path all = variant("v6_setup_notes_articulation_lyrics_dynamics");
+
+		Path lyrics = checkoutFile(service, "setup.1, notes.1, lyrics.1");
+		assertSameMusic(lymusic, variant("v4_setup_notes_articulation_lyrics"), lyrics, "notes,lyrics,attributes", "lyrics");
+		assertSameMusic(lymusic, notesOnly, lyrics, "articulations,slurs,dynamics", "lyrics");
+
+		Path dynamics = checkoutFile(service, "setup.1, notes.1, dynamics.1");
+		assertSameMusic(lymusic, all, dynamics, "notes,dynamics,attributes", "dynamics");
+		assertSameMusic(lymusic, notesOnly, dynamics, "articulations,slurs,lyrics", "dynamics");
+
+		Path articulationAndDynamics = checkoutFile(service, "setup.1, notes.1, articulation.1, dynamics.1");
+		assertSameMusic(lymusic, all, articulationAndDynamics, "notes,articulations,dynamics,attributes", "articulation+dynamics");
+		assertSameMusic(lymusic, notesOnly, articulationAndDynamics, "slurs,lyrics", "articulation+dynamics");
+
+		Path slurs = checkoutFile(service, "setup.1, notes.1, slurs.1");
+		assertSameMusic(lymusic, variant("v5_setup_notes_articulation_lyrics_slurs"), slurs, "notes,slurs,attributes", "slurs");
+		assertSameMusic(lymusic, notesOnly, slurs, "articulations,lyrics,dynamics", "slurs");
+
+		service.close();
+	}
+
+	private static final String ALL_ASPECTS = "notes,lyrics,articulations,slurs,dynamics,attributes";
+
+	private static Path variant(String dirName) {
+		return EXAMPLES_DIR.resolve(dirName).resolve(FILE_NAME);
+	}
+
+	/** lilypond-idea-plugin's python/ directory, when LYPYTHON names one with lymusic in it. */
+	private static Path lymusicRoot() {
+		String root = System.getenv("LYPYTHON");
+		if (root == null || root.isBlank()) {
+			return null;
+		}
+		Path path = Path.of(root);
+		return Files.exists(path.resolve("verify").resolve("lymusic.py")) ? path : null;
+	}
+
+	private static void assertSameMusic(Path lymusic, Path expected, Path actual, String aspects, String what)
+			throws IOException, InterruptedException {
+		Process process = new ProcessBuilder("python3", "-m", "verify.lymusic", expected.toString(), actual.toString(),
+				"--aspects", aspects)
+				.directory(lymusic.toFile())
+				.redirectErrorStream(true)
+				.start();
+		String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+		int exit = process.waitFor();
+		assertTrue(exit == 0 || exit == 1, () -> "lymusic failed for " + what + ":\n" + output);
+		assertEquals(0, exit, () -> "music differs for " + what + " (" + aspects + "):\n" + output);
+	}
+
+	private Path checkoutFile(EccoService service, String configurationString) throws IOException {
+		Path checkoutDir = Files.createTempDirectory("lilypond-variants-checkout");
+		service.setBaseDir(checkoutDir);
+		service.checkout(configurationString);
+		return checkoutDir.resolve(FILE_NAME);
 	}
 
 	private EccoService commitAllVariants() throws IOException {
