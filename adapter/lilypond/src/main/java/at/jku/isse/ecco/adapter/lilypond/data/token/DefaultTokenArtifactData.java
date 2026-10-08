@@ -11,12 +11,14 @@ public class DefaultTokenArtifactData implements ArtifactData {
     private final int pos;
     private final String token;
     private final String action;
+    private final String meaning;
 
     public DefaultTokenArtifactData(ParceToken token)
     {
         this.pos = token.getPos();
         this.token = token.getText();
         this.action = token.getAction();
+        this.meaning = token.getMeaning();
     }
 
     /**
@@ -46,17 +48,28 @@ public class DefaultTokenArtifactData implements ArtifactData {
         return "Token '" + token + "', Action '" + action + "'";
     }
 
+    /**
+     * What makes two tokens the same: their text, unless the parser knows what it means however it
+     * is spelled (a note's absolute pitch and duration, see ParceToken#getMeaning) or a subclass
+     * knows that two spellings mean the same thing (see {@link LineBreakArtifactData}). Two variants that differ only
+     * there must not differ to ECCO, or the difference is traced to a feature.
+     * @return The token's identity
+     */
+    protected String identity() {
+        return this.meaning != null ? this.meaning : this.token;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DefaultTokenArtifactData that = (DefaultTokenArtifactData) o;
-        return token.equals(that.token)
+        return identity().equals(that.identity())
                 && action.equals(that.action);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(token, action);
+        return Objects.hash(identity(), action);
     }
 }

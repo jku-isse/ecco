@@ -120,6 +120,11 @@ subprojects {
 
 	tasks.withType(Test) {
 		reports.html.outputLocation = reporting.baseDirectory.dir(name)
+		// the LilyPond adapter's musical tokens (LilyEccoTransformer.MUSICAL_TOKENS), for a test run:
+		// ./gradlew test -Decco.lilypond.musicalTokens=true
+		if (System.getProperty('ecco.lilypond.musicalTokens') != null) {
+			systemProperty 'ecco.lilypond.musicalTokens', System.getProperty('ecco.lilypond.musicalTokens')
+		}
 	}
 
 	idea {

@@ -2,6 +2,13 @@
 # ECCO CHANGELOG
 
 
+## Unreleased
+
+  * **LilyPond:** line breaks compare without their indentation, so re-indenting a variant no longer traces its line breaks to a feature (examples/lilypond_respelled: 86 tokens traced to a feature where 24 belong to it, now 24).
+  * **LilyPond, opt-in (`-Decco.lilypond.musicalTokens=true`):** each note, rest and chord end is one token compared by its absolute pitch and duration, from lybar (lilypond-idea-plugin, found through `LYPYTHON`), and lyric syllables stay tokens of their own. Implicit durations and another `\relative` anchor no longer count as content. Off by default: a repository committed without it does not match these tokens.
+  * **LilyPond tests** check checkouts by their music with lymusic (lilypond-idea-plugin), skipped without `LYPYTHON`.
+
+
 ## 0.2.0 (2026-10-04)
 
 About 1,080 commits from 2020 to October 2026. [doc/requirements.md](doc/requirements.md) records what the system is expected to do and which gaps were closed.
