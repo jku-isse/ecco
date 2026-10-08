@@ -114,13 +114,17 @@ class CommitService {
 
     /**
      * Reads the configuration string from the {@link EccoService#CONFIG_FILE_NAME} file in {@code path}, or "" if there is none.
+     * Line breaks in the file (e.g. one feature per line) are collapsed into a single "a.1, b.1" line, so
+     * the string reads well wherever it is shown or used as a default commit message.
      */
     String getConfigStringFromFile(Path path) {
         Path configFile = path.resolve(EccoService.CONFIG_FILE_NAME);
         try {
             String configurationString = "";
             if (Files.exists(configFile))
-                configurationString = new String(Files.readAllBytes(configFile)).trim();
+                configurationString = new String(Files.readAllBytes(configFile)).trim()
+                        .replaceAll("\\s*,\\s*", ", ")
+                        .replaceAll("\\s+", " ");
             return configurationString;
         } catch (IOException e) {
             throw new EccoException("Error during commit: '.config' file existed but could not be read.", e);
