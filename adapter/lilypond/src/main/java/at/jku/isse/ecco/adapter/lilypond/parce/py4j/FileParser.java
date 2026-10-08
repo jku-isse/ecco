@@ -1,7 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.adapter.lilypond.LilyEccoTransformer;
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondParser;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
@@ -53,6 +52,13 @@ public class FileParser implements LilypondParser<ParceToken> {
         }
     }
 
+    private boolean musicalTokens;
+
+    @Override
+    public void setMusicalTokens(boolean musicalTokens) {
+        this.musicalTokens = musicalTokens;
+    }
+
     public LilypondNode<ParceToken> parse(Path path) {
         return parse(path, null);
     }
@@ -62,7 +68,7 @@ public class FileParser implements LilypondParser<ParceToken> {
         Gateway.getInstance().reset();
         ProcessBuilder lilyparce = new ProcessBuilder("python", pythonScript, path.toString());
         lilyparce.environment().put("ECCO_PY4J_PORT", String.valueOf(Gateway.getInstance().getPort()));
-        if (LilyEccoTransformer.MUSICAL_TOKENS) {
+        if (this.musicalTokens) {
             lilyparce.environment().put("ECCO_LILYPOND_MUSICAL_TOKENS", "1");
         }
         Process process = null;

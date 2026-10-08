@@ -12,4 +12,7 @@ public interface LilypondParser<T> {
     LilypondNode<T> parse(Path path, HashMap<String, Integer> tokenMetric);
 
     void shutdown();
+
+    /** Whether the parser makes musical tokens (see LilyEccoTransformer#transform); off unless set. */
+    default void setMusicalTokens(boolean musicalTokens) {}
 }

@@ -761,6 +761,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
         // the repository must be initialized here or the entity factory needed during the subset operation is null
         this.init();
+        // a fork reads files the way its origin's history was read
+        this.inheritRepositorySettings(resolveRepositoryDir(originRepositoryDir));
 
         // create another ecco service and init it on the parent repository directory.
         EccoService originService = new EccoService();
@@ -878,6 +880,35 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      *
      * @return True if the repository was created, false otherwise.
      */
+    /** The per-repository settings: what each plugin chose when the repository was created. */
+    public static final Path SETTINGS_FILE_NAME = Paths.get(".settings");
+
+    /** Records each plugin's settings for a new repository (see ArtifactPlugin#newRepositorySettings). */
+    private void writeNewRepositorySettings() throws IOException {
+        java.util.Properties settings = new java.util.Properties();
+        for (ArtifactPlugin plugin : this.artifactPlugins) {
+            settings.putAll(plugin.newRepositorySettings());
+        }
+        try (java.io.Writer out = Files.newBufferedWriter(this.repositoryDir.resolve(SETTINGS_FILE_NAME))) {
+            settings.store(out, "Chosen when this repository was created; changing them changes how files are read.");
+        }
+    }
+
+    /** A fork's settings are its origin's, or none (the behaviour from before settings) if it has none. */
+    private void inheritRepositorySettings(Path originRepositoryDir) {
+        try {
+            Path origin = originRepositoryDir.resolve(SETTINGS_FILE_NAME);
+            Path own = this.repositoryDir.resolve(SETTINGS_FILE_NAME);
+            if (Files.exists(origin)) {
+                Files.copy(origin, own, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                Files.deleteIfExists(own);
+            }
+        } catch (IOException e) {
+            throw new EccoException("Could not take over the origin's settings.", e);
+        }
+    }
+
     public synchronized boolean init() {
         LOGGER.info("INIT()");
 
@@ -893,6 +924,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
         try {
             this.openRepository(false);
+            this.writeNewRepositorySettings();
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             Repository.Op repository = this.repositoryDao.load();
             repository.setMaxOrder(this.defaultMaxOrder);

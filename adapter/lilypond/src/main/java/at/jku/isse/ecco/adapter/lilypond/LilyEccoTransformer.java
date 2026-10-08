@@ -21,17 +21,11 @@ public class LilyEccoTransformer {
     private final static String DEF_SCHEME_NUMBER = "SchemeLily.number";
 
     /**
-     * Musical tokens ({@code -Decco.lilypond.musicalTokens=true}): every lyric syllable, hyphen and
-     * extender stays a token of its own instead of the whole {@code \lyricmode}/{@code \lyricsto}
-     * block becoming one, and each note, rest and chord end is one token that ECCO compares by what
-     * it means - its absolute pitch and duration, from lybar (lilypond-idea-plugin, found through
-     * LYPYTHON) - not by how it is spelled. A changed syllable, the same words wrapped into other
-     * lines, a note under another \relative anchor or with its duration left implicit no longer
-     * count as new content traced to the feature of the variant they were committed with. Not the
-     * default: a repository committed without it never matches these tokens again.
+     * Whether a whole {@code \\lyricmode}/{@code \\lyricsto} block becomes ONE token, as without musical
+     * tokens, or every syllable, hyphen and extender stays a token of its own, as with them - see
+     * {@link #transform(LilypondNode, boolean)}. For tests; the reader passes its repository's choice.
      */
-    public static final boolean MUSICAL_TOKENS = Boolean.getBoolean("ecco.lilypond.musicalTokens");
-    static boolean MERGE_LYRICS = !MUSICAL_TOKENS;
+    static boolean MERGE_LYRICS = true;
     private static int cntInput;
     private static int cntOutput;
 
@@ -39,6 +33,21 @@ public class LilyEccoTransformer {
     // and only reachable from within it - so synchronizing it is enough to protect cntInput/
     // cntOutput (used as running counters throughout the whole transform, not just at entry/exit)
     // from concurrent LilypondReader.read() calls racing on them; nothing else needs to change.
+    /**
+     * As {@link #transform(LilypondNode)}, with musical tokens or without: with them every lyric
+     * syllable, hyphen and extender stays a token of its own, so a changed syllable - or the same
+     * words wrapped into other lines - is that syllable and not a new block.
+     */
+    public static synchronized LilypondNode<ParceToken> transform(LilypondNode<ParceToken> head, boolean musicalTokens) {
+        boolean merge = MERGE_LYRICS;
+        MERGE_LYRICS = !musicalTokens;
+        try {
+            return transform(head);
+        } finally {
+            MERGE_LYRICS = merge;
+        }
+    }
+
     public static synchronized LilypondNode<ParceToken> transform(LilypondNode<ParceToken> head) {
         if (null == head) {
             LOGGER.warning("first node is null");

@@ -11,8 +11,12 @@ import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -31,11 +35,43 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
     public final static String PARSER_ACTION_LINEBREAK = "__LineBreak";
 
-    @Inject
+    private final Path repositoryDir;
+
+    /** Without a repository (tests): musical tokens if -Decco.lilypond.musicalTokens=true. */
     public LilypondReader(EntityFactory entityFactory) {
+        this(entityFactory, null);
+    }
+
+    @Inject
+    public LilypondReader(EntityFactory entityFactory, @Named("repositoryDir") Path repositoryDir) {
         checkNotNull(entityFactory);
 
         this.entityFactory = entityFactory;
+        this.repositoryDir = repositoryDir;
+    }
+
+    /**
+     * Whether this repository reads LilyPond with musical tokens: what it recorded when it was created
+     * ({@code .ecco/.settings}, see LilypondPlugin#newRepositorySettings). A repository from before
+     * has no such setting and keeps plain tokens - its artifacts are plain, and musical ones would
+     * never match them. Read on every read, not once: a new repository's readers are built before its
+     * settings are written.
+     */
+    boolean musicalTokens() {
+        if (this.repositoryDir == null) {
+            return Boolean.getBoolean("ecco.lilypond.musicalTokens");
+        }
+        Path settings = this.repositoryDir.resolve(".settings");
+        if (!Files.exists(settings)) {
+            return false;
+        }
+        Properties properties = new Properties();
+        try (Reader in = Files.newBufferedReader(settings)) {
+            properties.load(in);
+        } catch (IOException e) {
+            throw new UncheckedIOException("could not read " + settings, e);
+        }
+        return Boolean.parseBoolean(properties.getProperty(LilypondPlugin.MUSICAL_TOKENS_SETTING, "false"));
     }
 
     @Override
@@ -77,10 +113,12 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
         Set<Node.Op> nodes = new HashSet<>();
 
         LilypondParser<ParceToken> parser = ParserFactory.getParser();
+        boolean musical = this.musicalTokens();
         try {
             if (parser == null) {
                 throw new IOException("no parser found");
             }
+            parser.setMusicalTokens(musical);
             parser.init();
 
         } catch (IOException e) {
@@ -99,7 +137,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
                 if (head == null) {
                     LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", resolvedPath);
                 } else {
-                    head = LilyEccoTransformer.transform(head);
+                    head = LilyEccoTransformer.transform(head, musical);
                     generateEccoTree(head, pluginNode);
                 }
 
