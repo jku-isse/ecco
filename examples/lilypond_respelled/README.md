@@ -13,7 +13,7 @@ dynamics of `v6` (`setup.1, notes.1, dynamics.1`), written four ways:
 and `lyrics_dynamics` (`setup.1, notes.1, lyrics.1, dynamics.1`) with its copy
 `lyrics_dynamics_rewrapped`, each lyric block on one line instead of two.
 
-`lymusic` (lilypond-idea-plugin, `python/verify/lymusic.py`) confirms each holds the same
+`lymusic` (lilypond-idea-plugin, `python/compare/lymusic.py`) confirms each holds the same
 music as `dynamics`. `LilypondRespelledVariantsTest` commits `v1`-`v3` and one of these,
 checks out `setup.1, notes.1, articulation.1, dynamics.1` - which composes the
 articulation committed in one spelling with the dynamics committed in another - and

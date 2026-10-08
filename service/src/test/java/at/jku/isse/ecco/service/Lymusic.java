@@ -24,7 +24,7 @@ final class Lymusic {
 	static synchronized boolean available() {
 		if (available == null) {
 			try {
-				Process process = python("-c", "import lymodel.verify.lymusic").redirectErrorStream(true).start();
+				Process process = python("-c", "import lymodel.compare.lymusic").redirectErrorStream(true).start();
 				process.getInputStream().readAllBytes();
 				available = process.waitFor() == 0;
 			} catch (IOException | InterruptedException e) {
@@ -38,7 +38,7 @@ final class Lymusic {
 
 	static void assertSameMusic(Path expected, Path actual, String aspects, String what)
 			throws IOException, InterruptedException {
-		Process process = python("-m", "lymodel.verify.lymusic", expected.toString(), actual.toString(), "--aspects", aspects)
+		Process process = python("-m", "lymodel.compare.lymusic", expected.toString(), actual.toString(), "--aspects", aspects)
 				.redirectErrorStream(true)
 				.start();
 		String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
