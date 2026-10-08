@@ -10,6 +10,7 @@ public class ParceToken {
     private String text;
     private final String action;
     private Object transformationData;
+    private String meaning;
 
     /**
      * Returns position of token in original text.
@@ -34,6 +35,15 @@ public class ParceToken {
     public String getAction() { return action; }
 
     public Object getTransformationData() { return transformationData; }
+
+    /**
+     * What the token means however it is spelled - a note's absolute pitch and written-out
+     * duration, from lybar (see LilypondParser_1.py) - or null to go by its text.
+     * @return Meaning of token, or null
+     */
+    public String getMeaning() { return meaning; }
+
+    public void setMeaning(String meaning) { this.meaning = meaning; }
 
     public ParceToken(int pos, String text, String action) {
         this.pos = pos;

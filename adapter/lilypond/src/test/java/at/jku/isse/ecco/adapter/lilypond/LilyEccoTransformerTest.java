@@ -90,13 +90,40 @@ public class LilyEccoTransformerTest {
 		LilypondNode<ParceToken> word1 = bracketStart.append("Text.Lyric.Word", new ParceToken(12, "Ah", "Text.Lyric.Word"), 1);
 		word1.append("Text.Lyric.Word", new ParceToken(15, "yes", "Text.Lyric.Word"), 1);
 
-		LilypondNode<ParceToken> result = LilyEccoTransformer.transform(lyricmode);
+		boolean merge = LilyEccoTransformer.MERGE_LYRICS;
+		LilyEccoTransformer.MERGE_LYRICS = true;
+		LilypondNode<ParceToken> result;
+		try {
+			result = LilyEccoTransformer.transform(lyricmode);
+		} finally {
+			LilyEccoTransformer.MERGE_LYRICS = merge;
+		}
 
 		assertEquals("Keyword.Lyric", result.getName());
 		// the empty-text Delimiter.Bracket.Start token still gets its own trailing space appended
 		// by the collection loop (nothing special-cases it), hence the double space
 		assertEquals("\\lyricmode  Ah yes ", result.getData().getText());
 		assertNull(result.getNext());
+	}
+
+	@Test
+	void withSyllableLyricsALyricmodeBlockKeepsEverySyllable() {
+		LilypondNode<ParceToken> lyricmode = new LilypondNode<>("Keyword.Lyric", new ParceToken(0, "\\lyricmode", "Keyword.Lyric"));
+		lyricmode.setLevel(0);
+		LilypondNode<ParceToken> lyriclistTok = lyricmode.append("LilyPond.lyriclist", new ParceToken(10, "", "LilyPond.lyriclist"), 0);
+		LilypondNode<ParceToken> bracketStart = lyriclistTok.append("Delimiter.Bracket.Start", new ParceToken(11, "", "Delimiter.Bracket.Start"), 1);
+		LilypondNode<ParceToken> word1 = bracketStart.append("Text.Lyric.Word", new ParceToken(12, "Ah", "Text.Lyric.Word"), 1);
+		word1.append("Text.Lyric.Word", new ParceToken(15, "yes", "Text.Lyric.Word"), 1);
+
+		boolean merge = LilyEccoTransformer.MERGE_LYRICS;
+		LilyEccoTransformer.MERGE_LYRICS = false;
+		try {
+			LilypondNode<ParceToken> result = LilyEccoTransformer.transform(lyricmode);
+			assertEquals("\\lyricmode", result.getData().getText());
+			assertEquals("yes", result.getNext().getNext().getNext().getNext().getData().getText());
+		} finally {
+			LilyEccoTransformer.MERGE_LYRICS = merge;
+		}
 	}
 
 	@Test

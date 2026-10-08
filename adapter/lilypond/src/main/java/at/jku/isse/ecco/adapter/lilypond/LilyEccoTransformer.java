@@ -20,6 +20,18 @@ public class LilyEccoTransformer {
     private final static String DEF_LITERAL_STRING = "Literal.String";
     private final static String DEF_SCHEME_NUMBER = "SchemeLily.number";
 
+    /**
+     * Musical tokens ({@code -Decco.lilypond.musicalTokens=true}): every lyric syllable, hyphen and
+     * extender stays a token of its own instead of the whole {@code \lyricmode}/{@code \lyricsto}
+     * block becoming one, and each note, rest and chord end is one token that ECCO compares by what
+     * it means - its absolute pitch and duration, from lybar (lilypond-idea-plugin, found through
+     * LYPYTHON) - not by how it is spelled. A changed syllable, the same words wrapped into other
+     * lines, a note under another \relative anchor or with its duration left implicit no longer
+     * count as new content traced to the feature of the variant they were committed with. Not the
+     * default: a repository committed without it never matches these tokens again.
+     */
+    public static final boolean MUSICAL_TOKENS = Boolean.getBoolean("ecco.lilypond.musicalTokens");
+    static boolean MERGE_LYRICS = !MUSICAL_TOKENS;
     private static int cntInput;
     private static int cntOutput;
 
@@ -51,7 +63,7 @@ public class LilyEccoTransformer {
                     n = transformVariableDefinitonNode(n);
                 }
 
-                if (isLyriclist(n)) {
+                if (MERGE_LYRICS && isLyriclist(n)) {
                     n = transformLyriclist(n);
                 }
 

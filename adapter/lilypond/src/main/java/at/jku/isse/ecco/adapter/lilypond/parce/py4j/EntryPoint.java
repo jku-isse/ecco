@@ -53,6 +53,12 @@ public class EntryPoint {
                 new Object[] { t.getAction(), t.getText(), depth });
     }
 
+    /** A note, rest or chord end with what it means however it is spelled (see ParceToken#getMeaning). */
+    public void addToken(int pos, String text, String action, String meaning) {
+        addToken(pos, text, action);
+        current.getData().setMeaning(meaning);
+    }
+
     public void addWhitespace(int pos, String text) {
         if (null == text) { return; }
 
