@@ -66,8 +66,12 @@ public class FileParser implements LilypondParser<ParceToken> {
     public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
         Gateway.getInstance().reset();
-        ProcessBuilder lilyparce = new ProcessBuilder("python", pythonScript, path.toString());
+        ParcePython.Choice python = ParcePython.resolve(this.musicalTokens);
+        ProcessBuilder lilyparce = new ProcessBuilder(python.python(), pythonScript, path.toString());
         lilyparce.environment().put("ECCO_PY4J_PORT", String.valueOf(Gateway.getInstance().getPort()));
+        if (python.lymodelDir() != null) {
+            lilyparce.environment().put("LYPYTHON", python.lymodelDir().toString());
+        }
         if (this.musicalTokens) {
             lilyparce.environment().put("ECCO_LILYPOND_MUSICAL_TOKENS", "1");
         }
@@ -117,12 +121,14 @@ public class FileParser implements LilypondParser<ParceToken> {
                 return Gateway.getInstance().getRoot();
 
             } else {
+                ParcePython.forget();
                 throw new EccoException("Parce exited with code " + exitCode + " for file " + path + ":\n" + sjErr);
             }
 
         } catch (IOException e) {
             // e.g. no python executable - fail the commit rather than committing an empty file
             // (see UnreadableFileCommitTest), as returning null here used to
+            ParcePython.forget();
             throw new EccoException("Could not run parce for file " + path, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
