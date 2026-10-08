@@ -15,14 +15,15 @@ f.close()
 # Musical tokens (ECCO_LILYPOND_MUSICAL_TOKENS, set by -Decco.lilypond.musicalTokens=true): each
 # note, rest and chord end is ONE token - pitch, octave marks, accidental marks, duration, dots,
 # scaling - and carries what it means however it is spelled (absolute pitch, written-out
-# duration), from lybar in the lilypond-idea-plugin's python/ (LYPYTHON). Without lybar, or
+# duration), from lymodel's lybar: the lilypond-idea-plugin's python/ directory, from LYPYTHON
+# when that names one, else installed (pip install <plugin repo>/python). Without lymodel, or
 # when it cannot pair this file's notes, tokens stay as they were and go by their text.
 meanings = {}
 if os.environ.get("ECCO_LILYPOND_MUSICAL_TOKENS"):
     if os.environ.get("LYPYTHON"):
         sys.path.insert(0, os.environ["LYPYTHON"])
     try:
-        from lybar.normalize import note_values
+        from lymodel.lybar.normalize import note_values
         meanings = note_values(s)
     except Exception as e:
         print("no musical tokens: %s" % e, file=sys.stderr)
