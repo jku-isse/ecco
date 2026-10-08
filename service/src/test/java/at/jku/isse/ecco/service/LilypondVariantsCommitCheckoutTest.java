@@ -47,6 +47,7 @@ public class LilypondVariantsCommitCheckoutTest {
 	@Test
 	@Timeout(60)
 	public void commitAllVariants_thenCheckoutEach_reproducesOriginalContent() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		EccoService service = commitAllVariants();
 
 		for (int i = 0; i < VARIANT_DIRS.size(); i++) {
@@ -79,6 +80,7 @@ public class LilypondVariantsCommitCheckoutTest {
 	@Test
 	@Timeout(60)
 	public void checkoutNovelCombinations_composesIndependentFeaturesCorrectly() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		EccoService service = commitAllVariants();
 
 		// lyrics is a structurally independent addition (new \header/\tempo/\lyricmode blocks, not

@@ -21,9 +21,14 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 public class LilypondGatewayPortTest {
 
+	/** parce and py4j - and lymodel when -Decco.lilypond.musicalTokens=true asks for musical tokens. */
 	private static boolean parceAvailable() {
 		try {
-			Process process = new ProcessBuilder("python", "-c", "import parce, py4j").redirectErrorStream(true).start();
+			boolean musical = Boolean.getBoolean("ecco.lilypond.musicalTokens");
+			ProcessBuilder builder = new ProcessBuilder("python", "-c", musical ? "import parce, py4j, lymodel" : "import parce, py4j");
+			String lypython = System.getenv("LYPYTHON");
+			if (lypython != null && !lypython.isBlank()) builder.environment().put("PYTHONPATH", lypython);
+			Process process = builder.redirectErrorStream(true).start();
 			process.getInputStream().readAllBytes();
 			return process.waitFor() == 0;
 		} catch (IOException | InterruptedException e) {
@@ -34,7 +39,7 @@ public class LilypondGatewayPortTest {
 	@Test
 	@Timeout(120)
 	void readsWhileTheDefaultPortIsTaken() throws Exception {
-		assumeTrue(parceAvailable(), "needs `python` with the parce and py4j modules on the PATH");
+		assumeTrue(parceAvailable(), "needs `python` with the parce and py4j modules on the PATH (and lymodel for musical tokens)");
 		Path base = Files.createTempDirectory("lilypond-gateway-port");
 		Files.writeString(base.resolve("a.ly"), "\\\\version \"2.24.0\"\n{ c'4 d'4 e'4 }\n");
 		// what another ECCO process's gateway looked like
