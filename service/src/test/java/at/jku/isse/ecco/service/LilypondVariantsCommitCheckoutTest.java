@@ -141,6 +141,10 @@ public class LilypondVariantsCommitCheckoutTest {
 	 * checkoutNovelCombinations_composesIndependentFeaturesCorrectly, and it includes slurs.1, which
 	 * that test leaves out because of the stray \lyricmode block it leaks: a block no \lyricsto
 	 * binds, so it adds no lyrics to the music - musically, the checkout is right.
+	 * <p>
+	 * The two ties ({@code cis4 ~ cis16}, {@code fis4 ~ fis8}) first appear in v5, committed together
+	 * with slurs.1, so they are traced to slurs: a checkout without slurs.1 holds v2's notes (no
+	 * ties), not v6's - which is why notes are judged against v2 there, not against the full variant.
 	 */
 	@Test
 	@Timeout(300)
@@ -155,12 +159,12 @@ public class LilypondVariantsCommitCheckoutTest {
 		Lymusic.assertSameMusic(notesOnly, lyrics, "articulations,slurs,dynamics", "lyrics");
 
 		Path dynamics = checkoutFile(service, "setup.1, notes.1, dynamics.1");
-		Lymusic.assertSameMusic(all, dynamics, "notes,dynamics,attributes", "dynamics");
-		Lymusic.assertSameMusic(notesOnly, dynamics, "articulations,slurs,lyrics", "dynamics");
+		Lymusic.assertSameMusic(all, dynamics, "dynamics,attributes", "dynamics");
+		Lymusic.assertSameMusic(notesOnly, dynamics, "notes,articulations,slurs,lyrics", "dynamics");
 
 		Path articulationAndDynamics = checkoutFile(service, "setup.1, notes.1, articulation.1, dynamics.1");
-		Lymusic.assertSameMusic(all, articulationAndDynamics, "notes,articulations,dynamics,attributes", "articulation+dynamics");
-		Lymusic.assertSameMusic(notesOnly, articulationAndDynamics, "slurs,lyrics", "articulation+dynamics");
+		Lymusic.assertSameMusic(all, articulationAndDynamics, "articulations,dynamics,attributes", "articulation+dynamics");
+		Lymusic.assertSameMusic(notesOnly, articulationAndDynamics, "notes,slurs,lyrics", "articulation+dynamics");
 
 		Path slurs = checkoutFile(service, "setup.1, notes.1, slurs.1");
 		Lymusic.assertSameMusic(variant("v5_setup_notes_articulation_lyrics_slurs"), slurs, "notes,slurs,attributes", "slurs");
