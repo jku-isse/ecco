@@ -127,6 +127,14 @@ subprojects {
 		}
 	}
 
+	// ...and for the applications started through Gradle: ./gradlew :ecco-gui:run -Decco.lilypond.musicalTokens=true
+	// (an installed launcher takes it from JAVA_OPTS instead)
+	tasks.withType(JavaExec) {
+		if (System.getProperty('ecco.lilypond.musicalTokens') != null) {
+			systemProperty 'ecco.lilypond.musicalTokens', System.getProperty('ecco.lilypond.musicalTokens')
+		}
+	}
+
 	idea {
 		module {
 			testSources.from(file('src/integrationTest/java'))
