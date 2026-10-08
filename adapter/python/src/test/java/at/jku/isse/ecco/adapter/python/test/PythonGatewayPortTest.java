@@ -7,7 +7,6 @@ import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import java.io.IOException;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,20 +24,10 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 public class PythonGatewayPortTest {
 
-    private static boolean pythonAvailable() {
-        try {
-            Process process = new ProcessBuilder("python", "-c", "import libcst, py4j").redirectErrorStream(true).start();
-            process.getInputStream().readAllBytes();
-            return process.waitFor() == 0;
-        } catch (IOException | InterruptedException e) {
-            return false;
-        }
-    }
-
     @Test
     @Timeout(120)
     public void readsAndRendersWhileTheDefaultPortIsTaken() throws Exception {
-        assumeTrue(pythonAvailable(), "needs `python` with the libcst and py4j modules on the PATH");
+        assumeTrue(PythonAvailable.check(), PythonAvailable.NEEDS);
         Path base = Files.createTempDirectory("python-gateway-port");
         Files.writeString(base.resolve("m.py"), "x = 1\n\ndef f(a):\n    return a\n");
         // what another ECCO process's gateway looked like

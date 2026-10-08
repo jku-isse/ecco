@@ -14,10 +14,14 @@ import java.util.stream.Collectors;
  * setting (backed by {@link Preferences}, e.g. the platform registry/plist), distinct from the
  * bundled {@code ecco.properties} classpath resource, which is packaged deployment config rather
  * than something a user toggles at runtime.
+ *
+ * <p>Also the python the Python adapter runs libcst with - blank by default, in which case it is
+ * looked for (see {@link at.jku.isse.ecco.adapter.PythonFinder}).
  */
 public final class AdapterPreferences {
 
 	private static final String DISABLED_ADAPTERS_KEY = "disabledAdapterPluginIds";
+	private static final String PYTHON_ADAPTER_PYTHON_KEY = "pythonAdapterPythonPath";
 	private static final String SEPARATOR = ",";
 	private static final String UNSET_MARKER = "\u0000unset";
 
@@ -55,6 +59,15 @@ public final class AdapterPreferences {
 
 	public static boolean isEnabled(ArtifactPlugin plugin) {
 		return !getDisabledPluginIds().contains(plugin.getPluginId());
+	}
+
+	/** Blank by default, deliberately - the Python adapter then tries python, python3 and the usual install locations. */
+	public static String getPythonAdapterPython() {
+		return prefs().get(PYTHON_ADAPTER_PYTHON_KEY, "");
+	}
+
+	public static void setPythonAdapterPython(String pythonPath) {
+		prefs().put(PYTHON_ADAPTER_PYTHON_KEY, pythonPath == null ? "" : pythonPath.trim());
 	}
 
 	private static Preferences prefs() {

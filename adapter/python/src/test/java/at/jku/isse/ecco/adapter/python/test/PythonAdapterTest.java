@@ -28,16 +28,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class PythonAdapterTest {
 
-    private static boolean pythonWithLibcstAvailable() {
-        try {
-            Process process = new ProcessBuilder("python", "-c", "import libcst").redirectErrorStream(true).start();
-            process.getInputStream().readAllBytes();
-            return process.waitFor() == 0;
-        } catch (IOException | InterruptedException e) {
-            return false;
-        }
-    }
-
     private static Path readPath;
     private static Path writePath;
 
@@ -52,7 +42,7 @@ public class PythonAdapterTest {
     static void start() {
         // the adapter parses through a `python` subprocess that needs the libcst module - skip rather
         // than fail on machines without it (every file would fail to parse)
-        assumeTrue(pythonWithLibcstAvailable(), "needs `python` with the libcst module on the PATH");
+        assumeTrue(PythonAvailable.check(), PythonAvailable.NEEDS);
 
         reader = new PythonReader(new SerEntityFactory());
         writer = new PythonWriter();

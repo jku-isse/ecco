@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.adapter.python.parse.py4j.cst.writer;
 
-
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.PythonFinder;
 import at.jku.isse.ecco.adapter.python.PythonParser;
 import at.jku.isse.ecco.adapter.python.parse.py4j.PY4JParser;
 import at.jku.isse.ecco.adapter.view.RenderedSource;
@@ -47,6 +48,7 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
                     LOGGER.log(Level.INFO, "Parsing (write) successful (exit-code: 0); wrote 1 file in {0}ms",
                             new Object[]{String.valueOf((System.nanoTime() - tm) / 1000000)});
                 } else {
+                    PythonFinder.forget();
                     LOGGER.severe("Parce exited with code " + exitCode + "!");
                 }
 
@@ -55,6 +57,7 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
             }
 
         } catch (IOException | InterruptedException e) {
+            PythonFinder.forget();
             LOGGER.log(Level.SEVERE, e.getMessage(), e);
         } finally {
             if (process != null) process.destroy();
@@ -69,21 +72,29 @@ public class PY4JCSTWriteParser extends PY4JParser implements PythonParser.Write
         // the script's output (errors, e.g. a missing module) goes to a file: reading a pipe could
         // block for as long as the script runs
         Path output = Files.createTempFile("ecco-python-render", ".log");
-        ProcessBuilder renderPython = pythonProcess(path.toString(), "--render")
-                .redirectErrorStream(true).redirectOutput(output.toFile());
+        ProcessBuilder renderPython;
+        try {
+            renderPython = pythonProcess(path.toString(), "--render");
+        } catch (EccoException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+        renderPython.redirectErrorStream(true).redirectOutput(output.toFile());
         Process process = null;
         try {
             try {
                 process = renderPython.start();
             } catch (IOException e) {
-                throw new IOException("Showing Python code needs `python` with the modules libcst and py4j on the PATH.", e);
+                PythonFinder.forget();
+                throw new IOException("Showing Python code needs a python with the modules libcst and py4j"
+                        + " (set it under Preferences > Plugins if it isn't found).", e);
             }
             if (!process.waitFor(MAX_SCRIPT_TIMEOUT_SECONDS, TimeUnit.SECONDS))
                 throw new IOException("Rendering " + path + " timed out after " + MAX_SCRIPT_TIMEOUT_SECONDS + " seconds.");
             WriterEntryPoint entryPoint = writerGateway.getEntryPoint();
             if (process.exitValue() != 0 || entryPoint.getRenderedCode() == null)
                 throw new IOException("Rendering " + path + " failed (python exit code " + process.exitValue() + "). "
-                        + "Showing Python code needs `python` with the modules libcst and py4j on the PATH.\n"
+                        + "Showing Python code needs a python with the modules libcst and py4j"
+                        + " (set it under Preferences > Plugins if it isn't found).\n"
                         + Files.readString(output, StandardCharsets.UTF_8).strip());
 
             String code = entryPoint.getRenderedCode();

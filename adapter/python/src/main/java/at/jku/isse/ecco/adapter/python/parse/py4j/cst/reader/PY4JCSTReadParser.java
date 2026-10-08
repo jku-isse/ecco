@@ -2,6 +2,7 @@ package at.jku.isse.ecco.adapter.python.parse.py4j.cst.reader;
 
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.PythonFinder;
 import at.jku.isse.ecco.adapter.python.PythonParser;
 import at.jku.isse.ecco.adapter.python.parse.py4j.PY4JParser;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -45,6 +46,7 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
                                     String.valueOf((System.nanoTime() - tm) / 1000000)});
                     return readerGateway.getRoot();
                 } else {
+                    PythonFinder.forget();
                     throw new EccoException("Python parser exited with code " + exitCode + " for file " + path);
                 }
             } else {
@@ -54,6 +56,7 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
         } catch (IOException e) {
             // e.g. no python executable - fail the commit rather than committing an empty file
             // (see UnreadableFileCommitTest), as returning null here used to
+            PythonFinder.forget();
             throw new EccoException("Could not run the python parser for file " + path, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
