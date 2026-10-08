@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -47,6 +48,7 @@ public class OriginalAssociationDirtyTrackingRegressionTest {
 	@Test
 	@Timeout(30)
 	public void reopenBetweenEveryCommit_matchesSingleSessionAssociationShape() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		Path reopenRepoDir = Files.createTempDirectory("dirty-tracking-reopen").resolve(".ecco");
 		for (int i = 0; i < VARIANT_DIRS.size(); i++) {
 			try (EccoService service = new EccoService()) {
@@ -74,6 +76,7 @@ public class OriginalAssociationDirtyTrackingRegressionTest {
 	@Test
 	@Timeout(30)
 	public void reopenBetweenEveryCommit_checkoutMatchesSource() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		Path repoDir = Files.createTempDirectory("dirty-tracking-checkout").resolve(".ecco");
 		for (int i = 0; i < VARIANT_DIRS.size(); i++) {
 			try (EccoService service = new EccoService()) {

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,6 +46,7 @@ public class PartialOrderGraphMetaFieldsReloadRegressionTest {
 	@Test
 	@Timeout(30)
 	public void singleSession_isCorrect() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		Path repoDir = Files.createTempDirectory("meta-fields-single").resolve(".ecco");
 
 		try (EccoService service = new EccoService()) {
@@ -63,6 +65,7 @@ public class PartialOrderGraphMetaFieldsReloadRegressionTest {
 	@Test
 	@Timeout(30)
 	public void reopenBetweenCommits_isCorrect() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		Path repoDir = Files.createTempDirectory("meta-fields-reopen").resolve(".ecco");
 
 		try (EccoService service = new EccoService()) {
