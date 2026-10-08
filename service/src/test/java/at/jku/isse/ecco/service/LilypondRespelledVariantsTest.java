@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import at.jku.isse.ecco.adapter.lilypond.LilyEccoTransformer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -67,8 +66,8 @@ public class LilypondRespelledVariantsTest {
 	public void aRespelledVariantTracesOnlyItsFeature() throws IOException {
 		int dynamics = tracedToDynamics("dynamics");
 		assertEquals(dynamics, tracedToDynamics("dynamics_indent"), "re-indented");
-		assumeTrue(LilyEccoTransformer.MUSICAL_TOKENS && Lymusic.available(),
-				"implicit durations and \\relative anchors need -Decco.lilypond.musicalTokens=true and lymodel");
+		assumeTrue(LilypondTraceMeasure.musicalTokens() && Lymusic.available(),
+				"implicit durations and \\relative anchors need musical tokens (the default for a new repository) and lymodel");
 		assertEquals(dynamics, tracedToDynamics("dynamics_durations"), "durations left implicit");
 		assertEquals(dynamics, tracedToDynamics("dynamics_relative"), "another \\relative anchor");
 	}

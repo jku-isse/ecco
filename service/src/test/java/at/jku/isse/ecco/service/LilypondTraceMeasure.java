@@ -13,6 +13,11 @@ final class LilypondTraceMeasure {
 
 	private LilypondTraceMeasure() {}
 
+	/** Whether a repository created by these tests reads with musical tokens - the default, unless -Decco.lilypond.musicalTokens=false. */
+	static boolean musicalTokens() {
+		return Boolean.parseBoolean(System.getProperty("ecco.lilypond.musicalTokens", "true"));
+	}
+
 	/** Tokens in traces whose condition mentions [feature], as "condition: token" lines. */
 	static List<String> tokensTracedTo(EccoService service, String feature) {
 		List<String> out = new ArrayList<>();

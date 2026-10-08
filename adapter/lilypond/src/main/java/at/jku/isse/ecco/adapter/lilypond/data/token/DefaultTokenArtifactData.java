@@ -56,7 +56,22 @@ public class DefaultTokenArtifactData implements ArtifactData {
      * @return The token's identity
      */
     protected String identity() {
-        return this.meaning != null ? this.meaning : this.token;
+        if (this.meaning == null) return this.token;
+        // after @ the pitch in steps, after ~ the duration before it in its file: for the writer
+        int end = this.meaning.length();
+        for (char mark : new char[] {'@', '~'}) {
+            int at = this.meaning.indexOf(mark);
+            if (at >= 0) end = Math.min(end, at);
+        }
+        return this.meaning.substring(0, end);
+    }
+
+    /**
+     * What the token means however it is spelled - see ParceToken#getMeaning - or null.
+     * @return Meaning of the token, or null
+     */
+    public String getMeaning() {
+        return this.meaning;
     }
 
     @Override

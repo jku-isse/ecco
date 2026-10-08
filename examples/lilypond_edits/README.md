@@ -15,3 +15,9 @@ out `setup.1, notes.1, articulation.1, edit.1` must give once `notes_edit` is co
 `setup.1, notes.1, edit.1` after `v1`-`v3`. `LilypondEditedVariantsTest` checks that by its music
 (lymusic), and, with musical tokens, that exactly the 10 edited tokens are traced to `edit.1`
 (7 inserted, 3 they replace; plain tokens trace 14).
+
+`notes_leap` is `v2_setup_notes` with a leap in the soprano: `gis8 cis8 fis,8` where `v2` has
+`gis8 gis8 fis8`. The `fis` is the same note in both, so with musical tokens it is one token,
+and ECCO keeps one spelling of it: committed after `v2`, the leap variant came back as
+`gis8 cis8 fis8`, an octave high. The writer spells each note again against the note written
+before it; `LilypondEditedVariantsTest` checks the leap variant's music after `v2`.

@@ -22,6 +22,18 @@ public abstract class ArtifactPlugin {
 
 	public abstract String getDescription(); // should be abstract static
 
+	/**
+	 * What this plugin records in a NEW repository's settings ({@code .ecco/.settings}), for its
+	 * adapter to read back on every later commit and checkout - a choice that decides how files are
+	 * read into trees, and so must not change over a repository's life. A repository created before
+	 * a setting existed has none, and its absence must mean the behaviour from before.
+	 *
+	 * @return setting names (prefixed with the plugin's own name) and their values
+	 */
+	public java.util.Map<String, String> newRepositorySettings() {
+		return java.util.Map.of();
+	}
+
 	public static ArtifactPlugin[] getArtifactPlugins() {
 		final ServiceLoader<ArtifactPlugin> loader = ServiceLoader.load(ArtifactPlugin.class);
 

@@ -33,4 +33,12 @@ public class LilypondPlugin extends ArtifactPlugin {
 		return "Lilypond Artifact Plugin";
 	}
 
+	/** Recorded in a new repository's settings: musical tokens, unless -Decco.lilypond.musicalTokens=false. */
+	public static final String MUSICAL_TOKENS_SETTING = "lilypond.musicalTokens";
+
+	@Override
+	public java.util.Map<String, String> newRepositorySettings() {
+		return java.util.Map.of(MUSICAL_TOKENS_SETTING, System.getProperty("ecco.lilypond.musicalTokens", "true"));
+	}
+
 }

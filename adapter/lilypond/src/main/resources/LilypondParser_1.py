@@ -12,7 +12,8 @@ f = open(sys.argv[1], "r", -1, "UTF-8")
 s = f.read()
 f.close()
 
-# Musical tokens (ECCO_LILYPOND_MUSICAL_TOKENS, set by -Decco.lilypond.musicalTokens=true): each
+# Musical tokens (ECCO_LILYPOND_MUSICAL_TOKENS, set for a repository that records
+# lilypond.musicalTokens=true in its .ecco/.settings - every new one, see LilypondPlugin): each
 # note, rest and chord end is ONE token - pitch, octave marks, accidental marks, duration, dots,
 # scaling - and carries what it means however it is spelled (absolute pitch, written-out
 # duration), from lymodel's lybar: the lilypond-idea-plugin's python/ directory, from LYPYTHON
@@ -61,6 +62,14 @@ lastPos = 0
 suppressed = 0    # LilyPond.pitch contexts not pushed - see below
 for e in parce.events(LilyPond.root, s):
     pop = 0
+    lexemes = list(e.lexemes)
+    # A chord's duration comes with the event that closes the chord context: join it to the
+    # pending `>` first, or the chord end and its duration were two tokens.
+    while pending is not None and lexemes and str(lexemes[0][2]) in ATTACHED \
+            and lexemes[0][0] == pending[0] + len(pending[1]):
+        pending[1] += lexemes[0][1]
+        lastPos = lexemes[0][0] + len(lexemes[0][1])
+        lexemes.pop(0)
     if e.target:
         pop = e.target.pop
         if suppressed and pop < 0:
@@ -77,15 +86,16 @@ for e in parce.events(LilyPond.root, s):
         if pop or push:
             flush()
         ep.popContext(pop)
-        first = e.lexemes[0]
-        if first[0] > lastPos:
-            flush()
-            ep.addWhitespace(lastPos, s[lastPos:first[0]])
-            lastPos = first[0] + len(first[1])
+        if lexemes:
+            first = lexemes[0]
+            if first[0] > lastPos:
+                flush()
+                ep.addWhitespace(lastPos, s[lastPos:first[0]])
+                lastPos = first[0] + len(first[1])
         for name in push:
             ep.pushContext(name)
 
-    for tpl in e.lexemes:
+    for tpl in lexemes:
         if tpl[0] > lastPos:
             flush()
             ep.addWhitespace(lastPos, s[lastPos:tpl[0]])
