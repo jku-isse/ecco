@@ -32,8 +32,7 @@ public class LilypondRespelledVariantsTest {
 	@ValueSource(strings = {"dynamics", "dynamics_indent", "dynamics_durations", "dynamics_relative"})
 	@Timeout(300)
 	public void aFeatureCommittedInAnotherSpelling_composes(String dynamicsVariant) throws IOException, InterruptedException {
-		Path lymusic = lymusicRoot();
-		assumeTrue(lymusic != null, "needs LYPYTHON pointing at lilypond-idea-plugin's python/ (with verify/lymusic.py)");
+		assumeTrue(Lymusic.available(), Lymusic.NEEDS);
 
 		EccoService service = new EccoService();
 		service.setRepositoryDir(Files.createTempDirectory("lilypond-respelled-repo").resolve(".ecco"));
@@ -50,10 +49,10 @@ public class LilypondRespelledVariantsTest {
 		service.close();
 
 		Path notesOnly = VARIANTS.resolve("v2_setup_notes").resolve(FILE_NAME);
-		assertSameMusic(lymusic, notesOnly, composed, "notes,lyrics,slurs,attributes", dynamicsVariant);
-		assertSameMusic(lymusic, VARIANTS.resolve("v3_setup_notes_articulation").resolve(FILE_NAME), composed,
+		Lymusic.assertSameMusic(notesOnly, composed, "notes,lyrics,slurs,attributes", dynamicsVariant);
+		Lymusic.assertSameMusic(VARIANTS.resolve("v3_setup_notes_articulation").resolve(FILE_NAME), composed,
 				"articulations", dynamicsVariant);
-		assertSameMusic(lymusic, RESPELLED.resolve(dynamicsVariant).resolve(FILE_NAME), composed, "dynamics", dynamicsVariant);
+		Lymusic.assertSameMusic(RESPELLED.resolve(dynamicsVariant).resolve(FILE_NAME), composed, "dynamics", dynamicsVariant);
 	}
 
 	/**
@@ -68,8 +67,8 @@ public class LilypondRespelledVariantsTest {
 	public void aRespelledVariantTracesOnlyItsFeature() throws IOException {
 		int dynamics = tracedToDynamics("dynamics");
 		assertEquals(dynamics, tracedToDynamics("dynamics_indent"), "re-indented");
-		assumeTrue(LilyEccoTransformer.MUSICAL_TOKENS && lymusicRoot() != null,
-				"implicit durations and \\relative anchors need -Decco.lilypond.musicalTokens=true and LYPYTHON");
+		assumeTrue(LilyEccoTransformer.MUSICAL_TOKENS && Lymusic.available(),
+				"implicit durations and \\relative anchors need -Decco.lilypond.musicalTokens=true and lymodel");
 		assertEquals(dynamics, tracedToDynamics("dynamics_durations"), "durations left implicit");
 		assertEquals(dynamics, tracedToDynamics("dynamics_relative"), "another \\relative anchor");
 	}
@@ -85,27 +84,5 @@ public class LilypondRespelledVariantsTest {
 	private static void commit(EccoService service, Path dir, String configuration) {
 		service.setBaseDir(dir);
 		service.commit(dir.getFileName().toString(), configuration);
-	}
-
-	static Path lymusicRoot() {
-		String root = System.getenv("LYPYTHON");
-		if (root == null || root.isBlank()) {
-			return null;
-		}
-		Path path = Path.of(root);
-		return Files.exists(path.resolve("verify").resolve("lymusic.py")) ? path : null;
-	}
-
-	static void assertSameMusic(Path lymusic, Path expected, Path actual, String aspects, String what)
-			throws IOException, InterruptedException {
-		Process process = new ProcessBuilder("python3", "-m", "verify.lymusic", expected.toString(), actual.toString(),
-				"--aspects", aspects)
-				.directory(lymusic.toFile())
-				.redirectErrorStream(true)
-				.start();
-		String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-		int exit = process.waitFor();
-		assertTrue(exit == 0 || exit == 1, () -> "lymusic failed for " + what + ":\n" + output);
-		assertEquals(0, exit, () -> "music differs for " + what + " (" + aspects + "):\n" + output);
 	}
 }
