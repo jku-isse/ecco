@@ -64,6 +64,7 @@ public class LilypondRespelledVariantsTest {
 	@Test
 	@Timeout(300)
 	public void aRespelledVariantTracesOnlyItsFeature() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		int dynamics = tracedToDynamics("dynamics");
 		assertEquals(dynamics, tracedToDynamics("dynamics_indent"), "re-indented");
 		assumeTrue(LilypondTraceMeasure.musicalTokens() && Lymusic.available(),

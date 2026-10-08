@@ -13,6 +13,7 @@ import java.util.Properties;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * A repository reads LilyPond the way it was created to (.ecco/.settings): musical tokens in a new
@@ -46,6 +47,7 @@ public class LilypondRepositorySettingsTest {
 	@Test
 	@Timeout(120)
 	public void aRepositoryWithoutSettingsKeepsPlainTokens() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
 		Path repositoryDir = Files.createTempDirectory("lilypond-old").resolve(".ecco");
 		EccoService service = new EccoService();
 		service.setRepositoryDir(repositoryDir);

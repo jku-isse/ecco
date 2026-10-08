@@ -17,14 +17,23 @@ f.close()
 # note, rest and chord end is ONE token - pitch, octave marks, accidental marks, duration, dots,
 # scaling - and carries what it means however it is spelled (absolute pitch, written-out
 # duration), from lymodel's lybar: the lilypond-idea-plugin's python/ directory, from LYPYTHON
-# when that names one, else installed (pip install <plugin repo>/python). Without lymodel, or
-# when it cannot pair this file's notes, tokens stay as they were and go by their text.
+# when that names one, else installed (pip install <plugin repo>/python). Without lymodel the
+# file is not read at all: plain tokens in a musical repository would differ from every token
+# committed with musical ones, and silently so. A file whose notes lymodel cannot pair (\fixed,
+# say) keeps plain tokens - the same ones in every commit.
 meanings = {}
 if os.environ.get("ECCO_LILYPOND_MUSICAL_TOKENS"):
     if os.environ.get("LYPYTHON"):
         sys.path.insert(0, os.environ["LYPYTHON"])
     try:
         from lymodel.lybar.normalize import note_values
+    except ImportError as e:
+        print("This repository reads LilyPond with musical tokens (lilypond.musicalTokens=true in its\n"
+              ".ecco/.settings), which need lymodel: %s.\n"
+              "Install it into the python that runs parce (python -m pip install <lilypond-idea-plugin>/python)\n"
+              "or set LYPYTHON to that python/ directory." % e, file=sys.stderr)
+        sys.exit(3)
+    try:
         meanings = note_values(s)
     except Exception as e:
         print("no musical tokens: %s" % e, file=sys.stderr)

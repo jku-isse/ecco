@@ -18,6 +18,14 @@ final class LilypondTraceMeasure {
 		return Boolean.parseBoolean(System.getProperty("ecco.lilypond.musicalTokens", "true"));
 	}
 
+	/** Whether this machine can read such a repository: a musical one fails without lymodel, by design. */
+	static boolean readable() {
+		return !musicalTokens() || Lymusic.available();
+	}
+
+	static final String UNREADABLE = "a repository with musical tokens (the default) " + Lymusic.NEEDS
+			+ " - or run with -Decco.lilypond.musicalTokens=false";
+
 	/** Tokens in traces whose condition mentions [feature], as "condition: token" lines. */
 	static List<String> tokensTracedTo(EccoService service, String feature) {
 		List<String> out = new ArrayList<>();

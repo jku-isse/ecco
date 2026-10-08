@@ -179,7 +179,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | C++ | `*.cpp`, `*.hpp` (and `*.c`, `*.h` after the C adapter) | lines, grouped by namespace, class, enum and function; like the C adapter otherwise. Repositories committed with its first version (which reordered files and dropped comments, namespaces, classes and `#if` directives) can be checked out but not committed to |
 | TypeScript | `*.ts` | statements and blocks; parsed with the TypeScript compiler running in an embedded Node.js (Javet) |
 | Python | `*.py`, `*.ipynb`, `*.json` | Python syntax tree (libcst), notebook cells, JSON values. **Needs `python` 3 with the modules `libcst` and `py4j` on the `PATH`** |
-| LilyPond | `*.ly`, `*.ily` | LilyPond tokens. **Needs `python` 3 with the module `parce`**; rendering scores in the GUI needs LilyPond (see [its README](adapter/lilypond/README.md)) |
+| LilyPond | `*.ly`, `*.ily` | LilyPond tokens; in a repository created since musical tokens (the default), a note, rest or chord end is one token that goes by the music it means, however it is spelled. **Needs `python` 3 with the module `parce`, and for musical tokens lymodel, the lilypond-idea-plugin's `python/` package** (`python -m pip install <lilypond-idea-plugin>/python`, or `LYPYTHON` set to that directory); rendering scores in the GUI needs LilyPond (see [its README](adapter/lilypond/README.md)) |
 | Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels |
 | File | everything else | whole files (binary) |
 
@@ -207,7 +207,7 @@ The architecture is drawn in [`doc/ecco-architecture.drawio`](doc/ecco-architect
 ## Development
 
 * Open the project in IntelliJ IDEA (`File > Open`), which imports the Gradle build.
-* `./gradlew build` runs all tests. Tests that need Python with `libcst` (Python adapter) are skipped without it; the LilyPond tests need `parce`.
+* `./gradlew build` runs all tests. Tests that need Python with `libcst` (Python adapter) are skipped without it; the LilyPond tests need `parce`, and those comparing music or using musical tokens are skipped without `lymodel`.
 * Dependency versions are kept in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 * See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
