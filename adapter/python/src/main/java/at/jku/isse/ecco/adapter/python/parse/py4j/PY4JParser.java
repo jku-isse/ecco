@@ -1,7 +1,10 @@
 package at.jku.isse.ecco.adapter.python.parse.py4j;
 
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.PythonFinder;
 import at.jku.isse.ecco.adapter.python.PythonParser;
 import at.jku.isse.ecco.adapter.python.PythonPlugin;
+import at.jku.isse.ecco.service.AdapterPreferences;
 import py4j.GatewayServerListener;
 import py4j.Py4JServerConnection;
 
@@ -89,9 +92,25 @@ public abstract class PY4JParser implements PythonParser {
     /** Name of the environment variable that tells the script the port of this parser's gateway. */
     public static final String PORT_VARIABLE = "ECCO_PY4J_PORT";
 
-    /** {@code python -B <script> <arguments>}, told the port of this parser's gateway. */
+    /** What the scripts import. */
+    static final List<String> MODULES = List.of("libcst", "py4j");
+
+    /**
+     * The python the scripts run with: the one set in Preferences, else the first of python, python3
+     * and the usual install locations that imports libcst and py4j (see {@link PythonFinder}).
+     *
+     * @throws EccoException naming every python tried and what it lacks, when none will do
+     */
+    public static String python() {
+        return PythonFinder.find(AdapterPreferences.getPythonAdapterPython(), MODULES, null,
+                "reads and writes Python files", "Install what is missing into one of them"
+                        + " (python -m pip install libcst py4j), or set the Python adapter's Python under Preferences > Plugins.");
+    }
+
+    /** {@code python -B <script> <arguments>} with {@link #python()}, told the port of this parser's gateway. */
     protected ProcessBuilder pythonProcess(String... arguments) {
-        List<String> command = new ArrayList<>(List.of("python", "-B", pythonScript));
+        String python = python();
+        List<String> command = new ArrayList<>(List.of(python, "-B", pythonScript));
         command.addAll(List.of(arguments));
         ProcessBuilder builder = new ProcessBuilder(command);
         builder.environment().put(PORT_VARIABLE, String.valueOf(gateway.getPort()));

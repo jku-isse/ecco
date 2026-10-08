@@ -10,6 +10,7 @@ import at.jku.isse.ecco.service.LlmPreferences;
 import at.jku.isse.ecco.service.llm.LlmFeatureSuggestionClient;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -178,7 +179,28 @@ public class PreferencesView extends OperationView {
 		Label pluginsNoteLabel = new Label("Deactivated adapters take effect the next time a repository is opened or initialized.");
 		pluginsNoteLabel.setWrapText(true);
 
-		VBox pluginsBox = new VBox(10, listBox, pluginsNoteLabel);
+		// the python the Python adapter runs libcst with (PythonFinder looks for one when blank)
+		Label pythonAdapterLabel = new Label("Python adapter's Python: ");
+		TextField pythonAdapterField = new TextField(AdapterPreferences.getPythonAdapterPython());
+		HBox.setHgrow(pythonAdapterField, Priority.ALWAYS);
+		Button browsePythonAdapterButton = new Button("Browse...");
+		browsePythonAdapterButton.setOnAction(event -> {
+			FileChooser fileChooser = new FileChooser();
+			fileChooser.setTitle("Select Python");
+			preselectExistingParent(pythonAdapterField.getText())
+					.ifPresent(dir -> fileChooser.setInitialDirectory(dir.toFile()));
+			File selected = fileChooser.showOpenDialog(browsePythonAdapterButton.getScene().getWindow());
+			if (selected != null) {
+				pythonAdapterField.setText(selected.getAbsolutePath());
+			}
+		});
+		HBox pythonAdapterBox = new HBox(6, pythonAdapterLabel, pythonAdapterField, browsePythonAdapterButton);
+		pythonAdapterBox.setAlignment(Pos.CENTER_LEFT);
+		Label pythonAdapterNoteLabel = new Label("Only needed if reading .py files fails: a Python with libcst and py4j. " +
+				"Leave blank to look in the usual places.");
+		pythonAdapterNoteLabel.setWrapText(true);
+
+		VBox pluginsBox = new VBox(10, listBox, pluginsNoteLabel, pythonAdapterBox, pythonAdapterNoteLabel);
 		pluginsBox.setPadding(new Insets(10));
 
 		Runnable save = () -> {
@@ -189,6 +211,7 @@ public class PreferencesView extends OperationView {
 				}
 			}
 			AdapterPreferences.setDisabledPluginIds(newDisabledPluginIds);
+			AdapterPreferences.setPythonAdapterPython(pythonAdapterField.getText());
 		};
 
 		return new SectionUi(pluginsBox, save);

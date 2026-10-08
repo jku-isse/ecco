@@ -32,13 +32,7 @@ public class PythonRenderTest {
 
     @BeforeAll
     static void pythonAvailable() {
-        try {
-            Process process = new ProcessBuilder("python", "-c", "import libcst, py4j").redirectErrorStream(true).start();
-            process.getInputStream().readAllBytes();
-            assumeTrue(process.waitFor() == 0, "needs `python` with the libcst and py4j modules on the PATH");
-        } catch (IOException | InterruptedException e) {
-            assumeTrue(false, "needs `python` on the PATH");
-        }
+        assumeTrue(PythonAvailable.check(), PythonAvailable.NEEDS);
     }
 
     private static Node read(String file) {
