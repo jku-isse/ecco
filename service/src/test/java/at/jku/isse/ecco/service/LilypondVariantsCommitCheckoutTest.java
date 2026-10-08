@@ -113,7 +113,7 @@ public class LilypondVariantsCommitCheckoutTest {
 	 * The same round trip, judged by the MUSIC each checkout holds rather than its tokens: notes
 	 * (absolute pitch, start, length, ties), lyrics (each syllable and where it is sung),
 	 * articulations, slurs, dynamics, and clefs/keys/meters - compared by lymusic from the
-	 * lymodel (the lilypond-idea-plugin's python/, verify/lymusic.py), which reads a .ly file the way its MusicXML
+	 * lymodel (the lilypond-idea-plugin's python/, compare/lymusic.py), which reads a .ly file the way its MusicXML
 	 * export does. Unlike the whitespace-stripped text comparison above, it does not care how the
 	 * music is spelled (\relative octave marks, implicit durations, line breaks), only whether it
 	 * is the same music. Taken from LYPYTHON (the plugin's python/ directory, which
