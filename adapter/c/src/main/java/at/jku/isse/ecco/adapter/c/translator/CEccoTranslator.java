@@ -88,6 +88,7 @@ public class CEccoTranslator {
 
     private void addLineNodes(Node.Op parentNode, int startLine, int endLine){
         Location location = null;
+        Node.Op lineNode = null;
         String fileName = this.path.getFileName().toString();
         for(int i = startLine; i <= endLine; i++){
             String codeLine = this.codeLines[i - 1];
@@ -102,35 +103,25 @@ public class CEccoTranslator {
             location.setIndexOfCommit(this.gitCommitIndex);
 
 
-            Node.Op lineNode = this.createNodeWithLocation(lineArtifactData, location);
+            lineNode = this.createNodeWithLocation(lineArtifactData, location);
             this.checkForFeatureTrace(i, lineNode);
             parentNode.addChild(lineNode);
         }
-        if(location != null) {
-            Logger.getAnonymousLogger().info(location.getIndexOfCommit() + " - " + location.getStartLine() + " - " + location.getEndLine() + " - " + location.getCommithash());
+        if(location != null && lineNode != null && !fileName.equals("gitCommitHash.gch")) {
+            //Try to access to associations here?
             WriteFile(fileName + ";" +location.getIndexOfCommit() + ";" + location.getStartLine() + ";" + location.getEndLine() + ";" + location.getCommithash() + ";" + location.getConfigurationString() + "\n");
         }
     }
 
     private void WriteFile(String Line) {
         try {
-            File myObj = new File("C:\\Users\\Dorina\\Desktop\\ThesisWorkFolder\\commithashes.csv");
+            File myObj = new File("D:\\_Thesis\\ECCOCommitDetails.csv");
             if (myObj.createNewFile()) {
                 System.out.println("File created: " + myObj.getName());
-            } else {
-                System.out.println("File already exists.");
             }
             //FileWriter myWriter = new FileWriter("C:\\Users\\Dorina\\Desktop\\ThesisWorkFolder\\commithashes.csv");
             Files.write(Paths.get(myObj.getPath()), Line.getBytes(), StandardOpenOption.APPEND);
 
-            /*for(String commit: commits) {
-                myWriter.write(Integer.toString(counter));
-                myWriter.write(';');
-                counter++;
-                myWriter.write(commit);
-                myWriter.write("\n");
-            }*/
-            System.out.println("Successfully wrote to the file.");
         } catch (IOException e) {
             System.out.println("An error occurred.");
             e.printStackTrace();

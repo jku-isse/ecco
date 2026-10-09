@@ -1473,13 +1473,34 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     // COMMIT //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    private String getGitHash(Path path) {
+        String currentMessage = "";
+        if(Files.exists(Path.of(String.valueOf(this.baseDir), "gitCommitHash.gch")))
+        {
+
+            List<String> line = null;
+            try {
+                line = Files.readAllLines(Path.of(String.valueOf(this.baseDir), "gitCommitHash.gch"));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            String[] splitLine = line.get(0).split(";");
+
+            currentMessage = splitLine[1];
+        }
+        return currentMessage;
+    }
+
     /**
      * Commits the files in the base directory using the configuration string given in file {@link #CONFIG_FILE_NAME} or an empty configuration string if the file does not exist.
      *
      * @return The resulting commit object.
      */
     public synchronized Commit commit() {
-        return this.commit("", getConfigStringFromFile(this.baseDir));
+
+
+        Commit commit = this.commit(getGitHash(this.baseDir), getConfigStringFromFile(this.baseDir));
+        return commit;
     }
 
     /**
@@ -1489,7 +1510,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The resulting commit object.
      */
     public synchronized Commit commit(String commitMessage) {
-        return this.commit(commitMessage, getConfigStringFromFile(this.baseDir));
+        Commit commit =  this.commit(commitMessage, getConfigStringFromFile(this.baseDir));
+        //extractDataFromCommit(commit);
+        return commit;
     }
 
 
@@ -1520,12 +1543,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return The resulting commit object.
      */
     public synchronized Commit commit(String commitMessage, String configurationString, String committer) {
-        return this.commit(commitMessage, this.parseConfigurationString(configurationString), committer);
+        Commit commit = this.commit(commitMessage, this.parseConfigurationString(configurationString), committer);
+        //extractDataFromCommit(commit);
+        return commit;
     }
 
     public synchronized Commit commit(String commitMessage, String configurationString) {
         String username = System.getProperty(KEY_USER_NAME, DEFAULT_USER_NAME);
-        return this.commit(commitMessage, this.parseConfigurationString(configurationString), username);
+        Commit commit = this.commit(commitMessage, this.parseConfigurationString(configurationString), username);
+        //extractDataFromCommit(commit);
+        return commit;
     }
 
     /**
@@ -1576,11 +1603,37 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             LOGGER.info(Repository.class.getName() + ".extract(): " + extractTime +
                     "ms, .transactionStrategy.end(): " + endStrategyTime + "ms");
 
+            extractDataFromCommit(commit);
             return commit;
         } catch (Exception e) {
             this.transactionStrategy.rollback();
             throw new EccoException("Error during commit.", e);
         }
+    }
+
+    public void extractDataFromCommit(Commit commit) throws IOException {
+        //TODO: call create assoc method -- no refresh by gui will be needed
+        Path path = Path.of("D:\\_Thesis\\ECCOAssocData.csv");
+
+        if (!Files.exists(path)) {
+            Files.createFile(path);
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(commit.getCommitMessage() + ";" + commit.getConfiguration() + ";");
+
+        for(Association a : commit.getAssociations()) {
+            sb.append(a.computeCondition() + "-");
+        }
+        //remove comma
+        sb.deleteCharAt(sb.length()-1);
+        sb.append("\n");
+        System.out.println(sb.toString());
+
+        Files.writeString(
+                path,
+                sb.toString(),
+                StandardOpenOption.APPEND
+        );
     }
 
     /**

@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -113,7 +114,6 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 
             this.parseFile(pluginNode, absolutePath, fileConditionContainer, path, configuration);
-            //No need to add location here, it is done in CEccoTranslator at line 76
 
             nodes.add(pluginNode);
         }
@@ -139,6 +139,7 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
         Artifact.Op<PluginArtifactData> pluginArtifact = this.entityFactory.createArtifact(new PluginArtifactData(this.getPluginId(), path));
         Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
         nodes.add(pluginNode);
+
         return pluginNode;
     }
 
@@ -159,6 +160,19 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
                     new InputStreamReader(Files.newInputStream(absolutePath), decoder));
 
             List<String> lineList = reader.lines().toList();
+
+            long replacedCount = lineList.stream()
+                    .flatMapToInt(String::chars)
+                    .filter(ch -> ch == '\uFFFD')
+                    .count();
+
+            Path csvPath = Paths.get("C:\\Users\\Dorina\\Desktop\\ThesisWorkFolder\\replacement-counts.csv");
+            String row =absolutePath + ";" + replacedCount + "\n";
+            Files.writeString(
+                    csvPath,
+                    row,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
             //-----------------------------------------------------------------------------
 
             //List<String> lineList = Files.readAllLines(absolutePath, StandardCharsets.UTF_8);
@@ -173,6 +187,7 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
             parser.removeErrorListeners();
             ParseTree tree = parser.translationUnit();
             translator.translate(tree);
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

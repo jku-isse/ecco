@@ -9,6 +9,7 @@ import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.service.listener.WriteListener;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Location;
 
 import java.io.BufferedWriter;
 import java.io.IOException;

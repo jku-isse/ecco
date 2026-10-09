@@ -129,7 +129,6 @@ public class MainView extends BorderPane implements EccoListener {
 		ArtifactsView artifactsView = new ArtifactsView(eccoService);
 		artifactTab.setContent(artifactsView);
 
-
 		// GRAPHS
 
 		// artifacts graph

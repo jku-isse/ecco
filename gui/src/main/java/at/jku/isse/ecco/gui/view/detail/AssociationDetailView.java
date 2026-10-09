@@ -140,7 +140,6 @@ public class AssociationDetailView extends BorderPane {
 
 		splitPane.getItems().add(modulesTable);
 
-
 		// show nothing initially
 		this.showAssociation(null);
 	}
