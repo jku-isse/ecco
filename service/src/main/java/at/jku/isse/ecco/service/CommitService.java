@@ -70,6 +70,7 @@ class CommitService {
 
             Repository.Op repository = owner.repositoryDao.load();
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
+            owner.adoptRepositorySettings(repository);
             Set<Node.Op> nodes = this.readFiles();
             this.checkCancelled();
             ArrayList<Variant> variants = repository.getVariants();

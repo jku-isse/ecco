@@ -896,6 +896,59 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         }
     }
 
+    /**
+     * Records a plugin's settings, as for a new repository, in a repository that has none of them and
+     * none of that plugin's files: one created before the plugin had settings, or by a service without
+     * the plugin (ecco-rest without LilyPond). Nothing stored can disagree with them, and without them
+     * the plugin would read the repository as one from before - LilyPond refusing every commit. Called
+     * before a commit reads its files.
+     */
+    void adoptRepositorySettings(Repository repository) throws IOException {
+        Path file = this.repositoryDir.resolve(SETTINGS_FILE_NAME);
+        java.util.Properties settings = new java.util.Properties();
+        if (Files.exists(file)) {
+            try (java.io.Reader in = Files.newBufferedReader(file)) {
+                settings.load(in);
+            }
+        }
+        Set<String> pluginsWithFiles = null;
+        boolean adopted = false;
+        for (ArtifactPlugin plugin : this.artifactPlugins) {
+            Map<String, String> own = plugin.newRepositorySettings();
+            if (own.isEmpty() || own.keySet().stream().anyMatch(settings::containsKey))
+                continue;
+            if (pluginsWithFiles == null)
+                pluginsWithFiles = pluginsWithFiles(repository);
+            if (pluginsWithFiles.contains(plugin.getPluginId()))
+                continue;
+            settings.putAll(own);
+            adopted = true;
+        }
+        if (adopted) {
+            try (java.io.Writer out = Files.newBufferedWriter(file)) {
+                settings.store(out, "Chosen when this repository was created, or when it got its first file of a plugin; changing them changes how files are read.");
+            }
+        }
+    }
+
+    /** The plugins whose files the repository holds. */
+    private static Set<String> pluginsWithFiles(Repository repository) {
+        Set<String> plugins = new HashSet<>();
+        Deque<Node> nodes = new ArrayDeque<>();
+        for (Association association : repository.getAssociations())
+            nodes.push(association.getRootNode());
+        while (!nodes.isEmpty()) {
+            Node node = nodes.pop();
+            if (node.getArtifact() != null && node.getArtifact().getData() instanceof PluginArtifactData data) {
+                plugins.add(data.getPluginId());
+                continue;
+            }
+            for (Node child : node.getChildren())
+                nodes.push(child);
+        }
+        return plugins;
+    }
+
     /** A fork's settings are its origin's, or none (the behaviour from before settings) if it has none. */
     private void inheritRepositorySettings(Path originRepositoryDir) {
         try {
