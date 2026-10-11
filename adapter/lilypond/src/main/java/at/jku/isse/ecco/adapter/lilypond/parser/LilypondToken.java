@@ -3,7 +3,8 @@ package at.jku.isse.ecco.adapter.lilypond.parser;
 import java.util.Objects;
 
 /**
- * Represents a wrapper for a Parce-Token (<a href="https://parce.info/tree.html">https://parce.info</a>).
+ * A token read from a LilyPond file (LilypondParser_2.py, lymodel's tree-sitter parse): its text, where it
+ * was read, and its action - a dotted category named as parce named them (Text.Music.Pitch, Keyword.Lyric).
  */
 public class LilypondToken {
     private final int pos;
@@ -11,6 +12,7 @@ public class LilypondToken {
     private final String action;
     private Object transformationData;
     private String meaning;
+    private boolean attached;
 
     /**
      * Returns position of token in original text.
@@ -44,6 +46,16 @@ public class LilypondToken {
     public String getMeaning() { return meaning; }
 
     public void setMeaning(String meaning) { this.meaning = meaning; }
+
+    /**
+     * Whether the token was read directly after the one before it, where the two would read as one
+     * word or number apart from that ({@code c4}, not {@code c 4}; see LilypondFormatter#glue) - so
+     * whether a space between them changes the music.
+     * @return Whether the token is attached to the one before it
+     */
+    public boolean isAttached() { return attached; }
+
+    public void setAttached(boolean attached) { this.attached = attached; }
 
     public LilypondToken(int pos, String text, String action) {
         this.pos = pos;

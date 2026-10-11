@@ -10,6 +10,8 @@ pip install tree-sitter py4j
 pip install <lilypond-idea-plugin>/python
 ```
 A repository created before ECCO read LilyPond this way (one whose `.ecco/.settings` has no
-`lilypond.parser=lybar-1`) was read with parce: its files still check out, but new commits are refused.
+`lilypond.parser`) was read with parce, and one with `lilypond.parser=lybar-1` holds tokens that do not
+record whether they were written together with the one before them: their files still check out, but new
+commits are refused (`lybar-2` is current).
 To use the image viewer (in the graphical interface) one has to set up the path to the lilypond-executable in the `resources\lilypond-config.properties` file.
 To turn off the usage, set `use_lilypond=false` in the `gradle.properties` file.

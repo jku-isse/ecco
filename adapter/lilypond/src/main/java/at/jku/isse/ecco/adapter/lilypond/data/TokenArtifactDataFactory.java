@@ -9,7 +9,7 @@ public class TokenArtifactDataFactory {
     /**
      * Creates new lilypond token artifact data for given token.
      * Will return a {@link DefaultTokenArtifactData} when no specific class is available.
-     * @param token Token from <a href="https://parce.info">parce</a> parser
+     * @param token Token from the parser (LilypondParser_2.py)
      */
     public static DefaultTokenArtifactData getTokenArtifactData(LilypondToken token) {
 

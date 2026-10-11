@@ -50,8 +50,19 @@ public class LilypondPlugin extends ArtifactPlugin {
 	 */
 	public static final String PARSER_SETTING = "lilypond.parser";
 
-	/** The first version of the lymodel parse; a later one that changes tokens gets a number of its own. */
-	public static final String LYBAR_PARSER = "lybar-1";
+	/**
+	 * The lymodel parse, version 2: tokens record whether they were attached to the one before them
+	 * (LilypondToken#isAttached), which is part of what makes two tokens the same. With it came lymodel's
+	 * meanings for {@code q} and for drum notes in {@code \drummode}/{@code \drums} (musical tokens that set
+	 * the running duration). A later version that changes tokens gets a number of its own.
+	 */
+	public static final String LYBAR_PARSER = "lybar-2";
+
+	/**
+	 * The first version of the lymodel parse, whose tokens did not record whether they were attached:
+	 * a repository created with it still checks out, but takes no more commits.
+	 */
+	public static final String LYBAR_1_PARSER = "lybar-1";
 
 	@Override
 	public java.util.Map<String, String> newRepositorySettings() {

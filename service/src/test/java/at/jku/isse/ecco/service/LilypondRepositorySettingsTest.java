@@ -104,6 +104,80 @@ public class LilypondRepositorySettingsTest {
 		}
 	}
 
+	/** As in a repository created before LilyPond had settings, or by a service without the LilyPond plugin. */
+	private static void withoutLilypondSettings(Path repositoryDir) throws IOException {
+		setting(repositoryDir, LilypondPlugin.PARSER_SETTING, null);
+		setting(repositoryDir, LilypondPlugin.MUSICAL_TOKENS_SETTING, null);
+		setting(repositoryDir, LilypondPlugin.VARIABLE_CONTEXTS_SETTING, null);
+	}
+
+	/** It has no LilyPond tokens the parse could fail to match: it takes them as a new repository would. */
+	@Test
+	@Timeout(120)
+	public void aRepositoryWithoutLilypondSettingsOrFilesTakesItsFirstLilypondCommit() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
+		Path repositoryDir = newRepository("lilypond-adopt");
+		withoutLilypondSettings(repositoryDir);
+		Path text = Files.createTempDirectory("lilypond-adopt-text");
+		Files.writeString(text.resolve("notes.txt"), "no music yet\n");
+
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(repositoryDir);
+			service.open();
+			service.setBaseDir(text);
+			service.commit("text", "setup.1");
+
+			service.setBaseDir(V2);
+			service.commit("v2", "setup.1, notes.1");
+		}
+		assertEquals(LilypondPlugin.LYBAR_PARSER, settings(repositoryDir).getProperty(LilypondPlugin.PARSER_SETTING));
+		assertEquals(LilypondTraceMeasure.musicalTokens() ? "true" : "false",
+				settings(repositoryDir).getProperty(LilypondPlugin.MUSICAL_TOKENS_SETTING));
+	}
+
+	@Test
+	@Timeout(120)
+	public void aRepositoryWithLilypondFilesButNoSettingsStillTakesNoCommits() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
+		Path repositoryDir = newRepository("lilypond-no-adopt");
+		withV2(repositoryDir).close();
+		withoutLilypondSettings(repositoryDir);
+
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(repositoryDir);
+			service.open();
+			service.setBaseDir(V2);
+			assertThrows(EccoException.class, () -> service.commit("again", "setup.1, notes.2"));
+		}
+		assertEquals(null, settings(repositoryDir).getProperty(LilypondPlugin.PARSER_SETTING), "nothing adopted");
+	}
+
+	/** lybar-2 tokens record whether they are attached to the one before them, lybar-1 ones do not. */
+	@Test
+	@Timeout(120)
+	public void aRepositoryReadWithTheFirstTreeSitterParseChecksOutButTakesNoCommits() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
+		Path repositoryDir = newRepository("lilypond-lybar-1");
+		withV2(repositoryDir).close();
+		setting(repositoryDir, LilypondPlugin.PARSER_SETTING, LilypondPlugin.LYBAR_1_PARSER);
+
+		try (EccoService service = new EccoService()) {
+			service.setRepositoryDir(repositoryDir);
+			service.open();
+			Path checkout = Files.createTempDirectory("lilypond-lybar-1-checkout");
+			service.setBaseDir(checkout);
+			service.checkout("setup.1, notes.1");
+			assertTrue(Files.size(checkout.resolve("chanson.ly")) > 0, "it checks out");
+
+			service.setBaseDir(V2);
+			int commits = service.getCommits().size();
+			EccoException refused = assertThrows(EccoException.class, () -> service.commit("again", "setup.1, notes.2"));
+			String message = refused.getMessage() + " / " + (refused.getCause() == null ? "" : refused.getCause().getMessage());
+			assertTrue(message.contains("lilypond.parser=lybar-1, now lybar-2"), message);
+			assertEquals(commits, service.getCommits().size(), "nothing is committed");
+		}
+	}
+
 	@Test
 	@Timeout(120)
 	public void aRepositoryWithoutVariableContextsHasNone() throws IOException {

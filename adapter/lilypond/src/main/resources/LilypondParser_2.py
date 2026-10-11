@@ -1,3 +1,4 @@
+import bisect
 import os
 import re
 import sys
@@ -27,6 +28,7 @@ try:
     from tree_sitter import Parser
     from lymodel.lybar.grammar import LANGUAGE
     from lymodel.lilydata import lilypond, words
+    from lymodel.lybar.toklex import tokenize, markup_span
 except ImportError as e:
     print("Reading LilyPond needs lymodel: %s.\n"
           "Install it into the python that runs this script (python -m pip install <lilypond-idea-plugin>/python)\n"
@@ -72,21 +74,52 @@ def text(node):
     return s[start(node):end(node)]
 
 
+# Positions go to ECCO as Java counts them, in UTF-16 units: a character beyond the Basic
+# Multilingual Plane (an emoji) is two
+_astral = [i for i, ch in enumerate(s) if ord(ch) > 0xFFFF]
+
+
+def java(pos):
+    return pos + bisect.bisect_left(_astral, pos) if _astral else pos
+
+
 # --------------------------------------------------------------------------------------------------
 # What goes to ECCO. Whitespace goes before the contexts opened at the next token, as parce sent it.
 
 last = 0      # end of what was sent
+word = None   # a markup word being read: [pos, text] - LilyPond reads markup by words, not by notes
+
+
+def flush():
+    global word
+    if word is not None:
+        ep.addToken(java(word[0]), word[1], "Text")
+        word = None
+
+
+def markup_word(pos, txt):
+    """A piece of a markup word: joined to the piece before it if written right after it - (etc.) is
+    one word, not a slur around a variable."""
+    global word, last
+    if word is not None and word[0] + len(word[1]) == pos:
+        word[1] += txt
+    else:
+        gap(pos)
+        word = [pos, txt]
+    last = pos + len(txt)
 
 
 def gap(pos):
     """Sends what lies between the last token and pos: whitespace, or - never lost - a token."""
     global last
+    flush()
     if pos > last:
-        between = s[last:pos]
-        if between.strip():
-            ep.addToken(last, between, "Text")
-        else:
-            ep.addWhitespace(last, between)
+        # what tree-sitter left out (an error): its words as tokens, its line breaks as line breaks
+        for m in re.finditer(r"\s+|\S+", s[last:pos]):
+            if m.group(0).isspace():
+                ep.addWhitespace(java(last + m.start()), m.group(0))
+            else:
+                ep.addToken(java(last + m.start()), m.group(0), "Text")
         last = pos
 
 
@@ -97,17 +130,20 @@ def push(pos, *names):
 
 
 def pop(levels):
+    flush()
     if levels:
         ep.popContext(-levels)
 
 
 def token(pos, txt, action, meaning=None):
     global last
+    if not txt:
+        return      # an empty file, or what tree-sitter supposes missing (the } of `{ c`): nothing written
     gap(pos)
     if meaning is None:
-        ep.addToken(pos, txt, action)
+        ep.addToken(java(pos), txt, action)
     else:
-        ep.addToken(pos, txt, action, meaning)
+        ep.addToken(java(pos), txt, action, meaning)
     last = pos + len(txt)
 
 
@@ -164,6 +200,9 @@ LEAVES = {
     (",", "scheme_unquote"): "Delimiter.Scheme.Quote",
     ("scheme_boolean", None): "Literal.Number.Boolean",
     ("scheme_symbol", None): "Name",
+    ("scheme_character", None): "Literal.Symbol.Character",
+    ("#(", "scheme_vector"): "Delimiter.OpenParen",
+    (")", "scheme_vector"): "Delimiter.CloseParen",
     ("#{", None): "Delimiter.Bracket.LilyPond.Start",
     ("#}", None): "Delimiter.Bracket.LilyPond.End",
     ("decimal_number", None): "Literal.Number.Float",
@@ -190,8 +229,91 @@ def in_call(node, names):
     return False
 
 
+# Where markup and drum notes are, as spans of the text: tree-sitter's tree is flat there - in
+# `\markup \bold { a }` the { } is no child of the \markup, nor in `\drums { bd }` of the \drums.
+
+def merged(spans):
+    out = []
+    for a, b in sorted(spans):
+        if out and a <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], b))
+        else:
+            out.append((a, b))
+    return out
+
+
+def markup_spans():
+    r"""A \markup or \markuplist with its arguments, as far as lymodel finds them (by each markup
+    command's number of arguments)."""
+    toks = tokenize(s)
+    return merged((t.pos, toks[markup_span(toks, i)].end) for i, t in enumerate(toks)
+                  if str(t) in ("\\markup", "\\markuplist"))
+
+
+def argument_after(node):
+    r"""The music written after node: its next sibling, or its parent's - past a \with { }."""
+    while node is not None and node.next_sibling is None:
+        node = node.parent
+    arg = node.next_sibling if node is not None else None
+    if arg is not None and arg.type == "escaped_word" and text(arg) == "\\with":
+        arg = arg.next_sibling
+        if arg is not None:
+            arg = argument_after(arg)
+    return arg
+
+
+def mode_spans(words):
+    r"""The music after one of [words]: \drummode and \drums (its notes are drums), \chordmode and \chords."""
+    spans = []
+    stack = [tree.root_node]
+    while stack:
+        n = stack.pop()
+        if n.type == "escaped_word" and text(n) in words:
+            arg = argument_after(n)
+            if arg is not None:
+                spans.append((start(arg), end(arg)))
+        stack.extend(n.children)
+    return merged(spans)
+
+
+# what is markup however tree-sitter read it (as notes, slurs, variables); not markup commands,
+# strings, Scheme, braces, comments
+MARKUP_STRUCTURE = {"escaped_word", "string", "embedded_scheme", "expression_block", "parallel_music", "comment",
+                    "scheme_comment", "{", "}", "<<", ">>", "#{", "#}", "music_call", "lyrics_call", "chord"}
+
+
+def markup_text(node):
+    if node.type in MARKUP_STRUCTURE or not in_markup(node):
+        return False
+    p = node.parent
+    while p is not None:
+        if p.type == "embedded_scheme":
+            return False
+        p = p.parent
+    stack = list(node.children)
+    while stack:
+        n = stack.pop()
+        if n.type in MARKUP_STRUCTURE:
+            return False
+        stack.extend(n.children)
+    return True
+
+
+def within(spans, node):
+    i = bisect.bisect_right(spans, (start(node), float("inf"))) - 1
+    return i >= 0 and spans[i][0] <= start(node) < spans[i][1]
+
+
 def in_markup(node):
-    return in_call(node, MARKUP_KEYWORDS)
+    return within(MARKUP, node)
+
+
+def in_drums(node):
+    return within(DRUMS, node)
+
+
+def in_chords(node):
+    return within(CHORDS, node)
 
 
 def in_block(node):
@@ -272,7 +394,7 @@ def symbol(node):
     if parent == "pitch":
         if in_markup(node):
             return "Text"
-        if in_call(node, ("drummode", "drums")):
+        if in_drums(node):
             return "Text.Music.Pitch.Drum"
         before = previous_word(node)
         if before == "\\repeat":
@@ -280,7 +402,8 @@ def symbol(node):
         if before == "\\clef":
             return "Name.Symbol"
         if word not in NOTE_NAMES:
-            return "Name.Variable"
+            # in \chordmode, what follows a chord's : (c:m7 - tree-sitter knows no chord mode)
+            return "Text" if in_chords(node) else "Name.Variable"
         return "Text.Music.Rest" if word in RESTS else "Text.Music.Pitch"
     if parent == "music_call":
         return "Text.Music.Pitch"     # \relative c'' - the reference pitch
@@ -345,6 +468,8 @@ def previous_word(node):
 def punctuation(node):
     t = text(node)
     parent = node.parent.type if node.parent is not None else ""
+    if t == ":":
+        return "Delimiter.Separator.Chord"      # c4:32 (a tremolo), c:m7 (a chord's steps)
     if parent in ("post_event", "punctuation"):
         if t in SPANNERS:
             return SPANNERS[t]
@@ -370,6 +495,8 @@ def punctuation(node):
 
 def number(node):
     parent = node.parent.type if node.parent is not None else ""
+    if node.prev_sibling is not None and text(node.prev_sibling) == ":":
+        return "Literal.Number"     # c4:32, c:7
     if parent in ("post_event",):
         return "Literal.Number.Fingering"
     prev = node.prev_sibling
@@ -479,7 +606,7 @@ def contexts_of_value(node):
             return ["LilyPond.lyriclist"]
         if parent is not None and parent.type == "context_modification" or context_keyword(node):
             return []
-        if in_call(node, ("drummode", "drums")):
+        if in_drums(node):
             return ["LilyPond.drumlist"]
         return ["LilyPond.musiclist"]
     if t == "string":
@@ -566,11 +693,17 @@ def leaf(node):
 
 
 def walk(node):
+    if markup_text(node):
+        for m in re.finditer(r"\S+", text(node)):
+            markup_word(start(node) + m.start(), m.group(0))
+        return
     names = contexts(node)
     if names:
         push(start(node), *names)
     t = node.type
-    if t in ("string", "scheme_string", "scheme_number"):
+    if t == "scheme_keyword":
+        token(start(node), text(node), "Literal.Symbol.Keyword")      # #:kw, one word
+    elif t in ("string", "scheme_string", "scheme_number"):
         # one token, a number however it is signed: as parce's sign the writer kept the next word
         # from it (#-3b)
         token(start(node), text(node), "Literal.String" if t != "scheme_number" else "Literal.Number.Decimal")
@@ -644,5 +777,9 @@ def walk(node):
         pop(len(names))
 
 
+MARKUP = markup_spans()
+DRUMS = mode_spans(("\\drummode", "\\drums"))
+CHORDS = mode_spans(("\\chordmode", "\\chords"))
 walk(tree.root_node)
+flush()
 gap(len(s))

@@ -12,6 +12,8 @@ public class DefaultTokenArtifactData implements ArtifactData {
     private final String token;
     private final String action;
     private final String meaning;
+    // null in tokens stored before lybar-2 (Java serialization leaves a field it does not find null)
+    private final Boolean attached;
 
     public DefaultTokenArtifactData(LilypondToken token)
     {
@@ -19,6 +21,7 @@ public class DefaultTokenArtifactData implements ArtifactData {
         this.token = token.getText();
         this.action = token.getAction();
         this.meaning = token.getMeaning();
+        this.attached = token.isAttached();
     }
 
     /**
@@ -36,7 +39,7 @@ public class DefaultTokenArtifactData implements ArtifactData {
     }
 
     /**
-     * Returns action of Parce token.
+     * Returns the token's action: its category, as the parser sends it (see LilypondToken).
      * @return Action of token
      */
     public String getAction() {
@@ -74,17 +77,35 @@ public class DefaultTokenArtifactData implements ArtifactData {
         return this.meaning;
     }
 
+    /**
+     * Whether the token was read directly after the one before it, where the two would otherwise read
+     * as one word or number (see LilypondToken#isAttached), or null for a token stored before lybar-2,
+     * which did not record it. Part of what makes two tokens the same: {@code c4} and {@code c 4} are
+     * other music.
+     * @return Whether the token is attached to the one before it, or null if unknown
+     */
+    public Boolean getAttached() {
+        return this.attached;
+    }
+
+    private boolean attached() {
+        return Boolean.TRUE.equals(this.attached);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DefaultTokenArtifactData that = (DefaultTokenArtifactData) o;
         return identity().equals(that.identity())
-                && action.equals(that.action);
+                && action.equals(that.action)
+                && attached() == that.attached();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(identity(), action);
+        // unchanged for tokens that are not attached
+        int hash = Objects.hash(identity(), action);
+        return attached() ? 31 * hash + 1 : hash;
     }
 }

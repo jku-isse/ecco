@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
+import at.jku.isse.ecco.adapter.lilypond.LilypondFormatter;
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
 import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
@@ -16,6 +17,10 @@ public class EntryPoint {
     private int depth;
     private int maxDepth;
     private int nNodes;
+    // the token read last, where it ended (in UTF-16 units, like the positions the script sends), for
+    // LilypondToken#isAttached; null after a line break
+    private String lastText;
+    private int lastEnd;
 
     public EntryPoint() {
         root = new LilypondNode<>("ROOT", null);
@@ -28,6 +33,8 @@ public class EntryPoint {
         depth = 0;
         maxDepth = 0;
         nNodes = 0;
+        lastText = null;
+        lastEnd = -1;
     }
 
     public int getNodesCount() {
@@ -47,6 +54,9 @@ public class EntryPoint {
 
     public void addToken(int pos, String text, String action) {
         LilypondToken t = new LilypondToken(pos, text, action);
+        t.setAttached(lastText != null && pos == lastEnd && LilypondFormatter.glue(lastText, text));
+        lastText = text;
+        lastEnd = pos + text.length();
         current = current.append(t.getAction(), t, depth);
         nNodes++;
         LOGGER.log(Level.FINER, "added token ([{0}] \"{1}\", depth={2})",
@@ -64,6 +74,7 @@ public class EntryPoint {
 
         String[] lines = text.split("\\n", -1);
         if (lines.length > 1) {
+            lastText = null;
             LilypondToken t = new LilypondToken(pos,
                     "\n".repeat(lines.length - 1).concat(lines[lines.length - 1]),
                     LilypondReader.PARSER_ACTION_LINEBREAK);

@@ -73,8 +73,8 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     /**
-     * Whether this repository can be read: one created since lymodel's tree-sitter parse
-     * ({@code lilypond.parser=lybar-1}), or none at all (tests) - see {@link LilypondPlugin#PARSER_SETTING}.
+     * Whether this repository can be read: one created with the current version of lymodel's tree-sitter
+     * parse ({@code lilypond.parser=lybar-2}), or none at all (tests) - see {@link LilypondPlugin#PARSER_SETTING}.
      */
     boolean readable() {
         return this.repositoryDir == null
@@ -143,11 +143,18 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
         Set<Node.Op> nodes = new HashSet<>();
 
         if (!this.readable()) {
-            throw new EccoException("This repository was created when ECCO read LilyPond with parce (its .ecco/.settings"
-                    + " has no " + LilypondPlugin.PARSER_SETTING + "=" + LilypondPlugin.LYBAR_PARSER + "). Its files can still"
-                    + " be checked out, but no more committed: ECCO now reads LilyPond with lymodel's tree-sitter parse,"
-                    + " whose tokens would not match the ones this repository holds. Create a new repository and commit"
-                    + " the variants again.");
+            boolean lybar1 = LilypondPlugin.LYBAR_1_PARSER.equals(this.stringSetting(LilypondPlugin.PARSER_SETTING, null));
+            throw new EccoException((lybar1
+                    ? "This repository was created with the first version of ECCO's tree-sitter LilyPond parse (its"
+                    + " .ecco/.settings has " + LilypondPlugin.PARSER_SETTING + "=" + LilypondPlugin.LYBAR_1_PARSER + ", now "
+                    + LilypondPlugin.LYBAR_PARSER + "). Its files can still be checked out, but no more committed: tokens now"
+                    + " record whether they are written together with the one before them, so they would not match the ones"
+                    + " this repository holds."
+                    : "This repository was created when ECCO read LilyPond with parce (its .ecco/.settings has no "
+                    + LilypondPlugin.PARSER_SETTING + "=" + LilypondPlugin.LYBAR_PARSER + "). Its files can still be checked"
+                    + " out, but no more committed: ECCO now reads LilyPond with lymodel's tree-sitter parse, whose tokens"
+                    + " would not match the ones this repository holds.")
+                    + " Create a new repository and commit the variants again.");
         }
         LilypondParser<LilypondToken> parser = ParserFactory.getParser();
         boolean musical = this.musicalTokens();

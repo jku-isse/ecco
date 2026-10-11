@@ -5,7 +5,8 @@ import at.jku.isse.ecco.artifact.ArtifactData;
 import java.util.Objects;
 
 /**
- * Represents a base class for a Lilypond context (lexicon in python <a href="https://parce.info">parce</a> parser).
+ * Represents a base class for a Lilypond context: a stretch of a file the parser sends as one, a { } list,
+ * a markup, a string (named as parce named its lexicons).
  */
 public abstract class BaseContextArtifactData implements ArtifactData {
 
@@ -18,7 +19,7 @@ public abstract class BaseContextArtifactData implements ArtifactData {
     }
 
     /**
-     * Returns the name of the context (Lilypond parce lexicon path).
+     * Returns the name of the context (LilyPond.musiclist, say).
      * @return Text of context
      */
     public String getContext() {

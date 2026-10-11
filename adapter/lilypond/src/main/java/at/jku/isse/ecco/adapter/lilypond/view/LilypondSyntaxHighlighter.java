@@ -6,16 +6,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Maps parce/lilypond lexer token "actions" (e.g. "Text.Music.Pitch", "Keyword.Lyric",
- * "Name.Builtin", "Name.Function.Markup") to a text style for syntax highlighting in
- * {@link LilypondCodeViewer}. Parce assigns each token a dotted, Pygments-like hierarchical category (see
- * {@code LilypondParser_1.py} and {@code parce.lang.lilypond}).
+ * Maps token "actions" (e.g. "Text.Music.Pitch", "Keyword.Lyric", "Name.Builtin",
+ * "Name.Function.Markup") to a text style for syntax highlighting in {@link LilypondCodeViewer}. Each
+ * token has a dotted, Pygments-like hierarchical category, named as parce named them (ECCO read
+ * LilyPond with parce before lymodel's tree-sitter parse, {@code LilypondParser_2.py}).
  * <p>
  * The style groups and colors below are carried over from python-ly's {@code ly.colorize}
  * module (the {@code default_mapping()}/{@code default_scheme}, historically Frescobaldi's own
- * default LilyPond highlighting scheme, before it switched to parce), re-targeted at parce's
- * action categories instead of python-ly's own {@code ly.lex.lilypond} token classes so the
- * existing parce-based parsing pipeline doesn't need to change.
+ * default LilyPond highlighting scheme, before it switched to parce), re-targeted at these
+ * action categories instead of python-ly's own {@code ly.lex.lilypond} token classes.
  * <p>
  * A token's action is first matched against {@link #RULES} by longest matching prefix (e.g.
  * "Name.Builtin.Dynamic" matches the "Name.Builtin.Dynamic" rule rather than the more general

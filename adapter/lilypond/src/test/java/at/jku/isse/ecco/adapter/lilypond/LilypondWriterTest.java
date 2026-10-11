@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -123,16 +124,52 @@ public class LilypondWriterTest {
 		return new DefaultTokenArtifactData(new LilypondToken(pos, text, action));
 	}
 
+	/** Read right after the token before it (LilypondToken#isAttached), as lybar-2 records it. */
+	private static DefaultTokenArtifactData attached(int pos, String text, String action) {
+		LilypondToken token = new LilypondToken(pos, text, action);
+		token.setAttached(true);
+		return new DefaultTokenArtifactData(token);
+	}
+
+	/** As stored before lybar-2, which did not record whether a token was attached. */
+	private static DefaultTokenArtifactData stored(int pos, String text, String action) throws ReflectiveOperationException {
+		DefaultTokenArtifactData data = at(pos, text, action);
+		java.lang.reflect.Field field = DefaultTokenArtifactData.class.getDeclaredField("attached");
+		field.setAccessible(true);
+		field.set(data, null);
+		return data;
+	}
+
 	@Test
-	void numbersAndSignsAreNeverRunTogether_andWhatWasWrittenTogetherStaysTogether() {
-		// \shp 0 4 was written \shp 04, a2 2 as a22, ^ ^ as ^^ (a marcato)
-		assertTrue(LilypondFormatter.appendSpace(at(5, "0", "Literal.Number"), at(7, "4", "Literal.Number"), "0", "4"));
-		assertTrue(LilypondFormatter.appendSpace(at(0, "a2", "Text.Music.Pitch"), at(3, "2", "Literal.Number.Duration"), "a2", "2"));
-		assertTrue(LilypondFormatter.appendSpace(at(0, "^", "Delimiter.Direction"), at(2, "^", "Delimiter.Direction"), "^", "^"));
-		// written together in the file read: together again (\\=2( , the pieces of 0.1 as parce split them)
-		assertFalse(LilypondFormatter.appendSpace(at(0, "\\=", "Name.Builtin"), at(2, "2", "Literal.Number"), "\\=", "2"));
-		assertFalse(LilypondFormatter.appendSpace(at(0, "0", "Literal.Number.Decimal"), at(1, ".", "Literal.Number.Dot"), "0", "."));
-		// otherwise by the actions, as before: no space before a bar check
+	void whereASpaceIsMusicItIsWrittenAsRead_whereverTheTokensWereRead() {
+		// written apart: never run into one word or number - \shp 0 4 as \shp 04, a2 2 as a22, ^ ^ as ^^
+		// (a marcato), \p e as \pe; the positions they were read at do not count (a token matched in a
+		// later commit keeps the position of the commit that stored it)
+		assertTrue(LilypondFormatter.appendSpace(at(5, "0", "Literal.Number"), at(6, "4", "Literal.Number"), "0", "4"));
+		assertTrue(LilypondFormatter.appendSpace(at(0, "a2", "Text.Music.Pitch"), at(2, "2", "Literal.Number.Duration"), "a2", "2"));
+		assertTrue(LilypondFormatter.appendSpace(at(0, "^", "Delimiter.Direction"), at(1, "^", "Delimiter.Direction"), "^", "^"));
+		assertTrue(LilypondFormatter.appendSpace(at(5, "\\p", "Name.Builtin.Dynamic"), at(7, "e", "Text.Music.Pitch"), "\\p", "e"));
+		// written together: together again, wherever the token before is from
+		assertFalse(LilypondFormatter.appendSpace(at(9, "e", "Text.Music.Pitch"), attached(2, "2", "Literal.Number.Duration"), "e", "2"));
+		assertFalse(LilypondFormatter.appendSpace(at(0, "^", "Delimiter.Direction"), attached(7, "^", "Literal.Character.Script"), "^", "^"));
+		// where no space can join two tokens into one, by the actions: none before a bar check, none after \= (\=2( is a slur with id 2)
 		assertFalse(LilypondFormatter.appendSpace(at(0, "c4", "Text.Music.Pitch"), at(3, "|", "Delimiter.Separator"), "c4", "|"));
+		assertFalse(LilypondFormatter.appendSpace(at(0, "\\=", "Name.Builtin"), at(2, "2", "Literal.Number"), "\\=", "2"));
+	}
+
+	@Test
+	void tokensStoredBeforeLybar2AreWrittenTogetherWhenTheyWereReadTogether() throws ReflectiveOperationException {
+		// \\=2( and the pieces of 0.1 as parce split them
+		assertFalse(LilypondFormatter.appendSpace(stored(0, "\\=", "Name.Builtin"), stored(2, "2", "Literal.Number"), "\\=", "2"));
+		assertFalse(LilypondFormatter.appendSpace(stored(0, "0", "Literal.Number.Decimal"), stored(1, ".", "Literal.Number.Dot"), "0", "."));
+		assertTrue(LilypondFormatter.appendSpace(stored(5, "0", "Literal.Number"), stored(7, "4", "Literal.Number"), "0", "4"));
+	}
+
+	@Test
+	void anAttachedTokenIsOtherMusicThanTheSameTokenApart() {
+		// c4 and c 4 (c, then a note of duration 4 repeating it)
+		assertNotEquals(at(1, "4", "Literal.Number.Duration"), attached(1, "4", "Literal.Number.Duration"));
+		assertEquals(attached(1, "4", "Literal.Number.Duration"), attached(9, "4", "Literal.Number.Duration"));
+		assertEquals(attached(1, "4", "Literal.Number.Duration").hashCode(), attached(9, "4", "Literal.Number.Duration").hashCode());
 	}
 }

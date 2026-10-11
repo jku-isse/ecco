@@ -2,28 +2,37 @@ package at.jku.isse.ecco.adapter.lilypond;
 
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 
-class LilypondFormatter {
+public class LilypondFormatter {
 
     /**
-     * Whether a space goes between [d], written as [text], and [next], written as [nextText]. Two tokens
-     * that were written together in the file they were read from (the one starts where the other ends)
-     * are written together again - \\=2(, ^^, the pieces of a number parce split; two that were not are
-     * never run into one word (\\shp 0 4 was written \\shp 04, a2 2 as a22). Otherwise, by their actions.
+     * Whether a space goes between [d], written as [text], and [next], written as [nextText]. Where the
+     * two would read as one word or number without it, the space is music: [next] is written right
+     * after [d] if it was read right after the token before it ({@code c4}, {@code ^^}), else apart
+     * ({@code a2 2}, not {@code a22}; {@code \\p e}, not {@code \\pe}). Otherwise, by their actions.
+     *
+     * <p>Tokens stored before lybar-2 do not know whether they were attached; for them the positions they
+     * were read at decide (written together if the one started where the other ended). A token matched in
+     * a later commit keeps the position of the commit that stored it, so in a checkout combining commits
+     * that guesses - the reason lybar-2 records it.
      */
     public static boolean appendSpace(DefaultTokenArtifactData d, DefaultTokenArtifactData next, String text, String nextText) {
         if (next != null) {
-            if (next.getPos() == d.getPos() + d.getText().length()) {
-                return false;
-            }
-            if (glue(text, nextText)) {
-                return true;
+            if (next.getAttached() == null) {
+                if (next.getPos() == d.getPos() + d.getText().length()) {
+                    return false;
+                }
+                if (glue(text, nextText)) {
+                    return true;
+                }
+            } else if (glue(text, nextText)) {
+                return !next.getAttached();
             }
         }
         return appendSpace(d, next);
     }
 
     /** Whether [a] followed directly by [b] would read as one word or number: 0 4 as 04, 4. 4 as 4.4, ^ ^ as ^^. */
-    static boolean glue(String a, String b) {
+    public static boolean glue(String a, String b) {
         if (a == null || b == null || a.isEmpty() || b.isEmpty()) {
             return false;
         }
@@ -38,11 +47,17 @@ class LilypondFormatter {
     @SuppressWarnings("RedundantIfStatement")
     public static boolean appendSpace(DefaultTokenArtifactData d, DefaultTokenArtifactData next) {
         String ca = d.getAction();
+        // the id of a slur or phrasing slur goes right after \= (\=2( - apart, lymodel loses the slur)
+        if ("\\=".equals(d.getText())) {
+            return false;
+        }
         if (ca.equals("Delimiter.Operator.Assignment")) {
             return true;
 
         } else if (ca.equals(LilypondReader.PARSER_ACTION_LINEBREAK) ||
                 ca.equals("Delimiter.Separator") ||
+                // c4:32, c:m7, c/e
+                ca.equals("Delimiter.Separator.Chord") ||
                 ca.startsWith("Delimiter.ModeChange.") ||
                 ca.startsWith("Delimiter.Operator.") ||
                 ca.startsWith("Delimiter.Scheme.") ||

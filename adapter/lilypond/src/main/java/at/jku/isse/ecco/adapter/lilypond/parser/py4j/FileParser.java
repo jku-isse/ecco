@@ -116,6 +116,10 @@ public class FileParser implements LilypondParser<LilypondToken> {
 
             if (exitCode == 0) {
                 LOGGER.log(Level.FINE, "The LilyPond parser exited normally, code: {0}, {1}ms", new Object[] { exitCode, (System.nanoTime() - tm) / 1000000 });
+                if (sjErr.length() > 0) {
+                    // read, but not all of it as asked - "no musical tokens: ...", say
+                    LOGGER.log(Level.WARNING, "The LilyPond parser reported for file {0}:\n{1}", new Object[] { path, sjErr });
+                }
                 if (tokenMetric != null) {
                     LilypondNode<LilypondToken> n = Gateway.getInstance().getRoot();
                     while (n != null) {
