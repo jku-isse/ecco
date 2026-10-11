@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Commits the LilyPond variant evolution history under examples/lilypond_variants (see its README)
- * and checks out all six feature combinations, verifying the checked-out dieu.ly matches the
+ * and checks out all six feature combinations, verifying the checked-out chanson.ly matches the
  * original exactly. Exercises the lilypond adapter through EccoService's real commit/checkout flow,
  * unlike adapter/lilypond's own test suite, which drives the adapter's reader/writer/transformer
  * directly rather than the full repository round trip. Mirrors CVariantsCommitCheckoutTest.
@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 public class LilypondVariantsCommitCheckoutTest {
 
 	private static final Path EXAMPLES_DIR = findRepoRoot().resolve("examples").resolve("lilypond_variants");
-	private static final String FILE_NAME = "dieu.ly";
+	private static final String FILE_NAME = "chanson.ly";
 
 	private static final List<String> VARIANT_DIRS = List.of(
 			"v1_setup",
@@ -87,7 +87,7 @@ public class LilypondVariantsCommitCheckoutTest {
 		// markup on existing notes) - should compose without articulation/slurs/dynamics
 		String lyricsOnly = checkout(service, "setup.1, notes.1, lyrics.1");
 		assertTrue(lyricsOnly.contains("\\lyricmode"), "expected lyrics content");
-		assertTrue(lyricsOnly.contains("Dieu! qu'il la fait bon regarder"), "expected lyrics text");
+		assertTrue(lyricsOnly.contains("gra -- ci -- eu -- se"), "expected lyrics text");
 		assertFalse(lyricsOnly.contains("^-"), "articulation should be absent");
 		assertFalse(lyricsOnly.contains("\\mf"), "dynamics should be absent");
 

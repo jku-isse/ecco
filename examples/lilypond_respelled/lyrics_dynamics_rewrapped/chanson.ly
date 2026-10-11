@@ -5,7 +5,7 @@
 #( set-default-paper-size "a4landscape" )
 
 \header {
-  title = "Dieu! qu'il la fait bon regarder!"
+  title = "Chanson"
   poet = "Charles d'Orléans"
   composer = "Claude Debussy"
   tagline = ""

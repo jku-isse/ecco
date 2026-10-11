@@ -94,11 +94,11 @@ public class PartialOrderGraphMetaFieldsReloadRegressionTest {
 
 	private void assertCorrect(String content) {
 		String expected = "pieceDuration = \"duration:90\"\n"
-				+ "pieceTitle = \"Nachtwache II\"\n"
+				+ "pieceTitle = \"Song II\"\n"
 				+ "pieceComposer = \"Johannes Brahms\"\n"
 				+ "pieceSubtitle = \"Aus Funf Gesange\"\n"
 				+ "piecePoet = \"Friedrich Ruckert\"\n"
-				+ "pieceSubject = \"Abendlied\"\n"
+				+ "pieceSubject = \"Subject\"\n"
 				+ "pieceLicense = \"free\"\n"
 				+ "pieceArranger = \"\"\n"
 				+ "pieceVoices = \"SAATTB\"";

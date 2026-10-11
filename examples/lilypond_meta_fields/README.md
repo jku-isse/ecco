@@ -1,7 +1,7 @@
 # LilyPond Metadata Fields Example
 
-Minimal fixture reproducing a real checkout-correctness bug found via a user's real repository
-(originally "nachtwache"): `v1_meta` commits 5 quoted-string metadata fields; `v2_meta_header` adds
+Minimal fixture reproducing a real checkout-correctness bug found via a user's real repository:
+`v1_meta` commits 5 quoted-string metadata fields; `v2_meta_header` adds
 4 more, inserted in the *middle* of the existing fields (matching a real edit - adding title/composer/
 subtitle/poet between an existing duration field and the rest).
 

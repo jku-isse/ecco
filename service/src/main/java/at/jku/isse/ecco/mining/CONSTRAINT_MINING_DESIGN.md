@@ -417,10 +417,10 @@ there's no artifact tree built from one to compare; agreement with `holds()`
 on real committed configurations is the strongest claim testable without
 that wiring existing.
 
-`PresenceConditionMinimizerRealNachtwacheConfigTest` (1 test): same claim,
+`PresenceConditionMinimizerRealChoirConfigTest` (1 test): same claim,
 larger and more realistic input. 8 real configuration strings (27 features:
 SATB choral voices, each with notes/dynamics/markup/lyrics sub-features)
-supplied directly by the maintainer from an actual repository ("nachtwache"),
+supplied directly by the maintainer from an actual repository,
 not invented for this test — a mostly-nested growing chain plus one genuine
 sibling branch (a config that shares a common base with the main chain but
 diverges into a different subset, not comparable either way). File content

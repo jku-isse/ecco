@@ -24,7 +24,7 @@ public class LilypondMovedVoicesTest {
 
 	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples");
 	private static final Path EDITS = ROOT.resolve("lilypond_edits");
-	private static final String FILE_NAME = "dieu.ly";
+	private static final String FILE_NAME = "chanson.ly";
 
 	private static EccoService commitMove() throws IOException {
 		return LilypondTraceMeasure.commitAfter(ROOT.resolve("lilypond_variants"), 3, EDITS.resolve("notes_moved"),

@@ -19,7 +19,7 @@ public class LilypondEditedVariantsTest {
 
 	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples");
 	private static final Path EDITS = ROOT.resolve("lilypond_edits");
-	private static final String FILE_NAME = "dieu.ly";
+	private static final String FILE_NAME = "chanson.ly";
 
 	@Test
 	@Timeout(300)

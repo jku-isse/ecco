@@ -116,11 +116,11 @@ public class AdapterTest {
         System.out.println("END WRITE");
     }
 
-    private static final Path[] DIEU_FILE = new Path[]{Paths.get("input/dieu.ly")};
+    private static final Path[] CHANSON_FILE = new Path[]{Paths.get("input/chanson.ly")};
     @Test(groups = {"parce"})
-    public void DieuWriterTest() {
+    public void ChansonWriterTest() {
         LilypondReader rd = new LilypondReader((new SerEntityFactory()));
-        Set<Node.Op> nodes = rd.read(DATA_DIR, DIEU_FILE);
+        Set<Node.Op> nodes = rd.read(DATA_DIR, CHANSON_FILE);
 
         System.out.println("WRITE");
         LilypondStringWriter lsw = new LilypondStringWriter();

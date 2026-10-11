@@ -1,5 +1,5 @@
 pieceDuration = "duration:90"
-pieceSubject = "Abendlied"
+pieceSubject = "Subject"
 pieceLicense = "free"
 pieceArranger = ""
 pieceVoices = "SAATTB"

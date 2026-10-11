@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Same claim as {@link PresenceConditionMinimizerRealRepoTest} (minimized conditions agree with the
  * real {@code Condition.holds()} on every actually-committed configuration), but against a larger,
  * more realistic feature structure: 8 real configuration strings from an actual repository
- * ("nachtwache", a lilypond piece the maintainer works on -- SATB choral voices, each with
+ * (a lilypond piece the maintainer works on -- SATB choral voices, each with
  * notes/dynamics/markup/lyrics sub-features), rather than a 3-association synthetic toy repo.
  *
  * <p>Content is synthetic (one small file per feature, not the real .ly source, which isn't checked
@@ -34,9 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * names and the 8 configurations' subset/overlap structure are real, supplied directly by the
  * maintainer from their own repository rather than invented for this test.
  */
-public class PresenceConditionMinimizerRealNachtwacheConfigTest {
+public class PresenceConditionMinimizerRealChoirConfigTest {
 
-    // Supplied verbatim by the maintainer from a real "nachtwache" repository; C1 (index 0) is the
+    // Supplied verbatim by the maintainer from a real choral repository; C1 (index 0) is the
     // fullest configuration, C8 (index 7) the smallest. C1..C6+C8 nest strictly (each a proper
     // subset of the next larger one). C7 (index 6) is a genuine sibling branch: a subset of C3
     // (index 2), but not comparable to C4/C5/C6/C8 -- it keeps the soprano dynamics/markup features
@@ -54,8 +54,8 @@ public class PresenceConditionMinimizerRealNachtwacheConfigTest {
 
     @Test
     @Timeout(60)
-    public void minimizedConditions_agreeWithRealHolds_onRealNachtwacheConfigurations() throws IOException {
-        Path workDir = Files.createTempDirectory("minimizer-nachtwache-config-test");
+    public void minimizedConditions_agreeWithRealHolds_onRealChoirConfigurations() throws IOException {
+        Path workDir = Files.createTempDirectory("minimizer-choir-config-test");
         Path repoDir = workDir.resolve(".ecco");
 
         try (EccoService service = new EccoService()) {
@@ -84,7 +84,7 @@ public class PresenceConditionMinimizerRealNachtwacheConfigTest {
                     service.acceptConstraint(suggestion);
                 }
             }
-            assertFalse(hardSuggestions.isEmpty(), "sanity check: expected at least one hard suggestion from real nachtwache-derived configurations");
+            assertFalse(hardSuggestions.isEmpty(), "sanity check: expected at least one hard suggestion from real choir-derived configurations");
 
             Set<String> accepted = AcceptedConstraints.acceptedSignatures(service.getRepository().getConstraints());
             List<ConstraintMiner.Suggestion> acceptedSuggestions = new ArrayList<>();

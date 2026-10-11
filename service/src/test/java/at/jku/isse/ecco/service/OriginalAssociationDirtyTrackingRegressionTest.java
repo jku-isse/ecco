@@ -94,8 +94,8 @@ public class OriginalAssociationDirtyTrackingRegressionTest {
 			service.setBaseDir(checkoutDir);
 			service.checkout("setup.1, notes.1, articulation.1");
 
-			String expected = normalize(Files.readString(EXAMPLES_DIR.resolve("v3_setup_notes_articulation").resolve("dieu.ly"), StandardCharsets.UTF_8));
-			String actual = normalize(Files.readString(checkoutDir.resolve("dieu.ly"), StandardCharsets.UTF_8));
+			String expected = normalize(Files.readString(EXAMPLES_DIR.resolve("v3_setup_notes_articulation").resolve("chanson.ly"), StandardCharsets.UTF_8));
+			String actual = normalize(Files.readString(checkoutDir.resolve("chanson.ly"), StandardCharsets.UTF_8));
 			assertEquals(expected, actual);
 		}
 	}

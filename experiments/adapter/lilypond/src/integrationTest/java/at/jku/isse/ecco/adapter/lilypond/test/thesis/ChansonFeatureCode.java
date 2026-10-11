@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.lilypond.test.thesis;
 
 import java.util.HashSet;
 
-public class DieuFeatureCode {
+public class ChansonFeatureCode {
 
     private final static ConfigurationCodeBuilder ccb;
 
@@ -17,7 +17,7 @@ public class DieuFeatureCode {
                         #(set-default-paper-size "a4landscape")
 
                         \\header {
-                          title = "Dieu! qu'il la fait bon regarder!"
+                          title = "Chanson"
                           poet = "Charles d'Orl\u00E9ans"
                           composer = "Claude Debussy"
                           tagline = ""

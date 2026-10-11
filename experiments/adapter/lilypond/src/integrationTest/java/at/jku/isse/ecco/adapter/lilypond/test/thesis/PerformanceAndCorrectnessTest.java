@@ -133,7 +133,7 @@ public class PerformanceAndCorrectnessTest {
     public static Object[][] serializedNodesPaths() {
         // input path relative to DATA_DIR, repository name and create metrics flag
         return new Object[][] {
-                {DATA_DIR.resolve("input/dieu_nodes").toString(), ".eccoDebussy", 2, true}
+                {DATA_DIR.resolve("input/chanson_nodes").toString(), ".eccoDebussy", 2, true}
                 //,{BASE_DIR.resolve("input/sulzer_nodes").toString(), ".eccoSulzer", 2, true}
         };
     }
@@ -145,7 +145,7 @@ public class PerformanceAndCorrectnessTest {
         return new Object[][] {
                 // name, filename, repository, config, Lily_searchPaths[]
                 {"AllFeatures",
-                        "factusestrepente.ly",
+                        "large_score.ly",
                         repo,
                         """
 partoneSopOneSlurs.1, partoneTenOneLyrics.1, parttwoSopTwoNotes.1, scorePartOne.1, parttwoSopTwoBeams.1,
@@ -163,7 +163,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
                         null}/*,
 
                 {"PartTwo",
-                        "factusestrepente.ly",
+                        "large_score.ly",
                         repo,
                         """
 header.1, scorePartTwo.1,
@@ -173,12 +173,12 @@ parttwoSopOneSlurs.1, parttwoSopOneBeams.1, parttwoSopTwoNotes.1,
 parttwoSopTwoLyrics.1, parttwoSopTwoArticulations.1,
 parttwoSopTwoDynamics.1, parttwoSopTwoSlurs.1, parttwoSopTwoBeams.1""",
                         null},
-                {"Test","factusestrepente.ly",repo,
+                {"Test","large_score.ly",repo,
                         "scorePartTwo.1, header.1, parttwoSopOneNotes.1, partoneTenOneDynamics.1, scorePartOne.1, partoneSopTwoNotes.1, partoneSopTwoDynamics.1, partoneTenOneNotes.1, parttwoSopOneDynamics.1",
                         null
                 }
                 {"SopranOne",
-                        "factusestrepente.ly",
+                        "large_score.ly",
                         repo,
                         """
 header.1, scorePartOne.1, scorePartTwo.1,
@@ -189,7 +189,7 @@ parttwoSopOneNDynamics.1, parttwoSopOneNSlurs.1, parttwoSopOneNBeams.1""",
                         null},
 
                 {"NotesOnly",
-                        "factusestrepente.ly",
+                        "large_score.ly",
                         repo,
                         """
 partoneSopOneSlurs.1, parttwoSopTwoNotes.1, scorePartOne.1, parttwoSopTwoBeams.1,
@@ -385,7 +385,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             }
             try {
                 Path repo = dest.resolve(String.format("%s_%02d", repoName, run));
-                cri = runCompilationCheck(run, configs, repo, maxOrder, "dieu.ly", results);
+                cri = runCompilationCheck(run, configs, repo, maxOrder, "chanson.ly", results);
                 if (adaptive) {
                     // try to check uncompilable configs which are fixed with higher order
                     int i = 0;
@@ -398,7 +398,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
                             ((Repository.Op)service.getRepository()).setMaxOrder(maxOrder + 1);
                             System.out.println("raised max order to " + (maxOrder + 1) + " for config " + cri.uncompilable.get(i));
 
-                            IsCompilableCheckoutTask t = new IsCompilableCheckoutTask(service, "dieu.ly",
+                            IsCompilableCheckoutTask t = new IsCompilableCheckoutTask(service, "chanson.ly",
                                     cri.uncompilable.get(i), configs.get(cri.uncompilable.get(i)));
                             CompilationInfo ci = t.call();
                             if (ci.compilable) {
@@ -435,7 +435,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
                         break;
                     }
 
-                    createFixAndCommit(newRepo, configs.get(nextFix), dest.resolve("fix/dieu.ly"), maxOrder);
+                    createFixAndCommit(newRepo, configs.get(nextFix), dest.resolve("fix/chanson.ly"), maxOrder);
                 }
 
             } catch (InterruptedException | IOException e) {
@@ -502,17 +502,17 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     public static Object[][] readWriteSamples() {
         return new Object[][] {
             // in path, includes path, out path
-            { "F:/Uni/samples/abidewithme.ly", "F:/Uni/samples/", "F:/Uni/samples/out/" },
-            { "F:/Uni/samples/assumptaestmaria.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            { "F:/Uni/samples/caligaveruntoculimei.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            { "F:/Uni/samples/darthula.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            { "F:/Uni/samples/forthelongesttimebaumgartner.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            { "F:/Uni/samples/litaney.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            { "F:/Uni/samples/mendelssohn_trio.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            { "F:/Uni/samples/nachtwacheeins.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            { "F:/Uni/samples/nessundorma.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
-            //{ "F:/Uni/samples/Oblivion2.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"}, // missing "november2.ly"
-            { "F:/Uni/samples/verleihunsfrieden.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"}
+            { "F:/Uni/samples/sample01.ly", "F:/Uni/samples/", "F:/Uni/samples/out/" },
+            { "F:/Uni/samples/sample02.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            { "F:/Uni/samples/sample03.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            { "F:/Uni/samples/sample04.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            { "F:/Uni/samples/sample05.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            { "F:/Uni/samples/sample06.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            { "F:/Uni/samples/sample07.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            { "F:/Uni/samples/sample08.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            { "F:/Uni/samples/sample09.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"},
+            //{ "F:/Uni/samples/sample10.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"}, // missing an included file
+            { "F:/Uni/samples/sample11.ly", "F:/Uni/samples/", "F:/Uni/samples/out/"}
         };
     }
 
@@ -714,7 +714,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     public void findValidDebussyCompositions() {
         // open repository
         EccoService service = new EccoService();
-        String filename = "dieu.ly";
+        String filename = "chanson.ly";
 
         //open Repo
         Path repo = BASE_DIR.resolve(".eccoDebussy");
@@ -812,7 +812,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
                 Files.delete(file);
             }
             try (BufferedWriter wr = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE)) {
-                wr.write(DieuFeatureCode.getCode(features));
+                wr.write(ChansonFeatureCode.getCode(features));
             }
 
             file = file.getParent().resolve(".config");
@@ -841,9 +841,9 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     public static Object[][] configurationsFiles() {
         // run, repository, resultsFile
         return new Object[][] {
-                //{1, "configurations.txt", ".eccoSulzer", "factusestrepente.ly", "results.csv"}
-                //{9, "debussyConfigurations.txt", ".eccoDebStep", "dieu.ly", "debstep_results.csv"}
-                {16, "debussyConfigurations.txt", ".eccoDebPart", "dieu.ly", "debpart_results.csv"}
+                //{1, "configurations.txt", ".eccoSulzer", "large_score.ly", "results.csv"}
+                //{9, "debussyConfigurations.txt", ".eccoDebStep", "chanson.ly", "debstep_results.csv"}
+                {16, "debussyConfigurations.txt", ".eccoDebPart", "chanson.ly", "debpart_results.csv"}
         };
     }
 
@@ -995,7 +995,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
 
     //@Ignore
     @Test
-    public void buildDieuPartwise() {
+    public void buildChansonPartwise() {
         String[] features = new String[]{"header.1"
                 , "sopNotes.1", "sopArticulation.1", "sopDynamics.1", "sopSlurs.1", "sopLyrics.1"
                 , "altNotes.1", "altArticulation.1", "altDynamics.1", "altBeams.1", "altSlurs.1", "altLyrics.1"
@@ -1045,13 +1045,13 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             try {
                 Files.createDirectories(dest);
 
-                Path file = dest.resolve("dieu.ly");
+                Path file = dest.resolve("chanson.ly");
                 HashSet<String> config = new HashSet<>();
                 for (int idx : indexes) {
                     config.add(features[idx]);
                 }
                 try (BufferedWriter wr = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE)) {
-                    String code = DieuFeatureCode.getCode(config);
+                    String code = ChansonFeatureCode.getCode(config);
                     wr.write(code);
                 }
 
@@ -1070,7 +1070,7 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     }
 
     @Test
-    public void buildDieuStepwise() {
+    public void buildChansonStepwise() {
         String[] features = new String[]{"header.1"
                 , "sopNotes.1", "sopArticulation.1", "sopDynamics.1", "sopSlurs.1", "sopLyrics.1"
                 , "altNotes.1", "altArticulation.1", "altDynamics.1", "altBeams.1", "altSlurs.1", "altLyrics.1"
@@ -1083,13 +1083,13 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
             try {
                 Files.createDirectories(dest);
 
-                Path file = dest.resolve("dieu.ly");
+                Path file = dest.resolve("chanson.ly");
                 HashSet<String> config = new HashSet<>();
                 for (int idx = 0; idx < i; idx++) {
                     config.add(features[idx]);
                 }
                 try (BufferedWriter wr = Files.newBufferedWriter(file, StandardCharsets.UTF_8, StandardOpenOption.CREATE)) {
-                    wr.write(DieuFeatureCode.getCode(config));
+                    wr.write(ChansonFeatureCode.getCode(config));
                 }
 
                 file = dest.resolve(".config");
@@ -1190,13 +1190,13 @@ parttwoSopTwoArticulations.1, parttwoSopOneArticulations.1, partoneBasOneDynamic
     @Test
     public void testExampleCompilable() {
         for (int i = 1; i < 30; i++) {
-            Path p = Path.of(String.format("F:/Uni/ecco_lukas_dev/lytests/debussy_partwise/%02d/dieu.ly", i));
+            Path p = Path.of(String.format("F:/Uni/ecco_lukas_dev/lytests/debussy_partwise/%02d/chanson.ly", i));
             Assert.assertTrue(isCompilable(p, null, false));
             // cleanup
-            p = p.getParent().resolve("dieu.pdf");
+            p = p.getParent().resolve("chanson.pdf");
             if (Files.exists(p)) {
                 try {
-                    Files.delete(p.getParent().resolve("dieu.pdf"));
+                    Files.delete(p.getParent().resolve("chanson.pdf"));
                 } catch (IOException e) {
                     Assert.fail();
                 }

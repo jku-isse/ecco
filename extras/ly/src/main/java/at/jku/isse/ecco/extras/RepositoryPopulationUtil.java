@@ -44,8 +44,11 @@ public class RepositoryPopulationUtil {
 
     public static void main(String[] args) {
 
-        //Path basePath = Paths.get(args[0]);
-        Path basePath = Paths.get("/Users/paul/Library/CloudStorage/Dropbox/UNI/Dokumente/Projekte/_ECCO/LilyECCODemos/nachtwachezwei_brahms");
+        if (args.length != 1) {
+            System.err.println("usage: RepositoryPopulationUtil <directory of variants>");
+            return;
+        }
+        Path basePath = Paths.get(args[0]);
 
         EccoService service = new EccoService();
         RepositoryPopulationUtil util = new RepositoryPopulationUtil(service);

@@ -23,4 +23,4 @@ run one, move it back to that path, provide its data, adjust the paths it hard-c
 | `adapter/java/.../AdapterTest` | a local input directory of its author |
 | `adapter/typescript/.../AdapterTest` (with `resources/data/`) | `node_modules/typescript` in the working directory |
 | `gui/.../GuiTest` | a headless UI test harness (it starts the GUI, which blocks) |
-| `adapter/lilypond/.../thesis/PerformanceAndCorrectnessTest` (with `JavaFxLauncher`, `DieuFeatureCode`, `ConfigurationCodeBuilder`) | the student-thesis benchmark corpus; ignored at class level with TestNG's `@Ignore`, so it was not even reported as skipped |
+| `adapter/lilypond/.../thesis/PerformanceAndCorrectnessTest` (with `JavaFxLauncher`, `ChansonFeatureCode`, `ConfigurationCodeBuilder`) | the student-thesis benchmark corpus; ignored at class level with TestNG's `@Ignore`, so it was not even reported as skipped |

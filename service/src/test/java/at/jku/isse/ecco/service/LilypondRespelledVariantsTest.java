@@ -25,7 +25,7 @@ public class LilypondRespelledVariantsTest {
 	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples");
 	private static final Path VARIANTS = ROOT.resolve("lilypond_variants");
 	private static final Path RESPELLED = ROOT.resolve("lilypond_respelled");
-	private static final String FILE_NAME = "dieu.ly";
+	private static final String FILE_NAME = "chanson.ly";
 
 	@ParameterizedTest
 	@ValueSource(strings = {"dynamics", "dynamics_indent", "dynamics_durations", "dynamics_relative"})
