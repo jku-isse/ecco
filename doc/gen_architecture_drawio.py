@@ -131,7 +131,7 @@ gitx = p.box(320, 28, 220, 50, '<b>Git repositories</b><br>← service.git (JGit
 llmx = p.box(550, 28, 220, 50, '<b>LLM endpoint</b> (URL/model configurable)<br>← service.llm (HTTP)', 'ext', parent=X, fs=10)
 peer = p.box(780, 28, 220, 50, '<b>Remote ECCO repository</b><br>← RemoteSyncService (TCP)', 'ext', parent=X, fs=10)
 web = p.box(1010, 28, 300, 50, '<b>ecco-web-client</b> (separate repo)<br>→ ecco-rest (HTTP/JSON)', 'ext', parent=X, fs=10)
-pyx = p.box(1320, 28, 250, 50, '<b>Python</b> (libcst · parce · lymodel)<br>← python, lilypond adapters (process + py4j)', 'ext', parent=X, fs=10)
+pyx = p.box(1320, 28, 250, 50, '<b>Python</b> (libcst · tree-sitter · lymodel)<br>← python, lilypond adapters (process + py4j)', 'ext', parent=X, fs=10)
 
 # Edges: layer-to-layer only, fixed ports so they stay tidy when boxes move
 p.edge(F, S, 'call EccoService API', ex=0.12, ey=1, nx=0.12, ny=0)
