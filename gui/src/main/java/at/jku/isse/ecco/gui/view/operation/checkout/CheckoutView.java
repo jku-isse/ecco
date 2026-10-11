@@ -42,6 +42,11 @@ import java.util.List;
 import java.util.Optional;
 
 public class CheckoutView extends OperationView implements EccoListener {
+    // SplitPane splits evenly when the result joins the log, and the window was sized for the log
+    // alone (step2) - so both were squeezed into a strip, the log down to one clipped row. An even
+    // share and growing the window keep the log and the checkout's details below it readable.
+    private static final double LOG_DIVIDER_POSITION = 0.5;
+
     private final EccoService service;
     private final ObservableList<FileInfo> logData = FXCollections.observableArrayList();
     private final SplitPane splitPane;
@@ -66,16 +71,17 @@ public class CheckoutView extends OperationView implements EccoListener {
         logTable.setEditable(false);
 
         TableColumn<FileInfo, String> actionCol = new TableColumn<>("Action");
-        TableColumn<FileInfo, String> pathCol = new TableColumn<>("Path");
-        TableColumn<FileInfo, String> pluginCol = new TableColumn<>("Plugin");
+        // a read or write row names a file and its plugin, a select row an association and its condition
+        TableColumn<FileInfo, String> pathCol = new TableColumn<>("Path / Association");
+        TableColumn<FileInfo, String> pluginCol = new TableColumn<>("Plugin / Condition");
 
         logTable.getColumns().setAll(actionCol, pathCol, pluginCol);
 
         actionCol.setCellValueFactory(new PropertyValueFactory<>("action"));
         pathCol.setCellValueFactory(new PropertyValueFactory<>("path"));
         pluginCol.setCellValueFactory(new PropertyValueFactory<>("plugin"));
-        // Plugin mixes short plugin-class-name content (read/write rows) with a potentially long
-        // computeCondition().toString() (select rows) - wrap rather than clip either kind.
+        // Plugin mixes short plugin-class-name content (read/write rows) with a condition (select
+        // rows) - wrap rather than clip either kind.
         pluginCol.setCellFactory(TableColumns.wrappingCellFactory());
 
         logTable.setItems(this.logData);
@@ -348,6 +354,8 @@ public class CheckoutView extends OperationView implements EccoListener {
         this.service.removeListener(this);
         this.checkoutDetailView.showCheckout(checkout, this.currentBaseDir);
         this.splitPane.getItems().setAll(this.logTable, supportNode);
+        this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
+        this.growToFit();
     }
 
     /**
@@ -385,7 +393,11 @@ public class CheckoutView extends OperationView implements EccoListener {
 
     @Override
     public void associationSelectedEvent(EccoService service, Association association) {
-        Platform.runLater(() -> this.logData.add(new FileInfo(ASSOCIATION_SELECTION_STRING, String.valueOf(association.getId()), association.computeCondition().toString())));
+        // the absorbed condition (X | X & Y = X), not toString(): that lists computeCondition()'s
+        // whole lattice of module revisions, thousands of terms in a repository with a few dozen
+        // commits, which wrapped into one row taller than the table. Computed here, off the FX thread.
+        String condition = association.computeCondition().toLogicString();
+        Platform.runLater(() -> this.logData.add(new FileInfo(ASSOCIATION_SELECTION_STRING, String.valueOf(association.getId()), condition)));
     }
 
 
