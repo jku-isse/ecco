@@ -3,6 +3,7 @@ package at.jku.isse.ecco.gui.view.operation;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
+import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
@@ -18,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static at.jku.isse.ecco.gui.view.operation.CommitViewTest.*;
@@ -139,6 +142,73 @@ public class CommitBaseDirViewTest {
                         .map(n -> ((ExceptionTextArea) n).getText()).findFirst().orElse(null));
                 assertNotNull(error, "the failure is shown");
                 assertTrue(error.contains("at least one feature"), error);
+            } finally {
+                shown.close();
+            }
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void cancelStopsTheCommitAndCommitsNothing(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            Path work = CommitViewTest.variant(tmp, "work", "BASE, C", "base\n");
+            service.setBaseDir(work);
+            CommitViewTest.Shown<CommitBaseDirView> shown = show(() -> new CommitBaseDirView(service));
+            try {
+                CommitBaseDirView view = shown.view();
+                service.addListener(CommitViewTest.cancelOnRead(view, "file.txt", 1));
+                onFx(() -> button(view, "Commit").fire());
+                waitUntil("the cancellation", () -> hasButton(view, "Done"));
+
+                assertEquals("Cancelled: nothing was committed.", onFx(() -> view.headerLabel.getText()));
+                assertFalse(onFx(() -> view.toolBar.getStyleClass().contains("error")));
+                assertEquals(0, service.getCommits().size());
+                service.commit("after the cancellation", "BASE, C");
+                assertEquals(1, service.getCommits().size(), "the repository takes the next commit");
+            } finally {
+                shown.close();
+            }
+        }
+    }
+
+    @Test
+    @Timeout(120)
+    public void aConfigurationViolatingAnAcceptedConstraintIsAskedAboutBeforeCommitting(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            // an accepted constraint only counts while the commits still witness it (at least 4)
+            for (int i = 0; i < 4; i++)
+                commit(service, tmp.resolve("seed" + i), "BASE, A", Map.of("seed.txt", "seed " + i + "\n"));
+            service.acceptConstraint(ConstraintMiner.Kind.MANDATORY, "A", null);
+            // the .config is checked when the configuration is left blank
+            Path work = CommitViewTest.variant(tmp, "work", "BASE", "base\n");
+            service.setBaseDir(work);
+            List<String> askedAbout = new CopyOnWriteArrayList<>();
+            AtomicBoolean commitAnyway = new AtomicBoolean(false);
+            CommitViewTest.Shown<CommitBaseDirView> shown = show(() -> new CommitBaseDirView(service) {
+                @Override
+                boolean confirmCommitAnyway(String violations) {
+                    askedAbout.add(violations);
+                    return commitAnyway.get();
+                }
+            });
+            try {
+                CommitBaseDirView view = shown.view();
+                onFx(() -> {
+                    fields(view).get(2).setText("");
+                    button(view, "Commit").fire();
+                });
+                assertEquals(1, askedAbout.size());
+                assertTrue(askedAbout.get(0).startsWith("Violates accepted constraint(s): MANDATORY A"), askedAbout.get(0));
+                assertEquals(4, service.getCommits().size(), "declined: nothing is committed");
+                assertEquals("Commit", onFx(() -> view.headerLabel.getText()));
+
+                commitAnyway.set(true);
+                onFx(() -> button(view, "Commit").fire());
+                waitUntil("the commit", () -> hasButton(view, "Done"));
+                assertEquals(2, askedAbout.size());
+                assertEquals(5, service.getCommits().size(), "confirmed: committed");
+                assertTrue(onFx(() -> view.toolBar.getStyleClass().contains("success")));
             } finally {
                 shown.close();
             }

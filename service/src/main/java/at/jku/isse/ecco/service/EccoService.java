@@ -263,6 +263,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     @Override
     public void fileReadEvent(Path file, ArtifactReader reader) {
         this.listeners.fireReadEvent(file, reader);
+        // a cancelled commit stops between files instead of reading the rest first
+        this.commitService.checkCancelled();
     }
 
     @Override
@@ -1066,6 +1068,16 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      */
     public synchronized Commit commit(String commitMessage, Configuration configuration, String committer) {
         return this.commitService.commit(commitMessage, configuration, committer);
+    }
+
+    /**
+     * Asks the commit running on another thread to stop. It stops before anything is stored - at the
+     * next file read, or before extracting or storing - is rolled back, and throws
+     * {@link CommitCancelledException}; a commit that is already storing completes. Not synchronized,
+     * since the commit holds this service's lock. Without a commit in progress this does nothing.
+     */
+    public void cancelCommit() {
+        this.commitService.cancel();
     }
 
     /**

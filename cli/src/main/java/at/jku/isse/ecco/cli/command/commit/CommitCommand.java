@@ -4,8 +4,11 @@ import at.jku.isse.ecco.cli.command.Command;
 import at.jku.isse.ecco.cli.writer.OutWriter;
 import at.jku.isse.ecco.cli.writer.SystemWriter;
 import at.jku.isse.ecco.core.Commit;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.service.EccoService;
 import net.sourceforge.argparse4j.inf.Namespace;
+
+import java.util.List;
 
 public class CommitCommand implements Command {
     public final static String COMMIT = "commit";
@@ -29,13 +32,28 @@ public class CommitCommand implements Command {
     public void run(Namespace namespace) {
         eccoService.open();
         try {
-            Commit commit = eccoService.commit(namespace.getString(COMMIT_MESSAGE_KEY), namespace.getString(CONFIGURATION_KEY));
+            String configurationString = namespace.getString(CONFIGURATION_KEY);
+            // checked before committing: only exception-free rules count, and the committed
+            // configuration is the exception to every rule it violates - afterwards it violates none
+            List<String> violations = this.constraintViolations(configurationString);
+            Commit commit = eccoService.commit(namespace.getString(COMMIT_MESSAGE_KEY), configurationString);
             writer.println("Committed " + commit.getId() + " as " + commit.getConfiguration().getConfigurationString());
             // advisory, as in the GUI: the commit is stored either way
-            for (String violation : eccoService.checkConstraintViolations(commit.getConfiguration()))
+            for (String violation : violations)
                 writer.println("CONSTRAINT: " + violation);
         } finally {
             eccoService.close();
         }
+    }
+
+    /** None if the configuration cannot be parsed: the commit reports that. */
+    private List<String> constraintViolations(String configurationString) {
+        Configuration configuration;
+        try {
+            configuration = eccoService.parseConfigurationString(configurationString);
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+        return eccoService.checkConstraintViolations(configuration);
     }
 }

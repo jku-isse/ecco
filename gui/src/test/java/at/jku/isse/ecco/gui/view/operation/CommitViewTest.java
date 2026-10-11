@@ -1,11 +1,13 @@
 package at.jku.isse.ecco.gui.view.operation;
 
+import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
 import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static at.jku.isse.ecco.gui.FxTestSupport.*;
@@ -129,6 +132,8 @@ public class CommitViewTest {
             Path v1 = variant(parent, "v1", "BASE", "base\n");
             Path v2 = variant(parent, "v2", "BASE, A", "base\na\n");
             Path v3 = variant(parent, "v3", "BASE, C", "base\nc\n");
+            Path work = Files.createDirectories(tmp.resolve("work"));
+            service.setBaseDir(work);
             Shown<AnsweredCommitView> shown = show(() -> new AnsweredCommitView(service));
             try {
                 AnsweredCommitView view = shown.view;
@@ -161,6 +166,7 @@ public class CommitViewTest {
                 assertTrue(first >= 0 && first < second && second < third, log);
                 assertTrue(log.contains("Read file.txt using ("), log);
                 assertTrue(onFx(() -> splitItems(view).stream().anyMatch(n -> n instanceof CommitDetailView)), "the last commit is shown");
+                assertEquals(work, service.getBaseDir(), "the base directory is the user's again, not the last folder");
             } finally {
                 shown.close();
             }
@@ -228,8 +234,6 @@ public class CommitViewTest {
                 assertEquals(4, service.getCommits().size(), "declined: nothing is committed");
                 assertEquals("Folders and Configuration", onFx(() -> view.headerLabel.getText()));
 
-                // the committed configuration is checked again after the commit, with a dialog of its own
-                service.setConstraintViolationWarningsEnabled(false);
                 view.commitAnyway = true;
                 onFx(() -> button(view, "Commit").fire());
                 waitUntil("the commits", () -> hasButton(view, "Done"));
@@ -240,7 +244,62 @@ public class CommitViewTest {
         }
     }
 
+    @Test
+    @Timeout(120)
+    public void cancelStopsTheCommitInProgressAndCommitsNoFurtherFolder(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            Path parent = tmp.resolve("variants");
+            Path v1 = variant(parent, "v1", "BASE", "base\n");
+            Path v2 = variant(parent, "v2", "BASE, A", "base\na\n");
+            Path v3 = variant(parent, "v3", "BASE, C", "base\nc\n");
+            Path work = Files.createDirectories(tmp.resolve("work"));
+            service.setBaseDir(work);
+            Shown<AnsweredCommitView> shown = show(() -> new AnsweredCommitView(service));
+            try {
+                AnsweredCommitView view = shown.view;
+                view.choice = List.of(v1, v2, v3);
+                onFx(() -> view.selectFoldersUnder(parent));
+                // Cancel while v2 is being read
+                service.addListener(cancelOnRead(view, "file.txt", 2));
+
+                onFx(() -> button(view, "Commit").fire());
+                waitUntil("the cancellation", () -> hasButton(view, "Done"));
+
+                assertEquals("Cancelled: 1 of 3 folders were committed.", onFx(() -> view.headerLabel.getText()));
+                assertFalse(onFx(() -> view.toolBar.getStyleClass().contains("error")));
+                List<Commit> commits = new ArrayList<>(service.getCommits());
+                assertEquals(1, commits.size(), "v1 stays committed, v2 and v3 are not");
+                assertEquals(Set.of("BASE"), features(commits.get(0)));
+                assertEquals(work, service.getBaseDir());
+
+                // the repository takes the next commit
+                service.setBaseDir(v2);
+                service.commit("v2", "BASE, A");
+                assertEquals(2, service.getCommits().size());
+            } finally {
+                shown.close();
+            }
+        }
+    }
+
     // -----------------------------------------------------------------------------------------------------------------
+
+    /** Fires the view's Cancel button when {@code file} is read for the {@code nth} time. */
+    static EccoListener cancelOnRead(Node view, String file, int nth) {
+        AtomicInteger reads = new AtomicInteger();
+        return new EccoListener() {
+            @Override
+            public void fileReadEvent(Path path, ArtifactReader reader) {
+                if (path.toString().equals(file) && reads.incrementAndGet() == nth) {
+                    try {
+                        onFx(() -> button(view, "Cancel").fire());
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        };
+    }
 
     /** a subfolder {@code name} of {@code parent} with file.txt and, unless null, a .config */
     static Path variant(Path parent, String name, String configuration, String content) throws Exception {

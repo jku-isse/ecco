@@ -122,6 +122,26 @@ public class PullViewTest {
 
     @Test
     @Timeout(60)
+    public void theFeatureTreeOfARemoteNeverFetchedFillsOnceItIsFetched(@TempDir Path tmp) throws Exception {
+        Path origin = origin(tmp);
+        String b = revisionString(origin, "B");
+        try (EccoService service = target(tmp, origin)) {
+            PullView view = show(service);
+            onFx(() -> {
+                chooseRemote(view, "origin");
+                button(view, "Select >").fire();
+                // typed before the fetch completes: unticked once the tree is filled
+                deselectionField(view).setText(b);
+            });
+            waitUntil("the remote's features", () -> treeFeatures(view).equals(Set.of("A", "B")));
+            assertFalse(onFx(() -> revisionItem(view, "B").isSelected()), "the typed exclusion is unticked");
+            assertTrue(onFx(() -> revisionItem(view, "A").isSelected()));
+            assertEquals(b, onFx(() -> deselectionField(view).getText()));
+        }
+    }
+
+    @Test
+    @Timeout(60)
     public void nothingCanBePulledBeforeARemoteIsChosen(@TempDir Path tmp) throws Exception {
         Path origin = origin(tmp);
         try (EccoService service = target(tmp, origin)) {

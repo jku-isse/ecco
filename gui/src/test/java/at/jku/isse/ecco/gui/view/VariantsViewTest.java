@@ -3,6 +3,8 @@ package at.jku.isse.ecco.gui.view;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.feature.FeatureRevision;
+import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.Node;
 import javafx.scene.control.TextField;
@@ -90,6 +92,35 @@ public class VariantsViewTest {
 
             assertEquals(Set.of(Set.of("A.1")), service.getRepository().getVariants().stream().map(VariantsViewTest::revisions).collect(Collectors.toSet()));
             assertEquals(Set.of("A.1"), onFx(() -> revisions(view.variantsDataSelected.get(0).getVariant())));
+            assertFalse(onFx(() -> toolBar(view).isDisable()));
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    public void aRemovalThatFailsLeavesTheToolbarUsable(@TempDir Path tmp) throws Exception {
+        Files.createDirectories(tmp.resolve("repo"));
+        try (EccoService service = new EccoService() {
+            @Override
+            public synchronized void removeVariant(Configuration configuration) {
+                throw new EccoException("removal failed");
+            }
+        }) {
+            service.setRepositoryDir(tmp.resolve("repo").resolve(".ecco"));
+            service.init();
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            VariantsView view = loaded(service, 1);
+
+            RuntimeException thrown = onFx(() -> {
+                select(view, "A.1");
+                try {
+                    button(view, "Remove Variant Selected").fire();
+                    return null;
+                } catch (RuntimeException e) {
+                    return e;
+                }
+            });
+            assertNotNull(thrown, "the removal failed");
             assertFalse(onFx(() -> toolBar(view).isDisable()));
         }
     }

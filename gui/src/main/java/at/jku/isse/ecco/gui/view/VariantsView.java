@@ -146,21 +146,20 @@ public class VariantsView extends BorderPane implements EccoListener {
             @Override
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);
+                // a removal that throws must not leave the toolbar disabled for good
+                try {
+                    Collection<Variant> selectedVariants = new ArrayList<>();
+                    for (VariantsView.VariantsInfo variantInfo : VariantsView.this.variantsDataSelected) {
+                        if (variantInfo.isSelected())
+                            selectedVariants.add(variantInfo.getVariant());
+                    }
 
-                Collection<Variant> selectedVariants = new ArrayList<>();
-                for (VariantsView.VariantsInfo variantInfo : VariantsView.this.variantsDataSelected) {
-                    if (variantInfo.isSelected())
-                        selectedVariants.add(variantInfo.getVariant());
-                }
-
-                if (!selectedVariants.isEmpty()) {
                     for (Variant variant : selectedVariants) {
                         VariantsView.this.service.removeVariant(variant.getConfiguration());
                     }
-
+                } finally {
+                    toolBar.setDisable(false);
                 }
-
-                toolBar.setDisable(false);
 
             }
         });

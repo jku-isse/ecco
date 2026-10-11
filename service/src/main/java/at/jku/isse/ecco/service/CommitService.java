@@ -39,6 +39,12 @@ class CommitService {
 
     private final EccoService owner;
 
+    // set from another thread (the GUI's Cancel) while commit() runs; checked only before anything is
+    // stored, so a cancelled commit is rolled back like a failed one and a commit that is already
+    // being written always completes
+    private volatile boolean cancelRequested;
+    private volatile boolean committing;
+
     CommitService(EccoService owner) {
         this.owner = owner;
     }
@@ -56,6 +62,8 @@ class CommitService {
             throw new EccoException("A commit needs at least one feature: what is committed without any cannot be checked out again."
                     + " For content every variant has, use a feature of its own in every configuration (e.g. BASE).");
 
+        this.cancelRequested = false;
+        this.committing = true;
         owner.listeners.setWriteInProgress(true);
         try {
             owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
@@ -63,10 +71,12 @@ class CommitService {
             Repository.Op repository = owner.repositoryDao.load();
             repository.addFeatureRevisions(configuration.getFeatureRevisions());
             Set<Node.Op> nodes = this.readFiles();
+            this.checkCancelled();
             ArrayList<Variant> variants = repository.getVariants();
 
             long extractTime = System.currentTimeMillis();
             repository.checkArtifactFormats();
+            this.checkCancelled();
             Commit commit = repository.extract(configuration, nodes, committer);
             repository.setRetroactiveConditions();
             // invalidate (don't eagerly rebuild) rather than call buildMainTree() here: within a
@@ -92,6 +102,7 @@ class CommitService {
             }
             commit.setCommitMessage(commitMessage);
 
+            this.checkCancelled();
             owner.repositoryDao.store(repository);
 
             long endStrategyTime = System.currentTimeMillis();
@@ -104,12 +115,40 @@ class CommitService {
             owner.listeners.fireStatusChangedEvent();
 
             return commit;
+        } catch (CommitCancelledException e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
+            // a reader may wrap the cancellation thrown from its read event
+            for (Throwable cause = e; cause != null; cause = cause.getCause())
+                if (cause instanceof CommitCancelledException cancelled)
+                    throw cancelled;
             throw new EccoException("Error during commit.", e);
         } finally {
+            this.committing = false;
+            this.cancelRequested = false;
             owner.listeners.setWriteInProgress(false);
         }
+    }
+
+    /**
+     * Asks the commit in progress to stop. It stops at the next file read or before it extracts or
+     * stores, and throws {@link CommitCancelledException}; once it stores, it completes. Without a
+     * commit in progress this does nothing.
+     */
+    void cancel() {
+        if (this.committing)
+            this.cancelRequested = true;
+    }
+
+    /**
+     * Throws {@link CommitCancelledException} if the commit in progress was asked to stop; called
+     * before each step that stores nothing yet, and for each file read.
+     */
+    void checkCancelled() {
+        if (this.committing && this.cancelRequested)
+            throw new CommitCancelledException();
     }
 
     /**

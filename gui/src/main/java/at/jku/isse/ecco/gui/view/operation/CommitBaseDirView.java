@@ -5,8 +5,10 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.gui.ConstraintWarnings;
 import at.jku.isse.ecco.gui.ExceptionTextArea;
 import at.jku.isse.ecco.gui.view.detail.CommitDetailView;
+import at.jku.isse.ecco.service.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
 import javafx.application.Platform;
@@ -23,6 +25,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -142,17 +145,27 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 	}
 
 	/**
-	 * Wires the Commit button: transitions to the "committing" step ({@link #step2()}), then runs the
-	 * actual commit of the current base directory on a background {@code Task}, logging progress and
-	 * any constraint violations as they happen -- the single-folder analog of
-	 * {@link CommitView#wireCommitButton}.
+	 * Wires the Commit button: asks before committing a configuration that violates accepted
+	 * constraints, transitions to the "committing" step ({@link #step2}), then runs the actual commit
+	 * of the current base directory on a background {@code Task}, logging progress -- the
+	 * single-folder analog of {@link CommitView#wireCommitButton}. Cancel asks the service to stop the
+	 * commit ({@link EccoService#cancelCommit()}), which it does unless it is already storing.
+	 *
+	 * <p>Violations are checked before, not after, the commit: only exception-free rules count
+	 * ({@code ConstraintViolationChecker}), and the committed configuration is the exception to every
+	 * rule it violates - checked afterwards, it never violates anything.
 	 */
 	private void wireCommitButton(Button commitButton, TextField commitMessageField, TextField configurationField) {
 		commitButton.setOnAction(event -> {
-			this.step2();
-
 			String commitMessage = commitMessageField.getText();
 			String configurationString = configurationField.getText();
+
+			String warning = ConstraintWarnings.describe(this.service, configurationString != null && !configurationString.isBlank()
+					? configurationString : this.service.getConfigStringFromFile(this.service.getBaseDir()));
+			if (!warning.isEmpty() && !this.confirmCommitAnyway(warning))
+				return;
+
+			this.step2(() -> this.service.cancelCommit());
 
 			this.logArea.clear();
 			this.service.addListener(this);
@@ -160,21 +173,9 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 			Task<Commit> commitTask = new Task<Commit>() {
 				@Override
 				public Commit call() {
-					Commit commit = (configurationString != null && !configurationString.isBlank())
+					return (configurationString != null && !configurationString.isBlank())
 							? CommitBaseDirView.this.service.commit(commitMessage, configurationString)
 							: CommitBaseDirView.this.service.commit(commitMessage);
-
-					List<String> constraintViolations = CommitBaseDirView.this.service.checkConstraintViolations(commit.getConfiguration());
-					if (!constraintViolations.isEmpty()) {
-						Platform.runLater(() -> {
-							for (String violation : constraintViolations)
-								CommitBaseDirView.this.logArea.appendText("CONSTRAINT: " + violation + System.lineSeparator());
-							Alert alert = new Alert(Alert.AlertType.WARNING,
-									"The committed configuration violates accepted constraint(s):\n" + String.join("\n", constraintViolations));
-							alert.showAndWait();
-						});
-					}
-					return commit;
 				}
 
 				@Override
@@ -187,21 +188,17 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 				}
 
 				@Override
-				public void cancelled() {
-					super.cancelled();
-					CommitBaseDirView.this.service.removeListener(CommitBaseDirView.this);
-					CommitBaseDirView.this.commitDetailView.showCommit(null);
-					CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea, new ExceptionTextArea(this.getException()));
-					CommitBaseDirView.this.showErrorHeader();
-				}
-
-				@Override
 				public void failed() {
 					super.failed();
 					CommitBaseDirView.this.service.removeListener(CommitBaseDirView.this);
 					CommitBaseDirView.this.commitDetailView.showCommit(null);
-					CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea, new ExceptionTextArea(this.getException()));
-					CommitBaseDirView.this.showErrorHeader();
+					if (this.getException() instanceof CommitCancelledException) {
+						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea);
+						CommitBaseDirView.this.showCancelledHeader("Cancelled: nothing was committed.");
+					} else {
+						CommitBaseDirView.this.splitPane.getItems().setAll(CommitBaseDirView.this.logArea, new ExceptionTextArea(this.getException()));
+						CommitBaseDirView.this.showErrorHeader();
+					}
 				}
 			};
 			new Thread(commitTask).start();
@@ -209,10 +206,26 @@ public class CommitBaseDirView extends OperationView implements EccoListener {
 	}
 
 	/**
-	 * Log table and success or error.
+	 * Asks whether to commit despite the given constraint violations. Package-visible for testing (a
+	 * test stands in for the user's answer).
 	 */
-	private void step2() {
+	boolean confirmCommitAnyway(String violations) {
+		Alert alert = new Alert(Alert.AlertType.CONFIRMATION, violations + "\n\nDo you want to commit anyway?");
+		alert.setHeaderText("Constraint violation");
+		Optional<ButtonType> result = alert.showAndWait();
+		return result.isPresent() && result.get() == ButtonType.OK;
+	}
+
+	/**
+	 * Log table and success or error; Cancel runs {@code cancel} once.
+	 */
+	private void step2(Runnable cancel) {
 		Button cancelButton = new Button("Cancel");
+		cancelButton.setOnAction(event -> {
+			cancelButton.setDisable(true);
+			this.headerLabel.setText("Cancelling ...");
+			cancel.run();
+		});
 		this.leftButtons.getChildren().setAll(cancelButton);
 
 		this.headerLabel.setText("Committing ...");

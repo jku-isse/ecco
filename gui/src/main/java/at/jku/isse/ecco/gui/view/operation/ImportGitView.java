@@ -151,7 +151,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 
 	private SplitPane splitPane;
 	private CommitDetailView commitDetailView;
-	private TextArea logArea;
+	TextArea logArea;
 
 	public ImportGitView(EccoService service) {
 		super();
@@ -763,6 +763,11 @@ public class ImportGitView extends OperationView implements EccoListener {
 				try {
 					ImportGitView.this.gitHistoryReader.extractCommitTree(ImportGitView.this.repoDir, commit.getId(), tempDir);
 					ImportGitView.this.service.setBaseDir(tempDir);
+					// checked before committing: only exception-free rules count, and the committed
+					// configuration is the exception to every rule it violates - afterwards it violates none
+					List<String> violations = ImportGitView.this.constraintViolations(
+							(configurationText != null && !configurationText.isEmpty())
+									? configurationText : ImportGitView.this.service.getConfigStringFromFile(tempDir));
 					long startMillis = System.currentTimeMillis();
 					Commit result = (configurationText != null && !configurationText.isEmpty())
 							? ImportGitView.this.service.commit(commit.getMessage(), configurationText)
@@ -772,8 +777,6 @@ public class ImportGitView extends OperationView implements EccoListener {
 					Platform.runLater(() -> ImportGitView.this.logArea.appendText(
 							String.format("Imported %s (%s) -> [%s] in %.2f seconds.%n", commit.getShortId(), commit.getMessage(), configLabel, durationSeconds)));
 
-					// the commit is stored from here on: a failing check must not offer it for a retry
-					List<String> violations = ImportGitView.this.constraintViolations(result);
 					if (!violations.isEmpty()) {
 						ImportGitView.this.allConstraintWarnings.addAll(violations);
 						Platform.runLater(() -> {
@@ -891,19 +894,34 @@ public class ImportGitView extends OperationView implements EccoListener {
 		}
 
 		if (!this.allConstraintWarnings.isEmpty()) {
-			Alert alert = new Alert(Alert.AlertType.WARNING,
-					"Imported commits violate accepted constraint(s):\n" + String.join("\n", this.allConstraintWarnings));
-			alert.showAndWait();
+			this.reportConstraintViolations(this.allConstraintWarnings);
 		}
 	}
 
 	/**
-	 * The accepted constraints {@code commit}'s configuration violates; a failing check is reported
-	 * as a violation instead of thrown, since the commit is already stored.
+	 * Summarizes, once the run ended, the constraint violations of the imported commits.
+	 * Package-visible for testing (a test stands in for the dialog).
 	 */
-	private List<String> constraintViolations(Commit commit) {
+	void reportConstraintViolations(List<String> violations) {
+		Alert alert = new Alert(Alert.AlertType.WARNING,
+				"Imported commits violate accepted constraint(s):\n" + String.join("\n", violations));
+		alert.showAndWait();
+	}
+
+	/**
+	 * The accepted constraints the configuration about to be committed violates. None if it cannot
+	 * be parsed - the commit reports that; a failing check is reported as a violation instead of
+	 * thrown, since constraints are advisory and must not stop the import.
+	 */
+	private List<String> constraintViolations(String configurationString) {
+		Configuration configuration;
 		try {
-			return this.service.checkConstraintViolations(commit.getConfiguration());
+			configuration = this.service.parseConfigurationString(configurationString);
+		} catch (RuntimeException e) {
+			return List.of();
+		}
+		try {
+			return this.service.checkConstraintViolations(configuration);
 		} catch (RuntimeException e) {
 			return List.of("constraint check failed: " + e.getMessage());
 		}

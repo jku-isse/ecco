@@ -16,7 +16,10 @@ import javafx.scene.layout.RowConstraints;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PullView extends OperationView {
@@ -199,45 +202,76 @@ public class PullView extends OperationView {
 		row++;
 
 
-		Collection<CheckBoxTreeItem<FeatureInfo>> deselectedFeatureVersionTreeItems = new ArrayList<>();
+		// the remote's features as last fetched, at once; fetched again in the background, since a remote
+		// that was never fetched has none yet
+		Remote remote = this.remoteComboBox.getValue();
+		this.fillFeatureTree(featureSelectionTreeView, this.service.getRemote(remote.getName()).getFeatures());
+		titledPane.setText("Features (fetching ...)");
+		Task<Collection<Feature>> fetchTask = new Task<>() {
+			@Override
+			public Collection<Feature> call() {
+				PullView.this.service.fetch(remote.getName());
+				return PullView.this.service.getRemote(remote.getName()).getFeatures();
+			}
+
+			@Override
+			public void succeeded() {
+				super.succeeded();
+				titledPane.setText("Features");
+				PullView.this.fillFeatureTree(featureSelectionTreeView, this.getValue());
+			}
+
+			@Override
+			public void failed() {
+				super.failed();
+				titledPane.setText("Features (as last fetched; fetching failed: " + this.getException().getMessage() + ")");
+			}
+		};
+		Thread fetchThread = new Thread(fetchTask);
+		fetchThread.setDaemon(true);
+		fetchThread.start();
+
+
+		this.fit();
+	}
+
+
+	/**
+	 * Shows {@code features} with their revisions, each ticked unless the deselection field names it -
+	 * so the tree can be refilled after a fetch without losing what was unticked. Unticking and ticking
+	 * writes the deselection field.
+	 */
+	private void fillFeatureTree(TreeView<FeatureInfo> featureSelectionTreeView, Collection<Feature> features) {
+		Set<String> deselected = Arrays.stream(this.deselectionTextField.getText().split(","))
+				.map(String::trim).filter(text -> !text.isEmpty()).collect(Collectors.toCollection(LinkedHashSet::new));
+
 		CheckBoxTreeItem<FeatureInfo> rootTreeItem = new CheckBoxTreeItem<>();
-		for (Feature feature : this.service.getRemote(this.remoteComboBox.getValue().getName()).getFeatures()) {
+		Collection<CheckBoxTreeItem<FeatureInfo>> revisionTreeItems = new ArrayList<>();
+		for (Feature feature : features) {
 			CheckBoxTreeItem<FeatureInfo> featureTreeItem = new CheckBoxTreeItem<>();
 			featureTreeItem.setValue(new FeatureInfo(feature, null));
 			for (FeatureRevision featureVersion : feature.getRevisions()) {
 				CheckBoxTreeItem<FeatureInfo> featureVersionTreeItem = new CheckBoxTreeItem<>();
 				featureVersionTreeItem.setValue(new FeatureInfo(feature, featureVersion));
-				//featureVersionTreeItem.setSelected(true);
 				featureTreeItem.getChildren().add(featureVersionTreeItem);
-
-
-				featureVersionTreeItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
-					if (!newValue) {
-						deselectedFeatureVersionTreeItems.add(featureVersionTreeItem);
-					} else {
-						deselectedFeatureVersionTreeItems.remove(featureVersionTreeItem);
-					}
-
-					String deselectionString = deselectedFeatureVersionTreeItems.stream().map(featureInfoCheckBoxTreeItem -> featureInfoCheckBoxTreeItem.getValue().getFeatureVersion().toString()).collect(Collectors.joining(", "));
-					deselectionTextField.setText(deselectionString);
-
-//					StringBuilder sb = new StringBuilder();
-//					for (CheckBoxTreeItem<FeatureInfo> featureInfoCheckBoxTreeItem : deselectedFeatureVersionTreeItems) {
-//						if (!featureInfoCheckBoxTreeItem.isSelected()) {
-//							sb.append(featureInfoCheckBoxTreeItem.getValue().getFeatureVersion().toString());
-//						}
-//					}
-//					selectionTextField.setText(sb.toString());
-				});
+				revisionTreeItems.add(featureVersionTreeItem);
 			}
 			rootTreeItem.getChildren().add(featureTreeItem);
 		}
 		rootTreeItem.setSelected(true);
+		for (CheckBoxTreeItem<FeatureInfo> item : revisionTreeItems) {
+			if (deselected.contains(item.getValue().getFeatureVersion().toString()))
+				item.setSelected(false);
+			item.selectedProperty().addListener((observable, oldValue, newValue) -> {
+				if (newValue)
+					deselected.remove(item.getValue().getFeatureVersion().toString());
+				else
+					deselected.add(item.getValue().getFeatureVersion().toString());
+				this.deselectionTextField.setText(String.join(", ", deselected));
+			});
+		}
 		featureSelectionTreeView.setRoot(rootTreeItem);
 		rootTreeItem.setExpanded(true);
-
-
-		this.fit();
 	}
 
 

@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.operation;
 
 import at.jku.isse.ecco.gui.PluginNames;
 import at.jku.isse.ecco.gui.ConstraintWarnings;
+import at.jku.isse.ecco.service.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.ArtifactWriter;
@@ -51,6 +52,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -319,11 +322,12 @@ public class CommitView extends OperationView implements EccoListener {
 
 	/**
 	 * Wires the Commit button: validates at least one folder was added, confirms proceeding despite
-	 * any live constraint warnings, transitions to the "committing" step ({@link #step2()}), then runs
+	 * any live constraint warnings, transitions to the "committing" step ({@link #step2}), then runs
 	 * the actual commits (one per folder, in order, each with its own row's commit message) on a
-	 * background {@code Task}, logging progress and any constraint violations as they happen. Split
-	 * out of {@link #step1()} purely for readability -- no behavior change from the previous
-	 * single-method version beyond commit messages now being per-row instead of one shared field.
+	 * background {@code Task}, logging progress. Constraints are only checked before: a committed
+	 * configuration is the exception to every rule it violates, and only exception-free rules count
+	 * (see {@code CommitBaseDirView#wireCommitButton}). Cancel stops the commit in progress
+	 * ({@link EccoService#cancelCommit()}) and commits no further folder.
 	 */
 	private void wireCommitButton(Button commitButton) {
 		commitButton.setOnAction(event -> {
@@ -337,9 +341,18 @@ public class CommitView extends OperationView implements EccoListener {
 				return;
 			}
 
-			this.step2();
+			// Cancel stops the commit in progress (unless it is already storing) and commits no further
+			// folder; the folders committed before stay committed
+			AtomicBoolean cancelRequested = new AtomicBoolean();
+			this.step2(() -> {
+				cancelRequested.set(true);
+				this.service.cancelCommit();
+			});
 
 			List<FolderEntry> foldersToCommit = new ArrayList<>(folderData);
+			AtomicInteger committed = new AtomicInteger();
+			// the folders are committed as base directory one after the other; the user's own is restored
+			Path baseDir = this.service.getBaseDir();
 
 			this.logArea.clear();
 			this.service.addListener(this);
@@ -348,32 +361,26 @@ public class CommitView extends OperationView implements EccoListener {
 				@Override
 				public Commit call() {
 					Commit lastCommit = null;
-					for (FolderEntry entry : foldersToCommit) {
-						CommitView.this.service.setBaseDir(Paths.get(entry.getFolder()));
-						String configurationString = entry.getConfiguration();
-						String commitMessage = entry.getCommitMessage();
-						long startMillis = System.currentTimeMillis();
-						if (configurationString != null && !configurationString.isEmpty())
-							lastCommit = CommitView.this.service.commit(commitMessage, configurationString);
-						else
-							lastCommit = CommitView.this.service.commit(commitMessage);
-						double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
-						Platform.runLater(() -> CommitView.this.logArea.appendText(
-								String.format("Committed %s in %.2f seconds.%n", Paths.get(entry.getFolder()).getFileName(), durationSeconds)));
-
-						Commit committedEntry = lastCommit;
-						List<String> constraintViolations =
-								CommitView.this.service.checkConstraintViolations(committedEntry.getConfiguration());
-						if (!constraintViolations.isEmpty()) {
-							Platform.runLater(() -> {
-								for (String violation : constraintViolations)
-									CommitView.this.logArea.appendText("CONSTRAINT: " + violation + System.lineSeparator());
-								Alert alert = new Alert(Alert.AlertType.WARNING,
-										"The committed configuration for " + entry.getFolder()
-												+ " violates accepted constraint(s):\n" + String.join("\n", constraintViolations));
-								alert.showAndWait();
-							});
+					try {
+						for (FolderEntry entry : foldersToCommit) {
+							if (cancelRequested.get())
+								throw new CommitCancelledException();
+							CommitView.this.service.setBaseDir(Paths.get(entry.getFolder()));
+							String configurationString = entry.getConfiguration();
+							String commitMessage = entry.getCommitMessage();
+							long startMillis = System.currentTimeMillis();
+							if (configurationString != null && !configurationString.isEmpty())
+								lastCommit = CommitView.this.service.commit(commitMessage, configurationString);
+							else
+								lastCommit = CommitView.this.service.commit(commitMessage);
+							committed.incrementAndGet();
+							double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
+							Platform.runLater(() -> CommitView.this.logArea.appendText(
+									String.format("Committed %s in %.2f seconds.%n", Paths.get(entry.getFolder()).getFileName(), durationSeconds)));
 						}
+					} finally {
+						if (baseDir != null)
+							CommitView.this.service.setBaseDir(baseDir);
 					}
 					return lastCommit;
 				}
@@ -391,26 +398,20 @@ public class CommitView extends OperationView implements EccoListener {
 				}
 
 				@Override
-				public void cancelled() {
-					super.cancelled();
-					CommitView.this.service.removeListener(CommitView.this);
-					// show exception textarea instead of commit detail view
-					CommitView.this.commitDetailView.showCommit(null);
-					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
-					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
-					CommitView.this.showErrorHeader();
-					CommitView.this.growToFit();
-				}
-
-				@Override
 				public void failed() {
 					super.failed();
 					CommitView.this.service.removeListener(CommitView.this);
-					// show exception textarea instead of commit detail view
 					CommitView.this.commitDetailView.showCommit(null);
-					CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
-					CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
-					CommitView.this.showErrorHeader();
+					if (this.getException() instanceof CommitCancelledException) {
+						CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea);
+						CommitView.this.showCancelledHeader(String.format("Cancelled: %d of %d folders were committed.",
+								committed.get(), foldersToCommit.size()));
+					} else {
+						// show exception textarea instead of commit detail view
+						CommitView.this.splitPane.getItems().setAll(CommitView.this.logArea, new ExceptionTextArea(this.getException()));
+						CommitView.this.splitPane.setDividerPositions(LOG_DIVIDER_POSITION);
+						CommitView.this.showErrorHeader();
+					}
 					CommitView.this.growToFit();
 				}
 			};
@@ -492,10 +493,15 @@ public class CommitView extends OperationView implements EccoListener {
 	}
 
 	/**
-	 * Log table and success or error.
+	 * Log table and success or error; Cancel runs {@code cancel} once.
 	 */
-	private void step2() {
+	private void step2(Runnable cancel) {
 		Button cancelButton = new Button("Cancel");
+		cancelButton.setOnAction(event -> {
+			cancelButton.setDisable(true);
+			this.headerLabel.setText("Cancelling ...");
+			cancel.run();
+		});
 		this.leftButtons.getChildren().setAll(cancelButton);
 
 		this.headerLabel.setText("Committing ...");

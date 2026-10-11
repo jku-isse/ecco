@@ -180,6 +180,22 @@ public abstract class OperationView extends BorderPane {
 	}
 
 
+	/**
+	 * Like {@link #showSuccessHeader()}, for an operation the user cancelled: neither success nor
+	 * error, {@code text} says what was done.
+	 */
+	protected void showCancelledHeader(String text) {
+		this.leftButtons.getChildren().clear();
+
+		this.headerLabel.setText(text);
+
+		Button finishButton = new Button("Done");
+		finishButton.setDefaultButton(true);
+		finishButton.setOnAction(event -> ((Stage) this.getScene().getWindow()).close());
+		this.rightButtons.getChildren().setAll(finishButton);
+	}
+
+
 	protected void showErrorHeader() {
 		this.toolBar.setStyle("-fx-base: #ff6666;");
 		this.toolBar.getStyleClass().add("error");
