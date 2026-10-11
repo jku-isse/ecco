@@ -26,7 +26,8 @@ public class LilypondStringWriterTest {
 	void writeJoinsTokensWithSpacesIntoAString() {
 		Node.Op fileNode = ef.createOrderedNode(ef.createArtifact(new PluginArtifactData(writer.getPluginId(), Path.of("song.ly"))));
 		fileNode.addChild(ef.createOrderedNode(ef.createArtifact(new DefaultTokenArtifactData(new LilypondToken(0, "a", "Token")))));
-		fileNode.addChild(ef.createOrderedNode(ef.createArtifact(new DefaultTokenArtifactData(new LilypondToken(1, "b", "Token")))));
+		// "a b": b where it was read
+		fileNode.addChild(ef.createOrderedNode(ef.createArtifact(new DefaultTokenArtifactData(new LilypondToken(2, "b", "Token")))));
 
 		Set<Node> input = new HashSet<>();
 		input.add(fileNode);

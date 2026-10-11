@@ -38,6 +38,17 @@ class LilypondRelativizerTest {
 	}
 
 	@Test
+	void aRelativeWithoutAPitchStartsFromF_notFromTheNoteBeforeIt() {
+		// \relative c'' { g4 \relative { des8 fes8 } }: the inner block's des is the d nearest the f below
+		// middle c, whatever g came before it - it was written des,8 after the outer g
+		assertEquals(List.of("\\relative", "c''", "{", "g4", "\\relative", "{", "des8", "fes8", "}", "}"),
+				write("\\relative", "Name.Builtin", null, "c''", P, "\\relative@14", "{", "Delimiter.Bracket.Start", null,
+						"g4", P, "g'4@11~", "\\relative", "Name.Builtin", null, "{", "Delimiter.Bracket.Start", null,
+						"des8", P, "des8@1~4", "fes8", P, "fes8@3~8", "}", "Delimiter.Bracket.End", null,
+						"}", "Delimiter.Bracket.End", null));
+	}
+
+	@Test
 	void aRoundTripIsUnchanged() {
 		assertEquals(List.of("\\relative", "c'", "{", "r4", "fis2", "gis8", "<c e>4", "}"),
 				write("\\relative", "Name.Builtin", null, "c'", P, "\\relative@7", "{", "Delimiter.Bracket.Start", null,

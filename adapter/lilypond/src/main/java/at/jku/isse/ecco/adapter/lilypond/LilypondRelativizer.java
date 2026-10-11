@@ -29,6 +29,9 @@ final class LilypondRelativizer {
 
 	private LilypondRelativizer() {}
 
+	/** Where a \\relative without a pitch of its own starts: the f below middle c, in steps from c (see #steps). */
+	static final int RELATIVE_WITHOUT_PITCH = 3;
+
 	/** One relative block: the depth of the brace it opened at, and the pitch the next note is relative to. */
 	private static final class Scope {
 		final int depth;
@@ -44,6 +47,7 @@ final class LilypondRelativizer {
 		List<String> out = new ArrayList<>(tokens.size());
 		Deque<Scope> scopes = new ArrayDeque<>();
 		Integer anchor = null;           // a \relative's pitch, waiting for its brace
+		boolean relative = false;        // a \relative was written, its pitch or brace not yet
 		int depth = 0;
 		boolean inChord = false;
 		Integer chordFirst = null, chordPrevious = null;
@@ -63,11 +67,23 @@ final class LilypondRelativizer {
 			}
 			if (meaning != null && meaning.startsWith("\\relative@")) {
 				anchor = steps(meaning);
+				relative = false;
+				out.add(text);
+				continue;
+			}
+			if ("\\relative".equals(text)) {
+				relative = true;
 				out.add(text);
 				continue;
 			}
 			if ("{".equals(text) || "<<".equals(text)) {
 				depth++;
+				if (anchor == null && relative) {
+					// \relative { ...: without a pitch of its own it starts from f, not from the note
+					// written before it in an enclosing block
+					anchor = RELATIVE_WITHOUT_PITCH;
+				}
+				relative = false;
 				if (anchor != null) {
 					scopes.push(new Scope(depth, anchor));
 					anchor = null;

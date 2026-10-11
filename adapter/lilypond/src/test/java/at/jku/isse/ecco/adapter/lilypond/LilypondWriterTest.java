@@ -1,5 +1,7 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.ContextArtifactDataFactory;
@@ -115,5 +117,22 @@ public class LilypondWriterTest {
 
 		EccoException thrown = assertThrows(EccoException.class, () -> writer.write(tempDir, input));
 		assertTrue(thrown.getCause() instanceof IOException);
+	}
+
+	private static DefaultTokenArtifactData at(int pos, String text, String action) {
+		return new DefaultTokenArtifactData(new LilypondToken(pos, text, action));
+	}
+
+	@Test
+	void numbersAndSignsAreNeverRunTogether_andWhatWasWrittenTogetherStaysTogether() {
+		// \shp 0 4 was written \shp 04, a2 2 as a22, ^ ^ as ^^ (a marcato)
+		assertTrue(LilypondFormatter.appendSpace(at(5, "0", "Literal.Number"), at(7, "4", "Literal.Number"), "0", "4"));
+		assertTrue(LilypondFormatter.appendSpace(at(0, "a2", "Text.Music.Pitch"), at(3, "2", "Literal.Number.Duration"), "a2", "2"));
+		assertTrue(LilypondFormatter.appendSpace(at(0, "^", "Delimiter.Direction"), at(2, "^", "Delimiter.Direction"), "^", "^"));
+		// written together in the file read: together again (\\=2( , the pieces of 0.1 as parce split them)
+		assertFalse(LilypondFormatter.appendSpace(at(0, "\\=", "Name.Builtin"), at(2, "2", "Literal.Number"), "\\=", "2"));
+		assertFalse(LilypondFormatter.appendSpace(at(0, "0", "Literal.Number.Decimal"), at(1, ".", "Literal.Number.Dot"), "0", "."));
+		// otherwise by the actions, as before: no space before a bar check
+		assertFalse(LilypondFormatter.appendSpace(at(0, "c4", "Text.Music.Pitch"), at(3, "|", "Delimiter.Separator"), "c4", "|"));
 	}
 }

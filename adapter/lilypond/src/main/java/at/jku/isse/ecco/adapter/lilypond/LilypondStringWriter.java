@@ -48,7 +48,8 @@ public class LilypondStringWriter implements ArtifactWriter<Set<Node>, String> {
 				List<String> texts = LilypondRelativizer.texts(tokens);
 				for (int i = 0; i < tokens.size(); i++) {
 					sb.append(texts.get(i));
-					if (i + 1 < tokens.size() && LilypondFormatter.appendSpace(tokens.get(i), tokens.get(i + 1))) {
+					if (i + 1 < tokens.size() && LilypondFormatter.appendSpace(tokens.get(i), tokens.get(i + 1),
+							texts.get(i), texts.get(i + 1))) {
 						sb.append(" ");
 					}
 				}

@@ -3,6 +3,38 @@ package at.jku.isse.ecco.adapter.lilypond;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 
 class LilypondFormatter {
+
+    /**
+     * Whether a space goes between [d], written as [text], and [next], written as [nextText]. Two tokens
+     * that were written together in the file they were read from (the one starts where the other ends)
+     * are written together again - \\=2(, ^^, the pieces of a number parce split; two that were not are
+     * never run into one word (\\shp 0 4 was written \\shp 04, a2 2 as a22). Otherwise, by their actions.
+     */
+    public static boolean appendSpace(DefaultTokenArtifactData d, DefaultTokenArtifactData next, String text, String nextText) {
+        if (next != null) {
+            if (next.getPos() == d.getPos() + d.getText().length()) {
+                return false;
+            }
+            if (glue(text, nextText)) {
+                return true;
+            }
+        }
+        return appendSpace(d, next);
+    }
+
+    /** Whether [a] followed directly by [b] would read as one word or number: 0 4 as 04, 4. 4 as 4.4, ^ ^ as ^^. */
+    static boolean glue(String a, String b) {
+        if (a == null || b == null || a.isEmpty() || b.isEmpty()) {
+            return false;
+        }
+        char x = a.charAt(a.length() - 1), y = b.charAt(0);
+        return Character.isLetterOrDigit(x) && Character.isLetterOrDigit(y)
+                || x == '.' && Character.isDigit(y)
+                || Character.isDigit(x) && y == '.'
+                // two direction or script signs: ^ ^ as ^^ is a marcato, - - as -- a tenuto
+                || "-^_".indexOf(x) >= 0 && "-^_".indexOf(y) >= 0;
+    }
+
     @SuppressWarnings("RedundantIfStatement")
     public static boolean appendSpace(DefaultTokenArtifactData d, DefaultTokenArtifactData next) {
         String ca = d.getAction();
