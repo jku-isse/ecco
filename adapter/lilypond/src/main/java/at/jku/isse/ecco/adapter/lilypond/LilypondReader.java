@@ -58,8 +58,22 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
      * settings are written.
      */
     boolean musicalTokens() {
+        return this.setting(LilypondPlugin.MUSICAL_TOKENS_SETTING, "ecco.lilypond.musicalTokens");
+    }
+
+    /**
+     * Whether this repository gives each top-level assignment a context named after its variable, as
+     * recorded when it was created - see {@link #musicalTokens()}; one from before has no such
+     * contexts in its artifacts and keeps parce's alone.
+     */
+    boolean variableContexts() {
+        return this.setting(LilypondPlugin.VARIABLE_CONTEXTS_SETTING, "ecco.lilypond.variableContexts");
+    }
+
+    /** [key] from this repository's settings, false when absent; without a repository, -D[property]. */
+    private boolean setting(String key, String property) {
         if (this.repositoryDir == null) {
-            return Boolean.getBoolean("ecco.lilypond.musicalTokens");
+            return Boolean.getBoolean(property);
         }
         Path settings = this.repositoryDir.resolve(".settings");
         if (!Files.exists(settings)) {
@@ -71,7 +85,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
         } catch (IOException e) {
             throw new UncheckedIOException("could not read " + settings, e);
         }
-        return Boolean.parseBoolean(properties.getProperty(LilypondPlugin.MUSICAL_TOKENS_SETTING, "false"));
+        return Boolean.parseBoolean(properties.getProperty(key, "false"));
     }
 
     @Override
@@ -119,6 +133,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
                 throw new IOException("no parser found");
             }
             parser.setMusicalTokens(musical);
+            parser.setVariableContexts(this.variableContexts());
             parser.init();
 
         } catch (IOException e) {

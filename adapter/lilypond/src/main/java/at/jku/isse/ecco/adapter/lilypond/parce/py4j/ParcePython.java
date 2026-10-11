@@ -33,9 +33,14 @@ public final class ParcePython {
 	 * @throws at.jku.isse.ecco.EccoException naming every python tried and what it lacks, when none will do
 	 */
 	public static Choice resolve(boolean musicalTokens) {
+		return resolve(musicalTokens, false);
+	}
+
+	/** As {@link #resolve(boolean)}; variable contexts need lymodel too (its parse tree). */
+	public static Choice resolve(boolean musicalTokens, boolean variableContexts) {
 		Path lymodelDir = lymodelDir(LilypondPreferences.getLymodelPath(), System.getenv("LYPYTHON"));
-		String python = PythonFinder.find(LilypondPreferences.getPythonPath(), modules(musicalTokens), lymodelDir,
-				purpose(musicalTokens), advice(lymodelDir));
+		String python = PythonFinder.find(LilypondPreferences.getPythonPath(), modules(musicalTokens || variableContexts),
+				lymodelDir, purpose(musicalTokens, variableContexts), advice(lymodelDir));
 		return new Choice(python, lymodelDir);
 	}
 
@@ -49,6 +54,17 @@ public final class ParcePython {
 	}
 
 	static String purpose(boolean musicalTokens) {
+		return purpose(musicalTokens, false);
+	}
+
+	static String purpose(boolean musicalTokens, boolean variableContexts) {
+		if (musicalTokens && variableContexts) {
+			return "reads LilyPond with musical tokens and variable contexts (lilypond.musicalTokens and"
+					+ " lilypond.variableContexts true in this repository's .ecco/.settings)";
+		}
+		if (variableContexts) {
+			return "reads LilyPond with variable contexts (lilypond.variableContexts=true in this repository's .ecco/.settings)";
+		}
 		return musicalTokens
 				? "reads LilyPond with musical tokens (lilypond.musicalTokens=true in this repository's .ecco/.settings)"
 				: "reads LilyPond";

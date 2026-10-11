@@ -18,9 +18,34 @@ final class LilypondTraceMeasure {
 		return Boolean.parseBoolean(System.getProperty("ecco.lilypond.musicalTokens", "true"));
 	}
 
+	/** Whether a repository created by these tests has variable contexts - the default, unless -Decco.lilypond.variableContexts=false. */
+	static boolean variableContexts() {
+		return Boolean.parseBoolean(System.getProperty("ecco.lilypond.variableContexts", "true"));
+	}
+
+	/** The variable contexts ({@code LilyPond.assignment.NAME}) in any trace of [service]'s repository, by name. */
+	static java.util.Set<String> variableContexts(EccoService service) {
+		java.util.Set<String> names = new java.util.TreeSet<>();
+		for (Association association : service.getRepository().getAssociations()) {
+			collectContexts(association.getRootNode(), names);
+		}
+		return names;
+	}
+
+	private static void collectContexts(Node node, java.util.Set<String> names) {
+		if (node.getArtifact() != null) {
+			String data = String.valueOf(node.getArtifact().getData());
+			int at = data.indexOf("LilyPond.assignment.");
+			if (at >= 0) names.add(data.substring(at + "LilyPond.assignment.".length()).replaceAll("'.*", ""));
+		}
+		for (Node child : node.getChildren()) {
+			collectContexts(child, names);
+		}
+	}
+
 	/** Whether this machine can read such a repository: a musical one fails without lymodel, by design. */
 	static boolean readable() {
-		return !musicalTokens() || Lymusic.available();
+		return !(musicalTokens() || variableContexts()) || Lymusic.available();
 	}
 
 	static final String UNREADABLE = "a repository with musical tokens (the default) " + Lymusic.NEEDS

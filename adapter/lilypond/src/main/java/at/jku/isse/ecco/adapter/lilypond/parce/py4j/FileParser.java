@@ -59,6 +59,13 @@ public class FileParser implements LilypondParser<ParceToken> {
         this.musicalTokens = musicalTokens;
     }
 
+    private boolean variableContexts;
+
+    @Override
+    public void setVariableContexts(boolean variableContexts) {
+        this.variableContexts = variableContexts;
+    }
+
     public LilypondNode<ParceToken> parse(Path path) {
         return parse(path, null);
     }
@@ -66,7 +73,7 @@ public class FileParser implements LilypondParser<ParceToken> {
     public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
         Gateway.getInstance().reset();
-        ParcePython.Choice python = ParcePython.resolve(this.musicalTokens);
+        ParcePython.Choice python = ParcePython.resolve(this.musicalTokens, this.variableContexts);
         ProcessBuilder lilyparce = new ProcessBuilder(python.python(), pythonScript, path.toString());
         lilyparce.environment().put("ECCO_PY4J_PORT", String.valueOf(Gateway.getInstance().getPort()));
         if (python.lymodelDir() != null) {
@@ -74,6 +81,9 @@ public class FileParser implements LilypondParser<ParceToken> {
         }
         if (this.musicalTokens) {
             lilyparce.environment().put("ECCO_LILYPOND_MUSICAL_TOKENS", "1");
+        }
+        if (this.variableContexts) {
+            lilyparce.environment().put("ECCO_LILYPOND_VARIABLE_CONTEXTS", "1");
         }
         Process process = null;
         try {

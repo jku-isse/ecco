@@ -16,8 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * A repository reads LilyPond the way it was created to (.ecco/.settings): musical tokens in a new
- * one, plain tokens in one from before the setting, the origin's choice in a local fork.
+ * A repository reads LilyPond the way it was created to (.ecco/.settings): musical tokens and variable
+ * contexts in a new one, plain tokens and parce's contexts in one from before the settings, the
+ * origin's choice in a local fork.
  */
 public class LilypondRepositorySettingsTest {
 
@@ -42,6 +43,28 @@ public class LilypondRepositorySettingsTest {
 		service.close();
 		assertEquals(LilypondTraceMeasure.musicalTokens() ? "true" : "false",
 				settings(repositoryDir).getProperty(LilypondPlugin.MUSICAL_TOKENS_SETTING));
+		assertEquals(LilypondTraceMeasure.variableContexts() ? "true" : "false",
+				settings(repositoryDir).getProperty(LilypondPlugin.VARIABLE_CONTEXTS_SETTING));
+	}
+
+	@Test
+	@Timeout(120)
+	public void aRepositoryWithoutSettingsHasNoVariableContexts() throws IOException {
+		assumeTrue(LilypondTraceMeasure.readable(), LilypondTraceMeasure.UNREADABLE);
+		Path repositoryDir = Files.createTempDirectory("lilypond-old-contexts").resolve(".ecco");
+		EccoService service = new EccoService();
+		service.setRepositoryDir(repositoryDir);
+		service.init();
+		service.close();
+		Files.delete(repositoryDir.resolve(EccoService.SETTINGS_FILE_NAME));     // as before settings existed
+
+		service = new EccoService();
+		service.setRepositoryDir(repositoryDir);
+		service.open();
+		service.setBaseDir(V2);
+		service.commit("v2", "setup.1, notes.1");
+		assertTrue(LilypondTraceMeasure.variableContexts(service).isEmpty(), "its artifacts have parce's contexts only");
+		service.close();
 	}
 
 	@Test

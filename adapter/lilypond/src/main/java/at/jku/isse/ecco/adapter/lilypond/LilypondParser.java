@@ -15,4 +15,7 @@ public interface LilypondParser<T> {
 
     /** Whether the parser makes musical tokens (see LilyEccoTransformer#transform); off unless set. */
     default void setMusicalTokens(boolean musicalTokens) {}
+
+    /** Each top-level assignment a context named after its variable; parsers without them ignore it. */
+    default void setVariableContexts(boolean variableContexts) {}
 }

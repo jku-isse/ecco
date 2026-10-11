@@ -38,6 +38,51 @@ if os.environ.get("ECCO_LILYPOND_MUSICAL_TOKENS"):
     except Exception as e:
         print("no musical tokens: %s" % e, file=sys.stderr)
 
+# Variable contexts (ECCO_LILYPOND_VARIABLE_CONTEXTS, set for a repository that records
+# lilypond.variableContexts=true in its .ecco/.settings - every new one, see LilypondPlugin): each
+# top-level assignment becomes a context named after its variable, from lymodel's parse tree, around
+# parce's own contexts. parce names the contexts it lexes in - every voice's notes are in a
+# `LilyPond.musiclist` - so two voices' contexts are alike and only their order tells them apart: a
+# version that moved a voice had its notes matched with another voice's, and a feature committed
+# before the move put its accents on the wrong notes. `LilyPond.assignment.SopranoVoice` is the
+# soprano in every commit. The context changes only between top-level statements, where parce's own
+# stack is empty, so it always nests. Without lymodel such a repository is not read at all, as with
+# musical tokens.
+assignments = []
+if os.environ.get("ECCO_LILYPOND_VARIABLE_CONTEXTS"):
+    if os.environ.get("LYPYTHON") and os.environ["LYPYTHON"] not in sys.path:
+        sys.path.insert(0, os.environ["LYPYTHON"])
+    try:
+        from lymodel.lybar import backend
+        from lymodel.lybar.backend import items
+    except ImportError as e:
+        print("This repository reads LilyPond with variable contexts (lilypond.variableContexts=true in its\n"
+              ".ecco/.settings), which need lymodel: %s.\n"
+              "Install it into the python that runs parce (python -m pip install <lilypond-idea-plugin>/python)\n"
+              "or set LYPYTHON to that python/ directory." % e, file=sys.stderr)
+        sys.exit(3)
+    try:
+        assignments = [(node.position, node.end_position(), "LilyPond.assignment." + node.name())
+                       for node in backend.parsed(s) if isinstance(node, items.Assignment)]
+    except Exception as e:
+        print("no variable contexts: %s" % e, file=sys.stderr)
+outer = None      # the assignment context open, its name
+depth = 0         # parce's own context depth, suppressed pitch contexts included
+
+
+def enclose(pos):
+    """Opens the assignment context [pos] is in, closing the one before - at depth 0 only."""
+    global outer
+    name = next((n for start, end, n in assignments if start <= pos < end), None)
+    if name != outer:
+        flush()
+        if outer is not None:
+            ep.popContext(-1)
+        if name is not None:
+            ep.pushContext(name)
+        outer = name
+
+
 ITEM = {"Text.Music.Pitch", "Text.Music.Rest", "Delimiter.Chord.End"}
 ATTACHED = {"Text.Music.Pitch.Octave", "Text.Music.Pitch.Accidental", "Literal.Number.Duration",
             "Literal.Number.Duration.Dot", "Literal.Number.Duration.Scaling"}
@@ -81,6 +126,7 @@ for e in parce.events(LilyPond.root, s):
         lexemes.pop(0)
     if e.target:
         pop = e.target.pop
+        depth += pop
         if suppressed and pop < 0:
             closed = min(suppressed, -pop)
             suppressed -= closed
@@ -95,6 +141,9 @@ for e in parce.events(LilyPond.root, s):
         if pop or push:
             flush()
         ep.popContext(pop)
+        if assignments and depth == 0 and lexemes:
+            enclose(lexemes[0][0])
+        depth += len(e.target.push)
         if lexemes:
             first = lexemes[0]
             if first[0] > lastPos:
@@ -105,6 +154,8 @@ for e in parce.events(LilyPond.root, s):
             ep.pushContext(name)
 
     for tpl in lexemes:
+        if assignments and depth == 0:
+            enclose(tpl[0])
         if tpl[0] > lastPos:
             flush()
             ep.addWhitespace(lastPos, s[lastPos:tpl[0]])
