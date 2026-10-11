@@ -2,7 +2,7 @@ package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.adapter.lilypond.data.context.DefaultContextArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.util.Trees;
@@ -193,7 +193,7 @@ public class TreeFusionOrderedSiblingMatchingTest {
 	}
 
 	private Node.Op token(String text) {
-		return factory.createNode(new DefaultTokenArtifactData(new ParceToken(0, "\"" + text + "\"", "Literal.String")));
+		return factory.createNode(new DefaultTokenArtifactData(new LilypondToken(0, "\"" + text + "\"", "Literal.String")));
 	}
 
 	private Node.Op withChild(Node.Op parent, Node.Op child) {

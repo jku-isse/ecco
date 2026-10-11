@@ -1,10 +1,10 @@
-package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
+package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondParser;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import py4j.GatewayServerListener;
 import py4j.Py4JServerConnection;
 
@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class FileParser implements LilypondParser<ParceToken> {
+public class FileParser implements LilypondParser<LilypondToken> {
     public static final int MAX_SCRIPT_TIMEOUT_SECONDS = 10;
     /** The script that reads with lymodel's tree-sitter parse. */
     public static final String PARSER_SCRIPT_NAME = "LilypondParser_2.py";
@@ -68,14 +68,14 @@ public class FileParser implements LilypondParser<ParceToken> {
         this.variableContexts = variableContexts;
     }
 
-    public LilypondNode<ParceToken> parse(Path path) {
+    public LilypondNode<LilypondToken> parse(Path path) {
         return parse(path, null);
     }
 
-    public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
+    public LilypondNode<LilypondToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
         Gateway.getInstance().reset();
-        ParcePython.Choice python = ParcePython.resolve();
+        LilypondPython.Choice python = LilypondPython.resolve();
         ProcessBuilder script = new ProcessBuilder(python.python(), pythonScript, path.toString());
         script.environment().put("ECCO_PY4J_PORT", String.valueOf(Gateway.getInstance().getPort()));
         if (python.lymodelDir() != null) {
@@ -117,7 +117,7 @@ public class FileParser implements LilypondParser<ParceToken> {
             if (exitCode == 0) {
                 LOGGER.log(Level.FINE, "The LilyPond parser exited normally, code: {0}, {1}ms", new Object[] { exitCode, (System.nanoTime() - tm) / 1000000 });
                 if (tokenMetric != null) {
-                    LilypondNode<ParceToken> n = Gateway.getInstance().getRoot();
+                    LilypondNode<LilypondToken> n = Gateway.getInstance().getRoot();
                     while (n != null) {
                         if (n.getData() != null) {
                             tokenMetric.put(n.getData().getAction(),
@@ -133,14 +133,14 @@ public class FileParser implements LilypondParser<ParceToken> {
                 return Gateway.getInstance().getRoot();
 
             } else {
-                ParcePython.forget();
+                LilypondPython.forget();
                 throw new EccoException("The LilyPond parser exited with code " + exitCode + " for file " + path + ":\n" + sjErr);
             }
 
         } catch (IOException e) {
             // e.g. no python executable - fail the commit rather than committing an empty file
             // (see UnreadableFileCommitTest), as returning null here used to
-            ParcePython.forget();
+            LilypondPython.forget();
             throw new EccoException("Could not run the LilyPond parser for file " + path, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

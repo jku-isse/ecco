@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
-import at.jku.isse.ecco.adapter.lilypond.parce.py4j.ParcePython;
+import at.jku.isse.ecco.adapter.lilypond.parser.py4j.LilypondPython;
 
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -26,7 +26,7 @@ public class LilypondGatewayPortTest {
 	/** Whether a python reads LilyPond here: tree-sitter, py4j and lymodel. */
 	private static boolean readable() {
 		try {
-			ParcePython.resolve();
+			LilypondPython.resolve();
 			return true;
 		} catch (at.jku.isse.ecco.EccoException e) {
 			return false;

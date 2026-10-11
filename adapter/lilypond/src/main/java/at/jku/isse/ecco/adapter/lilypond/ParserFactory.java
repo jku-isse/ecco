@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
-import at.jku.isse.ecco.adapter.lilypond.parce.NodesDeserializer;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.NodesDeserializer;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,9 +13,9 @@ public class ParserFactory {
         parseFiles = flag;
     }
 
-    public static LilypondParser<ParceToken> getParser() {
+    public static LilypondParser<LilypondToken> getParser() {
         if (parseFiles) {
-            LilypondParser<ParceToken> parser = tryInstantiate("at.jku.isse.ecco.adapter.lilypond.parce.py4j.FileParser");
+            LilypondParser<LilypondToken> parser = tryInstantiate("at.jku.isse.ecco.adapter.lilypond.parser.py4j.FileParser");
             if (parser != null) {
                 return parser;
             }
@@ -30,7 +30,7 @@ public class ParserFactory {
     }
 
     @SuppressWarnings("unchecked")
-    private static LilypondParser<ParceToken> tryInstantiate(String className) {
+    private static LilypondParser<LilypondToken> tryInstantiate(String className) {
         Class<?> clazz;
         try {
             clazz = Class.forName(className, false, ParserFactory.class.getClassLoader());
@@ -41,7 +41,7 @@ public class ParserFactory {
         }
 
         try {
-            return (LilypondParser<ParceToken>) clazz.getDeclaredConstructor().newInstance();
+            return (LilypondParser<LilypondToken>) clazz.getDeclaredConstructor().newInstance();
         } catch (Throwable e) {
             // the backend IS present but failed to instantiate - a real, fixable configuration
             // problem (missing native dependency, gateway misconfiguration, ...), distinct from

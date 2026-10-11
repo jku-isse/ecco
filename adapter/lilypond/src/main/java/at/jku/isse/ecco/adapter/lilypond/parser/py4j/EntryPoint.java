@@ -1,9 +1,9 @@
-package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
+package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
 import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -11,8 +11,8 @@ import java.util.logging.Logger;
 public class EntryPoint {
     private static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
 
-    private final LilypondNode<ParceToken> root;
-    private LilypondNode<ParceToken> current;
+    private final LilypondNode<LilypondToken> root;
+    private LilypondNode<LilypondToken> current;
     private int depth;
     private int maxDepth;
     private int nNodes;
@@ -46,14 +46,14 @@ public class EntryPoint {
     }
 
     public void addToken(int pos, String text, String action) {
-        ParceToken t = new ParceToken(pos, text, action);
+        LilypondToken t = new LilypondToken(pos, text, action);
         current = current.append(t.getAction(), t, depth);
         nNodes++;
         LOGGER.log(Level.FINER, "added token ([{0}] \"{1}\", depth={2})",
                 new Object[] { t.getAction(), t.getText(), depth });
     }
 
-    /** A note, rest or chord end with what it means however it is spelled (see ParceToken#getMeaning). */
+    /** A note, rest or chord end with what it means however it is spelled (see LilypondToken#getMeaning). */
     public void addToken(int pos, String text, String action, String meaning) {
         addToken(pos, text, action);
         current.getData().setMeaning(meaning);
@@ -64,7 +64,7 @@ public class EntryPoint {
 
         String[] lines = text.split("\\n", -1);
         if (lines.length > 1) {
-            ParceToken t = new ParceToken(pos,
+            LilypondToken t = new LilypondToken(pos,
                     "\n".repeat(lines.length - 1).concat(lines[lines.length - 1]),
                     LilypondReader.PARSER_ACTION_LINEBREAK);
             current = current.append(t.getAction(), t, depth);
@@ -81,7 +81,7 @@ public class EntryPoint {
         LOGGER.log(Level.FINER, "closed context ({0}, depth={1})", new Object[]{ levels, depth });
     }
 
-    LilypondNode<ParceToken> getRoot() {
+    LilypondNode<LilypondToken> getRoot() {
         return root.getNext();
     }
 }

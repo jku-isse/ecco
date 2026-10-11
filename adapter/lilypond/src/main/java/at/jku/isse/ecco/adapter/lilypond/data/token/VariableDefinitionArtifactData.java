@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond.data.token;
 
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 
 import java.util.Objects;
 
@@ -10,7 +10,7 @@ public class VariableDefinitionArtifactData extends DefaultTokenArtifactData {
 
     private final String variableName;
 
-    public VariableDefinitionArtifactData(ParceToken token) {
+    public VariableDefinitionArtifactData(LilypondToken token) {
         super(token);
 
         if (token.getTransformationData() instanceof String name) {

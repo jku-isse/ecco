@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.lilypond.parce;
+package at.jku.isse.ecco.adapter.lilypond.parser;
 
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondParser;
@@ -10,22 +10,22 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class NodesDeserializer implements LilypondParser<ParceToken> {
+public class NodesDeserializer implements LilypondParser<LilypondToken> {
     private final static Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
     @Override
     public void init() throws IOException {
     }
 
     @Override
-    public LilypondNode<ParceToken> parse(Path path) {
+    public LilypondNode<LilypondToken> parse(Path path) {
         return parse(path, null);
     }
 
     @Override
-    public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
+    public LilypondNode<LilypondToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "deserialize {0}", path);
-        LilypondNode<ParceToken> head = new LilypondNode<>("ROOT", null);
-        LilypondNode<ParceToken> n = head;
+        LilypondNode<LilypondToken> head = new LilypondNode<>("ROOT", null);
+        LilypondNode<LilypondToken> n = head;
         try {
             try (FileInputStream fis = new FileInputStream(path.toFile());
                  ObjectInputStream ois = new ObjectInputStream(fis)) {

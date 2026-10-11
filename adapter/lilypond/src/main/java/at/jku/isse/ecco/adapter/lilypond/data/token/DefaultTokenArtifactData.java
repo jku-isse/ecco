@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond.data.token;
 
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.artifact.ArtifactData;
 
 import java.util.Objects;
@@ -13,7 +13,7 @@ public class DefaultTokenArtifactData implements ArtifactData {
     private final String action;
     private final String meaning;
 
-    public DefaultTokenArtifactData(ParceToken token)
+    public DefaultTokenArtifactData(LilypondToken token)
     {
         this.pos = token.getPos();
         this.token = token.getText();
@@ -50,7 +50,7 @@ public class DefaultTokenArtifactData implements ArtifactData {
 
     /**
      * What makes two tokens the same: their text, unless the parser knows what it means however it
-     * is spelled (a note's absolute pitch and duration, see ParceToken#getMeaning) or a subclass
+     * is spelled (a note's absolute pitch and duration, see LilypondToken#getMeaning) or a subclass
      * knows that two spellings mean the same thing (see {@link LineBreakArtifactData}). Two variants that differ only
      * there must not differ to ECCO, or the difference is traced to a feature.
      * @return The token's identity
@@ -67,7 +67,7 @@ public class DefaultTokenArtifactData implements ArtifactData {
     }
 
     /**
-     * What the token means however it is spelled - see ParceToken#getMeaning - or null.
+     * What the token means however it is spelled - see LilypondToken#getMeaning - or null.
      * @return Meaning of the token, or null
      */
     public String getMeaning() {

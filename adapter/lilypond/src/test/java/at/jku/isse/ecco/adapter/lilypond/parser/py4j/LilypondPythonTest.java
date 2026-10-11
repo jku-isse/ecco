@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
+package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,14 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * What reading LilyPond asks of a python (see PythonFinderTest for how one is chosen): lymodel only
  * for musical tokens, and from the directory in Preferences before LYPYTHON.
  */
-public class ParcePythonTest {
+public class LilypondPythonTest {
 
 	@Test
 	public void readingNeedsTreeSitterPy4jAndLymodel_notParce() {
-		assertFalse(ParcePython.MODULES.contains("parce"), ParcePython.MODULES.toString());
-		assertTrue(ParcePython.MODULES.containsAll(List.of("tree_sitter", "py4j", "lymodel.lybar.grammar")),
-				ParcePython.MODULES.toString());
-		assertTrue(ParcePython.advice(null).contains("tree-sitter"), ParcePython.advice(null));
+		assertFalse(LilypondPython.MODULES.contains("parce"), LilypondPython.MODULES.toString());
+		assertTrue(LilypondPython.MODULES.containsAll(List.of("tree_sitter", "py4j", "lymodel.lybar.grammar")),
+				LilypondPython.MODULES.toString());
+		assertTrue(LilypondPython.advice(null).contains("tree-sitter"), LilypondPython.advice(null));
 	}
 
 	@Test
@@ -33,17 +33,17 @@ public class ParcePythonTest {
 		Files.createDirectory(other.resolve("lymodel"));
 		Path without = Files.createTempDirectory("without-lymodel");
 
-		assertEquals(withLymodel, ParcePython.lymodelDir(withLymodel.toString(), other.toString()));
-		assertEquals(other, ParcePython.lymodelDir("", other.toString()));
-		assertEquals(other, ParcePython.lymodelDir(without.toString(), other.toString()), "a directory without lymodel is passed over");
-		assertNull(ParcePython.lymodelDir(null, null));
+		assertEquals(withLymodel, LilypondPython.lymodelDir(withLymodel.toString(), other.toString()));
+		assertEquals(other, LilypondPython.lymodelDir("", other.toString()));
+		assertEquals(other, LilypondPython.lymodelDir(without.toString(), other.toString()), "a directory without lymodel is passed over");
+		assertNull(LilypondPython.lymodelDir(null, null));
 	}
 
 	@Test
 	public void theAdviceSaysWhereLymodelWasLookedFor() throws Exception {
 		Path plugin = Files.createTempDirectory("plugin-python");
-		assertTrue(ParcePython.advice(plugin).contains("looked for in " + plugin), ParcePython.advice(plugin));
-		assertTrue(ParcePython.advice(null).contains("installed only"), ParcePython.advice(null));
-		assertTrue(ParcePython.advice(null).contains("Preferences > Lilypond"), ParcePython.advice(null));
+		assertTrue(LilypondPython.advice(plugin).contains("looked for in " + plugin), LilypondPython.advice(plugin));
+		assertTrue(LilypondPython.advice(null).contains("installed only"), LilypondPython.advice(null));
+		assertTrue(LilypondPython.advice(null).contains("Preferences > Lilypond"), LilypondPython.advice(null));
 	}
 }

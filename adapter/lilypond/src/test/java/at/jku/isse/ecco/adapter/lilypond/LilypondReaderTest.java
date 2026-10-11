@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.lilypond;
 
 import at.jku.isse.ecco.adapter.lilypond.data.ContextArtifactDataFactory;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
@@ -23,9 +23,9 @@ public class LilypondReaderTest {
 	void generateEccoTreeBuildsNestedOrderedNodesFromIncreasingLevelsAndSiblingsFromDrops() {
 		Node.Op root = ef.createOrderedNode(ef.createArtifact(ContextArtifactDataFactory.getContextArtifactData("root")));
 
-		LilypondNode<ParceToken> n1 = new LilypondNode<>("ctx", null);
+		LilypondNode<LilypondToken> n1 = new LilypondNode<>("ctx", null);
 		n1.setLevel(0);
-		LilypondNode<ParceToken> n2 = n1.append("tok", new ParceToken(0, "hello", "Token"), 1);
+		LilypondNode<LilypondToken> n2 = n1.append("tok", new LilypondToken(0, "hello", "Token"), 1);
 		n2.append("ctx2", null, 0);
 
 		reader.generateEccoTree(n1, root);
@@ -50,7 +50,7 @@ public class LilypondReaderTest {
 		// scenario one step in, which used to NPE at Node$Op.getParent()
 		Node.Op root = ef.createOrderedNode(ef.createArtifact(ContextArtifactDataFactory.getContextArtifactData("root")));
 
-		LilypondNode<ParceToken> n1 = new LilypondNode<>("n1", null);
+		LilypondNode<LilypondToken> n1 = new LilypondNode<>("n1", null);
 		n1.setLevel(5);
 		n1.append("n2", null, 0); // an oversized drop (5 -> 0) with only the root to unwind to
 

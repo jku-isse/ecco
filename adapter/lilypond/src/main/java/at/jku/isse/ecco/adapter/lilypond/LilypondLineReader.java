@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.service.listener.ReadListener;
@@ -70,7 +70,7 @@ public class LilypondLineReader implements ArtifactReader<Path, Set<Node.Op>> {
                 int i = 0;
                 while ((line = br.readLine()) != null) {
                     i++;
-                    DefaultTokenArtifactData ad = new DefaultTokenArtifactData(new ParceToken(i, line, "unknown"));
+                    DefaultTokenArtifactData ad = new DefaultTokenArtifactData(new LilypondToken(i, line, "unknown"));
                     Artifact.Op<DefaultTokenArtifactData> lineArtifact = this.entityFactory.createArtifact(ad);
                     Node.Op lineNode = this.entityFactory.createNode(lineArtifact);
                     lineNode.putProperty(PROPERTY_LINE_START, i);

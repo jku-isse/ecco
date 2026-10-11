@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.adapter.lilypond.test.thesis;
 
 import at.jku.isse.ecco.adapter.lilypond.*;
-import at.jku.isse.ecco.adapter.lilypond.parce.LilypondNodeSerializationWrapper;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondNodeSerializationWrapper;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.adapter.lilypond.test.FeatureFileVisitor;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;

@@ -435,7 +435,7 @@ public class PreferencesView extends OperationView {
 		lilypondGridPane.add(searchPathsNoteLabel, 0, lilypondRow, 2, 1);
 		lilypondRow++;
 
-		// reading .ly files: the python with tree-sitter, py4j and lymodel (ParcePython)
+		// reading .ly files: the python with tree-sitter, py4j and lymodel (LilypondPython)
 		Label pythonHelpLabel = new Label("Only needed if reading .ly files fails: the Python that has tree-sitter, py4j " +
 				"and lymodel, and the lilypond-idea-plugin's python/ directory if lymodel isn't installed into it. " +
 				"Leave blank to look in the usual places.");

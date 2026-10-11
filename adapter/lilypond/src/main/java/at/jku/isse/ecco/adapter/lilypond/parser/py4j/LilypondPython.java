@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
+package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
 import at.jku.isse.ecco.adapter.PythonFinder;
 import at.jku.isse.ecco.service.LilypondPreferences;
@@ -14,7 +14,7 @@ import java.util.List;
  * usual install locations that imports tree-sitter, py4j and lymodel. lymodel is the one installed
  * into that python, or the lilypond-idea-plugin's python/ directory set in Preferences or in LYPYTHON.
  */
-public final class ParcePython {
+public final class LilypondPython {
 
 	/** What LilypondParser_2.py imports, whatever the repository's settings. */
 	static final List<String> MODULES = List.of("tree_sitter", "py4j", "lymodel.lybar.grammar", "lymodel.lilydata",
@@ -24,7 +24,7 @@ public final class ParcePython {
 	public record Choice(String python, Path lymodelDir) {
 	}
 
-	private ParcePython() {
+	private LilypondPython() {
 	}
 
 	/**

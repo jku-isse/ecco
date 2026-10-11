@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,7 +38,7 @@ public class LilyEccoTransformer {
      * syllable, hyphen and extender stays a token of its own, so a changed syllable - or the same
      * words wrapped into other lines - is that syllable and not a new block.
      */
-    public static synchronized LilypondNode<ParceToken> transform(LilypondNode<ParceToken> head, boolean musicalTokens) {
+    public static synchronized LilypondNode<LilypondToken> transform(LilypondNode<LilypondToken> head, boolean musicalTokens) {
         boolean merge = MERGE_LYRICS;
         MERGE_LYRICS = !musicalTokens;
         try {
@@ -48,13 +48,13 @@ public class LilyEccoTransformer {
         }
     }
 
-    public static synchronized LilypondNode<ParceToken> transform(LilypondNode<ParceToken> head) {
+    public static synchronized LilypondNode<LilypondToken> transform(LilypondNode<LilypondToken> head) {
         if (null == head) {
             LOGGER.warning("first node is null");
             return null;
         }
 
-        LilypondNode<ParceToken> holder = new LilypondNode<>("HOLDER", null);
+        LilypondNode<LilypondToken> holder = new LilypondNode<>("HOLDER", null);
         holder.setLevel(0);
         holder.setNext(head);
         head.setPrev(holder);
@@ -65,7 +65,7 @@ public class LilyEccoTransformer {
         long tm = System.nanoTime();
         LOGGER.finer("\n\n****** START TRANSFORMATION ******\n");
 
-        LilypondNode<ParceToken> n = head;
+        LilypondNode<LilypondToken> n = head;
         while (n != null) {
             if (n.getData() != null) {
                 if (n.getData().getAction().equals(DEF_VARIABLE) || n.getData().getAction().equals(DEF_ATTRIBUTE)) {
@@ -95,7 +95,7 @@ public class LilyEccoTransformer {
         return head;
     }
 
-    private static LilypondNode<ParceToken> moveNext(LilypondNode<ParceToken> n) {
+    private static LilypondNode<LilypondToken> moveNext(LilypondNode<LilypondToken> n) {
         cntOutput++;
         traceNode(n);
         n = n.getNext();
@@ -103,7 +103,7 @@ public class LilyEccoTransformer {
         return n;
     }
 
-    private static void traceNode(LilypondNode<ParceToken> n) {
+    private static void traceNode(LilypondNode<LilypondToken> n) {
         if (!LOGGER.isLoggable(Level.FINER)) return;
 
         if (n.getData() == null) {
@@ -113,16 +113,16 @@ public class LilyEccoTransformer {
         }
     }
 
-    private static LilypondNode<ParceToken> transformVariableDefinitonNode(LilypondNode<ParceToken> defNode) {
+    private static LilypondNode<LilypondToken> transformVariableDefinitonNode(LilypondNode<LilypondToken> defNode) {
         if (defNode.getPrev() == null || !defNode.getPrev().getName().equals("LilyPond.list")) {
             return defNode;
         }
-        LilypondNode<ParceToken> prev = defNode.getPrev().getPrev();
+        LilypondNode<LilypondToken> prev = defNode.getPrev().getPrev();
         int oldCntInput = cntInput;
 
         StringBuilder variableDefinition = new StringBuilder(defNode.getData().getText());
         StringBuilder fullVarDefinition = new StringBuilder(defNode.getData().getText());
-        LilypondNode<ParceToken> next = defNode.getNext();
+        LilypondNode<LilypondToken> next = defNode.getNext();
         cntInput++;
         while (next != null && next.getLevel() == defNode.getLevel()) {
             variableDefinition.append(next.getData().getText());
@@ -139,9 +139,9 @@ public class LilyEccoTransformer {
         fullVarDefinition.append(" =");
         cntInput++;
 
-        ParceToken t = new ParceToken(defNode.getData().getPos(),
+        LilypondToken t = new LilypondToken(defNode.getData().getPos(),
                 fullVarDefinition.toString(), defNode.getData().getAction(), variableDefinition.toString());
-        LilypondNode<ParceToken> def = new LilypondNode<>(variableDefinition.toString(), t);
+        LilypondNode<LilypondToken> def = new LilypondNode<>(variableDefinition.toString(), t);
         def.setLevel(defNode.getPrev().getLevel());
         prev.setNext(def);  cntOutput--; // replaced LilyPond.list
         def.setPrev(prev);
@@ -151,13 +151,13 @@ public class LilyEccoTransformer {
         return def;
     }
 
-    private static LilypondNode<ParceToken> transformIdentifier(LilypondNode<ParceToken> identifier) {
-        LilypondNode<ParceToken> n = identifier.getNext();
+    private static LilypondNode<LilypondToken> transformIdentifier(LilypondNode<LilypondToken> identifier) {
+        LilypondNode<LilypondToken> n = identifier.getNext();
         cntInput++;
         StringBuilder sb = new StringBuilder();
-        ParceToken newToken = null;
+        LilypondToken newToken = null;
         while (n != null && n.getLevel() > identifier.getLevel() && n.getData() != null) {
-            if (newToken == null) { newToken = new ParceToken(n.getData().getPos(), "", n.getData().getAction()); }
+            if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); }
             sb.append(n.getData().getText());
 
             n = n.getNext();
@@ -166,7 +166,7 @@ public class LilyEccoTransformer {
 
         if (newToken != null) {
             newToken.setText(sb.toString());
-            LilypondNode<ParceToken> newNode = new LilypondNode<>(DEF_IDENTIFIER, newToken);
+            LilypondNode<LilypondToken> newNode = new LilypondNode<>(DEF_IDENTIFIER, newToken);
             newNode.setLevel(identifier.getLevel());
             newNode.setPrev(identifier.getPrev());
             identifier.getPrev().setNext(newNode);
@@ -180,15 +180,15 @@ public class LilyEccoTransformer {
         }
     }
 
-    private static LilypondNode<ParceToken> transformString(LilypondNode<ParceToken> string, String tokenName) {
-        LilypondNode<ParceToken> n = string.getNext();
+    private static LilypondNode<LilypondToken> transformString(LilypondNode<LilypondToken> string, String tokenName) {
+        LilypondNode<LilypondToken> n = string.getNext();
         if (n == null || n.getData() == null || !n.getData().getAction().equals(DEF_LITERAL_STRING)) { return string; }
         cntInput++;
         StringBuilder sb = new StringBuilder();
-        ParceToken newToken = null;
+        LilypondToken newToken = null;
         while (n != null && n.getLevel() > string.getLevel()) {
             if (n.getData() != null) {
-                if (newToken == null) { newToken = new ParceToken(n.getData().getPos(), "", n.getData().getAction()); }
+                if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); }
                 sb.append(n.getData().getText());
             }
 
@@ -198,7 +198,7 @@ public class LilyEccoTransformer {
 
         if (newToken != null) {
             newToken.setText(sb.toString());
-            LilypondNode<ParceToken> newNode = new LilypondNode<>(tokenName, newToken);
+            LilypondNode<LilypondToken> newNode = new LilypondNode<>(tokenName, newToken);
             newNode.setLevel(string.getLevel());
             newNode.setPrev(string.getPrev());
             string.getPrev().setNext(newNode);
@@ -212,15 +212,15 @@ public class LilyEccoTransformer {
         }
     }
 
-    private static LilypondNode<ParceToken> transformSchemeNumber(LilypondNode<ParceToken> number) {
-        LilypondNode<ParceToken> n = number.getNext();
+    private static LilypondNode<LilypondToken> transformSchemeNumber(LilypondNode<LilypondToken> number) {
+        LilypondNode<LilypondToken> n = number.getNext();
         if (n == null || n.getData() == null || !n.getData().getAction().startsWith("Literal.Number")) { return number; }
         cntInput++;
         StringBuilder sb = new StringBuilder();
-        ParceToken newToken = null;
+        LilypondToken newToken = null;
         while (n != null && n.getLevel() > number.getLevel()) {
             if (n.getData() != null) {
-                if (newToken == null) { newToken = new ParceToken(n.getData().getPos(), "", n.getData().getAction()); }
+                if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); }
                 sb.append(n.getData().getText());
             }
 
@@ -230,7 +230,7 @@ public class LilyEccoTransformer {
 
         if (newToken != null) {
             newToken.setText(sb.toString());
-            LilypondNode<ParceToken> newNode = new LilypondNode<>(DEF_SCHEME_NUMBER, newToken);
+            LilypondNode<LilypondToken> newNode = new LilypondNode<>(DEF_SCHEME_NUMBER, newToken);
             newNode.setLevel(number.getLevel());
             newNode.setPrev(number.getPrev());
             number.getPrev().setNext(newNode);
@@ -244,7 +244,7 @@ public class LilyEccoTransformer {
         }
     }
 
-    private static boolean isLyriclist(LilypondNode<ParceToken> lyricmode) {
+    private static boolean isLyriclist(LilypondNode<LilypondToken> lyricmode) {
         // pattern: Keyword.Lyric { LilyPond.lyricsto LilyPond.list LilyPond.string ... } LilyPond.lyriclist
         if (!lyricmode.getName().equals(DEF_LYRIC) ||
                 !lyricmode.getData().getText().equals("\\lyricmode") && !lyricmode.getData().getText().equals("\\lyricsto")) {
@@ -271,11 +271,11 @@ public class LilyEccoTransformer {
         return lyricmode != null && lyricmode.getData() != null && lyricmode.getData().getAction().equals(DEF_BRACKET_START);
     }
 
-    private static LilypondNode<ParceToken> transformLyriclist(LilypondNode<ParceToken> lyricmode) {
+    private static LilypondNode<LilypondToken> transformLyriclist(LilypondNode<LilypondToken> lyricmode) {
         // pattern: Keyword.Lyric { LilyPond.lyricsto LilyPond.list LilyPond.string ... } LilyPond.lyriclist
         StringBuilder lyrics = new StringBuilder(lyricmode.getData().getText())
                 .append(" ");
-        LilypondNode<ParceToken> n = lyricmode.getNext();
+        LilypondNode<LilypondToken> n = lyricmode.getNext();
         cntInput++;
         if (n == null) {
             // malformed/truncated input: the \lyricsto or \lyricmode keyword has nothing after it
@@ -289,8 +289,8 @@ public class LilyEccoTransformer {
             // fixed two-hop step assuming exactly one such node (LilyPond.string) - guard each hop
             // individually instead of chaining n.getNext().getNext(), so a structure that doesn't
             // match that assumption falls through to "give up" instead of NPEing.
-            LilypondNode<ParceToken> list = n.getNext();
-            LilypondNode<ParceToken> firstListItem = list != null ? list.getNext() : null;
+            LilypondNode<LilypondToken> list = n.getNext();
+            LilypondNode<LilypondToken> firstListItem = list != null ? list.getNext() : null;
             if (firstListItem == null) {
                 return lyricmode;
             }
@@ -315,7 +315,7 @@ public class LilyEccoTransformer {
         }
         cntInput++;
 
-        LilypondNode<ParceToken> prev = lyricmode.getPrev();
+        LilypondNode<LilypondToken> prev = lyricmode.getPrev();
         while (n != null && n.getLevel() > lyricmode.getLevel()) {
             if (n.getName().equals(DEF_STRING) || n.getName().equals(DEF_SCHEME_STRING)) {
                 n = transformString(n, n.getName());
@@ -333,8 +333,8 @@ public class LilyEccoTransformer {
             cntInput++;
         }
 
-        ParceToken t = new ParceToken(lyricmode.getData().getPos(), lyrics.toString(), "Text.Lyric.LyricText");
-        LilypondNode<ParceToken> ly = new LilypondNode<>(DEF_LYRIC, t);
+        LilypondToken t = new LilypondToken(lyricmode.getData().getPos(), lyrics.toString(), "Text.Lyric.LyricText");
+        LilypondNode<LilypondToken> ly = new LilypondNode<>(DEF_LYRIC, t);
         ly.setLevel(prev.getLevel());
         prev.setNext(ly);
         ly.setPrev(prev);

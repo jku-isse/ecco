@@ -1,7 +1,7 @@
-package at.jku.isse.ecco.adapter.lilypond.parce.py4j;
+package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import py4j.GatewayServer;
 import py4j.GatewayServerListener;
 
@@ -29,7 +29,7 @@ public class Gateway {
         }
     }
 
-    public LilypondNode<ParceToken> getRoot() {
+    public LilypondNode<LilypondToken> getRoot() {
         if (instance == null) return null;
 
         return instance.entrypoint.getRoot();

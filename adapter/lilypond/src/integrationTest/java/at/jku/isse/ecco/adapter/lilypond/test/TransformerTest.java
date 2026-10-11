@@ -5,7 +5,7 @@ import at.jku.isse.ecco.adapter.lilypond.LilyEccoTransformer;
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
 import at.jku.isse.ecco.adapter.lilypond.LilypondStringWriter;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
@@ -37,16 +37,16 @@ public class TransformerTest {
         }
     }
 
-    private LilypondNode<ParceToken> append(LilypondNode<ParceToken> n, int level, int pos, String text, String action) {
-        return n.append(action, new ParceToken(pos, text, action), level);
+    private LilypondNode<LilypondToken> append(LilypondNode<LilypondToken> n, int level, int pos, String text, String action) {
+        return n.append(action, new LilypondToken(pos, text, action), level);
     }
 
     @Test(groups = {"transformation"})
     public void transform_VariableDefinition_Test() {
-        LilypondNode<ParceToken> h = new LilypondNode<>("LilyPond.list", null);
+        LilypondNode<LilypondToken> h = new LilypondNode<>("LilyPond.list", null);
         h.setLevel(0);
 
-        LilypondNode<ParceToken> n = append(h, 1, 0, "lyricsVar", "Name.Variable.Definition");
+        LilypondNode<LilypondToken> n = append(h, 1, 0, "lyricsVar", "Name.Variable.Definition");
 
         n = append(n, 0, 10, "=", "Delimiter.Operator.Assignment");
         append(n, 0, 12, "\\relative", "Name.Builtin");
@@ -67,10 +67,10 @@ public class TransformerTest {
 
     @Test(groups = {"transformation"})
     public void transform_IdentifierSingleVariable_Test() {
-        LilypondNode<ParceToken> h = new LilypondNode<>("LilyPond.identifier_ref", null);
+        LilypondNode<LilypondToken> h = new LilypondNode<>("LilyPond.identifier_ref", null);
         h.setLevel(0);
 
-        LilypondNode<ParceToken> n = append(h, 1, 0, "\\variableName", "Name.Variable");
+        LilypondNode<LilypondToken> n = append(h, 1, 0, "\\variableName", "Name.Variable");
 
         h = LilyEccoTransformer.transform(h);
 
@@ -85,10 +85,10 @@ public class TransformerTest {
 
     @Test(groups = {"transformation"})
     public void transform_IdentifierMultiVariables_Test() {
-        LilypondNode<ParceToken> h = new LilypondNode<>("LilyPond.identifier_ref", null);
+        LilypondNode<LilypondToken> h = new LilypondNode<>("LilyPond.identifier_ref", null);
         h.setLevel(0);
 
-        LilypondNode<ParceToken> n = append(h, 1, 0, "\\variableName1", "Name.Variable");
+        LilypondNode<LilypondToken> n = append(h, 1, 0, "\\variableName1", "Name.Variable");
         n = append(n, 1, 14, ".", "Delimiter.Seperator");
         n = append(n, 1, 15, "variableName2", "Name.Variable");
 
@@ -109,10 +109,10 @@ public class TransformerTest {
 
     @Test(groups = {"transformation"})
     public void transform_LyricList_Test() {
-        LilypondNode<ParceToken> h = new LilypondNode<>("=", new ParceToken(0, "=", "Delimiter.Operator.Assignment"));
+        LilypondNode<LilypondToken> h = new LilypondNode<>("=", new LilypondToken(0, "=", "Delimiter.Operator.Assignment"));
         h.setLevel(0);
 
-        LilypondNode<ParceToken> n = append(h, 0, 2, "\\lyricmode", "Keyword.Lyric");
+        LilypondNode<LilypondToken> n = append(h, 0, 2, "\\lyricmode", "Keyword.Lyric");
         n = n.append("LilyPond.lyriclist", null, 0);
 
         n = append(n, 1, 13, "{", "Delimiter.Bracket.Start");
@@ -141,10 +141,10 @@ public class TransformerTest {
 
     @Test(groups = {"transformation"})
     public void transform_LyricsTo_Test() {
-        LilypondNode<ParceToken> h = new LilypondNode<>("Keyword", new ParceToken(0, "\\score", "Keyword"));
+        LilypondNode<LilypondToken> h = new LilypondNode<>("Keyword", new LilypondToken(0, "\\score", "Keyword"));
         h.setLevel(0);
 
-        LilypondNode<ParceToken> n = append(h, 0, 7, "{", "Delimiter.Bracket.Start");
+        LilypondNode<LilypondToken> n = append(h, 0, 7, "{", "Delimiter.Bracket.Start");
         n = n.append("LilyPond.musiclist", null, 0);
 
         n = append(n, 1, 11, "<<", "Delimiter.Bracket.Start");

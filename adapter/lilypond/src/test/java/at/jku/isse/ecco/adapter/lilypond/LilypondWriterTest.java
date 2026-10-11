@@ -4,7 +4,7 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.ContextArtifactDataFactory;
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ public class LilypondWriterTest {
 	private final LilypondWriter writer = new LilypondWriter();
 
 	private Node.Op token(String text) {
-		return ef.createOrderedNode(ef.createArtifact(new DefaultTokenArtifactData(new ParceToken(0, text, "Token"))));
+		return ef.createOrderedNode(ef.createArtifact(new DefaultTokenArtifactData(new LilypondToken(0, text, "Token"))));
 	}
 
 	@Test

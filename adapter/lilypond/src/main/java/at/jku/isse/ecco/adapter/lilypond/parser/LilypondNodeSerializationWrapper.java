@@ -1,4 +1,4 @@
-package at.jku.isse.ecco.adapter.lilypond.parce;
+package at.jku.isse.ecco.adapter.lilypond.parser;
 
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 
@@ -9,13 +9,13 @@ import java.io.Serializable;
 
 public class LilypondNodeSerializationWrapper implements Serializable {
     private static final long serialVersionUID = 1L;
-    private transient LilypondNode<ParceToken> node;
+    private transient LilypondNode<LilypondToken> node;
 
-    public LilypondNodeSerializationWrapper(LilypondNode<ParceToken> node) {
+    public LilypondNodeSerializationWrapper(LilypondNode<LilypondToken> node) {
         this.node = node;
     }
 
-    public LilypondNode<ParceToken> getNode() {
+    public LilypondNode<LilypondToken> getNode() {
         return node;
     }
 
@@ -38,12 +38,12 @@ public class LilypondNodeSerializationWrapper implements Serializable {
         String name = ois.readUTF();
         int level = ois.readInt();
         boolean hasData = ois.readBoolean();
-        ParceToken t = null;
+        LilypondToken t = null;
         if (hasData) {
             int pos = ois.readInt();
             String action = ois.readUTF();
             String text = ois.readUTF();
-            t = new ParceToken(pos, text, action);
+            t = new LilypondToken(pos, text, action);
         }
         node = new LilypondNode<>(name, t);
         node.setLevel(level);

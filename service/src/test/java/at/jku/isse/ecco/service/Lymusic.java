@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.service;
 
 import at.jku.isse.ecco.EccoException;
-import at.jku.isse.ecco.adapter.lilypond.parce.py4j.ParcePython;
+import at.jku.isse.ecco.adapter.lilypond.parser.py4j.LilypondPython;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the same music - notes, lyrics, articulations, slurs, dynamics, clefs/keys/meters - however each
  * is spelled. Taken from LYPYTHON when that names the plugin's python/ directory, else from an
  * installed lymodel ({@code pip install <plugin repo>/python}); tests that need it are skipped
- * without either. Run with the python the lilypond adapter picks (ParcePython), so "available"
+ * without either. Run with the python the lilypond adapter picks (LilypondPython), so "available"
  * means the adapter can read a repository with musical tokens here.
  */
 final class Lymusic {
@@ -27,7 +27,7 @@ final class Lymusic {
 	static synchronized boolean available() {
 		if (available == null) {
 			try {
-				ParcePython.resolve();
+				LilypondPython.resolve();
 				available = true;
 			} catch (EccoException e) {
 				available = false;
@@ -51,7 +51,7 @@ final class Lymusic {
 	}
 
 	private static ProcessBuilder python(String... args) {
-		ParcePython.Choice python = ParcePython.resolve();
+		LilypondPython.Choice python = LilypondPython.resolve();
 		String[] command = new String[args.length + 1];
 		command[0] = python.python();
 		System.arraycopy(args, 0, command, 1, args.length);

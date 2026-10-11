@@ -6,7 +6,7 @@ import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.ContextArtifactDataFactory;
 import at.jku.isse.ecco.adapter.lilypond.data.TokenArtifactDataFactory;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -149,7 +149,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
                     + " whose tokens would not match the ones this repository holds. Create a new repository and commit"
                     + " the variants again.");
         }
-        LilypondParser<ParceToken> parser = ParserFactory.getParser();
+        LilypondParser<LilypondToken> parser = ParserFactory.getParser();
         boolean musical = this.musicalTokens();
         try {
             if (parser == null) {
@@ -171,7 +171,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
                 Node.Op pluginNode = this.entityFactory.createOrderedNode(pluginArtifact);
                 nodes.add(pluginNode);
 
-                LilypondNode<ParceToken> head = parser.parse(resolvedPath, tokenMetric);
+                LilypondNode<LilypondToken> head = parser.parse(resolvedPath, tokenMetric);
                 if (head == null) {
                     LOGGER.log(Level.SEVERE, "parser returned no node, file {0}", resolvedPath);
                 } else {
@@ -189,11 +189,11 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
         return nodes;
     }
 
-    public void generateEccoTree(LilypondNode<ParceToken> head, Node.Op node) {
+    public void generateEccoTree(LilypondNode<LilypondToken> head, Node.Op node) {
         Artifact.Op<ArtifactData> a;
         Node.Op nop;
 
-        LilypondNode<ParceToken> n = head;
+        LilypondNode<LilypondToken> n = head;
         int cntNodes = 0;
         while (n != null) {
             a = n.getData() == null ?

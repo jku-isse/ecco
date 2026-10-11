@@ -15,7 +15,7 @@ import java.util.prefs.Preferences;
  *
  * <p>Also the python that reads .ly files and the lymodel directory (the lilypond-idea-plugin's python/)
  * it reads musical tokens with - blank by default, in which case the adapter looks for them itself
- * (see {@code at.jku.isse.ecco.adapter.lilypond.parce.py4j.ParcePython}).
+ * (see {@code at.jku.isse.ecco.adapter.lilypond.parser.py4j.LilypondPython}).
  */
 public final class LilypondPreferences {
 

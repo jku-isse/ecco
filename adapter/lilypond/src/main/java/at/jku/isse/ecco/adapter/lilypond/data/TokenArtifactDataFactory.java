@@ -2,7 +2,7 @@ package at.jku.isse.ecco.adapter.lilypond.data;
 
 import at.jku.isse.ecco.adapter.lilypond.LilypondReader;
 import at.jku.isse.ecco.adapter.lilypond.data.token.*;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 
 public class TokenArtifactDataFactory {
 
@@ -11,7 +11,7 @@ public class TokenArtifactDataFactory {
      * Will return a {@link DefaultTokenArtifactData} when no specific class is available.
      * @param token Token from <a href="https://parce.info">parce</a> parser
      */
-    public static DefaultTokenArtifactData getTokenArtifactData(ParceToken token) {
+    public static DefaultTokenArtifactData getTokenArtifactData(LilypondToken token) {
 
         switch (token.getAction()) {
             case "Name.Variable.Definition":

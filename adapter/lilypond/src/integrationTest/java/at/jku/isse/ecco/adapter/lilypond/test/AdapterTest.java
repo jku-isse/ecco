@@ -1,8 +1,8 @@
 package at.jku.isse.ecco.adapter.lilypond.test;
 
 import at.jku.isse.ecco.adapter.lilypond.*;
-import at.jku.isse.ecco.adapter.lilypond.parce.LilypondNodeSerializationWrapper;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondNodeSerializationWrapper;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.testng.Assert;
@@ -163,19 +163,19 @@ public class AdapterTest {
         deleteDirectoryContents(serPath);
         Files.createDirectory(serPath);
 
-        LilypondParser<ParceToken> parser = ParserFactory.getParser();
+        LilypondParser<LilypondToken> parser = ParserFactory.getParser();
         assert parser != null;
         try {
             parser.init();
 
             Files.walkFileTree(featuresPath, new FeatureFileVisitor(serPath, p -> {
-                LilypondNode<ParceToken> head = parser.parse(p);
+                LilypondNode<LilypondToken> head = parser.parse(p);
 
                 final Path dest = serPath.resolve(featuresPath.relativize(p));
                 try (FileOutputStream fos = new FileOutputStream(dest.toFile());
                      ObjectOutputStream oos = new ObjectOutputStream(fos)) {
 
-                    LilypondNode<ParceToken> n = head;
+                    LilypondNode<LilypondToken> n = head;
                     int nNodes = 0;
                     while (n != null) {
                         nNodes++;

@@ -1,7 +1,7 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
 import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
-import at.jku.isse.ecco.adapter.lilypond.parce.ParceToken;
+import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class LilypondRelativizerTest {
 
 	private static DefaultTokenArtifactData token(String text, String action, String meaning) {
-		ParceToken t = new ParceToken(0, text, action);
+		LilypondToken t = new LilypondToken(0, text, action);
 		t.setMeaning(meaning);
 		return new DefaultTokenArtifactData(t);
 	}

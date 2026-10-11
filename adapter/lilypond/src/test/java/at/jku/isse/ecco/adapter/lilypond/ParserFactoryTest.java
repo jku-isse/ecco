@@ -1,6 +1,6 @@
 package at.jku.isse.ecco.adapter.lilypond;
 
-import at.jku.isse.ecco.adapter.lilypond.parce.NodesDeserializer;
+import at.jku.isse.ecco.adapter.lilypond.parser.NodesDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
