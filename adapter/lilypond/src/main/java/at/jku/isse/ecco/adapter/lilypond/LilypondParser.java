@@ -18,7 +18,4 @@ public interface LilypondParser<T> {
 
     /** Each top-level assignment a context named after its variable; parsers without them ignore it. */
     default void setVariableContexts(boolean variableContexts) {}
-
-    /** Read with lymodel's tree-sitter parse instead of parce; before {@link #init()}. */
-    default void setLybar(boolean lybar) {}
 }

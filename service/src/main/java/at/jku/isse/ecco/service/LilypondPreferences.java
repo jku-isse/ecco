@@ -13,7 +13,7 @@ import java.util.prefs.Preferences;
  * rather than the bundled properties file, which is packaged deployment config, not something a
  * user edits at runtime.
  *
- * <p>Also the python that runs parce and the lymodel directory (the lilypond-idea-plugin's python/)
+ * <p>Also the python that reads .ly files and the lymodel directory (the lilypond-idea-plugin's python/)
  * it reads musical tokens with - blank by default, in which case the adapter looks for them itself
  * (see {@code at.jku.isse.ecco.adapter.lilypond.parce.py4j.ParcePython}).
  */

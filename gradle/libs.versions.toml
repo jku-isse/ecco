@@ -51,7 +51,6 @@ testng-core = "7.10.2"
 testng-engine = "1.0.6"
 commons-math3 = "3.6.1"
 py4j = "0.10.9.7"
-graalvm-polyglot-tck = "23.1.1"
 
 # rest (versions not managed by the Micronaut BOM)
 micronaut-openapi = "6.3.0"
@@ -117,7 +116,6 @@ testng-core = { module = "org.testng:testng", version.ref = "testng-core" }
 testng-engine = { module = "org.junit.support:testng-engine", version.ref = "testng-engine" }
 commons-math3 = { module = "org.apache.commons:commons-math3", version.ref = "commons-math3" }
 py4j = { module = "net.sf.py4j:py4j", version.ref = "py4j" }
-graalvm-polyglot-tck = { module = "org.graalvm.sdk:polyglot-tck", version.ref = "graalvm-polyglot-tck" }
 
 micronaut-openapi = { module = "io.micronaut.openapi:micronaut-openapi", version.ref = "micronaut-openapi" }
 

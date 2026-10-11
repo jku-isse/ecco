@@ -58,7 +58,7 @@ public class AdapterTest {
         };
     }
 
-    @Test(groups = {"parce"})
+    @Test(groups = {"python"})
     @BeforeClass(alwaysRun = true)
     private void setUp() {
         Logger log = LilypondReader.getLogger();
@@ -73,7 +73,7 @@ public class AdapterTest {
         }
     }
 
-    @Test(groups = {"parce"})
+    @Test(groups = {"python"})
 	public void Lilypond_Adapter_Test() {
 		LilypondReader reader = new LilypondReader(new SerEntityFactory());
 
@@ -117,7 +117,7 @@ public class AdapterTest {
     }
 
     private static final Path[] CHANSON_FILE = new Path[]{Paths.get("input/chanson.ly")};
-    @Test(groups = {"parce"})
+    @Test(groups = {"python"})
     public void ChansonWriterTest() {
         LilypondReader rd = new LilypondReader((new SerEntityFactory()));
         Set<Node.Op> nodes = rd.read(DATA_DIR, CHANSON_FILE);
@@ -139,12 +139,12 @@ public class AdapterTest {
     }
 
     /**
-     * This method can be used to serialize parser input such that {@link LilypondParser} does not depend on Parce
-     * which needs the Py4J module to be set up.
+     * This method can be used to serialize parser input such that {@link LilypondParser} does not depend on the python
+     * parser (tree-sitter, py4j, lymodel) being set up.
      * @throws IOException Thrown if feature path is missing.
      */
     @Ignore
-    @Test(groups = {"parce"}, dataProvider = "serializationPaths")
+    @Test(groups = {"python"}, dataProvider = "serializationPaths")
     public void serializeParsedNodes(String inputDir, String outputDir) throws IOException {
         ParserFactory.setParseFiles(true);
         Path featuresPath = BASE_DIR.getParent().resolve(inputDir);

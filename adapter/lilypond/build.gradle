@@ -11,19 +11,6 @@ javafx {
 
 sourceSets {
 	main {
-		if (!use_py4j_parser.toBoolean()) {
-			java {
-				exclude '**/py4j/**'
-			}
-		}
-		if (!use_graalvm_parser.toBoolean()) {
-			java {
-				exclude '**/graalvm/**'
-			}
-			resources {
-				exclude 'graalVM-config.properties'
-			}
-		}
 		if (!use_lilypond.toBoolean()) {
 			resources {
 				exclude 'lilypond-config.properties'
@@ -39,14 +26,8 @@ dependencies {
 	// annotations this module's integrationTest classes use
 	integrationTestRuntimeOnly libs.testng.engine
 	implementation libs.commons.math3
-	if (use_py4j_parser.toBoolean()) {
-		println 'include py4j dependency'
-		implementation libs.py4j
-	}
-	if (use_graalvm_parser.toBoolean()) {
-		println 'include graalvm dependency'
-		implementation libs.graalvm.polyglot.tck
-	}
+	// runs LilypondParser_2.py, which reads with lymodel's tree-sitter parse
+	implementation libs.py4j
 }
 
 ospackage {

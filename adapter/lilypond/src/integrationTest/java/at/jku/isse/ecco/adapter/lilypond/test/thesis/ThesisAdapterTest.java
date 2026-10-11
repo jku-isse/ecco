@@ -50,7 +50,7 @@ public class ThesisAdapterTest {
         assert DATA_DIR != null;
     }
 
-    @Test(groups = {"parce"})
+    @Test(groups = {"python"})
     @BeforeClass(alwaysRun = true)
     private void setUp() {
         Logger log = LilypondReader.getLogger();
@@ -73,7 +73,7 @@ public class ThesisAdapterTest {
      * LilypondWriter.ArtifactIterator, a separate bug worth a real fixture and investigation, not
      * a guess.
      */
-    @Test(groups = {"parce"})
+    @Test(groups = {"python"})
     @Ignore
     public void SulzerWriterTest() {
         LilypondReader rd = new LilypondReader((new SerEntityFactory()));

@@ -27,7 +27,7 @@ final class Lymusic {
 	static synchronized boolean available() {
 		if (available == null) {
 			try {
-				ParcePython.resolve(true);
+				ParcePython.resolve();
 				available = true;
 			} catch (EccoException e) {
 				available = false;
@@ -36,20 +36,6 @@ final class Lymusic {
 		return available;
 	}
 
-	private static Boolean lybarAvailable;
-
-	/** Whether a python reads LilyPond with lymodel's tree-sitter parse - what a new repository does. */
-	static synchronized boolean lybarAvailable() {
-		if (lybarAvailable == null) {
-			try {
-				ParcePython.resolve(true, true, true);
-				lybarAvailable = true;
-			} catch (EccoException e) {
-				lybarAvailable = false;
-			}
-		}
-		return lybarAvailable;
-	}
 
 	static final String NEEDS = "needs lymodel: pip install lilypond-idea-plugin's python/, or LYPYTHON pointing at it";
 
@@ -65,7 +51,7 @@ final class Lymusic {
 	}
 
 	private static ProcessBuilder python(String... args) {
-		ParcePython.Choice python = ParcePython.resolve(true);
+		ParcePython.Choice python = ParcePython.resolve();
 		String[] command = new String[args.length + 1];
 		command[0] = python.python();
 		System.arraycopy(args, 0, command, 1, args.length);

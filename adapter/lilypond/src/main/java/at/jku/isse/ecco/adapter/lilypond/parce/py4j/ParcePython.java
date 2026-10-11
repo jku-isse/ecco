@@ -9,20 +9,16 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * The python that runs parce, and the lymodel it reads musical tokens with: found by
+ * The python that runs LilypondParser_2.py, which reads with lymodel's tree-sitter parse: found by
  * {@link PythonFinder} - the python set in Preferences, else the first of python, python3 and the
- * usual install locations that imports parce and py4j, and lymodel too for a repository with
- * musical tokens. lymodel is the one installed into that python, or the lilypond-idea-plugin's
- * python/ directory set in Preferences or in LYPYTHON.
+ * usual install locations that imports tree-sitter, py4j and lymodel. lymodel is the one installed
+ * into that python, or the lilypond-idea-plugin's python/ directory set in Preferences or in LYPYTHON.
  */
 public final class ParcePython {
 
-	/** What reading LilyPond imports; lymodel only for musical tokens, by the module the script uses. */
-	static final String PARCE = "parce", PY4J = "py4j", LYMODEL = "lymodel.lybar.normalize";
-
-	/** What reading with lymodel's tree-sitter parse imports (LilypondParser_2.py), whatever the settings. */
-	static final List<String> LYBAR_MODULES = List.of("tree_sitter", PY4J, "lymodel.lybar.grammar", "lymodel.lilydata",
-			LYMODEL);
+	/** What LilypondParser_2.py imports, whatever the repository's settings. */
+	static final List<String> MODULES = List.of("tree_sitter", "py4j", "lymodel.lybar.grammar", "lymodel.lilydata",
+			"lymodel.lybar.normalize");
 
 	/** The python to run, and the lymodel directory to hand it as LYPYTHON (null: the installed one, if any). */
 	public record Choice(String python, Path lymodelDir) {
@@ -32,26 +28,14 @@ public final class ParcePython {
 	}
 
 	/**
-	 * The python for reading LilyPond, with lymodel when {@code musicalTokens}.
+	 * The python for reading LilyPond.
 	 *
 	 * @throws at.jku.isse.ecco.EccoException naming every python tried and what it lacks, when none will do
 	 */
-	public static Choice resolve(boolean musicalTokens) {
-		return resolve(musicalTokens, false);
-	}
-
-	/** As {@link #resolve(boolean)}; variable contexts need lymodel too (its parse tree). */
-	public static Choice resolve(boolean musicalTokens, boolean variableContexts) {
-		return resolve(musicalTokens, variableContexts, false);
-	}
-
-	/** As {@link #resolve(boolean, boolean)}, for parce or for lymodel's tree-sitter parse ({@code lybar}). */
-	public static Choice resolve(boolean musicalTokens, boolean variableContexts, boolean lybar) {
+	public static Choice resolve() {
 		Path lymodelDir = lymodelDir(LilypondPreferences.getLymodelPath(), System.getenv("LYPYTHON"));
-		String python = PythonFinder.find(LilypondPreferences.getPythonPath(),
-				lybar ? LYBAR_MODULES : modules(musicalTokens || variableContexts),
-				lymodelDir, lybar ? "reads LilyPond (lilypond.parser=lybar-1 in this repository's .ecco/.settings)"
-						: purpose(musicalTokens, variableContexts), advice(lymodelDir, lybar));
+		String python = PythonFinder.find(LilypondPreferences.getPythonPath(), MODULES, lymodelDir, "reads LilyPond",
+				advice(lymodelDir));
 		return new Choice(python, lymodelDir);
 	}
 
@@ -60,36 +44,11 @@ public final class ParcePython {
 		PythonFinder.forget();
 	}
 
-	static List<String> modules(boolean musicalTokens) {
-		return musicalTokens ? List.of(PARCE, PY4J, LYMODEL) : List.of(PARCE, PY4J);
-	}
-
-	static String purpose(boolean musicalTokens) {
-		return purpose(musicalTokens, false);
-	}
-
-	static String purpose(boolean musicalTokens, boolean variableContexts) {
-		if (musicalTokens && variableContexts) {
-			return "reads LilyPond with musical tokens and variable contexts (lilypond.musicalTokens and"
-					+ " lilypond.variableContexts true in this repository's .ecco/.settings)";
-		}
-		if (variableContexts) {
-			return "reads LilyPond with variable contexts (lilypond.variableContexts=true in this repository's .ecco/.settings)";
-		}
-		return musicalTokens
-				? "reads LilyPond with musical tokens (lilypond.musicalTokens=true in this repository's .ecco/.settings)"
-				: "reads LilyPond";
-	}
-
 	static String advice(Path lymodelDir) {
-		return advice(lymodelDir, false);
-	}
-
-	static String advice(Path lymodelDir, boolean lybar) {
 		return (lymodelDir == null
 				? "lymodel: looked for installed only (no lymodel directory set in Preferences or LYPYTHON).\n"
 				: "lymodel: looked for in " + lymodelDir + " and installed.\n")
-				+ "Install what is missing into one of them (python -m pip install " + (lybar ? "tree-sitter" : "parce") + " py4j,"
+				+ "Install what is missing into one of them (python -m pip install tree-sitter py4j,"
 				+ " python -m pip install <lilypond-idea-plugin>/python), or set the Python and the lymodel"
 				+ " directory (the plugin's python/) under Preferences > Lilypond.";
 	}

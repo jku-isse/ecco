@@ -129,10 +129,6 @@ subprojects {
 		if (System.getProperty('ecco.lilypond.variableContexts') != null) {
 			systemProperty 'ecco.lilypond.variableContexts', System.getProperty('ecco.lilypond.variableContexts')
 		}
-		// ...and what reads it (LilypondPlugin.PARSER_SETTING): -Decco.lilypond.parser=parce
-		if (System.getProperty('ecco.lilypond.parser') != null) {
-			systemProperty 'ecco.lilypond.parser', System.getProperty('ecco.lilypond.parser')
-		}
 	}
 
 	// ...and for the applications started through Gradle: ./gradlew :ecco-gui:run -Decco.lilypond.musicalTokens=true
@@ -143,10 +139,6 @@ subprojects {
 		}
 		if (System.getProperty('ecco.lilypond.variableContexts') != null) {
 			systemProperty 'ecco.lilypond.variableContexts', System.getProperty('ecco.lilypond.variableContexts')
-		}
-		// ...and what reads it (LilypondPlugin.PARSER_SETTING): -Decco.lilypond.parser=parce
-		if (System.getProperty('ecco.lilypond.parser') != null) {
-			systemProperty 'ecco.lilypond.parser', System.getProperty('ecco.lilypond.parser')
 		}
 	}
 

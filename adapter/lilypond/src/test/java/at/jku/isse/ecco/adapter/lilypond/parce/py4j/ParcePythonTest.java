@@ -18,17 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ParcePythonTest {
 
 	@Test
-	public void lymodelIsNeededForMusicalTokensOnly() {
-		assertEquals(List.of("parce", "py4j", "lymodel.lybar.normalize"), ParcePython.modules(true));
-		assertEquals(List.of("parce", "py4j"), ParcePython.modules(false));
-	}
-
-	@Test
-	public void lymodelsTreeSitterParseNeedsNoParce() {
-		assertFalse(ParcePython.LYBAR_MODULES.contains("parce"), ParcePython.LYBAR_MODULES.toString());
-		assertTrue(ParcePython.LYBAR_MODULES.containsAll(List.of("tree_sitter", "py4j", "lymodel.lybar.grammar")),
-				ParcePython.LYBAR_MODULES.toString());
-		assertTrue(ParcePython.advice(null, true).contains("tree-sitter"), ParcePython.advice(null, true));
+	public void readingNeedsTreeSitterPy4jAndLymodel_notParce() {
+		assertFalse(ParcePython.MODULES.contains("parce"), ParcePython.MODULES.toString());
+		assertTrue(ParcePython.MODULES.containsAll(List.of("tree_sitter", "py4j", "lymodel.lybar.grammar")),
+				ParcePython.MODULES.toString());
+		assertTrue(ParcePython.advice(null).contains("tree-sitter"), ParcePython.advice(null));
 	}
 
 	@Test

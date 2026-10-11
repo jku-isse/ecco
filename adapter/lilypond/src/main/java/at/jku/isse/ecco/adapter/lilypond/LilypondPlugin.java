@@ -44,9 +44,9 @@ public class LilypondPlugin extends ArtifactPlugin {
 
 	/**
 	 * Recorded in a new repository's settings: what reads its LilyPond - {@link #LYBAR_PARSER}, lymodel's
-	 * tree-sitter parse (LilypondParser_2.py), unless -Decco.lilypond.parser=parce. A repository without
-	 * it was created before and is read with parce (LilypondParser_1.py): the two parses give tokens and
-	 * contexts of their own, which never match each other's.
+	 * tree-sitter parse (LilypondParser_2.py). A repository without it was read with parce, which is
+	 * gone: its files still check out (writing needs no parse), but a commit is refused - this parse's
+	 * tokens and contexts would never match the ones it holds.
 	 */
 	public static final String PARSER_SETTING = "lilypond.parser";
 
@@ -57,7 +57,7 @@ public class LilypondPlugin extends ArtifactPlugin {
 	public java.util.Map<String, String> newRepositorySettings() {
 		return java.util.Map.of(MUSICAL_TOKENS_SETTING, System.getProperty("ecco.lilypond.musicalTokens", "true"),
 				VARIABLE_CONTEXTS_SETTING, System.getProperty("ecco.lilypond.variableContexts", "true"),
-				PARSER_SETTING, System.getProperty("ecco.lilypond.parser", LYBAR_PARSER));
+				PARSER_SETTING, LYBAR_PARSER);
 	}
 
 }

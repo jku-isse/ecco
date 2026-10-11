@@ -3,10 +3,10 @@ import re
 import sys
 from py4j.java_gateway import JavaGateway, GatewayParameters
 
-# The LilyPond reader without parce: the parse is lymodel's (the lilypond-idea-plugin's python/
-# directory, from LYPYTHON when that names one, else installed), whose tree-sitter grammar is the
-# plugin's own. What goes to ECCO is what LilypondParser_1.py sent from parce, as far as ECCO's
-# Java side tells it apart: tokens with parce's action names (the writer spaces by them, the
+# The LilyPond reader: the parse is lymodel's (the lilypond-idea-plugin's python/ directory, from
+# LYPYTHON when that names one, else installed), whose tree-sitter grammar is the plugin's own. What
+# goes to ECCO is what the reader sent when it read with parce (LilypondParser_1.py, until lybar-1),
+# as far as ECCO's Java side tells it apart: tokens with parce's action names (the writer spaces by them, the
 # viewer colors by them, and a token is identified by its text and action), and the contexts the
 # reader's LilyEccoTransformer and artifact factories look for - LilyPond.list around a variable's
 # name, LilyPond.string around a string, LilyPond.lyriclist around lyrics, the comment contexts.

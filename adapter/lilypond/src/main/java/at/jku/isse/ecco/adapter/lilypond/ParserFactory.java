@@ -20,16 +20,11 @@ public class ParserFactory {
                 return parser;
             }
 
-            parser = tryInstantiate("at.jku.isse.ecco.adapter.lilypond.parce.graalvm.FileParser");
-            if (parser != null) {
-                return parser;
-            }
-
         } else {
             return new NodesDeserializer();
         }
 
-        LOGGER.log(Level.SEVERE, "no parser found. configure Py4J- or GraalVM-Parser");
+        LOGGER.log(Level.SEVERE, "no parser found: the py4j FileParser could not be instantiated");
 
         return null;
     }
