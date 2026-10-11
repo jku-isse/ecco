@@ -42,7 +42,7 @@ These two gaps have one cause: C and C++ were left disabled partly because they 
 
 1. **Make ties deterministic.** When `.adapters` is first written and two enabled adapters claim the same glob at the same priority, order them by an explicit rule (for example plugin id) and log a warning naming both. Today the winner depends on hash-set order.
 2. **Separate C and C++.** Give C++ a lower priority than C for `*.c`/`*.h` and keep it first for `*.cpp`/`*.hpp`. That is what the README already describes ("`*.c`, `*.h` after the C adapter").
-3. **Enable C and C++ by default** (remove them from `DEFAULT_DISABLED_PLUGIN_IDS`). This only affects new repositories and users who never changed the setting. The C++ adapter's rewrite (9639e362) is line-exact, so the original reason for leaving it off no longer applies.
+3. **Enable C and C++ by default** (remove them from `DEFAULT_DISABLED_PLUGIN_IDS`). This only affects new repositories and users who never changed the setting. The C++ adapter's rewrite (d9ce686c) is line-exact, so the original reason for leaving it off no longer applies.
 4. Leave `java`, `challenge`, `runtime` and `go` disabled. Their `.java` claims would tie with java-ast; step 1 makes that harmless.
 
 Verify: on a fresh repository, `.adapters` maps `.c`/`.h` to C and `.cpp`/`.hpp` to C++, and a VEVOS example commits with proactive traces. On an existing repository, `.adapters` is unchanged, and so is its routing.

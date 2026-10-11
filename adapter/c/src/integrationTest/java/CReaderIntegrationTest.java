@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The C reader groups lines by function and reads VEVOS presence conditions as feature traces. Since
- * b2c3ff22 it also keeps empty lines as line artifacts, so that files check out byte for byte; the
+ * ce55a72a it also keeps empty lines as line artifacts, so that files check out byte for byte; the
  * structure checks below look at the non-empty lines (see nonBlankChildren), and
  * emptyLinesAreKept checks the empty ones.
  */

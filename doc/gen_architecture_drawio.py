@@ -61,7 +61,7 @@ def items(p, parent, x0, y0, w, h, labels, kind, cols, gap=10):
 # ---------------- Page 1: layered architecture ----------------
 p = Page('Architecture', 'arch')
 p.text(40, 10, 1100, 30, '<b style="font-size:18px">ECCO – Architecture Overview</b>', fs=18)
-p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-10-08 (6c085b13).', fs=10)
+p.text(40, 40, 1300, 20, 'Layers top→bottom depend downward. Colors = layer. Arrows = main runtime calls / data flow. Source of truth: settings.gradle + */build.gradle. Last reviewed: 2026-10-08 (6765398d).', fs=10)
 
 # Frontends
 F = p.box(40, 70, 1260, 170, 'Frontends', 'front', container=True)

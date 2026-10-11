@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Repositories committed with the first C++ adapter can still be checked out (NFR-V2): CppWriter hands
  * their trees to LegacyCppWriter. Nothing else exercised it. This pins down what it writes for a
- * tree shaped like the ones the first reader built (see CppReader before 9639e362): the INCLUDES,
+ * tree shaped like the ones the first reader built (see CppReader before d9ce686c): the INCLUDES,
  * DEFINES and FIELDS groups first, then the functions with their statement blocks - the order and
  * the loss of comments are that format's, not something to fix here.
  */

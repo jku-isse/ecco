@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Repositories written before associations (520155c1) and then artifacts (d92c439e) got their own
+ * Repositories written before associations (12330811) and then artifacts (3e2b04d6) got their own
  * files deserialize with SerRepository.associationIds / artifactIds == null (the fields didn't exist
  * yet). Loading one failed with a bare NullPointerException; it now fails with an explanation. A real
  * migration isn't possible: the old formats' embedded content lives in fields that are transient now.

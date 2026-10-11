@@ -838,7 +838,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 		SerRepository repo = (SerRepository) this.database.getRepository();
 
-		// repositories written before associations (520155c1) and then artifacts (d92c439e) got their
+		// repositories written before associations (12330811) and then artifacts (3e2b04d6) got their
 		// own files deserialize without these id sets. Their embedded content lives in fields that are
 		// transient now, so they can't be migrated here - say so instead of failing with an NPE.
 		if (repo.isOldStorageFormat()) {

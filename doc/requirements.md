@@ -1011,7 +1011,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | --- | --- | --- |
 | FR-L1 | `init` shall create `.ecco` and refuse if the service is already initialized or the directory exists; defaults come from `ecco.properties` (max order 2, PROACTIVE evaluation, BOOST main tree, `ser` storage). | Code ES:870-895 |
 | FR-L2 | A failed `init` or `fork` shall remove the half-created repository so the operation can be retried. | Test `FailedForkCleanupTest` |
-| FR-L3 | `open` shall refuse a missing path, a non-directory or a directory without repository data, write nothing, and hint at a nested `.ecco`. | Test `OpenNonRepositoryTest`, `ForkFromWorkingDirectoryTest`; History 6ee3496e |
+| FR-L3 | `open` shall refuse a missing path, a non-directory or a directory without repository data, write nothing, and hint at a nested `.ecco`. | Test `OpenNonRepositoryTest`, `ForkFromWorkingDirectoryTest`; History f8cad7e1 |
 | FR-L4 | The service shall require exactly one storage plugin and at least one enabled artifact adapter. | Code ES:386-424 |
 | FR-L5 | Every operation shall fail with "Service is not initialized" while no repository is open. | Code ES:375 |
 
@@ -1020,7 +1020,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | ID | Requirement | Source |
 | --- | --- | --- |
 | FR-F1 | A configuration shall be a comma-separated list of `A` (latest revision, or new feature), `A'` (new revision), `A.<rev>` (that revision) or `[<id>]` (feature by id); names are limited to `[a-zA-Z0-9_-]`. | Doc; Code `Configuration.java:27`, `ConfigurationParser` |
-| FR-F2 | A revision id prefix of 7 or more characters shall resolve if unique. | Test `ShortRevisionIdTest`; History 1294d248 |
+| FR-F2 | A revision id prefix of 7 or more characters shall resolve if unique. | Test `ShortRevisionIdTest`; History f2e97cc2 |
 | FR-F3 | An ambiguous feature name shall be rejected with a hint to use the feature id. | Code `ConfigurationParser:175` |
 | FR-F4 | Parsing a configuration shall not persist revisions as a side effect. | Test `ParseConfigurationPhantomRevisionTest` |
 | FR-F5 | A configuration shall hold at most one revision per feature. | Code REPO:509-516 |
@@ -1031,7 +1031,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | ID | Requirement | Source |
 | --- | --- | --- |
 | FR-M1 | A commit shall read the working directory through the adapters, extract its artifacts into associations, and update each association's counters (and so its presence condition). | Doc; Code `CommitService`, `Repository.extract` |
-| FR-M2 | A commit without any feature shall be refused. | Code `CommitService:55`; History 26e445f1 |
+| FR-M2 | A commit without any feature shall be refused. | Code `CommitService:55`; History 4e150250 |
 | FR-M3 | Without an explicit configuration, a commit shall use `<working dir>/.config`, and fail if it exists but cannot be read. Line breaks in the file shall be collapsed into one line (`a.1, b.1`), which is also the default commit message. | Code `CommitService.getConfigStringFromFile`; Test `ConfigFileLineBreaksTest` |
 | FR-M4 | Each previously unseen configuration shall be recorded as a variant. | Code `CommitService:70-95` |
 | FR-M5 | Files matching `.ecco/.ignores` (defaults `.DS_Store`, `.gitignore`) shall be skipped; `.ecco`, `.config`, `.warnings` and `.hashes` are always skipped. | Code DR:31-39; Test `DsStoreIgnoredRegressionTest`, `GitignoreIgnoredRegressionTest` |
@@ -1067,7 +1067,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-N3 | Constraints shall be mined per feature, so revisions of one feature are never mutually exclusive. | Code `ConfigurationBridge` |
 | FR-N4 | Accepted and rejected constraints shall be persisted in the repository and travel with fork, pull and push without duplication; a suggestion is accepted, rejected or neither, and on a merge the receiving repository keeps its own decision. Rejections kept per machine by earlier versions move into the repository. | Test `ConstraintPersistenceMergeTest`, `RejectedConstraintsTest` |
 | FR-N5 | An accepted constraint shall only be trusted while re-mining still yields it. | Test `AcceptedConstraintStaleReMineTest` |
-| FR-N6 | Accepting, rejecting or returning many constraints shall be one transaction and one event. | Code `ConstraintService:84-122`; History d78d3cb0 |
+| FR-N6 | Accepting, rejecting or returning many constraints shall be one transaction and one event. | Code `ConstraintService:84-122`; History 04825b26 |
 | FR-N7 | Presence-condition minimization shall drop a literal or term only when SAT-proven equivalent under the accepted feature model. | Code `PresenceConditionMinimizer`; Doc (`minimize-preview` is read-only) |
 | FR-N8 | A stored minimized condition shall only be shown or used while the association's condition, the distinct committed configurations and the accepted constraints it was computed from are unchanged. | Test `MinimizedConditionValidityTest` |
 | FR-N9 | On request (`checkout --minimized`, GUI preference; off by default), checkout shall use the stored revision-exact minimized conditions that are still valid, and write the same files as without them for every configuration the trusted accepted constraints allow. | Test `MinimizedCheckoutEquivalenceTest`, `MinimizeCommandTest` |
@@ -1076,8 +1076,8 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| FR-T1 | The C, C++ and challenge adapters shall read VEVOS presence conditions (`pcs.variant.csv`) as proactive feature traces, using feature names that match the configuration's. | Code `VevosConditionHandler`; History c2135755 |
-| FR-T2 | A proactive trace shall hold in every commit containing its association and in no other; a contradicting trace is not used and is reported as a TRACE warning (too narrow / too broad) with the commit. | Code `ProactiveTraceCheck`; History cb7cf42e |
+| FR-T1 | The C, C++ and challenge adapters shall read VEVOS presence conditions (`pcs.variant.csv`) as proactive feature traces, using feature names that match the configuration's. | Code `VevosConditionHandler`; History f258f279 |
+| FR-T2 | A proactive trace shall hold in every commit containing its association and in no other; a contradicting trace is not used and is reported as a TRACE warning (too narrow / too broad) with the commit. | Code `ProactiveTraceCheck`; History 980daf85 |
 
 ### Distributed operations
 
@@ -1087,7 +1087,7 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-D2 | `fork` shall create a new repository from a remote into a location that holds no repository, and register it as `origin`. | Code ES:663-800 |
 | FR-D3 | `fetch` shall read a remote's features and store them with the remote's entry; `pull` and `push` shall merge a remote into this repository or this one into the remote; all three report an unknown remote as "Remote '<name>' does not exist.". | Doc; Code `RemoteSyncService`; Test `RemoteSyncCharacterizationTest` |
 | FR-D4 | `fork`, `pull` and `push` shall be able to exclude feature revisions: features left without revisions and modules containing excluded features are dropped, and an exclusion that leaves unresolved dependencies is refused. | Doc; Code REPO:867-1033 |
-| FR-D5 | A fork or pull, reopened, shall check out the same content as the source. | History f9cce6ba, 8a4db407 |
+| FR-D5 | A fork or pull, reopened, shall check out the same content as the source. | History 2c299089, 09fa089a |
 | FR-D7 | A fork, fetch or pull shall not modify the remote repository, also when it excludes revisions or fails. | Test `ForkLeavesOriginUnchangedTest`, `FetchPullLeaveRemoteUnchangedTest` |
 | FR-D6 | The sync server shall refuse a second start, and accept only allow-listed classes when deserializing. | Test `RemoteSyncServerHardeningTest`; Code `SyncObjectStreams` |
 
@@ -1113,11 +1113,11 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | AD-2 | A reader shall return one root node per file carrying `PluginArtifactData`; a writer is chosen by that plugin id. | Code DR, DW |
 | AD-3 | A reader shall declare prioritized glob patterns; higher priority wins when `.adapters` is first written, and a tie between enabled adapters is broken by plugin id and logged. | Code; Test `DispatchReaderJavaPluginPriorityTest`, `DispatchReaderPriorityTieTest` |
 | AD-4 | Adapters shall be enabled or disabled per user; at least one must be enabled. | Code `AdapterPreferences`, ES |
-| AD-5 | Viewers shall not be bound when running headless (`ecco.headless`). | Code; History 74517278 |
+| AD-5 | Viewers shall not be bound when running headless (`ecco.headless`). | Code; History bfcddc23 |
 | AD-6 | Line-based adapters shall round-trip byte-exact: encoding (UTF-8, else ISO-8859-1), line separator and final newline. | Test `TextFileFormatTest` (5,000 random rounds) |
 | AD-7 | An adapter whose tree format changes shall mark old data with `retiredFormat()` or a tree-format check, so old repositories are refused for commit, not corrupted. | Code `ArtifactData#retiredFormat`, `JavaASTData.TREE_FORMAT`, `cpp/data/RetiredFormat` |
 | AD-8 | An adapter that needs Python shall fail the commit when Python or its modules are missing, not commit an empty file, and shall pick a free py4j port. | Test `PythonGatewayPortTest`, `LilypondGatewayPortTest` |
-| AD-9 | An adapter that needs Python shall find its interpreter, not rely on `python` on the PATH: the one set in Preferences if any, else the first of `python`, `python3` and the usual install locations (MacPorts, Homebrew, python.org, `/usr/local/bin`, `/usr/bin`) that imports its modules - libcst and py4j for Python; parce and py4j for LilyPond, plus lymodel for musical tokens, from the lymodel directory in Preferences, `LYPYTHON` or installed. When none will do, the error shall name each interpreter tried and what it lacks; a module installed after a failure shall be found without restarting. | Code `PythonFinder`, `ParcePython`, `PY4JParser.python()`; Test `PythonFinderTest`, `ParcePythonTest`; History 011a34df, 6c085b13 |
+| AD-9 | An adapter that needs Python shall find its interpreter, not rely on `python` on the PATH: the one set in Preferences if any, else the first of `python`, `python3` and the usual install locations (MacPorts, Homebrew, python.org, `/usr/local/bin`, `/usr/bin`) that imports its modules - libcst and py4j for Python; parce and py4j for LilyPond, plus lymodel for musical tokens, from the lymodel directory in Preferences, `LYPYTHON` or installed. When none will do, the error shall name each interpreter tried and what it lacks; a module installed after a failure shall be found without restarting. | Code `PythonFinder`, `ParcePython`, `PY4JParser.python()`; Test `PythonFinderTest`, `ParcePythonTest`; History d8c8ac60, 6765398d |
 
 ### Per adapter
 
@@ -1208,22 +1208,22 @@ None of these were written as targets; they are recovered from refusals in the c
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| NFR-R1 | A commit shall be atomic: a crash leaves the previous state or the new one, never a mix. Dirty files are staged and rolled forward after the id swap. | Doc; History dc038fdc, 0bc9d570 |
+| NFR-R1 | A commit shall be atomic: a crash leaves the previous state or the new one, never a mix. Dirty files are staged and rolled forward after the id swap. | Doc; History a6f4acac, feb839d1 |
 | NFR-R2 | Durability shall not rely on per-file fsync; atomicity comes from the roll-forward journal. | History: fsync measured ~10x slower (112 s vs 10.6 s, 21k artifacts) and rejected |
-| NFR-R3 | A commit followed by close, reopen and checkout shall reproduce exactly what was committed, for repositories, forks and pulls alike. | Test `CommitCheckoutTest`; History f9cce6ba, 8a4db407 |
+| NFR-R3 | A commit followed by close, reopen and checkout shall reproduce exactly what was committed, for repositories, forks and pulls alike. | Test `CommitCheckoutTest`; History 2c299089, 09fa089a |
 | NFR-R4 | Distinct artifacts with equal content shall stay distinct through persistence. | History c288ed2d, da14de14 |
-| NFR-R5 | Errors shall surface, not be dropped: missing associations throw instead of being skipped; a rollback never follows a successful commit. | History b51026a9 |
+| NFR-R5 | Errors shall surface, not be dropped: missing associations throw instead of being skipped; a rollback never follows a successful commit. | History c6bb7561 |
 | NFR-R6 | Write-time pruning of associations shall not be used; it loses data on fork-and-merge. | History (reproduced, closed) |
 
 ### Performance (recorded baselines)
 
 | ID | Requirement | Baseline | Source |
 | --- | --- | --- | --- |
-| NFR-P1 | Commit and checkout should scale to tens of features and variants interactively. | 60 variants / 40 features: commit 1.8 s, checkout 1.1 s, status 0.2 s | History 3b9b5827, 783828fb |
-| NFR-P2 | Opening a repository should take seconds, not minutes. | Real x8 repo: 65 s to 5.3 s | History d61968a1 |
-| NFR-P3 | A commit shall rewrite only what changed. | 15.7 s to 2.6 s after skipping identical writes | History 400a3db7 |
-| NFR-P4 | Pixel-granular images should be usable at around 1.7 megapixels. | 71k-px image: commit 67 to 2 s, checkout 157 to 3.4 s | History d6d9006d, 5e4ec81a |
-| NFR-P5 | Storage should stay compact as commits accumulate. | Association files 147 to 13 MB (compact counters); packs 2.5-7x smaller | History 783828fb, 69a47552 |
+| NFR-P1 | Commit and checkout should scale to tens of features and variants interactively. | 60 variants / 40 features: commit 1.8 s, checkout 1.1 s, status 0.2 s | History cd764f4e, 81442a9e |
+| NFR-P2 | Opening a repository should take seconds, not minutes. | Real x8 repo: 65 s to 5.3 s | History decb2e37 |
+| NFR-P3 | A commit shall rewrite only what changed. | 15.7 s to 2.6 s after skipping identical writes | History 4bb0961c |
+| NFR-P4 | Pixel-granular images should be usable at around 1.7 megapixels. | 71k-px image: commit 67 to 2 s, checkout 157 to 3.4 s | History 7a4e0aec, 47f6f0e5 |
+| NFR-P5 | Storage should stay compact as commits accumulate. | Association files 147 to 13 MB (compact counters); packs 2.5-7x smaller | History 81442a9e, 7c18da73 |
 
 Partial-order-graph alignment is factorial in the number of concurrent unresolved branches; above 100,000 orderings a fast fallback takes over, so commits stay fast (`ConcurrentBranchScalingTest`).
 
@@ -1231,24 +1231,24 @@ Partial-order-graph alignment is factorial in the number of concurrent unresolve
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| NFR-C1 | Repository data shall be safe to read and write from background threads while the GUI reads it. | History 2dff68c2, b993d741, 22508fc3, d78d3cb0 |
+| NFR-C1 | Repository data shall be safe to read and write from background threads while the GUI reads it. | History f03347d4, 3d84bc03, 7fde1962, 04825b26 |
 | NFR-C2 | Listener events shall reach every listener even if one throws or events fire from a background thread. | History (CopyOnWriteArrayList, per-listener isolation) |
-| NFR-C3 | The GUI shall keep repository writes off the JavaFX thread and UI reads on it. | History ba7aa9b4, f22586c1, b2d960e4 |
+| NFR-C3 | The GUI shall keep repository writes off the JavaFX thread and UI reads on it. | History 5cb865c3, 56a51e6a, dae048f6 |
 
 ### Compatibility and evolution
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| NFR-V1 | A repository in an older or retired format shall be refused with an explanation, never fail with an exception or be misread. | Code `ArtifactData#retiredFormat`, tree-format checks; History 925c956f |
-| NFR-V2 | Where an adapter's tree format changed, old repositories should stay checkout-only rather than become unreadable. | History 9639e362 (C++) |
-| NFR-V3 | Newer builds shall read older supported formats; older builds need not read newer ones. | Doc; History 783828fb, 69a47552 |
+| NFR-V1 | A repository in an older or retired format shall be refused with an explanation, never fail with an exception or be misread. | Code `ArtifactData#retiredFormat`, tree-format checks; History ff3c5dfe |
+| NFR-V2 | Where an adapter's tree format changed, old repositories should stay checkout-only rather than become unreadable. | History d9ce686c (C++) |
+| NFR-V3 | Newer builds shall read older supported formats; older builds need not read newer ones. | Doc; History 81442a9e, 7c18da73 |
 
 ### Security
 
 | ID | Requirement | Source |
 | --- | --- | --- |
 | NFR-S1 | The sync server shall accept only local connections unless explicitly started on all interfaces. | Doc |
-| NFR-S2 | The REST server shall reject upload and repository names that escape their storage folder. | History d6082ea4 |
+| NFR-S2 | The REST server shall reject upload and repository names that escape their storage folder. | History ad74aaad |
 | NFR-S3 | Remote sync is unauthenticated; the GUI shall ask for confirmation before accepting connections from other machines. | Doc; Code `ServerView` - the missing authentication is a stated limitation |
 | NFR-S4 | The REST server shall sign its tokens and refuse unsigned or wrongly signed ones. | Test `RestTokenSecurityTest`, `RestShippedConfigTokenTest` |
 | NFR-S5 | Outside development mode the REST server shall refuse to start without a JWT secret of at least 32 characters other than the default, and a users file holding password hashes. | Test `RestSecurityTest` |
@@ -1259,7 +1259,7 @@ Partial-order-graph alignment is factorial in the number of concurrent unresolve
 | --- | --- | --- |
 | NFR-B1 | The system shall build and test with JDK 21+ and the bundled Gradle wrapper, with no other prerequisite. | Doc |
 | NFR-B2 | Tests that need optional Python modules (`libcst`, `parce`, `lymodel`) shall be skipped, not failed, when the modules are absent - decided by the adapters' own interpreter lookup (AD-9), so a test runs whenever the adapter could. | Doc; Test `Lymusic`, `PythonAvailable` |
-| NFR-B3 | CLI and REST shall run headless, without JavaFX on the classpath. | History 74517278 |
+| NFR-B3 | CLI and REST shall run headless, without JavaFX on the classpath. | History bfcddc23 |
 | NFR-B4 | The GUI shall be installable as a native application on macOS, Linux and Windows. | Doc (jpackage tasks) |
 | NFR-B5 | Third-party dependency versions shall be kept in one version catalog. | Doc (`gradle/libs.versions.toml`) |
 
@@ -1312,4 +1312,4 @@ Requirements the code does not meet, places where the documentation and the code
 | 40 | The LilyPond reader fails on one vocal score of the silverswan corpus: `NullPointerException` in `LilyEccoTransformer.transformVariableDefinitonNode` (a context node where a token was expected). With and without musical tokens; found reading the 665 corpus files. | `LilyEccoTransformer` | Bug - noted 2026-10-08, not fixed |
 | 41 | Commit Multiple Versions showed a `.config` written one feature per line (with blank lines) as ragged multi-line rows, in both the configuration and the default commit message. | `CommitService.getConfigStringFromFile` | Usability - **fixed 2026-10-08**: line breaks collapsed into one line (FR-M3) |
 | 42 | The Python and LilyPond adapters ran plain `python` from the PATH: a GUI commit of a musical LilyPond repository failed with "No module named 'lymodel'" although another python had it, and a GUI started from the Finder (no MacPorts or Homebrew on its PATH) would find no python at all. The tests checked `python3` instead, so they skipped where the adapter could read. | `FileParser`, `PY4JParser`, `Lymusic` | Bug - **fixed 2026-10-08**: interpreter lookup (AD-9), tests ask the same lookup (NFR-B2) |
-| 43 | Six LilyPond regression tests failed without lymodel instead of being skipped, and a lymusic test expected v6's ties in checkouts without `slurs.1` - the ties arrive with slurs in the example history, so ECCO's checkout was right. Both went unnoticed because the music tests only run with lymodel. | `service` tests | Test defects - **fixed 2026-10-08** (1dc01570, 9d8f1d01) |
+| 43 | Six LilyPond regression tests failed without lymodel instead of being skipped, and a lymusic test expected v6's ties in checkouts without `slurs.1` - the ties arrive with slurs in the example history, so ECCO's checkout was right. Both went unnoticed because the music tests only run with lymodel. | `service` tests | Test defects - **fixed 2026-10-08** (5d0e7ff1, 68ceeecf) |
