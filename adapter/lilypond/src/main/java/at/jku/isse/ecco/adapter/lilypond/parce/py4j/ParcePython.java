@@ -20,6 +20,10 @@ public final class ParcePython {
 	/** What reading LilyPond imports; lymodel only for musical tokens, by the module the script uses. */
 	static final String PARCE = "parce", PY4J = "py4j", LYMODEL = "lymodel.lybar.normalize";
 
+	/** What reading with lymodel's tree-sitter parse imports (LilypondParser_2.py), whatever the settings. */
+	static final List<String> LYBAR_MODULES = List.of("tree_sitter", PY4J, "lymodel.lybar.grammar", "lymodel.lilydata",
+			LYMODEL);
+
 	/** The python to run, and the lymodel directory to hand it as LYPYTHON (null: the installed one, if any). */
 	public record Choice(String python, Path lymodelDir) {
 	}
@@ -38,9 +42,16 @@ public final class ParcePython {
 
 	/** As {@link #resolve(boolean)}; variable contexts need lymodel too (its parse tree). */
 	public static Choice resolve(boolean musicalTokens, boolean variableContexts) {
+		return resolve(musicalTokens, variableContexts, false);
+	}
+
+	/** As {@link #resolve(boolean, boolean)}, for parce or for lymodel's tree-sitter parse ({@code lybar}). */
+	public static Choice resolve(boolean musicalTokens, boolean variableContexts, boolean lybar) {
 		Path lymodelDir = lymodelDir(LilypondPreferences.getLymodelPath(), System.getenv("LYPYTHON"));
-		String python = PythonFinder.find(LilypondPreferences.getPythonPath(), modules(musicalTokens || variableContexts),
-				lymodelDir, purpose(musicalTokens, variableContexts), advice(lymodelDir));
+		String python = PythonFinder.find(LilypondPreferences.getPythonPath(),
+				lybar ? LYBAR_MODULES : modules(musicalTokens || variableContexts),
+				lymodelDir, lybar ? "reads LilyPond (lilypond.parser=lybar-1 in this repository's .ecco/.settings)"
+						: purpose(musicalTokens, variableContexts), advice(lymodelDir, lybar));
 		return new Choice(python, lymodelDir);
 	}
 
@@ -71,10 +82,14 @@ public final class ParcePython {
 	}
 
 	static String advice(Path lymodelDir) {
+		return advice(lymodelDir, false);
+	}
+
+	static String advice(Path lymodelDir, boolean lybar) {
 		return (lymodelDir == null
 				? "lymodel: looked for installed only (no lymodel directory set in Preferences or LYPYTHON).\n"
 				: "lymodel: looked for in " + lymodelDir + " and installed.\n")
-				+ "Install what is missing into one of them (python -m pip install parce py4j,"
+				+ "Install what is missing into one of them (python -m pip install " + (lybar ? "tree-sitter" : "parce") + " py4j,"
 				+ " python -m pip install <lilypond-idea-plugin>/python), or set the Python and the lymodel"
 				+ " directory (the plugin's python/) under Preferences > Lilypond.";
 	}

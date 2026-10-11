@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,6 +21,14 @@ public class ParcePythonTest {
 	public void lymodelIsNeededForMusicalTokensOnly() {
 		assertEquals(List.of("parce", "py4j", "lymodel.lybar.normalize"), ParcePython.modules(true));
 		assertEquals(List.of("parce", "py4j"), ParcePython.modules(false));
+	}
+
+	@Test
+	public void lymodelsTreeSitterParseNeedsNoParce() {
+		assertFalse(ParcePython.LYBAR_MODULES.contains("parce"), ParcePython.LYBAR_MODULES.toString());
+		assertTrue(ParcePython.LYBAR_MODULES.containsAll(List.of("tree_sitter", "py4j", "lymodel.lybar.grammar")),
+				ParcePython.LYBAR_MODULES.toString());
+		assertTrue(ParcePython.advice(null, true).contains("tree-sitter"), ParcePython.advice(null, true));
 	}
 
 	@Test

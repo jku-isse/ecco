@@ -1,5 +1,9 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.adapter.lilypond.data.context.BaseContextArtifactData;
+
+import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
+
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 
@@ -43,8 +47,35 @@ final class LilypondTraceMeasure {
 		}
 	}
 
+	/** Whether a repository created by these tests reads with lymodel's tree-sitter parse - the default, unless -Decco.lilypond.parser=parce. */
+	static boolean lybar() {
+		return LilypondPlugin.LYBAR_PARSER.equals(System.getProperty("ecco.lilypond.parser", LilypondPlugin.LYBAR_PARSER));
+	}
+
+	/** Whether any trace of [service]'s repository has a context named [name]. */
+	static boolean hasContext(EccoService service, String name) {
+		for (Association association : service.getRepository().getAssociations()) {
+			if (hasContext(association.getRootNode(), name)) return true;
+		}
+		return false;
+	}
+
+	private static boolean hasContext(Node node, String name) {
+		if (node.getArtifact() != null && node.getArtifact().getData() instanceof BaseContextArtifactData context
+				&& context.getContext().equals(name)) {
+			return true;
+		}
+		for (Node child : node.getChildren()) {
+			if (hasContext(child, name)) return true;
+		}
+		return false;
+	}
+
 	/** Whether this machine can read such a repository: a musical one fails without lymodel, by design. */
 	static boolean readable() {
+		if (lybar()) {
+			return Lymusic.lybarAvailable();
+		}
 		return !(musicalTokens() || variableContexts()) || Lymusic.available();
 	}
 

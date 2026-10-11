@@ -45,6 +45,47 @@ public class LilypondRepositorySettingsTest {
 				settings(repositoryDir).getProperty(LilypondPlugin.MUSICAL_TOKENS_SETTING));
 		assertEquals(LilypondTraceMeasure.variableContexts() ? "true" : "false",
 				settings(repositoryDir).getProperty(LilypondPlugin.VARIABLE_CONTEXTS_SETTING));
+		assertEquals(System.getProperty("ecco.lilypond.parser", LilypondPlugin.LYBAR_PARSER),
+				settings(repositoryDir).getProperty(LilypondPlugin.PARSER_SETTING));
+	}
+
+	@Test
+	@Timeout(120)
+	public void aRepositoryWithoutTheParserSettingIsReadWithParce() throws IOException {
+		assumeTrue(Lymusic.available() && Lymusic.lybarAvailable(), "needs parce and lymodel's tree-sitter parse - " + Lymusic.NEEDS);
+		// parce gives a dotted duration a context of its own (LilyPond.duration); lymodel's parse keeps
+		// it in the note's token - so the context tells which of the two read the file
+		EccoService parce = withParser(null);     // as before the setting existed
+		assertTrue(LilypondTraceMeasure.hasContext(parce, "LilyPond.duration"), "read with parce");
+		parce.close();
+
+		EccoService lybar = withParser(LilypondPlugin.LYBAR_PARSER);
+		assertFalse(LilypondTraceMeasure.hasContext(lybar, "LilyPond.duration"), "read with lymodel's tree-sitter parse");
+		lybar.close();
+	}
+
+	/** A new repository whose settings say [parser] (none: null), with v2 committed. */
+	private static EccoService withParser(String parser) throws IOException {
+		Path repositoryDir = Files.createTempDirectory("lilypond-parser").resolve(".ecco");
+		EccoService service = new EccoService();
+		service.setRepositoryDir(repositoryDir);
+		service.init();
+		service.close();
+		Properties settings = settings(repositoryDir);
+		if (parser == null) {
+			settings.remove(LilypondPlugin.PARSER_SETTING);
+		} else {
+			settings.setProperty(LilypondPlugin.PARSER_SETTING, parser);
+		}
+		try (java.io.Writer out = Files.newBufferedWriter(repositoryDir.resolve(EccoService.SETTINGS_FILE_NAME))) {
+			settings.store(out, null);
+		}
+		service = new EccoService();
+		service.setRepositoryDir(repositoryDir);
+		service.open();
+		service.setBaseDir(V2);
+		service.commit("v2", "setup.1, notes.1");
+		return service;
 	}
 
 	@Test

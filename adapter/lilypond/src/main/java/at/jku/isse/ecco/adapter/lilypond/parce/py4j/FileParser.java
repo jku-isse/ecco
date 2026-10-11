@@ -20,28 +20,37 @@ import java.util.logging.Logger;
 
 public class FileParser implements LilypondParser<ParceToken> {
     public static final int MAX_SCRIPT_TIMEOUT_SECONDS = 10;
-    public static final String PARSER_SCRIPT_NAME = "LilypondParser_1.py";
+    /** The script reading with parce, and the one reading with lymodel's tree-sitter parse. */
+    public static final String PARSER_SCRIPT_NAME = "LilypondParser_1.py", LYBAR_SCRIPT_NAME = "LilypondParser_2.py";
     protected static final Logger LOGGER = Logger.getLogger(LilypondPlugin.class.getName());
     protected static final GatewayServerListener gatewayListener = getGatewayListener();
     private String pythonScript;
 
+    private boolean lybar;
+
+    @Override
+    public void setLybar(boolean lybar) {
+        this.lybar = lybar;
+    }
+
     public void init() throws IOException {
+        String scriptName = this.lybar ? LYBAR_SCRIPT_NAME : PARSER_SCRIPT_NAME;
         Gateway.getInstance().addListener(gatewayListener);
         Gateway.getInstance().start();
 
         // a copy of its own: a shared one in the temp directory was only written if missing, so an
         // outdated copy from an older version kept being used
-        Path file = Files.createTempFile("ecco-" + PARSER_SCRIPT_NAME.replace(".py", "-"), ".py");
+        Path file = Files.createTempFile("ecco-" + scriptName.replace(".py", "-"), ".py");
         pythonScript = file.toString();
 
         {
-            try (InputStream is = ClassLoader.getSystemResourceAsStream(PARSER_SCRIPT_NAME);
+            try (InputStream is = ClassLoader.getSystemResourceAsStream(scriptName);
                 OutputStream os = Files.newOutputStream(file, StandardOpenOption.TRUNCATE_EXISTING)) {
 
                 if (is != null) {
                     os.write(is.readAllBytes());
                 } else {
-                    throw new IOException("no resource '" + PARSER_SCRIPT_NAME + "' found");
+                    throw new IOException("no resource '" + scriptName + "' found");
                 }
 
             } catch (IOException e) {
@@ -73,7 +82,7 @@ public class FileParser implements LilypondParser<ParceToken> {
     public LilypondNode<ParceToken> parse(Path path, HashMap<String, Integer> tokenMetric) {
         LOGGER.log(Level.INFO, "start parsing {0}", path);
         Gateway.getInstance().reset();
-        ParcePython.Choice python = ParcePython.resolve(this.musicalTokens, this.variableContexts);
+        ParcePython.Choice python = ParcePython.resolve(this.musicalTokens, this.variableContexts, this.lybar);
         ProcessBuilder lilyparce = new ProcessBuilder(python.python(), pythonScript, path.toString());
         lilyparce.environment().put("ECCO_PY4J_PORT", String.valueOf(Gateway.getInstance().getPort()));
         if (python.lymodelDir() != null) {
@@ -132,14 +141,15 @@ public class FileParser implements LilypondParser<ParceToken> {
 
             } else {
                 ParcePython.forget();
-                throw new EccoException("Parce exited with code " + exitCode + " for file " + path + ":\n" + sjErr);
+                throw new EccoException((this.lybar ? "The LilyPond parser" : "Parce") + " exited with code " + exitCode
+                        + " for file " + path + ":\n" + sjErr);
             }
 
         } catch (IOException e) {
             // e.g. no python executable - fail the commit rather than committing an empty file
             // (see UnreadableFileCommitTest), as returning null here used to
             ParcePython.forget();
-            throw new EccoException("Could not run parce for file " + path, e);
+            throw new EccoException("Could not run " + (this.lybar ? "the LilyPond parser" : "parce") + " for file " + path, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new EccoException("Interrupted while parsing file " + path, e);

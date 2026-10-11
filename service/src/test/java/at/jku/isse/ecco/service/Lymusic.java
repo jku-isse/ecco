@@ -36,6 +36,21 @@ final class Lymusic {
 		return available;
 	}
 
+	private static Boolean lybarAvailable;
+
+	/** Whether a python reads LilyPond with lymodel's tree-sitter parse - what a new repository does. */
+	static synchronized boolean lybarAvailable() {
+		if (lybarAvailable == null) {
+			try {
+				ParcePython.resolve(true, true, true);
+				lybarAvailable = true;
+			} catch (EccoException e) {
+				lybarAvailable = false;
+			}
+		}
+		return lybarAvailable;
+	}
+
 	static final String NEEDS = "needs lymodel: pip install lilypond-idea-plugin's python/, or LYPYTHON pointing at it";
 
 	static void assertSameMusic(Path expected, Path actual, String aspects, String what)

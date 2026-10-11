@@ -70,14 +70,27 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
         return this.setting(LilypondPlugin.VARIABLE_CONTEXTS_SETTING, "ecco.lilypond.variableContexts");
     }
 
+    /**
+     * Whether this repository is read with lymodel's tree-sitter parse ({@code lilypond.parser=lybar-1},
+     * recorded when it was created) rather than parce - see {@link LilypondPlugin#PARSER_SETTING}.
+     */
+    boolean lybar() {
+        return LilypondPlugin.LYBAR_PARSER.equals(this.stringSetting(LilypondPlugin.PARSER_SETTING, "ecco.lilypond.parser"));
+    }
+
     /** [key] from this repository's settings, false when absent; without a repository, -D[property]. */
     private boolean setting(String key, String property) {
+        return Boolean.parseBoolean(this.stringSetting(key, property));
+    }
+
+    /** [key] from this repository's settings, null when absent; without a repository, -D[property]. */
+    private String stringSetting(String key, String property) {
         if (this.repositoryDir == null) {
-            return Boolean.getBoolean(property);
+            return System.getProperty(property);
         }
         Path settings = this.repositoryDir.resolve(".settings");
         if (!Files.exists(settings)) {
-            return false;
+            return null;
         }
         Properties properties = new Properties();
         try (Reader in = Files.newBufferedReader(settings)) {
@@ -85,7 +98,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
         } catch (IOException e) {
             throw new UncheckedIOException("could not read " + settings, e);
         }
-        return Boolean.parseBoolean(properties.getProperty(key, "false"));
+        return properties.getProperty(key);
     }
 
     @Override
@@ -134,6 +147,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
             }
             parser.setMusicalTokens(musical);
             parser.setVariableContexts(this.variableContexts());
+            parser.setLybar(this.lybar());
             parser.init();
 
         } catch (IOException e) {
