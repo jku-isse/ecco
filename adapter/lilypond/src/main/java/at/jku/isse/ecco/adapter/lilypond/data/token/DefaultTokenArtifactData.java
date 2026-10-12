@@ -47,6 +47,11 @@ public class DefaultTokenArtifactData implements ArtifactData {
     }
 
     @Override
+    public boolean isWhitespace() {
+        return this.token.isBlank();
+    }
+
+    @Override
     public String toString() {
         return "Token '" + token + "', Action '" + action + "'";
     }

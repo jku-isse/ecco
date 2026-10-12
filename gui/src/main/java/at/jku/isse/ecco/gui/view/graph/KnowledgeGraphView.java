@@ -639,6 +639,8 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 
 		AssociationInfoArtifactViewer detached = (AssociationInfoArtifactViewer) this.service.getInjector().getInstance(template.getClass());
 		detached.setAssociationInfos(null);
+		// the node it opens at is only where the association starts - scroll there, don't mark it
+		detached.setHighlightSelection(false);
 		// unlike the passive hover preview, this is a real window with room to spare - worth showing
 		// the per-line details panel here (left at its interface-default "on" state).
 		detached.showTree(contentNode);
@@ -796,6 +798,7 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 				// details panel Java/C/Lilypond's viewers show below the code can never populate -
 				// omit it rather than reserve dead space for it.
 				viewer.setShowDetailsPanel(false);
+				viewer.setHighlightSelection(false);
 				viewer.showTree(contentNode);
 				Pane pane = (Pane) viewer;
 				at.jku.isse.ecco.tree.Node fileNode = enclosingFileNode(contentNode);
@@ -885,14 +888,22 @@ public class KnowledgeGraphView extends BorderPane implements EccoListener, TabV
 		return this.associationInfoArtifactViewers != null;
 	}
 
-	/** Pre-order search for the first genuine content artifact (a line, token, statement, ...) under {@code node} - skips directory/file structural nodes, which have nothing to preview themselves. */
-	private static at.jku.isse.ecco.tree.Node findRepresentativeContentNode(at.jku.isse.ecco.tree.Node node) {
+	/**
+	 * Pre-order search for the first genuine content artifact (a line, token, statement, ...) under {@code node} - skips directory/file structural nodes, which have nothing to preview themselves.
+	 * Whitespace (e.g. a LilyPond line break, see {@link ArtifactData#isWhitespace()}) is only taken if the association has nothing else, so the preview opens at something visible rather than at blank lines above it.
+	 */
+	static at.jku.isse.ecco.tree.Node findRepresentativeContentNode(at.jku.isse.ecco.tree.Node node) {
+		at.jku.isse.ecco.tree.Node found = findContentNode(node, false);
+		return found != null ? found : findContentNode(node, true);
+	}
+
+	private static at.jku.isse.ecco.tree.Node findContentNode(at.jku.isse.ecco.tree.Node node, boolean acceptWhitespace) {
 		ArtifactData data = node.getArtifact() != null ? node.getArtifact().getData() : null;
-		if (data != null && !(data instanceof DirectoryArtifactData) && !(data instanceof PluginArtifactData)) {
+		if (data != null && !(data instanceof DirectoryArtifactData) && !(data instanceof PluginArtifactData) && (acceptWhitespace || !data.isWhitespace())) {
 			return node;
 		}
 		for (at.jku.isse.ecco.tree.Node child : node.getChildren()) {
-			at.jku.isse.ecco.tree.Node found = findRepresentativeContentNode(child);
+			at.jku.isse.ecco.tree.Node found = findContentNode(child, acceptWhitespace);
 			if (found != null) return found;
 		}
 		return null;

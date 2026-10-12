@@ -40,6 +40,7 @@ public abstract class SourceSpanViewer extends BorderPane implements Association
 	private final Map<String, AssociationInfo> associationInfos = new HashMap<>();
 	private final Map<String, PropertyChangeListener> associationListeners = new HashMap<>();
 	private final List<ListView<List<RenderedSource.Segment>>> listViews = new ArrayList<>();
+	private boolean highlightSelection = true;
 
 	/**
 	 * The file's text as the adapter writes it, with the span each node produced.
@@ -117,7 +118,7 @@ public abstract class SourceSpanViewer extends BorderPane implements Association
 					Label label = new Label(segment.text().replace("\t", "    ").replace("\r", ""));
 					label.setStyle("-fx-font-family: monospace;");
 					label.setMinWidth(Label.USE_PREF_SIZE);
-					Color color = segment.selected() ? Color.YELLOW : SourceSpanViewer.this.colorOf(segment.node());
+					Color color = segment.selected() && SourceSpanViewer.this.highlightSelection ? Color.YELLOW : SourceSpanViewer.this.colorOf(segment.node());
 					if (color != null)
 						label.setBackground(new Background(new BackgroundFill(color, null, null)));
 					row.getChildren().add(label);
@@ -164,6 +165,11 @@ public abstract class SourceSpanViewer extends BorderPane implements Association
 			return false;
 		ArtifactData data = node.getArtifact().getData();
 		return data instanceof PluginArtifactData pluginData && this.getPluginId().equals(pluginData.getPluginId());
+	}
+
+	@Override
+	public void setHighlightSelection(boolean highlight) {
+		this.highlightSelection = highlight;
 	}
 
 	@Override

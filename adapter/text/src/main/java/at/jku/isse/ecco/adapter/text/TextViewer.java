@@ -50,6 +50,7 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 	private final Map<String, AssociationInfo> associationInfos = new HashMap<>();
 	private final Map<String, PropertyChangeListener> associationListeners = new HashMap<>();
 	private final Map<Path, FileView> fileViews = new LinkedHashMap<>();
+	private boolean highlightSelection = true;
 
 	public TextViewer() {
 		this.setCenter(createListView(FXCollections.observableArrayList()));
@@ -176,6 +177,11 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 	}
 
 	@Override
+	public void setHighlightSelection(boolean highlight) {
+		this.highlightSelection = highlight;
+	}
+
+	@Override
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
 		fileViews.clear(); // rebuild all file views on next showTree()
 
@@ -256,7 +262,7 @@ public class TextViewer extends BorderPane implements AssociationInfoArtifactVie
 			for (int i = 0; i < lines.size(); i++) {
 				LineRow row = lines.get(i);
 				boolean match = row.getNode().equals(node);
-				row.setHighlighted(match);
+				row.setHighlighted(match && highlightSelection);
 				if (match) idx = i;
 			}
 			if (idx >= 0) {

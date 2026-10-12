@@ -18,4 +18,13 @@ public interface AssociationInfoArtifactViewer extends ArtifactViewer {
     default void setShowDetailsPanel(boolean show) {
     }
 
+    /**
+     * Whether {@link #showTree} marks the node it was given (yellow), or only scrolls to it - on by
+     * default. The knowledge graph's association previews turn it off: there the node is only where
+     * the association starts, not something the user selected. No-op by default for viewers that
+     * mark nothing.
+     */
+    default void setHighlightSelection(boolean highlight) {
+    }
+
 }

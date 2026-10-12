@@ -65,4 +65,12 @@ public interface ArtifactData extends Serializable {
 		return null;
 	}
 
+	/**
+	 * Whether this data is only whitespace (a line break, indentation, ...), which shows nothing of
+	 * its own - a preview of an association starts at its first artifact that isn't. False by default.
+	 */
+	default boolean isWhitespace() {
+		return false;
+	}
+
 }

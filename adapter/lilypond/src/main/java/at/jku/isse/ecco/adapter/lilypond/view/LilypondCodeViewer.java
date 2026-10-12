@@ -39,6 +39,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 	private final HashMap<String, AssociationInfo> associationInfos;
 	private final HashMap<String, PropertyChangeListener> associationListeners;
 	private final Map<Path, FileView> fileViews = new LinkedHashMap<>();
+	private boolean highlightSelection = true;
 	private final Callback<ListView<NodeTextBlock[]>, ListCell<NodeTextBlock[]>> cellFactory;
 	private final TextArea taInfo;
 	private final SplitPane splitPane;
@@ -271,6 +272,11 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 	}
 
 	@Override
+	public void setHighlightSelection(boolean highlight) {
+		this.highlightSelection = highlight;
+	}
+
+	@Override
 	public void setAssociationInfos(Collection<AssociationInfo> associationInfos) {
 		// remove listeners
 		for (Map.Entry<String, AssociationInfo> entry : this.associationInfos.entrySet()) {
@@ -432,7 +438,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 				NodeTextBlock[] line = codeLines.get(pos[0]);
 				if (line.length > 0) {
 					ntb = line[pos[1]];
-					ntb.setHighlighted(true);
+					ntb.setHighlighted(highlightSelection);
 					currentlyHighlighted.add(ntb);
 					if (pos[1] < line.length - 1) {
 						pos[1]++;
