@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.detail;
 
 import at.jku.isse.ecco.adapter.ArtifactViewer;
 import at.jku.isse.ecco.adapter.AssociationInfoArtifactViewer;
+import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.pog.PartialOrderGraph;
 import at.jku.isse.ecco.service.EccoService;
@@ -93,7 +94,13 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		// now that the real Node is threaded through, but this dialog should never index out of
 		// bounds regardless).
 		ObservableList<ChildEntry> rowData = FXCollections.observableArrayList();
+		// a text file's final newline is no line to move: it stays last (TextFileFormat)
+		List<Node.Op> finalNewline = new ArrayList<>();
 		for (int i = 0; i < children.size(); i++) {
+			if (TextFileFormat.isFinalNewline(children.get(i))) {
+				finalNewline.add(children.get(i));
+				continue;
+			}
 			String label = (labels.size() == children.size()) ? labels.get(i) : String.valueOf(children.get(i).getArtifact());
 			rowData.add(new ChildEntry(children.get(i), label));
 		}
@@ -187,7 +194,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		Runnable updateCodePreview = () -> {
 			ChildEntry selected = table.getSelectionModel().getSelectedItem();
 			if (selected == null || !(codePreview instanceof ArtifactViewer)) return;
-			node.setChildren(rowData.stream().map(ChildEntry::getNode).collect(Collectors.toList()));
+			node.setChildren(withFinalNewline(rowData, finalNewline));
 			try {
 				((ArtifactViewer) codePreview).showTree(selected.getNode());
 			} finally {
@@ -296,8 +303,14 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			table.getSelectionModel().selectFirst();
 		}
 
-		setResultConverter(buttonType -> buttonType != ButtonType.OK ? null :
-				rowData.stream().map(ChildEntry::getNode).collect(Collectors.toList()));
+		setResultConverter(buttonType -> buttonType != ButtonType.OK ? null : withFinalNewline(rowData, finalNewline));
+	}
+
+	/** The rows' nodes in their order, then the final newline, if the file has one. */
+	private static List<Node.Op> withFinalNewline(List<ChildEntry> rows, List<Node.Op> finalNewline) {
+		List<Node.Op> nodes = rows.stream().map(ChildEntry::getNode).collect(Collectors.toList());
+		nodes.addAll(finalNewline);
+		return nodes;
 	}
 
 	/**

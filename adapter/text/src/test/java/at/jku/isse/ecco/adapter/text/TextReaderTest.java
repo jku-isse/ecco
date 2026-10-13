@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.text;
 
+import at.jku.isse.ecco.adapter.dispatch.FinalNewlineArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
@@ -31,7 +32,9 @@ public class TextReaderTest {
         assertEquals(TextPlugin.class.getName(), ((PluginArtifactData) fileNode.getArtifact().getData()).getPluginId());
 
         List<? extends Node.Op> lines = fileNode.getChildren();
-        assertEquals(3, lines.size());
+        // and the final newline, as the last child (TextFileFormat)
+        assertEquals(4, lines.size());
+        assertInstanceOf(FinalNewlineArtifactData.class, lines.get(3).getArtifact().getData());
         assertEquals("first", ((LineArtifactData) lines.get(0).getArtifact().getData()).getLine());
         assertEquals("second", ((LineArtifactData) lines.get(1).getArtifact().getData()).getLine());
         assertEquals("third", ((LineArtifactData) lines.get(2).getArtifact().getData()).getLine());

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.adapter.markdown;
 
+import at.jku.isse.ecco.adapter.dispatch.FinalNewlineArtifactData;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.markdown.data.BlockQuoteArtifactData;
 import at.jku.isse.ecco.adapter.markdown.data.BulletListArtifactData;
@@ -40,6 +41,13 @@ public class MarkdownReaderTest {
 		Node.Op fileNode = result.iterator().next();
 		assertInstanceOf(PluginArtifactData.class, fileNode.getArtifact().getData());
 		assertEquals(MarkdownPlugin.class.getName(), ((PluginArtifactData) fileNode.getArtifact().getData()).getPluginId());
+		// a file ending with a newline has it as its node's last child (TextFileFormat), not part of
+		// the document's structure: checked here, then taken off for the tests of that structure
+		List<? extends Node.Op> children = fileNode.getChildren();
+		boolean finalNewline = !children.isEmpty() && children.get(children.size() - 1).getArtifact().getData() instanceof FinalNewlineArtifactData;
+		assertEquals(content.endsWith("\n"), finalNewline, "final newline");
+		if (finalNewline)
+			children.get(children.size() - 1).removeParent();
 		return fileNode;
 	}
 

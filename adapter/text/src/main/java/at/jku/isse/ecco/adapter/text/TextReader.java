@@ -85,7 +85,7 @@ public class TextReader implements ArtifactReader<Path, Set<Node.Op>> {
 				lineNode.putProperty(PROPERTY_LINE_END, i);
 				pluginNode.addChild(lineNode);
 			}
-
+			decoded.addFinalNewline(pluginNode, this.entityFactory);
 		}
 		return nodes;
 	}

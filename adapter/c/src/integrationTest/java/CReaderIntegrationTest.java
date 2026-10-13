@@ -229,7 +229,8 @@ public class CReaderIntegrationTest {
     private static List<Node.Op> nonBlankChildren(Node.Op node) {
         List<Node.Op> children = new ArrayList<>();
         for (Node.Op child : node.getChildren())
-            if (!isEmptyLine(child))
+            // nor the file's final newline (TextFileFormat)
+            if (!isEmptyLine(child) && !at.jku.isse.ecco.adapter.dispatch.TextFileFormat.isFinalNewline(child))
                 children.add(child);
         return children;
     }

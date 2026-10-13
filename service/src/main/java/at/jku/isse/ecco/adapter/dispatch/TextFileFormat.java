@@ -1,5 +1,8 @@
 package at.jku.isse.ecco.adapter.dispatch;
 
+import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.tree.Node;
+
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
@@ -13,6 +16,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.tree.Node;
+
 /**
  * Reads and writes line-based text files so that a commit/checkout round trip reproduces them byte
  * for byte. Line adapters used to read with the default charset and write every line followed by
@@ -25,7 +31,9 @@ import java.util.List;
  * (on \n, \r\n and \r), so the line artifacts of existing repositories stay the same. Files whose
  * format was never recorded (committed before this existed) are written exactly as before.
  * Limitations: a file mixing line separators gets the first one throughout, and since variants of a
- * file share its plugin artifact, the recorded format is the one stored with that artifact.
+ * file share its plugin artifact, its charset and line separator are the newest commit's. Its final
+ * newline is not: it is a child of the file's node ({@link FinalNewlineArtifactData}), traced like a
+ * line - recorded with the rest, the newest commit's final newline was written into every variant.
  */
 public final class TextFileFormat {
 
@@ -39,7 +47,22 @@ public final class TextFileFormat {
 		 */
 		public void recordOn(PluginArtifactData data) {
 			data.setTextFormat(this.charset.name(), this.lineSeparator, this.endsWithNewline);
+			data.setFinalNewlineTraced();
 		}
+
+		/**
+		 * Adds the file's final newline, if it has one, as the last child of its node - after its
+		 * lines (see {@link FinalNewlineArtifactData}).
+		 */
+		public void addFinalNewline(Node.Op fileNode, EntityFactory entityFactory) {
+			if (this.endsWithNewline)
+				fileNode.addChild(entityFactory.createNode(entityFactory.createArtifact(new FinalNewlineArtifactData())));
+		}
+	}
+
+	/** Whether [node] is a file's final newline, which a writer does not write as a line. */
+	public static boolean isFinalNewline(Node node) {
+		return node.getArtifact() != null && node.getArtifact().getData() instanceof FinalNewlineArtifactData;
 	}
 
 	/**
@@ -88,10 +111,20 @@ public final class TextFileFormat {
 	 * data without a recorded format - writes the way line adapters always did: UTF-8, every line
 	 * followed by the platform line separator.
 	 */
-	public static LineWriter newLineWriter(Path file, PluginArtifactData data) throws IOException {
+	public static LineWriter newLineWriter(Path file, PluginArtifactData data, Node fileNode) throws IOException {
 		if (!data.hasTextFormat())
 			return new LineWriter(Files.newBufferedWriter(file), System.lineSeparator(), true);
-		return new LineWriter(Files.newBufferedWriter(file, Charset.forName(data.getCharset())), data.getLineSeparator(), data.endsWithNewline());
+		return new LineWriter(Files.newBufferedWriter(file, Charset.forName(data.getCharset())), data.getLineSeparator(), endsWithNewline(data, fileNode));
+	}
+
+	/** Whether the file [fileNode] stands for ends with a newline in this variant. */
+	public static boolean endsWithNewline(PluginArtifactData data, Node fileNode) {
+		if (!data.isFinalNewlineTraced())
+			return data.endsWithNewline();
+		for (Node child : fileNode.getChildren())
+			if (isFinalNewline(child))
+				return true;
+		return false;
 	}
 
 	public static final class LineWriter implements Closeable {

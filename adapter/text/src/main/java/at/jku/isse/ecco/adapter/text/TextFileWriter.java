@@ -45,8 +45,10 @@ public class TextFileWriter implements ArtifactWriter<Set<Node>, Path> {
 			Path outputPath = base.resolve(pluginArtifactData.getPath());
 
 			// reproduces the charset/line separator/final newline recorded at commit time (TextFileFormat)
-			try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(outputPath, pluginArtifactData)) {
+			try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(outputPath, pluginArtifactData, fileNode)) {
 				for (Node lineNode : fileNode.getChildren()) {
+					if (TextFileFormat.isFinalNewline(lineNode))
+						continue;
 					LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
 
 					writer.writeLine(lineArtifactData.getLine());

@@ -4,6 +4,7 @@ import at.jku.isse.ecco.featuretrace.RejectedTrace;
 import at.jku.isse.ecco.core.Checkout;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.adapter.dispatch.TextFileFormat;
 import at.jku.isse.ecco.gui.ExceptionAlert;
 import at.jku.isse.ecco.gui.TableColumns;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryContentsDialog;
@@ -414,7 +415,12 @@ public class CheckoutDetailView extends BorderPane {
 	 * file in that order and refreshes the table, where the ORDER row is gone once the order is
 	 * determined (see the hasUnresolvedOrder filter in showCheckout). Package-visible for testing.
 	 */
-	void recordOrder(Node.Op node, List<Node.Op> order) {
+	void recordOrder(Node.Op node, List<Node.Op> givenOrder) {
+		// a text file's final newline stays last, also when the order leaves it out (TextFileFormat)
+		List<Node.Op> order = new ArrayList<>(givenOrder);
+		for (Node.Op child : node.getChildren())
+			if (TextFileFormat.isFinalNewline(child) && !order.contains(child))
+				order.add(child);
 		Task<Void> recordTask = new Task<>() {
 			@Override
 			public Void call() {

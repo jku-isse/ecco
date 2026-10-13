@@ -53,7 +53,7 @@ public class MarkdownFileWriter implements ArtifactWriter<Set<Node>, Path> {
 			Path outputPath = base.resolve(pluginArtifactData.getPath());
 
 			// reproduces the charset/line separator/final newline recorded at commit time (TextFileFormat)
-			try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(outputPath, pluginArtifactData)) {
+			try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(outputPath, pluginArtifactData, fileNode)) {
 				this.writeLines(fileNode, writer);
 			} catch (IOException e) {
 				throw new EccoException("Could not write file: " + outputPath, e);

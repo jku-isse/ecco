@@ -51,7 +51,7 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
                         output.add(written);
                     continue;
                 }
-                try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(outputPath, pluginArtifactData)) {
+                try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(outputPath, pluginArtifactData, fileNode)) {
                     this.writeLines(fileNode, writer);
                 }
             } catch (IOException e) {
@@ -69,7 +69,7 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
                 writer.writeLine(line.getLine());
             else if (data instanceof ScopeArtifactData)
                 this.writeLines(child, writer);
-            else
+            else if (!TextFileFormat.isFinalNewline(child))
                 throw new EccoException("Unexpected artifact in a C++ file: " + data);
         }
     }

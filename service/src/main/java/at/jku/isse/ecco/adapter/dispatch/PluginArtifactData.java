@@ -22,6 +22,11 @@ public class PluginArtifactData implements ArtifactData {
 	private String charset;
 	private String lineSeparator;
 	private Boolean endsWithNewline;
+	// whether the file's final newline is a FinalNewlineArtifactData child of its node, traced like a
+	// line, instead of endsWithNewline; false for files stored before (a field their data lacks).
+	// Primitive: as a Boolean it shared one object with endsWithNewline when serialized, and after
+	// adoption no longer did - every file's data was written again on every commit, unchanged.
+	private boolean finalNewlineTraced;
 
 	protected PluginArtifactData() {
 		this.pluginId = null;
@@ -56,9 +61,20 @@ public class PluginArtifactData implements ArtifactData {
 		this.endsWithNewline = endsWithNewline;
 	}
 
+	/** Records that the file's final newline is a child of its node (FinalNewlineArtifactData). */
+	public void setFinalNewlineTraced() {
+		this.finalNewlineTraced = true;
+	}
+
+	/** Whether the file's final newline is a child of its node; else endsWithNewline() says. */
+	public boolean isFinalNewlineTraced() {
+		return this.finalNewlineTraced;
+	}
+
 	/**
 	 * The newest commit's text format wins (see ArtifactData.adoptMetadataFrom()) - also how files
-	 * committed before formats were recorded get one.
+	 * committed before formats were recorded get one. Whether the final newline is traced does not
+	 * change: a file stored before has no final newline child in the variants committed before.
 	 */
 	@Override
 	public void adoptMetadataFrom(ArtifactData newer) {

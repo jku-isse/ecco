@@ -79,7 +79,7 @@ public class TextFileFormatTest {
     public void filesWithoutARecordedFormatAreWrittenAsBefore() throws IOException {
         Path out = Files.createTempFile("legacy", ".txt");
         PluginArtifactData legacy = new PluginArtifactData("plugin", Paths.get("legacy.txt"));
-        try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(out, legacy)) {
+        try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(out, legacy, new at.jku.isse.ecco.storage.ser.dao.SerEntityFactory().createNode(legacy))) {
             writer.writeLine("a");
             writer.writeLine("b");
         }
@@ -91,7 +91,11 @@ public class TextFileFormatTest {
         TextFileFormat.Decoded decoded = TextFileFormat.read(in);
         PluginArtifactData data = new PluginArtifactData("plugin", Paths.get("file.txt"));
         decoded.recordOn(data);
-        try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(out, data)) {
+        // the final newline is a child of the file's node
+        at.jku.isse.ecco.storage.ser.dao.SerEntityFactory entityFactory = new at.jku.isse.ecco.storage.ser.dao.SerEntityFactory();
+        at.jku.isse.ecco.tree.Node.Op fileNode = entityFactory.createOrderedNode(data);
+        decoded.addFinalNewline(fileNode, entityFactory);
+        try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(out, data, fileNode)) {
             for (String line : decoded.lines()) writer.writeLine(line);
         }
         return Files.readAllBytes(out);

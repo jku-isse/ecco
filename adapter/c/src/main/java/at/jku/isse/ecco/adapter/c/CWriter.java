@@ -50,7 +50,7 @@ public class CWriter implements ArtifactWriter<Set<Node>, Path> {
 
     private void writeCFile(Path filePath, Node orderedNode, PluginArtifactData pluginArtifactData){
         // reproduces the charset/line separator/final newline recorded at commit time (TextFileFormat)
-        try (TextFileFormat.LineWriter bw = TextFileFormat.newLineWriter(filePath, pluginArtifactData)) {
+        try (TextFileFormat.LineWriter bw = TextFileFormat.newLineWriter(filePath, pluginArtifactData, orderedNode)) {
             List<Node> fileNodeChildren = (List<Node>) orderedNode.getChildren();
             for (Node node : fileNodeChildren){
                 Artifact<?> artifact = node.getArtifact();
@@ -60,7 +60,7 @@ public class CWriter implements ArtifactWriter<Set<Node>, Path> {
                 } else if (artifactData instanceof LineArtifactData){
                     LineArtifactData lineArtifactData = (LineArtifactData) artifactData;
                     bw.writeLine(lineArtifactData.getLine());
-                } else {
+                } else if (!TextFileFormat.isFinalNewline(node)) {
                     throw new EccoException("Expected FunctionArtifactData or LineArtifactData.");
                 }
             }
