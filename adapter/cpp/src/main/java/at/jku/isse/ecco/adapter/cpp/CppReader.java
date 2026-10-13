@@ -76,6 +76,17 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     @Override
+
+    public String readContext(Path base) {
+
+        // lines carry the configuration (their Location) and VEVOS presence conditions
+
+        return getConfigurationString(base) + "\n" + VevosConditionHandler.fileHash(base);
+
+    }
+
+
+    @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         VevosConditionHandler vevosConditionHandler = new VevosConditionHandler(base);
         String configuration = getConfigurationString(base);

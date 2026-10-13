@@ -27,4 +27,19 @@ public interface ArtifactReader<I, O> {
 
 	public void removeListener(ReadListener listener);
 
+	/**
+	 * Everything besides a file's own content that this reader's tree of it depends on - settings, a
+	 * file beside it - as a string that changes whenever that does; or null if its trees are not to be
+	 * reused. A reader that answers lets the dispatcher reuse the tree of a file it read before with
+	 * the same content and the same context, instead of reading it again (in a Git import, every
+	 * commit reads every file, most of them unchanged). Its trees must then depend on nothing else,
+	 * and their artifacts must not reference each other.
+	 *
+	 * @param base The base directory the files are read from
+	 * @return The context of this reader's trees, or null
+	 */
+	public default String readContext(I base) {
+		return null;
+	}
+
 }

@@ -10,6 +10,7 @@ import at.jku.isse.ecco.service.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
+import at.jku.isse.ecco.util.Trees;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.io.IOException;
@@ -361,6 +362,77 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 
+	/**
+	 * The trees of the files the last read read, as their readers made them, by {@link #readKey}: a
+	 * file with the same content and context is not read again but copied from here (Trees#copyRead).
+	 * Only the last read's, so this holds at most one snapshot of trees.
+	 */
+	private Map<String, Node.Op> lastRead = new HashMap<>();
+	private int reused;
+
+	/** How many files the last read did not read again (tests). */
+	int lastReused() {
+		return this.reused;
+	}
+
+	/** Whether trees are reused across reads: -Decco.reuseReadTrees=false reads every file every time. */
+	static boolean reuseReadTrees() {
+		return Boolean.parseBoolean(System.getProperty("ecco.reuseReadTrees", "true"));
+	}
+
+	/**
+	 * [files] read by [reader] as {@link #readOrFallBack} does - except a file it read last time with
+	 * the same content and the same context (ArtifactReader#readContext), whose tree is copied.
+	 */
+	private Set<Node.Op> readReusing(Path base, ArtifactReader<Path, Set<Node.Op>> reader, Path[] files, Map<String, Node.Op> reread) {
+		String context = reuseReadTrees() ? reader.readContext(base) : null;
+		if (context == null)
+			return this.readOrFallBack(base, reader, files);
+		Set<Node.Op> nodes = new HashSet<>();
+		Map<Path, String> keys = new HashMap<>();
+		List<Path> toRead = new ArrayList<>();
+		for (Path file : files) {
+			String key = readKey(reader, base, file, context);
+			Node.Op previous = key == null ? null : this.lastRead.get(key);
+			Node.Op copy = previous == null ? null : Trees.copyRead(previous, this.entityFactory);
+			if (copy != null) {
+				nodes.add(copy);
+				reread.put(key, previous);
+				this.reused++;
+			} else {
+				toRead.add(file);
+				if (key != null)
+					keys.put(file, key);
+			}
+		}
+		if (!toRead.isEmpty()) {
+			for (Node.Op node : this.readOrFallBack(base, reader, toRead.toArray(new Path[0]))) {
+				nodes.add(node);
+				// what a fallback adapter read is read again next time, with its warning
+				if (node.getArtifact().getData() instanceof PluginArtifactData data && reader.getPluginId().equals(data.getPluginId())) {
+					String key = keys.get(data.getPath());
+					Node.Op copy = key == null ? null : Trees.copyRead(node, this.entityFactory);
+					if (copy != null)
+						reread.put(key, copy);
+				}
+			}
+		}
+		return nodes;
+	}
+
+	/** The adapter, the file, its content's SHA-256 and the reader's context; null if the file cannot be hashed. */
+	private static String readKey(ArtifactReader<Path, Set<Node.Op>> reader, Path base, Path file, String context) {
+		try (java.io.InputStream in = Files.newInputStream(base.resolve(file))) {
+			java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+			byte[] buffer = new byte[65536];
+			for (int n; (n = in.read(buffer)) > 0; )
+				digest.update(buffer, 0, n);
+			return reader.getPluginId() + "\n" + file + "\n" + java.util.HexFormat.of().formatHex(digest.digest()) + "\n" + context;
+		} catch (IOException | java.security.NoSuchAlgorithmException e) {
+			return null;
+		}
+	}
+
 	static final String TEXT_PLUGIN_ID = "at.jku.isse.ecco.adapter.text.TextPlugin";
 	static final String FILE_PLUGIN_ID = "at.jku.isse.ecco.adapter.file.FilePlugin";
 
@@ -468,6 +540,9 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		Set<Node.Op> nodes = new HashSet<>();
 
 		base = base.normalize();
+		// the trees this read reuses or reads, for the next one to reuse
+		Map<String, Node.Op> reread = new HashMap<>();
+		this.reused = 0;
 
 		for (Path path : input) {
 
@@ -498,7 +573,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					Path[] pluginInput = filesList.toArray(new Path[0]);
 
 					long localStartTime = System.currentTimeMillis();
-					Set<Node.Op> pluginNodes = this.readOrFallBack(base, reader, pluginInput);
+					Set<Node.Op> pluginNodes = this.readReusing(base, reader, pluginInput, reread);
 					LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 					for (Node.Op pluginNode : pluginNodes) {
 						if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData))
@@ -542,7 +617,8 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 		}
 
-		LOGGER.info(this.getClass() + ".read(): " + (System.currentTimeMillis() - startTime) + "ms");
+		this.lastRead = reread;
+		LOGGER.info(this.getClass() + ".read(): " + (System.currentTimeMillis() - startTime) + "ms" + (this.reused > 0 ? ", " + this.reused + " unchanged files not read again" : ""));
 
 		// return produced nodes
 		return nodes;

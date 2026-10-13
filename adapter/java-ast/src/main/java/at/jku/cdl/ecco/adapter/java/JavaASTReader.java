@@ -122,6 +122,17 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 	@Override
+
+	public String readContext(Path base) {
+
+		// a file's tree depends on nothing but the file
+
+		return "";
+
+	}
+
+
+	@Override
 	public Set<Node.Op> read(Path base, Path[] input) {
 		// Initial checks and logging
 		if (base == null) {

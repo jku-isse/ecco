@@ -56,6 +56,17 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
     public Map<Integer, String[]> getPrioritizedPatterns() { return Collections.unmodifiableMap(prioritizedPatterns); }
 
     @Override
+
+    public String readContext(Path base) {
+
+        // lines carry the configuration (their Location) and VEVOS presence conditions
+
+        return this.getConfigurationString(base) + "\n" + VevosConditionHandler.fileHash(base);
+
+    }
+
+
+    @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         VevosConditionHandler vevosConditionHandler = new VevosConditionHandler(base);
         String configuration = this.getConfigurationString(base);

@@ -16,6 +16,18 @@ public class VevosConditionHandler {
     private boolean vevosFileExists;
     private Map<Path, List<VevosCondition>> fileConditionsMap = new HashMap<>();
 
+    /** A hash of the presence conditions in [base] (pcs.variant.csv), or "" if there are none: what a reader's trees depend on. */
+    public static String fileHash(Path base) {
+        Path file = base.resolve("pcs.variant.csv");
+        if (!Files.exists(file))
+            return "";
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
+        } catch (IOException | java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException(String.format("VEVOS file (%s) could not be read: %s", file, e.getMessage()));
+        }
+    }
+
     public VevosConditionHandler(Path vevosFileBasePath){
         this.vevosFilePath = vevosFileBasePath.resolve(this.PRESENCE_CONDITION_FILENAME);
         this.vevosFileExists = Files.exists(vevosFilePath);

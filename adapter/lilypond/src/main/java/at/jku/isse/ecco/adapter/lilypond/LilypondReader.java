@@ -140,6 +140,17 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
     }
 
     @Override
+
+    public String readContext(Path base) {
+
+        // how this repository reads LilyPond (see LilypondPlugin#newRepositorySettings)
+
+        return this.readable() + " " + this.musicalTokens() + " " + this.variableContexts();
+
+    }
+
+
+    @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         Set<Node.Op> nodes = new HashSet<>();
 

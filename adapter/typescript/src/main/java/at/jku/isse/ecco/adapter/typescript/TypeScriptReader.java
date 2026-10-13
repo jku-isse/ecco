@@ -54,6 +54,12 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
 
     @SuppressWarnings("unchecked")
     @Override
+    public String readContext(Path base) {
+        // a file's tree depends on nothing but the file
+        return "";
+    }
+
+    @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         Set<Node.Op> nodes = new HashSet<>();
         for (Path path : input) {

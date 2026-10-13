@@ -124,6 +124,69 @@ public class Trees {
 	// # WRITE OPERATIONS ##############################################################################################
 
 	/**
+	 * A copy of [node], a tree as a reader made it, with new nodes and artifacts: what reading the same
+	 * file again gives, for a tree that extraction may change. Artifact data is shared, except data
+	 * that adopts a newer commit's metadata once stored (ArtifactData#adoptMetadataFrom), which is
+	 * copied: shared, a stored artifact adopting it would change the tree it was copied from too.
+	 * Property values (a line's Location) are shared - they are not changed once read. Null if the tree holds what a reader's tree does not (an order graph, a
+	 * sequence number, references between artifacts), which a copy would not reproduce.
+	 */
+	private static final Map<Class<?>, Boolean> ADOPTS_METADATA = new java.util.concurrent.ConcurrentHashMap<>();
+
+	@SuppressWarnings("unchecked")
+	private static <T extends at.jku.isse.ecco.artifact.ArtifactData> T copyIfAdopting(T data) {
+		boolean adopts = ADOPTS_METADATA.computeIfAbsent(data.getClass(), c -> {
+			try {
+				return c.getMethod("adoptMetadataFrom", at.jku.isse.ecco.artifact.ArtifactData.class).getDeclaringClass()
+						!= at.jku.isse.ecco.artifact.ArtifactData.class;
+			} catch (NoSuchMethodException e) {
+				return false;
+			}
+		});
+		if (!adopts)
+			return data;
+		try {
+			java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+			try (java.io.ObjectOutputStream out = new java.io.ObjectOutputStream(bytes)) {
+				out.writeObject(data);
+			}
+			try (java.io.ObjectInputStream in = new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(bytes.toByteArray()))) {
+				return (T) in.readObject();
+			}
+		} catch (java.io.IOException | ClassNotFoundException e) {
+			throw new EccoException("Could not copy " + data.getClass().getName(), e);
+		}
+	}
+
+	public static Node.Op copyRead(Node.Op node, at.jku.isse.ecco.dao.EntityFactory entityFactory) {
+		Artifact.Op<?> artifact = node.getArtifact();
+		if (artifact == null || artifact.getPartialOrderGraph() != null || artifact.isSequenced()
+				|| artifact.getSequenceNumber() != at.jku.isse.ecco.pog.PartialOrderGraph.UNASSIGNED_SEQUENCE_NUMBER
+				|| !artifact.getUses().isEmpty() || !artifact.getUsedBy().isEmpty() || artifact.useReferencesInEquals()
+				|| artifact.getReplacingArtifact() != null)
+			return null;
+		Artifact.Op<?> copiedArtifact = entityFactory.createArtifact(copyIfAdopting(artifact.getData()));
+		copiedArtifact.setAtomic(artifact.isAtomic());
+		copiedArtifact.setOrdered(artifact.isOrdered());
+		artifact.getProperties().forEach(copiedArtifact::putProperty);
+		Node.Op copy = entityFactory.createNode(copiedArtifact);
+		copy.setUnique(node.isUnique());
+		copy.putProperties(node.getProperties());
+		if (node.getFeatureTrace() != null) {
+			copy.getFeatureTrace().setProactiveCondition(node.getFeatureTrace().getProactiveConditionString());
+			copy.getFeatureTrace().setRetroactiveCondition(node.getFeatureTrace().getRetroactiveConditionString());
+		}
+		for (Node.Op child : node.getChildren()) {
+			Node.Op copiedChild = copyRead(child, entityFactory);
+			if (copiedChild == null)
+				return null;
+			copy.addChild(copiedChild);
+		}
+		return copy;
+	}
+
+
+	/**
 	 * Slices (i.e. intersects) the two given nodes. It returns the intersection node and removes the intersection from the left and right nodes.
 	 *
 	 * @param left  The left (original) node.
