@@ -65,13 +65,23 @@ public final class SerRepository implements Repository, Repository.Op {
 	// add/remove choke point (SerEntityFactory.createArtifact() doesn't register with a repository
 	// at all) - SerTransactionStrategy discovers dirty artifacts by walking dirty associations'
 	// trees at write time instead, via registerArtifact() below.
-	private Set<String> artifactIds = new LinkedHashSet<>();
+	//
+	// Artifacts are stored in pack files (see SerTransactionStrategy), and the core lists the packs in
+	// the order they were written (packOrder). Which artifacts there are and which pack holds each is
+	// not in the core: loading reads the packs in that order, a later pack's copy of an artifact
+	// superseding an earlier one's. The core used to hold that index - two entries per artifact, two
+	// million for a large repository, written again with every commit; artifactIds and artifactPacks
+	// are those fields, still read from cores written before (packOrder null), and null since.
+	private Set<String> artifactIds;
+	private Map<String, String> artifactPacks;
+	private List<String> packOrder = new ArrayList<>();
 	private transient Map<String, Artifact.Op<?>> artifactsById = new LinkedHashMap<>();
-	// Artifacts are stored in pack files (see SerTransactionStrategy): artifact id -> the pack in
-	// artifacts/ that holds it, and each pack's number of entries (to tell when it is mostly
-	// superseded). An artifact without a pack has a file of its own - repositories written before
-	// packs, whose cores have neither map (null).
-	private Map<String, String> artifactPacks = new HashMap<>();
+	// the index, built when loading: every artifact's id, the pack holding its current copy (none: a
+	// file of its own, from before packs), how many current artifacts each pack holds
+	private transient Set<String> liveArtifactIds;
+	private transient Map<String, String> livePacks;
+	private transient Map<String, Integer> currentPerPack;
+	// each pack's number of entries (to tell when it is mostly superseded)
 	private Map<String, Integer> packSizes = new HashMap<>();
 	// identity-keyed (Collections.newSetFromMap(new IdentityHashMap<>()), same pattern
 	// Trees.java's newIdentitySet() already uses for the same reason): SerArtifact.equals()/
@@ -197,7 +207,26 @@ public final class SerRepository implements Repository, Repository.Op {
 	 * (12330811) or per-artifact (3e2b04d6) files - the id sets didn't exist then.
 	 */
 	public boolean isOldStorageFormat() {
-		return this.associationIds == null || this.artifactIds == null;
+		return this.associationIds == null || (this.artifactIds == null && this.packOrder == null);
+	}
+
+	/**
+	 * Whether this core was written before packs were ordered: its artifact index is in the core
+	 * ({@link #legacyArtifactIds()}), and the packs cannot be read in an order that resolves which
+	 * copy of an artifact is current - the next write puts all of them into one new pack.
+	 */
+	public boolean hasLegacyArtifactIndex() {
+		return this.packOrder == null && this.artifactIds != null;
+	}
+
+	/** The artifact ids a core written before packs were ordered holds; see {@link #hasLegacyArtifactIndex()}. */
+	public Set<String> legacyArtifactIds() {
+		return this.artifactIds == null ? Set.of() : Collections.unmodifiableSet(this.artifactIds);
+	}
+
+	/** The pack a core written before packs were ordered records for an artifact, or null. */
+	public String legacyArtifactPack(String artifactId) {
+		return this.artifactPacks == null ? null : this.artifactPacks.get(artifactId);
 	}
 
 	public boolean hasAssociationIds() {
@@ -241,9 +270,15 @@ public final class SerRepository implements Repository, Repository.Op {
 		this.dirtyArtifacts = Collections.newSetFromMap(new IdentityHashMap<>());
 	}
 
-	/** The full set of artifact IDs that should have a file on disk - what {@link #restoreArtifacts} needs loaded. */
+	/** The ids of all artifacts, loaded or registered since. */
 	public Set<String> getArtifactIds() {
-		return Collections.unmodifiableSet(this.artifactIds);
+		return Collections.unmodifiableSet(this.liveArtifactIds());
+	}
+
+	private Set<String> liveArtifactIds() {
+		if (this.liveArtifactIds == null)
+			this.liveArtifactIds = new LinkedHashSet<>();
+		return this.liveArtifactIds;
 	}
 
 	/** Artifacts touched since the last {@link #clearDirtyTracking()} - need writing. */
@@ -251,11 +286,71 @@ public final class SerRepository implements Repository, Repository.Op {
 		return Collections.unmodifiableSet(this.dirtyArtifacts);
 	}
 
-	/** Artifact id -> the pack file holding it; artifacts not in it have a file of their own. */
-	public Map<String, String> getArtifactPacks() {
-		if (this.artifactPacks == null)
-			this.artifactPacks = new HashMap<>();
-		return this.artifactPacks;
+	/** The pack holding the current copy of an artifact, or null if it has a file of its own. */
+	public String getArtifactPack(String artifactId) {
+		return this.livePacks == null ? null : this.livePacks.get(artifactId);
+	}
+
+	/** Records that [pack] holds the current copy of an artifact, superseding the one it had. */
+	public void setArtifactPack(String artifactId, String pack) {
+		if (this.livePacks == null) {
+			this.livePacks = new HashMap<>();
+			this.currentPerPack = new HashMap<>();
+		}
+		this.liveArtifactIds().add(artifactId);
+		String before = this.livePacks.put(artifactId, pack);
+		if (before != null)
+			this.currentPerPack.merge(before, -1, Integer::sum);
+		this.currentPerPack.merge(pack, 1, Integer::sum);
+	}
+
+	/** How many artifacts [pack] holds the current copy of. */
+	public int currentArtifacts(String pack) {
+		return this.currentPerPack == null ? 0 : this.currentPerPack.getOrDefault(pack, 0);
+	}
+
+	/** The artifacts [pack] holds the current copy of - a walk over all artifacts, for the few packs compacted. */
+	public List<String> currentArtifactsOf(String pack) {
+		List<String> ids = new ArrayList<>();
+		if (this.livePacks != null)
+			this.livePacks.forEach((id, p) -> { if (p.equals(pack)) ids.add(id); });
+		return ids;
+	}
+
+	/** The packs in the order they were written: a later one's copy of an artifact is current. */
+	public List<String> getPackOrder() {
+		return this.packOrder == null ? List.of() : this.packOrder;
+	}
+
+	/** Adds a pack, written now, at the end of {@link #getPackOrder()}. */
+	public void addPack(String pack) {
+		if (this.packOrder == null)
+			this.packOrder = new ArrayList<>();
+		this.packOrder.add(pack);
+	}
+
+	/** Takes packs that hold no current artifact anymore out of {@link #getPackOrder()} and the sizes. */
+	public void dropEmptyPacks() {
+		if (this.packOrder != null)
+			this.packOrder.removeIf(pack -> this.currentArtifacts(pack) == 0);
+		this.getPackSizes().keySet().retainAll(this.getPackOrder());
+	}
+
+	/** Records an artifact with a file of its own (from before packs). */
+	public void addLooseArtifact(String artifactId) {
+		this.liveArtifactIds().add(artifactId);
+	}
+
+	/**
+	 * Called when a core written before packs were ordered is rewritten: from now on its packs are
+	 * ordered (the write puts every current artifact into one new pack first), and the index is not
+	 * written into the core anymore.
+	 */
+	public void dropLegacyArtifactIndex() {
+		this.artifactIds = null;
+		this.artifactPacks = null;
+		if (this.packOrder == null)
+			this.packOrder = new ArrayList<>();
 	}
 
 	/** Pack file -> the number of artifacts written into it. */
@@ -279,7 +374,7 @@ public final class SerRepository implements Repository, Repository.Op {
 	public void registerArtifact(Artifact.Op<?> artifact) {
 		if (!(artifact instanceof at.jku.isse.ecco.storage.ser.artifact.SerArtifact<?> serArtifact)) return;
 		this.artifactsById.put(serArtifact.getStorageId(), artifact);
-		this.artifactIds.add(serArtifact.getStorageId());
+		this.liveArtifactIds().add(serArtifact.getStorageId());
 		this.dirtyArtifacts.add(artifact);
 	}
 

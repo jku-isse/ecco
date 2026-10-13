@@ -42,6 +42,12 @@ public class OldStorageFormatTest {
         Field field = SerRepository.class.getDeclaredField(missingField);
         field.setAccessible(true);
         field.set(repository, null); // as deserialized from a file written before the field existed
+        if (missingField.equals("artifactIds")) {
+            // nor the order of the packs, which replaced the artifact ids in the core later
+            Field packOrder = SerRepository.class.getDeclaredField("packOrder");
+            packOrder.setAccessible(true);
+            packOrder.set(repository, null);
+        }
         strategy.end();
         strategy.close();
 

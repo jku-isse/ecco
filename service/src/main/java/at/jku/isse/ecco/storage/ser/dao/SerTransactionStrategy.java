@@ -116,6 +116,9 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	// written by this process - lets endReadWrite() skip entities whose bytes didn't change. Cleared
 	// by reset(); rebuilt by the full reload that follows.
 	private final Map<Path, byte[]> persistedDigests = new HashMap<>();
+	// the same for artifacts, by their id: a path per artifact - built, hashed and compared for every
+	// artifact of every write - took longer than the comparison it was for
+	private final Map<String, byte[]> artifactDigests = new HashMap<>();
 
 
 	@Inject
@@ -270,6 +273,35 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		throw new EccoException("No " + ZIP_ENTRY_NAME + " entry found in " + file);
 	}
 
+	/**
+	 * Reads every artifact of a pack (see {@link #writePack}) as the current one - the packs being read
+	 * in the order they were written - recording where each is and its digest.
+	 */
+	private void readOrderedPack(String packName, Map<String, Artifact.Op<?>> loadedById, SerRepository repo) throws IOException, ClassNotFoundException {
+		Path pack = this.artifactsDir.resolve(packName);
+		if (!Files.exists(pack))
+			throw new EccoException("The artifact pack " + packName + " is missing - the repository is damaged.");
+		try (ZipFile zip = new ZipFile(pack.toFile())) {
+			ZipEntry artifactsEntry = zip.getEntry(PACK_ARTIFACTS_ENTRY);
+			if (artifactsEntry == null)
+				throw new EccoException("The artifact pack " + packName + " has no " + PACK_ARTIFACTS_ENTRY + " - the repository is damaged.");
+			byte[] digests;
+			try (InputStream in = zip.getInputStream(zip.getEntry(PACK_DIGESTS_ENTRY))) {
+				digests = in.readAllBytes();
+			}
+			try (ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(zip.getInputStream(artifactsEntry), 1 << 16))) {
+				int count = ois.readInt();
+				for (int i = 0; i < count; i++) {
+					SerArtifact<?> artifact = (SerArtifact<?>) ois.readObject();
+					String id = artifact.getStorageId();
+					loadedById.put(id, artifact);
+					repo.setArtifactPack(id, packName);
+					this.artifactDigests.put(id, Arrays.copyOfRange(digests, i * ARTIFACT_DIGEST_LENGTH, (i + 1) * ARTIFACT_DIGEST_LENGTH));
+				}
+			}
+		}
+	}
+
 	/** Reads the given artifacts from a pack (see {@link #writePack}), recording their digests. */
 	private void readPack(Path pack, List<String> artifactIds, Map<String, Artifact.Op<?>> loadedById) throws IOException, ClassNotFoundException {
 		if (!Files.exists(pack))
@@ -291,7 +323,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 						if (!wanted.contains(id))
 							continue; // superseded by a later pack
 						loadedById.put(id, artifact);
-						this.persistedDigests.put(this.artifactFile(id), Arrays.copyOfRange(digests, i * ARTIFACT_DIGEST_LENGTH, (i + 1) * ARTIFACT_DIGEST_LENGTH));
+						this.artifactDigests.put(id, Arrays.copyOfRange(digests, i * ARTIFACT_DIGEST_LENGTH, (i + 1) * ARTIFACT_DIGEST_LENGTH));
 					}
 				}
 			} else {
@@ -304,7 +336,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					try (InputStream in = zip.getInputStream(entry)) {
 						bytes = in.readAllBytes();
 					}
-					this.persistedDigests.put(this.artifactFile(id), artifactDigest(bytes));
+					this.artifactDigests.put(id, artifactDigest(bytes));
 					try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
 						loadedById.put(id, (Artifact.Op<?>) ois.readObject());
 					}
@@ -490,7 +522,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.recoverPendingFiles(this.id, true);
 
 		Map<Path, byte[]> staged = new HashMap<>();
-		Set<String> packedArtifactIds = this.writeArtifactPack(repo, newId, staged);
+		Map<String, byte[]> stagedArtifacts = new HashMap<>();
+		Set<String> looseArtifactFiles = this.writeArtifactPack(repo, newId, stagedArtifacts);
 
 		// write only the associations actually touched this transaction, one file each, rather
 		// than the whole database - most associations are untouched by any given commit but were,
@@ -561,6 +594,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// If this fails or the process dies part way, the next load finishes it (loadDatabase()).
 		this.recoverPendingFiles(newId, false);
 		this.persistedDigests.putAll(staged);
+		this.artifactDigests.putAll(stagedArtifacts);
 
 		// best-effort cleanup of association files no longer referenced by the now-current core -
 		// after the id-file swap above, so a failure here never leaves the repository in a state
@@ -571,7 +605,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			this.persistedDigests.remove(removedFile);
 		}
 		if (oldCoreReleased)
-			this.deleteSupersededArtifactFiles(repo, packedArtifactIds);
+			this.deleteSupersededArtifactFiles(repo, looseArtifactFiles);
 		repo.clearDirtyTracking();
 
 		// release exclusive write lock - via releaseWriteLock() rather than closing directly, so the
@@ -596,63 +630,95 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * pack too, and the old pack is deleted once nothing references it; so are the smallest packs once
 	 * there are more than {@link #MAX_PACKS}.
 	 *
-	 * @return the ids of the artifacts written into the new pack
+	 * @return the ids of artifacts with a file of their own, written into the new pack: their files go once committed
 	 */
-	private Set<String> writeArtifactPack(SerRepository repo, String newId, Map<Path, byte[]> staged) throws IOException {
+	private Set<String> writeArtifactPack(SerRepository repo, String newId, Map<String, byte[]> staged) throws IOException {
 		Map<String, byte[]> entries = new LinkedHashMap<>();
+		// whether each pack still exists, asked once per pack rather than once per artifact
+		Map<String, Boolean> packExists = new HashMap<>();
 		for (Artifact.Op<?> artifact : repo.getDirtyArtifacts()) {
 			if (!(artifact instanceof SerArtifact<?> serArtifact)) continue;
 			String id = serArtifact.getStorageId();
 			byte[] bytes = serialize(artifact);
 			byte[] digest = artifactDigest(bytes);
-			Path key = this.artifactFile(id);
-			if (Arrays.equals(digest, this.persistedDigests.get(key)) && this.isArtifactStored(repo, id))
+			if (Arrays.equals(digest, this.artifactDigests.get(id)) && this.isArtifactStored(repo, id, packExists))
 				continue;
 			entries.put(id, bytes);
-			staged.put(key, digest);
+			staged.put(id, digest);
 		}
 
-		Map<String, List<String>> currentByPack = new HashMap<>();
-		for (Map.Entry<String, String> packed : repo.getArtifactPacks().entrySet()) {
-			if (!entries.containsKey(packed.getKey()))
-				currentByPack.computeIfAbsent(packed.getValue(), pack -> new ArrayList<>()).add(packed.getKey());
+		// a core written before packs were ordered: every current artifact goes into the new pack, so
+		// that its packs need no order (see SerRepository.hasLegacyArtifactIndex()); the files of
+		// artifacts that had one of their own go too
+		Set<String> looseFiles = new HashSet<>();
+		boolean legacy = repo.hasLegacyArtifactIndex();
+		if (legacy) {
+			for (String id : repo.getArtifactIds()) {
+				if (repo.getArtifactPack(id) == null)
+					looseFiles.add(id);
+				if (!entries.containsKey(id) && repo.getArtifact(id) != null) {
+					byte[] bytes = serialize(repo.getArtifact(id));
+					entries.put(id, bytes);
+					staged.put(id, artifactDigest(bytes));
+				}
+			}
 		}
+
+		// how many current artifacts each pack keeps once the new one supersedes those it holds
+		Map<String, Integer> superseded = new HashMap<>();
+		for (String id : entries.keySet()) {
+			String pack = repo.getArtifactPack(id);
+			if (pack != null)
+				superseded.merge(pack, 1, Integer::sum);
+		}
+		Map<String, Integer> currentAfter = new HashMap<>();
+		for (String pack : repo.getPackOrder())
+			currentAfter.put(pack, repo.currentArtifacts(pack) - superseded.getOrDefault(pack, 0));
 		List<String> kept = new ArrayList<>();
-		for (Map.Entry<String, Integer> pack : repo.getPackSizes().entrySet()) {
-			List<String> current = currentByPack.getOrDefault(pack.getKey(), List.of());
-			if (current.isEmpty())
+		for (String pack : repo.getPackOrder()) {
+			int current = currentAfter.get(pack);
+			if (current <= 0)
 				continue;
-			if (current.size() * 2 >= pack.getValue() || !this.repack(repo, current, entries, staged))
-				kept.add(pack.getKey());
+			if (current * 2 >= repo.getPackSizes().getOrDefault(pack, current) || !this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged))
+				kept.add(pack);
 		}
 		// every write adds a pack: once there are too many, the smallest are merged into the new one
 		if (kept.size() + 1 > MAX_PACKS) {
-			kept.sort(Comparator.comparingInt(pack -> currentByPack.get(pack).size()));
+			kept.sort(Comparator.comparingInt(currentAfter::get));
 			for (String pack : kept.subList(0, kept.size() + 1 - MAX_PACKS / 2))
-				this.repack(repo, currentByPack.get(pack), entries, staged);
+				this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged);
 		}
 
+		if (legacy)
+			repo.dropLegacyArtifactIndex();
 		if (!entries.isEmpty()) {
 			String packName = PACK_PREFIX + newId + PACK_SUFFIX;
 			writePack(repo, entries, this.artifactsDir.resolve(packName));
 			for (String id : entries.keySet())
-				repo.getArtifactPacks().put(id, packName);
+				repo.setArtifactPack(id, packName);
+			repo.addPack(packName);
 			repo.getPackSizes().put(packName, entries.size());
 		}
-		// forget the sizes of packs nothing is in anymore (their files go once committed)
-		Set<String> referenced = new HashSet<>(repo.getArtifactPacks().values());
-		repo.getPackSizes().keySet().retainAll(referenced);
-		return entries.keySet();
+		// packs nothing is current in anymore leave the order (their files go once committed)
+		repo.dropEmptyPacks();
+		return looseFiles;
+	}
+
+	/** The artifacts [pack] holds the current copy of that the new pack does not supersede. */
+	private List<String> stillCurrent(SerRepository repo, String pack, Map<String, byte[]> entries) {
+		List<String> ids = repo.currentArtifactsOf(pack);
+		ids.removeIf(entries::containsKey);
+		return ids;
 	}
 
 	/** Adds the given (current) artifacts of an old pack to the entries of the new one; false if one is not loaded. */
-	private boolean repack(SerRepository repo, List<String> artifactIds, Map<String, byte[]> entries, Map<Path, byte[]> staged) throws IOException {
+	private boolean repack(SerRepository repo, List<String> artifactIds, Map<String, byte[]> entries, Map<String, byte[]> staged) throws IOException {
 		if (artifactIds.stream().anyMatch(id -> repo.getArtifact(id) == null))
 			return false;
 		for (String id : artifactIds) {
 			byte[] bytes = serialize(repo.getArtifact(id));
 			entries.put(id, bytes);
-			staged.put(this.artifactFile(id), artifactDigest(bytes));
+			staged.put(id, artifactDigest(bytes));
 		}
 		return true;
 	}
@@ -698,9 +764,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		return this.artifactsDir.resolve(artifactId + DB_FILE_SUFFIX);
 	}
 
-	private boolean isArtifactStored(SerRepository repo, String artifactId) {
-		String pack = repo.getArtifactPacks().get(artifactId);
-		return Files.exists(pack != null ? this.artifactsDir.resolve(pack) : this.artifactFile(artifactId));
+	private boolean isArtifactStored(SerRepository repo, String artifactId, Map<String, Boolean> packExists) {
+		String pack = repo.getArtifactPack(artifactId);
+		if (pack == null)
+			return Files.exists(this.artifactFile(artifactId));
+		return packExists.computeIfAbsent(pack, p -> Files.exists(this.artifactsDir.resolve(p)));
 	}
 
 	/**
@@ -708,12 +776,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * of their own, and every pack nothing is in anymore (also one left by a crashed write). Only
 	 * called when no reader holds the previous core, which may still reference them.
 	 */
-	private void deleteSupersededArtifactFiles(SerRepository repo, Set<String> packedArtifactIds) throws IOException {
-		for (String id : packedArtifactIds)
+	private void deleteSupersededArtifactFiles(SerRepository repo, Set<String> looseFiles) throws IOException {
+		for (String id : looseFiles)
 			Files.deleteIfExists(this.artifactFile(id));
 		if (!Files.isDirectory(this.artifactsDir))
 			return;
-		Set<String> referenced = new HashSet<>(repo.getArtifactPacks().values());
+		Set<String> referenced = new HashSet<>(repo.getPackOrder());
 		try (DirectoryStream<Path> packs = Files.newDirectoryStream(this.artifactsDir, PACK_PREFIX + "*" + PACK_SUFFIX)) {
 			for (Path pack : packs) {
 				if (!referenced.contains(pack.getFileName().toString()))
@@ -734,6 +802,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 
 	private void reset() {
 		this.persistedDigests.clear();
+		this.artifactDigests.clear();
 		this.id = null;
 		this.dbFile = null;
 		this.database = null;
@@ -861,18 +930,32 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// storageId, rather than merely hoping a name-tag-scan-and-overwrite (the old approach)
 		// happens to land on a usable one.
 		Map<String, Artifact.Op<?>> loadedById = new HashMap<>();
-		Map<String, List<String>> idsByPack = new LinkedHashMap<>();
-		for (String artifactId : repo.getArtifactIds()) {
-			String pack = repo.getArtifactPacks().get(artifactId);
-			if (pack == null) {
-				loadedById.put(artifactId, (Artifact.Op<?>) this.readZippedTracked(this.artifactFile(artifactId)));
-				this.persistedDigests.computeIfPresent(this.artifactFile(artifactId), (file, digest) -> Arrays.copyOf(digest, ARTIFACT_DIGEST_LENGTH));
+		if (repo.hasLegacyArtifactIndex()) {
+			// a core written before packs were ordered holds the index itself
+			Map<String, List<String>> idsByPack = new LinkedHashMap<>();
+			for (String artifactId : repo.legacyArtifactIds()) {
+				String pack = repo.legacyArtifactPack(artifactId);
+				if (pack == null) {
+					Path file = this.artifactFile(artifactId);
+					loadedById.put(artifactId, (Artifact.Op<?>) this.readZippedTracked(file));
+					byte[] digest = this.persistedDigests.remove(file);
+					if (digest != null)
+						this.artifactDigests.put(artifactId, Arrays.copyOf(digest, ARTIFACT_DIGEST_LENGTH));
+					repo.addLooseArtifact(artifactId);
+				}
+				else
+					idsByPack.computeIfAbsent(pack, p -> new ArrayList<>()).add(artifactId);
 			}
-			else
-				idsByPack.computeIfAbsent(pack, p -> new ArrayList<>()).add(artifactId);
+			for (Map.Entry<String, List<String>> pack : idsByPack.entrySet()) {
+				this.readPack(this.artifactsDir.resolve(pack.getKey()), pack.getValue(), loadedById);
+				for (String artifactId : pack.getValue())
+					repo.setArtifactPack(artifactId, pack.getKey());
+			}
+		} else {
+			// the packs in the order they were written: a later pack's copy is the current one
+			for (String pack : repo.getPackOrder())
+				this.readOrderedPack(pack, loadedById, repo);
 		}
-		for (Map.Entry<String, List<String>> pack : idsByPack.entrySet())
-			this.readPack(this.artifactsDir.resolve(pack.getKey()), pack.getValue(), loadedById);
 		List<Artifact.Op<?>> loadedArtifacts = new ArrayList<>(repo.getArtifactIds().size());
 		for (String artifactId : repo.getArtifactIds())
 			loadedArtifacts.add(loadedById.get(artifactId));
