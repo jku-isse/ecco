@@ -37,6 +37,46 @@ public class LilypondParseTest {
 		}
 	}
 
+	/** [text] read as a file and written back. */
+	private static String roundTrip(String text) throws Exception {
+		assumeTrue(readable(), "needs a python with tree-sitter, py4j and lymodel");
+		Path base = Files.createTempDirectory("lilypond-round-trip");
+		Files.writeString(base.resolve("a.ly"), text);
+		Set<Node.Op> nodes = new LilypondReader(new SerEntityFactory()).read(base, new Path[]{Path.of("a.ly")});
+		return new LilypondStringWriter().write(new java.util.HashSet<>(nodes))[0];
+	}
+
+	/** Spacing that is not music comes back as written: Scheme, braces, scripts, tabs, CRLF, blank lines, an assignment's =. */
+	@org.junit.jupiter.params.ParameterizedTest(name = "musical tokens: {0}")
+	@org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+	public void aFileIsWrittenBackAsItWasRead(boolean musical) throws Exception {
+		String previous = System.getProperty("ecco.lilypond.musicalTokens");
+		System.setProperty("ecco.lilypond.musicalTokens", String.valueOf(musical));
+		try {
+			aFileIsWrittenBackAsItWasRead();
+		} finally {
+			if (previous == null) System.clearProperty("ecco.lilypond.musicalTokens");
+			else System.setProperty("ecco.lilypond.musicalTokens", previous);
+		}
+	}
+
+	private static void aFileIsWrittenBackAsItWasRead() throws Exception {
+		for (String text : new String[] {
+				"\\markup \\override #'(baseline-skip . 2) { a b }\n",
+				"#(define-public hide-empty-staves #f)\n",
+				"tr = #(define-music-function (m)\n   (ly:music?)\n   #{ \\transpose f f $m #})\n",
+				"{ \\tuplet 3/2 {gis4) gis8~ }| e8.^>^\\sfzf cis16 }\n",
+				"\t\\layout { }\n",
+				"{\r\n\tc4  d\t e |   \r\n  \r\n\tf1 }\r\n",
+				"one= { c4 }\ntwo  =  { d4 }\nthree =\n{ e4 }\n",
+				"{ c4 d }   \n\n\n",
+				"{ \\override Hairpin.to-barline = ##f  c4 }\n",
+				"\\new Voice = \"s\" { c4 d }\n\\new Lyrics \\lyricsto \"s\" {  Hel -- lo\n    world }\n",
+		}) {
+			assertEquals(text, roundTrip(text), text);
+		}
+	}
+
 	/** The tokens of [text] read as a file, in order. */
 	private static List<DefaultTokenArtifactData> tokens(String text) throws Exception {
 		assumeTrue(readable(), "needs a python with tree-sitter, py4j and lymodel");

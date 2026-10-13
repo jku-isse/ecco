@@ -46,11 +46,11 @@ public class LilypondStringWriter implements ArtifactWriter<Set<Node>, String> {
 				List<DefaultTokenArtifactData> tokens = new ArrayList<>(tokenNodes.size());
 				for (Node node : tokenNodes) tokens.add((DefaultTokenArtifactData) node.getArtifact().getData());
 				List<String> texts = LilypondRelativizer.texts(tokens);
+				sb.append(LilypondFormatter.leading(tokens.get(0)));
 				for (int i = 0; i < tokens.size(); i++) {
 					sb.append(texts.get(i));
-					if (i + 1 < tokens.size() && LilypondFormatter.appendSpace(tokens.get(i), tokens.get(i + 1),
-							texts.get(i), texts.get(i + 1))) {
-						sb.append(" ");
+					if (i + 1 < tokens.size()) {
+						sb.append(LilypondFormatter.separator(tokens.get(i), tokens.get(i + 1), texts.get(i), texts.get(i + 1)));
 					}
 				}
 			}

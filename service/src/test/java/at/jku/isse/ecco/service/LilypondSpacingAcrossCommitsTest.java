@@ -18,13 +18,13 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 public class LilypondSpacingAcrossCommitsTest {
 
-    /** written: a dynamic goes right after its note, by the writer's rules - the same music */
+    /** written: as committed - the whitespace a token was read with after the same token */
     @ParameterizedTest(name = "{0}: {1} then {2}")
     @CsvSource(delimiter = '|', value = {
-            "true  | { c4 d e f }     | { c4 \\p e f }       | { c4\\p e f }",
+            "true  | { c4 d e f }     | { c4 \\p e f }       | { c4 \\p e f }",
             "false | { c4 d e f }     | { c4 d e2 f4 }       | { c4 d e2 f4 }",
             "false | { c4 d4 e4 f4 }  | { c4 d4 g4 e4 f4 }   | { c4 d4 g4 e4 f4 }",
-            "false | { c4 d e f }     | { c4 \\p e f }       | { c4\\p e f }",
+            "false | { c4 d e f }     | { c4 \\p e f }       | { c4 \\p e f }",
             "true  | { c4 d4 e4 f4 }  | { c4 d4 g4 e4 f4 }   | { c4 d4 g4 e4 f4 }",
     })
     public void theSecondVariantIsCheckedOutAsCommitted(boolean musical, String v1, String v2, String written, @TempDir Path tmp) throws Exception {

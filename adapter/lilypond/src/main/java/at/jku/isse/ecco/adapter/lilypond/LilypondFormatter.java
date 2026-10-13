@@ -5,6 +5,28 @@ import at.jku.isse.ecco.adapter.lilypond.data.token.DefaultTokenArtifactData;
 public class LilypondFormatter {
 
     /**
+     * What goes between [d], written as [text], and [next], written as [nextText]: the whitespace [next]
+     * was read with, where it was read right after a token with [d]'s text - so a file checked out as it
+     * was committed comes back as it was written - and otherwise a space or nothing, as
+     * {@link #appendSpace(DefaultTokenArtifactData, DefaultTokenArtifactData, String, String)} decides.
+     * Where a space is music ({@link #glue}), whether [next] is attached decides either way.
+     */
+    public static String separator(DefaultTokenArtifactData d, DefaultTokenArtifactData next, String text, String nextText) {
+        if (next.follows(d)) {
+            String space = next.getSpaceBefore();
+            if (!glue(text, nextText) || space.isEmpty() == Boolean.TRUE.equals(next.getAttached())) {
+                return space;
+            }
+        }
+        return appendSpace(d, next, text, nextText) ? " " : "";
+    }
+
+    /** What goes before [first], the first token written: the whitespace it was read with, if it was read first. */
+    public static String leading(DefaultTokenArtifactData first) {
+        return first.first() ? first.getSpaceBefore() : "";
+    }
+
+    /**
      * Whether a space goes between [d], written as [text], and [next], written as [nextText]. Where the
      * two would read as one word or number without it, the space is music: [next] is written right
      * after [d] if it was read right after the token before it ({@code c4}, {@code ^^}), else apart

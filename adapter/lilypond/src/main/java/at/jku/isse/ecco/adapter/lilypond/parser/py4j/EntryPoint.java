@@ -21,6 +21,8 @@ public class EntryPoint {
     // LilypondToken#isAttached; null after a line break
     private String lastText;
     private int lastEnd;
+    // the whitespace read since the last token, on the current line
+    private String space;
 
     public EntryPoint() {
         root = new LilypondNode<>("ROOT", null);
@@ -35,6 +37,7 @@ public class EntryPoint {
         nNodes = 0;
         lastText = null;
         lastEnd = -1;
+        space = "";
     }
 
     public int getNodesCount() {
@@ -55,6 +58,8 @@ public class EntryPoint {
     public void addToken(int pos, String text, String action) {
         LilypondToken t = new LilypondToken(pos, text, action);
         t.setAttached(lastText != null && pos == lastEnd && LilypondFormatter.glue(lastText, text));
+        t.setSpaceBefore(space);
+        space = "";
         lastText = text;
         lastEnd = pos + text.length();
         current = current.append(t.getAction(), t, depth);
@@ -72,17 +77,22 @@ public class EntryPoint {
     public void addWhitespace(int pos, String text) {
         if (null == text) { return; }
 
-        String[] lines = text.split("\\n", -1);
-        if (lines.length > 1) {
-            lastText = null;
-            LilypondToken t = new LilypondToken(pos,
-                    "\n".repeat(lines.length - 1).concat(lines[lines.length - 1]),
-                    LilypondReader.PARSER_ACTION_LINEBREAK);
-            current = current.append(t.getAction(), t, depth);
-            nNodes++;
-            LOGGER.log(Level.FINER, "added whitespace token ([{0}] \"{1}\", depth={2})",
-                    new Object[] { t.getAction(), t.getText(), depth });
+        int lineEnd = text.indexOf('\n');
+        if (lineEnd < 0) {
+            space = space.concat(text);
+            return;
         }
+        // the break's text: from its first line end on, with the blank lines and the next line's
+        // indentation as written; what stood before it on its line is its space before
+        lastText = null;
+        LilypondToken t = new LilypondToken(pos, text.substring(lineEnd),
+                LilypondReader.PARSER_ACTION_LINEBREAK);
+        t.setSpaceBefore(space.concat(text.substring(0, lineEnd)));
+        space = "";
+        current = current.append(t.getAction(), t, depth);
+        nNodes++;
+        LOGGER.log(Level.FINER, "added whitespace token ([{0}] \"{1}\", depth={2})",
+                new Object[] { t.getAction(), t.getText(), depth });
     }
 
     public void popContext(int levels) {

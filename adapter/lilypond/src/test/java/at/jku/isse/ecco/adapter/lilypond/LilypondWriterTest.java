@@ -172,4 +172,49 @@ public class LilypondWriterTest {
 		assertEquals(attached(1, "4", "Literal.Number.Duration"), attached(9, "4", "Literal.Number.Duration"));
 		assertEquals(attached(1, "4", "Literal.Number.Duration").hashCode(), attached(9, "4", "Literal.Number.Duration").hashCode());
 	}
+
+	/** Read [spaceBefore] after a token with the text [before]. */
+	private static DefaultTokenArtifactData read(String before, String spaceBefore, String text, String action) {
+		LilypondToken token = new LilypondToken(0, text, action);
+		token.setBefore(before);
+		token.setSpaceBefore(spaceBefore);
+		return new DefaultTokenArtifactData(token);
+	}
+
+	@Test
+	void afterTheTokenItWasReadAfter_aTokenIsWrittenWithTheWhitespaceItWasReadWith() {
+		DefaultTokenArtifactData c4 = at(0, "c4", "Text.Music.Pitch");
+		assertEquals("  ", LilypondFormatter.separator(c4, read("c4", "  ", "|", "Delimiter.Separator"), "c4", "|"));
+		assertEquals("", LilypondFormatter.separator(at(0, "{", "Delimiter.Bracket"), read("{", "", "gis4", "Text.Music.Pitch"), "{", "gis4"));
+		assertEquals("\t", LilypondFormatter.separator(c4, read("c4", "\t", "d4", "Text.Music.Pitch"), "c4", "d4"));
+		// the same text is enough: a token matched in another commit, or respelled, reads the same
+		assertEquals(" ", LilypondFormatter.separator(at(7, "c4", "Text.Music.Pitch"), read("c4", " ", "\\p", "Name.Builtin.Dynamic"), "c4", "\\p"));
+	}
+
+	@Test
+	void afterAnotherToken_orStoredWithoutWhitespace_theWritersRulesDecide() {
+		// read after d4, written after c4 (a checkout combining commits): no space before a bar check, by the rules
+		assertEquals("", LilypondFormatter.separator(at(0, "c4", "Text.Music.Pitch"), read("d4", "  ", "|", "Delimiter.Separator"), "c4", "|"));
+		// read first in its file
+		assertEquals(" ", LilypondFormatter.separator(at(0, "c4", "Text.Music.Pitch"), read(null, "", "d4", "Text.Music.Pitch"), "c4", "d4"));
+		// stored before the whitespace was recorded
+		assertEquals(" ", LilypondFormatter.separator(at(0, "c4", "Text.Music.Pitch"), at(3, "d4", "Text.Music.Pitch"), "c4", "d4"));
+	}
+
+	@Test
+	void whereASpaceIsMusic_theWhitespaceReadWithIsNeverWrittenAgainstIt() {
+		// 4 read right after "a" (a4), written after "a" spelled "a2" (respelled): the space stays music - a2 4, not a24
+		LilypondToken four = new LilypondToken(1, "4", "Literal.Number.Duration");
+		four.setBefore("a");
+		four.setSpaceBefore("");
+		DefaultTokenArtifactData data = new DefaultTokenArtifactData(four);
+		assertEquals(" ", LilypondFormatter.separator(at(0, "a", "Text.Music.Pitch"), data, "a2", "4"));
+	}
+
+	@Test
+	void theFirstTokenReadIsWrittenWithTheWhitespaceBeforeIt() {
+		assertEquals("\t", LilypondFormatter.leading(read(null, "\t", "\\layout", "Name.Builtin")));
+		assertEquals("", LilypondFormatter.leading(read("c4", "\t", "d4", "Text.Music.Pitch")));
+		assertEquals("", LilypondFormatter.leading(at(0, "d4", "Text.Music.Pitch")));
+	}
 }

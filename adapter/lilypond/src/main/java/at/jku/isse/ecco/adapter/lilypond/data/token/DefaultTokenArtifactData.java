@@ -14,6 +14,11 @@ public class DefaultTokenArtifactData implements ArtifactData {
     private final String meaning;
     // null in tokens stored before lybar-2 (Java serialization leaves a field it does not find null)
     private final Boolean attached;
+    // not part of what makes two tokens the same, null in tokens stored before them - see
+    // getSpaceBefore() and follows()
+    private final String spaceBefore;
+    private final int before;
+    private final String written;
 
     public DefaultTokenArtifactData(LilypondToken token)
     {
@@ -22,6 +27,23 @@ public class DefaultTokenArtifactData implements ArtifactData {
         this.action = token.getAction();
         this.meaning = token.getMeaning();
         this.attached = token.isAttached();
+        this.spaceBefore = common(token.getSpaceBefore());
+        this.before = token.getBefore() == null ? 0 : hash(token.getBefore());
+        this.written = token.getText().equals(token.getWritten()) ? null : token.getWritten();
+    }
+
+    /** [text]'s hash, never 0 (no token before). */
+    private static int hash(String text) {
+        int hash = text.hashCode();
+        return hash == 0 ? 1 : hash;
+    }
+
+    /** One instance of the usual spaces, so serialization writes each once. */
+    private static String common(String space) {
+        if (space == null) return null;
+        if (space.isEmpty()) return "";
+        if (space.equals(" ")) return " ";
+        return space;
     }
 
     /**
@@ -91,6 +113,44 @@ public class DefaultTokenArtifactData implements ArtifactData {
      */
     public Boolean getAttached() {
         return this.attached;
+    }
+
+    /**
+     * The whitespace this token was read with after the token before it, on its line (see
+     * LilypondToken#getSpaceBefore), or null for a token stored before it was recorded. Not part of
+     * what makes two tokens the same: spacing that is not music is no difference between variants -
+     * a token matched in a later commit keeps the spacing of the commit that stored it.
+     * @return Whitespace before the token, or null if unknown
+     */
+    public String getSpaceBefore() {
+        return this.spaceBefore;
+    }
+
+    /**
+     * Whether this token was read right after [previous] (its text, by hash), so that the whitespace
+     * between them can be written again as it was read.
+     * @param previous The token written before this one
+     * @return Whether this token followed a token with the same text when it was read
+     */
+    public boolean follows(DefaultTokenArtifactData previous) {
+        return this.spaceBefore != null && this.before != 0 && hash(previous.getText()) == this.before;
+    }
+
+    /**
+     * The token as it was written, where that is not its text (see LilypondToken#getWritten), or null.
+     * Not part of what makes two tokens the same.
+     * @return The token as written, or null
+     */
+    public String getWritten() {
+        return this.written;
+    }
+
+    /**
+     * Whether this token was read first in its file, with what [getSpaceBefore()] holds before it.
+     * @return Whether the token was read first
+     */
+    public boolean first() {
+        return this.spaceBefore != null && this.before == 0;
     }
 
     private boolean attached() {

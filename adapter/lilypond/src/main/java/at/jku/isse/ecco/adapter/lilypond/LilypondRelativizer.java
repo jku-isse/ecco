@@ -135,6 +135,11 @@ final class LilypondRelativizer {
 			}
 			out.add(written);
 		}
+		// a token spelled otherwise than written (name= as name =) is written as it was, unless respelled
+		for (int i = 0; i < out.size(); i++) {
+			String written = tokens.get(i).getWritten();
+			if (written != null && out.get(i).equals(tokens.get(i).getText())) out.set(i, written);
+		}
 		return out;
 	}
 

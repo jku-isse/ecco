@@ -202,7 +202,13 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
 
         LilypondNode<LilypondToken> n = head;
         int cntNodes = 0;
+        // the text of the token before, as stored - what LilypondFormatter#separator compares with
+        String before = null;
         while (n != null) {
+            if (n.getData() != null) {
+                n.getData().setBefore(before);
+                before = n.getData().getText();
+            }
             a = n.getData() == null ?
                 this.entityFactory.createArtifact(ContextArtifactDataFactory.getContextArtifactData(n.getName())) :
                 this.entityFactory.createArtifact(TokenArtifactDataFactory.getTokenArtifactData(n.getData()));

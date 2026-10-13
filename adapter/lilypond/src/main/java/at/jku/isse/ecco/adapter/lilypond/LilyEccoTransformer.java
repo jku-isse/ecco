@@ -2,6 +2,7 @@ package at.jku.isse.ecco.adapter.lilypond;
 
 import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -103,6 +104,16 @@ public class LilyEccoTransformer {
         return n;
     }
 
+    /** [token] as it was written. */
+    private static String written(LilypondToken token) {
+        return Objects.requireNonNullElse(token.getWritten(), token.getText());
+    }
+
+    /** [token] as it was written, after the whitespace it was read with (one space if not known). */
+    private static String spaced(LilypondToken token) {
+        return Objects.requireNonNullElse(token.getSpaceBefore(), " ") + written(token);
+    }
+
     private static void traceNode(LilypondNode<LilypondToken> n) {
         if (!LOGGER.isLoggable(Level.FINER)) return;
 
@@ -122,11 +133,14 @@ public class LilyEccoTransformer {
 
         StringBuilder variableDefinition = new StringBuilder(defNode.getData().getText());
         StringBuilder fullVarDefinition = new StringBuilder(defNode.getData().getText());
+        // as written: with the spaces between its pieces and before the =
+        StringBuilder written = new StringBuilder(defNode.getData().getText());
         LilypondNode<LilypondToken> next = defNode.getNext();
         cntInput++;
         while (next != null && next.getLevel() == defNode.getLevel()) {
             variableDefinition.append(next.getData().getText());
             fullVarDefinition.append(next.getData().getText());
+            written.append(Objects.requireNonNullElse(next.getData().getSpaceBefore(), "")).append(next.getData().getText());
             next = next.getNext();
             cntInput++;
         } // var names like "varOne.varTwo"
@@ -137,10 +151,13 @@ public class LilyEccoTransformer {
             return defNode;
         }
         fullVarDefinition.append(" =");
+        written.append(Objects.requireNonNullElse(next.getData().getSpaceBefore(), " ")).append("=");
         cntInput++;
 
         LilypondToken t = new LilypondToken(defNode.getData().getPos(),
                 fullVarDefinition.toString(), defNode.getData().getAction(), variableDefinition.toString());
+        t.setSpaceBefore(defNode.getData().getSpaceBefore());
+        t.setWritten(written.toString());
         LilypondNode<LilypondToken> def = new LilypondNode<>(variableDefinition.toString(), t);
         def.setLevel(defNode.getPrev().getLevel());
         prev.setNext(def);  cntOutput--; // replaced LilyPond.list
@@ -155,9 +172,11 @@ public class LilyEccoTransformer {
         LilypondNode<LilypondToken> n = identifier.getNext();
         cntInput++;
         StringBuilder sb = new StringBuilder();
+        StringBuilder wr = new StringBuilder(); // as written, with the spaces between the pieces
         LilypondToken newToken = null;
         while (n != null && n.getLevel() > identifier.getLevel() && n.getData() != null) {
-            if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); }
+            if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); newToken.setSpaceBefore(n.getData().getSpaceBefore()); }
+            wr.append(sb.isEmpty() ? written(n.getData()) : spaced(n.getData()));
             sb.append(n.getData().getText());
 
             n = n.getNext();
@@ -166,6 +185,7 @@ public class LilyEccoTransformer {
 
         if (newToken != null) {
             newToken.setText(sb.toString());
+            newToken.setWritten(wr.toString());
             LilypondNode<LilypondToken> newNode = new LilypondNode<>(DEF_IDENTIFIER, newToken);
             newNode.setLevel(identifier.getLevel());
             newNode.setPrev(identifier.getPrev());
@@ -185,11 +205,13 @@ public class LilyEccoTransformer {
         if (n == null || n.getData() == null || !n.getData().getAction().equals(DEF_LITERAL_STRING)) { return string; }
         cntInput++;
         StringBuilder sb = new StringBuilder();
+        StringBuilder wr = new StringBuilder(); // as written, with the spaces between the pieces
         LilypondToken newToken = null;
         while (n != null && n.getLevel() > string.getLevel()) {
             if (n.getData() != null) {
-                if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); }
-                sb.append(n.getData().getText());
+                if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); newToken.setSpaceBefore(n.getData().getSpaceBefore()); }
+                wr.append(sb.isEmpty() ? written(n.getData()) : spaced(n.getData()));
+            sb.append(n.getData().getText());
             }
 
             n = n.getNext();
@@ -198,6 +220,7 @@ public class LilyEccoTransformer {
 
         if (newToken != null) {
             newToken.setText(sb.toString());
+            newToken.setWritten(wr.toString());
             LilypondNode<LilypondToken> newNode = new LilypondNode<>(tokenName, newToken);
             newNode.setLevel(string.getLevel());
             newNode.setPrev(string.getPrev());
@@ -217,11 +240,13 @@ public class LilyEccoTransformer {
         if (n == null || n.getData() == null || !n.getData().getAction().startsWith("Literal.Number")) { return number; }
         cntInput++;
         StringBuilder sb = new StringBuilder();
+        StringBuilder wr = new StringBuilder(); // as written, with the spaces between the pieces
         LilypondToken newToken = null;
         while (n != null && n.getLevel() > number.getLevel()) {
             if (n.getData() != null) {
-                if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); }
-                sb.append(n.getData().getText());
+                if (newToken == null) { newToken = new LilypondToken(n.getData().getPos(), "", n.getData().getAction()); newToken.setSpaceBefore(n.getData().getSpaceBefore()); }
+                wr.append(sb.isEmpty() ? written(n.getData()) : spaced(n.getData()));
+            sb.append(n.getData().getText());
             }
 
             n = n.getNext();
@@ -230,6 +255,7 @@ public class LilyEccoTransformer {
 
         if (newToken != null) {
             newToken.setText(sb.toString());
+            newToken.setWritten(wr.toString());
             LilypondNode<LilypondToken> newNode = new LilypondNode<>(DEF_SCHEME_NUMBER, newToken);
             newNode.setLevel(number.getLevel());
             newNode.setPrev(number.getPrev());
@@ -275,6 +301,7 @@ public class LilyEccoTransformer {
         // pattern: Keyword.Lyric { LilyPond.lyricsto LilyPond.list LilyPond.string ... } LilyPond.lyriclist
         StringBuilder lyrics = new StringBuilder(lyricmode.getData().getText())
                 .append(" ");
+        StringBuilder written = new StringBuilder(written(lyricmode.getData()));
         LilypondNode<LilypondToken> n = lyricmode.getNext();
         cntInput++;
         if (n == null) {
@@ -296,6 +323,7 @@ public class LilyEccoTransformer {
             }
             n = firstListItem; cntInput++; cntInput++;
             n = transformString(n, n.getName());
+            written.append(spaced(n.getData()));
             lyrics.append(n.getData().getText())
                     .append(" ");
             if (n.getNext() == null) {
@@ -321,6 +349,7 @@ public class LilyEccoTransformer {
                 n = transformString(n, n.getName());
             }
             if (n.getData() != null) {
+                written.append(spaced(n.getData()));
                 if (n.getData().getAction().equals(LilypondReader.PARSER_ACTION_LINEBREAK) ||
                     n.getData().getAction().equals("Comment")) {
                     lyrics.append(n.getData().getText());
@@ -334,6 +363,8 @@ public class LilyEccoTransformer {
         }
 
         LilypondToken t = new LilypondToken(lyricmode.getData().getPos(), lyrics.toString(), "Text.Lyric.LyricText");
+        t.setSpaceBefore(lyricmode.getData().getSpaceBefore());
+        t.setWritten(written.toString());
         LilypondNode<LilypondToken> ly = new LilypondNode<>(DEF_LYRIC, t);
         ly.setLevel(prev.getLevel());
         prev.setNext(ly);

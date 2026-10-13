@@ -18,7 +18,8 @@ from py4j.java_gateway import JavaGateway, GatewayParameters
 gateway = JavaGateway(gateway_parameters=GatewayParameters(port=int(os.environ.get("ECCO_PY4J_PORT", "25333"))))
 ep = gateway.entry_point
 
-f = open(sys.argv[1], "r", -1, "UTF-8")
+# line ends as written (\r\n too): positions and whitespace are those of the file
+f = open(sys.argv[1], "r", -1, "UTF-8", newline="")
 s = f.read()
 f.close()
 
