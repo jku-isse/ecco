@@ -834,6 +834,7 @@ public class Trees {
 		// copy of given node will include feature trace
 		// other copies will not
 		Node.Op newNode = node.copySingleNode(true);
+		newNode.setUnique(true);
 		if (node.getParent() == null) {
 			return newNode;
 		} else {
@@ -854,6 +855,21 @@ public class Trees {
 			parent.addChild(newNode);
 			return newNode;
 		}
+	}
+
+	/**
+	 * Adds [source]'s feature trace to [target]'s, a node of the main tree. Of a node that is not
+	 * unique in its association - only the path to the association's own nodes - just the proactive
+	 * condition: its retroactive condition is the one it had while it was unique, before a later
+	 * commit sliced it out, and it is not updated after (RetroactiveConditionSetterVisitor). Fused, a
+	 * file removed from the variants after its first commit was checked out in all of them again
+	 * (BASE), without content.
+	 */
+	private static void fuseTrace(Node.Op target, Node.Op source) {
+		if (source.isUnique())
+			target.getFeatureTrace().fuseFeatureTrace(source.getFeatureTrace());
+		else
+			target.getFeatureTrace().addProactiveCondition(source.getFeatureTrace().getProactiveConditionString());
 	}
 
 	public static Node.Op treeFusion(Node.Op mainTree, Node.Op fusionNode){
@@ -884,7 +900,7 @@ public class Trees {
 			Node.Op mainChild = mainIndex.findPreferringEmpty(child);
 			if (mainChild == null) {
 				Node.Op newChild = child.copySingleNode(false);
-				newChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
+				fuseTrace(newChild, child);
 				newChild.setUnique(child.isUnique());
 				// deliberately NOT added to mainIndex - a newly-created child must stay available
 				// only for a later cross-association re-fusion (a future treeFusion() call, with its
@@ -894,7 +910,7 @@ public class Trees {
 				newChildSources.add(child);
 			} else {
 				mainIndex.remove(mainChild);
-				mainChild.getFeatureTrace().fuseFeatureTrace(child.getFeatureTrace());
+				fuseTrace(mainChild, child);
 				mainChild.setUnique(mainChild.isUnique() || child.isUnique());
 				Trees.mergePartialOrderGraphs(mainChild, child);
 				// properties (e.g. LINE_START/LINE_END, set by adapters like TextReader at parse

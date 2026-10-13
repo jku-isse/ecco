@@ -69,6 +69,10 @@ public class SerNode implements Node, Node.Op {
 
 	public Op copySingleNodeCompletely() {
 		SerNode.Op newNode = new SerNode(this.artifact);
+		// a new node is unique: a copy of a node that only leads to the association's own nodes was
+		// one of them too, its stale retroactive condition counted, and the main tree checked out a
+		// file removed after its first commit in every later variant, without content
+		newNode.setUnique(this.unique);
 		newNode.putProperties(this.getProperties());
 		if (this.featureTrace != null) {
 			newNode.getFeatureTrace().setProactiveCondition(this.featureTrace.getProactiveConditionString());
