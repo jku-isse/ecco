@@ -1,6 +1,6 @@
 # ECCO - Recovered Requirements
 
-As of 2026-10-11.
+As of 2026-10-13.
 
 ## Contents
 
@@ -194,7 +194,7 @@ Postcondition: The directory holds no repository, and the variant developer can 
 | Dependency | None |
 | Generalization | None |
 | Front ends | CLI (each command opens the repository itself); GUI Repositories > Open |
-| Realizes | FR-L3, FR-L4, FR-L5, IF-C8, NFR-V1 |
+| Realizes | FR-L3, FR-L4, FR-L5, FR-P2, FR-P4, IF-C8, NFR-V1 |
 
 **Basic flow**
 
@@ -247,7 +247,7 @@ Postcondition: The repository is unchanged.
 | Dependency | Included by UC-4, UC-7, UC-10, UC-14 |
 | Generalization | None |
 | Front ends | CLI `commit -c <configuration> [-m <message>]` (prints the commit id and any violated constraints); GUI Versions > Commit |
-| Realizes | FR-F1 to FR-F6, FR-M1 to FR-M10, FR-T1, IF-C9, NFR-R1, NFR-R3 |
+| Realizes | FR-F1 to FR-F6, FR-M1 to FR-M11, FR-P1 to FR-P3, FR-T1, AD-11, IF-C3, IF-C9, NFR-R1, NFR-R3 |
 
 **Basic flow**
 
@@ -288,10 +288,18 @@ Postcondition: The repository is unchanged.
 
 Postcondition: The commit is stored; the violation is advisory (FR-K8).
 
+**Specific alternative flow SA4** (RFS 5)
+
+1. IF the adapter of a file cannot read the file THEN the system reads the file with the text adapter if the file is text, else with the file adapter ENDIF.
+2. The system logs a warning that names the file and the error.
+3. RESUME STEP 6.
+
+Postcondition: The file is committed with the fallback adapter and checks out byte for byte (AD-11).
+
 **Bounded alternative flow BA1** (RFS 4-10)
 
-1. IF a file is unreadable, a file maps to a disabled or missing adapter, an adapter's Python modules are missing, or storing fails THEN the system rolls back the transaction ENDIF.
-2. The system reports the error with its cause.
+1. IF a file is unreadable, a file maps to a disabled or missing adapter, an adapter cannot run (for example its Python modules are missing), storing fails, or the commit runs out of memory THEN the system rolls back the transaction ENDIF.
+2. The system reports the error with its cause; running out of memory is reported with the heap size and how to raise it.
 3. ABORT.
 
 Postcondition: The repository is in its state before the commit (NFR-R1).
@@ -367,7 +375,7 @@ Postcondition: The folders committed before the failure stay committed; the rema
 | Dependency | EXTENDED BY USE CASE Resolve ambiguous order; included by UC-15 |
 | Generalization | None |
 | Front ends | CLI `checkout -c <configuration> [--minimized]`; GUI Versions > Checkout, View > Variants, View > Artifacts (compose a selection) |
-| Realizes | FR-K1 to FR-K10, FR-N9, FR-T2, AD-6, IF-C9 |
+| Realizes | FR-K1 to FR-K10, FR-K12, FR-N9, FR-T2, AD-6, IF-C9 |
 
 **Basic flow**
 
@@ -1003,7 +1011,7 @@ Postcondition: The repository is unchanged.
 
 ## Functional requirements
 
-Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `base/.../repository/Repository.java`, `DR`/`DW` = `service/.../adapter/dispatch/DispatchReader.java`/`DispatchWriter.java`, `STS` = `service/.../storage/ser/dao/SerTransactionStrategy.java`.
+Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `base/.../repository/Repository.java`, `DR`/`DW` = `service/.../adapter/dispatch/DispatchReader.java`/`DispatchWriter.java`, `STS` = `service/.../storage/ser/dao/SerTransactionStrategy.java`, `SR` = `service/.../storage/ser/repository/SerRepository.java`.
 
 ### Repository lifecycle
 
@@ -1036,11 +1044,11 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-M4 | Each previously unseen configuration shall be recorded as a variant. | Code `CommitService:70-95` |
 | FR-M5 | Files matching `.ecco/.ignores` (defaults `.DS_Store`, `.gitignore`) shall be skipped; `.ecco`, `.config`, `.warnings` and `.hashes` are always skipped. | Code DR:31-39; Test `DsStoreIgnoredRegressionTest`, `GitignoreIgnoredRegressionTest` |
 | FR-M6 | Files shall be routed by `.ecco/.adapters` (`pluginId;glob`, first match wins), written on first open from the adapters' priorities and fixed for the repository from then on. | Doc; Code DR:143-197 |
-| FR-M7 | A file mapped to a disabled or missing adapter shall fail the commit, not fall back to another adapter; malformed `.adapters` lines are rejected. | Test `UnavailableAdapterRoutingTest` |
+| FR-M7 | A file mapped to a disabled or missing adapter shall fail the commit, not fall back to another adapter; malformed `.adapters` lines are rejected. (A file its enabled adapter fails to parse does fall back, AD-11.) | Test `UnavailableAdapterRoutingTest` |
 | FR-M8 | An unreadable file shall fail the commit, not be committed empty; symlink loops are skipped. | Test `UnreadableFileCommitTest`, `SymlinkLoopCommitTest` |
 | FR-M9 | A commit or merge shall be refused into a repository holding artifacts in a retired adapter format; checkout still works. | Code REPO:1049-1090, `ArtifactData#retiredFormat` |
-| FR-M10 | A commit shall run in one read-write transaction and roll back on any error; a listener failure never rolls back a committed transaction. | Code `CommitService:62-110`, `ListenerRegistry:76-82` |
-| FR-M11 | Unchanged files should be recognized by the hashes in `.hashes` and not re-read. **Deferred** - see [Known gaps](#known-gaps) #3. | Code DR:469-476 |
+| FR-M10 | A commit shall run in one read-write transaction and roll back on any failure, also on an `Error` such as `OutOfMemoryError`; a listener failure never rolls back a committed transaction. The other read-write operations roll back only on an `Exception` - see [Known gaps](#known-gaps) #47. | Code `CommitService`, `ListenerRegistry:76-82`; History 2dc75b70 |
+| FR-M11 | A file whose adapter, path, content (SHA-256) and context are the same as in the session's previous read should not be parsed again: its tree from then is copied, and the commit stores the same as with a fresh read. Adapters opt in by naming their context (`ArtifactReader#readContext`): C, C++, TypeScript, Python, Java AST, Markdown, LilyPond; text and plain files are read as before. `-Decco.reuseReadTrees=false` turns it off. `.hashes` is not used for this - see [Known gaps](#known-gaps) #3. | Code DR, `Trees#copyRead`; Test `DispatchReaderReuseTest`; History 90135e96 |
 
 ### Checkout and composition
 
@@ -1055,8 +1063,9 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-K7 | SURPLUS warnings shall be absorbed (X + XY = X) and suppressed when entailed by the accepted feature model; both on by default, a failure only logs, MISSING warnings are never suppressed. | Code `SurplusLatticeAbsorber`, `SurplusModuleSuppressor`; History ce32c243 |
 | FR-K8 | Constraint-violation warnings shall be advisory and never block a commit or checkout. | Code ES:1196-1207 |
 | FR-K9 | Composition shall run in a read-only transaction. | Test `ReadWithoutTransactionTest` |
-| FR-K10 | Line-based files shall be written with the newest commit's encoding, line separator and final newline. | Test `TextFormatLastCommitWinsTest` |
+| FR-K10 | Line-based files shall be written with the newest commit's encoding and line separator; whether a file ends with a newline shall follow the variant checked out (AD-6). | Test `TextFormatLastCommitWinsTest`, `FinalNewlineVariantsTest`; History 8282a32d |
 | FR-K11 | The order of an artifact's children shall be recordable without a commit: only the artifact's partial order graph changes, the order must agree with every order recorded before and is refused otherwise, and it holds in every later checkout containing those children, whatever the configuration. | Test `RecordOrderTest`, `OrderResolutionCharacterizationTest`, `OrderCommandTest` |
+| FR-K12 | A file removed in a later commit (for example by renaming its directory) shall not be checked out in variants that do not contain it: a node that only leads to its association's own nodes contributes no condition of its own to the main tree. | Code `SerNode.copySingleNodeCompletely`, `Trees.treeFusion`; Test `RemovedFileCheckoutTest`; History d73f17e0 |
 
 ### Constraints and condition minimization
 
@@ -1100,10 +1109,19 @@ Paths are abbreviated: `ES` = `service/.../service/EccoService.java`, `REPO` = `
 | FR-G3 | LLM suggestions shall be one request per commit (temperature 0, JSON output) judged against features already imported; a failure gives a blank suggestion, never an abort, and a suggestion is never committed without the import loop's decision. | Code `LlmFeatureSuggestionClient:398-410` |
 | FR-G4 | A Git commit that fails to import shall be shown again for review with the error and the configuration tried, to be corrected and imported again or skipped; the run goes on and nothing of the failed commit is kept. | Test `ImportGitViewRetryTest` |
 
+### Persistence (`ser` storage)
+
+| ID | Requirement | Source |
+| --- | --- | --- |
+| FR-P1 | A repository shall be stored in `.ecco` as a core file (`<id>.ser.zip`, the current one named by the file `id`: features, constraints, modules, commits, the ids of the associations, the list of artifact packs in the order they were written and each pack's size), one file per association in `associations/`, and the artifacts in packs in `artifacts/`. | Code STS, SR |
+| FR-P2 | The core shall hold no entry per artifact. Loading shall read the packs in the order they were written, a later pack's copy of an artifact superseding an earlier one's, and rebuild in memory which pack holds each artifact's current copy. | Code SR (`packOrder`), STS; uncommitted 2026-10-13 |
+| FR-P3 | A commit shall write one new pack with only the artifacts whose serialized bytes differ from their stored ones (compared by a digest kept per artifact id); a pack that keeps fewer than half of its artifacts current is repacked into the new one, and above 20 packs the smallest are merged. | Code STS `writeArtifactPack`; Test `ArtifactPackTest`, `UnchangedArtifactRewriteTest` |
+| FR-P4 | A core written before packs were ordered (it lists each artifact and its pack, and no pack order) shall be read the old way; its next write shall put every current artifact into one new pack and leave the per-artifact index out of the core, once. | Code SR `hasLegacyArtifactIndex`, STS; Test `OldStorageFormatTest` (loading only); measured 2026-10-13 |
+
 
 ## Artifact adapter requirements
 
-An adapter reads files of one kind into artifact trees and writes them back. The finer its trees, the more precisely features are traced. Fidelity differs by adapter: line-based adapters are byte-exact, syntax-tree adapters are not.
+An adapter reads files of one kind into artifact trees and writes them back. The finer its trees, the more precisely features are traced. Fidelity differs by adapter: the line-based adapters (text, Markdown, C, C++) are byte-exact, and so are TypeScript and LilyPond for a variant checked out as committed; the Java (AST) and Python adapters are not.
 
 ### Contract for every adapter
 
@@ -1114,12 +1132,12 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | AD-3 | A reader shall declare prioritized glob patterns; higher priority wins when `.adapters` is first written, and a tie between enabled adapters is broken by plugin id and logged. | Code; Test `DispatchReaderJavaPluginPriorityTest`, `DispatchReaderPriorityTieTest` |
 | AD-4 | Adapters shall be enabled or disabled per user; at least one must be enabled. | Code `AdapterPreferences`, ES |
 | AD-5 | Viewers shall not be bound when running headless (`ecco.headless`). | Code; History bfcddc23 |
-| AD-6 | Line-based adapters shall round-trip byte-exact: encoding (UTF-8, else ISO-8859-1), line separator and final newline. The final newline shall be traced per variant (`FinalNewlineArtifactData`, the last child of the file's node); encoding and line separator are per file, the newest commit's. | Tests `TextFileFormatTest` (5,000 random rounds), `FinalNewlineVariantsTest` |
+| AD-6 | Line-based adapters shall round-trip byte-exact: encoding (UTF-8, else ISO-8859-1), line separator and final newline. The final newline shall be traced per variant (`FinalNewlineArtifactData`, the last child of the file's node); encoding and line separator are per file, the newest commit's. This holds for the text, Markdown, C and C++ adapters; a file stored before keeps the final newline recorded for it then. | Tests `TextFileFormatTest` (5,000 random rounds), `FinalNewlineVariantsTest`; History 8282a32d |
 | AD-7 | An adapter whose tree format changes shall mark old data with `retiredFormat()` or a tree-format check, so old repositories are refused for commit, not corrupted. | Code `ArtifactData#retiredFormat`, `JavaASTData.TREE_FORMAT`, `cpp/data/RetiredFormat` |
 | AD-8 | An adapter that needs Python shall fail the commit when Python or its modules are missing, not commit an empty file, and shall pick a free py4j port. | Test `PythonGatewayPortTest`, `LilypondGatewayPortTest` |
 | AD-9 | An adapter that needs Python shall find its interpreter, not rely on `python` on the PATH: the one set in Preferences if any, else the first of `python`, `python3` and the usual install locations (MacPorts, Homebrew, python.org, `/usr/local/bin`, `/usr/bin`) that imports its modules - libcst and py4j for Python; tree-sitter, py4j and lymodel for LilyPond (lymodel's tree-sitter parse reads the files), lymodel from the lymodel directory in Preferences, `LYPYTHON` or installed. When none will do, the error shall name each interpreter tried and what it lacks; a module installed after a failure shall be found without restarting. | Code `PythonFinder`, `LilypondPython`, `PY4JParser.python()`; Test `PythonFinderTest`, `LilypondPythonTest`; History d8c8ac60, 6765398d, 143e32cb |
 | AD-10 | The LilyPond adapter shall read with lymodel's tree-sitter parse, recorded in a new repository's settings (`lilypond.parser=lybar-2`). A repository without that setting was read with parce, whose tokens and contexts the parse would never match, and one with `lybar-1` holds tokens that do not record whether they were written together with the one before them (part of a token's identity since `lybar-2`): their files shall still check out, but a commit shall be refused with an explanation before anything is written. A repository with no LilyPond settings and no LilyPond files takes the settings of a new repository at its next commit. | Code `LilypondReader#readable`, `EccoService#adoptRepositorySettings`, `LilypondPlugin.PARSER_SETTING`, `LilypondParser_2.py`; Test `LilypondRepositorySettingsTest`, `LilypondParseTest`; History 4b95ee97, 143e32cb, lybar-2 2026-10-11 |
-| AD-11 | A file its adapter cannot read shall not fail the commit: it shall be read by the text adapter if it is text (no NUL byte in its first 8 KB), else by the file adapter, both byte-exact, with a warning naming the file and the error (a `.json` with comments, a Git LFS pointer named `.png`, a construct an adapter does not know). An adapter that cannot run at all (no Python, a repository made for another version of it: `AdapterUnavailableException`) and a cancelled commit shall still fail it. | Test `DispatchReaderFallbackTest` |
+| AD-11 | A file its adapter cannot read shall not fail the commit: it shall be read by the text adapter if it is text (no NUL byte in its first 8 KB), else by the file adapter, both byte-exact, with a warning naming the file and the error (a `.json` with comments, a Git LFS pointer named `.png`, a construct an adapter does not know). An adapter that cannot run at all (no Python, a repository made for another version of it: `AdapterUnavailableException`) and a cancelled commit shall still fail it. | Test `DispatchReaderFallbackTest`; History 86ea679c |
 
 ### Per adapter
 
@@ -1134,7 +1152,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | C++ | `.cpp .hpp` (+ `.c .h` when C is off) | lines grouped by namespace, class, enum, function | byte-exact incl. include guards and comments; first format checkout-only | yes | `CppRoundTripTest`, `CppRoundTripPropertyTest` (2,000 generated files), `LegacyCppWriterTest` |
 | TypeScript | `.ts` | statements and blocks (TS compiler in embedded Node.js) | exact text incl. `;`, trailing comments, JSDoc, declarations without a body or initializer (`.d.ts`, overloads), empty blocks, enums and classes; switch/enum order kept - 161 real files (28 of flipperzero-firmware) byte for byte | yes | `TypeScriptRoundTripTest`, `TypeScriptOrderTest` |
 | Python | `.py .ipynb .json` | libcst syntax tree; notebook cells; JSON values | not byte-exact: whitespace-only lines normalized, JSON re-indented, notebook outputs ignored | yes | `PythonAdapterTest` |
-| LilyPond | `.ly .ily` | tokens from lymodel's tree-sitter parse (parce before `lilypond.parser=lybar-1`, AD-10; since `lybar-2` a token records whether it was attached to the one before it); with musical tokens each note one token carrying its meaning, and with variable contexts each top-level assignment a context of its name | byte-exact incl. tabs, CRLF and blank lines when checked out as committed: a token keeps the whitespace it was read with after the token before it (not part of its identity) - all 724 corpus and example files, with and without musical tokens; where a checkout puts a token after another one, the writer's rules space it, and the music is the same (judged by lymusic: all 719 files it reads); tokens stored before keep the writer's rules | yes | `LilypondParseTest`, `LilypondVariantsCommitCheckoutTest` |
+| LilyPond | `.ly .ily` | tokens from lymodel's tree-sitter parse (parce before `lilypond.parser=lybar-1`, AD-10; since `lybar-2` a token records whether it was attached to the one before it); with musical tokens each note one token carrying its meaning, and with variable contexts each top-level assignment a context of its name | byte-exact incl. tabs, CRLF and blank lines when checked out as committed: a token keeps the whitespace it was read with after the token before it (not part of its identity) - all 724 corpus and example files with musical tokens (the default), and the 701 of the 705 corpus files the reader reads without them (#51); where a checkout puts a token after another one, the writer's rules space it, and the music is the same (judged by lymusic: all 719 files it reads); tokens stored before keep the writer's rules | yes | `LilypondParseTest`, `LilypondVariantsCommitCheckoutTest` |
 | Go | `.go` | tokens (ANTLR) | exact reconstruction | **no** | `GoWriterTest` |
 | Runtime | `.runtime .java` | Java classes/methods/lines + btrace data | not format-preserving | **no** | `RuntimeWriterTest` |
 | Java (lines) | `.java` | class, imports, members, statements | read-only: checkout refused | **no** | `JavaWriterTest` |
@@ -1151,7 +1169,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | --- | --- | --- |
 | IF-C1 | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `minimize-preview`, `minimize` and `order`; `checkout` takes `--minimized`. | Code `Main.registerCommands()` |
 | IF-C2 | `commit` and `checkout` shall require a configuration (`-c`). | Code |
-| IF-C3 | Exit codes shall be 0 on success, 1 on a failed command, 2 on invalid arguments; errors go to stderr with their cause chain, the stack trace only with `-Decco.debug=true`. | Code `Main.run` |
+| IF-C3 | Exit codes shall be 0 on success, 1 on a failed command, 2 on invalid arguments; errors go to stderr with their cause chain, the stack trace only with `-Decco.debug=true`. The error shown shall be the command's own: a failure to close the repository afterwards is attached to it, not shown in its place; running out of memory is reported as such, with the heap size and how to raise it (`JAVA_OPTS=-Xmx16g`). | Code `Main.run`, `Command#withOpenRepository`; Test `CommitCommandTest`; History 2dc75b70 |
 | IF-C4 | `fetch`, `pull` and `push` shall default to the remote `origin`; `pull`, `push` and `fork` take `--exclude` feature revisions. | Code |
 | IF-C5 | `suggest-constraints` and `minimize-preview` shall take `--min-witness` (default 4) and `--confidence` (default 0.9); only hard (confidence 1.0) accepted constraints are ever applied. | Code |
 | IF-C6 | `dg` shall print the association dependency graph as GML on stdout. | Code |
@@ -1223,11 +1241,14 @@ None of these were written as targets; they are recovered from refusals in the c
 | --- | --- | --- | --- |
 | NFR-P1 | Commit and checkout should scale to tens of features and variants interactively. | 60 variants / 40 features: commit 1.8 s, checkout 1.1 s, status 0.2 s | History cd764f4e, 81442a9e |
 | NFR-P2 | Opening a repository should take seconds, not minutes. | Real x8 repo: 65 s to 5.3 s | History decb2e37 |
-| NFR-P3 | A commit shall rewrite only what changed. | 15.7 s to 2.6 s after skipping identical writes | History 4bb0961c |
+| NFR-P3 | A commit shall rewrite only what changed. | 15.7 s to 2.6 s after skipping identical writes. Still rewritten: every association a commit touches (#48), and every touched artifact is serialized to find out whether it changed (#49) | History 4bb0961c |
 | NFR-P4 | Pixel-granular images should be usable at around 1.7 megapixels. | 71k-px image: commit 67 to 2 s, checkout 157 to 3.4 s | History 7a4e0aec, 47f6f0e5 |
 | NFR-P5 | Storage should stay compact as commits accumulate. | Association files 147 to 13 MB (compact counters); packs 2.5-7x smaller | History 81442a9e, 7c18da73 |
+| NFR-P6 | Merging a file into its partial order graph should not be quadratic in its length; every commit merges every file, changed or not. | Large Git import: one commit 73 s to 19 s, another out of memory to 35 s; a 47-commit LilyPond repository replays to the same checkouts and stored content | History 3c9ce88f (`AlignPathsEquivalenceTest`) |
+| NFR-P7 | A file unchanged since the session's previous read should not be parsed again (FR-M11). | 15 flipperzero-firmware commits: 238 s to 205 s, a typical commit 13 s to 10 s | History 90135e96 |
+| NFR-P8 | What a commit writes should not grow with the number of artifacts in the repository (FR-P2). | flipperzero-firmware: core written per commit 26.5 MB to ~0; a commit after the first 10.9 s to 8.9 s by comparing artifacts by id, to 8.3 s with the index left out of the core; the first commit 23.5 s to 19.5 s | Uncommitted 2026-10-13 |
 
-Partial-order-graph alignment is factorial in the number of concurrent unresolved branches; above 100,000 orderings a fast fallback takes over, so commits stay fast (`ConcurrentBranchScalingTest`).
+Partial-order-graph alignment is factorial in the number of concurrent unresolved branches; above 100,000 orderings a fast fallback takes over, so commits stay fast (`ConcurrentBranchScalingTest`). Aligning two long paths builds an n x m matrix; equal trailing nodes are matched before it is built, which leaves the matrix small when a file changed little (NFR-P6).
 
 ### Concurrency
 
@@ -1243,7 +1264,7 @@ Partial-order-graph alignment is factorial in the number of concurrent unresolve
 | --- | --- | --- |
 | NFR-V1 | A repository in an older or retired format shall be refused with an explanation, never fail with an exception or be misread. | Code `ArtifactData#retiredFormat`, tree-format checks; History ff3c5dfe |
 | NFR-V2 | Where an adapter's tree format changed, old repositories should stay checkout-only rather than become unreadable. | History d9ce686c (C++) |
-| NFR-V3 | Newer builds shall read older supported formats; older builds need not read newer ones. | Doc; History 81442a9e, 7c18da73 |
+| NFR-V3 | Newer builds shall read older supported formats; older builds need not read newer ones. A format change that can be converted shall be converted on the next write, once: a core with a per-artifact index is rewritten without it (FR-P4) - measured on a 15-commit repository (54 MB core, 15 packs), its 16th commit took 121 s and left a 49 KB core and 1 pack, with identical checkouts before and after. A build from before that change refuses the new core as "an older storage format". | Test `PackOrderMigrationTest`; History 81442a9e, 7c18da73; uncommitted 2026-10-13 |
 
 ### Security
 
@@ -1274,11 +1295,11 @@ Requirements the code does not meet, places where the documentation and the code
 | --- | --- | --- | --- |
 | 1 | The README maps `*.c`/`*.h`/`*.cpp`/`*.hpp` to the C and C++ adapters by default, but both are disabled by default, so those files go to the File adapter (whole-file granularity, no VEVOS traces) unless enabled in Preferences. | `AdapterPreferences.DEFAULT_DISABLED_PLUGIN_IDS` vs README | Doc/code mismatch - **fixed 2026-10-03**: C and C++ on by default (new repositories only) |
 | 2 | The CLI only works from the repository root: it fixes the repository at `./.ecco`, though the README promises a search of parent directories (`EccoService.detectRepository` exists but is not used). | `cli/.../Main.java:41` (IF-C8) | Doc/code mismatch - **fixed 2026-10-03**: commands search upwards; the repository's directory, not the current one, is the working directory (README corrected) |
-| 3 | `.hashes` is written on checkout but never used: the unchanged-file check is commented out, so every commit re-reads every file. | DR:469-476 (FR-M11) | Partial - **measured 2026-10-03**, README corrected: reading is 4.5% of a commit for line-based files but 69% for Java AST files (about 1.7 ms per file). **2026-10-13: instead of `.hashes`, which a Git import never has, a file read with the same content and context as in the previous read is not parsed again: its tree is copied (`ArtifactReader#readContext`, `Trees#copyRead`, opt-in for C, C++, TypeScript, Python, Java AST, Markdown, LilyPond).** 15 flipperzero-firmware commits: 238 s to 205 s, a typical commit 13 s to 10 s; associations and checkouts identical with and without (`DispatchReaderReuseTest`). `.hashes` itself is still unused |
+| 3 | `.hashes` is written on checkout but never used: the unchanged-file check is commented out, so every commit re-reads every file. | DR:469-476 (FR-M11) | Partial, **done another way 2026-10-13** - measured 2026-10-03, README corrected: reading is 4.5% of a commit for line-based files but 69% for Java AST files (about 1.7 ms per file). 2026-10-13: instead of `.hashes`, which a Git import never has, a file read with the same content and context as in the previous read is not parsed again: its tree is copied (`ArtifactReader#readContext`, `Trees#copyRead`, opt-in for C, C++, TypeScript, Python, Java AST, Markdown, LilyPond). 15 flipperzero-firmware commits: 238 s to 205 s, a typical commit 13 s to 10 s; associations and checkouts identical with and without (`DispatchReaderReuseTest`). `.hashes` itself is still unused |
 | 4 | The `java` (lines) and `challenge` adapters have no writer: a checkout of their files writes nothing. Both are off by default. | `JavaWriter.java:30` in both adapters | Partial - **fixed 2026-10-02**: both writers now refuse with a message naming the Java (AST) adapter; documented as read-only |
 | 5 | Several adapters claim `.java` (java-ast, java, challenge, runtime) and `.c`/`.h` (C, C++) at the same priority; if more than one is enabled, which one wins depends on set order. | adapter patterns | Ambiguous requirement - **fixed 2026-10-03**: ties broken by plugin id and logged; C++ yields `.c`/`.h` to C |
 | 6 | Condition minimization is preview-only; it is not applied to checkout. | `minimize-preview`; FR-N7 | **Done 2026-10-03 (opt-in)**: checkout can use stored revision-exact minimized conditions (`minimize`, `checkout --minimized`, GUI preference); `MinimizedCheckoutEquivalenceTest` shows identical files for every model-consistent configuration. Measured on 30 generated variants: no gain there (conditions already minimal after absorption), a one-off main tree costs ~13 ms per checkout |
-| 7 | Partial-order-graph alignment is factorial in concurrent unresolved branches; no bound is enforced beyond a capped fallback. | `PartialOrderGraph` | Performance risk - **characterized 2026-10-03**: the fallback (since July) keeps commits at 10-53 ms with 30 concurrent unique lines; the exact algorithm alone runs out of memory there (`ConcurrentBranchScalingTest` fails without the fallback). Its known under-matching gave 0 wrong files in 990 adversarial checkouts. Exact replacement not needed now; a design is noted in the gap plan |
+| 7 | Partial-order-graph alignment is factorial in concurrent unresolved branches; no bound is enforced beyond a capped fallback. | `PartialOrderGraph` | Performance risk - **characterized 2026-10-03**: the fallback (since July) keeps commits at 10-53 ms with 30 concurrent unique lines; the exact algorithm alone runs out of memory there (`ConcurrentBranchScalingTest` fails without the fallback). Its known under-matching gave 0 wrong files in 990 adversarial checkouts. Exact replacement not needed now; a design is noted in the gap plan. A separate cost, aligning two long paths in an n x m matrix (quadratic in a file's length, for every file of every commit), was cut 2026-10-13 by matching equal trailing nodes first (NFR-P6) |
 | 8 | Remote sync is unauthenticated; the REST server has hard-coded demo users with plaintext passwords and a default JWT secret, and its roles are never checked. | README; `rest/.../DummyUserDB`, `application.yml` | Security limitation - **hardened 2026-10-03**: the JWT secret key in `application.yml` was misspelled, so tokens were unsigned and a forged unsigned token was accepted for any user - fixed; the server refuses to start without a real secret and a users file (PBKDF2 hashes) outside development mode; the GUI confirms before syncing with other machines. Still open by choice: sync authentication, role checks |
 | 9 | The REST storage directory is not configurable; it is chosen by heuristics (Docker, a `jenkins` user, else `examples/`). | `rest/.../Settings` | Missing configuration - **fixed 2026-10-03**: `ECCO_STORAGE_DIR` / `ecco.storage-dir`, heuristics as fallback, logged at startup |
 | 10 | Java 21 pattern-matching `switch` and record patterns are not supported by the Java (AST) adapter and fail loudly; comments inside lambdas and expressions are unverified. | `JavaASTReader` | Partial - **fixed 2026-10-03**: JavaParser 3.27, Java 21 level (round-trip tests); checking showed comments inside lambdas and expressions WERE lost - now kept as metadata, filled in for old repositories on the next commit |
@@ -1311,10 +1332,15 @@ Requirements the code does not meet, places where the documentation and the code
 | 37 | A failed local pull or push reported "Error rolling back transaction: No transaction active" instead of its cause (e.g. an unknown feature in the exclusion). | `RemoteSyncService` | Bug - **fixed 2026-10-04**: rollbacks only when a transaction is active |
 | 38 | Smaller GUI issues found by the view tests: Cancel while committing did nothing (there was no commit cancellation); Commit Multiple Versions left the working directory at the last committed folder; the pull dialog's feature tree was empty until the remote was fetched once; Remove Variant could leave the toolbar disabled if removing threw; the commit dialogs checked constraints after committing, in a modal dialog from inside the commit - a check that can never find anything, since only exception-free rules count and the committed configuration is the exception to every rule it violates. | `CommitView`, `CommitBaseDirView`, `PullView`, `VariantsView`, `CommitService`, `ImportGitView`, `CommitCommand` | Usability - **fixed 2026-10-11**: `EccoService#cancelCommit()` stops a commit before it stores anything (per file read, before extracting, before storing) and rolls it back; Commit Multiple Versions commits no further folder and restores the working directory; the pull dialog fetches in the background; Remove Variant re-enables in `finally`; Commit, the Git import and the CLI's `commit` check constraints before committing, like Commit Multiple Versions |
 | 39 | A fork over the network takes the new-repository settings (`.ecco/.settings`), not its origin's: the pull protocol does not carry them. Forking a repository from before musical tokens (or variable contexts) this way reads its LilyPond files with them, which never match its artifacts; one read with parce gets `lilypond.parser=lybar-1` this way and takes commits it should refuse (AD-10). A local fork copies the origin's settings. | `EccoService.fork(String, int, String)` | Gap - noted 2026-10-08 |
-| 40 | The LilyPond reader fails on one vocal score of the silverswan corpus: `NullPointerException` in `LilyEccoTransformer.transformVariableDefinitonNode` (a context node where a token was expected). With and without musical tokens; found reading the 665 corpus files. | `LilyEccoTransformer` | Bug - noted 2026-10-08; not reproduced 2026-10-11: all 724 corpus and example files commit, with lymodel's parse and with parce |
+| 40 | The LilyPond reader fails on one vocal score of the silverswan corpus: `NullPointerException` in `LilyEccoTransformer.transformVariableDefinitonNode` (a context node where a token was expected). With and without musical tokens; found reading the 665 corpus files. | `LilyEccoTransformer` | Bug - noted 2026-10-08; not reproduced 2026-10-11: all 724 corpus and example files commit, with lymodel's parse and with parce. **Reproduced 2026-10-13 in plain-token mode only** (without musical tokens), on 4 corpus files - see #51 |
 | 41 | Commit Multiple Versions showed a `.config` written one feature per line (with blank lines) as ragged multi-line rows, in both the configuration and the default commit message. | `CommitService.getConfigStringFromFile` | Usability - **fixed 2026-10-08**: line breaks collapsed into one line (FR-M3) |
 | 42 | The Python and LilyPond adapters ran plain `python` from the PATH: a GUI commit of a musical LilyPond repository failed with "No module named 'lymodel'" although another python had it, and a GUI started from the Finder (no MacPorts or Homebrew on its PATH) would find no python at all. The tests checked `python3` instead, so they skipped where the adapter could read. | `FileParser`, `PY4JParser`, `Lymusic` | Bug - **fixed 2026-10-08**: interpreter lookup (AD-9), tests ask the same lookup (NFR-B2) |
 | 43 | Six LilyPond regression tests failed without lymodel instead of being skipped, and a lymusic test expected v6's ties in checkouts without `slurs.1` - the ties arrive with slurs in the example history, so ECCO's checkout was right. Both went unnoticed because the music tests only run with lymodel. | `service` tests | Test defects - **fixed 2026-10-08** (5d0e7ff1, 68ceeecf) |
 | 44 | Written back after a commit, 71 of 724 LilyPond corpus and example files hold other music than they were read with (lymusic: notes, lyrics, articulations, slurs, dynamics or attributes) - the same 71 with lymodel's parse and with parce, mostly with the same first difference, so in the shared transformer or writer. | `LilyEccoTransformer`, `LilypondWriter`, `LilypondFormatter` | Bug - noted and fixed 2026-10-11: the writer ran numbers and signs together that were apart in the file read (`\shp 0 4` as `\shp 04`, `a2 2` as `a22`, `^ ^` as `^^`) - tokens now keep together exactly what was written together, and never run into one word otherwise; and a `\relative` without a pitch of its own was spelled from the note before it, not from f. All 719 lymusic reads come back with their music - measured after a single commit: the positions that decided what was written together came from the commit that stored each token, so a checkout combining commits ran tokens together or split them (`\p e` as `\pe`, `e2 f4` as `e2f 4`, a code review found it the same day). Fixed with `lilypond.parser=lybar-2`: a token records whether it was attached to the one before it where a space would change the music, as part of its identity (`LilypondSpacingAcrossCommitsTest`). |
-| 45 | One commit of all 724 LilyPond corpus files ran out of memory with a 6 GB heap, writing the artifact pack; in batches of 40, one repository each, they commit. | `SerTransactionStrategy.writePack` | Gap - noted 2026-10-11 |
+| 45 | One commit of all 724 LilyPond corpus files ran out of memory with a 6 GB heap, writing the artifact pack; in batches of 40, one repository each, they commit. | `SerTransactionStrategy.writePack` | Gap - noted 2026-10-11. Since 2026-10-13 such a commit rolls back and the command line reports running out of memory with the heap size and how to raise it (FR-M10, IF-C3); before, it showed only "Not all transactions have been ended". The pack is still built in memory |
 | 46 | A review of the parce removal found the tree-sitter parse reading markup and modes by its flat tree: in `\markup \bold { ... }` and `\drums { ... }` the braces are no child of the command, so markup words were read as notes, slurs and variables (a variable resets the pitch `\relative` spells the next note from) and drum notes as variables; a chord's or tremolo's `:` as a script, the chord steps after it as variables; `#:kw` as two words written apart (`#: kw`, broken Scheme); an empty file or a brace tree-sitter supposes missing as an empty token; text tree-sitter left out as one token with its line breaks; positions in code points where Java counts UTF-16; the parser's warnings dropped when it succeeded (a file read without musical tokens said nothing). And a repository without LilyPond settings - every one from before them, and every one ecco-rest made without the LilyPond plugin - refused its first LilyPond commit though it held no LilyPond to disagree with. | `LilypondParser_2.py`, `FileParser`, `EccoService` | Bug - **fixed 2026-10-11** in `lybar-2`: markup and drum or chord mode are spans after their command (markup's end from lymodel's `markup_span`), markup read by words; `:` a chord separator; Scheme keywords and characters one token; no empty tokens; left-out text by words; UTF-16 positions; warnings logged; a plugin's settings are adopted by a repository with none of them and none of its files (AD-10). Open: pull does not compare settings (a remote read with other settings merges tokens that never match). |
+| 47 | Only the commit rolls its transaction back on an `Error` (such as `OutOfMemoryError`); 16 other service operations that open a read-write transaction roll back only on an `Exception`, so an `Error` leaves their transaction open and closing the repository fails afterwards. | `EccoService` and the services under `service/.../service/` | Gap - noted 2026-10-13 (found fixing the commit, 2dc75b70) |
+| 48 | Every association a commit touches is written again, because its counters change with every commit; on flipperzero-firmware that is about 14% of the time spent storing. Its artifact tree, which changes far less often, could be stored apart from the counters. | `SerTransactionStrategy.endReadWrite` | Performance - noted 2026-10-13 |
+| 49 | To tell whether an artifact changed, a commit serializes every artifact it touched and compares the digest with the stored one - about half of the time spent storing after the 2026-10-13 storage changes, though most of those artifacts are unchanged. | `SerTransactionStrategy.writeArtifactPack` | Performance - noted 2026-10-13 |
+| 50 | 7 of ECCO's own Java files cannot be read by the Java (AST) adapter. Since AD-11 they are committed by the text adapter (lines, byte-exact) with a warning, not refused. | `JavaASTReader` | Bug - noted 2026-10-13, not investigated |
+| 51 | In plain-token mode (a LilyPond repository without musical tokens) the reader throws a `NullPointerException` on 4 corpus files - #40's failure, which does not occur with musical tokens. Since AD-11 such a file is committed by the text adapter with a warning, so a commit no longer fails, but its music is traced by lines. | `LilyEccoTransformer` | Bug - noted 2026-10-13 |

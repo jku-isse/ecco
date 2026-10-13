@@ -1,6 +1,6 @@
 # Plan: closing the gaps in the recovered requirements
 
-As of 2026-10-02. Gap numbers refer to [Known gaps](requirements.md#known-gaps) in `requirements.md`.
+As of 2026-10-02, with notes on later gaps added up to 2026-10-13. Gap numbers refer to [Known gaps](requirements.md#known-gaps) in `requirements.md`.
 
 Of the 17 gaps, 12 can be closed with small, low-risk changes. Three need a decision before any code changes, and two (#6, #7) touch the core algorithms and each need a session of their own.
 
@@ -106,6 +106,31 @@ Doing it properly means: (i) invalidate a stored minimized condition when its as
 3. Add tests for pattern-matching `switch`, record patterns, and comments inside lambdas and expressions (still unverified).
 
 
+## Gaps noted 2026-10-13
+
+Found while importing flipperzero-firmware from Git and replaying a 47-commit LilyPond repository; none fixed yet.
+
+### #47 rollback on `Error`
+
+The commit now rolls back on any `Throwable` (2dc75b70). The other read-write operations - 16 of them in the services - catch only `Exception`. Same change in each: roll back in a `catch (Error e)` (or `finally` when the transaction is still open) and rethrow. A test per service is cheap with a listener or adapter that throws an `Error`; the CLI test for the commit (`CommitCommandTest`) shows the pattern.
+
+### #48 associations rewritten every commit
+
+Measured on flipperzero-firmware after the storage changes of 2026-10-13: writing the association files is about 14% of the time spent storing. They are all written again because their counters change with every commit. The tree of an association changes far less often than its counters. Option: store the counters in the association file and the tree in a file of its own (or in the packs, like artifacts), each written only when its bytes change. This changes the storage format, so it needs the same treatment as FR-P4: old files read the old way, converted on the next write, older builds refuse.
+
+### #49 serializing unchanged artifacts
+
+To skip an unchanged artifact, a commit serializes it and compares the digest with the stored one (since 2026-10-13 keyed by artifact id). That serialization is about half of the remaining time spent storing. Options: a dirty flag set where artifact data actually changes (risky: data adopts metadata in several places, `adoptMetadataFrom`), or a cheaper digest over the fields that are written. Characterize first: count how many touched artifacts change per commit on a Git import.
+
+### #50 Java files the Java (AST) adapter cannot read
+
+7 of ECCO's own Java files fail to read. Since AD-11 they are committed by the text adapter with a warning, so nothing is lost, but they are traced by lines. Next step: collect the 7 errors and see whether they are JavaParser limits or ECCO's transformation.
+
+### #51 plain-token LilyPond NPE
+
+4 corpus files throw a `NullPointerException` in `LilyEccoTransformer` when read without musical tokens - #40's failure, reproduced in that mode only. Like #50, AD-11 now commits them by the text adapter. Start from the vocal score #40 describes and the stack trace in plain mode.
+
+
 ## Ongoing - #17 documentation
 
 * Restart `CHANGELOG.md` with one entry summarizing the work since 0.1.9 (the 2026 fixes), then one line per change.
@@ -119,8 +144,11 @@ Doing it properly means: (i) invalidate a stored minimized condition when its as
 | 1 | #16, #15, #12, #11, #4, #14 | done | - |
 | 2 | #2, #9 | done | - |
 | 3 | #1 + #5 | done | - |
-| 4 | #3 measured; skip deferred to a design session | done / 1-2 days | - / high |
+| 4 | #3 measured; done another way 2026-10-13 (read-tree reuse) | done | - |
 | 5 | #6, #8, #13 after decisions | done | - |
 | 6 | #10 | done | - |
 | 7 | #7 characterized; algorithm unchanged | done | - |
+| 8 | #47 rollback on `Error` in the other services | under a day | low |
+| 9 | #48, #49 storing cost | 1-2 days each | medium (storage format) |
+| 10 | #50, #51 adapter read failures | open-ended; characterize first | low (AD-11 keeps commits working) |
 | ongoing | #17 | with every commit | none |
