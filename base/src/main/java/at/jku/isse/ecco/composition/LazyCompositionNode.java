@@ -6,6 +6,7 @@ import at.jku.isse.ecco.tree.Node;
 import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -64,11 +65,24 @@ public class LazyCompositionNode implements Node {
 		// compute the children of this node, but do not activate them!
 
 		List<LazyCompositionNode> allChildren = new ArrayList<>();
+		// equal nodes always have equal hash codes, so only children in the same bucket need the
+		// equals() scan - a plain allChildren.contains() was quadratic, which never finished for an
+		// image (one child per pixel). Each bucket keeps allChildren's order, so the first match is
+		// the same one contains()/indexOf() found (artifact equality is not transitive: an unassigned
+		// sequence number matches any).
+		Map<Integer, List<LazyCompositionNode>> childrenByHash = new HashMap<>();
 
 		for (Node origNode : this.origNodes) {
 			for (Node origChildNode : origNode.getChildren()) {
+				List<LazyCompositionNode> bucket = childrenByHash.computeIfAbsent(origChildNode.hashCode(), hash -> new ArrayList<>(1));
 				LazyCompositionNode newChildNode = null;
-				if (!allChildren.contains(origChildNode)) {
+				for (LazyCompositionNode candidate : bucket) {
+					if (origChildNode.equals(candidate)) {
+						newChildNode = candidate;
+						break;
+					}
+				}
+				if (newChildNode == null) {
 					newChildNode = new LazyCompositionNode(this.orderSelector);
 
 					//newChildNode.setParent(this);
@@ -81,8 +95,8 @@ public class LazyCompositionNode implements Node {
 					newChildNode.addOrigNode(origChildNode);
 
 					allChildren.add(newChildNode);
+					bucket.add(newChildNode);
 				} else {
-					newChildNode = allChildren.get(allChildren.indexOf(origChildNode));
 					newChildNode.addOrigNode(origChildNode);
 				}
 				if (origChildNode.isUnique()) {
