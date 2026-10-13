@@ -180,8 +180,32 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | TypeScript | `*.ts` | statements and blocks; parsed with the TypeScript compiler running in an embedded Node.js (Javet) |
 | Python | `*.py`, `*.ipynb`, `*.json` | Python syntax tree (libcst), notebook cells, JSON values. **Needs `python` 3 with the modules `libcst` and `py4j` on the `PATH`** |
 | LilyPond | `*.ly`, `*.ily` | LilyPond tokens; in a repository created since musical tokens (the default), a note, rest or chord end is one token that goes by the music it means, however it is spelled, and each top-level variable (a voice) is a context of its name. **Needs `python` 3 with the modules `tree-sitter` and `py4j`, and lymodel, the lilypond-idea-plugin's `python/` package** (`python -m pip install <lilypond-idea-plugin>/python`, or `LYPYTHON` set to that directory), whose tree-sitter parse reads the files; a repository created before it (read with parce) checks out, but takes no more commits; rendering scores in the GUI needs LilyPond (see [its README](adapter/lilypond/README.md)) |
-| Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels |
+| Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels, one artifact each: for large images, see [Images](#images) |
 | File | everything else | whole files (binary) |
+
+### Images
+
+The image adapter makes every pixel an artifact, so that a feature can be traced to the pixels it changes. That costs time, memory and space with every commit of an image, in proportion to its pixels - one 4-megapixel PNG (12 MB):
+
+| | Image adapter | File adapter |
+| --- | --- | --- |
+| commit | 230 s, 9 GB of memory (more than the command line's default 8 GB heap) | 0.6 s |
+| repository | 1,031 MB | 11.6 MB |
+| checkout | 77 s; the pixels, re-encoded | 0.45 s; the file, byte for byte |
+
+When images are assets rather than what features change - photos, screenshots, documentation figures - map them to the file adapter, which keeps each image as one artifact. Do this right after `init`, before the first commit: add these lines at the top of `.ecco/.adapters` (the first matching line wins):
+
+```
+at.jku.isse.ecco.adapter.file.FilePlugin;**.png
+at.jku.isse.ecco.adapter.file.FilePlugin;**.jpg
+at.jku.isse.ecco.adapter.file.FilePlugin;**.jpeg
+at.jku.isse.ecco.adapter.file.FilePlugin;**.bmp
+at.jku.isse.ecco.adapter.file.FilePlugin;**.gif
+```
+
+A narrower pattern keeps the image adapter for the rest, e.g. `at.jku.isse.ecco.adapter.file.FilePlugin;docs/**.png`. Changed later, the mapping takes effect with the next commit, and the images already committed are then read by another adapter than their history - every one of them looks changed.
+
+A file the image adapter cannot read at all - a Git LFS pointer named `.png`, a broken image - is stored by the text or file adapter, with a warning.
 
 Further adapters are included but not mapped by default: `golang`, `java` (line-based Java), `runtime`, and `challenge` (for the SPLC feature location challenge). Map files to them in `.adapters`. `java` and `challenge` only read files: a checkout of files committed with them fails. See [adapter](adapter) for how adapters are built.
 
