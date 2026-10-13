@@ -131,4 +131,26 @@ public class CommitCommandTest {
         verify(service).close();
         assertEquals(List.of(), writer.getLines());
     }
+
+    /** A commit that ran out of memory left its transaction open: close() then failed too, and only that was reported. */
+    @Test
+    public void aFailureToCloseAfterAFailedCommitDoesNotHideWhatFailed() {
+        OutOfMemoryError outOfMemory = new OutOfMemoryError("Java heap space");
+        when(service.commit(any(), any(String.class))).thenThrow(outOfMemory);
+        at.jku.isse.ecco.EccoException notClosed = new at.jku.isse.ecco.EccoException("Error closing connection: Not all transactions have been ended.");
+        doThrow(notClosed).when(service).close();
+
+        OutOfMemoryError thrown = org.junit.jupiter.api.Assertions.assertThrows(OutOfMemoryError.class,
+                () -> new CommitCommand(service, writer).run(new Namespace(Map.of("c", "featureA.1", "m", "m"))));
+
+        assertEquals(outOfMemory, thrown);
+        assertEquals(List.of(notClosed), List.of(thrown.getSuppressed()));
+    }
+
+    @Test
+    public void aFailureToCloseAfterASuccessfulCommitIsReported() {
+        doThrow(new at.jku.isse.ecco.EccoException("Error closing connection")).when(service).close();
+        org.junit.jupiter.api.Assertions.assertThrows(at.jku.isse.ecco.EccoException.class,
+                () -> new CommitCommand(service, writer).run(new Namespace(Map.of("c", "featureA.1", "m", "m"))));
+    }
 }

@@ -30,17 +30,14 @@ public class CheckoutCommand implements Command {
 
     @Override
     public void run(Namespace namespace) {
-        eccoService.open();
-        try {
+        Command.withOpenRepository(eccoService, () -> {
             eccoService.setMinimizedConditionsInCheckout(Boolean.TRUE.equals(namespace.getBoolean(MINIMIZED_KEY)));
             Checkout checkout = eccoService.checkout(namespace.getString(CONFIGURATION_KEY));
             writer.println("Checked out " + checkout.getConfiguration().getConfigurationString());
             String summary = warningSummary(checkout);
             if (!summary.isEmpty())
                 writer.println("Warnings: " + summary + " -- details in .warnings");
-        } finally {
-            eccoService.close();
-        }
+        });
     }
 
     /**

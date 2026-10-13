@@ -126,6 +126,11 @@ class CommitService {
                 if (cause instanceof CommitCancelledException cancelled)
                     throw cancelled;
             throw new EccoException("Error during commit.", e);
+        } catch (Error e) {
+            // out of memory, typically: an open transaction made every later operation fail, and
+            // close() too - reporting "Not all transactions have been ended" instead of this
+            owner.rollbackIfTransactionActive();
+            throw e;
         } finally {
             this.committing = false;
             this.cancelRequested = false;

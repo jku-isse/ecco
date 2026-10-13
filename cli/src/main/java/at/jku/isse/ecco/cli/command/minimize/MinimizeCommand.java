@@ -29,12 +29,9 @@ public class MinimizeCommand implements Command {
 
     @Override
     public void run(Namespace namespace) {
-        eccoService.open();
-        try {
+        Command.withOpenRepository(eccoService, () -> {
             int stored = eccoService.minimizeConditionsForCheckout();
             writer.println("Stored minimized conditions for " + stored + " associations; use them with: checkout --minimized -c <configuration>");
-        } finally {
-            eccoService.close();
-        }
+        });
     }
 }

@@ -88,6 +88,13 @@ public class Main {
             if (Boolean.getBoolean("ecco.debug"))
                 e.printStackTrace();
             return 1;
+        } catch (OutOfMemoryError e) {
+            System.err.println("ERROR: out of memory (maximum heap " + Runtime.getRuntime().maxMemory() / (1024 * 1024) + " MB)."
+                    + " Give ECCO more with JAVA_OPTS, e.g. JAVA_OPTS=-Xmx16g; large images commit far faster when mapped"
+                    + " to the file adapter (README, Images).");
+            if (Boolean.getBoolean("ecco.debug"))
+                e.printStackTrace();
+            return 1;
         }
     }
 

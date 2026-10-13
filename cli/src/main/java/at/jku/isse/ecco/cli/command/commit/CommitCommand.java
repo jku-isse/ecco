@@ -30,8 +30,7 @@ public class CommitCommand implements Command {
 
     @Override
     public void run(Namespace namespace) {
-        eccoService.open();
-        try {
+        Command.withOpenRepository(eccoService, () -> {
             String configurationString = namespace.getString(CONFIGURATION_KEY);
             // checked before committing: only exception-free rules count, and the committed
             // configuration is the exception to every rule it violates - afterwards it violates none
@@ -41,9 +40,7 @@ public class CommitCommand implements Command {
             // advisory, as in the GUI: the commit is stored either way
             for (String violation : violations)
                 writer.println("CONSTRAINT: " + violation);
-        } finally {
-            eccoService.close();
-        }
+        });
     }
 
     /** None if the configuration cannot be parsed: the commit reports that. */

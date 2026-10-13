@@ -41,8 +41,7 @@ public class OrderCommand implements Command {
         Object startDir = namespace.get(ProgramConstants.START_DIR);
         Path start = realPath(startDir instanceof Path path ? path : Path.of(""));
 
-        eccoService.open();
-        try {
+        Command.withOpenRepository(eccoService, () -> {
             // the files are given relative to where the command runs; the service wants them
             // relative to the working directory, the repository's directory
             // both real paths, or e.g. macOS's /var -> /private/var link makes every file look outside
@@ -59,9 +58,7 @@ public class OrderCommand implements Command {
             writer.println(added == 0
                     ? "The order of " + names + " was already recorded."
                     : "Recorded the order of " + names + " (" + added + " new precedence" + (added == 1 ? "" : "s") + ").");
-        } finally {
-            eccoService.close();
-        }
+        });
     }
 
     private static Path realPath(Path path) {
