@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.adapter.lilypond.parser.py4j;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.lilypond.LilypondNode;
 import at.jku.isse.ecco.adapter.lilypond.LilypondParser;
 import at.jku.isse.ecco.adapter.lilypond.LilypondPlugin;
@@ -145,7 +146,7 @@ public class FileParser implements LilypondParser<LilypondToken> {
             // e.g. no python executable - fail the commit rather than committing an empty file
             // (see UnreadableFileCommitTest), as returning null here used to
             LilypondPython.forget();
-            throw new EccoException("Could not run the LilyPond parser for file " + path, e);
+            throw new AdapterUnavailableException("Could not run the LilyPond parser for file " + path, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new EccoException("Interrupted while parsing file " + path, e);

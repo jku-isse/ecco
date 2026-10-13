@@ -105,7 +105,7 @@ public final class PythonFinder {
 				return python;
 			}
 		}
-		throw new EccoException(report(tried, modules, purpose, advice));
+		throw new AdapterUnavailableException(report(tried, modules, purpose, advice));
 	}
 
 	/** The python set in Preferences alone, if there is one - else PATH's, then the usual install locations. */

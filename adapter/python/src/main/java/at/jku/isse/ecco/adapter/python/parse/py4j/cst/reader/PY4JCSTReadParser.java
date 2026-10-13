@@ -2,6 +2,7 @@ package at.jku.isse.ecco.adapter.python.parse.py4j.cst.reader;
 
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.PythonFinder;
 import at.jku.isse.ecco.adapter.python.PythonParser;
 import at.jku.isse.ecco.adapter.python.parse.py4j.PY4JParser;
@@ -57,7 +58,7 @@ public class PY4JCSTReadParser extends PY4JParser implements PythonParser.Reader
             // e.g. no python executable - fail the commit rather than committing an empty file
             // (see UnreadableFileCommitTest), as returning null here used to
             PythonFinder.forget();
-            throw new EccoException("Could not run the python parser for file " + path, e);
+            throw new AdapterUnavailableException("Could not run the python parser for file " + path, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new EccoException("Interrupted while parsing file " + path, e);

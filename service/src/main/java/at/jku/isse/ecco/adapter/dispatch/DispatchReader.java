@@ -1,10 +1,12 @@
 package at.jku.isse.ecco.adapter.dispatch;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.ArtifactPlugin;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.dao.EntityFactory;
+import at.jku.isse.ecco.service.CommitCancelledException;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.ReadListener;
 import at.jku.isse.ecco.tree.Node;
@@ -310,7 +312,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 				if (reader == null)
 					throw new EccoException("No reader found for file " + path);
 				//long localStartTime = System.currentTimeMillis();
-				Set<Node.Op> nodes = reader.read(base, new Path[]{path});
+				Set<Node.Op> nodes = this.readOrFallBack(base, reader, new Path[]{path});
 				//LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 				if (!nodes.isEmpty()) {
 					for (Node.Op node : nodes) {
@@ -358,6 +360,95 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 		return directoryNode;
 	}
 
+
+	static final String TEXT_PLUGIN_ID = "at.jku.isse.ecco.adapter.text.TextPlugin";
+	static final String FILE_PLUGIN_ID = "at.jku.isse.ecco.adapter.file.FilePlugin";
+
+	/**
+	 * [files] read by [reader] - and where it fails, each file it cannot read by another adapter
+	 * instead of failing the commit: the text adapter if the file is text, else the file adapter.
+	 * Both write it back byte for byte; it is traced by lines or as a whole instead of by its
+	 * structure. Comments in a .json file, a Git LFS pointer named .png, a construct an adapter does
+	 * not know: one such file made every commit of its folder fail. A cancelled commit still stops, and
+	 * an adapter that cannot run here (no Python, a repository made for another version) still fails it.
+	 */
+	private Set<Node.Op> readOrFallBack(Path base, ArtifactReader<Path, Set<Node.Op>> reader, Path[] files) {
+		try {
+			return reader.read(base, files);
+		} catch (RuntimeException e) {
+			rethrowIfCancelled(e);
+			if (files.length == 1)
+				return this.fallBack(base, reader, files[0], e);
+		}
+		// one of them failed - which, the reader does not say: each on its own
+		Set<Node.Op> nodes = new HashSet<>();
+		for (Path file : files) {
+			try {
+				nodes.addAll(reader.read(base, new Path[]{file}));
+			} catch (RuntimeException e) {
+				rethrowIfCancelled(e);
+				nodes.addAll(this.fallBack(base, reader, file, e));
+			}
+		}
+		return nodes;
+	}
+
+	private Set<Node.Op> fallBack(Path base, ArtifactReader<Path, Set<Node.Op>> failed, Path file, RuntimeException error) {
+		List<ArtifactReader<Path, Set<Node.Op>>> fallbacks = new ArrayList<>();
+		if (isText(base.resolve(file)))
+			fallbacks.add(this.readerFor(TEXT_PLUGIN_ID));
+		fallbacks.add(this.readerFor(FILE_PLUGIN_ID));
+		fallbacks.removeIf(r -> r == null || r == failed);
+		for (ArtifactReader<Path, Set<Node.Op>> fallback : fallbacks) {
+			try {
+				Set<Node.Op> nodes = fallback.read(base, new Path[]{file});
+				LOGGER.warning("Adapter " + failed.getPluginId() + " could not read " + file + " (" + message(error) + "); read by "
+						+ fallback.getPluginId() + " instead - written back as it is, traced " + (TEXT_PLUGIN_ID.equals(fallback.getPluginId()) ? "by lines." : "as a whole."));
+				return nodes;
+			} catch (RuntimeException e) {
+				rethrowIfCancelled(e);
+				error.addSuppressed(e);
+			}
+		}
+		throw error;
+	}
+
+	private ArtifactReader<Path, Set<Node.Op>> readerFor(String pluginId) {
+		for (ArtifactReader<Path, Set<Node.Op>> reader : this.readers) {
+			if (reader.getPluginId().equals(pluginId))
+				return reader;
+		}
+		return null;
+	}
+
+	/** A cancelled or interrupted commit, or an adapter that cannot run here at all (AdapterUnavailableException): no other adapter reads the file. */
+	private static void rethrowIfCancelled(RuntimeException e) {
+		for (Throwable t = e; t != null; t = t.getCause()) {
+			if (t instanceof CommitCancelledException || t instanceof AdapterUnavailableException || t instanceof InterruptedException)
+				throw e;
+		}
+	}
+
+	private static String message(Throwable e) {
+		Throwable root = e;
+		while (root.getCause() != null && root.getCause() != root)
+			root = root.getCause();
+		return root.getMessage() != null ? root.getMessage() : root.getClass().getSimpleName();
+	}
+
+	/** Text, as Git judges it: no NUL byte in its first 8 KB. */
+	static boolean isText(Path file) {
+		try (java.io.InputStream in = Files.newInputStream(file)) {
+			byte[] head = in.readNBytes(8192);
+			for (byte b : head) {
+				if (b == 0)
+					return false;
+			}
+			return true;
+		} catch (IOException e) {
+			return false;
+		}
+	}
 
 	@Override
 	public Set<Node.Op> read(Path[] input) {
@@ -407,7 +498,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 					Path[] pluginInput = filesList.toArray(new Path[0]);
 
 					long localStartTime = System.currentTimeMillis();
-					Set<Node.Op> pluginNodes = reader.read(base, pluginInput);
+					Set<Node.Op> pluginNodes = this.readOrFallBack(base, reader, pluginInput);
 					LOGGER.info(reader.getClass() + ".read(): " + (System.currentTimeMillis() - localStartTime) + "ms");
 					for (Node.Op pluginNode : pluginNodes) {
 						if (!(pluginNode.getArtifact().getData() instanceof PluginArtifactData))

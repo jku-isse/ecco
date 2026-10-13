@@ -2,6 +2,7 @@ package at.jku.isse.ecco.adapter.lilypond;
 
 import at.jku.isse.ecco.EccoException;
 
+import at.jku.isse.ecco.adapter.AdapterUnavailableException;
 import at.jku.isse.ecco.adapter.ArtifactReader;
 import at.jku.isse.ecco.adapter.dispatch.PluginArtifactData;
 import at.jku.isse.ecco.adapter.lilypond.data.ContextArtifactDataFactory;
@@ -144,7 +145,7 @@ public class LilypondReader implements ArtifactReader<Path, Set<Node.Op>> {
 
         if (!this.readable()) {
             boolean lybar1 = LilypondPlugin.LYBAR_1_PARSER.equals(this.stringSetting(LilypondPlugin.PARSER_SETTING, null));
-            throw new EccoException((lybar1
+            throw new AdapterUnavailableException((lybar1
                     ? "This repository was created with the first version of ECCO's tree-sitter LilyPond parse (its"
                     + " .ecco/.settings has " + LilypondPlugin.PARSER_SETTING + "=" + LilypondPlugin.LYBAR_1_PARSER + ", now "
                     + LilypondPlugin.LYBAR_PARSER + "). Its files can still be checked out, but no more committed: tokens now"
