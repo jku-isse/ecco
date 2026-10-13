@@ -84,6 +84,28 @@ public class AlignPathsEquivalenceTest {
 		}
 	}
 
+	/** alignPaths matches equal trailing pairs before its matrix - with repeating content, the oracle must still agree on which copy is matched. */
+	@Test
+	@Timeout(120)
+	public void matchesTheOriginalImplementationWithLongEqualEndings() {
+		Random random = new Random(1013L);
+		PartialOrderGraph.Op pog = new SerPartialOrderGraph();
+		for (int round = 0; round < 2_000; round++) {
+			int alphabetSize = 1 + random.nextInt(3);
+			List<String> ending = new ArrayList<>();
+			for (int i = 0, length = random.nextInt(30); i < length; i++) ending.add(ALPHABET[random.nextInt(alphabetSize)]);
+			List<String> thisContents = new ArrayList<>();
+			List<String> otherContents = new ArrayList<>();
+			for (int i = 0, length = random.nextInt(12); i < length; i++) thisContents.add(ALPHABET[random.nextInt(alphabetSize)]);
+			for (int i = 0, length = random.nextInt(12); i < length; i++) otherContents.add(ALPHABET[random.nextInt(alphabetSize)]);
+			thisContents.addAll(ending);
+			otherContents.addAll(ending);
+			Node.Op[] thisNodes = path(thisContents, true);
+			Node.Op[] otherNodes = path(otherContents, false);
+			assertSameAlignment(referenceAlignPaths(thisNodes, otherNodes), pog.alignPaths(thisNodes, otherNodes), round);
+		}
+	}
+
 	private static void assertSameAlignment(MutableIntObjectMap<Node.Op> expected, MutableIntObjectMap<Node.Op> actual, int round) {
 		assertEquals(expected.keySet(), actual.keySet(), "round " + round + ": matched sequence numbers differ");
 		expected.forEachKeyValue((key, node) -> assertSame(node, actual.get(key), "round " + round + ": sequence number " + key + " matched to a different node"));

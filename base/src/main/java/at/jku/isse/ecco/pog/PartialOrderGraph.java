@@ -485,6 +485,15 @@ public interface PartialOrderGraph extends Persistable {
 			nodeMap.put(other.getHead(), this.getHead());
 			nodeMap.put(other.getTail(), this.getTail());
 
+			// the first of this graph's nodes (in collectNodes() order) with each sequence number -
+			// what a scan over thisNodes per matched node found, which was quadratic in the size of
+			// a file (minutes per merge for a file of a few hundred thousand lines)
+			MutableIntObjectMap<Node.Op> thisNodesBySequenceNumber = IntObjectMaps.mutable.empty();
+			for (Node.Op thisNode : thisNodes) {
+				if (thisNode.getArtifact() != null && !thisNodesBySequenceNumber.containsKey(thisNode.getSequenceNumber()))
+					thisNodesBySequenceNumber.put(thisNode.getSequenceNumber(), thisNode);
+			}
+
 			for (Node.Op otherNode : otherNodes) {
 				if (otherNode.getArtifact() == null) {
 					// nothing to do
@@ -492,12 +501,9 @@ public interface PartialOrderGraph extends Persistable {
 					otherNode.setSequenceNumber(this.getMaxIdentifier());
 					this.incMaxIdentifier();
 				} else {
-					for (Node.Op thisNode : thisNodes) {
-						if (thisNode.getArtifact() != null && thisNode.getSequenceNumber() == otherNode.getSequenceNumber()) {
-							nodeMap.put(otherNode, thisNode);
-							break;
-						}
-					}
+					Node.Op thisNode = thisNodesBySequenceNumber.get(otherNode.getSequenceNumber());
+					if (thisNode != null)
+						nodeMap.put(otherNode, thisNode);
 				}
 			}
 
@@ -1110,9 +1116,28 @@ public interface PartialOrderGraph extends Persistable {
 				}
 			}
 
-			final byte MATCH = 1, UP = 2, LEFT = 3;
+			// The traceback starts at the last cell and follows a match diagonally, so trailing pairs
+			// with equal data are matched to each other whatever comes before them - and the cells
+			// before them depend only on the shorter paths. Matching them up front gives the same
+			// result without the n * m matrix over them: an unchanged file of a few hundred thousand
+			// lines needed a matrix of over 100 GB (and every merge aligns every file, changed or not).
+			MutableIntObjectMap<Node.Op> resultMap = IntObjectMaps.mutable.empty();
 			int n = thisNodesArray.length;
 			int m = otherNodesArray.length;
+			while (n > 0 && m > 0) {
+				Artifact<?> thisArtifact = thisNodesArray[n - 1].getArtifact();
+				Artifact<?> otherArtifact = otherNodesArray[m - 1].getArtifact();
+				if (thisArtifact == null || thisArtifact.getData() == null || otherArtifact == null || !thisArtifact.getData().equals(otherArtifact.getData()))
+					break;
+				resultMap.put(thisNodesArray[n - 1].getSequenceNumber(), otherNodesArray[m - 1]);
+				n--;
+				m--;
+			}
+			if (n == 0 || m == 0) {
+				return resultMap;
+			}
+
+			final byte MATCH = 1, UP = 2, LEFT = 3;
 			byte[][] choice = new byte[n][m];
 			int[] lastRow = new int[m];
 			int[] currentRow = new int[m];
@@ -1139,7 +1164,6 @@ public interface PartialOrderGraph extends Persistable {
 				currentRow = swap;
 			}
 
-			MutableIntObjectMap<Node.Op> resultMap = IntObjectMaps.mutable.empty();
 			int i = n - 1;
 			int j = m - 1;
 			while (true) {

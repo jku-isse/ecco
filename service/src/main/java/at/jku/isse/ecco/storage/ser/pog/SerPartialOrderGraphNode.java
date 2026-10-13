@@ -146,10 +146,9 @@ public class SerPartialOrderGraphNode implements PartialOrderGraph.Node, Partial
 		return this.getArtifact() == null ? "NULL" : this.getArtifact().toString() + " [" + this.getSequenceNumber() + "]";
 	}
 
-	@Override
-	public int hashCode(){
-		return Objects.hash(this.artifact);
-	}
+	// No hashCode() override: equals() is identity-based (see PartialOrderGraph.nodeOccursSameNumberOfTimes()),
+	// so hashing the artifact could never help a lookup - it only put every node with the same content
+	// (blank lines, "}", ...) into one HashMap bucket, which made merging large files quadratic.
 
 	@Override
 	public boolean equalsCompletely(Object o){
