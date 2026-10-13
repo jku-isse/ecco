@@ -33,6 +33,23 @@ public class TypeScriptRoundTripTest {
             "/** A function. */\nfunction f(a: number) {\n    return a;\n}\n",
             "class K {\n    /** A method. */\n    m() {\n        return 1;\n    }\n}\n",
             "interface D {\n    /** The description. */\n    readonly d: string;\n}\n",
+            // functions and methods without a body (declarations as in a .d.ts, overloads) and empty bodies made every commit fail
+            "declare function f(a: number): void;\n",
+            "export declare function g(): string; // no body\n",
+            "export function h(a: string): string;\nexport function h(a: any) {\n    return a;\n}\n",
+            "class K {\n    m(): void;\n    m(a?: number) {\n        return a;\n    }\n}\n",
+            "declare class L {\n    n(a: number): void;\n}\n",
+            "abstract class A {\n    abstract m(): void;\n}\n",
+            "function e() {}\n",
+            "class E {\n    m() {}\n}\n",
+            // variables without an initializer, and an empty enum
+            "declare const x: number;\n",
+            "let y;\nlet a, b = 2;\n",
+            "export declare let z: string, w: number;\n",
+            "enum E {}\n",
+            // a class came back with "\n}" after its last member, whatever closed it: an empty one with two braces
+            "declare class U8 extends Base<\"u8\"> { }\n",
+            "class F {\n    a = 1;\n\n} // end\n",
     })
     public void aFileIsWrittenBackAsItWasRead(String source) throws Exception {
         Path base = Files.createTempDirectory("typescript-round-trip");

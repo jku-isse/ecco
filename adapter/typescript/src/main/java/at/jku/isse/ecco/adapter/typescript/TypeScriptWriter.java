@@ -107,7 +107,9 @@ public class TypeScriptWriter implements ArtifactWriter<Set<Node>, Path> {
                 writeNodes(sb, x, spans);
                 sb.append(",");
             });
-            sb.setLength(sb.length() - 1);
+            // the "," after the last member (none in an empty enum)
+            if (!node.getChildren().isEmpty())
+                sb.setLength(sb.length() - 1);
             sb.append(e.getTrailingComment());
         } else if (data instanceof SwitchBlockArtifactData sw) {
             sb.append(sw);
@@ -128,7 +130,7 @@ public class TypeScriptWriter implements ArtifactWriter<Set<Node>, Path> {
         } else if (data instanceof ClassArtifactData c) {
             sb.append(c.getClassDecl());
             node.getChildren().forEach(x -> writeNodes(sb, x, spans));
-            sb.append("\n}");
+            sb.append(c.getClosing());
         } else if (data instanceof DoBlockArtifactData d) {
             sb.append(d.getLeadingText());
             node.getChildren().forEach(x -> writeNodes(sb, x, spans));

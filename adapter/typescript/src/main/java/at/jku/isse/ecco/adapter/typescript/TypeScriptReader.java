@@ -106,7 +106,8 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 Node.Op vNode = this.entityFactory.createOrderedNode(vData);
                 for (HashMap<String, Object> decl : decls) {
                     var init = (HashMap<String,Object>) decl.get("initializer");
-                    if (!init.get("kind").equals("ArrowFunction")){
+                    // no initializer: let x; or a declaration (declare const x: T;, .d.ts)
+                    if (init == null || !init.get("kind").equals("ArrowFunction")){
                         Artifact.Op<LeafArtifactData> line = this.entityFactory.createArtifact(new LeafArtifactData((String) decl.get("nodeText")));
                         node = this.entityFactory.createOrderedNode(line);
                     } else {
@@ -150,8 +151,8 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 Artifact.Op<EnumArtifactData> eData = this.entityFactory.createArtifact(enu);
                 Node.Op eNode = this.entityFactory.createOrderedNode(eData);
                 eMembers.forEach(x-> eNode.addChild(this.makeNode(x)));
-                var lastEnumEntry = eMembers.get(eMembers.size()-1);
-                endText = this.getTrailingText(currNode,lastEnumEntry);
+                // an empty enum ({}) is all leading text
+                endText = !eMembers.isEmpty() ? this.getTrailingText(currNode, eMembers.get(eMembers.size() - 1)) : "";
                 enu.setTrailingComment(endText);
                 node = eNode;
                 break;
@@ -185,15 +186,18 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 Artifact.Op<BlockArtifactData> block = this.entityFactory.createArtifact(blockData);
                 Node.Op finalNode = this.entityFactory.createOrderedNode(block);
                 stats.forEach(x -> finalNode.addChild(this.makeNode(x)));
-                var lastChild = stats.get(stats.size()-1);
-                endText = this.getTrailingText(currNode,lastChild);
+                // an empty block ({}) is all leading text
+                endText = !stats.isEmpty() ? this.getTrailingText(currNode, stats.get(stats.size() - 1)) : "";
                 blockData.setTrailingComment(endText);
                 node = finalNode;
                 break;
             case "ClassDeclaration":
                 ArrayList<HashMap<String, Object>> members = (ArrayList<HashMap<String, Object>>) currNode.get("members");
                 text = !members.isEmpty() ? getLeadingText(currNode,members.get(0)) : getLeadingText(currNode,null);
-                Artifact.Op<ClassArtifactData> clazz = this.entityFactory.createArtifact(new ClassArtifactData(text));
+                var classData = new ClassArtifactData(text);
+                // what closes the class as written (see ClassArtifactData#getClosing)
+                classData.setTrailingComment(!members.isEmpty() ? getTrailingText(currNode, members.get(members.size() - 1)) : null);
+                Artifact.Op<ClassArtifactData> clazz = this.entityFactory.createArtifact(classData);
                 Node.Op finalNode1 = this.entityFactory.createOrderedNode(clazz);
                 members.forEach(x -> finalNode1.addChild(this.makeNode(x)));
                 node = finalNode1;
@@ -203,13 +207,10 @@ public class TypeScriptReader implements ArtifactReader<Path, Set<Node.Op>> {
                 text = getLeadingText(currNode,body);
                 Artifact.Op<FunctionArtifactData> fun = this.entityFactory.createArtifact(new FunctionArtifactData(text));
                 node = this.entityFactory.createOrderedNode(fun);
-                ArrayList<HashMap<String,Object>> modifiers = (ArrayList<HashMap<String, Object>>) currNode.get("modifiers");
-                if (modifiers != null) {
-                    if (modifiers.stream().anyMatch(x -> x.get("nodeText").equals("abstract"))) {
-                        break;
-                    }
+                // no body: abstract, a declaration (declare, .d.ts) or an overload's signature - its text is all of it
+                if (body != null) {
+                    node.addChild(this.makeNode(body));
                 }
-                node.addChild(this.makeNode(body));
                 break;
             case "ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement" :
                 HashMap<String, Object> statement = (HashMap<String,Object>) currNode.get("statement");

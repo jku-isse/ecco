@@ -17,6 +17,18 @@ public class ClassArtifactData extends AbstractArtifactData {
         return this.classDecl;
     }
 
+    /**
+     * What closes the class after its last member, as written ("\n}", "\n} // end"): its trailing
+     * comment. An empty class has its braces in its declaration, and nothing after it (null). A class
+     * stored before this was recorded has "" and is closed with "\n}", as it always was.
+     * @return The text after the last member
+     */
+    public String getClosing() {
+        String closing = this.getTrailingComment();
+        if (closing == null) return "";
+        return closing.isEmpty() ? "\n}" : closing;
+    }
+
     @Override
     public String toString() {
         return this.classDecl;
