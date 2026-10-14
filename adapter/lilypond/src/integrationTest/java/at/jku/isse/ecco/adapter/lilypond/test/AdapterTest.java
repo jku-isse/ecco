@@ -1,25 +1,16 @@
 package at.jku.isse.ecco.adapter.lilypond.test;
 
 import at.jku.isse.ecco.adapter.lilypond.*;
-import at.jku.isse.ecco.adapter.lilypond.parser.LilypondNodeSerializationWrapper;
-import at.jku.isse.ecco.adapter.lilypond.parser.LilypondToken;
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.Objects;
 import java.util.Set;
 import java.util.logging.FileHandler;
@@ -27,9 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import static com.google.common.io.MoreFiles.deleteDirectoryContents;
 
 public class AdapterTest {
 
@@ -128,89 +117,5 @@ public class AdapterTest {
             System.out.println(s);
         }
         System.out.println("END WRITE");
-    }
-
-    @DataProvider(name = "serializationPaths")
-    public static Object[][] serializedNodesPaths() {
-        // input and output path relative to the parent directory (e.g. ../ecco)
-        return new String[][] {
-                {"pathToDirectoryToSerializeLilypondFiles", "destinationDirectory"}
-        };
-    }
-
-    /**
-     * This method can be used to serialize parser input such that {@link LilypondParser} does not depend on the python
-     * parser (tree-sitter, py4j, lymodel) being set up.
-     * @throws IOException Thrown if feature path is missing.
-     */
-    @Ignore
-    @Test(groups = {"python"}, dataProvider = "serializationPaths")
-    public void serializeParsedNodes(String inputDir, String outputDir) throws IOException {
-        ParserFactory.setParseFiles(true);
-        Path featuresPath = BASE_DIR.getParent().resolve(inputDir);
-
-        if (!Files.exists(featuresPath)) {
-            throw new IOException("feature path " + featuresPath.toAbsolutePath() + " does not exist");
-        }
-
-        Path serPath = BASE_DIR.getParent().resolve(outputDir);
-        if (!Files.exists(serPath)) {
-            // create subdirectories if needed
-            Files.createDirectories(serPath);
-            System.out.println("created directory '" + serPath.toAbsolutePath() + "'");
-        }
-
-        deleteDirectoryContents(serPath);
-        Files.createDirectory(serPath);
-
-        LilypondParser<LilypondToken> parser = ParserFactory.getParser();
-        assert parser != null;
-        try {
-            parser.init();
-
-            Files.walkFileTree(featuresPath, new FeatureFileVisitor(serPath, p -> {
-                LilypondNode<LilypondToken> head = parser.parse(p);
-
-                final Path dest = serPath.resolve(featuresPath.relativize(p));
-                try (FileOutputStream fos = new FileOutputStream(dest.toFile());
-                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-
-                    LilypondNode<LilypondToken> n = head;
-                    int nNodes = 0;
-                    while (n != null) {
-                        nNodes++;
-                        n = n.getNext();
-                    }
-                    n = head;
-
-                    oos.writeInt(nNodes);
-
-                    while (n != null) {
-                        oos.writeObject(new LilypondNodeSerializationWrapper(n));
-                        n = n.getNext();
-                    }
-                    oos.flush();
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }));
-
-        } finally {
-            parser.shutdown();
-        }
-    }
-
-    static void deleteDirectoryContents(Path dir) throws IOException {
-        if (!Files.exists(dir)) {
-            return;
-        }
-
-        try (Stream<Path> walk = Files.walk(dir)) {
-            walk.sorted(Comparator.reverseOrder())
-                    .map(Path::toFile)
-                    //.peek(System.out::println)
-                    .forEach(File::delete);
-        }
     }
 }
