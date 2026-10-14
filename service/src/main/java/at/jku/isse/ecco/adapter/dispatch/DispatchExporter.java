@@ -78,7 +78,7 @@ public class DispatchExporter implements ArtifactExporter<Set<? extends Node>, P
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
 			try (Stream<Path> entries = Files.list(base)) {
-				if (entries.anyMatch(path -> !path.equals(this.repositoryDir))) {
+				if (entries.anyMatch(path -> !DispatchWriter.isRepositoryDir(path, this.repositoryDir))) {
 					throw new EccoException("Current base directory must be empty for checkout operation.");
 				}
 			} catch (IOException e) {

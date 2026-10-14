@@ -71,6 +71,24 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 		return null;
 	}
 
+	/**
+	 * Whether {@code path}, an entry of a checkout's base directory, is the repository directory -
+	 * the one entry a base directory may hold. The same file, not the same path: a repository opened
+	 * through a symlink (on macOS, /var is /private/var), a relative path or "./.ecco" made the
+	 * repository's own folder count as content, and a checkout there failed.
+	 */
+	static boolean isRepositoryDir(Path path, Path repositoryDir) {
+		if (repositoryDir == null)
+			return false;
+		if (path.equals(repositoryDir))
+			return true;
+		try {
+			return Files.exists(repositoryDir) && Files.isSameFile(path, repositoryDir);
+		} catch (IOException e) {
+			return false;
+		}
+	}
+
 	@Override
 	public Path[] write(Set<? extends Node> input) {
 		return this.write(Paths.get("."), input);
@@ -82,7 +100,7 @@ public class DispatchWriter implements ArtifactWriter<Set<? extends Node>, Path>
 			throw new EccoException("Base directory does not exist.");
 		} else if (Files.isDirectory(base)) {
 			try (Stream<Path> entries = Files.list(base)) {
-				if (entries.anyMatch(path -> !path.equals(this.repositoryDir))) {
+				if (entries.anyMatch(path -> !isRepositoryDir(path, this.repositoryDir))) {
 					throw new EccoException("Current base directory must be empty for checkout operation.");
 				}
 			} catch (IOException e) {

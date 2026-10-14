@@ -140,8 +140,7 @@ public class ArtifactsViewTest {
     /** Cancel in "delete contents?" stops Checkout Selected: nothing is written into the repository's folder. */
     @Test
     @Timeout(60)
-    public void checkoutSelectedStopsWhenClearingIsCancelled(@TempDir Path temp) throws Exception {
-        Path tmp = temp.toRealPath();
+    public void checkoutSelectedStopsWhenClearingIsCancelled(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             ScriptedArtifactsView view = scripted(service, false);
 
@@ -150,7 +149,7 @@ public class ArtifactsViewTest {
                 button(view, "Checkout Selected").fire();
             });
 
-            assertEquals(List.of(tmp.resolve("repo")), view.clearAsked);
+            assertEquals(List.of(service.getRepositoryHomeDir()), view.clearAsked);
             Thread.sleep(500);
             try (Stream<Path> list = Files.list(tmp.resolve("repo"))) {
                 assertEquals(List.of(".ecco"), list.map(p -> p.getFileName().toString()).toList(), "nothing is checked out");
@@ -162,10 +161,7 @@ public class ArtifactsViewTest {
     /** Confirming "delete contents?" checks the selected associations out into the repository's folder. */
     @Test
     @Timeout(60)
-    public void checkoutSelectedWritesWhenClearingIsConfirmed(@TempDir Path temp) throws Exception {
-        // the real path: the checkout only ignores the .ecco folder under the exact path the
-        // repository was opened with, and the temp folder is behind a symlink on macOS
-        Path tmp = temp.toRealPath();
+    public void checkoutSelectedWritesWhenClearingIsConfirmed(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             ScriptedArtifactsView view = scripted(service, true);
 
@@ -175,7 +171,7 @@ public class ArtifactsViewTest {
             });
 
             waitUntil("b.txt is checked out", () -> Files.exists(tmp.resolve("repo/b.txt")));
-            assertEquals(List.of(tmp.resolve("repo")), view.clearAsked);
+            assertEquals(List.of(service.getRepositoryHomeDir()), view.clearAsked);
             assertTrue(Files.isDirectory(tmp.resolve("repo/.ecco")), "the repository is kept");
         }
     }
