@@ -16,9 +16,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import at.jku.isse.ecco.dao.EntityFactory;
-import at.jku.isse.ecco.tree.Node;
-
 /**
  * Reads and writes line-based text files so that a commit/checkout round trip reproduces them byte
  * for byte. Line adapters used to read with the default charset and write every line followed by

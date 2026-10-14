@@ -686,7 +686,12 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private Collection<Node.Op> extractImportNodes(CompilationUnit cu) {
 		List<Node.Op> importNodes = new ArrayList<>(cu.getImports().size());
+		// an import written twice is valid Java and means the same as once - read once, as the
+		// file's imports are an unordered set of children, which refuses two equal ones
+		Set<String> imported = new HashSet<>();
 		for (ImportDeclaration id : cu.getImports()) {
+			if (!imported.add(id.toString(PPC)))
+				continue;
 			JavaASTSimpleStringData importData = new JavaASTSimpleStringData(id.toString(PPC));
 			importData.setType(ASTNodeType.IMPORT_DECLARATION);
 			commented(importData, id);
