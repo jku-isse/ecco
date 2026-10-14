@@ -539,7 +539,7 @@ Postcondition: The repository is unchanged.
 | Secondary actors | None |
 | Dependency | INCLUDE USE CASE Minimize presence conditions |
 | Generalization | None |
-| Front ends | GUI View > Feature Model; CLI `suggest-constraints` (shows suggestions only) |
+| Front ends | GUI View > Feature Model; CLI `suggest-constraints`, `accept-constraint`, `reject-constraint` |
 | Realizes | FR-N1 to FR-N6, IF-C5, IF-G5 |
 
 **Basic flow**
@@ -580,10 +580,11 @@ Postcondition: The constraints are suggestions again.
 
 **Specific alternative flow SA4** (RFS 1)
 
-1. IF the product-line engineer runs `suggest-constraints` THEN the system prints the suggestions with "(suggestions only -- confirm before adding to the feature model)" ENDIF.
-2. ABORT.
+1. IF the product-line engineer runs `suggest-constraints` THEN the system prints the pending suggestions and how many are accepted and rejected; with `--all` it also lists the accepted ones with their trust state and the rejected ones ENDIF.
+2. IF the product-line engineer runs `accept-constraint` or `reject-constraint` with a kind and its features THEN the system stores the decision as in step 5 or SA2, and with `--undo` moves the suggestion back to pending as in SA3; a feature the repository does not have, or the wrong number of features for the kind, is refused ENDIF.
+3. ABORT.
 
-Postcondition: The repository is unchanged.
+Postcondition: The repository holds the decision; `suggest-constraints` alone leaves it unchanged.
 
 **Specific alternative flow SA5** (RFS 1)
 
@@ -1168,11 +1169,11 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| IF-C1 | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `minimize-preview`, `minimize` and `order`; `checkout` takes `--minimized`. | Code `Main.registerCommands()` |
+| IF-C1 | The CLI shall offer `init`, `status`, `adapters`, `commit -c [-m]`, `checkout -c`, `features`, `traces`, `get`/`set`, `remotes`, `fork`, `fetch`, `pull`, `push`, `dg`, `suggest-constraints`, `accept-constraint`, `reject-constraint`, `minimize-preview`, `minimize` and `order`; `checkout` takes `--minimized`. | Code `Main.registerCommands()` |
 | IF-C2 | `commit` and `checkout` shall require a configuration (`-c`). | Code |
 | IF-C3 | Exit codes shall be 0 on success, 1 on a failed command, 2 on invalid arguments; errors go to stderr with their cause chain, the stack trace only with `-Decco.debug=true`. The error shown shall be the command's own: a failure to close the repository afterwards is attached to it, not shown in its place; running out of memory is reported as such, with the heap size and how to raise it (`JAVA_OPTS=-Xmx16g`). | Code `Main.run`, `Command#withOpenRepository`; Test `CommitCommandTest`; History 2dc75b70 |
 | IF-C4 | `fetch`, `pull` and `push` shall default to the remote `origin`; `pull`, `push` and `fork` take `--exclude` feature revisions. | Code |
-| IF-C5 | `suggest-constraints` and `minimize-preview` shall take `--min-witness` (default 4) and `--confidence` (default 0.9); only hard (confidence 1.0) accepted constraints are ever applied. | Code |
+| IF-C5 | `suggest-constraints` and `minimize-preview` shall take `--min-witness` (default 4) and `--confidence` (default 0.9); only hard (confidence 1.0) accepted constraints are ever applied. `suggest-constraints` shall leave out accepted and rejected suggestions unless given `--all`. | Code |
 | IF-C6 | `dg` shall print the association dependency graph as GML on stdout. | Code |
 | IF-C7 | The CLI shall run without JavaFX and bundle the same adapters as the GUI, so it can work on repositories made with the GUI. | Code (`ecco.headless`, openjfx excluded); Doc |
 | IF-C8 | The CLI shall find the repository in the current or nearest parent directory and use that directory as the working directory; `init` and `fork` create a repository in the current directory. | Doc; Test `MainRepositoryDiscoveryTest` |
@@ -1216,7 +1217,7 @@ Three front ends sit on one service API (`EccoService`): a CLI for scripting and
 | Fork | yes | yes | yes |
 | Fetch / pull / push | yes | yes | pull only, between its own repositories |
 | Sync server | no | yes | no |
-| Constraint mining | suggest, preview, minimize (no accept) | suggest, accept, minimize | no |
+| Constraint mining | suggest, accept, reject, preview, minimize | suggest, accept, reject, minimize | no |
 | Git import | no | yes | no |
 | Visualizations | `dg` as GML | yes | no |
 

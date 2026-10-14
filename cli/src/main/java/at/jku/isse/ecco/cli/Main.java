@@ -19,6 +19,7 @@ import at.jku.isse.ecco.cli.command.pull.PullCommand;
 import at.jku.isse.ecco.cli.command.push.PushCommand;
 import at.jku.isse.ecco.cli.command.remotes.RemotesCommand;
 import at.jku.isse.ecco.cli.command.status.StatusCommand;
+import at.jku.isse.ecco.cli.command.suggestconstraints.ConstraintDecisionCommand;
 import at.jku.isse.ecco.cli.command.suggestconstraints.SuggestConstraintsCommand;
 import at.jku.isse.ecco.cli.command.traces.TracesCommand;
 import at.jku.isse.ecco.service.EccoService;
@@ -136,6 +137,7 @@ public class Main {
         registerTracesCommand(commandParser);
         registerDependencyGraphCommand(commandParser);
         registerSuggestConstraintsCommand(commandParser);
+        registerConstraintDecisionCommands(commandParser);
         registerMinimizePreviewCommand(commandParser);
         registerMinimizeCommand(commandParser);
         registerOrderCommand(commandParser);
@@ -256,7 +258,24 @@ public class Main {
                 .type(Integer.class).setDefault(4).help("minimum number of witnesses before a rule is proposed");
         suggestConstraintsCommandParser.addArgument(SuggestConstraintsCommand.FLAG_CONFIDENCE)
                 .type(Double.class).setDefault(0.9).help("confidence threshold in [0,1]; 1.0 disables near-misses");
+        suggestConstraintsCommandParser.addArgument(SuggestConstraintsCommand.FLAG_ALL)
+                .action(Arguments.storeTrue()).help("also list the accepted and rejected suggestions");
         commandRegister.register(SuggestConstraintsCommand.SUGGEST_CONSTRAINTS, new SuggestConstraintsCommand(eccoService));
+    }
+
+    private static void registerConstraintDecisionCommands(Subparsers commandParser) {
+        for (boolean accept : new boolean[]{true, false}) {
+            String command = accept ? ConstraintDecisionCommand.ACCEPT : ConstraintDecisionCommand.REJECT;
+            Subparser decisionParser = commandParser.addParser(command)
+                    .help((accept ? "accept" : "reject") + " a constraint suggestion, as suggest-constraints lists it");
+            decisionParser.setDefault(ProgramConstants.COMMAND, command);
+            decisionParser.addArgument(ConstraintDecisionCommand.KIND_KEY).help("REQUIRES, EXCLUDES or MANDATORY");
+            decisionParser.addArgument(ConstraintDecisionCommand.FEATURE_A_KEY).help("the feature (REQUIRES: the one that requires the other)");
+            decisionParser.addArgument(ConstraintDecisionCommand.FEATURE_B_KEY).nargs("?").help("the other feature; none for MANDATORY");
+            decisionParser.addArgument(ConstraintDecisionCommand.FLAG_UNDO).action(Arguments.storeTrue())
+                    .help("move the suggestion back to pending");
+            commandRegister.register(command, new ConstraintDecisionCommand(eccoService, accept));
+        }
     }
 
     private static void registerMinimizePreviewCommand(Subparsers commandParser) {

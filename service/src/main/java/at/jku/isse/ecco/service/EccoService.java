@@ -1593,6 +1593,14 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /**
+     * Rejects one constraint given by kind and features (e.g. from the command line). See
+     * {@link ConstraintService#rejectConstraints}.
+     */
+    public synchronized void rejectConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
+        this.constraintService.rejectConstraint(kind, featureA, featureB);
+    }
+
+    /**
      * "Move back to pending" for rejected suggestions. See {@link ConstraintService#unrejectConstraints}.
      */
     public synchronized void unrejectConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {

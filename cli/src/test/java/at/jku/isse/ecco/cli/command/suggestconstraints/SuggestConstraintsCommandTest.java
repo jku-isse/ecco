@@ -14,14 +14,13 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 /**
  * SuggestConstraintsCommand is a thin wrapper around ConfigurationBridge.readConfigurations() +
  * ConstraintMiner, already covered in isolation elsewhere (ConstraintMinerTest,
- * ParallelMinimizationTest's sequential baseline). What's untested is the command's own glue: the
- * open()/read/close() sequencing, the empty-repository message, and that a real commit history
- * flows through end to end without throwing.
+ * ParallelMinimizationTest's sequential baseline). What's tested here is the command's own glue:
+ * the open()/read/close() sequencing, the empty-repository message, and that a real commit history
+ * flows through end to end. Leaving out decided suggestions: ConstraintDecisionCommandTest.
  */
 public class SuggestConstraintsCommandTest {
 
@@ -29,21 +28,26 @@ public class SuggestConstraintsCommandTest {
         Map<String, Object> args = new HashMap<>();
         args.put(SuggestConstraintsCommand.MIN_WITNESS_KEY, 4);
         args.put(SuggestConstraintsCommand.CONFIDENCE_KEY, 0.9);
+        args.put(SuggestConstraintsCommand.ALL_KEY, false);
         return new Namespace(args);
     }
 
     @Test
-    public void printsNoSuggestionsMessageAndClosesTheServiceForARepositoryWithNoCommits() {
-        EccoService service = mock(EccoService.class);
-        when(service.getCommits()).thenReturn(List.of());
-        StringWriter writer = new StringWriter();
-        SuggestConstraintsCommand command = new SuggestConstraintsCommand(service, writer);
+    @Timeout(30)
+    public void printsNoSuggestionsMessageAndClosesTheServiceForARepositoryWithNoCommits() throws IOException {
+        Path workDir = Files.createTempDirectory("suggest-constraints-empty");
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(workDir.resolve(".ecco"));
+            service.init();
+            service.close();
+            StringWriter writer = new StringWriter();
+            SuggestConstraintsCommand command = new SuggestConstraintsCommand(service, writer);
 
-        command.run(defaultArgs());
+            command.run(defaultArgs());
 
-        verify(service).open();
-        verify(service).close();
-        assertEquals(List.of("No constraint suggestions (from 0 configurations)."), writer.getLines());
+            assertFalse(service.isInitialized(), "closed again");
+            assertEquals(List.of("No constraint suggestions (from 0 configurations)."), writer.getLines());
+        }
     }
 
     /**

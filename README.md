@@ -105,7 +105,8 @@ ecco checkout -c "Base, Cart, Wishlist"    # composed from both commits; see .wa
 | `fork [--exclude <revisions>] <remote>` | Creates a repository here from another one - see [Distributed Operations](#distributed-operations). |
 | `fetch [remote]`, `pull [--exclude <revisions>] [remote]`, `push [--exclude <revisions>] [remote]` | Synchronize with a remote. |
 | `dg` | Prints the dependency graph between associations. |
-| `suggest-constraints [--min-witness N]` | Mines feature constraints (requires, excludes, ...) from the committed configurations. |
+| `suggest-constraints [--min-witness N] [--all]` | Mines feature constraints (requires, excludes, ...) from the committed configurations and lists those not decided yet; `--all` also lists the accepted and rejected ones. |
+| `accept-constraint KIND FEATURE [OTHER] [--undo]`, `reject-constraint ...` | Accepts or rejects a suggestion as `suggest-constraints` lists it (`REQUIRES A B`, `EXCLUDES A B`, `MANDATORY A`), stored in the repository like the GUI's decisions; `--undo` makes it pending again. |
 | `minimize-preview [--min-witness N]` | Shows the presence conditions simplified with the mined constraints (read-only). |
 | `minimize` | Stores minimized conditions that `checkout --minimized -c <configuration>` uses instead of the associations' own, where they are still valid (until a commit changes what they were computed from). They give the same files for every configuration the trusted accepted constraints allow. |
 

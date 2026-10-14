@@ -153,6 +153,17 @@ public class ConstraintService {
         });
     }
 
+    /** Rejects one constraint given by kind and features - see {@link #rejectConstraints}. */
+    public void rejectConstraint(ConstraintMiner.Kind kind, String featureA, String featureB) {
+        owner.checkInitialized();
+        checkNotNull(kind);
+        checkNotNull(featureA);
+        owner.writeTransaction(repository -> {
+            reject(repository, toConstraintKind(kind), featureA, featureB);
+            return repository;
+        });
+    }
+
     /** "Move back to pending" for rejected suggestions, in one transaction. No-op if empty. */
     public void unrejectConstraints(List<ConstraintSuggestionPreferences.AcceptedConstraint> constraints) {
         owner.checkInitialized();
