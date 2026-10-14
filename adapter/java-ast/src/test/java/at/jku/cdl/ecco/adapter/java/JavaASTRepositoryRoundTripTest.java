@@ -73,4 +73,71 @@ public class JavaASTRepositoryRoundTripTest {
     public void theSecondVariantIsCheckedOutAsCommitted() throws Exception {
         assertEquals(B, checkout("B"));
     }
+
+    private static final String GUARDED = "package p;\n\npublic enum C {\n\n    @Deprecated\n    ONLY;\n"
+            + "    int f(Object o) {\n        switch(o) {\n            case Integer i when i > 0 ->\n                g(i);\n"
+            + "            case null, default ->\n                g(0);\n        }\n        return 0;\n    }\n}\n";
+
+    private static final String UNGUARDED = "package p;\n\npublic enum C {\n\n    ONLY;\n"
+            + "    int f(Object o) {\n        switch(o) {\n            case Integer i ->\n                g(i);\n"
+            + "            case null ->\n                g(0);\n        }\n        return 0;\n    }\n}\n";
+
+    /**
+     * Variants that differ only in a case guard, in "case null, default" against "case null" and in
+     * an enum constant's annotation (one constant: see anInsertedEnumConstantKeepsItsPlace for
+     * the order of several): each is checked out as committed - the guard, the default and
+     * the annotation were lost, so both variants came back as the second.
+     */
+    @Test
+    @Timeout(120)
+    public void guardsDefaultsAndConstantAnnotationsStayWithTheirVariant() throws Exception {
+        Path work = Files.createTempDirectory("java-ast-repository");
+        Path content = Files.createDirectories(work.resolve("content"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(work.resolve(".ecco"));
+            service.init();
+            service.setBaseDir(content);
+            Files.createDirectories(content.resolve(FILE).getParent());
+            Files.writeString(content.resolve(FILE), GUARDED);
+            service.commit("guarded", "G");
+            Files.writeString(content.resolve(FILE), UNGUARDED);
+            service.commit("unguarded", "U");
+
+            for (String[] variant : new String[][]{{"G", GUARDED}, {"U", UNGUARDED}}) {
+                Path checkout = Files.createDirectories(work.resolve("checkout-" + variant[0]));
+                service.setBaseDir(checkout);
+                service.checkout(variant[0]);
+                assertEquals(variant[1], Files.readString(checkout.resolve(FILE)), variant[0]);
+            }
+        }
+    }
+
+    /**
+     * Enum constants are unordered children of the type's node, like its members - but their order
+     * is meaning: ordinal(), values(), compareTo. A constant only one variant has comes after the
+     * shared ones, wherever it was.
+     */
+    @Test
+    @Disabled("bug: a constant inserted before others is checked out after them - its ordinal changes")
+    @Timeout(120)
+    public void anInsertedEnumConstantKeepsItsPlace() throws Exception {
+        String a = "package p;\n\npublic enum C {\n\n    RED, GREEN\n}\n";
+        String b = "package p;\n\npublic enum C {\n\n    BLUE, RED, GREEN\n}\n"; // checked out as "RED, GREEN, BLUE"
+        Path work = Files.createTempDirectory("java-ast-repository");
+        Path content = Files.createDirectories(work.resolve("content"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(work.resolve(".ecco"));
+            service.init();
+            service.setBaseDir(content);
+            Files.createDirectories(content.resolve(FILE).getParent());
+            Files.writeString(content.resolve(FILE), a);
+            service.commit("a", "A");
+            Files.writeString(content.resolve(FILE), b);
+            service.commit("b", "B");
+            Path checkout = Files.createDirectories(work.resolve("checkout"));
+            service.setBaseDir(checkout);
+            service.checkout("B");
+            assertEquals(b, Files.readString(checkout.resolve(FILE)));
+        }
+    }
 }

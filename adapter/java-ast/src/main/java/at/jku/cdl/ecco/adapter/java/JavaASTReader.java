@@ -309,7 +309,11 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 
 	private void addEnumConstants(EnumDeclaration enumdec, Op clazzNode) {
 		for (EnumConstantDeclaration ecd : enumdec.getEntries()) {
-			JavaASTSimpleStringData enumData = new JavaASTSimpleStringData(ecd.getNameAsString());
+			// the annotations were lost; a constant without any is stored by its name, as before
+			String constant = ecd.getNameAsString();
+			if (!ecd.getAnnotations().isEmpty())
+				constant = ecd.getAnnotations().stream().map(a -> a.toString(PPC)).collect(Collectors.joining(" ")) + " " + constant;
+			JavaASTSimpleStringData enumData = new JavaASTSimpleStringData(constant);
 			enumData.setType(ASTNodeType.ENUM_CONSTANTS);
 			commented(enumData, ecd);
 			Artifact.Op<JavaASTSimpleStringData> enumArtifact = this.entityFactory.createArtifact(enumData);
@@ -606,6 +610,13 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 					se.getLabels().stream().map(lab -> lab.toString(PPC)).collect(Collectors.toList()));
 			if (label.equals("")) {
 				label = "DEFAULT";
+			} else {
+				// "case null, default" and a pattern's guard ("case Integer i when i > 0") were left
+				// out, which changed the code; an entry without them is stored as before
+				if (se.isDefault())
+					label += ",default";
+				if (se.getGuard().isPresent())
+					label += " when " + se.getGuard().get().toString(PPC);
 			}
 			// "case A -> ..." does not fall through, unlike "case A:" - it used to be written as the latter
 			if (se.getType() != SwitchEntry.Type.STATEMENT_GROUP) {

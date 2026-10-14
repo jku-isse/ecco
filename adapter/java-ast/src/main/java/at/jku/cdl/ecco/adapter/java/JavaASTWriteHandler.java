@@ -84,7 +84,8 @@ public class JavaASTWriteHandler {
 			Files.write(outputPath, toJavaSource(fileRoot).getBytes(), StandardOpenOption.CREATE,
 					StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (IOException e) {
-			e.printStackTrace();
+			// was printed and ignored: the checkout went on without the file
+			throw new EccoException("Could not write file: " + outputPath, e);
 		}
 	}
 
@@ -526,6 +527,16 @@ public class JavaASTWriteHandler {
 		return StaticJavaParser.parseStatement("try {} catch (" + text + ") {}").asTryStmt().getCatchClauses().get(0).getParameter();
 	}
 
+	/** A constant as stored: its name, after its annotations if it has any. */
+	private static EnumConstantDeclaration enumConstant(String text) {
+		if (!text.startsWith("@"))
+			return new EnumConstantDeclaration(text);
+		EnumConstantDeclaration parsed = StaticJavaParser.parseTypeDeclaration("enum E { " + text + " }").asEnumDeclaration().getEntry(0);
+		EnumConstantDeclaration constant = new EnumConstantDeclaration(parsed.getNameAsString());
+		constant.setAnnotations(parsed.getAnnotations());
+		return constant;
+	}
+
 	private static EnumDeclaration addEnumDeclaration(Node child, com.github.javaparser.ast.Node parent) {
 		TypeDeclaration<?> type = parseTypeDeclarationText(child.getArtifact().toString());
 		EnumDeclaration enumType = type.asEnumDeclaration();
@@ -534,8 +545,7 @@ public class JavaASTWriteHandler {
 				.filter(data -> ((JavaASTData) data.getArtifact().getData()).getType() == ASTNodeType.ENUM_CONSTANTS)
 				.collect(Collectors.toList());
 		for (Node enumDataNode : enumConstDataNodes) {
-			EnumConstantDeclaration enumConstDecl = new EnumConstantDeclaration(
-					enumDataNode.getArtifact().getData().toString());
+			EnumConstantDeclaration enumConstDecl = enumConstant(enumDataNode.getArtifact().getData().toString());
 			List<Expression> arguments = enumDataNode.getChildren().stream().map(n -> n.getArtifact().getData())
 					.filter(JavaASTData.class::isInstance).map(JavaASTData.class::cast)
 					.filter(data -> data.getType() == ASTNodeType.EXPRESSION)
@@ -695,8 +705,9 @@ public class JavaASTWriteHandler {
 	 * The labels of a switch entry, parsed in a switch: they used to be split at every comma, which
 	 * broke a label containing one ({@code case "a,b":}).
 	 */
-	private static NodeList<Expression> parseSwitchLabels(String text) {
-		return StaticJavaParser.parseStatement("switch (x) { case " + text + ": }").asSwitchStmt().getEntry(0).getLabels();
+	/** The entry {@code case text:} - its labels, a "default" among them and a guard. */
+	private static SwitchEntry parseSwitchEntry(String text) {
+		return StaticJavaParser.parseStatement("switch (x) { case " + text + ": }").asSwitchStmt().getEntry(0);
 	}
 
 	/** Writes {@code entry} as {@code case A -> ...}: an expression, a throw, or a block. */
@@ -726,7 +737,10 @@ public class JavaASTWriteHandler {
 				label = label.substring(0, label.length() - JavaASTReader.ARROW.length());
 			SwitchEntry entry = new SwitchEntry();
 			if (!label.equals("DEFAULT")) {
-				entry.setLabels(parseSwitchLabels(label));
+				SwitchEntry parsed = parseSwitchEntry(label);
+				entry.setLabels(parsed.getLabels());
+				entry.setDefault(parsed.isDefault());
+				parsed.getGuard().ifPresent(entry::setGuard);
 			} else {
 				Optional<SwitchEntry> def = entries.stream().filter(se -> se.getLabels().size() == 0).findAny();
 				if (def.isPresent()) {

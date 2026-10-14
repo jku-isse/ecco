@@ -215,25 +215,27 @@ public class JavaASTRoundTripTest {
 
     // ---- what does not round-trip ----
 
+    // ---- fixed: they did not round-trip ----
+
+    /** The guard of a pattern case was lost. */
     @Test
-    @Disabled("bug: the guard of a pattern case is lost - JavaASTReader.addSwitch() keeps only SwitchEntry#getLabels()")
     public void aCaseGuardIsKept() throws IOException {
         String source = method("        Object o = xs;\n        switch(o) {\n            case Integer i when i > 0 ->\n                g(i);\n            default ->\n                g(0);\n        }\n");
-        assertEquals(source, readWrite("C.java", source)); // written: "case Integer i ->"
+        assertEquals(source, readWrite("C.java", source));
     }
 
+    /** "case null, default" was written as "case null". */
     @Test
-    @Disabled("bug: 'case null, default' is written as 'case null' - JavaASTReader.addSwitch() ignores SwitchEntry#isDefault()")
     public void caseNullDefaultIsKept() throws IOException {
         String source = method("        Object o = xs;\n        switch(o) {\n            case String s ->\n                g(1);\n            case null, default ->\n                g(0);\n        }\n");
-        assertEquals(source, readWrite("C.java", source)); // written: "case null ->"
+        assertEquals(source, readWrite("C.java", source));
     }
 
+    /** The annotations of an enum constant were lost. */
     @Test
-    @Disabled("bug: annotations of enum constants are lost - JavaASTReader.addEnumConstants() keeps only the name")
     public void anEnumConstantKeepsItsAnnotation() throws IOException {
         String source = "enum E {\n\n    @Deprecated\n    OLD, NEW\n}\n";
-        assertEquals(source, readWrite("C.java", source)); // written: "OLD, NEW"
+        assertEquals(source, readWrite("C.java", source));
     }
 
     @Test
@@ -295,15 +297,15 @@ public class JavaASTRoundTripTest {
         assertEquals(source, Files.readString(out.resolve("C.java")));
     }
 
-    /** A failed write is printed, not thrown: the checkout does not learn that the file is missing. */
+    /** A file that cannot be written fails the write - it was printed and ignored, and the checkout went on without it. */
     @Test
-    public void aFailedWriteIsNotReported() throws IOException {
+    public void aFailedWriteIsReported() throws IOException {
         Path base = Files.createTempDirectory("java-ast-round-trip");
         Files.writeString(base.resolve("C.java"), "class C {\n}\n");
         Set<Node.Op> nodes = new JavaASTReader(new SerEntityFactory()).read(base, new Path[]{Path.of("C.java")});
         Path out = Files.createTempDirectory("java-ast-round-trip-out");
         Files.createDirectory(out.resolve("C.java")); // the file cannot be written
-        new JavaASTWriter().write(out, Set.copyOf(nodes)); // bug: should throw
-        assertFalse(Files.isRegularFile(out.resolve("C.java")));
+        EccoException failure = assertThrows(EccoException.class, () -> new JavaASTWriter().write(out, Set.copyOf(nodes)));
+        assertEquals("Could not write file: " + out.resolve("C.java"), failure.getMessage());
     }
 }

@@ -10,6 +10,7 @@ import at.jku.isse.ecco.tree.Node;
 import com.google.inject.Inject;
 
 import javax.imageio.ImageIO;
+import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -103,6 +104,9 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 		assert x >= 0 && x < image.getWidth() : "Expected x to be in image range.";
 		assert y >= 0 && y < image.getHeight() : "Expected y to be in image range.";
 
+		if (isGray(image))
+			return getGrayPixel(image, x, y);
+
 		int argb = image.getRGB(x, y);
 
 		return new int[]{(argb >> 24) & 0xff, // alpha
@@ -110,6 +114,29 @@ public class ImageReader implements ArtifactReader<Path, Set<Node.Op>> {
 				(argb >> 8) & 0xff, // green
 				argb & 0xff // blue
 		};
+	}
+
+	/** Whether {@code image} is grayscale (8 or 16 bits, with or without alpha) - not a palette, which is sRGB. */
+	private static boolean isGray(BufferedImage image) {
+		return image.getColorModel().getColorSpace().getType() == ColorSpace.TYPE_GRAY;
+	}
+
+	/**
+	 * A gray pixel by its sample, as gray as in the file: Java takes gray to be linear and
+	 * getRGB() converts it to sRGB, so a grayscale PNG was checked out brighter (40 as 110).
+	 * Samples of more than 8 bits keep their high 8, as every pixel is stored with 8 bits a channel.
+	 */
+	private static int[] getGrayPixel(BufferedImage image, int x, int y) {
+		java.awt.image.Raster raster = image.getRaster();
+		int gray = to8Bits(raster.getSample(x, y, 0), image.getColorModel().getComponentSize(0));
+		int alpha = image.getColorModel().hasAlpha()
+				? to8Bits(raster.getSample(x, y, 1), image.getColorModel().getComponentSize(1))
+				: 0xff;
+		return new int[]{alpha, gray, gray, gray};
+	}
+
+	private static int to8Bits(int sample, int bits) {
+		return bits > 8 ? sample >> (bits - 8) : bits < 8 ? sample * 0xff / ((1 << bits) - 1) : sample;
 	}
 
 	private List<Node.Op> parsePixelData(final BufferedImage image) {

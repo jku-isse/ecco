@@ -215,29 +215,36 @@ public class ImageRoundTripTest {
     // --- known losses, documented ---
 
     /**
-     * Bug: Java's TYPE_BYTE_GRAY is linear gray, so getRGB() brightens it to sRGB, and the checkout
-     * stores those brightened values as RGB: a grayscale PNG whose pixel is 40 is checked out as
-     * (110, 110, 110) - visibly lighter in every viewer. ImageReader.getPixel (ImageReader.java:106).
+     * A grayscale PNG keeps its gray levels: Java takes TYPE_BYTE_GRAY to be linear and getRGB()
+     * brightened it to sRGB, so a pixel of 40 was checked out as (110, 110, 110).
      */
-    @Disabled("bug: grayscale PNGs are checked out visibly brighter (gray 40 -> RGB 110), ImageReader.java:106")
     @Test
     public void grayscalePngKeepsItsGrayLevels() throws IOException {
-        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_BYTE_GRAY);
-        image.getRaster().setSample(0, 0, 0, 40);
+        BufferedImage image = new BufferedImage(3, 1, BufferedImage.TYPE_BYTE_GRAY);
+        image.getRaster().setSample(0, 0, 0, 0);
+        image.getRaster().setSample(1, 0, 0, 40);
+        image.getRaster().setSample(2, 0, 0, 255);
         RoundTrip rt = roundTrip(image, "png");
-        assertEquals(40, rt.checkedOut().getRaster().getSample(0, 0, 0));
+        for (int x = 0; x < 3; x++) {
+            int expected = image.getRaster().getSample(x, 0, 0);
+            for (int band = 0; band < 3; band++)
+                assertEquals(expected, rt.checkedOut().getRaster().getSample(x, 0, band), "x " + x + ", band " + band);
+            assertEquals(0xff, rt.checkedOut().getRaster().getSample(x, 0, 3), "opaque");
+        }
     }
 
+    /** Gray with alpha keeps both. */
     @Test
-    public void grayscalePngIsCheckedOutBrighterCurrentBehaviour() throws IOException {
-        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_BYTE_GRAY);
+    public void grayscalePngWithAlphaKeepsItsGrayLevelsAndAlpha() throws IOException {
+        java.awt.color.ColorSpace gray = java.awt.color.ColorSpace.getInstance(java.awt.color.ColorSpace.CS_GRAY);
+        java.awt.image.ComponentColorModel model = new java.awt.image.ComponentColorModel(gray, true, false,
+                java.awt.Transparency.TRANSLUCENT, java.awt.image.DataBuffer.TYPE_BYTE);
+        BufferedImage image = new BufferedImage(model, model.createCompatibleWritableRaster(1, 1), false, null);
         image.getRaster().setSample(0, 0, 0, 40);
+        image.getRaster().setSample(0, 0, 1, 200);
         RoundTrip rt = roundTrip(image, "png");
-        // getRGB() agrees (it applies the same conversion on both sides)...
-        assertSamePixels(rt.original(), rt.checkedOut());
-        // ...but the stored samples are not the gray level of the original file
-        assertEquals(BufferedImage.TYPE_4BYTE_ABGR, rt.checkedOut().getType());
-        assertNotEquals(40, rt.checkedOut().getRaster().getSample(0, 0, 0));
+        assertEquals(40, rt.checkedOut().getRaster().getSample(0, 0, 0));
+        assertEquals(200, rt.checkedOut().getRaster().getSample(0, 0, 3));
     }
 
     /** Pixels are stored as 8-bit ARGB, so a 16-bit PNG loses its low bits on checkout. */
