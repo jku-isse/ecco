@@ -10,6 +10,7 @@ import javafx.scene.layout.*;
 public class AddVariantView extends BorderPane {
     private final Pane centerPane;
     private final ToolBar toolBar;
+    private final TextField variantName;
     private final TextField variantConfiguration;
     private Variant currentVariant;
 
@@ -34,8 +35,8 @@ public class AddVariantView extends BorderPane {
         detailsPane.getColumnConstraints().addAll(col1constraint, col2constraint);
 
 
-        TextField variantName = new TextField();
-        variantName.setEditable(true);
+        this.variantName = new TextField();
+        this.variantName.setEditable(true);
         this.variantConfiguration = new TextField();
         this.variantConfiguration.setEditable(true);
 
@@ -43,7 +44,7 @@ public class AddVariantView extends BorderPane {
         int row = 0;
         detailsPane.add(new Label("Name: "), 1, row, 1, 1);
         row++;
-        detailsPane.add(variantName, 1, row, 1, 1);
+        detailsPane.add(this.variantName, 1, row, 1, 1);
         row++;
 
         detailsPane.add(new Label("Configuration: "), 1, row, 1, 1);
@@ -62,6 +63,7 @@ public class AddVariantView extends BorderPane {
             this.setCenter(this.centerPane);
             this.toolBar.setDisable(false);
 
+            this.variantName.setText(variant.getName() == null ? "" : variant.getName());
             if (variant.getConfiguration() != null)
                 this.variantConfiguration.setText(String.valueOf(variant.getConfiguration().toString()));
             else
@@ -71,6 +73,7 @@ public class AddVariantView extends BorderPane {
             this.setCenter(null);
             this.toolBar.setDisable(true);
 
+            this.variantName.setText("");
             this.variantConfiguration.setText("");
         }
     }

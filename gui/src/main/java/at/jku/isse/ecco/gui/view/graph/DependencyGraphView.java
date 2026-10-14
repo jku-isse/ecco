@@ -212,7 +212,11 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 	}
 
 	private void updateGraph() {
-		assert viewer != null && view != null;
+		// queued on the AWT thread: the repository may have been closed (and the viewer torn down)
+		// in the meantime - like ArtifactGraphView#refreshGraph, which already returned here; this
+		// threw "Service is not initialized" on the AWT thread
+		if (this.viewer == null || this.view == null || !this.service.isInitialized())
+			return;
 
 		this.viewer.disableAutoLayout();
 

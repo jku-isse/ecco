@@ -17,7 +17,7 @@ import static at.jku.isse.ecco.gui.FxTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * The variant detail pane: empty and disabled without a variant, showing the variant's
+ * The variant detail pane: empty and disabled without a variant, showing the variant's name and
  * configuration once one is given, and empty again when it is cleared.
  */
 public class AddVariantViewTest {
@@ -42,13 +42,15 @@ public class AddVariantViewTest {
         });
     }
 
-    /** A variant shows its configuration (editable) and enables the toolbar; clearing it empties the field again. */
+    /** A variant shows its name and configuration (editable) and enables the toolbar; clearing it empties both again. */
     @Test
     @Timeout(60)
-    public void showsTheVariantsConfigurationAndClearsItAgain(@TempDir Path tmp) throws Exception {
+    public void showsTheVariantsNameAndConfigurationAndClearsThemAgain(@TempDir Path tmp) throws Exception {
         try (EccoService service = repository(tmp.resolve("repo"))) {
             commit(service, tmp.resolve("v1"), "A.1, B.1", Map.of("a.txt", "a\n"));
-            Variant variant = service.getRepository().getVariants().iterator().next();
+            service.addVariant("A.1", "only A", null);
+            Variant variant = service.getRepository().getVariants().stream()
+                    .filter(v -> "only A".equals(v.getName())).findFirst().orElseThrow();
             onFx(() -> {
                 AddVariantView view = new AddVariantView();
                 view.showVariant(variant);
@@ -56,16 +58,15 @@ public class AddVariantViewTest {
                 assertFalse(view.getTop().isDisabled());
                 List<TextField> fields = fields(view.getCenter());
                 assertEquals(2, fields.size(), "name and configuration");
+                assertEquals("only A", fields.get(0).getText());
                 assertEquals(variant.getConfiguration().toString(), fields.get(1).getText());
                 assertTrue(fields.get(1).isEditable());
-                // the name field is never filled from the variant
-                assertEquals("", fields.get(0).getText());
 
                 Node centerWhileShown = view.getCenter();
                 view.showVariant(null);
                 assertNull(view.getCenter());
                 assertTrue(view.getTop().isDisabled());
-                assertEquals("", fields(centerWhileShown).get(1).getText());
+                assertEquals(List.of("", ""), fields(centerWhileShown).stream().map(TextField::getText).toList());
             });
         }
     }
