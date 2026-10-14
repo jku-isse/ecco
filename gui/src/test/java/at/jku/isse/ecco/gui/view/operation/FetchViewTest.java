@@ -94,7 +94,7 @@ public class FetchViewTest {
             waitUntil("the error", () -> errorText(view) != null);
 
             String error = onFx(() -> errorText(view));
-            assertTrue(error.startsWith("Error during pull operation."), error);
+            assertTrue(error.startsWith("Error during fetch operation."), error);
             assertTrue(error.contains("Remote 'origin' does not exist."), error);
             assertTrue(onFx(stage::isShowing), "the dialog stays open with the error");
             assertFalse(onFx(view::isDisable), "enabled again so Done can be clicked");

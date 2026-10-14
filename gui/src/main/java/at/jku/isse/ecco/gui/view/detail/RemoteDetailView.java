@@ -1,15 +1,19 @@
 package at.jku.isse.ecco.gui.view.detail;
 
+import at.jku.isse.ecco.gui.TaskFailures;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.concurrent.Task;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+
+import java.util.function.Consumer;
 
 public class RemoteDetailView extends BorderPane {
 
@@ -25,6 +29,10 @@ public class RemoteDetailView extends BorderPane {
 	private ToolBar toolBar;
 	private ComboBox<Remote.Type> remoteType;
 	private TreeView<FeatureInfo> featuresTreeView;
+	private final Label statusLabel = new Label();
+
+	private Consumer<Remote> onRemoteChanged = remote -> {
+	};
 
 
 	public RemoteDetailView(EccoService service) {
@@ -35,8 +43,10 @@ public class RemoteDetailView extends BorderPane {
 		this.setTop(toolBar);
 
 		Button saveButton = new Button("Save");
+		saveButton.setOnAction(event -> this.save());
 		Button fetchButton = new Button("Fetch");
-		toolBar.getItems().setAll(saveButton, new Separator(), fetchButton, new Separator());
+		fetchButton.setOnAction(event -> this.fetch());
+		toolBar.getItems().setAll(saveButton, new Separator(), fetchButton, new Separator(), this.statusLabel);
 
 
 		// remote details
@@ -86,8 +96,55 @@ public class RemoteDetailView extends BorderPane {
 		this.showRemote(null);
 	}
 
+	/** Called with the remote after Save or Fetch changed it, e.g. to update a list of remotes. */
+	public void setOnRemoteChanged(Consumer<Remote> onRemoteChanged) {
+		this.onRemoteChanged = onRemoteChanged;
+	}
+
+	/** Stores the edited name, address and type; a failure is shown in the toolbar and changes nothing. */
+	private void save() {
+		try {
+			Remote remote = this.service.updateRemote(this.currentRemote.getName(), this.remoteName.getText().trim(),
+					this.remoteAddress.getText().trim(), this.remoteType.getValue());
+			this.showRemote(remote);
+			this.statusLabel.setText("Saved.");
+			this.onRemoteChanged.accept(remote);
+		} catch (Exception e) {
+			this.statusLabel.setText(TaskFailures.reason(e));
+		}
+	}
+
+	/** Fetches the shown remote's features in the background and shows them. */
+	private void fetch() {
+		String name = this.currentRemote.getName();
+		this.toolBar.setDisable(true);
+		this.statusLabel.setText("Fetching...");
+		Task<Remote> fetchTask = new Task<>() {
+			@Override
+			protected Remote call() {
+				RemoteDetailView.this.service.fetch(name);
+				return RemoteDetailView.this.service.getRemote(name);
+			}
+
+			@Override
+			protected void succeeded() {
+				RemoteDetailView.this.showRemote(this.getValue());
+				RemoteDetailView.this.statusLabel.setText("Fetched.");
+				RemoteDetailView.this.onRemoteChanged.accept(this.getValue());
+			}
+
+			@Override
+			protected void failed() {
+				RemoteDetailView.this.toolBar.setDisable(false);
+				RemoteDetailView.this.statusLabel.setText(TaskFailures.reason(this.getException()));
+			}
+		};
+		new Thread(fetchTask).start();
+	}
+
 	public final void showRemote(Remote remote) {
 		this.currentRemote = remote;
+		this.statusLabel.setText("");
 
 		if (remote != null) {
 			this.setCenter(this.centerPane);
@@ -98,9 +155,10 @@ public class RemoteDetailView extends BorderPane {
 			this.remoteAddress.setText(remote.getAddress());
 			this.remoteType.getSelectionModel().select(remote.getType());
 
-			// show feature versions
+			// show the features last fetched from this remote - it read those of the remote named
+			// "origin", whichever was shown, and failed if there was none
 			TreeItem<FeatureInfo> rootTreeItem = new TreeItem<>();
-			for (Feature feature : this.service.getRemote(EccoService.ORIGIN_REMOTE_NAME).getFeatures()) {
+			for (Feature feature : remote.getFeatures()) {
 				TreeItem<FeatureInfo> featureTreeItem = new TreeItem<>();
 				featureTreeItem.setValue(new FeatureInfo(feature, null));
 				for (FeatureRevision featureVersion : feature.getRevisions()) {

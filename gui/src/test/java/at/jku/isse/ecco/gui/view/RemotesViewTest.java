@@ -140,6 +140,26 @@ public class RemotesViewTest {
         }
     }
 
+    /** A Save in the detail pane updates the list and keeps the renamed remote selected. */
+    @Test
+    @Timeout(60)
+    public void aSaveInTheDetailPaneUpdatesTheList(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            service.addRemote("origin", "localhost:3770", Remote.Type.REMOTE);
+            RemotesView view = loaded(service);
+            RemoteDetailView detail = onFx(() -> (RemoteDetailView) find(view, n -> n instanceof RemoteDetailView));
+            onFx(() -> select(view, "origin"));
+
+            onFx(() -> {
+                ((TextField) find(detail, n -> n instanceof TextField)).setText("upstream");
+                button(detail, "Save").fire();
+            });
+
+            assertEquals(Set.of("upstream"), onFx(() -> names(view)));
+            assertEquals("upstream", onFx(() -> table(view).getSelectionModel().getSelectedItem().getName()));
+        }
+    }
+
     // --- helpers -------------------------------------------------------------------------------------
 
     /**

@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The "add variant" operation: Add puts a variant with the typed configuration and name into the
- * repository and ends on the success header; an empty configuration adds nothing; Cancel closes
- * the window.
+ * repository and ends on the success header; an empty or invalid configuration adds nothing and
+ * ends on the error header; Cancel closes the window.
  */
 public class VariantViewTest {
 
@@ -74,10 +74,7 @@ public class VariantViewTest {
         }
     }
 
-    /**
-     * An empty configuration adds nothing. Current behaviour (a bug): the error header is shown and
-     * then immediately replaced by the success header, because the Task itself still succeeds.
-     */
+    /** An empty configuration adds nothing and ends on the error header, not the success one. */
     @Test
     @Timeout(60)
     public void anEmptyConfigurationAddsNothing(@TempDir Path tmp) throws Exception {
@@ -86,13 +83,36 @@ public class VariantViewTest {
             VariantView view = onFx(() -> new VariantView(service));
 
             onFx(() -> button(view, "Add").fire());
-            waitUntil("the operation is over", () -> done(view) && view.toolBar.getStyleClass().contains("success"));
+            waitUntil("the operation is over", () -> done(view));
 
             assertEquals(Set.of(Set.of("A.1")), variants(service));
-            List<String> styles = onFx(() -> List.copyOf(view.toolBar.getStyleClass()));
-            assertTrue(styles.contains("error"), "the error header was shown: " + styles);
-            assertEquals("-fx-base: #00cc99;", onFx(() -> view.toolBar.getStyle()), "but it ends looking like a success");
+            assertError(view);
         }
+    }
+
+    /** A configuration that does not parse fails the operation instead of throwing on the FX thread. */
+    @Test
+    @Timeout(60)
+    public void anInvalidConfigurationEndsOnTheErrorHeader(@TempDir Path tmp) throws Exception {
+        try (EccoService service = repository(tmp.resolve("repo"))) {
+            commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a\n"));
+            VariantView view = onFx(() -> new VariantView(service));
+
+            onFx(() -> {
+                fields(view).get(0).setText("A.1, , ,");
+                button(view, "Add").fire();
+            });
+            waitUntil("the operation is over", () -> done(view));
+
+            assertEquals(Set.of(Set.of("A.1")), variants(service));
+            assertError(view);
+        }
+    }
+
+    private static void assertError(VariantView view) throws Exception {
+        List<String> styles = onFx(() -> List.copyOf(view.toolBar.getStyleClass()));
+        assertTrue(styles.contains("error"), "error header: " + styles);
+        assertFalse(styles.contains("success"), "no success header: " + styles);
     }
 
     /** Cancel closes the window the view is in. */

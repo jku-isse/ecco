@@ -64,4 +64,15 @@ public class TaskFailuresTest {
         assertFalse(disabled.get(), "the toolbar must be re-enabled after the task failed");
         assertEquals("boom", reported.get().getMessage());
     }
+
+    /** The reason is the innermost message, the one the service wraps; without any, the exception itself. */
+    @Test
+    public void theReasonIsTheInnermostMessage() {
+        Exception wrapped = new RuntimeException("Error adding remote.",
+                new IllegalStateException("Remote with this name already exists."));
+        assertEquals("Remote with this name already exists.", TaskFailures.reason(wrapped));
+        assertEquals("Invalid remote address provided.", TaskFailures.reason(new RuntimeException("Invalid remote address provided.")));
+        assertEquals("outer", TaskFailures.reason(new RuntimeException("outer", new IllegalStateException())));
+        assertEquals("java.lang.IllegalStateException", TaskFailures.reason(new IllegalStateException()));
+    }
 }

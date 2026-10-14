@@ -98,6 +98,11 @@ public class RemotesView extends BorderPane implements EccoListener {
 
 		// remote details view
 		RemoteDetailView remoteDetailView = new RemoteDetailView(service);
+		remoteDetailView.setOnRemoteChanged(changed -> {
+			this.remotesData.setAll(this.service.getRemotes());
+			this.remotesData.stream().filter(remote -> remote.getName().equals(changed.getName())).findFirst()
+					.ifPresent(remote -> remotesTable.getSelectionModel().select(remote));
+		});
 
 
 		remotesTable.getSelectionModel().selectedItemProperty().addListener((observableValue, oldValue, newValue) -> {
@@ -116,7 +121,8 @@ public class RemotesView extends BorderPane implements EccoListener {
 			} catch (Exception e) {
 				ExceptionAlert alert = new ExceptionAlert(e);
 				alert.setTitle("Remotes Error");
-				alert.setHeaderText("Error adding remote: name '" + nameTextField.getText() + "' already exists.");
+				// the reason, not always "name already exists": an invalid address fails here too
+				alert.setHeaderText("Error adding remote: " + TaskFailures.reason(e));
 				alert.showAndWait();
 			}
 		});

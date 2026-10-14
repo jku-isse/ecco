@@ -2,6 +2,7 @@ package at.jku.isse.ecco.gui.view.artifacts;
 
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.gui.MinimizationResults;
+import at.jku.isse.ecco.gui.io.DeleteDirectoryVisitor;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
 import javafx.scene.Scene;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -132,6 +134,49 @@ public class ArtifactsViewTest {
                 assertEquals(List.of(".ecco"), list.map(p -> p.getFileName().toString()).toList(), "nothing is checked out");
             }
             assertFalse(onFx(() -> toolBar(view).isDisable()));
+        }
+    }
+
+    /** Cancel in "delete contents?" stops Checkout Selected: nothing is written into the repository's folder. */
+    @Test
+    @Timeout(60)
+    public void checkoutSelectedStopsWhenClearingIsCancelled(@TempDir Path temp) throws Exception {
+        Path tmp = temp.toRealPath();
+        try (EccoService service = twoFeatures(tmp)) {
+            ScriptedArtifactsView view = scripted(service, false);
+
+            onFx(() -> {
+                row(view, "b.txt").setSelected(true);
+                button(view, "Checkout Selected").fire();
+            });
+
+            assertEquals(List.of(tmp.resolve("repo")), view.clearAsked);
+            Thread.sleep(500);
+            try (Stream<Path> list = Files.list(tmp.resolve("repo"))) {
+                assertEquals(List.of(".ecco"), list.map(p -> p.getFileName().toString()).toList(), "nothing is checked out");
+            }
+            assertFalse(onFx(() -> toolBar(view).isDisable()));
+        }
+    }
+
+    /** Confirming "delete contents?" checks the selected associations out into the repository's folder. */
+    @Test
+    @Timeout(60)
+    public void checkoutSelectedWritesWhenClearingIsConfirmed(@TempDir Path temp) throws Exception {
+        // the real path: the checkout only ignores the .ecco folder under the exact path the
+        // repository was opened with, and the temp folder is behind a symlink on macOS
+        Path tmp = temp.toRealPath();
+        try (EccoService service = twoFeatures(tmp)) {
+            ScriptedArtifactsView view = scripted(service, true);
+
+            onFx(() -> {
+                row(view, "b.txt").setSelected(true);
+                button(view, "Checkout Selected").fire();
+            });
+
+            waitUntil("b.txt is checked out", () -> Files.exists(tmp.resolve("repo/b.txt")));
+            assertEquals(List.of(tmp.resolve("repo")), view.clearAsked);
+            assertTrue(Files.isDirectory(tmp.resolve("repo/.ecco")), "the repository is kept");
         }
     }
 
@@ -311,6 +356,32 @@ public class ArtifactsViewTest {
         commit(service, tmp.resolve("v1"), "A.1", Map.of("a.txt", "a1\na2\n"));
         commit(service, tmp.resolve("v2"), "A.1, B.1", Map.of("a.txt", "a1\na2\n", "b.txt", "b1\n"));
         return service;
+    }
+
+    /** Answers "delete contents?" as told, without a dialog, and records the question. */
+    private static final class ScriptedArtifactsView extends ArtifactsView {
+        final List<Path> clearAsked = new ArrayList<>();
+        private final boolean clearAnswer;
+
+        ScriptedArtifactsView(EccoService service, boolean clearAnswer) {
+            super(service, new MinimizationResults(service));
+            this.clearAnswer = clearAnswer;
+        }
+
+        @Override
+        boolean confirmClearDirectory(Path baseDir) throws IOException {
+            this.clearAsked.add(baseDir);
+            if (this.clearAnswer)
+                Files.walkFileTree(baseDir, new DeleteDirectoryVisitor(baseDir));
+            return this.clearAnswer;
+        }
+    }
+
+    private static ScriptedArtifactsView scripted(EccoService service, boolean clearAnswer) throws Exception {
+        ScriptedArtifactsView view = onFx(() -> new ScriptedArtifactsView(service, clearAnswer));
+        onFx(() -> button(view, "Refresh").fire());
+        waitUntil("2 associations", () -> table(view).getItems().size() == 2 && !toolBar(view).isDisable());
+        return view;
     }
 
     private static ArtifactsView loaded(EccoService service, int rows) throws Exception {

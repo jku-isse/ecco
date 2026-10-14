@@ -41,6 +41,7 @@ import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -450,9 +451,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     // default rather than just a pre-filled suggestion.
                     service.setBaseDir(service.getRepositoryHomeDir());
 
+                    // Cancel stops the checkout, as in the Checkout dialog - it used to be ignored,
+                    // so the checkout was written over the directory's contents anyway
                     try {
-                        if (!Directory.isEmpty(service.getBaseDir())) {
-                            new DeleteDirectoryContentsDialog(service.getBaseDir()).showBlocked();
+                        if (!Directory.isEmpty(service.getBaseDir())
+                                && !confirmClearDirectory(service.getBaseDir())) {
+                            toolBar.setDisable(false);
+                            return;
                         }
                     }catch (IOException e) {
                         ExceptionAlert alert = new ExceptionAlert(e);
@@ -460,6 +465,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         alert.setHeaderText("Checkout Error");
 
                         alert.showAndWait();
+                        toolBar.setDisable(false);
+                        return;
                     }
 
                     Task<Void> checkoutTask = new CheckoutTask(service, rootNode);
@@ -469,6 +476,16 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 toolBar.setDisable(false);
             }
         });
+    }
+
+    /**
+     * Asks whether to delete the contents of the non-empty {@code baseDir} before checking out into
+     * it, and deletes them if so. Package-visible for testing.
+     *
+     * @return true if the contents were deleted, false to cancel the checkout.
+     */
+    boolean confirmClearDirectory(Path baseDir) throws IOException {
+        return new DeleteDirectoryContentsDialog(baseDir).showBlocked();
     }
 
     /**

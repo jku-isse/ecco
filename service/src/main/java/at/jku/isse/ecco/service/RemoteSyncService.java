@@ -105,6 +105,59 @@ public class RemoteSyncService {
         }
     }
 
+    /**
+     * Changes the name, address and type of the remote {@code name}; what was fetched from it is kept.
+     *
+     * @return the changed remote
+     * @throws EccoException if there is no such remote, the new name is empty or taken, or the
+     *                       address does not fit the type; the remote is then unchanged.
+     */
+    public Remote updateRemote(String name, String newName, String address, Remote.Type type) {
+        owner.checkInitialized();
+
+        if (newName == null || newName.isBlank())
+            throw new EccoException("Remote name must not be empty.");
+        if (type == Remote.Type.REMOTE && RemoteAddress.parseHostPort(address).isEmpty())
+            throw new EccoException("Invalid remote address provided: expected host:port.");
+        if (type == Remote.Type.LOCAL) {
+            try {
+                Paths.get(address);
+            } catch (InvalidPathException | NullPointerException ex) {
+                throw new EccoException("Invalid remote address provided: expected a directory.");
+            }
+        }
+
+        try {
+            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
+
+            Remote remote = owner.remoteDao.loadRemote(name);
+            if (remote == null)
+                throw new EccoException("Remote '" + name + "' does not exist.");
+            if (!newName.equals(name) && owner.remoteDao.loadRemote(newName) != null)
+                throw new EccoException("Remote with this name already exists.");
+
+            owner.remoteDao.removeRemote(name);
+            remote.setName(newName);
+            remote.setAddress(address);
+            remote.setType(type);
+            remote = owner.remoteDao.storeRemote(remote);
+
+            owner.transactionStrategy.end();
+
+            return remote;
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
+        } catch (EccoException e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
+        } catch (Exception e) {
+            owner.rollbackIfTransactionActive();
+
+            throw new EccoException("Error changing remote.", e);
+        }
+    }
+
     public void removeRemote(String name) {
         owner.checkInitialized();
 

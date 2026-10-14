@@ -31,4 +31,16 @@ public final class TaskFailures {
 			report.accept(task.getException());
 		});
 	}
+
+	/**
+	 * The innermost message of {@code exception}, the reason a user can act on: the service wraps it,
+	 * e.g. "Error adding remote." around "Remote with this name already exists.".
+	 */
+	public static String reason(Throwable exception) {
+		String message = exception.getMessage();
+		for (Throwable cause = exception.getCause(); cause != null; cause = cause.getCause())
+			if (cause.getMessage() != null)
+				message = cause.getMessage();
+		return message == null ? exception.toString() : message;
+	}
 }

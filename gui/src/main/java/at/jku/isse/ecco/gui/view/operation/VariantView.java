@@ -5,7 +5,6 @@ import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.gui.view.detail.AddVariantView;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.service.listener.EccoListener;
-import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -86,33 +85,33 @@ public class VariantView extends OperationView implements EccoListener {
             public void handle(ActionEvent e) {
                 toolBar.setDisable(true);
 
-                Task variantsUpdateTask = new Task<Void>() {
+                String configuration = configField.getText();
+                String name = nameField.getText();
+
+                // the work runs in call(), not in a runLater from it: a failure there never reached
+                // failed(), so an empty or invalid configuration still ended on the success header
+                Task<Void> variantsUpdateTask = new Task<>() {
                     @Override
                     public Void call() throws EccoException {
-                        Platform.runLater(() -> {
-                            String configuration = configField.getText();
-                            String name = nameField.getText();
-                            if(!configuration.equals("")) {
-                                Configuration config = service.parseConfigurationString(configuration);
-                                service.addVariant(config, name);
-                            }else{
-                                failed();
-                            }
-                        });
-                        Platform.runLater(() -> toolBar.setDisable(false));
+                        if (configuration.isBlank())
+                            throw new EccoException("No configuration given.");
+                        Configuration config = service.parseConfigurationString(configuration);
+                        service.addVariant(config, name);
                         return null;
                     }
 
                     @Override
                     public void succeeded() {
                         super.succeeded();
+                        toolBar.setDisable(false);
                         VariantView.this.showSuccessHeader();
                     }
 
                     @Override
                     public void failed() {
                         super.failed();
-                        VariantView.this.showErrorHeader();
+                        toolBar.setDisable(false);
+                        VariantView.this.stepError("Error adding variant.", this.getException());
                     }
 
                 };

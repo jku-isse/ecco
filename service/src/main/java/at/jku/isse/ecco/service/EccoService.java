@@ -563,6 +563,13 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         return this.remoteSyncService.addRemote(name, address, type);
     }
 
+    /**
+     * See {@link RemoteSyncService#updateRemote}.
+     */
+    public synchronized Remote updateRemote(String name, String newName, String address, Remote.Type type) {
+        return this.remoteSyncService.updateRemote(name, newName, address, type);
+    }
+
     public synchronized void removeRemote(String name) {
         this.remoteSyncService.removeRemote(name);
     }

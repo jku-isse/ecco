@@ -89,21 +89,21 @@ public class FetchView extends OperationView {
 				@Override
 				public void succeeded() {
 					super.succeeded();
-					FetchView.this.stepSuccess("Pull operation was successful.");
+					FetchView.this.stepSuccess("Fetch operation was successful.");
 					FetchView.this.setDisable(false);
 				}
 
 				@Override
 				public void cancelled() {
 					super.cancelled();
-					FetchView.this.stepError("Pull operation was cancelled.", this.getException());
+					FetchView.this.stepError("Fetch operation was cancelled.", this.getException());
 					FetchView.this.setDisable(false);
 				}
 
 				@Override
 				public void failed() {
 					super.failed();
-					FetchView.this.stepError("Error during pull operation.", this.getException());
+					FetchView.this.stepError("Error during fetch operation.", this.getException());
 					FetchView.this.setDisable(false);
 				}
 			};
