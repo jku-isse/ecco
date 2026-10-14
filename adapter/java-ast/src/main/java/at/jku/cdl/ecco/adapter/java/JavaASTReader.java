@@ -307,7 +307,23 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 		clazzNode.addChild(initNode);
 	}
 
+	/**
+	 * The constants of an enum go into an ordered node of their own: as unordered children of the
+	 * type's node, like its members, a constant only some variants have was checked out wherever the
+	 * associations put it - BLUE, RED, GREEN as RED, GREEN, BLUE - and ordinal() and values() changed.
+	 * Its text is no identifier, so it equals no constant, field group or member.
+	 */
+	static final String ENUM_CONSTANT_GROUP = "ENUM CONSTANTS";
+
 	private void addEnumConstants(EnumDeclaration enumdec, Op clazzNode) {
+		if (enumdec.getEntries().isEmpty())
+			return;
+		JavaASTSimpleStringData groupData = new JavaASTSimpleStringData(ENUM_CONSTANT_GROUP);
+		groupData.setType(ASTNodeType.ENUM_CONSTANT_GROUP);
+		Node.Op groupNode = this.entityFactory.createOrderedNode(this.entityFactory.createArtifact(groupData));
+		groupNode.putProperty(PROPERTY_LINE_START, getStartLine(enumdec.getEntries().getFirst().get()));
+		groupNode.putProperty(PROPERTY_LINE_END, getEndLine(enumdec.getEntries().getLast().get()));
+		clazzNode.addChild(groupNode);
 		for (EnumConstantDeclaration ecd : enumdec.getEntries()) {
 			// the annotations were lost; a constant without any is stored by its name, as before
 			String constant = ecd.getNameAsString();
@@ -320,7 +336,7 @@ public class JavaASTReader implements ArtifactReader<Path, Set<Node.Op>> {
 			Node.Op enumNode = this.entityFactory.createOrderedNode(enumArtifact);
 			enumNode.putProperty(PROPERTY_LINE_START, getStartLine(ecd));
 			enumNode.putProperty(PROPERTY_LINE_END, getEndLine(ecd));
-			clazzNode.addChild(enumNode);
+			groupNode.addChild(enumNode);
 			for (Expression arg : ecd.getArguments()) {
 				JavaASTSimpleStringData argData = new JavaASTSimpleStringData(arg.toString(PPC));
 				argData.setType(ASTNodeType.EXPRESSION);

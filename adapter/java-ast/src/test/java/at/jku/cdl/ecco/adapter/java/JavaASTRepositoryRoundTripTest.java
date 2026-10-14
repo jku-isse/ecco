@@ -113,16 +113,15 @@ public class JavaASTRepositoryRoundTripTest {
     }
 
     /**
-     * Enum constants are unordered children of the type's node, like its members - but their order
-     * is meaning: ordinal(), values(), compareTo. A constant only one variant has comes after the
-     * shared ones, wherever it was.
+     * Enum constants keep their order - it is meaning: ordinal(), values(), compareTo. As unordered
+     * children of the type's node, like its members, a constant one variant inserted before the
+     * others was checked out after them.
      */
     @Test
-    @Disabled("bug: a constant inserted before others is checked out after them - its ordinal changes")
     @Timeout(120)
     public void anInsertedEnumConstantKeepsItsPlace() throws Exception {
         String a = "package p;\n\npublic enum C {\n\n    RED, GREEN\n}\n";
-        String b = "package p;\n\npublic enum C {\n\n    BLUE, RED, GREEN\n}\n"; // checked out as "RED, GREEN, BLUE"
+        String b = "package p;\n\npublic enum C {\n\n    BLUE, RED, GREEN\n}\n"; // was checked out as "RED, GREEN, BLUE"
         Path work = Files.createTempDirectory("java-ast-repository");
         Path content = Files.createDirectories(work.resolve("content"));
         try (EccoService service = new EccoService()) {
@@ -134,10 +133,12 @@ public class JavaASTRepositoryRoundTripTest {
             service.commit("a", "A");
             Files.writeString(content.resolve(FILE), b);
             service.commit("b", "B");
-            Path checkout = Files.createDirectories(work.resolve("checkout"));
-            service.setBaseDir(checkout);
-            service.checkout("B");
-            assertEquals(b, Files.readString(checkout.resolve(FILE)));
+            for (String[] variant : new String[][]{{"A", a}, {"B", b}}) {
+                Path checkout = Files.createDirectories(work.resolve("checkout-" + variant[0]));
+                service.setBaseDir(checkout);
+                service.checkout(variant[0]);
+                assertEquals(variant[1], Files.readString(checkout.resolve(FILE)), variant[0]);
+            }
         }
     }
 }

@@ -173,23 +173,16 @@ public class JavaASTVariantEqualityTest {
 	// ---- node types with the same text ----
 
 	/**
-	 * Bug: a simple string's node type is not part of its identity, and the class node's children
-	 * are unordered (duplicates rejected by equality). An enum with a constant named FIELDS and a
-	 * field gets an ENUM_CONSTANTS "FIELDS" child and a FIELD_GROUP "FIELDS" child that compare
-	 * equal, and reading the file fails with "An equivalent child is already contained" - the file
-	 * cannot be committed.
+	 * A simple string's node type is not part of its identity, and the class node's children are
+	 * unordered (duplicates rejected by equality): an enum with a constant named FIELDS and a field
+	 * had an ENUM_CONSTANTS "FIELDS" child and a FIELD_GROUP "FIELDS" child that compared equal, and
+	 * reading failed with "An equivalent child is already contained". The constants are in a group
+	 * of their own now.
 	 */
 	@Test
-	@Disabled("bug: JavaASTSimpleStringData.equals ignores the node type; enum constant FIELDS collides with the field group")
 	public void enumWithAConstantNamedFieldsAndAFieldCanBeRead() throws IOException {
 		Node.Op file = read("E.java", "enum E {\n    FIELDS;\n    int x;\n}\n");
 		assertNotNull(file);
-	}
-
-	@Test
-	public void enumWithAConstantNamedFieldsAndAFieldFailsToReadToday() {
-		Exception e = assertThrows(Exception.class, () -> read("E.java", "enum E {\n    FIELDS;\n    int x;\n}\n"));
-		assertTrue(String.valueOf(rootMessage(e)).contains("equivalent child"), String.valueOf(rootMessage(e)));
 	}
 
 	private static final String TWO_EQUAL_INITIALIZERS = "class C {\n    static int x;\n    static {\n        x++;\n    }\n    static {\n        x++;\n    }\n}\n";

@@ -29,7 +29,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *     JavaASTReader.addTryStatement.</li>
  *     <li>SWITCH_ENTRIES' default case is labeled with the literal string "DEFAULT", not the actual
  *     Java keyword text.</li>
- *     <li>ENUM_CONSTANTS' constructor arguments are EXPRESSION children.</li>
+ *     <li>An enum's constants are in an ordered ENUM_CONSTANT_GROUP child of the enum, in order;
+ *     ENUM_CONSTANTS' constructor arguments are EXPRESSION children.</li>
  * </ul>
  * If JavaASTReader's tree shape ever changes, this should fail before the viewer silently starts
  * rendering nonsense.
@@ -153,9 +154,12 @@ public class JavaASTTreeShapeTest {
         Node.Op enumNode = classNode.getChildren().get(0);
         assertEquals(ASTNodeType.ENUM_DECLARATION, typeOf(enumNode));
 
-        Node.Op redConstant = enumNode.getChildren().stream()
-                .filter(n -> typeOf(n) == ASTNodeType.ENUM_CONSTANTS)
+        Node.Op group = enumNode.getChildren().stream()
+                .filter(n -> typeOf(n) == ASTNodeType.ENUM_CONSTANT_GROUP)
                 .findFirst().orElseThrow();
+        assertTrue(group.getArtifact().isOrdered(), "the order of constants is meaning");
+        Node.Op redConstant = group.getChildren().get(0);
+        assertEquals(ASTNodeType.ENUM_CONSTANTS, typeOf(redConstant));
         assertEquals("RED", textOf(redConstant));
 
         Node.Op argument = redConstant.getChildren().get(0);

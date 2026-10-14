@@ -297,6 +297,38 @@ public class JavaASTRoundTripTest {
         assertEquals(source, Files.readString(out.resolve("C.java")));
     }
 
+    /**
+     * Stored before the constants got a group of their own, an enum has them directly below its
+     * node - such commits are written as before.
+     */
+    @Test
+    public void enumConstantsStoredWithoutAGroupAreWritten() throws IOException {
+        String source = "enum E {\n\n    @Deprecated\n    A(1), B(2) {\n\n        int f() {\n            return 2;\n        }\n    }\n    ;\n\n    E(int x) {\n    }\n\n    int f() {\n        return 1;\n    }\n}\n";
+        Path base = Files.createTempDirectory("java-ast-round-trip");
+        Files.writeString(base.resolve("E.java"), source);
+        Set<Node.Op> nodes = new JavaASTReader(new SerEntityFactory()).read(base, new Path[]{Path.of("E.java")});
+        Path out = Files.createTempDirectory("java-ast-round-trip-out");
+        new JavaASTWriter().write(out, Set.copyOf(nodes));
+        String written = Files.readString(out.resolve("E.java"));
+
+        // the shape of before: constants moved out of their group, directly below the enum
+        Node.Op enumNode = nodes.iterator().next().getChildren().stream()
+                .filter(n -> ((at.jku.cdl.ecco.adapter.java.artifactData.JavaASTData) n.getArtifact().getData()).getType()
+                        == at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType.ENUM_DECLARATION).findFirst().orElseThrow();
+        Node.Op group = enumNode.getChildren().stream()
+                .filter(n -> ((at.jku.cdl.ecco.adapter.java.artifactData.JavaASTData) n.getArtifact().getData()).getType()
+                        == at.jku.cdl.ecco.adapter.java.artifactData.ASTNodeType.ENUM_CONSTANT_GROUP).findFirst().orElseThrow();
+        enumNode.removeChild(group);
+        for (Node.Op constant : java.util.List.copyOf(group.getChildren())) {
+            group.removeChild(constant);
+            enumNode.addChild(constant);
+        }
+        Path oldOut = Files.createTempDirectory("java-ast-round-trip-out");
+        new JavaASTWriter().write(oldOut, Set.copyOf(nodes));
+        assertEquals(written, Files.readString(oldOut.resolve("E.java")));
+        assertTrue(written.contains("@Deprecated\n    A(1), B(2) {"), written);
+    }
+
     /** A file that cannot be written fails the write - it was printed and ignored, and the checkout went on without it. */
     @Test
     public void aFailedWriteIsReported() throws IOException {

@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ParserConfiguration;
@@ -203,6 +204,7 @@ public class JavaASTWriteHandler {
 			case MODULE_DECLARATION:
 				return addModuleDeclaration(child, parent);
 			case ENUM_CONSTANTS:
+			case ENUM_CONSTANT_GROUP:
 				break;
 			case ENUM_DECLARATION:
 				return addEnumDeclaration(child, parent);
@@ -540,9 +542,14 @@ public class JavaASTWriteHandler {
 	private static EnumDeclaration addEnumDeclaration(Node child, com.github.javaparser.ast.Node parent) {
 		TypeDeclaration<?> type = parseTypeDeclarationText(child.getArtifact().toString());
 		EnumDeclaration enumType = type.asEnumDeclaration();
+		// in their group, in order; directly below the type in what was stored before the group
 		List<Node> enumConstDataNodes = child.getChildren().stream()
 				.filter(c -> JavaASTData.class.isInstance(c.getArtifact().getData()))
-				.filter(data -> ((JavaASTData) data.getArtifact().getData()).getType() == ASTNodeType.ENUM_CONSTANTS)
+				.flatMap(c -> switch (((JavaASTData) c.getArtifact().getData()).getType()) {
+					case ENUM_CONSTANT_GROUP -> c.getChildren().stream().map(Node.class::cast);
+					case ENUM_CONSTANTS -> Stream.of(c);
+					default -> Stream.empty();
+				})
 				.collect(Collectors.toList());
 		for (Node enumDataNode : enumConstDataNodes) {
 			EnumConstantDeclaration enumConstDecl = enumConstant(enumDataNode.getArtifact().getData().toString());
@@ -562,7 +569,8 @@ public class JavaASTWriteHandler {
 		}
 
 		child.getChildren().stream().filter(c -> JavaASTData.class.isInstance(c.getArtifact().getData()))
-				.filter(data -> ((JavaASTData) data.getArtifact().getData()).getType() != ASTNodeType.ENUM_CONSTANTS)
+				.filter(data -> ((JavaASTData) data.getArtifact().getData()).getType() != ASTNodeType.ENUM_CONSTANTS
+						&& ((JavaASTData) data.getArtifact().getData()).getType() != ASTNodeType.ENUM_CONSTANT_GROUP)
 				.forEach(a -> addNode(a, type));
 
 		if (parent instanceof CompilationUnit) {
