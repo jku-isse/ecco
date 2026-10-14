@@ -922,6 +922,34 @@ public interface PartialOrderGraph extends Persistable {
 			Node.Op[][] thisPaths = this.collectNodeSequencings();
 			Node.Op[][] otherPaths = other.collectNodeSequencings();
 
+			// The result is the alignment of the first pair of sequencings (this outer, other inner)
+			// whose alignment is largest. Aligning every pair repeated the same work for every
+			// ordering of every branch: 11 open branches in a 2,000-line file are 2,048 sequencings,
+			// each aligned in full - a commit of tinycc took over 10 minutes. The size of an
+			// alignment is the length of the two paths' LCS, which lcsLengthsOfSequencings computes
+			// for all of this graph's sequencings at once, sharing what they have in common; only the
+			// chosen pair is then aligned, by alignPaths as before - so the result is the same. Paths
+			// with repeated sequence numbers, where the size is not the LCS length, are aligned pair
+			// by pair as before.
+			if (thisPaths.length * (long) otherPaths.length > 1 && !hasRepeatedSequenceNumbers(thisPaths[0])) {
+				int[][] lengths = new int[otherPaths.length][];
+				for (int b = 0; b < otherPaths.length; b++)
+					lengths[b] = this.lcsLengthsOfSequencings(otherPaths[b]);
+				if (Arrays.stream(lengths).allMatch(l -> l.length == thisPaths.length)) {
+					int best = -1, bestThis = 0, bestOther = 0;
+					for (int a = 0; a < thisPaths.length; a++) {
+						for (int b = 0; b < otherPaths.length; b++) {
+							if (lengths[b][a] > best) {
+								best = lengths[b][a];
+								bestThis = a;
+								bestOther = b;
+							}
+						}
+					}
+					return this.alignPaths(thisPaths[bestThis], otherPaths[bestOther]);
+				}
+			}
+
 			Collection<MutableIntObjectMap<Node.Op>> alignmentResults = new LinkedList<>();
 
 			for (Node.Op[] thisPath : thisPaths){
@@ -935,6 +963,104 @@ public interface PartialOrderGraph extends Persistable {
 					.orElseThrow(NoSuchElementException::new);
 		}
 
+
+		/** Whether a sequence number occurs twice among the nodes of [path] that alignPaths can match. */
+		private static boolean hasRepeatedSequenceNumbers(Node.Op[] path) {
+			MutableIntSet seen = new IntHashSet();
+			for (Node.Op node : path)
+				if (node.getArtifact() != null && node.getArtifact().getData() != null && !seen.add(node.getSequenceNumber()))
+					return true;
+			return false;
+		}
+
+		/**
+		 * The length of the LCS of each of this graph's sequencings - in the order of
+		 * {@link #collectNodeSequencings()} - with [otherPath], as alignPaths matches (equal artifact
+		 * data). Walks the sequencings like {@link #extendNodeSequencings}, carrying the last row of
+		 * the LCS table instead of the path: where the walk comes to the same state (the same nodes
+		 * waiting, the same counters) with the same row again - after the orders of a branch that end
+		 * the same for [otherPath] - the lengths of everything after it are the same, and are reused.
+		 */
+		default int[] lcsLengthsOfSequencings(Node.Op[] otherPath) {
+			Stack<PartialOrderGraph.Node.Op> stack = new Stack<>();
+			stack.push(this.getHead());
+			return this.lcsLengthWalk(stack, new HashMap<>(), new int[otherPath.length], otherPath, new HashMap<>());
+		}
+
+		private int[] lcsLengthWalk(Stack<PartialOrderGraph.Node.Op> stack, Map<PartialOrderGraph.Node.Op, Integer> counters, int[] row,
+									Node.Op[] otherPath, Map<List<Object>, int[]> memo) {
+			// nodes compare by identity, so equal keys are the same state of the walk
+			List<Object> key = List.of(List.copyOf(stack), new HashMap<>(counters), new IntArrayKey(row));
+			int[] known = memo.get(key);
+			if (known != null)
+				return known;
+			int[] result;
+			while (true) {
+				if (stack.isEmpty()) {
+					result = new int[]{row.length == 0 ? 0 : row[row.length - 1]};
+					break;
+				}
+				Node.Op node = stack.pop();
+				if (!node.getNext().isEmpty() && !node.getPrevious().isEmpty())
+					row = lcsRow(row, node, otherPath);
+				Collection<Node.Op> nextNodes = (Collection<Node.Op>) node.getNext();
+				if (nextNodes.size() > 1) {
+					// as extendNodeSequencings: the other orders of the branch first, then this one
+					List<int[]> parts = new ArrayList<>();
+					Iterator<List<Node.Op>> permutations = Permutation.generatePermutations(nextNodes).iterator();
+					permutations.next();
+					while (permutations.hasNext()) {
+						List<Node.Op> permutation = permutations.next();
+						Stack<PartialOrderGraph.Node.Op> newStack = (Stack<Node.Op>) stack.clone();
+						Map<PartialOrderGraph.Node.Op, Integer> newCounters = new HashMap<>(counters);
+						this.sequenceChildNodes(permutation, newCounters, newStack);
+						parts.add(this.lcsLengthWalk(newStack, newCounters, row, otherPath, memo));
+					}
+					this.sequenceChildNodes(nextNodes, counters, stack);
+					parts.add(this.lcsLengthWalk(stack, counters, row, otherPath, memo));
+					int size = 0;
+					for (int[] part : parts)
+						size += part.length;
+					result = new int[size];
+					int at = 0;
+					for (int[] part : parts) {
+						System.arraycopy(part, 0, result, at, part.length);
+						at += part.length;
+					}
+					break;
+				}
+				this.sequenceChildNodes(nextNodes, counters, stack);
+			}
+			memo.put(key, result);
+			return result;
+		}
+
+		/** The next row of the LCS table, for [node] - with the values alignPaths' table has. */
+		private static int[] lcsRow(int[] lastRow, Node.Op node, Node.Op[] otherPath) {
+			Object data = node.getArtifact() == null ? null : node.getArtifact().getData();
+			int[] row = new int[lastRow.length];
+			for (int j = 0; j < row.length; j++) {
+				Artifact<?> otherArtifact = otherPath[j].getArtifact();
+				if (data != null && otherArtifact != null && data.equals(otherArtifact.getData()))
+					row[j] = j == 0 ? 1 : lastRow[j - 1] + 1;
+				else
+					row[j] = Math.max(lastRow[j], j == 0 ? 0 : row[j - 1]);
+			}
+			return row;
+		}
+
+		/** An int[] as a map key, by its contents. */
+		record IntArrayKey(int[] values) {
+			@Override
+			public boolean equals(Object o) {
+				return o instanceof IntArrayKey other && Arrays.equals(this.values, other.values);
+			}
+
+			@Override
+			public int hashCode() {
+				return Arrays.hashCode(this.values);
+			}
+		}
 
 		/**
 		 * NOT wired into {@link #align(Op)}/{@link #merge(Op)} - {@link #alignMemoizedBacktracking(Op)}
