@@ -19,6 +19,7 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -96,11 +97,11 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
             return "";
         }
 
+        // an empty .config failed the read (IndexOutOfBoundsException), as CppReader's did not
         try (Stream<String> stream = Files.lines(configurationPath)) {
-            List<String> fileLines = stream.toList();
-            return fileLines.get(0);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            return stream.findFirst().orElse("");
+        } catch (IOException | UncheckedIOException e) {
+            throw new EccoException("Could not read " + configurationPath, e);
         }
     }
 

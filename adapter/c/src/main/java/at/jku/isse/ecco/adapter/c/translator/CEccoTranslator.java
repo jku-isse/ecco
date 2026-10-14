@@ -44,6 +44,10 @@ public class CEccoTranslator {
         int startLine = 1;
 
         for(FunctionStructure functionStructure : this.functionStructures){
+            // whole lines only, as CppReader.scopesOf: a function starting on the line the previous
+            // one ends on stays plain lines - as a function it wrote that line a second time
+            if (functionStructure.startLine() < startLine)
+                continue;
             this.addLineNodes(pluginNode, startLine, functionStructure.startLine() - 1);
             Node.Op functionNode = this.createFunctionNode(functionStructure);
             pluginNode.addChild(functionNode);

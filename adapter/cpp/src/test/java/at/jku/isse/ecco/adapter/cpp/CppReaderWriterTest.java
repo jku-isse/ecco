@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -41,7 +40,7 @@ public class CppReaderWriterTest {
         assertTrue(new CppReader(this.entities).readContext(base).startsWith("A, B\n"));
     }
 
-    /** an empty .config is an empty configuration (the C reader fails on it) */
+    /** an empty .config is an empty configuration */
     @Test
     public void anEmptyConfigIsAnEmptyConfiguration(@TempDir Path base) throws IOException {
         Files.writeString(base.resolve(".config"), "");
@@ -61,15 +60,13 @@ public class CppReaderWriterTest {
         }
     }
 
-    /**
-     * A .config that opens but cannot be read (a directory) fails while the stream is read: an
-     * UncheckedIOException, which getConfigurationString's catch (IOException) does not wrap.
-     */
+    /** A .config that opens but cannot be read (a directory) fails while the stream is read - reported like any unreadable .config. */
     @Test
-    public void aConfigDirectoryFailsTheReadUnwrapped(@TempDir Path base) throws IOException {
+    public void aConfigDirectoryFailsTheRead(@TempDir Path base) throws IOException {
         Files.createDirectories(base.resolve(".config"));
         Files.writeString(base.resolve("main.cpp"), "int x;\n");
-        assertThrows(UncheckedIOException.class, () -> new CppReader(this.entities).read(base, new Path[]{Path.of("main.cpp")}));
+        EccoException e = assertThrows(EccoException.class, () -> new CppReader(this.entities).read(base, new Path[]{Path.of("main.cpp")}));
+        assertTrue(e.getMessage().contains(".config"), e.getMessage());
     }
 
     /** without a base the input is resolved against the working directory: an absolute path as is */

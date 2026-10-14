@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -45,37 +44,35 @@ public class CReaderWriterTest {
         assertTrue(new CReader(this.entities).readContext(base).startsWith("A, B\n"));
     }
 
-    /**
-     * An empty .config has no first line: CReader#getConfigurationString takes it with get(0) and
-     * fails the read (CppReader takes "" instead). Current behaviour.
-     */
+    /** An empty .config is an empty configuration, as in the C++ adapter - it failed the read (IndexOutOfBoundsException). */
     @Test
-    public void anEmptyConfigFailsTheRead(@TempDir Path base) throws IOException {
+    public void anEmptyConfigIsAnEmptyConfiguration(@TempDir Path base) throws IOException {
         Files.writeString(base.resolve(".config"), "");
         Files.writeString(base.resolve("main.c"), "int x;\n");
-        assertThrows(IndexOutOfBoundsException.class, () -> new CReader(this.entities).read(base, new Path[]{Path.of("main.c")}));
+        Node file = new CReader(this.entities).read(base, new Path[]{Path.of("main.c")}).iterator().next();
+        assertEquals("", file.getChildren().get(0).<Location>getProperty("Location").orElseThrow().getConfigurationString());
     }
 
-    /** a plain RuntimeException wrapping the IOException, not an EccoException */
     @Test
     public void aConfigThatCannotBeOpenedFailsTheRead(@TempDir Path base) throws IOException {
         Path config = Files.writeString(base.resolve(".config"), "A\n");
         Files.writeString(base.resolve("main.c"), "int x;\n");
         assumeTrue(config.toFile().setReadable(false) && !Files.isReadable(config), "file permissions not enforced (root?)");
         try {
-            RuntimeException e = assertThrows(RuntimeException.class, () -> new CReader(this.entities).read(base, new Path[]{Path.of("main.c")}));
-            assertInstanceOf(IOException.class, e.getCause());
+            EccoException e = assertThrows(EccoException.class, () -> new CReader(this.entities).read(base, new Path[]{Path.of("main.c")}));
+            assertTrue(e.getMessage().contains(".config"), e.getMessage());
         } finally {
             config.toFile().setReadable(true);
         }
     }
 
-    /** a .config that opens but cannot be read (a directory) fails while the stream is read, unwrapped */
+    /** A .config that opens but cannot be read (a directory) fails while the stream is read - reported like any unreadable .config. */
     @Test
-    public void aConfigDirectoryFailsTheReadUnwrapped(@TempDir Path base) throws IOException {
+    public void aConfigDirectoryFailsTheRead(@TempDir Path base) throws IOException {
         Files.createDirectories(base.resolve(".config"));
         Files.writeString(base.resolve("main.c"), "int x;\n");
-        assertThrows(UncheckedIOException.class, () -> new CReader(this.entities).read(base, new Path[]{Path.of("main.c")}));
+        EccoException e = assertThrows(EccoException.class, () -> new CReader(this.entities).read(base, new Path[]{Path.of("main.c")}));
+        assertTrue(e.getMessage().contains(".config"), e.getMessage());
     }
 
     /** without a base the input is resolved against the working directory: an absolute path as is */

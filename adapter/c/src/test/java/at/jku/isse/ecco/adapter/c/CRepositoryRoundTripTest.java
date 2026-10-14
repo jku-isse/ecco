@@ -126,12 +126,12 @@ public class CRepositoryRoundTripTest {
     }
 
     /**
-     * Through a repository, the duplicated line of CRoundTripTest#aLineSharedByTwoFunctionsIsWrittenTwice
-     * comes back duplicated as well (each variant is otherwise its own).
+     * Through a repository, a line two functions share (CRoundTripTest#aLineSharedByTwoFunctionsIsWrittenOnce)
+     * comes back once - it was written twice.
      */
     @Test
     @Timeout(120)
-    public void aLineSharedByTwoFunctionsIsDuplicatedInTheCheckout(@TempDir Path work) throws Exception {
+    public void aLineSharedByTwoFunctionsIsCheckedOutOnce(@TempDir Path work) throws Exception {
         Path content = Files.createDirectories(work.resolve("content"));
         try (EccoService service = new EccoService()) {
             service.setRepositoryDir(work.resolve(".ecco"));
@@ -142,7 +142,7 @@ public class CRepositoryRoundTripTest {
             Path checkout = Files.createDirectories(work.resolve("checkout"));
             service.setBaseDir(checkout);
             service.checkout("A");
-            assertEquals("int f() {\n    return 1;\n} int g() {\n} int g() {\n    return 2;\n}\n", Files.readString(checkout.resolve("main.c")));
+            assertEquals("int f() {\n    return 1;\n} int g() {\n    return 2;\n}\n", Files.readString(checkout.resolve("main.c")));
         }
     }
 

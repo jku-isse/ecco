@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.parser.ScannerInfo;
 import org.eclipse.core.runtime.CoreException;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -248,7 +249,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             return "";
         try (Stream<String> stream = Files.lines(configurationPath)) {
             return stream.findFirst().orElse("");
-        } catch (IOException e) {
+        } catch (IOException | UncheckedIOException e) { // the stream throws the latter, lazily
             throw new EccoException("Could not read " + configurationPath, e);
         }
     }

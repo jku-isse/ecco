@@ -2,7 +2,6 @@ package at.jku.isse.ecco.adapter.c;
 
 import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import at.jku.isse.ecco.tree.Node;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -154,19 +153,11 @@ public class CRoundTripTest {
     private static final String SHARED_LINE = "int f() {\n    return 1;\n} int g() {\n    return 2;\n}\n";
 
     /**
-     * A function that starts on the line where the previous one ends: the shared line becomes a
-     * child of both function nodes (CEccoTranslator#addChildrenToPluginNode does not skip lines
-     * already taken), so it is written twice. Current behaviour, see the disabled test.
+     * A function that starts on the line where the previous one ends stays plain lines, as in the
+     * C++ adapter: as a function, the shared line was a child of both function nodes and was
+     * written twice ("} int g() {"; a file of one line came back as two copies of it).
      */
     @Test
-    public void aLineSharedByTwoFunctionsIsWrittenTwice() throws IOException {
-        assertEquals("int f() {\n    return 1;\n} int g() {\n} int g() {\n    return 2;\n}\n", roundTripText(SHARED_LINE));
-        assertEquals("int f() { return 1; } int g() { return 2; }\nint f() { return 1; } int g() { return 2; }\n",
-                roundTripText("int f() { return 1; } int g() { return 2; }\n"));
-    }
-
-    @Test
-    @Disabled("bug: a line shared by two functions (\"} int g() {\") is written twice - CEccoTranslator adds it to both function nodes")
     public void aLineSharedByTwoFunctionsIsWrittenOnce() throws IOException {
         assertExact(SHARED_LINE);
         assertExact("int f() { return 1; } int g() { return 2; }\n");
