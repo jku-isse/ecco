@@ -35,7 +35,7 @@ public class CReaderIntegrationTest {
         // main.c has 21 lines, 6 of them empty: 3 at the top level, after the include and between
         // the functions, and 3 inside main()
         assertEquals(6, countEmptyLines(pluginNode));
-        assertEquals(7, pluginNode.getNumberOfChildren(), "an include, 3 functions and 3 empty lines");
+        assertEquals(8, pluginNode.getNumberOfChildren(), "an include, 3 functions, 3 empty lines and the format (TextFileFormat)");
     }
 
     @Test
@@ -230,7 +230,7 @@ public class CReaderIntegrationTest {
         List<Node.Op> children = new ArrayList<>();
         for (Node.Op child : node.getChildren())
             // nor the file's final newline (TextFileFormat)
-            if (!isEmptyLine(child) && !at.jku.isse.ecco.adapter.dispatch.TextFileFormat.isFinalNewline(child))
+            if (!isEmptyLine(child) && !at.jku.isse.ecco.adapter.dispatch.TextFileFormat.isMarker(child))
                 children.add(child);
         return children;
     }

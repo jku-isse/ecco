@@ -268,6 +268,6 @@ public class ReorderChildrenDialogTest {
 
     /** The lines' texts - not a file's final newline, which the dialog does not offer to move. */
     private static List<String> texts(List<? extends Node> nodes) {
-        return nodes.stream().filter(n -> !at.jku.isse.ecco.adapter.dispatch.TextFileFormat.isFinalNewline(n)).map(n -> String.valueOf(n.getArtifact())).toList();
+        return nodes.stream().filter(n -> !at.jku.isse.ecco.adapter.dispatch.TextFileFormat.isMarker(n)).map(n -> String.valueOf(n.getArtifact())).toList();
     }
 }

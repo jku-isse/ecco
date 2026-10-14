@@ -85,7 +85,7 @@ public class CReader implements ArtifactReader<Path, Set<Node.Op>> {
             }
             Node.Op pluginNode = addPluginNode(nodes, path, decoded);
             this.parseFile(pluginNode, decoded, fileConditionContainer, path, configuration);
-            decoded.addFinalNewline(pluginNode, this.entityFactory);
+            decoded.addMarkers(pluginNode, this.entityFactory);
             nodes.add(pluginNode);
         }
         return nodes;

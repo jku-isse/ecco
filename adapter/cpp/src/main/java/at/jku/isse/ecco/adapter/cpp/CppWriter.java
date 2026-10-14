@@ -69,7 +69,7 @@ public class CppWriter implements ArtifactWriter<Set<Node>, Path> {
                 writer.writeLine(line.getLine());
             else if (data instanceof ScopeArtifactData)
                 this.writeLines(child, writer);
-            else if (!TextFileFormat.isFinalNewline(child))
+            else if (!TextFileFormat.isMarker(child))
                 throw new EccoException("Unexpected artifact in a C++ file: " + data);
         }
     }

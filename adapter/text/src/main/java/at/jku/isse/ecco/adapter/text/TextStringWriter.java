@@ -29,7 +29,7 @@ public class TextStringWriter implements ArtifactWriter<Set<Node>, String> {
 		for (Node fileNode : input) {
 			StringBuilder sb = new StringBuilder();
 			for (Node lineNode : fileNode.getChildren()) {
-				if (at.jku.isse.ecco.adapter.dispatch.TextFileFormat.isFinalNewline(lineNode))
+				if (at.jku.isse.ecco.adapter.dispatch.TextFileFormat.isMarker(lineNode))
 					continue;
 				LineArtifactData lineArtifactData = (LineArtifactData) lineNode.getArtifact().getData();
 

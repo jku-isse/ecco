@@ -55,13 +55,13 @@ public class CommitAssociationReproTest {
 		List<String> summary = summarizeCommits(service);
 
 		assertEquals(List.of(
-				// the file's lines, and its final newline (TextFileFormat)
-				"v0: associations=2, totalArtifacts=14",
-				"v1: associations=2, totalArtifacts=14",
-				"v2: associations=2, totalArtifacts=14",
-				"v3: associations=2, totalArtifacts=14",
-				"v4: associations=2, totalArtifacts=14",
-				"v5: associations=2, totalArtifacts=14"
+				// the file's lines, its final newline and its format (TextFileFormat)
+				"v0: associations=2, totalArtifacts=15",
+				"v1: associations=2, totalArtifacts=15",
+				"v2: associations=2, totalArtifacts=15",
+				"v3: associations=2, totalArtifacts=15",
+				"v4: associations=2, totalArtifacts=15",
+				"v5: associations=2, totalArtifacts=15"
 		), summary);
 
 		service.close();

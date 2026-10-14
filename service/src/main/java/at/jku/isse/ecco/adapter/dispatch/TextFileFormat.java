@@ -27,10 +27,11 @@ import java.util.List;
  * {@link PluginArtifactData}. Lines are split exactly like {@link java.io.BufferedReader#readLine()}
  * (on \n, \r\n and \r), so the line artifacts of existing repositories stay the same. Files whose
  * format was never recorded (committed before this existed) are written exactly as before.
- * Limitations: a file mixing line separators gets the first one throughout, and since variants of a
- * file share its plugin artifact, its charset and line separator are the newest commit's. Its final
- * newline is not: it is a child of the file's node ({@link FinalNewlineArtifactData}), traced like a
- * line - recorded with the rest, the newest commit's final newline was written into every variant.
+ * Limitation: a file mixing line separators gets the first one throughout. Each variant's final
+ * newline ({@link FinalNewlineArtifactData}) and its charset and line separator
+ * ({@link TextFormatArtifactData}) are children of the file's node, traced like lines - recorded on
+ * the plugin artifact, which the variants of a file share, the newest commit's were written into
+ * every variant. Files stored before keep that: the plugin data says whether they are traced.
  */
 public final class TextFileFormat {
 
@@ -45,21 +46,31 @@ public final class TextFileFormat {
 		public void recordOn(PluginArtifactData data) {
 			data.setTextFormat(this.charset.name(), this.lineSeparator, this.endsWithNewline);
 			data.setFinalNewlineTraced();
+			data.setFormatTraced();
 		}
 
 		/**
-		 * Adds the file's final newline, if it has one, as the last child of its node - after its
-		 * lines (see {@link FinalNewlineArtifactData}).
+		 * Adds the file's final newline, if it has one (see {@link FinalNewlineArtifactData}), and its
+		 * charset and line separator ({@link TextFormatArtifactData}, unless it is empty) as the last
+		 * children of its node - after its lines.
 		 */
-		public void addFinalNewline(Node.Op fileNode, EntityFactory entityFactory) {
+		public void addMarkers(Node.Op fileNode, EntityFactory entityFactory) {
 			if (this.endsWithNewline)
 				fileNode.addChild(entityFactory.createNode(entityFactory.createArtifact(new FinalNewlineArtifactData())));
+			// an empty file is written the same in every format
+			if (!this.lines.isEmpty())
+				fileNode.addChild(entityFactory.createNode(entityFactory.createArtifact(new TextFormatArtifactData(this.charset.name(), this.lineSeparator))));
 		}
 	}
 
 	/** Whether [node] is a file's final newline, which a writer does not write as a line. */
 	public static boolean isFinalNewline(Node node) {
 		return node.getArtifact() != null && node.getArtifact().getData() instanceof FinalNewlineArtifactData;
+	}
+
+	/** Whether [node] is a file's final newline or format - written as neither a line nor anything else. */
+	public static boolean isMarker(Node node) {
+		return isFinalNewline(node) || node.getArtifact() != null && node.getArtifact().getData() instanceof TextFormatArtifactData;
 	}
 
 	/**
@@ -111,7 +122,28 @@ public final class TextFileFormat {
 	public static LineWriter newLineWriter(Path file, PluginArtifactData data, Node fileNode) throws IOException {
 		if (!data.hasTextFormat())
 			return new LineWriter(Files.newBufferedWriter(file), System.lineSeparator(), true);
-		return new LineWriter(Files.newBufferedWriter(file, Charset.forName(data.getCharset())), data.getLineSeparator(), endsWithNewline(data, fileNode));
+		TextFormatArtifactData format = format(data, fileNode);
+		return new LineWriter(Files.newBufferedWriter(file, Charset.forName(format.getCharset())), format.getLineSeparator(), endsWithNewline(data, fileNode));
+	}
+
+	/**
+	 * The charset and line separator of the file [fileNode] stands for in this variant: its format
+	 * child; the recorded (newest) one for a file stored before formats were traced, without a format
+	 * child, or with several - a checkout combining variants in different formats.
+	 */
+	public static TextFormatArtifactData format(PluginArtifactData data, Node fileNode) {
+		TextFormatArtifactData newest = new TextFormatArtifactData(data.getCharset(), data.getLineSeparator());
+		if (!data.isFormatTraced())
+			return newest;
+		TextFormatArtifactData found = null;
+		for (Node child : fileNode.getChildren()) {
+			if (child.getArtifact() != null && child.getArtifact().getData() instanceof TextFormatArtifactData format) {
+				if (found != null && !found.equals(format))
+					return newest;
+				found = format;
+			}
+		}
+		return found == null ? newest : found;
 	}
 
 	/** Whether the file [fileNode] stands for ends with a newline in this variant. */

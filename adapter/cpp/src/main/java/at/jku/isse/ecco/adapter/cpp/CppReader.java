@@ -111,7 +111,7 @@ public class CppReader implements ArtifactReader<Path, Set<Node.Op>> {
             List<Scope> scopes = parseScopes(absolutePath, lines);
             new TreeBuilder(lines, vevosConditionHandler.getFileSpecificPresenceConditions(path), path, configuration)
                     .addLines(pluginNode, scopes, 1, lines.length);
-            decoded.addFinalNewline(pluginNode, this.entityFactory);
+            decoded.addMarkers(pluginNode, this.entityFactory);
             nodes.add(pluginNode);
         }
         return nodes;

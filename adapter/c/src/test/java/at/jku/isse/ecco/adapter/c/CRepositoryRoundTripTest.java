@@ -151,4 +151,11 @@ public class CRepositoryRoundTripTest {
     public void aFinalNewline(@TempDir Path work) throws Exception {
         assertEachVariantComesBack(work, "int x;\n", "int x;");
     }
+
+    /** Each variant keeps its own line separator - all got the newest commit's. */
+    @Test
+    @Timeout(120)
+    public void lineSeparators(@TempDir Path work) throws Exception {
+        assertEachVariantComesBack(work, "int f() {\n    return 1;\n}\n", "int f() {\r\n    return 1;\r\n}\r\n");
+    }
 }

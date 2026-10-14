@@ -154,4 +154,13 @@ public class CppRepositoryRoundTripTest {
                 "class A {\npublic:\n    int x;\n    void f() {\n        x = 1;\n    }\n};\n",
                 "class A {\npublic:\n    long x;\n    void f() {\n        x = 1;\n    }\n};\n");
     }
+
+    /** Each variant keeps its own line separator - all got the newest commit's. */
+    @Test
+    @Timeout(120)
+    public void lineSeparators(@TempDir Path work) throws Exception {
+        assertEachVariantComesBack(work, "main.cpp",
+                "int f() {\n    return 1;\n}\n",
+                "int f() {\r\n    return 1;\r\n}\r\n");
+    }
 }

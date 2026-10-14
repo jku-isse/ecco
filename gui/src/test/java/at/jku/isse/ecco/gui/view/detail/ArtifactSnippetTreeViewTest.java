@@ -46,9 +46,9 @@ public class ArtifactSnippetTreeViewTest {
                 return v;
             });
 
-            assertEquals(List.of("Directory", "Plugin", "Line", "FinalNewline"), onFx(() -> legend(view)));
+            assertEquals(List.of("Directory", "Plugin", "Line", "FinalNewline", "TextFormat"), onFx(() -> legend(view)));
             assertFalse(onFx(() -> tree(view).isShowRoot()));
-            assertEquals(List.of("", "a.txt [at.jku.isse.ecco.adapter.text.TextPlugin]", "a1", "a2", "(final newline)"), onFx(() -> shown(view)));
+            assertEquals(List.of("", "a.txt [at.jku.isse.ecco.adapter.text.TextPlugin]", "a1", "a2", "(final newline)", "(format: UTF-8, LF)"), onFx(() -> shown(view)));
 
             onFx(() -> view.setRootNode(null));
             assertNull(onFx(() -> tree(view).getRoot()));
@@ -69,6 +69,7 @@ public class ArtifactSnippetTreeViewTest {
             });
 
             onFx(() -> toggle(view, "Line").setSelected(false));
+            onFx(() -> toggle(view, "TextFormat").setSelected(false));
             assertEquals(List.of("", "a.txt [at.jku.isse.ecco.adapter.text.TextPlugin]", "(final newline)"), onFx(() -> shown(view)));
 
             // the file's kind off, but its final newline still on: the file stays as its ancestor
@@ -101,7 +102,7 @@ public class ArtifactSnippetTreeViewTest {
             Set<String> texts = onFx(() -> tree(view).lookupAll(".tree-cell").stream()
                     .map(n -> (TreeCell<?>) n).filter(c -> !c.isEmpty())
                     .map(c -> String.valueOf(c.getText())).collect(Collectors.toSet()));
-            assertEquals(Set.of("null", "a.txt [at.jku.isse.ecco.adapter.text.TextPlugin]", "a1", "a2", "(final newline)"), texts,
+            assertEquals(Set.of("null", "a.txt [at.jku.isse.ecco.adapter.text.TextPlugin]", "a1", "a2", "(final newline)", "(format: UTF-8, LF)"), texts,
                     "the directory's empty text is no label (null)");
             assertTrue(onFx(() -> tree(view).lookupAll(".tree-cell").stream()
                     .map(n -> (TreeCell<?>) n).filter(c -> "a1".equals(c.getText()))

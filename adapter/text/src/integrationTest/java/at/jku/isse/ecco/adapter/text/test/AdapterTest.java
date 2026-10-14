@@ -39,8 +39,9 @@ public class AdapterTest {
 		assertEquals(1, nodes.size());
 		Node.Op fileNode = nodes.iterator().next();
 		assertTrue(fileNode.getArtifact().toString().contains("file.txt"));
-		// file.txt (in src/integrationTest/resources/data/input) has 4 lines and a final newline; +1 for the file node itself
-		assertEquals(6, Trees.countArtifacts(fileNode));
+		// file.txt (in src/integrationTest/resources/data/input) has 4 lines, a final newline and its
+		// format (TextFileFormat); +1 for the file node itself
+		assertEquals(7, Trees.countArtifacts(fileNode));
 	}
 
 }

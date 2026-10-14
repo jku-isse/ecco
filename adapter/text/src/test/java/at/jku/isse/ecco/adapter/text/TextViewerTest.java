@@ -187,7 +187,7 @@ public class TextViewerTest {
         });
         assertInstanceOf(ListView.class, viewer.getCenter());
         // the final newline marker is shown as a row of its own
-        assertEquals(List.of("one", "\ttwo  ", "three", "(final newline)"), texts(cells(viewer)));
+        assertEquals(List.of("one", "\ttwo  ", "three", "(final newline)", "(format: UTF-8, LF)"), texts(cells(viewer)));
         assertEquals(TextPlugin.class.getName(), viewer.getPluginId());
     }
 
@@ -218,7 +218,7 @@ public class TextViewerTest {
         assertEquals(List.of("a.txt", "b.txt"), tabs.getTabs().stream().map(Tab::getText).toList());
         assertEquals("b.txt", tabs.getSelectionModel().getSelectedItem().getText());
         List<String[]> cells = cells(viewer);
-        assertEquals(List.of("b1", "b2", "b3"), texts(cells));
+        assertEquals(List.of("b1", "b2", "b3", "(format: UTF-8, LF)"), texts(cells));
         assertEquals(Color.YELLOW.toString(), cells.get(1)[2]);
         assertEquals(Color.WHITE.toString(), cells.get(0)[2]);
     }

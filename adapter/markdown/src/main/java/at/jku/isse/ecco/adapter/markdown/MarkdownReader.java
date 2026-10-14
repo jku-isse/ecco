@@ -104,7 +104,7 @@ public class MarkdownReader implements ArtifactReader<Path, Set<Node.Op>> {
 				String content = String.join("\n", sourceLines);
 				Document document = (Document) this.parser.parse(content);
 				new MarkdownTreeBuilder(this.entityFactory, sourceLines).translate(document, pluginNode);
-				decoded.addFinalNewline(pluginNode, this.entityFactory);
+				decoded.addMarkers(pluginNode, this.entityFactory);
 			} catch (IOException e) {
 				throw new EccoException("Could not read file: " + resolvedPath, e);
 			}

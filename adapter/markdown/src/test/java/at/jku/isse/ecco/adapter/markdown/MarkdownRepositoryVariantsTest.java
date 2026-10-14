@@ -4,7 +4,6 @@ import at.jku.isse.ecco.adapter.markdown.data.SectionArtifactData;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
@@ -160,12 +159,11 @@ public class MarkdownRepositoryVariantsTest {
 	}
 
 	/**
-	 * Variants differing in line ending only. The line separator is recorded on the file's plugin
-	 * artifact, which all variants of the file share, so every variant gets the newest commit's
-	 * (a limitation documented in TextFileFormat): whitespace only, the lines are right.
+	 * Variants differing in line ending only, or in charset only: each comes back in its own. Both
+	 * were recorded on the file's plugin artifact, which all variants of the file share, so every
+	 * variant got the newest commit's - an LF variant CRLF, a UTF-8 variant ISO-8859-1 bytes.
 	 */
 	@Test
-	@Disabled("bug: variants of a file share one line separator, the newest commit's - an LF variant is checked out with CRLF")
 	@Timeout(120)
 	public void lineEndingVariantsEachComeBack() throws Exception {
 		this.assertEachVariantComesBack(utf8("# T\n\ntext\n"), utf8("# T\r\n\r\ntext\r\n"));
@@ -173,56 +171,8 @@ public class MarkdownRepositoryVariantsTest {
 
 	@Test
 	@Timeout(120)
-	public void lineEndingVariantsAllGetTheNewestCommitsLineEnding() throws Exception {
-		byte[] crlf = utf8("# T\r\n\r\ntext\r\n");
-		Path content = Files.createDirectories(this.tmp.resolve("content"));
-		try (EccoService service = new EccoService()) {
-			service.setRepositoryDir(this.tmp.resolve(".ecco"));
-			service.init();
-			service.setBaseDir(content);
-			Files.createDirectories(content.resolve(FILE).getParent());
-			Files.write(content.resolve(FILE), utf8("# T\n\ntext\n"));
-			service.commit("lf", "A");
-			Files.write(content.resolve(FILE), crlf);
-			service.commit("crlf", "B");
-			Path checkout = Files.createDirectories(this.tmp.resolve("checkout-A"));
-			service.setBaseDir(checkout);
-			service.checkout("A");
-			assertArrayEquals(crlf, Files.readAllBytes(checkout.resolve(FILE)));
-		}
-	}
-
-	/**
-	 * Variants differing in charset only: as with line endings, the newest commit's charset is used
-	 * for every variant. Here the characters are the same, but a UTF-8 variant is written in
-	 * Latin-1, so a reader expecting UTF-8 gets an invalid byte instead of "é".
-	 */
-	@Test
-	@Disabled("bug: variants of a file share one charset, the newest commit's - a UTF-8 variant is checked out in Latin-1")
-	@Timeout(120)
 	public void charsetVariantsEachComeBack() throws Exception {
 		this.assertEachVariantComesBack(utf8("# T\n\ncafé\n"), "# T\n\ncafé\n".getBytes(StandardCharsets.ISO_8859_1));
-	}
-
-	@Test
-	@Timeout(120)
-	public void charsetVariantsAllGetTheNewestCommitsCharset() throws Exception {
-		byte[] latin1 = "# T\n\ncafé\n".getBytes(StandardCharsets.ISO_8859_1);
-		Path content = Files.createDirectories(this.tmp.resolve("content"));
-		try (EccoService service = new EccoService()) {
-			service.setRepositoryDir(this.tmp.resolve(".ecco"));
-			service.init();
-			service.setBaseDir(content);
-			Files.createDirectories(content.resolve(FILE).getParent());
-			Files.write(content.resolve(FILE), utf8("# T\n\ncafé\n"));
-			service.commit("utf-8", "A");
-			Files.write(content.resolve(FILE), latin1);
-			service.commit("latin-1", "B");
-			Path checkout = Files.createDirectories(this.tmp.resolve("checkout-A"));
-			service.setBaseDir(checkout);
-			service.checkout("A");
-			assertArrayEquals(latin1, Files.readAllBytes(checkout.resolve(FILE)));
-		}
 	}
 
 	/**

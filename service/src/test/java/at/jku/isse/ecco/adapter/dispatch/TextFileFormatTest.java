@@ -94,7 +94,7 @@ public class TextFileFormatTest {
         // the final newline is a child of the file's node
         at.jku.isse.ecco.storage.ser.dao.SerEntityFactory entityFactory = new at.jku.isse.ecco.storage.ser.dao.SerEntityFactory();
         at.jku.isse.ecco.tree.Node.Op fileNode = entityFactory.createOrderedNode(data);
-        decoded.addFinalNewline(fileNode, entityFactory);
+        decoded.addMarkers(fileNode, entityFactory);
         try (TextFileFormat.LineWriter writer = TextFileFormat.newLineWriter(out, data, fileNode)) {
             for (String line : decoded.lines()) writer.writeLine(line);
         }

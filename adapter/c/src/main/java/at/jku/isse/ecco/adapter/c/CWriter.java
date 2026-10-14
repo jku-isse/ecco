@@ -60,7 +60,7 @@ public class CWriter implements ArtifactWriter<Set<Node>, Path> {
                 } else if (artifactData instanceof LineArtifactData){
                     LineArtifactData lineArtifactData = (LineArtifactData) artifactData;
                     bw.writeLine(lineArtifactData.getLine());
-                } else if (!TextFileFormat.isFinalNewline(node)) {
+                } else if (!TextFileFormat.isMarker(node)) {
                     throw new EccoException("Expected FunctionArtifactData or LineArtifactData.");
                 }
             }

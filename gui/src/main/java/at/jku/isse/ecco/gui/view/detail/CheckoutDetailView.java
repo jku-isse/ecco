@@ -416,10 +416,10 @@ public class CheckoutDetailView extends BorderPane {
 	 * determined (see the hasUnresolvedOrder filter in showCheckout). Package-visible for testing.
 	 */
 	void recordOrder(Node.Op node, List<Node.Op> givenOrder) {
-		// a text file's final newline stays last, also when the order leaves it out (TextFileFormat)
+		// a text file's final newline and format stay last, also when the order leaves them out (TextFileFormat)
 		List<Node.Op> order = new ArrayList<>(givenOrder);
 		for (Node.Op child : node.getChildren())
-			if (TextFileFormat.isFinalNewline(child) && !order.contains(child))
+			if (TextFileFormat.isMarker(child) && !order.contains(child))
 				order.add(child);
 		Task<Void> recordTask = new Task<>() {
 			@Override

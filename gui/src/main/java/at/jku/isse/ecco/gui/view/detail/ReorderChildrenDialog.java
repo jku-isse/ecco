@@ -94,11 +94,11 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		// now that the real Node is threaded through, but this dialog should never index out of
 		// bounds regardless).
 		ObservableList<ChildEntry> rowData = FXCollections.observableArrayList();
-		// a text file's final newline is no line to move: it stays last (TextFileFormat)
-		List<Node.Op> finalNewline = new ArrayList<>();
+		// a text file's final newline and format are no lines to move: they stay last (TextFileFormat)
+		List<Node.Op> markers = new ArrayList<>();
 		for (int i = 0; i < children.size(); i++) {
-			if (TextFileFormat.isFinalNewline(children.get(i))) {
-				finalNewline.add(children.get(i));
+			if (TextFileFormat.isMarker(children.get(i))) {
+				markers.add(children.get(i));
 				continue;
 			}
 			String label = (labels.size() == children.size()) ? labels.get(i) : String.valueOf(children.get(i).getArtifact());
@@ -194,7 +194,7 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 		Runnable updateCodePreview = () -> {
 			ChildEntry selected = table.getSelectionModel().getSelectedItem();
 			if (selected == null || !(codePreview instanceof ArtifactViewer)) return;
-			node.setChildren(withFinalNewline(rowData, finalNewline));
+			node.setChildren(withMarkers(rowData, markers));
 			try {
 				((ArtifactViewer) codePreview).showTree(selected.getNode());
 			} finally {
@@ -303,13 +303,13 @@ public class ReorderChildrenDialog extends Dialog<List<Node.Op>> {
 			table.getSelectionModel().selectFirst();
 		}
 
-		setResultConverter(buttonType -> buttonType != ButtonType.OK ? null : withFinalNewline(rowData, finalNewline));
+		setResultConverter(buttonType -> buttonType != ButtonType.OK ? null : withMarkers(rowData, markers));
 	}
 
 	/** The rows' nodes in their order, then the final newline, if the file has one. */
-	private static List<Node.Op> withFinalNewline(List<ChildEntry> rows, List<Node.Op> finalNewline) {
+	private static List<Node.Op> withMarkers(List<ChildEntry> rows, List<Node.Op> markers) {
 		List<Node.Op> nodes = rows.stream().map(ChildEntry::getNode).collect(Collectors.toList());
-		nodes.addAll(finalNewline);
+		nodes.addAll(markers);
 		return nodes;
 	}
 
