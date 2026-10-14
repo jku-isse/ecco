@@ -128,6 +128,165 @@ public class CppRoundTripTest {
         }
     }
 
+    /**
+     * Include guards: once (d9ce686c) every conditional directive was stripped, so #ifndef/#define/
+     * #endif came back as empty lines. Now they are lines like any other - with or without a
+     * trailing comment, final newline, CRLF; also #pragma once and a four-line file.
+     */
+    @Test
+    public void includeGuardsComeBackExactly() throws IOException {
+        assertExact("#ifndef X_H\n#define X_H\n\nint f();\n\n#endif\n");
+        assertExact("#ifndef X_H\n#define X_H\n#include <x>\nint main() {\n  return 0;\n}\n#endif // X_H");
+        assertExact("#ifndef X_H\r\n#define X_H\r\nclass A {\r\n};\r\n#endif /* X_H */\r\n");
+        assertExact("#if !defined(X_H)\n# define X_H 1\nnamespace n {\nint g();\n}\n#endif\n");
+        assertExact("#pragma once\n#include <x>\nint main() {}\n");
+        assertExact("#include <x>\nint main() {\n  return 0;\n}\n");
+    }
+
+    /** CDT parses inactive branches too: functions opened in both branches of an #if keep their lines */
+    @Test
+    public void preprocessorDirectivesSurvive() throws IOException {
+        assertExact("""
+                #define MAX(a, b) \\
+                    ((a) > (b) ? (a) : (b))
+                #define DECL(n) int n() { \\
+                    return 0; }
+                DECL(a)
+                #if A
+                # if B
+                int f() {
+                # elif C
+                int f(int) {
+                # endif
+                #else
+                int g() {
+                #endif
+                    return MAX(1, 2);
+                }
+                #ifdef A
+                int h() {
+                    return 1;
+                }
+                #else
+                int h() {
+                    return 2;
+                }
+                #endif
+                """);
+    }
+
+    @Test
+    public void functionKindsSurvive() throws IOException {
+        assertExact("""
+                int proto(int);
+                int knr(a, b)
+                    int a;
+                    long b;
+                {
+                    return a + b;
+                }
+                main() {
+                    return 0;
+                }
+                static inline int twice(int x) { return 2 * x; }
+                int (*pick(void))(int) {
+                    return proto;
+                }
+                void (*handlers[2])(int);
+                __attribute__((noreturn)) void die(void) {
+                    for (;;) {}
+                }
+                [[nodiscard]] auto sum(int a, int b) -> int { return a + b; }
+                """);
+    }
+
+    @Test
+    public void statementsSurvive() throws IOException {
+        assertExact("""
+                int f(int x) {
+                    do {
+                        x--;
+                    } while (x > 0);
+                    switch (x) {
+                    case 0:
+                    case 1:
+                        x++;
+                        [[fallthrough]];
+                    default:
+                        goto end;
+                    }
+                    {
+                        { x = 2; }
+                    }
+                end:
+                    return x;
+                }
+                """);
+    }
+
+    @Test
+    public void commentsTabsAndEmptyFilesSurvive() throws IOException {
+        assertExact("/* first line */\n\tint\tx;   \nint f() {\t\n\treturn 0; // done \n}\n// last line, no newline");
+        assertExact("");
+        assertExact("\n");
+        assertExact("\r\n\r\n");
+    }
+
+    /**
+     * The first adapter turned what CDT could not parse into problem blocks (and lost parts of it);
+     * now such lines are lines like any other, wherever they are.
+     */
+    @Test
+    public void unparseableCodeSurvives() throws IOException {
+        assertExact("class {{{ ;;; \nnamespace @ x {\ntemplate<<<\nint f() {\n  return 1;\n}\n");
+        assertExact("int f( {\n  @@@ ???\n}}}\nint g() {\n  $$ not C++\n  return 1;\n}\n");
+        assertExact("int f() {\n  if (x) {\n    return 1;\n}\n");
+    }
+
+    /** a scope starting on the line the previous one ends on is left to that one: no line twice */
+    @Test
+    public void scopesSharingALineSurvive() throws IOException {
+        assertExact("int f() {\n  return 1;\n} int g() {\n  return 2;\n}\n");
+        assertExact("int f() { return 1; } int g() { return 2; }\n");
+        assertExact("class A { void f() {} }; class B { void g() {} };\nnamespace n { int h() { return 1; } }\n");
+        Node file = read("int f() {\n  return 1;\n} int g() {\n  return 2;\n}\n".getBytes(StandardCharsets.UTF_8));
+        assertEquals(List.of("function int f()"), scopesOf(file));
+        assertEquals(List.of("int f() {", "  return 1;", "} int g() {"), linesOf(scope(file, "function int f()")));
+    }
+
+    /** TextFileFormat's documented limitation: mixed line separators become the first. Whitespace only. */
+    @Test
+    public void mixedLineSeparatorsBecomeTheFirst() throws IOException {
+        assertEquals("int a;\r\nint b;\r\nint c;\r\n", new String(roundTrip("int a;\r\nint b;\nint c;\r\n".getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Scope signatures: whitespace-normalized, so reformatting keeps the scope; a parameter type
+     * makes another one. An enum is its name only (enum and enum class collide) and anonymous
+     * structs are all "struct" - such scopes are aligned as one, their lines still differ.
+     */
+    @Test
+    public void scopeSignatures() throws IOException {
+        Node file = read("""
+                int  f( int a ,
+                        char **b ) {
+                    return a;
+                }
+                int f(long a) {
+                    return 0;
+                }
+                enum E { X };
+                struct { int a; } s;
+                union U { int a; };
+                """.getBytes(StandardCharsets.UTF_8));
+        assertEquals(List.of("function int f( int a , char **b )", "function int f(long a)", "enum E", "struct", "union U"), scopesOf(file));
+        assertEquals(List.of("enum E"), scopesOf(read("enum class E { X };\n".getBytes(StandardCharsets.UTF_8))));
+    }
+
+    private static void assertExact(String source) throws IOException {
+        assertEquals(source, new String(roundTrip(source.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+    }
+
     private static byte[] roundTrip(byte[] source) throws IOException {
         Node file = read(source);
         Path outputDir = Files.createTempDirectory("cpp-roundtrip-out");
