@@ -72,6 +72,8 @@ public class LilypondParseTest {
 				"{ c4 d }   \n\n\n",
 				"{ \\override Hairpin.to-barline = ##f  c4 }\n",
 				"\\new Voice = \"s\" { c4 d }\n\\new Lyrics \\lyricsto \"s\" {  Hel -- lo\n    world }\n",
+				// the voice named without quotes: read without musical tokens, the reader failed
+				"\\new Voice = \"s\" { c4 d }\n\\new Lyrics \\lyricsto s  { Hel -- lo }\n",
 		}) {
 			assertEquals(text, roundTrip(text), text);
 		}

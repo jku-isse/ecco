@@ -311,18 +311,21 @@ public class LilyEccoTransformer {
             return lyricmode;
         }
         if (n.getName().equals(DEF_LYRICSTO)) {
-            // isLyriclist()'s own validation can skip an arbitrary run of nodes nested under
-            // LilyPond.list before reaching LilyPond.lyriclist (see its while-loop), but this is a
-            // fixed two-hop step assuming exactly one such node (LilyPond.string) - guard each hop
-            // individually instead of chaining n.getNext().getNext(), so a structure that doesn't
-            // match that assumption falls through to "give up" instead of NPEing.
-            LilypondNode<LilypondToken> list = n.getNext();
-            LilypondNode<LilypondToken> firstListItem = list != null ? list.getNext() : null;
-            if (firstListItem == null) {
+            // the voice's name: a token of its own when written without quotes (\lyricsto s), else
+            // a string in a list (\lyricsto "s": LilyPond.list LilyPond.string, then its pieces).
+            // Each hop is guarded: a structure that matches neither leaves the lyrics unmerged.
+            LilypondNode<LilypondToken> name = n.getNext();
+            cntInput++;
+            if (name != null && name.getData() == null) {
+                name = name.getNext();
+                cntInput++;
+                if (name != null)
+                    name = transformString(name, name.getName());
+            }
+            if (name == null || name.getData() == null) {
                 return lyricmode;
             }
-            n = firstListItem; cntInput++; cntInput++;
-            n = transformString(n, n.getName());
+            n = name;
             written.append(spaced(n.getData()));
             lyrics.append(n.getData().getText())
                     .append(" ");

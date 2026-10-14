@@ -142,10 +142,11 @@ public class LilyEccoTransformerTest {
 	void transformLyriclistBailsOutWhenLyricstosListHasNoFirstItem() throws Exception {
 		LilypondNode<LilypondToken> lyricmode = new LilypondNode<>("Keyword.Lyric", new LilypondToken(0, "\\lyricsto", "Keyword.Lyric"));
 		lyricmode.setLevel(0);
-		LilypondNode<LilypondToken> lyricsto = lyricmode.append("LilyPond.lyricsto", new LilypondToken(1, "\\lyricsto", "LilyPond.lyricsto"), 0);
-		lyricsto.append("LilyPond.list", new LilypondToken(2, "", "LilyPond.list"), 0);
-		// LilyPond.list has nothing after it at all - the fixed two-hop assumption
-		// (lyricsto -> list -> first item) has nothing to land on for its second hop
+		// contexts, as the reader makes them: nodes without a token
+		LilypondNode<LilypondToken> lyricsto = lyricmode.append("LilyPond.lyricsto", null, 1);
+		lyricsto.append("LilyPond.list", null, 2);
+		// LilyPond.list has nothing after it at all - the quoted name's hops (lyricsto -> list ->
+		// string) have nothing to land on
 
 		LilypondNode<LilypondToken> result = invokeTransformLyriclist(lyricmode);
 
