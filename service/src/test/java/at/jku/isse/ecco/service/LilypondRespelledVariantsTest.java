@@ -15,15 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Variants that differ only in how the same music is spelled (see examples/lilypond_respelled):
+ * Variants that differ only in how the same music is spelled (see service/src/test/resources/lilypond/lilypond_respelled):
  * a feature committed in one spelling must still compose with one committed in another. The
  * check is by music (lymusic, as in LilypondVariantsCommitCheckoutTest), since the point is
  * precisely that the text differs.
  */
 public class LilypondRespelledVariantsTest {
 
-	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples");
-	private static final Path VARIANTS = ROOT.resolve("lilypond_variants");
+	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("service/src/test/resources/lilypond");
+	private static final Path VARIANTS = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples").resolve("lilypond_variants");
 	private static final Path RESPELLED = ROOT.resolve("lilypond_respelled");
 	private static final String FILE_NAME = "chanson.ly";
 

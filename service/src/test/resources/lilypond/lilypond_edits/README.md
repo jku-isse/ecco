@@ -1,6 +1,6 @@
 # Notes inserted into the middle of a voice
 
-`notes_edit` is `../lilypond_variants/v2_setup_notes` with notes inserted mid-bar in three
+`notes_edit` is `examples/lilypond_variants/v2_setup_notes` with notes inserted mid-bar in three
 voices, each bar keeping its length - places surrounded by identical tokens, where an
 alignment of one voice's tokens could slip:
 

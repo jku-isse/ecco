@@ -1,6 +1,6 @@
 # LilyPond variants that differ only in spelling
 
-Each directory holds the same piece as `../lilypond_variants/v2_setup_notes` plus the
+Each directory holds the same piece as `examples/lilypond_variants/v2_setup_notes` plus the
 dynamics of `v6` (`setup.1, notes.1, dynamics.1`), written four ways:
 
 | directory | spelled differently |

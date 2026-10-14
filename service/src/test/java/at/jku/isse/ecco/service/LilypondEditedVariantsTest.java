@@ -11,14 +11,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Notes inserted into the middle of voices (see examples/lilypond_edits): a feature that edits
+ * Notes inserted into the middle of voices (see service/src/test/resources/lilypond/lilypond_edits): a feature that edits
  * notes must compose with one committed on the unedited notes, and be traced to exactly the
  * tokens it changed.
  */
 public class LilypondEditedVariantsTest {
 
-	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples");
+	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("service/src/test/resources/lilypond");
 	private static final Path EDITS = ROOT.resolve("lilypond_edits");
+	private static final Path VARIANTS = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples").resolve("lilypond_variants");
 	private static final String FILE_NAME = "chanson.ly";
 
 	@Test
@@ -55,7 +56,7 @@ public class LilypondEditedVariantsTest {
 	@Timeout(300)
 	public void aNoteSpelledAfterAnotherNoteComesBackAtItsPitch() throws IOException, InterruptedException {
 		assumeTrue(Lymusic.available(), Lymusic.NEEDS);
-		EccoService service = LilypondTraceMeasure.commitAfter(ROOT.resolve("lilypond_variants"), 2,
+		EccoService service = LilypondTraceMeasure.commitAfter(VARIANTS, 2,
 				EDITS.resolve("notes_leap"), "setup.1, notes.1, leap.1");
 		Path checkoutDir = Files.createTempDirectory("lilypond-leap-checkout");
 		service.setBaseDir(checkoutDir);
@@ -66,7 +67,7 @@ public class LilypondEditedVariantsTest {
 	}
 
 	private static EccoService commitEdit() throws IOException {
-		return LilypondTraceMeasure.commitAfter(ROOT.resolve("lilypond_variants"), 3, EDITS.resolve("notes_edit"),
+		return LilypondTraceMeasure.commitAfter(VARIANTS, 3, EDITS.resolve("notes_edit"),
 				"setup.1, notes.1, edit.1");
 	}
 }

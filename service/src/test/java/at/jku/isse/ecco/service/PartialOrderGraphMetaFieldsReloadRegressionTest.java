@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * bug as {@link TreeFusionOrderedSiblingMatchingTest}/{@link PartialOrderGraphReloadRegressionTest},
  * which are separate, already-fixed bugs found earlier in the same investigation chain.
  * <p>
- * {@code examples/lilypond_meta_fields}: v1 commits 5 quoted-string metadata fields; v2 adds 4 more,
+ * {@code service/src/test/resources/lilypond/lilypond_meta_fields}: v1 commits 5 quoted-string metadata fields; v2 adds 4 more,
  * inserted in the MIDDLE of the existing ones (not appended at the end).
  * <p>
  * Committing v1, then closing and reopening the repository (this step matters - see
@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class PartialOrderGraphMetaFieldsReloadRegressionTest {
 
 	private static final Path EXAMPLES_DIR = LilypondVariantsCommitCheckoutTest.findRepoRoot()
-			.resolve("examples").resolve("lilypond_meta_fields");
+			.resolve("service/src/test/resources/lilypond/lilypond_meta_fields");
 	private static final String FILE_NAME = "meta.ly";
 
 	@Test

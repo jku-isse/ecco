@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * A version that moves a voice's definition (examples/lilypond_edits/notes_moved: the alto's before the
+ * A version that moves a voice's definition (service/src/test/resources/lilypond/lilypond_edits/notes_moved: the alto's before the
  * soprano's). parce gives every voice's notes the same context, LilyPond.musiclist, so ECCO matched
  * the voices by their order - it stored `AltoVoice =` with soprano notes - and a feature committed
  * before the move put its accents on other notes. With variable contexts each voice is the context
@@ -22,12 +22,13 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 public class LilypondMovedVoicesTest {
 
-	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples");
+	private static final Path ROOT = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("service/src/test/resources/lilypond");
 	private static final Path EDITS = ROOT.resolve("lilypond_edits");
+	private static final Path VARIANTS = LilypondVariantsCommitCheckoutTest.findRepoRoot().resolve("examples").resolve("lilypond_variants");
 	private static final String FILE_NAME = "chanson.ly";
 
 	private static EccoService commitMove() throws IOException {
-		return LilypondTraceMeasure.commitAfter(ROOT.resolve("lilypond_variants"), 3, EDITS.resolve("notes_moved"),
+		return LilypondTraceMeasure.commitAfter(VARIANTS, 3, EDITS.resolve("notes_moved"),
 				"setup.1, notes.1, order.1");
 	}
 
