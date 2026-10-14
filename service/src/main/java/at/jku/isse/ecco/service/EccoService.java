@@ -585,6 +585,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             Repository repository = this.repositoryDao.load();
             this.transactionStrategy.end();
             return repository;
+        } catch (Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
         } catch (EccoException e) {
             this.transactionStrategy.rollback();
             throw new EccoException("Error when retrieving repository.", e);
@@ -735,6 +738,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.remoteDao.storeRemote(remote);
 
             this.transactionStrategy.end();
+        } catch (Error e) {
+            this.abandonNewRepository(e);
+            throw e;
         } catch (Exception e) {
             this.abandonNewRepository(e);
             throw new EccoException("Error during remote fork.", e);
@@ -783,6 +789,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             subsetOriginRepository = originRepository.subset(originService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
 
             originService.transactionStrategy.end();
+        } catch (Error e) {
+            originService.rollbackIfTransactionActive();
+            this.abandonNewRepository(e);
+            throw e;
         } catch (Exception e) {
             // quietly: open() itself may have failed, with no transaction (or strategy) to roll back -
             // an unconditional rollback() then replaced the real error
@@ -808,6 +818,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.remoteDao.storeRemote(remote);
 
             this.transactionStrategy.end();
+        } catch (Error e) {
+            this.abandonNewRepository(e);
+            throw e;
         } catch (Exception e) {
             this.abandonNewRepository(e);
 
@@ -824,6 +837,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             Repository.Op originRepository = (Repository.Op) origService.getRepository();
             subsetOriginRepository = originRepository.subset(origService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), originRepository.getMaxOrder(), this.entityFactory);
             origService.transactionStrategy.end();
+        } catch (Error e) {
+            origService.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             // otherwise the ORIGIN's read transaction stays open, breaking that service for good
             origService.rollbackIfTransactionActive();
@@ -837,6 +853,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
             this.repositoryDao.store(repository);
             this.transactionStrategy.end();
+        } catch (Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             // the target already existed (unlike fork()), so only release the transaction
             this.rollbackIfTransactionActive();
@@ -987,6 +1006,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             repository.setMaintreeBuildingStrategy(this.defaultMainTreeBuildingStrategy);
             this.repositoryDao.store(repository);
             this.transactionStrategy.end();
+        } catch (Error e) {
+            this.abandonNewRepository(e);
+            throw e;
         } catch (Exception e) {
             this.abandonNewRepository(e);
             throw new EccoException("Error setting default values.", e);
@@ -1016,6 +1038,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.transactionStrategy.end();
 
             this.listeners.fireStatusChangedEvent();
+        } catch (Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             this.rollbackIfTransactionActive();
 
@@ -1047,7 +1072,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * existed at this location beforehand - i.e. the directory is entirely theirs. Cleanup failures
      * are attached to {@code cause} instead of hiding it.
      */
-    private void abandonNewRepository(Exception cause) {
+    private void abandonNewRepository(Throwable cause) {
         this.rollbackIfTransactionActive();
         try {
             this.close();
@@ -1189,6 +1214,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.repositoryDao.store(repository);
             this.transactionStrategy.end();
 
+        } catch (Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             this.transactionStrategy.rollback();
 
@@ -1549,6 +1577,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 associations = new ArrayList<>(repository.getAssociations());
                 features = new ArrayList<>(repository.getFeatures());
                 this.transactionStrategy.end();
+            } catch (Error e) {
+                this.rollbackIfTransactionActive();
+                throw e;
             } catch (RuntimeException e) {
                 this.rollbackIfTransactionActive();
                 throw new EccoException("Error reading the repository for minimization.", e);
@@ -1577,7 +1608,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             Map<String, String> valid = CheckoutConditions.valid(this.repositoryDao.load());
             this.transactionStrategy.end();
             return valid;
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | Error e) {
             this.rollbackIfTransactionActive();
             throw e;
         }
@@ -1730,6 +1761,9 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             this.transactionStrategy.end();
 
             return rootNode;
+        } catch (Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             this.transactionStrategy.rollback();
 

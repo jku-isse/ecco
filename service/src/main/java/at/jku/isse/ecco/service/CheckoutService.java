@@ -62,7 +62,7 @@ class CheckoutService {
             Checkout checkout = this.composeInTransaction(configuration);
             owner.transactionStrategy.end();
             return checkout;
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | Error e) {
             owner.rollbackIfTransactionActive();
             throw e;
         }

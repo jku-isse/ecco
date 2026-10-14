@@ -90,6 +90,9 @@ public class RemoteSyncService {
             owner.transactionStrategy.end();
 
             return remote;
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 
@@ -106,6 +109,9 @@ public class RemoteSyncService {
             owner.remoteDao.removeRemote(name);
 
             owner.transactionStrategy.end();
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 
@@ -124,6 +130,9 @@ public class RemoteSyncService {
             owner.transactionStrategy.end();
 
             return remote;
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 
@@ -142,6 +151,9 @@ public class RemoteSyncService {
             owner.transactionStrategy.end();
 
             return remotes;
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 
@@ -350,6 +362,9 @@ public class RemoteSyncService {
                             break;
                         }
                     }
+                } catch (Error e) {
+                    this.rollbackIfTransactionInProgress();
+                    throw e;
                 } catch (AsynchronousCloseException e) {
                     // server shut down
                     this.rollbackIfTransactionInProgress();
@@ -467,6 +482,9 @@ public class RemoteSyncService {
             }
 
             owner.transactionStrategy.end();
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 
@@ -559,6 +577,9 @@ public class RemoteSyncService {
                         subsetParentRepository = parentRepository.subset(parentService.parseFeatureRevisionsString(deselectedFeatureRevisionsString), parentRepository.getMaxOrder(), owner.entityFactory);
 
                         parentService.transactionStrategy.end();
+                    } catch (Error e) {
+                        parentService.rollbackIfTransactionActive();
+                        throw e;
                     } catch (Exception e) {
                         parentService.rollbackIfTransactionActive();
 
@@ -573,6 +594,9 @@ public class RemoteSyncService {
             }
 
             owner.transactionStrategy.end();
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 
@@ -679,6 +703,9 @@ public class RemoteSyncService {
                         parentService.repositoryDao.store(parentRepository);
 
                         parentService.transactionStrategy.end();
+                    } catch (Error e) {
+                        parentService.rollbackIfTransactionActive();
+                        throw e;
                     } catch (Exception e) {
                         parentService.rollbackIfTransactionActive();
 
@@ -688,6 +715,9 @@ public class RemoteSyncService {
             }
 
             owner.transactionStrategy.end();
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 

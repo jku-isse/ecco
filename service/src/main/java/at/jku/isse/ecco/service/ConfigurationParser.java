@@ -108,6 +108,9 @@ class ConfigurationParser {
             owner.transactionStrategy.end();
 
             return configuration;
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 
@@ -236,6 +239,9 @@ class ConfigurationParser {
             owner.transactionStrategy.end();
 
             return featureRevisions;
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.rollbackIfTransactionActive();
 

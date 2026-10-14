@@ -60,6 +60,9 @@ public class VariantManager {
             owner.transactionStrategy.end();
 
             owner.listeners.fireStatusChangedEvent();
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.transactionStrategy.rollback();
 
@@ -123,6 +126,9 @@ public class VariantManager {
 
             owner.listeners.fireStatusChangedEvent();
 
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.transactionStrategy.rollback();
 
@@ -173,6 +179,9 @@ public class VariantManager {
 
             owner.repositoryDao.store(repository);
             owner.transactionStrategy.end();
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.transactionStrategy.rollback();
             throw new EccoException("Error during adding a variant.", e);
@@ -208,6 +217,9 @@ public class VariantManager {
 
             owner.transactionStrategy.end();
 
+        } catch (Error e) {
+            owner.rollbackIfTransactionActive();
+            throw e;
         } catch (Exception e) {
             owner.transactionStrategy.rollback();
 

@@ -204,7 +204,7 @@ public class ConstraintService {
             List<String> violations = ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
             owner.transactionStrategy.end();
             return violations;
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | Error e) {
             owner.rollbackIfTransactionActive();
             throw e;
         }
