@@ -680,8 +680,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         if (this.repositoryDirectoryExists())
             throw new EccoException("A repository already exists at the given location: " + this.repositoryDir);
 
+        // a fork reads files the way its origin's history was read; null from an older server
+        Map<String, String> originSettings;
+        try {
+            originSettings = RemoteSyncService.remoteSettings(new InetSocketAddress(hostname, port), hostname + ":" + port);
+        } catch (Exception e) {
+            throw new EccoException("Error during remote fork.", e);
+        }
+
+        // initialized before the copy, like a local fork - the copy needs this service's entity
+        // factory, which was null here: every fork over the network failed
+        this.init();
         Repository.Op copiedRepository;
         try (SocketChannel sChannel = SocketChannel.open()) {
+            if (originSettings != null)
+                this.replaceSettings(originSettings);
             sChannel.configureBlocking(true);
             if (sChannel.connect(new InetSocketAddress(hostname, port))) {
                 ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
@@ -718,14 +731,15 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             } else {
                 throw new EccoException("Error connecting to remote: " + hostname + ":" + port);
             }
+        } catch (Error e) {
+            this.abandonNewRepository(e);
+            throw e;
         } catch (Exception e) {
+            this.abandonNewRepository(e);
             throw new EccoException("Error during remote fork.", e);
         }
 
         try {
-            this.init();
-            this.open();
-
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
             // merge into this repository
@@ -951,7 +965,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /** The plugins whose files the repository holds. */
-    private static Set<String> pluginsWithFiles(Repository repository) {
+    static Set<String> pluginsWithFiles(Repository repository) {
         Set<String> plugins = new HashSet<>();
         Deque<Node> nodes = new ArrayDeque<>();
         for (Association association : repository.getAssociations())
@@ -966,6 +980,123 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 nodes.push(child);
         }
         return plugins;
+    }
+
+    /** The settings in [repositoryDir], empty if it has none. */
+    static Map<String, String> readSettings(Path repositoryDir) {
+        Path file = repositoryDir.resolve(SETTINGS_FILE_NAME);
+        Map<String, String> settings = new TreeMap<>();
+        if (!Files.exists(file))
+            return settings;
+        java.util.Properties properties = new java.util.Properties();
+        try (java.io.Reader in = Files.newBufferedReader(file)) {
+            properties.load(in);
+        } catch (IOException e) {
+            throw new EccoException("Could not read the repository's settings.", e);
+        }
+        properties.stringPropertyNames().forEach(key -> settings.put(key, properties.getProperty(key)));
+        return settings;
+    }
+
+    /** This repository's settings, empty if it has none. */
+    Map<String, String> repositorySettings() {
+        return readSettings(this.repositoryDir);
+    }
+
+    /** The plugins whose files this repository holds - in a read-only transaction of its own. */
+    Set<String> pluginsWithFiles() {
+        try {
+            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            Set<String> plugins = pluginsWithFiles(this.repositoryDao.load());
+            this.transactionStrategy.end();
+            return plugins;
+        } catch (RuntimeException | Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
+        }
+    }
+
+    /**
+     * Checks, before files are merged into a repository, that both read them the same way: for every
+     * plugin whose files are merged ([incomingPlugins]), the settings they were read with ([incomingSettings])
+     * and the receiving repository's ([receivingSettings]) must agree. Files read differently - with
+     * musical tokens and without, say - match nothing of each other, and a later commit would read
+     * them all the receiving repository's way. A receiving repository with none of a plugin's settings
+     * and none of its files ([receivingPlugins]) takes over the incoming ones, as a fork or a first
+     * commit does.
+     *
+     * @param action "pull from 'origin'", "push to 'origin'" - for the message
+     * @return the settings the receiving repository has to take over, empty if none
+     * @throws EccoException naming the settings that differ
+     */
+    Map<String, String> settingsToTakeOver(Set<String> incomingPlugins, Map<String, String> incomingSettings,
+                                           Map<String, String> receivingSettings, Set<String> receivingPlugins, String action) {
+        Map<String, String> takeOver = new TreeMap<>();
+        for (ArtifactPlugin plugin : this.artifactPlugins) {
+            Set<String> keys = plugin.newRepositorySettings().keySet();
+            if (keys.isEmpty() || !incomingPlugins.contains(plugin.getPluginId()))
+                continue;
+            Map<String, String> theirs = restrictedTo(incomingSettings, keys);
+            Map<String, String> ours = restrictedTo(receivingSettings, keys);
+            if (theirs.equals(ours))
+                continue;
+            if (ours.isEmpty() && !receivingPlugins.contains(plugin.getPluginId())) {
+                takeOver.putAll(theirs);
+                continue;
+            }
+            Set<String> differing = new TreeSet<>();
+            for (String key : keys)
+                if (!Objects.equals(theirs.get(key), ours.get(key)))
+                    differing.add(key);
+            throw new EccoException("Cannot " + action + ": its " + plugin.getName() + " files were read with "
+                    + describe(restrictedTo(theirs, differing)) + ", the receiving repository's with " + describe(restrictedTo(ours, differing))
+                    + ". Files read differently cannot be merged.");
+        }
+        return takeOver;
+    }
+
+    private static Map<String, String> restrictedTo(Map<String, String> settings, Set<String> keys) {
+        Map<String, String> restricted = new TreeMap<>(settings);
+        restricted.keySet().retainAll(keys);
+        return restricted;
+    }
+
+    private static String describe(Map<String, String> settings) {
+        return settings.isEmpty() ? "none of them (a repository from before them)" : settings.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(", "));
+    }
+
+    /** Adds [settings] to this repository's settings file. */
+    void takeOverSettings(Map<String, String> settings) {
+        if (settings.isEmpty())
+            return;
+        Map<String, String> all = new TreeMap<>(this.repositorySettings());
+        all.putAll(settings);
+        java.util.Properties properties = new java.util.Properties();
+        properties.putAll(all);
+        try (java.io.Writer out = Files.newBufferedWriter(this.repositoryDir.resolve(SETTINGS_FILE_NAME))) {
+            properties.store(out, "Chosen when this repository was created, or taken over from the repository its first files of a plugin came from; changing them changes how files are read.");
+        } catch (IOException e) {
+            throw new EccoException("Could not write the repository's settings.", e);
+        }
+    }
+
+    /** This repository's settings become [settings]: none at all if it is empty, as from before settings. */
+    private void replaceSettings(Map<String, String> settings) {
+        Path file = this.repositoryDir.resolve(SETTINGS_FILE_NAME);
+        try {
+            if (settings.isEmpty()) {
+                Files.deleteIfExists(file);
+                return;
+            }
+            java.util.Properties properties = new java.util.Properties();
+            properties.putAll(settings);
+            try (java.io.Writer out = Files.newBufferedWriter(file)) {
+                properties.store(out, "Taken over from the repository this one was forked from; changing them changes how files are read.");
+            }
+        } catch (IOException e) {
+            throw new EccoException("Could not take over the origin's settings.", e);
+        }
     }
 
     /** A fork's settings are its origin's, or none (the behaviour from before settings) if it has none. */

@@ -11,6 +11,7 @@ import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.repository.Repository;
 
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -26,6 +27,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
@@ -257,6 +262,37 @@ public class RemoteSyncService {
                     // startServer() used to be synchronized instead, holding the monitor for the
                     // server's whole lifetime and blocking every other operation until it stopped.)
                     switch (command) {
+                        case "SETTINGS": { // how this repository reads files, for a pull to compare
+                            Map<String, String> settings;
+                            synchronized (owner) {
+                                settings = new HashMap<>(owner.repositorySettings());
+                            }
+                            oos.writeObject(settings);
+                            oos.flush();
+                            sChannel.shutdownOutput();
+                            break;
+                        }
+                        case "MERGE_SETTINGS": { // before a push: whether this repository reads the files the same way
+                            @SuppressWarnings("unchecked")
+                            Map<String, String> settings = (Map<String, String>) ois.readObject();
+                            @SuppressWarnings("unchecked")
+                            Set<String> plugins = (Set<String>) ois.readObject();
+                            String remoteName = (String) ois.readObject();
+                            String reply;
+                            synchronized (owner) {
+                                try {
+                                    owner.takeOverSettings(owner.settingsToTakeOver(plugins, settings, owner.repositorySettings(),
+                                            owner.pluginsWithFiles(), "push to '" + remoteName + "'"));
+                                    reply = "OK";
+                                } catch (EccoException e) {
+                                    reply = e.getMessage();
+                                }
+                            }
+                            oos.writeObject(reply);
+                            oos.flush();
+                            sChannel.shutdownOutput();
+                            break;
+                        }
                         case "FETCH": { // if fetch, send data
                             // copy features using mem entity factory - under the service monitor
                             // (see the comment above the switch)
@@ -497,6 +533,59 @@ public class RemoteSyncService {
     }
 
     /**
+     * The settings of the repository [remote] serves, or null from a server too old to tell - it
+     * closes the connection on a request it does not know.
+     */
+    private Map<String, String> remoteSettings(Remote remote) throws IOException, ClassNotFoundException {
+        return remoteSettings(socketAddressOf(remote), "Remote '" + remote.getName() + "'");
+    }
+
+    /** Like {@link #remoteSettings(Remote)}, of the repository served at [address]; [name] for messages. */
+    @SuppressWarnings("unchecked")
+    static Map<String, String> remoteSettings(InetSocketAddress address, String name) throws IOException, ClassNotFoundException {
+        try (SocketChannel sChannel = SocketChannel.open()) {
+            sChannel.configureBlocking(true);
+            if (!sChannel.connect(address))
+                throw new EccoException("Error connecting to remote: " + name + ": " + address);
+            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+            oos.writeObject("SETTINGS");
+            oos.flush();
+            sChannel.shutdownOutput();
+            return (Map<String, String>) SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
+        } catch (EOFException e) {
+            LOGGER.warning(name + " does not tell its settings (an older ECCO): not checked whether it reads files the same way.");
+            return null;
+        }
+    }
+
+    /**
+     * Asks the repository [remote] serves whether it reads files of [plugins] the way this one does,
+     * before a push - it takes over this repository's settings where it has none and none of the
+     * files. A server too old to answer is pushed to as before.
+     */
+    private void mergeSettingsIntoRemote(Remote remote, Set<String> plugins) throws IOException, ClassNotFoundException {
+        String reply;
+        try (SocketChannel sChannel = SocketChannel.open()) {
+            sChannel.configureBlocking(true);
+            if (!sChannel.connect(socketAddressOf(remote)))
+                throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
+            ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
+            oos.writeObject("MERGE_SETTINGS");
+            oos.writeObject(new HashMap<>(owner.repositorySettings()));
+            oos.writeObject(new HashSet<>(plugins));
+            oos.writeObject(remote.getName());
+            oos.flush();
+            sChannel.shutdownOutput();
+            reply = (String) SyncObjectStreams.newObjectInputStream(sChannel.socket().getInputStream()).readObject();
+        } catch (EOFException e) {
+            LOGGER.warning("Remote '" + remote.getName() + "' does not compare settings (an older ECCO): not checked whether it reads files the same way.");
+            return;
+        }
+        if (!"OK".equals(reply))
+            throw new EccoException(reply);
+    }
+
+    /**
      * Pulls the changes from the parent repository to this repository.
      *
      * @param remoteName                       The name of the remote.
@@ -505,6 +594,8 @@ public class RemoteSyncService {
     public void pull(String remoteName, String deselectedFeatureRevisionsString) {
         owner.checkInitialized();
 
+        // settings this repository takes over from the remote with its first files of a plugin
+        Map<String, String> takeOver = Map.of();
         try {
             owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
@@ -514,6 +605,7 @@ public class RemoteSyncService {
                 throw new EccoException("Remote '" + remoteName + "' does not exist.");
             } else if (remote.getType() == Remote.Type.REMOTE) {
 
+                Map<String, String> remoteSettings = this.remoteSettings(remote);
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
                     if (sChannel.connect(socketAddressOf(remote))) {
@@ -549,8 +641,11 @@ public class RemoteSyncService {
                         // copy it using this entity factory
                         Repository.Op copiedRepository = subsetRepository.copy(owner.entityFactory);
 
-                        // merge into this repository
+                        // merge into this repository - if both read the files the same way
                         Repository.Op repository = owner.repositoryDao.load();
+                        if (remoteSettings != null)
+                            takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(copiedRepository), remoteSettings,
+                                    owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                         repository.merge(copiedRepository);
                         owner.repositoryDao.store(repository);
                     } else {
@@ -564,10 +659,12 @@ public class RemoteSyncService {
                 // open parent repository - try-with-resources so a failure below still closes
                 // parentService instead of leaking whatever open()/init() acquired indefinitely.
                 Repository.Op subsetParentRepository;
+                Map<String, String> parentSettings;
                 try (EccoService parentService = new EccoService()) {
                     parentService.setRepositoryDir(EccoService.resolveRepositoryDir(Paths.get(remote.getAddress())));
                     // only read, in a read-only transaction, so the remote stays unchanged (FetchPullLeaveRemoteUnchangedTest)
                     parentService.open();
+                    parentSettings = parentService.repositorySettings();
 
                     // create subset repository
                     try {
@@ -587,13 +684,16 @@ public class RemoteSyncService {
                     }
                 }
 
-                // merge into this repository
+                // merge into this repository - if both read the files the same way
                 Repository.Op repository = owner.repositoryDao.load();
+                takeOver = owner.settingsToTakeOver(EccoService.pluginsWithFiles(subsetParentRepository), parentSettings,
+                        owner.repositorySettings(), EccoService.pluginsWithFiles(repository), "pull from '" + remote.getName() + "'");
                 repository.merge(subsetParentRepository);
                 owner.repositoryDao.store(repository);
             }
 
             owner.transactionStrategy.end();
+            owner.takeOverSettings(takeOver);
         } catch (Error e) {
             owner.rollbackIfTransactionActive();
             throw e;
@@ -627,6 +727,14 @@ public class RemoteSyncService {
                 throw new EccoException("Remote '" + remoteName + "' does not exist.");
             } else if (remote.getType() == Remote.Type.REMOTE) {
 
+                // compute subset repository using mem entity factory
+                owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+                Repository.Op repository = owner.repositoryDao.load();
+                Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), owner.entityFactory);
+                owner.transactionStrategy.end();
+                // the remote merges only files it reads the same way - asked before sending anything
+                this.mergeSettingsIntoRemote(remote, EccoService.pluginsWithFiles(subsetRepository));
+
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
                     if (sChannel.connect(socketAddressOf(remote))) {
@@ -637,12 +745,6 @@ public class RemoteSyncService {
                         ObjectOutputStream oos = new ObjectOutputStream(pos);
 
                         oos.writeObject("PUSH");
-
-                        // compute subset repository using mem entity factory
-                        owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-                        Repository.Op repository = owner.repositoryDao.load();
-                        Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), owner.entityFactory);
-                        owner.transactionStrategy.end();
 
                         // estimate size for the progress bar via a scratch stream -- the actual payload
                         // is sent through `oos` below (see PULL's server-side case in startServer() for
@@ -694,15 +796,19 @@ public class RemoteSyncService {
                     Repository.Op repository = owner.repositoryDao.load();
                     Repository.Op subsetRepository = repository.subset(owner.parseFeatureRevisionsString(deselectedFeatureRevisionsString), repository.getMaxOrder(), parentService.entityFactory);
 
-                    // merge into parent repository
+                    // merge into parent repository - if both read the files the same way
                     try {
                         parentService.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
 
                         Repository.Op parentRepository = parentService.repositoryDao.load();
+                        Map<String, String> takeOver = parentService.settingsToTakeOver(EccoService.pluginsWithFiles(subsetRepository),
+                                owner.repositorySettings(), parentService.repositorySettings(), EccoService.pluginsWithFiles(parentRepository),
+                                "push to '" + remote.getName() + "'");
                         parentRepository.merge(subsetRepository);
                         parentService.repositoryDao.store(parentRepository);
 
                         parentService.transactionStrategy.end();
+                        parentService.takeOverSettings(takeOver);
                     } catch (Error e) {
                         parentService.rollbackIfTransactionActive();
                         throw e;
