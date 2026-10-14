@@ -43,6 +43,15 @@ public class DefaultOrderSelector implements OrderSelector {
 		PartialOrderGraph graph = node.getArtifact().getPartialOrderGraph();
 		boolean uncertainOrder = false;
 
+		// the children by their artifact's hash, in order: an order graph node's child is the first
+		// child whose artifact equals the node's, and equal artifacts have equal hashes. Scanning all
+		// children for every node was quadratic in a file's lines - a checkout of a 340,000-line C
+		// file took 19 minutes. Within a group the comparison is the same as before: the artifacts'
+		// equals() (which also tells apart equal lines by their sequence numbers) decides.
+		Map<Integer, List<Node>> childrenByHash = new HashMap<>();
+		for (Node childNode : node.getChildren())
+			childrenByHash.computeIfAbsent(childNode.getArtifact().hashCode(), hash -> new ArrayList<>()).add(childNode);
+
 		Map<PartialOrderGraph.Node, Integer> pogNodesCounter = new HashMap<>();
 		Stack<PartialOrderGraph.Node> stack = new Stack<>();
 		stack.push(graph.getHead());
@@ -56,7 +65,7 @@ public class DefaultOrderSelector implements OrderSelector {
 				uncertainOrder = true;
 
 			// check if node is in input
-			for (Node childNode : node.getChildren()) {
+			for (Node childNode : childrenByHash.getOrDefault(pogNode.getArtifact() == null ? 0 : pogNode.getArtifact().hashCode(), List.of())) {
 				if (childNode.getArtifact().equals(pogNode.getArtifact())) {
 					// add node to order
 					orderedChildren.add(childNode);

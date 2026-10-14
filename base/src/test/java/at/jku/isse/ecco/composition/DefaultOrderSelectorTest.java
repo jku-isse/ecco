@@ -87,4 +87,44 @@ public class DefaultOrderSelectorTest {
 		assertTrue(selector.getUncertainOrders().isEmpty());
 	}
 
+
+	/**
+	 * Two children whose artifacts both equal an order graph node's (not sequenced, so they differ
+	 * in nothing): the first child is taken, once - as when every child was scanned in order for
+	 * every node of the graph. (In a composed checkout equal lines differ by their sequence numbers,
+	 * so at most one child matches; OrderSelectorEquivalenceTest compares those.)
+	 */
+	@Test
+	public void select_withEqualChildren_takesTheFirst() {
+		Artifact.Op<?> x = new SerArtifact<>(new TestArtifactData("X"));
+		Artifact.Op<?> firstX = new SerArtifact<>(new TestArtifactData("X"));
+		Artifact.Op<?> secondX = new SerArtifact<>(new TestArtifactData("X"));
+		Artifact.Op<?> y = new SerArtifact<>(new TestArtifactData("Y"));
+
+		SerPartialOrderGraph pog = new SerPartialOrderGraph();
+		pog.getHead().removeChild(pog.getTail());
+		SerPartialOrderGraphNode pogNodeX = new SerPartialOrderGraphNode(x);
+		SerPartialOrderGraphNode pogNodeY = new SerPartialOrderGraphNode(y);
+		pog.getHead().addChild(pogNodeY);
+		pogNodeY.addChild(pogNodeX);
+		pogNodeX.addChild(pog.getTail());
+
+		Artifact.Op<?> parentArtifact = new SerArtifact<>(new TestArtifactData("Parent"));
+		parentArtifact.setOrdered(true);
+		parentArtifact.setPartialOrderGraph(pog);
+
+		SerNode parentNode = new SerNode(parentArtifact);
+		SerNode first = new SerNode(firstX);
+		SerNode second = new SerNode(secondX);
+		SerNode yNode = new SerNode(y);
+		parentNode.addChild(first);
+		parentNode.addChild(yNode);
+		parentNode.addChild(second);
+
+		List<Node> orderedChildren = new DefaultOrderSelector().select(parentNode);
+
+		assertEquals(2, orderedChildren.size());
+		assertSame(yNode, orderedChildren.get(0));
+		assertSame(first, orderedChildren.get(1));
+	}
 }
