@@ -153,10 +153,9 @@ public class ConfigurationPickerDialog extends Dialog<Configuration> {
 	// uses each revision's full id (not FeatureRevision#toString()'s 7-character-truncated display
 	// form) so the resulting string round-trips correctly through parseConfigurationString().
 	private static String buildConfigurationString(Map<Feature, ComboBox<FeatureRevision>> comboBoxesByFeature) {
-		return comboBoxesByFeature.values().stream()
+		return at.jku.isse.ecco.feature.ConfigurationText.print(comboBoxesByFeature.values().stream()
 				.map(ComboBox::getValue)
 				.filter(Objects::nonNull)
-				.map(fr -> fr.getFeature().getName() + "." + fr.getId())
-				.collect(Collectors.joining(", "));
+				.toList(), true);
 	}
 }

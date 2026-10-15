@@ -161,21 +161,12 @@ public class VariantManager {
                     }
                 }
             }
-            StringBuilder sb = new StringBuilder();
             for (FeatureRevision fr : featureRevisions) {
-                if (fr.equals(featureRevision) && featureRevisionToUpdate != null) {
-                    newFeatureRevisions[count] = featureRevisionToUpdate;
-                    sb.append(",").append(featureRevisionUpdate);
-                } else {
-                    newFeatureRevisions[count] = fr;
-                    sb.append(",").append(fr);
-                }
-                count++;
+                newFeatureRevisions[count++] = fr.equals(featureRevision) && featureRevisionToUpdate != null ? featureRevisionToUpdate : fr;
             }
-            String config = sb.length() > 0 ? sb.substring(1) : ""; // remove first ','
-            variant.getConfiguration().setFeatureRevisions(newFeatureRevisions);
-            Configuration newConfiguration = owner.parseConfigurationString(config);
-            variant.setConfiguration(newConfiguration);
+            // the repository's revisions themselves - printed (ids cut to 7 characters) and parsed
+            // again, a revision sharing those characters with another was not found
+            variant.setConfiguration(owner.entityFactory.createConfiguration(newFeatureRevisions));
 
             owner.repositoryDao.store(repository);
             owner.transactionStrategy.end();

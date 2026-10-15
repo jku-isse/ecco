@@ -98,7 +98,7 @@ public class ModuleRevisionsTest {
 
 		assertEquals(
 				"commit content under the full checkout configuration to add FeatureA + FeatureB"
-						+ " (e.g. `ecco commit -c \"FeatureA.r1,FeatureB.r1,FeatureC.r1\" -m \"...\"`)",
+						+ " (e.g. `ecco commit -c \"FeatureA.r1, FeatureB.r1, FeatureC.r1\" -m \"...\"`)",
 				ModuleRevisions.suggestFix(mrAB, configuration));
 	}
 
@@ -108,7 +108,7 @@ public class ModuleRevisionsTest {
 
 		assertEquals(
 				"commit content under the full checkout configuration to add FeatureA + FeatureB"
-						+ " (e.g. `ecco commit -c \"FeatureA.r1,FeatureB.r1\" -m \"...\"`)",
+						+ " (e.g. `ecco commit -c \"FeatureA.r1, FeatureB.r1\" -m \"...\"`)",
 				ModuleRevisions.suggestFix(mrAB, null));
 	}
 

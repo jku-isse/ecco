@@ -220,7 +220,7 @@ public class PushView extends OperationView {
 						deselectedFeatureVersionTreeItems.remove(featureVersionTreeItem);
 					}
 
-					String deselectionString = deselectedFeatureVersionTreeItems.stream().map(featureInfoCheckBoxTreeItem -> featureInfoCheckBoxTreeItem.getValue().getFeatureVersion().toString()).collect(Collectors.joining(", "));
+					String deselectionString = at.jku.isse.ecco.feature.ConfigurationText.print(deselectedFeatureVersionTreeItems.stream().map(featureInfoCheckBoxTreeItem -> featureInfoCheckBoxTreeItem.getValue().getFeatureVersion()).toList(), true);
 					deselectionTextField.setText(deselectionString);
 
 //					StringBuilder sb = new StringBuilder();

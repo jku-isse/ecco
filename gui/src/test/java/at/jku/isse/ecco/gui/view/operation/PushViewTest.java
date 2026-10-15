@@ -64,7 +64,8 @@ public class PushViewTest {
     public void anUntickedRevisionOfThisRepositoryIsNotPushed(@TempDir Path tmp) throws Exception {
         Path parent = parent(tmp);
         try (EccoService service = source(tmp, parent)) {
-            String b = revisionString(tmp.resolve("origin"), "B");
+            // with its full id, as it is parsed again (the displayed one is cut to 7 characters)
+            String b = fullRevisionString(tmp.resolve("origin"), "B");
             PushView view = show(service);
             onFx(() -> {
                 chooseRemote(view, "parent");
@@ -198,5 +199,15 @@ public class PushViewTest {
         TreeItem<PushView.FeatureInfo> featureItem = tree(view).getRoot().getChildren().stream()
                 .filter(i -> i.getValue().getFeature().getName().equals(feature)).findFirst().orElseThrow();
         ((CheckBoxTreeItem<PushView.FeatureInfo>) featureItem.getChildren().get(0)).setSelected(false);
+    }
+
+    private static String fullRevisionString(Path repository, String feature) {
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repository.resolve(".ecco"));
+            service.open();
+            at.jku.isse.ecco.feature.FeatureRevision revision = service.getRepository().getFeatures().stream()
+                    .filter(f -> f.getName().equals(feature)).findFirst().orElseThrow().getLatestRevision();
+            return feature + "." + revision.getId();
+        }
     }
 }

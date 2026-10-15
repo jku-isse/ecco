@@ -273,7 +273,9 @@ public class VariantsView extends BorderPane implements EccoListener {
         Button addSelectedButton = new Button("Add Feature Revision");
         toolBar.getItems().addAll(addSelectedButton);
         addSelectedButton.setOnAction(event -> this.runFeatureRevisionAction(variantInfo -> {
-            String configuration = variantInfo.getVariant().getConfiguration().toString() + "," + searchField.getText();
+            // full ids (the displayed ones are cut to 7 characters), no stray comma for an empty variant
+            String configuration = at.jku.isse.ecco.feature.ConfigurationText.with(at.jku.isse.ecco.feature.ConfigurationText.print(
+                    java.util.Arrays.asList(variantInfo.getVariant().getConfiguration().getFeatureRevisions()), true), searchField.getText());
             String name = variantInfo.getVariant().getName();
             String id = variantInfo.getVariant().getId();
             Configuration config = VariantsView.this.service.parseConfigurationString(configuration);

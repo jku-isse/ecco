@@ -143,10 +143,7 @@ public final class ModuleRevisions {
 	 */
 	public static String suggestedConfigurationString(ModuleRevision moduleRevision, Configuration configuration) {
 		FeatureRevision[] featureRevisions = configuration != null ? configuration.getFeatureRevisions() : moduleRevision.getPos();
-		return Arrays.stream(featureRevisions)
-				.map(featureRevision -> featureRevision.getFeature().getName() + "." + featureRevision.getId())
-				.sorted()
-				.collect(Collectors.joining(","));
+		return at.jku.isse.ecco.feature.ConfigurationText.print(Arrays.asList(featureRevisions), true);
 	}
 
 	/**

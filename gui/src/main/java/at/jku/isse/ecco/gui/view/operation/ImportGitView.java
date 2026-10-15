@@ -975,16 +975,7 @@ public class ImportGitView extends OperationView implements EccoListener {
 	 * blanks dropped, preserving first-seen order. Pure and package-visible for testing.
 	 */
 	static LinkedHashSet<String> parseFeatureTokens(String configurationString) {
-		LinkedHashSet<String> tokens = new LinkedHashSet<>();
-		if (configurationString != null) {
-			for (String token : configurationString.split(",")) {
-				String trimmed = token.trim();
-				if (!trimmed.isEmpty()) {
-					tokens.add(trimmed);
-				}
-			}
-		}
-		return tokens;
+		return at.jku.isse.ecco.feature.ConfigurationText.tokens(configurationString);
 	}
 
 	/**

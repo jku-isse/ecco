@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * </ul>
  */
 public interface Configuration extends Persistable {
-    String CONFIGURATION_STRING_REGULAR_EXPRESSION = "(((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?(\\s*,\\s*((\\[[a-zA-Z0-9_-]+\\])|([a-zA-Z0-9_-]+))('|(\\.([a-zA-Z0-9_-])+))?)*)?";
+    String CONFIGURATION_STRING_REGULAR_EXPRESSION = ConfigurationText.REGULAR_EXPRESSION;
 
     /**
      * Returns a direct reference to the instance of the array of feature revisions that makes up the configuration.
@@ -107,7 +107,7 @@ public interface Configuration extends Persistable {
 
     default String getConfigurationString() {
         // sorted: the revisions' order is no part of a configuration (and came from a hash set)
-        return Arrays.stream(this.getFeatureRevisions()).map(FeatureRevision::toString).sorted().collect(Collectors.joining(", "));
+        return ConfigurationText.print(Arrays.asList(this.getFeatureRevisions()), false);
     }
 
     /**
