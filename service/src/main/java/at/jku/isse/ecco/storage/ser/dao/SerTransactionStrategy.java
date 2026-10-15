@@ -23,6 +23,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.util.stream.Stream;
+import java.nio.file.NoSuchFileException;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -292,17 +295,8 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			// write new id to id file
 			idFileChannel.write(ByteBuffer.wrap(newId.getBytes(Charset.defaultCharset())));
 
-			// delete old db file if nobody has a shared lock anymore (i.e. if we can get an exclusive lock on it)
-			if (this.dbFile != null) {
-				try (FileChannel oldDbFileChannel = FileChannel.open(this.dbFile, StandardOpenOption.WRITE); FileLock oldDbFileLock = oldDbFileChannel.lock(0, Long.MAX_VALUE, false)) {
-					if (oldDbFileLock.isValid()) {
-						Files.delete(this.dbFile);
-						oldCoreReleased = true;
-					}
-				}
-			} else {
-				oldCoreReleased = true;
-			}
+			// the cores no reader holds anymore go; only if none is held may what they refer to go too
+			oldCoreReleased = this.deleteUnusedCores(newDbFile);
 
 			// update id and db file
 			this.id = newId;
@@ -396,6 +390,63 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.writeFileLock = null;
 	}
 
+	/**
+	 * A shared lock on [channel]'s file. File locks belong to the whole JVM, and Java refuses a second
+	 * overlapping one there instead of sharing it: while another service of this process reads the
+	 * same repository, it is waited for.
+	 */
+	private static FileLock sharedLock(FileChannel channel) throws IOException {
+		for (int waited = 0; ; waited++) {
+			try {
+				return channel.lock(0, Long.MAX_VALUE, true);
+			} catch (OverlappingFileLockException readByThisProcess) {
+				if (waited >= 60_000)
+					throw new EccoException("The repository is being read in this process for more than ten minutes.", readByThisProcess);
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					throw new EccoException("Interrupted while waiting to read the repository.", e);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Deletes the cores other than [currentCore] that no reader holds - a reader holds its core's
+	 * shared lock while it reads the repository ({@link #loadDatabase}) - without waiting for one
+	 * that does: its packs stay, and a later write deletes them. True if none was held.
+	 */
+	private boolean deleteUnusedCores(Path currentCore) throws IOException {
+		boolean released = true;
+		List<Path> cores;
+		try (Stream<Path> files = Files.list(this.repositoryDir)) {
+			cores = files.filter(f -> f.getFileName().toString().endsWith(StorageFiles.DB_FILE_SUFFIX) && !f.equals(currentCore)).toList();
+		}
+		for (Path core : cores) {
+			try (FileChannel channel = FileChannel.open(core, StandardOpenOption.WRITE)) {
+				FileLock lock;
+				try {
+					lock = channel.tryLock(0, Long.MAX_VALUE, false);
+				} catch (OverlappingFileLockException heldInThisProcess) {
+					lock = null;
+				}
+				if (lock == null) {
+					released = false;
+					continue;
+				}
+				try {
+					Files.delete(core);
+				} finally {
+					lock.close();
+				}
+			} catch (NoSuchFileException gone) {
+				// deleted meanwhile
+			}
+		}
+		return released;
+	}
+
 	private String readCurrentId() throws IOException {
 		// get shared lock on id file, read id, release lock, return it
 		try (RandomAccessFile ras = new RandomAccessFile(this.idFile.toFile(), "r"); FileChannel fileChannel = ras.getChannel(); FileLock fileLock = fileChannel.lock(0, Long.MAX_VALUE, true)) {
@@ -406,65 +457,85 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 	}
 
+	/**
+	 * Reads the repository the id file names. The shared lock on its core is held until everything
+	 * it refers to - the packs - is read: a writer in another process deletes the packs of a core
+	 * only when it can lock that core exclusively (see {@link #deleteUnusedCores}). Released, as it
+	 * was right after reading the core, a commit meanwhile deleted packs this read was about to read
+	 * - "the pack ... is missing" for 37 of 214 opens while another process committed.
+	 */
 	private void loadDatabase() throws IOException, ClassNotFoundException {
-		// check if id file exists
-		if (Files.exists(this.idFile)) {
-			String id = this.readCurrentId();
-			// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
-			if (this.id != null && this.id.equals(id))
-				return;
-			this.id = id;
-
-			Path dbFile = this.repositoryDir.resolve(this.id + StorageFiles.DB_FILE_SUFFIX);
-			if (Files.exists(dbFile)) {
-				this.dbFile = dbFile;
-				try (FileChannel dbFileChannel = FileChannel.open(this.dbFile, StandardOpenOption.READ); FileLock dbFileLock = dbFileChannel.lock(0, Long.MAX_VALUE, true)) {
-					if (!dbFileLock.isValid())
-						throw new EccoException("Could not obtain shared lock on DB file.");
-
-					InputStream is = new BufferedInputStream(Channels.newInputStream(dbFileChannel));
-					ZipInputStream zis = new ZipInputStream(is);
-					ZipEntry e = null;
-					Database loaded = null;
-					while ((e = zis.getNextEntry()) != null) {
-						if (e.getName().equals(StorageFiles.ZIP_ENTRY_NAME)) {
-							ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(zis.readAllBytes()));
-							loaded = (Database) ois.readObject();
+		FileChannel coreChannel = null;
+		FileLock coreLock = null;
+		try {
+			if (Files.exists(this.idFile)) {
+				for (int attempt = 1; ; attempt++) {
+					String id = this.readCurrentId();
+					// check if this.id has changed or if this.dbFile has already been loaded before. if it has then do not load it again and just reuse this.database.)
+					if (this.id != null && this.id.equals(id))
+						return;
+					Path dbFile = this.repositoryDir.resolve(id + StorageFiles.DB_FILE_SUFFIX);
+					if (Files.exists(dbFile)) {
+						coreChannel = FileChannel.open(dbFile, StandardOpenOption.READ);
+						coreLock = sharedLock(coreChannel);
+						if (!coreLock.isValid())
+							throw new EccoException("Could not obtain shared lock on DB file.");
+						// a writer may have replaced and deleted this core between reading the id and locking it
+						if (Files.exists(dbFile)) {
+							this.id = id;
+							this.dbFile = dbFile;
+							this.database = this.readCore(coreChannel, dbFile);
 							break;
 						}
+						coreLock.close();
+						coreChannel.close();
+						coreLock = null;
+						coreChannel = null;
 					}
-					// used to leave the previous (or no) database in place and fail later with an NPE
-					if (loaded == null)
-						throw new EccoException("Repository core file " + dbFile + " is damaged: it has no " + StorageFiles.ZIP_ENTRY_NAME + " entry.");
-					if (loaded.getStorageFormat() > Database.STORAGE_FORMAT)
-						throw new EccoException("This repository (" + this.repositoryDir + ") was written by a newer version of ECCO (storage format "
-								+ loaded.getStorageFormat() + "; this version reads up to " + Database.STORAGE_FORMAT + "). Open it with that version or a later one.");
-					// older layouts - a file per artifact or association, the artifact index in the
-					// core - are no longer read; ECCO up to CONVERTING_VERSION reads all of them
-					if (loaded.getStorageFormat() < Database.STORAGE_FORMAT || !((SerRepository) loaded.getRepository()).isCurrentLayout())
-						throw new EccoException("This repository (" + this.repositoryDir + ") is stored in an older layout that this version of ECCO"
-								+ " no longer reads. Convert it with ECCO built from commit " + CONVERTING_VERSION + ": run 'ecco convert' in"
-								+ " its folder, which writes it in the current layout.");
-					this.database = loaded;
-				}
-
-				// delete db file if we can get exclusive lock and it does not match id file
-				String currentId = this.readCurrentId();
-				Path currentDbFile = this.repositoryDir.resolve(currentId + StorageFiles.DB_FILE_SUFFIX);
-				if (!currentDbFile.equals(dbFile)) {
-					// try to delete db file
-					try (FileChannel oldDbFileChannel = FileChannel.open(dbFile, StandardOpenOption.WRITE); FileLock oldDbFileLock = oldDbFileChannel.lock(0, Long.MAX_VALUE, false)) {
-						if (oldDbFileLock.isValid())
-							Files.delete(dbFile);
-					}
+					if (attempt >= 20)
+						throw new EccoException("DB file does not exist: " + dbFile);
 				}
 			} else {
-				throw new EccoException("DB file does not exist: " + dbFile);
+				this.database = new Database();
 			}
-		} else {
-			this.database = new Database();
+			this.loadRest();
+		} finally {
+			if (coreLock != null && coreLock.isValid())
+				coreLock.close();
+			if (coreChannel != null)
+				coreChannel.close();
 		}
+	}
 
+	/** The core in [channel] (the file [dbFile]), checked for a format this version reads. */
+	private Database readCore(FileChannel channel, Path dbFile) throws IOException, ClassNotFoundException {
+		ZipInputStream zis = new ZipInputStream(new BufferedInputStream(Channels.newInputStream(channel)));
+		ZipEntry e;
+		Database loaded = null;
+		while ((e = zis.getNextEntry()) != null) {
+			if (e.getName().equals(StorageFiles.ZIP_ENTRY_NAME)) {
+				ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(zis.readAllBytes()));
+				loaded = (Database) ois.readObject();
+				break;
+			}
+		}
+		// used to leave the previous (or no) database in place and fail later with an NPE
+		if (loaded == null)
+			throw new EccoException("Repository core file " + dbFile + " is damaged: it has no " + StorageFiles.ZIP_ENTRY_NAME + " entry.");
+		if (loaded.getStorageFormat() > Database.STORAGE_FORMAT)
+			throw new EccoException("This repository (" + this.repositoryDir + ") was written by a newer version of ECCO (storage format "
+					+ loaded.getStorageFormat() + "; this version reads up to " + Database.STORAGE_FORMAT + "). Open it with that version or a later one.");
+		// older layouts - a file per artifact or association, the artifact index in the
+		// core - are no longer read; ECCO up to CONVERTING_VERSION reads all of them
+		if (loaded.getStorageFormat() < Database.STORAGE_FORMAT || !((SerRepository) loaded.getRepository()).isCurrentLayout())
+			throw new EccoException("This repository (" + this.repositoryDir + ") is stored in an older layout that this version of ECCO"
+					+ " no longer reads. Convert it with ECCO built from commit " + CONVERTING_VERSION + ": run 'ecco convert' in"
+					+ " its folder, which writes it in the current layout.");
+		return loaded;
+	}
+
+	/** Everything the core refers to: the artifacts, associations and pieces, and what is derived from them. */
+	private void loadRest() throws IOException, ClassNotFoundException {
 		SerRepository repo = (SerRepository) this.database.getRepository();
 
 		// the artifacts before any association (see ArtifactPackStore#load)
