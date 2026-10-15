@@ -45,7 +45,9 @@ public class MainViewOpenShortcutTest {
 		} else {
 			Platform.runLater(task);
 		}
-		latch.await();
+		// a toolkit that did not start never runs the action: fail instead of waiting forever
+		if (!latch.await(60, java.util.concurrent.TimeUnit.SECONDS))
+			throw new AssertionError("the JavaFX action did not run within 60 s - did the toolkit start?");
 		if (failure[0] != null) throw failure[0];
 	}
 

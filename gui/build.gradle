@@ -92,6 +92,9 @@ dependencies {
 	testRuntimeOnly project(':ecco-adapter-golang')
 	// headless JavaFX for the tests: their stages and dialogs no longer flash on the screen
 	testRuntimeOnly libs.openjfx.monocle
+	// ... the integration tests too: without it, Glass found no Monocle, the JavaFX toolkit never
+	// started, and the first integration test waited for it forever
+	integrationTestRuntimeOnly libs.openjfx.monocle
 }
 
 // the GUI tests render to Monocle's invisible screen; -Pgui.tests.visible shows their windows again
