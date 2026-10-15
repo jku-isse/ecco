@@ -7,16 +7,12 @@ import at.jku.isse.ecco.mining.ConstraintMiner;
 import at.jku.isse.ecco.mining.FeatureSelectionPropagator;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.geometry.Insets;
-import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -27,11 +23,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A non-modal, always-on-top window listing every feature (on and off) as a checkbox, for a
- * plug-and-play alternative to the Artifacts tab's Select by Configuration -> Compose Selected ->
- * click a node workflow: toggling a checkbox here fires {@link ConfigurationChangeListener}
- * immediately, letting a caller keep the artifact tree and code viewer live-in-sync instead of
- * requiring a separate compose step per change. Deliberately simpler than
+ * A pane listing every feature (on and off) as a checkbox, docked in the Artifacts tab (it was an
+ * always-on-top window of its own): toggling a checkbox fires {@link ConfigurationChangeListener}
+ * immediately, letting a caller keep the artifact tree and code viewer live-in-sync. Deliberately simpler than
  * {@link ConfigurationPickerDialog} (no per-feature revision picker, no configuration string
  * field) - this is for quickly toggling features on/off, not composing an exact configuration
  * string; toggling a feature on always uses its latest revision, matching
@@ -45,7 +39,7 @@ import java.util.Set;
  * not change how an already-built {@link Configuration} gets composed (that's a separate, already
  * existing mechanism -- surplus-module suppression in {@code EccoService#compose}).
  */
-public class FeatureTogglePanel extends Stage {
+public class FeatureTogglePanel extends VBox {
 
 	public interface ConfigurationChangeListener {
 		void configurationChanged(Configuration configuration);
@@ -54,27 +48,27 @@ public class FeatureTogglePanel extends Stage {
 	/**
 	 * Accepted hard REQUIRES/EXCLUDES/MANDATORY suggestions, fed to {@link FeatureSelectionPropagator}
 	 * and used by {@link #applyMandatoryLocks}. Cached at construction and refreshed every time the
-	 * panel is (re)shown (see the {@code setOnShowing} handler below) rather than re-mined on every
-	 * checkbox click, so toggling stays instant, while still picking up constraint changes made
-	 * elsewhere (e.g. the Feature Model tab) without needing to recreate this panel.
+	 * panel is shown again ({@link #reloadConstraints()}) rather than re-mined on every checkbox
+	 * click, so toggling stays instant, while still picking up constraint changes made elsewhere
+	 * (e.g. the Feature Model tab) without needing to recreate this panel.
 	 */
 	private List<ConstraintMiner.Suggestion> acceptedSuggestions;
 
 	/** Feature names locked selected+disabled by {@link #applyMandatoryLocks}; kept in sync with it. */
 	private Set<String> mandatoryFeatureNames = Set.of();
 
-	public FeatureTogglePanel(EccoService service, ConfigurationChangeListener listener) {
-		initModality(Modality.NONE);
-		initStyle(StageStyle.UTILITY);
-		setTitle("Features");
-		setAlwaysOnTop(true);
+	private final EccoService service;
+	private final Map<Feature, CheckBox> checkBoxesByFeature = new LinkedHashMap<>();
 
+	public FeatureTogglePanel(EccoService service, ConfigurationChangeListener listener) {
+		super(8);
+		this.service = service;
 		this.acceptedSuggestions = service.acceptedSuggestions(service.getRepository());
 
 		List<? extends Feature> features = new ArrayList<>(service.getRepository().getFeatures());
 		features.sort(Comparator.comparing(Feature::getName, String.CASE_INSENSITIVE_ORDER));
 
-		Map<Feature, CheckBox> checkBoxesByFeature = new LinkedHashMap<>();
+		Map<Feature, CheckBox> checkBoxesByFeature = this.checkBoxesByFeature;
 		Map<CheckBox, String> searchNames = new LinkedHashMap<>();
 		VBox rowsContainer = new VBox(4);
 
@@ -104,10 +98,6 @@ public class FeatureTogglePanel extends Stage {
 		}
 
 		applyMandatoryLocks(checkBoxesByFeature);
-		setOnShowing(event -> {
-			this.acceptedSuggestions = service.acceptedSuggestions(service.getRepository());
-			applyMandatoryLocks(checkBoxesByFeature);
-		});
 
 		TextField filterField = new TextField();
 		filterField.setPromptText("Filter features...");
@@ -125,14 +115,19 @@ public class FeatureTogglePanel extends Stage {
 		scrollPane.setPrefViewportWidth(240);
 		scrollPane.setPrefViewportHeight(400);
 
-		VBox content = new VBox(8,
-				new Label("Toggle features:"),
+		VBox.setVgrow(scrollPane, javafx.scene.layout.Priority.ALWAYS);
+		getChildren().addAll(
+				new Label("Features of the configuration:"),
 				filterField,
 				new Separator(),
 				scrollPane);
-		content.setPadding(new Insets(10));
+		setPadding(new Insets(10));
+	}
 
-		setScene(new Scene(content));
+	/** Picks up constraint changes made elsewhere (e.g. accepted in the Feature Model tab) - called when the panel is shown again. */
+	public void reloadConstraints() {
+		this.acceptedSuggestions = this.service.acceptedSuggestions(this.service.getRepository());
+		applyMandatoryLocks(this.checkBoxesByFeature);
 	}
 
 	/**

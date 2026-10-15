@@ -5,6 +5,7 @@ import at.jku.isse.ecco.gui.MinimizationResults;
 import at.jku.isse.ecco.gui.io.DeleteDirectoryVisitor;
 import at.jku.isse.ecco.service.EccoService;
 import at.jku.isse.ecco.tree.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
@@ -57,26 +58,6 @@ public class ArtifactsViewTest {
         }
     }
 
-    /** Rows counting no artifacts are hidden by the unchecked box - but only after it was toggled once. */
-    @Test
-    @Timeout(60)
-    public void associationsWithoutArtifactsAreHiddenOnlyOnceTheCheckBoxIsToggled(@TempDir Path tmp) throws Exception {
-        try (EccoService service = twoFeatures(tmp)) {
-            // the repository never stores an association without artifacts, so one row is made to count none
-            ArtifactsView view = loaded(service, 2);
-            onFx(() -> row(view, "b.txt").setNumArtifacts(0));
-
-            // current behaviour: the box starts unchecked, but its filter only applies after a toggle
-            assertEquals(2, (int) onFx(() -> table(view).getItems().size()));
-            onFx(() -> checkBox(view, "Show Associations Without Artifacts").setSelected(true));
-            assertEquals(2, (int) onFx(() -> table(view).getItems().size()));
-            onFx(() -> checkBox(view, "Show Associations Without Artifacts").setSelected(false));
-            List<AssociationInfoImpl> rows = onFx(() -> List.copyOf(table(view).getItems()));
-            assertEquals(1, rows.size());
-            assertTrue(rows.get(0).getNumArtifacts() > 0);
-        }
-    }
-
     /** Select All / Unselect All mark every row; a selected row gets its own color and keeps it. */
     @Test
     @Timeout(60)
@@ -100,35 +81,38 @@ public class ArtifactsViewTest {
         }
     }
 
-    /** Compose Selected puts the composition of only the selected associations into the artifact tree. */
+    /** The tree follows the ticks: it shows the composition of the ticked associations only, nothing once none is ticked. */
     @Test
     @Timeout(60)
-    public void composeSelectedShowsOnlyTheSelectedAssociationsArtifacts(@TempDir Path tmp) throws Exception {
+    public void theTreeShowsTheTickedAssociationsArtifacts(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             ArtifactsView view = loaded(service, 2);
 
-            onFx(() -> {
-                row(view, "b.txt").setSelected(true);
-                button(view, "Compose Selected").fire();
-            });
-            waitUntil("the composed tree", () -> treeTable(view).getRoot() != null && !toolBar(view).isDisable());
-
+            onFx(() -> row(view, "b.txt").setSelected(true));
+            waitUntil("the composed tree", () -> treeTable(view).getRoot() != null);
             Set<String> shown = onFx(() -> labels(treeTable(view).getRoot()));
             assertTrue(shown.contains("b1"), "" + shown);
-            assertFalse(shown.contains("a1"), "a.txt's association is not selected: " + shown);
+            assertFalse(shown.contains("a1"), "a.txt's association is not ticked: " + shown);
+
+            onFx(() -> row(view, "a.txt").setSelected(true));
+            waitUntil("a.txt too", () -> treeTable(view).getRoot() != null && labels(treeTable(view).getRoot()).contains("a1"));
+
+            onFx(() -> menuItem(view, "Unselect All").fire());
+            waitUntil("an empty tree", () -> treeTable(view).getRoot() == null);
         }
     }
 
-    /** Checkout Selected without a selection neither moves the base directory nor writes anything. */
+    /** Checkout Selected without a selection asks for no folder, moves no base directory and writes nothing. */
     @Test
     @Timeout(60)
     public void checkoutSelectedWithNothingSelectedDoesNothing(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
-            ArtifactsView view = loaded(service, 2);
+            ScriptedArtifactsView view = scripted(service, false);
             Path baseDir = service.getBaseDir();
 
-            onFx(() -> button(view, "Checkout Selected").fire());
+            onFx(() -> button(view, "Checkout Selected...").fire());
 
+            assertEquals(0, view.foldersAsked);
             assertEquals(baseDir, service.getBaseDir(), "the base directory is left alone");
             try (Stream<Path> list = Files.list(tmp.resolve("repo"))) {
                 assertEquals(List.of(".ecco"), list.map(p -> p.getFileName().toString()).toList(), "nothing is checked out");
@@ -137,7 +121,50 @@ public class ArtifactsViewTest {
         }
     }
 
-    /** Cancel in "delete contents?" stops Checkout Selected: nothing is written into the repository's folder. */
+    /** Checkout Selected checks the ticked associations out into the folder chosen - it always used the repository's own. */
+    @Test
+    @Timeout(60)
+    public void checkoutSelectedWritesIntoTheChosenFolder(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFeatures(tmp)) {
+            ScriptedArtifactsView view = scripted(service, false);
+            view.chosen = Files.createDirectories(tmp.resolve("chosen"));
+
+            onFx(() -> {
+                row(view, "b.txt").setSelected(true);
+                button(view, "Checkout Selected...").fire();
+            });
+
+            waitUntil("b.txt is checked out", () -> Files.exists(tmp.resolve("chosen/b.txt")));
+            assertEquals(1, view.foldersAsked);
+            assertEquals(List.of(), view.clearAsked, "an empty folder is not asked about");
+            try (Stream<Path> list = Files.list(tmp.resolve("repo"))) {
+                assertEquals(List.of(".ecco"), list.map(p -> p.getFileName().toString()).toList(), "nothing in the repository's folder");
+            }
+        }
+    }
+
+    /** No folder chosen: nothing is checked out, and nothing is asked. */
+    @Test
+    @Timeout(60)
+    public void checkoutSelectedStopsWhenNoFolderIsChosen(@TempDir Path tmp) throws Exception {
+        try (EccoService service = twoFeatures(tmp)) {
+            ScriptedArtifactsView view = scripted(service, true);
+            view.chosen = null;
+            Path baseDir = service.getBaseDir();
+
+            onFx(() -> {
+                row(view, "b.txt").setSelected(true);
+                button(view, "Checkout Selected...").fire();
+            });
+
+            assertEquals(1, view.foldersAsked);
+            assertEquals(List.of(), view.clearAsked);
+            assertEquals(baseDir, service.getBaseDir());
+            assertFalse(onFx(() -> toolBar(view).isDisable()));
+        }
+    }
+
+    /** Cancel in "delete contents?" of a folder with files stops Checkout Selected: nothing is written. */
     @Test
     @Timeout(60)
     public void checkoutSelectedStopsWhenClearingIsCancelled(@TempDir Path tmp) throws Exception {
@@ -146,7 +173,7 @@ public class ArtifactsViewTest {
 
             onFx(() -> {
                 row(view, "b.txt").setSelected(true);
-                button(view, "Checkout Selected").fire();
+                button(view, "Checkout Selected...").fire();
             });
 
             assertEquals(List.of(service.getRepositoryHomeDir()), view.clearAsked);
@@ -158,7 +185,7 @@ public class ArtifactsViewTest {
         }
     }
 
-    /** Confirming "delete contents?" checks the selected associations out into the repository's folder. */
+    /** Confirming "delete contents?" for the repository's own folder checks out there, and keeps the repository. */
     @Test
     @Timeout(60)
     public void checkoutSelectedWritesWhenClearingIsConfirmed(@TempDir Path tmp) throws Exception {
@@ -167,7 +194,7 @@ public class ArtifactsViewTest {
 
             onFx(() -> {
                 row(view, "b.txt").setSelected(true);
-                button(view, "Checkout Selected").fire();
+                button(view, "Checkout Selected...").fire();
             });
 
             waitUntil("b.txt is checked out", () -> Files.exists(tmp.resolve("repo/b.txt")));
@@ -243,38 +270,38 @@ public class ArtifactsViewTest {
         }
     }
 
-    /** Toggling a feature in the live panel selects the associations it certainly needs and composes them. */
+    /**
+     * The Features pane, docked at the left: toggling a feature ticks the associations a checkout of
+     * the configuration takes - as Select by Configuration does - and the tree follows. It was a
+     * window of its own, and took the associations whose certain condition holds.
+     */
     @Test
     @Timeout(60)
-    public void liveFeaturesSelectsTheAssociationsTheToggledConfigurationNeeds(@TempDir Path tmp) throws Exception {
+    public void theFeaturesPaneTicksTheAssociationsACheckoutTakes(@TempDir Path tmp) throws Exception {
         try (EccoService service = twoFeatures(tmp)) {
             ArtifactsView view = loaded(service, 2);
-            try {
-                onFx(() -> button(view, "Live Features...").fire());
-                Stage panel = onFx(ArtifactsViewTest::featurePanel);
-                assertNotNull(panel, "the feature panel is shown");
+            onFx(() -> featuresButton(view).fire());
+            Parent pane = onFx(() -> (Parent) view.getLeft());
+            assertNotNull(pane, "the pane is docked");
 
-                onFx(() -> featureToggle(panel, "A").fire());
-                waitUntil("the tree for A", () -> treeTable(view).getRoot() != null);
+            onFx(() -> featureToggle(pane, "A").fire());
+            waitUntil("a.txt is ticked", () -> row(view, "a.txt").isSelected());
+            waitUntil("the tree for A", () -> treeTable(view).getRoot() != null);
+            assertFalse(onFx(() -> row(view, "b.txt").isSelected()), "b.txt needs B");
+            Set<String> shown = onFx(() -> labels(treeTable(view).getRoot()));
+            assertTrue(shown.contains("a1") && !shown.contains("b1"), "" + shown);
+            Set<Association> taken = service.getAssociations("A.1");
+            assertEquals(taken, onFx(() -> table(view).getItems().stream().filter(AssociationInfoImpl::isSelected)
+                    .map(AssociationInfoImpl::getAssociation).collect(Collectors.toSet())), "what a checkout of A takes");
 
-                assertTrue(onFx(() -> row(view, "a.txt").isSelected()));
-                assertFalse(onFx(() -> row(view, "b.txt").isSelected()), "b.txt needs B");
-                Set<String> shown = onFx(() -> labels(treeTable(view).getRoot()));
-                assertTrue(shown.contains("a1") && !shown.contains("b1"), "" + shown);
+            // the button hides it again, and shows the same pane
+            onFx(() -> featuresButton(view).fire());
+            assertNull(onFx(() -> view.getLeft()));
+            onFx(() -> featuresButton(view).fire());
+            assertSame(pane, onFx(() -> view.getLeft()));
 
-                // a second click reuses the open panel
-                onFx(() -> button(view, "Live Features...").fire());
-                assertSame(panel, onFx(ArtifactsViewTest::featurePanel));
-
-                service.close();
-                waitUntil("the panel is closed with the repository", () -> featurePanel() == null);
-            } finally {
-                onFx(() -> {
-                    Stage panel = featurePanel();
-                    if (panel != null)
-                        panel.close();
-                });
-            }
+            service.close();
+            waitUntil("the pane goes with the repository", () -> view.getLeft() == null && !featuresButton(view).isSelected());
         }
     }
 
@@ -285,10 +312,7 @@ public class ArtifactsViewTest {
         EccoService service = twoFeatures(tmp);
         try {
             ArtifactsView view = loaded(service, 2);
-            onFx(() -> {
-                menuItem(view, "Select All").fire();
-                button(view, "Compose Selected").fire();
-            });
+            onFx(() -> menuItem(view, "Select All").fire());
             waitUntil("the composed tree", () -> treeTable(view).getRoot() != null);
 
             service.close();
@@ -369,14 +393,24 @@ public class ArtifactsViewTest {
         return service;
     }
 
-    /** Answers "delete contents?" as told, without a dialog, and records the question. */
+    /** Answers "delete contents?" and "which folder?" as told, without dialogs, and records the questions. */
     private static final class ScriptedArtifactsView extends ArtifactsView {
         final List<Path> clearAsked = new ArrayList<>();
         private final boolean clearAnswer;
+        // the folder "chosen" for Checkout Selected - the repository's own, unless a test says otherwise
+        Path chosen;
+        int foldersAsked;
 
         ScriptedArtifactsView(EccoService service, boolean clearAnswer) {
             super(service, new MinimizationResults(service));
             this.clearAnswer = clearAnswer;
+            this.chosen = service.getRepositoryHomeDir();
+        }
+
+        @Override
+        Path chooseCheckoutDirectory() {
+            this.foldersAsked++;
+            return this.chosen;
         }
 
         @Override
@@ -455,13 +489,11 @@ public class ArtifactsViewTest {
         return labels;
     }
 
-    private static Stage featurePanel() {
-        return Window.getWindows().stream()
-                .filter(w -> w instanceof Stage s && "Features".equals(s.getTitle()) && s.isShowing())
-                .map(w -> (Stage) w).findFirst().orElse(null);
+    private static ToggleButton featuresButton(ArtifactsView view) {
+        return (ToggleButton) find(view, n -> n instanceof ToggleButton b && "Features".equals(b.getText()));
     }
 
-    private static CheckBox featureToggle(Stage panel, String feature) {
-        return (CheckBox) find(panel.getScene().getRoot(), n -> n instanceof CheckBox c && feature.equals(c.getText()));
+    private static CheckBox featureToggle(Parent pane, String feature) {
+        return (CheckBox) find(pane, n -> n instanceof CheckBox c && feature.equals(c.getText()));
     }
 }

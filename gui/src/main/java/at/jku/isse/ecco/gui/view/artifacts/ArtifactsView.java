@@ -21,7 +21,6 @@ import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
-import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -51,14 +50,20 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     private final EccoService service;
     private final MinimizationResults minimizationResults;
 
-    private final ObservableList<AssociationInfoImpl> associationsData = FXCollections.observableArrayList();
+    // reports a row's tick too (an "update" change), so ticking composes (see scheduleCompose())
+    private final ObservableList<AssociationInfoImpl> associationsData =
+            FXCollections.observableArrayList(info -> new javafx.beans.Observable[]{info.selectedProperty()});
     private int maxNumArtifacts = 1;
 
     private final ToolBar toolBar;
     private final ArtifactTreeView artifactTreeView;
 
     private FeatureTogglePanel featureTogglePanel;
-    private final AtomicLong liveConfigurationGeneration = new AtomicLong();
+    private final AtomicLong configurationGeneration = new AtomicLong();
+    private final AtomicLong composeGeneration = new AtomicLong();
+    // composes once the ticks have settled - Select All ticks every row, one by one
+    private final javafx.animation.PauseTransition composeDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(250));
+    private final ToggleButton featuresButton = new ToggleButton("Features");
     private final AtomicLong refreshGeneration = new AtomicLong();
 
 
@@ -104,25 +109,19 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 unselectAllMenuItem
         );
 
-        Button checkoutSelectedButton = new Button("Checkout Selected");
-        Button composeSelectedButton = new Button("Compose Selected");
-        Button liveFeaturesButton = new Button("Live Features...");
+        Button checkoutSelectedButton = new Button("Checkout Selected...");
+        checkoutSelectedButton.setTooltip(new Tooltip("Checks out exactly the ticked associations, into a folder you choose"));
+        featuresButton.setTooltip(new Tooltip("Tick features: the associations a checkout of them takes are ticked"));
 
-        CheckBox showEmptyAssociationsCheckBox = new CheckBox("Show Associations Without Artifacts");
         CheckBox useSimplifiedLabelsCheckBox = new CheckBox("Use Simplified Labels");
 
+        // the tree follows the ticks - there is no Compose button any more; the associations of a
+        // configuration are ticked from the Features pane or Selection > Select by Configuration
         toolBar.getItems().addAll(refreshButton, new Separator(),
-                selectionMenuButton, checkoutSelectedButton, composeSelectedButton, liveFeaturesButton, new Separator(),
-                showEmptyAssociationsCheckBox, new Separator(),
+                featuresButton, selectionMenuButton, checkoutSelectedButton, new Separator(),
                 useSimplifiedLabelsCheckBox, new Separator());
 
-
-        FilteredList<AssociationInfoImpl> filteredData = new FilteredList<>(this.associationsData, p -> true);
-
-        showEmptyAssociationsCheckBox.selectedProperty().addListener((ov, oldValue, newValue) ->
-                filteredData.setPredicate(associationInfo -> newValue || (associationInfo.getNumArtifacts() > 0)));
-
-        TableView<AssociationInfoImpl> associationsTable = this.buildAssociationsTable(useSimplifiedLabelsCheckBox, filteredData);
+        TableView<AssociationInfoImpl> associationsTable = this.buildAssociationsTable(useSimplifiedLabelsCheckBox, this.associationsData);
 
 
         artifactTreeView = new ArtifactTreeView(service);
@@ -135,10 +134,13 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         this.setCenter(horizontalSplitPane);
 
 
-        this.wireToolBarActions(refreshButton, composeSelectedButton, liveFeaturesButton,
+        this.wireToolBarActions(refreshButton,
                 selectAllMenuItem, unselectAllMenuItem, selectByConfigurationMenuItem, checkoutSelectedButton);
 
-        showEmptyAssociationsCheckBox.setSelected(false);
+        this.composeDelay.setOnFinished(e -> this.composeTicked());
+        this.associationsData.addListener((javafx.collections.ListChangeListener<AssociationInfoImpl>) change -> this.composeDelay.playFromStart());
+        this.featuresButton.selectedProperty().addListener((observable, wasShown, show) -> this.showFeatures(show));
+
         useSimplifiedLabelsCheckBox.setSelected(true);
 
         Platform.runLater(() -> {
@@ -158,7 +160,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
      * Split out of the constructor purely for readability -- no behavior change from the previous
      * single-constructor version.
      */
-    private TableView<AssociationInfoImpl> buildAssociationsTable(CheckBox useSimplifiedLabelsCheckBox, FilteredList<AssociationInfoImpl> filteredData) {
+    private TableView<AssociationInfoImpl> buildAssociationsTable(CheckBox useSimplifiedLabelsCheckBox, ObservableList<AssociationInfoImpl> rows) {
         TableView<AssociationInfoImpl> associationsTable = new TableView<>();
         associationsTable.setPlaceholder(new Label("No associations yet: commit a variant first."));
         associationsTable.setEditable(true);
@@ -309,7 +311,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         highlightedAssocationCol.setEditable(true);
 
 
-        SortedList<AssociationInfoImpl> sortedData = new SortedList<>(filteredData);
+        SortedList<AssociationInfoImpl> sortedData = new SortedList<>(rows);
         sortedData.comparatorProperty().bind(associationsTable.comparatorProperty());
 
         associationsTable.setItems(sortedData);
@@ -324,59 +326,15 @@ public class ArtifactsView extends BorderPane implements EccoListener {
     }
 
     /**
-     * Wires the Refresh/Compose Selected/Live Features/Select All/Unselect All/Select by
-     * Configuration/Checkout Selected handlers. Split out of the constructor purely for
+     * Wires the Refresh/Select All/Unselect All/Select by Configuration/Checkout Selected handlers. Split out of the constructor purely for
      * readability -- no behavior change from the previous single-constructor version; called at the
      * same point in construction as before (after {@link #artifactTreeView} and the split panes
      * exist, since several of these handlers reference them).
      */
-    private void wireToolBarActions(Button refreshButton, Button composeSelectedButton, Button liveFeaturesButton,
+    private void wireToolBarActions(Button refreshButton,
                                      MenuItem selectAllMenuItem, MenuItem unselectAllMenuItem,
                                      MenuItem selectByConfigurationMenuItem, Button checkoutSelectedButton) {
         refreshButton.setOnAction(e -> refresh());
-
-        composeSelectedButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent e) {
-                toolBar.setDisable(true);
-                // snapshot the selection on the FX thread: associationsData is the table's observable
-                // list, which a concurrent refresh() clears - iterating it inside the task (as this
-                // used to) could fail or see a half-rebuilt list
-                Collection<Association> selectedAssociations = new ArrayList<>();
-                for (AssociationInfoImpl associationInfo : ArtifactsView.this.associationsData) {
-                    if (associationInfo.isSelected())
-                        selectedAssociations.add(associationInfo.getAssociation());
-                }
-
-                Task<Void> composeTask = new Task<>() {
-                    @Override
-                    public Void call() throws EccoException {
-                        // use composition here to merge selected associations
-                        LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
-                        for (Association association : selectedAssociations) {
-                            rootNode.addOrigNode(association.getRootNode());
-                        }
-                        Platform.runLater(() -> {
-                            artifactTreeView.setRootNode(rootNode);
-                            toolBar.setDisable(false);
-                        });
-
-                        return null;
-                    }
-                };
-
-                TaskFailures.reportAndReenable(composeTask, toolBar);
-                new Thread(composeTask).start();
-            }
-        });
-
-        liveFeaturesButton.setOnAction(e -> {
-            if (featureTogglePanel == null) {
-                featureTogglePanel = new FeatureTogglePanel(service, this::applyLiveConfiguration);
-            }
-            featureTogglePanel.show();
-            featureTogglePanel.toFront();
-        });
 
         selectAllMenuItem.setOnAction(new EventHandler<ActionEvent>() {
             @Override
@@ -408,35 +366,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                     toolBar.setDisable(false);
                     return;
                 }
-                Configuration config = result.get();
-                // snapshot on the FX thread - see the compose action
-                List<AssociationInfoImpl> associationInfos = new ArrayList<>(associationsData);
-
-                Task<Void> selectionTask = new Task<>() {
-                    @Override
-                    public Void call() throws EccoException {
-                        Set<Association> ass = service.getAssociations(config);
-                        LinkedList<AssociationInfoImpl> toSelect = new LinkedList<AssociationInfoImpl>();
-                        for (AssociationInfoImpl ai : associationInfos) {
-                            if (ass.contains(ai.getAssociation())) {
-                                toSelect.add(ai);
-                            }
-                        }
-
-                        Platform.runLater(() -> {
-                            setAllAssociationsSelected(false);
-                            for (AssociationInfoImpl a : toSelect) {
-                                a.setSelected(true);
-                            }
-                            toolBar.setDisable(false);
-                        });
-
-                        return null;
-                    }
-                };
-
-                TaskFailures.reportAndReenable(selectionTask, toolBar);
-                new Thread(selectionTask).start();
+                toolBar.setDisable(false);
+                ArtifactsView.this.selectConfiguration(result.get());
             }
         });
 
@@ -458,10 +389,14 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                         rootNode.addOrigNode(association.getRootNode());
                     }
 
-                    // default to the directory the repository lives in, same as the full Checkout
-                    // dialog -- there's no directory-picker step here, so this IS the effective
-                    // default rather than just a pre-filled suggestion.
-                    service.setBaseDir(service.getRepositoryHomeDir());
+                    // into a folder the user chooses: it always went into the repository's own
+                    // folder, whose files the "delete the contents?" question then offered to delete
+                    Path target = chooseCheckoutDirectory();
+                    if (target == null) {
+                        toolBar.setDisable(false);
+                        return;
+                    }
+                    service.setBaseDir(target);
 
                     // Cancel stops the checkout, as in the Checkout dialog - it used to be ignored,
                     // so the checkout was written over the directory's contents anyway
@@ -500,49 +435,87 @@ public class ArtifactsView extends BorderPane implements EccoListener {
         return new DeleteDirectoryContentsDialog(baseDir).showBlocked();
     }
 
+    /** The folder to check the ticked associations out into, or null if none was chosen. Package-visible for testing. */
+    Path chooseCheckoutDirectory() {
+        javafx.stage.DirectoryChooser chooser = new javafx.stage.DirectoryChooser();
+        chooser.setTitle("Check out the ticked associations into");
+        if (service.getRepositoryHomeDir() != null && java.nio.file.Files.isDirectory(service.getRepositoryHomeDir()))
+            chooser.setInitialDirectory(service.getRepositoryHomeDir().toFile());
+        java.io.File chosen = chooser.showDialog(this.getScene() == null ? null : this.getScene().getWindow());
+        return chosen == null ? null : chosen.toPath();
+    }
+
     /**
-     * Called by the {@link FeatureTogglePanel} on every checkbox toggle - the plug-and-play
-     * alternative to Select by Configuration -> Compose Selected. Selection itself is cheap
-     * (association.computeCertainCondition().holds(configuration) is a synchronous, in-memory
-     * check already used elsewhere, e.g. AssociationsView's condition column, directly on the FX
-     * thread - unlike EccoService.getAssociations(), which runs a full compose pipeline and is why
-     * Select by Configuration needs a background Task) so it runs immediately here. Only the tree
-     * rebuild stays on a background Task, same as Compose Selected. A generation counter discards
-     * a stale rebuild's result if the user toggles another checkbox before the first rebuild
-     * finishes, rather than letting an out-of-order compose silently overwrite a newer one.
+     * Ticks the associations a checkout of [configuration] takes (EccoService#getAssociations: the
+     * whole compose pipeline, also its surplus suppression) - from the Features pane on every toggle,
+     * and from Select by Configuration. The pane used the certain conditions instead, and the two
+     * could tick different associations for the same configuration. In the background (the service
+     * may be busy); a later configuration's result supersedes an earlier one's.
      */
-    private void applyLiveConfiguration(Configuration configuration) {
-        long generation = liveConfigurationGeneration.incrementAndGet();
-
-        Collection<Association> selectedAssociations = new ArrayList<>();
-        for (AssociationInfoImpl associationInfo : ArtifactsView.this.associationsData) {
-            // computeCertainCondition() lives on Association.Op, not the plain Association
-            // AssociationInfoImpl exposes - every real association is an Op at runtime though
-            Association.Op association = (Association.Op) associationInfo.getAssociation();
-            boolean matches = association.computeCertainCondition().holds(configuration);
-            associationInfo.setSelected(matches);
-            if (matches) {
-                selectedAssociations.add(associationInfo.getAssociation());
-            }
-        }
-
-        Task<Void> composeTask = new Task<>() {
+    private void selectConfiguration(Configuration configuration) {
+        long generation = this.configurationGeneration.incrementAndGet();
+        List<AssociationInfoImpl> rows = new ArrayList<>(this.associationsData);
+        Task<Set<Association>> selectionTask = new Task<>() {
             @Override
-            public Void call() {
-                LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
-                for (Association association : selectedAssociations) {
-                    rootNode.addOrigNode(association.getRootNode());
-                }
-                Platform.runLater(() -> {
-                    if (liveConfigurationGeneration.get() == generation) {
-                        artifactTreeView.setRootNode(rootNode);
-                    }
-                });
-                return null;
+            protected Set<Association> call() {
+                return service.getAssociations(configuration);
             }
         };
+        selectionTask.setOnSucceeded(event -> {
+            if (this.configurationGeneration.get() != generation)
+                return;
+            Set<Association> taken = selectionTask.getValue();
+            for (AssociationInfoImpl row : rows)
+                row.setSelected(taken.contains(row.getAssociation()));
+        });
+        TaskFailures.reportAndReenable(selectionTask);
+        new Thread(selectionTask).start();
+    }
+
+    /**
+     * Shows the composition of the ticked associations in the tree - after every change of the ticks
+     * (see composeDelay); there was a Compose Selected button to press. A later composition
+     * supersedes an earlier one still being built.
+     */
+    private void composeTicked() {
+        long generation = this.composeGeneration.incrementAndGet();
+        Collection<Association> ticked = new ArrayList<>();
+        for (AssociationInfoImpl associationInfo : this.associationsData)
+            if (associationInfo.isSelected())
+                ticked.add(associationInfo.getAssociation());
+        if (ticked.isEmpty()) {
+            this.artifactTreeView.setRootNode(null);
+            return;
+        }
+        Task<LazyCompositionRootNode> composeTask = new Task<>() {
+            @Override
+            protected LazyCompositionRootNode call() {
+                LazyCompositionRootNode rootNode = new LazyCompositionRootNode();
+                for (Association association : ticked)
+                    rootNode.addOrigNode(association.getRootNode());
+                return rootNode;
+            }
+        };
+        composeTask.setOnSucceeded(event -> {
+            if (this.composeGeneration.get() == generation)
+                this.artifactTreeView.setRootNode(composeTask.getValue());
+        });
         TaskFailures.reportAndReenable(composeTask);
         new Thread(composeTask).start();
+    }
+
+    /** Docks the Features pane at the left, or takes it away; it is built from the repository's features when first shown. */
+    private void showFeatures(boolean show) {
+        if (!show) {
+            this.setLeft(null);
+            return;
+        }
+        if (this.featureTogglePanel == null)
+            this.featureTogglePanel = new FeatureTogglePanel(service, this::selectConfiguration);
+        else
+            this.featureTogglePanel.reloadConstraints();
+        this.featureTogglePanel.setPrefWidth(240);
+        this.setLeft(this.featureTogglePanel);
     }
 
     private void setAllAssociationsSelected(boolean flag) {
@@ -643,6 +616,10 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 this.associationsData.add(associationInfo);
             }
             artifactTreeView.setAssociationInfo(this.associationsData);
+            // the features may have changed: built again, when shown again
+            this.featureTogglePanel = null;
+            if (this.featuresButton.isSelected())
+                this.showFeatures(true);
 
             toolBar.setDisable(false);
         });
@@ -667,10 +644,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
                 this.artifactTreeView.setRootNode(null);
                 this.associationsData.clear();
                 this.maxNumArtifacts = 1;
-                if (this.featureTogglePanel != null) {
-                    this.featureTogglePanel.close();
-                    this.featureTogglePanel = null;
-                }
+                this.featuresButton.setSelected(false);
+                this.featureTogglePanel = null;
             });
         }
     }

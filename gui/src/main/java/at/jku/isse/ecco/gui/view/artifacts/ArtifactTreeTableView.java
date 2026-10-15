@@ -9,7 +9,6 @@ import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.paint.Color;
@@ -89,42 +88,10 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 				}
 		);
 
-		TreeTableColumn<NodeWrapper, Boolean> isSelectedNodeCol = new TreeTableColumn<>("Selected");
-		isSelectedNodeCol.setCellValueFactory(
-				(TreeTableColumn.CellDataFeatures<NodeWrapper, Boolean> param) ->
-				{
-					Artifact<?> artifact = param.getValue().getValue().getArtifact();
-
-					if (artifact != null) {
-						SimpleBooleanProperty sbp = new SimpleBooleanProperty() {
-							@Override
-							public boolean get() {
-								return super.get();
-							}
-
-							@Override
-							public void set(boolean value) {
-								if (value)
-									artifact.putProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION, value);
-								else
-									artifact.removeProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION);
-								super.set(value);
-							}
-						};
-						sbp.set(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
-						return sbp;
-						//return new ReadOnlyBooleanWrapper(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
-					} else {
-						return new ReadOnlyBooleanWrapper(false);
-					}
-				}
-		);
-		isSelectedNodeCol.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(isSelectedNodeCol));
-		isSelectedNodeCol.setEditable(true);
 
 
 		TreeTableColumn<NodeWrapper, String> artifactTreeCol = new TreeTableColumn<>("Artifact Tree");
-		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol, isSelectedNodeCol);
+		artifactTreeCol.getColumns().setAll(labelNodeCol, orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, associationNodeCol);
 
 
 		uniqueNodeCol.setCellFactory(new Callback<>() {
@@ -168,13 +135,12 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 
 		this.getColumns().setAll(artifactTreeCol);
 
-		this.setEditable(true);
 		this.setTableMenuButtonVisible(true);
 		this.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
 		// the tree's internals, hidden at first (the table menu, top right, shows them): they took
 		// three quarters of the width, and the code was cut off
-		for (TreeTableColumn<NodeWrapper, ?> internal : List.of(orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol, isSelectedNodeCol))
+		for (TreeTableColumn<NodeWrapper, ?> internal : List.of(orderedNodeCol, atomicNodeCol, uniqueNodeCol, snNodeCol))
 			internal.setVisible(false);
 		// the association by its first characters, as the associations table shows it; the root has none
 		associationNodeCol.setCellFactory(column -> new TreeTableCell<>() {
@@ -191,7 +157,6 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		TableColumns.controlWidth(orderedNodeCol);
 		TableColumns.controlWidth(atomicNodeCol);
 		TableColumns.controlWidth(uniqueNodeCol);
-		TableColumns.controlWidth(isSelectedNodeCol);
 		// sized by their content when a tree is shown; until then by their headers
 		TableColumns.defaultWidth(snNodeCol, 0);
 		TableColumns.defaultWidth(associationNodeCol, 0);

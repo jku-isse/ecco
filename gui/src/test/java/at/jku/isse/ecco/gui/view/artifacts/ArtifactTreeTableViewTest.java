@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * What the artifact tree table shows for a tree: every node, expanded, with its ordered/atomic/
- * unique flags, sequence number and association, the association's highlight color, and that the
- * "Selected" box marks an artifact for extraction.
+ * unique flags (hidden at first), sequence number and association, and the association's highlight
+ * color. Its "Selected" column, which marked an artifact for extraction that nothing extracted, is gone.
  */
 public class ArtifactTreeTableViewTest {
 
@@ -63,7 +63,7 @@ public class ArtifactTreeTableViewTest {
     @Timeout(60)
     public void theInternalsAreHiddenAtFirst() throws Exception {
         ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView());
-        for (String hidden : List.of("Ordered", "Atomic", "Unique", "Sequence Number", "Selected"))
+        for (String hidden : List.of("Ordered", "Atomic", "Unique", "Sequence Number"))
             assertFalse(onFx(() -> column(view, hidden).isVisible()), hidden);
         for (String shown : List.of("Node", "Association"))
             assertTrue(onFx(() -> column(view, shown).isVisible()), shown);
@@ -89,29 +89,6 @@ public class ArtifactTreeTableViewTest {
             assertEquals(-1, onFx(() -> value(view, "Sequence Number", root)));
             assertEquals(a.getId(), onFx(() -> value(view, "Association", line)));
             assertEquals("null", onFx(() -> value(view, "Association", root)));
-        }
-    }
-
-    /** Ticking "Selected" puts the extraction mark on the artifact, unticking takes it off again. */
-    @Test
-    @Timeout(60)
-    @SuppressWarnings("unchecked")
-    public void theSelectedBoxMarksTheArtifactForExtraction(@TempDir Path tmp) throws Exception {
-        try (EccoService service = twoFeatures(tmp)) {
-            Association a = association(service, "a.txt");
-            ArtifactTreeTableView view = onFx(() -> new ArtifactTreeTableView(a.getRootNode()));
-            TreeItem<ArtifactTreeTableView.NodeWrapper> line = onFx(() -> item(view, "a1"));
-            Artifact<?> artifact = line.getValue().getArtifact();
-            assertEquals(Boolean.FALSE, onFx(() -> value(view, "Selected", line)));
-
-            onFx(() -> ((WritableValue<Boolean>) column(view, "Selected").getCellObservableValue(line)).setValue(true));
-            assertTrue(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
-            assertEquals(Boolean.TRUE, onFx(() -> value(view, "Selected", line)), "a fresh cell reads the mark back");
-
-            onFx(() -> ((WritableValue<Boolean>) column(view, "Selected").getCellObservableValue(line)).setValue(false));
-            assertFalse(artifact.getProperty(Artifact.PROPERTY_MARKED_FOR_EXTRACTION).isPresent());
-
-            assertEquals(Boolean.FALSE, onFx(() -> value(view, "Selected", view.getRoot())), "a node without artifact cannot be marked");
         }
     }
 
