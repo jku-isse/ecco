@@ -1391,6 +1391,33 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         this.variantManager.removeVariant(configuration);
     }
 
+    /**
+     * Writes the whole repository again, in the current storage layout: a write converts only what it
+     * changes, so a repository written by an older version kept parts in its layout until every
+     * association had changed, and an artifact whose data class changed since was kept in its stored
+     * bytes. Returns the number of associations written.
+     */
+    public synchronized int convertToCurrentFormat() {
+        this.checkInitialized();
+        int[] written = new int[1];
+        this.writeTransaction("Error converting the repository.", repository -> {
+            for (Association.Op association : new ArrayList<>(repository.getAssociations())) {
+                markArtifactsModified(association.getRootNode());
+                repository.addAssociation(association);
+                written[0]++;
+            }
+            return repository;
+        });
+        return written[0];
+    }
+
+    private static void markArtifactsModified(Node.Op node) {
+        if (node.getArtifact() != null)
+            node.getArtifact().markModified();
+        for (Node.Op child : node.getChildren())
+            markArtifactsModified(child);
+    }
+
     public synchronized void store() {
         this.checkInitialized();
 
