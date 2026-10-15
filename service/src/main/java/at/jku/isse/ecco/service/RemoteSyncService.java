@@ -53,6 +53,23 @@ public class RemoteSyncService {
         this.owner = owner;
     }
 
+    /** How long connecting to a remote may take. */
+    static final int CONNECT_TIMEOUT_MILLIS = 10_000;
+    /** How long a single read from a remote may wait - a pull of a large repository can take a while on the server before it answers. */
+    static final int READ_TIMEOUT_MILLIS = Integer.getInteger("ecco.sync.readTimeoutSeconds", 300) * 1000;
+
+    /**
+     * Connects {@code channel} (blocking) to {@code address} with a connect timeout, and sets a read
+     * timeout: without them a remote that accepted the connection and never answered held a fetch -
+     * and the service's lock, which the GUI's Save, Close and Quit wait for - forever.
+     */
+    static boolean connect(SocketChannel channel, InetSocketAddress address) throws IOException {
+        channel.configureBlocking(true);
+        channel.socket().connect(address, CONNECT_TIMEOUT_MILLIS);
+        channel.socket().setSoTimeout(READ_TIMEOUT_MILLIS);
+        return true;
+    }
+
     public Remote addRemote(String name, String address) {
         owner.checkInitialized();
 
@@ -514,7 +531,7 @@ public class RemoteSyncService {
 
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    if (sChannel.connect(socketAddressOf(remote))) {
+                    if (RemoteSyncService.connect(sChannel, socketAddressOf(remote))) {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
@@ -598,7 +615,7 @@ public class RemoteSyncService {
     static Map<String, String> remoteSettings(InetSocketAddress address, String name) throws IOException, ClassNotFoundException {
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!sChannel.connect(address))
+            if (!RemoteSyncService.connect(sChannel, address))
                 throw new EccoException("Error connecting to remote: " + name + ": " + address);
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("SETTINGS");
@@ -620,7 +637,7 @@ public class RemoteSyncService {
         String reply;
         try (SocketChannel sChannel = SocketChannel.open()) {
             sChannel.configureBlocking(true);
-            if (!sChannel.connect(socketAddressOf(remote)))
+            if (!RemoteSyncService.connect(sChannel, socketAddressOf(remote)))
                 throw new EccoException("Error connecting to remote: " + remote.getName() + ": " + remote.getAddress());
             ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
             oos.writeObject("MERGE_SETTINGS");
@@ -661,7 +678,7 @@ public class RemoteSyncService {
                 Map<String, String> remoteSettings = this.remoteSettings(remote);
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    if (sChannel.connect(socketAddressOf(remote))) {
+                    if (RemoteSyncService.connect(sChannel, socketAddressOf(remote))) {
                         ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                         ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());
@@ -790,7 +807,7 @@ public class RemoteSyncService {
 
                 try (SocketChannel sChannel = SocketChannel.open()) {
                     sChannel.configureBlocking(true);
-                    if (sChannel.connect(socketAddressOf(remote))) {
+                    if (RemoteSyncService.connect(sChannel, socketAddressOf(remote))) {
                         // oos wraps the progress-tracking stream (not the raw socket stream directly) so
                         // that the actual payload write below -- not just a separate scratch stream used
                         // only to estimate size, see below -- is what the progress listener observes.

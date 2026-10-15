@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -148,6 +149,7 @@ public class RemoteDetailViewTest {
                 typeBox(grid).setValue(Remote.Type.LOCAL);
                 button(toolBar(view), "Save").fire();
             });
+            waitUntil("the save", () -> "Saved.".equals(status(view)));
 
             assertNull(service.getRemote("origin"));
             Remote upstream = service.getRemote("upstream");
@@ -177,6 +179,7 @@ public class RemoteDetailViewTest {
                 fields(grid).get(0).setText("other");
                 button(toolBar(view), "Save").fire();
             });
+            waitUntil("the refusal", () -> !toolBar(view).isDisable());
 
             assertEquals("Remote with this name already exists.", onFx(() -> status(view)));
             assertEquals("localhost:3770", service.getRemote("origin").getAddress());
@@ -217,6 +220,38 @@ public class RemoteDetailViewTest {
             waitUntil("the failure", () -> !toolBar(view).isDisable() && !status(view).isEmpty() && !"Fetching...".equals(status(view)));
             assertNotEquals("Fetched.", onFx(() -> status(view)));
             assertEquals(List.of("upstream"), changed);
+        }
+    }
+
+    /** A fetch after which the remote is gone (removed meanwhile) says so, instead of failing on the FX thread. */
+    @Test
+    @Timeout(60)
+    public void aFetchedRemoteRemovedMeanwhileIsReported(@TempDir Path tmp) throws Exception {
+        Path origin = origin(tmp);
+        Path repo = Files.createDirectories(tmp.resolve("repo"));
+        EccoService service = new EccoService() {
+            @Override
+            public synchronized void fetch(String remoteName) {
+                super.fetch(remoteName);
+                this.removeRemote(remoteName); // as a Remove waiting for the fetch would
+            }
+        };
+        service.setRepositoryDir(repo.resolve(".ecco"));
+        service.init();
+        try {
+            service.addRemote("upstream", origin.toString(), Remote.Type.LOCAL);
+            RemoteDetailView view = onFx(() -> new RemoteDetailView(service));
+            List<String> changed = new ArrayList<>();
+            onFx(() -> {
+                view.setOnRemoteChanged(remote -> changed.add(remote.getName()));
+                view.showRemote(service.getRemote("upstream"));
+                button(toolBar(view), "Fetch").fire();
+            });
+            waitUntil("the fetch", () -> "The remote no longer exists.".equals(status(view)));
+            assertNull(onFx(view::getCenter));
+            assertEquals(List.of(), changed);
+        } finally {
+            service.close();
         }
     }
 

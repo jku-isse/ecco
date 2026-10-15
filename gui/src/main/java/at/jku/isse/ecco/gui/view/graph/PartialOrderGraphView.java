@@ -17,8 +17,11 @@ import java.util.*;
 public class PartialOrderGraphView extends BorderPane {
 
 	private final Graph graph;
+	// the latest graph asked for (showGraph); an older request is not drawn
+	private final java.util.concurrent.atomic.AtomicLong requests = new java.util.concurrent.atomic.AtomicLong();
 	private final Layout layout;
-	private FxViewer viewer;
+	// read by the drawing thread, set and cleared on the FX thread
+	private volatile FxViewer viewer;
 	private FxViewPanel view;
 
 	public PartialOrderGraphView() {
@@ -49,6 +52,7 @@ public class PartialOrderGraphView extends BorderPane {
 		}
 
 		setCursor(Cursor.WAIT);
+		long request = this.requests.incrementAndGet();
 		Thread th = new Thread(() -> {
 			Snapshot snapshot;
 			synchronized (lock) {
@@ -57,9 +61,16 @@ public class PartialOrderGraphView extends BorderPane {
 			// one rebuild at a time: selecting another node before the previous rebuild finished used
 			// to start a second thread clearing and filling the same (not thread-safe) graph
 			synchronized (this.graph) {
+				// waiting for the lock (a whole commit) a newer graph may have been asked for - its
+				// thread can get the lock first - or the view closed: then this one is not drawn
+				if (request != this.requests.get() || this.viewer == null) {
+					Platform.runLater(() -> setCursor(Cursor.DEFAULT));
+					return;
+				}
 				this.rebuildGraph(snapshot);
 			}
 		});
+		th.setDaemon(true);
 		th.start();
 	}
 
@@ -148,6 +159,7 @@ public class PartialOrderGraphView extends BorderPane {
 
 	public void closeGraph() {
 		setCenter(null);
+		this.requests.incrementAndGet(); // a graph still being read is not drawn
 
 		if (null != viewer) {
 			try {
@@ -160,6 +172,11 @@ public class PartialOrderGraphView extends BorderPane {
 			view = null;
 			viewer = null;
 		}
+	}
+
+	/** The graph as drawn. Package-visible for testing. */
+	Graph drawnGraph() {
+		return this.graph;
 	}
 
 }

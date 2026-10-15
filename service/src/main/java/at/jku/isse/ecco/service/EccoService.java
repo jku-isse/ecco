@@ -705,7 +705,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             if (originSettings != null)
                 this.replaceSettings(originSettings);
             sChannel.configureBlocking(true);
-            if (sChannel.connect(new InetSocketAddress(hostname, port))) {
+            if (RemoteSyncService.connect(sChannel, new InetSocketAddress(hostname, port))) {
                 ProgressInputStream progressInputStream = new ProgressInputStream(sChannel.socket().getInputStream());
 
                 ObjectOutputStream oos = new ObjectOutputStream(sChannel.socket().getOutputStream());

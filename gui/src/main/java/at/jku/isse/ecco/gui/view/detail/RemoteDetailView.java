@@ -101,45 +101,64 @@ public class RemoteDetailView extends BorderPane {
 		this.onRemoteChanged = onRemoteChanged;
 	}
 
-	/** Stores the edited name, address and type; a failure is shown in the toolbar and changes nothing. */
+	/**
+	 * Stores the edited name, address and type in the background - on the FX thread it waited for a
+	 * fetch holding the service, and froze the window; a failure is shown in the toolbar and changes
+	 * nothing.
+	 */
 	private void save() {
-		try {
-			Remote remote = this.service.updateRemote(this.currentRemote.getName(), this.remoteName.getText().trim(),
-					this.remoteAddress.getText().trim(), this.remoteType.getValue());
-			this.showRemote(remote);
-			this.statusLabel.setText("Saved.");
-			this.onRemoteChanged.accept(remote);
-		} catch (Exception e) {
-			this.statusLabel.setText(TaskFailures.reason(e));
-		}
+		String name = this.currentRemote.getName();
+		String newName = this.remoteName.getText().trim();
+		String address = this.remoteAddress.getText().trim();
+		Remote.Type type = this.remoteType.getValue();
+		this.run(new Task<>() {
+			@Override
+			protected Remote call() {
+				return RemoteDetailView.this.service.updateRemote(name, newName, address, type);
+			}
+		}, "Saving...", "Saved.");
 	}
 
 	/** Fetches the shown remote's features in the background and shows them. */
 	private void fetch() {
 		String name = this.currentRemote.getName();
-		this.toolBar.setDisable(true);
-		this.statusLabel.setText("Fetching...");
-		Task<Remote> fetchTask = new Task<>() {
+		this.run(new Task<>() {
 			@Override
 			protected Remote call() {
 				RemoteDetailView.this.service.fetch(name);
 				return RemoteDetailView.this.service.getRemote(name);
 			}
+		}, "Fetching...", "Fetched.");
+	}
 
-			@Override
-			protected void succeeded() {
-				RemoteDetailView.this.showRemote(this.getValue());
-				RemoteDetailView.this.statusLabel.setText("Fetched.");
-				RemoteDetailView.this.onRemoteChanged.accept(this.getValue());
+	/**
+	 * Runs {@code task} on a daemon thread (it must not keep the application from quitting) and
+	 * shows the remote it returns with {@code done}; {@code null} = the remote was removed meanwhile.
+	 */
+	private void run(Task<Remote> task, String working, String done) {
+		this.toolBar.setDisable(true);
+		this.statusLabel.setText(working);
+		task.setOnSucceeded(event -> {
+			Remote remote = task.getValue();
+			if (remote == null) {
+				// removed while this ran: there is nothing to show or to report as changed
+				this.showRemote(null);
+				this.statusLabel.setText("The remote no longer exists.");
+				return;
 			}
-
-			@Override
-			protected void failed() {
-				RemoteDetailView.this.toolBar.setDisable(false);
-				RemoteDetailView.this.statusLabel.setText(TaskFailures.reason(this.getException()));
-			}
-		};
-		new Thread(fetchTask).start();
+			// the list's update reselects the remote, which shows it again and cleared the status:
+			// report first, then show it with its status
+			this.onRemoteChanged.accept(remote);
+			this.showRemote(remote);
+			this.statusLabel.setText(done);
+		});
+		task.setOnFailed(event -> {
+			this.toolBar.setDisable(false);
+			this.statusLabel.setText(TaskFailures.reason(task.getException()));
+		});
+		Thread thread = new Thread(task, "remote " + working);
+		thread.setDaemon(true);
+		thread.start();
 	}
 
 	public final void showRemote(Remote remote) {

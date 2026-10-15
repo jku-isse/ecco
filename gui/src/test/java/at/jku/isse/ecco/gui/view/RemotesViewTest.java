@@ -4,6 +4,7 @@ import at.jku.isse.ecco.core.Remote;
 import at.jku.isse.ecco.gui.view.detail.RemoteDetailView;
 import at.jku.isse.ecco.service.EccoService;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
 import org.junit.jupiter.api.BeforeAll;
@@ -155,8 +156,11 @@ public class RemotesViewTest {
                 button(detail, "Save").fire();
             });
 
+            waitUntil("the save", () -> names(view).contains("upstream"));
             assertEquals(Set.of("upstream"), onFx(() -> names(view)));
             assertEquals("upstream", onFx(() -> table(view).getSelectionModel().getSelectedItem().getName()));
+            // the list's update reselects the remote: its status stays (it was cleared at once)
+            assertEquals("Saved.", onFx(() -> ((Label) ((ToolBar) detail.getTop()).getItems().get(((ToolBar) detail.getTop()).getItems().size() - 1)).getText()));
         }
     }
 
