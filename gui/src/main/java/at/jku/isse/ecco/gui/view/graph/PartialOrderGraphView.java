@@ -12,8 +12,7 @@ import org.graphstream.ui.layout.springbox.implementations.SpringBox;
 import org.graphstream.ui.fx_viewer.FxViewPanel;
 import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.view.Viewer;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class PartialOrderGraphView extends BorderPane {
 
@@ -39,23 +38,72 @@ public class PartialOrderGraphView extends BorderPane {
 		});
 	}
 
-	public void showGraph(PartialOrderGraph pog) {
+	/**
+	 * Shows {@code pog}, read while holding {@code lock} - the service, whose commits and other
+	 * writes change order graphs while holding it: read without it, a commit running at the same
+	 * time changed a node's next nodes while they were walked (ConcurrentModificationException).
+	 */
+	public void showGraph(PartialOrderGraph pog, Object lock) {
 		if (null == viewer) {
 			initView();
 		}
 
 		setCursor(Cursor.WAIT);
 		Thread th = new Thread(() -> {
+			Snapshot snapshot;
+			synchronized (lock) {
+				snapshot = snapshot(pog);
+			}
 			// one rebuild at a time: selecting another node before the previous rebuild finished used
 			// to start a second thread clearing and filling the same (not thread-safe) graph
 			synchronized (this.graph) {
-				this.rebuildGraph(pog);
+				this.rebuildGraph(snapshot);
 			}
 		});
 		th.start();
 	}
 
-	private void rebuildGraph(PartialOrderGraph pog) {
+	/** The nodes of an order graph - their labels and styles - and its edges, as indices into them. */
+	record Snapshot(List<String> labels, List<String> classes, List<int[]> edges) {
+	}
+
+	/**
+	 * Every node of {@code pog} once, from its head, and every edge once. The walk used to recurse
+	 * into a node's next nodes each time it came to the node, from each of its previous nodes -
+	 * exponential in the graph's open branches - and once per line deep.
+	 */
+	static Snapshot snapshot(PartialOrderGraph pog) {
+		Map<PartialOrderGraph.Node, Integer> index = new IdentityHashMap<>();
+		List<PartialOrderGraph.Node> nodes = new ArrayList<>();
+		List<String> labels = new ArrayList<>();
+		List<String> classes = new ArrayList<>();
+		List<int[]> edges = new ArrayList<>();
+		Deque<PartialOrderGraph.Node> pending = new ArrayDeque<>();
+		index.put(pog.getHead(), 0);
+		nodes.add(pog.getHead());
+		pending.push(pog.getHead());
+		while (!pending.isEmpty()) {
+			PartialOrderGraph.Node node = pending.pop();
+			int from = index.get(node);
+			for (PartialOrderGraph.Node next : List.copyOf(node.getNext())) {
+				Integer to = index.get(next);
+				if (to == null) {
+					to = nodes.size();
+					index.put(next, to);
+					nodes.add(next);
+					pending.push(next);
+				}
+				edges.add(new int[]{from, to});
+			}
+		}
+		for (PartialOrderGraph.Node node : nodes) {
+			labels.add(node.getArtifact() + " [" + (node.getArtifact() != null ? node.getArtifact().getSequenceNumber() : "-") + "]");
+			classes.add(node.getNext().isEmpty() ? "end" : node.getPrevious().isEmpty() ? "start" : null);
+		}
+		return new Snapshot(labels, classes, edges);
+	}
+
+	private void rebuildGraph(Snapshot snapshot) {
 		try {
 			this.viewer.disableAutoLayout();
 			this.graph.removeSink(this.layout);
@@ -69,7 +117,16 @@ public class PartialOrderGraphView extends BorderPane {
 			this.graph.setAttribute("ui.stylesheet",
 					" node.start { fill-color: green; size: 20px; } node.end { fill-color: red; size: 20px; } node {text-alignment:above;text-background-mode:plain;}");
 
-			this.traversePartialOrderGraph(pog.getHead(), null, new HashMap<>());
+			List<org.graphstream.graph.Node> gsNodes = new ArrayList<>();
+			for (int i = 0; i < snapshot.labels().size(); i++) {
+				org.graphstream.graph.Node gsNode = this.graph.addNode("N" + i);
+				gsNode.setAttribute("label", snapshot.labels().get(i));
+				if (snapshot.classes().get(i) != null)
+					gsNode.setAttribute("ui.class", snapshot.classes().get(i));
+				gsNodes.add(gsNode);
+			}
+			for (int[] edge : snapshot.edges())
+				this.graph.addEdge("E" + edge[0] + "-" + edge[1], gsNodes.get(edge[0]), gsNodes.get(edge[1]), true);
 
 			this.graph.addSink(this.layout);
 			this.layout.addAttributeSink(this.graph);
@@ -102,30 +159,6 @@ public class PartialOrderGraphView extends BorderPane {
 			}
 			view = null;
 			viewer = null;
-		}
-	}
-
-	private void traversePartialOrderGraph(PartialOrderGraph.Node pogNode, org.graphstream.graph.Node gsParent, Map<PartialOrderGraph.Node, org.graphstream.graph.Node> nodeMap) {
-		org.graphstream.graph.Node gsNode = nodeMap.get(pogNode);
-		if (gsNode == null) {
-			gsNode = this.graph.addNode("N" + nodeMap.size() + 1);
-			gsNode.setAttribute("label", pogNode.getArtifact() + " [" + (pogNode.getArtifact() != null ? pogNode.getArtifact().getSequenceNumber() : "-") + "]");
-
-			if (pogNode.getPrevious().isEmpty()) {
-				gsNode.setAttribute("ui.class", "start");
-			}
-
-			if (pogNode.getNext().isEmpty()) {
-				gsNode.setAttribute("ui.class", "end");
-			}
-
-			nodeMap.put(pogNode, gsNode);
-		}
-		if (gsParent != null) {
-			this.graph.addEdge("E" + gsParent.getId() + "-" + gsNode.getId(), gsParent, gsNode, true);
-		}
-		for (PartialOrderGraph.Node pogChild : pogNode.getNext()) {
-			this.traversePartialOrderGraph(pogChild, gsNode, nodeMap);
 		}
 	}
 
