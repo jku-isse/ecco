@@ -443,6 +443,36 @@ public interface Repository extends Persistable {
 				pos.add(repoFeatureRevision);
 			}
 
+			// the module revisions of the repository, created if they do not exist yet, and counted
+			return this.enumerateModules(pos, (posFeatures, posFeatureRevisions, negFeatures) -> {
+				Module module = this.getModule(posFeatures, negFeatures);
+				if (module == null) {
+					module = this.addModule(posFeatures, negFeatures);
+				}
+				module.incCount();
+				ModuleRevision moduleRevision = module.getRevision(posFeatureRevisions, negFeatures);
+				if (moduleRevision == null) {
+					moduleRevision = module.addRevision(posFeatureRevisions, negFeatures);
+				}
+				moduleRevision.incCount();
+				return moduleRevision;
+			});
+		}
+
+		/** How {@link #enumerateModules} obtains the module revision of positive and negative features. */
+		@FunctionalInterface
+		interface ModuleRevisionSource {
+			ModuleRevision get(Feature[] posFeatures, FeatureRevision[] posFeatureRevisions, Feature[] negFeatures);
+		}
+
+		/**
+		 * The module revisions of a configuration with the feature revisions [pos] (all other features of
+		 * this repository negative): every combination of up to max order positive feature revisions,
+		 * then of those with negative features, each obtained from [source]. The one enumeration commit
+		 * ({@link #addConfigurationModules}) and checkout ({@link #getOrphanedConfigurationModules}) share -
+		 * two copies of it had to be kept the same (formula review H8).
+		 */
+		private Collection<ModuleRevision> enumerateModules(Collection<FeatureRevision> pos, ModuleRevisionSource source) {
 			// collect negative features
 			Collection<Feature> neg = new ArrayList<>();
 			for (Feature repoFeature : this.getFeatures()) {
@@ -470,17 +500,7 @@ public interface Repository extends Persistable {
 						posFeatureRevisions[posFeatureRevisions.length - 1] = featureRevision;
 						Feature[] posFeatures = Arrays.stream(posFeatureRevisions).map(FeatureRevision::getFeature).toArray(Feature[]::new);
 
-						// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
-						Module newModule = this.getModule(posFeatures, moduleRevision.getNeg());
-						if (newModule == null) {
-							newModule = this.addModule(posFeatures, moduleRevision.getNeg());
-						}
-						newModule.incCount();
-						ModuleRevision newModuleRevision = newModule.getRevision(posFeatureRevisions, moduleRevision.getNeg());
-						if (newModuleRevision == null) {
-							newModuleRevision = newModule.addRevision(posFeatureRevisions, moduleRevision.getNeg());
-						}
-						newModuleRevision.incCount();
+						ModuleRevision newModuleRevision = source.get(posFeatures, posFeatureRevisions, moduleRevision.getNeg());
 
 						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
 							finalModuleRevisions.add(newModuleRevision); // TODO: ???
@@ -505,17 +525,7 @@ public interface Repository extends Persistable {
 						negFeatures[negFeatures.length - 1] = feature;
 						Feature[] posFeatures = Arrays.stream(moduleRevision.getPos()).map(FeatureRevision::getFeature).toArray(Feature[]::new);
 
-						// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
-						Module newModule = this.getModule(posFeatures, negFeatures);
-						if (newModule == null) {
-							newModule = this.addModule(posFeatures, negFeatures);
-						}
-						newModule.incCount();
-						ModuleRevision newModuleRevision = newModule.getRevision(moduleRevision.getPos(), negFeatures);
-						if (newModuleRevision == null) {
-							newModuleRevision = newModule.addRevision(moduleRevision.getPos(), negFeatures);
-						}
-						newModuleRevision.incCount();
+						ModuleRevision newModuleRevision = source.get(posFeatures, moduleRevision.getPos(), negFeatures);
 
 						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
 							finalModuleRevisions.add(newModuleRevision); // TODO: ???
@@ -713,78 +723,9 @@ public interface Repository extends Persistable {
 				pos.add(repoFeatureRevision);
 			}
 
-			// collect negative features
-			Collection<Feature> neg = new ArrayList<>();
-			for (Feature repoFeature : this.getFeatures()) {
-				if (pos.stream().noneMatch(featureRevision -> featureRevision.getFeature().equals(repoFeature))) {
-					neg.add(repoFeature);
-				}
-			}
-
-			// collection of modules
-			Collection<ModuleRevision> moduleRevisions = new ArrayList<>();
-			Collection<ModuleRevision> finalModuleRevisions = new ArrayList<>();
-
-			// add empty module initially
-			Module emptyModule = new EmptyModule();
-			ModuleRevision emptyModuleRevision = emptyModule.getRevision(new FeatureRevision[0], new Feature[0]);
-			moduleRevisions.add(emptyModuleRevision); // add empty module revision to power set
-
-			// compute powerset
-			for (final FeatureRevision featureRevision : pos) {
-				final Collection<ModuleRevision> toAdd = new ArrayList<>();
-
-				for (final ModuleRevision moduleRevision : moduleRevisions) {
-					if (moduleRevision.getOrder() < this.getMaxOrder()) {
-						FeatureRevision[] posFeatureRevisions = Arrays.copyOf(moduleRevision.getPos(), moduleRevision.getPos().length + 1);
-						posFeatureRevisions[posFeatureRevisions.length - 1] = featureRevision;
-						Feature[] posFeatures = Arrays.stream(posFeatureRevisions).map(FeatureRevision::getFeature).toArray(Feature[]::new);
-
-						// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
-						Module newModule = this.getOrphanedModule(posFeatures, moduleRevision.getNeg());
-						ModuleRevision newModuleRevision = newModule.getOrphanedRevision(posFeatureRevisions, moduleRevision.getNeg());
-
-						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
-							finalModuleRevisions.add(newModuleRevision); // TODO: ???
-						} else {
-							toAdd.add(newModuleRevision);
-						}
-					}
-				}
-
-				moduleRevisions.addAll(toAdd);
-			}
-
-			// remove the empty module again
-			moduleRevisions.remove(emptyModuleRevision);
-
-			for (final Feature feature : neg) {
-				final Collection<ModuleRevision> toAdd = new ArrayList<>();
-
-				for (final ModuleRevision moduleRevision : moduleRevisions) {
-					if (moduleRevision.getOrder() < this.getMaxOrder() && moduleRevision.getPos().length > 0) {
-						Feature[] negFeatures = Arrays.copyOf(moduleRevision.getNeg(), moduleRevision.getNeg().length + 1);
-						negFeatures[negFeatures.length - 1] = feature;
-						Feature[] posFeatures = Arrays.stream(moduleRevision.getPos()).map(FeatureRevision::getFeature).toArray(Feature[]::new);
-
-						// get module revision from repository if it already exists, otherwise a new module revision is created and if necessary also a new module
-						Module newModule = this.getOrphanedModule(posFeatures, negFeatures);
-						ModuleRevision newModuleRevision = newModule.getOrphanedRevision(moduleRevision.getPos(), negFeatures);
-
-						if (newModuleRevision.getOrder() >= this.getMaxOrder()) {
-							finalModuleRevisions.add(newModuleRevision); // TODO: ???
-						} else {
-							toAdd.add(newModuleRevision);
-						}
-					}
-				}
-
-				moduleRevisions.addAll(toAdd);
-			}
-
-			finalModuleRevisions.addAll(moduleRevisions);
-
-			return finalModuleRevisions;
+			// the module revisions of the repository where it has them, temporary ones otherwise
+			return this.enumerateModules(pos, (posFeatures, posFeatureRevisions, negFeatures) ->
+					this.getOrphanedModule(posFeatures, negFeatures).getOrphanedRevision(posFeatureRevisions, negFeatures));
 		}
 
 
