@@ -121,7 +121,7 @@ The GUI (`./gradlew :ecco-gui:run`) organizes its functions in a ribbon:
 
 * **Repositories**: create, open, fork (see [Distributed Operations](#distributed-operations)), and close repositories.
 * **Versions**: commit a variant or several variant folders at once, check out configurations, manage named *variants*, open a working directory, and **import a Git history** commit by commit - with feature suggestions for each commit from an optional LLM (any OpenAI-compatible chat completions endpoint, e.g. a local Ollama; set up under Preferences).
-* **Collaborate**: remotes, fetch, pull, push, and a server other ECCO instances can sync with.
+* **Collaborate**: remotes (add, remove, change a remote's name, address and type, fetch it), fetch, pull, push, and a server other ECCO instances can sync with.
 * **View**: features (with the feature model derived from the commits and mined constraints to accept or reject), commits (including a comparison of two commits), associations with their presence conditions (and simplified conditions), the artifact tree of any selection of associations, and charts.
 * **Visualize**: a knowledge graph of features, commits, variants, and associations; the artifact graph; the dependency graph.
 
@@ -173,16 +173,16 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 
 | Adapter | Files | Granularity and notes |
 | --- | --- | --- |
-| Text | `*.txt`, `*.xml`, `*.html`, `*.css`, `*.js`, `*.java` | lines; keeps the encoding, line separators, and final newline |
-| Markdown | `*.md`, `*.markdown` | markdown blocks |
-| Java (AST) | `*.java` | Java syntax tree, Java up to 21 (before the text adapter's `*.java`); keeps every comment, laid out by JavaParser's printer |
-| C | `*.c`, `*.h` | lines, grouped by function; keeps the encoding, line separators, and final newline. Preprocessor directives are ordinary lines; VEVOS presence conditions (`pcs.variant.csv`) become proactive feature traces; a trace that contradicts the commit history is not used and is reported as a `TRACE` warning |
+| Text | `*.txt`, `*.xml`, `*.html`, `*.css`, `*.js`, `*.java` | lines; keeps each variant's encoding (UTF-8, else ISO-8859-1), line separators, and final newline - a file that mixes line separators gets its first one throughout |
+| Markdown | `*.md`, `*.markdown` | markdown blocks; keeps encoding, line separators and final newline like the text adapter |
+| Java (AST) | `*.java` | Java syntax tree, Java up to 21 (before the text adapter's `*.java`), laid out by JavaParser's printer; keeps comments, except inside a few parts of statements and declarations (call arguments, before a lambda's body, try resources, catch and constructor parameters, case labels) and on module directives |
+| C | `*.c`, `*.h` | lines, grouped by function; keeps each variant's encoding, line separators, and final newline like the text adapter. Preprocessor directives are ordinary lines; VEVOS presence conditions (`pcs.variant.csv`) become proactive feature traces; a trace that contradicts the commit history is not used and is reported as a `TRACE` warning |
 | C++ | `*.cpp`, `*.hpp` (and `*.c`, `*.h` after the C adapter) | lines, grouped by namespace, class, enum and function; like the C adapter otherwise. Repositories committed with its first version (which reordered files and dropped comments, namespaces, classes and `#if` directives) can be checked out but not committed to |
 | TypeScript | `*.ts` | statements and blocks; parsed with the TypeScript compiler running in an embedded Node.js (Javet) |
 | Python | `*.py`, `*.ipynb`, `*.json` | Python syntax tree (libcst), notebook cells, JSON values. **Needs `python` 3 with the modules `libcst` and `py4j` on the `PATH`** |
 | LilyPond | `*.ly`, `*.ily` | LilyPond tokens; in a repository created since musical tokens (the default), a note, rest or chord end is one token that goes by the music it means, however it is spelled, and each top-level variable (a voice) is a context of its name. **Needs `python` 3 with the modules `tree-sitter` and `py4j`, and lymodel, the lilypond-idea-plugin's `python/` package** (`python -m pip install <lilypond-idea-plugin>/python`, or `LYPYTHON` set to that directory), whose tree-sitter parse reads the files; a repository created before it (read with parce) checks out, but takes no more commits; rendering scores in the GUI needs LilyPond (see [its README](adapter/lilypond/README.md)) |
-| Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels, one artifact each: for large images, see [Images](#images) |
-| File | everything else | whole files (binary) |
+| Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels, one artifact each, 8 bits per channel (a 16-bit image loses its low bits; JPEG is encoded again on checkout): for large images, see [Images](#images) |
+| File | everything else | whole files (binary); a checkout that combines variants with different versions of such a file fails ("Expected exactly one child node"), since there is nothing to compose |
 
 ### Images
 

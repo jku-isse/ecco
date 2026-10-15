@@ -70,7 +70,7 @@ items(p, gui, 10, 30, 125, 26, ['Commits / Commit detail', 'Associations', 'Arti
       'Features / Feature model', 'Knowledge &amp; POG graphs', 'Constraint suggestions', 'Charts / Comparison',
       'Import from Git', 'Remotes: fork/pull/push', 'Settings / Preferences', 'Notifications'], 'front', 4, gap=8)
 cli = p.box(580, 30, 330, 130, 'ecco-cli  (argparse4j)', 'front', parent=F, container=True)
-p.text(10, 26, 310, 100, 'Command / CommandRegister<br>init · status · commit · checkout · features · traces · adapters · property · remotes · fetch · pull · push · fork · dependencygraph · suggestconstraints · minimizepreview', fs=10, parent=cli)
+p.text(10, 26, 310, 100, 'Command / CommandRegister<br>init · status · commit · checkout · features · traces · adapters · property · remotes · fetch · pull · push · fork · dependencygraph · suggestconstraints · accept/reject-constraint · minimizepreview · minimize · order', fs=10, parent=cli)
 rest = p.box(920, 30, 330, 130, 'ecco-rest  (Micronaut HTTP API)', 'front', parent=F, container=True)
 p.text(10, 26, 310, 100, 'RepositoryController · CommitController · FeatureController · VariantController<br>RepositoryService / FileRepositoryService · RepositoryHandler<br>authorisation · models (DTOs)', fs=10, parent=rest)
 

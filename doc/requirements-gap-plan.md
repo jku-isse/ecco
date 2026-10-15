@@ -1,6 +1,6 @@
 # Plan: closing the gaps in the recovered requirements
 
-As of 2026-10-02, with notes on later gaps added up to 2026-10-13. Gap numbers refer to [Known gaps](requirements.md#known-gaps) in `requirements.md`.
+As of 2026-10-02, with notes on later gaps added up to 2026-10-15. Gap numbers refer to [Known gaps](requirements.md#known-gaps) in `requirements.md`.
 
 Of the 17 gaps, 12 can be closed with small, low-risk changes. Three need a decision before any code changes, and two (#6, #7) touch the core algorithms and each need a session of their own.
 
@@ -97,6 +97,8 @@ Doing it properly means: (i) invalidate a stored minimized condition when its as
 
 `ConcurrentBranchScalingTest` pins the first two points: it fails (out of memory) without the fallback, and checks every checkout, including both orders of two concurrent lines.
 
+**2026-10-15, a real history below the cap.** Replaying tinycc showed the cost the benchmark missed: a file gains about one open branch per commit, so below the cap a merge aligned 2^n orderings, each in full - 2,048 orderings of a 2,000-line file cost 40 s per commit, and 32,768 of `tccgen.c` (6,273 lines) did not finish. Measured with a temporary logging build; the cap counts orderings, not their cost. Now the LCS lengths of all orderings are computed in one walk that follows the enumeration's order and reuses its results where different orderings reach the same state with the same LCS row; only the first longest ordering is aligned, by the unchanged `alignPaths`, so the result is the same by construction (`IterativeLcsAlignmentEquivalenceTest` against the old loop; two deliberately wrong variants fail it). tinycc: 12 commits 417 s to 60 s with identical checkouts and warnings, the 13th 10 s (0be3bd63). Not done: aligning by unique lines first (anchors, as `git diff` does) would be faster still for large changed files, but picks other alignments among equally good ones - a decision, not a refactoring.
+
 ### #10 Java 21 language support in the Java (AST) adapter
 
 **Done 2026-10-03.** JavaParser 3.27.0, language level JAVA_21; pattern-matching `switch` (guards, `case null`) and record patterns round-trip. The tree shape did not change, so `TREE_FORMAT` stays; reading all 771 Java files of this repository gave identical artifact identities (67,097 artifacts) under 3.25.8 and 3.27.0, so existing repositories are not split by the upgrade. Step 3's check found that comments inside lambdas and expressions were lost: they are now kept as metadata outside the artifact's identity (`JavaASTData#getTextWithComments`), so old repositories are not split and get them on the next commit.
@@ -108,27 +110,58 @@ Doing it properly means: (i) invalidate a stored minimized condition when its as
 
 ## Gaps noted 2026-10-13
 
-Found while importing flipperzero-firmware from Git and replaying a 47-commit LilyPond repository; none fixed yet.
+Found while importing flipperzero-firmware from Git and replaying a 47-commit LilyPond repository. #47, #50 and #51 were fixed on 2026-10-14; #48 and #49 are deferred.
 
-### #47 rollback on `Error`
+### #47 rollback on `Error` - done 2026-10-14
 
 The commit now rolls back on any `Throwable` (2dc75b70). The other read-write operations - 16 of them in the services - catch only `Exception`. Same change in each: roll back in a `catch (Error e)` (or `finally` when the transaction is still open) and rethrow. A test per service is cheap with a listener or adapter that throws an `Error`; the CLI test for the commit (`CommitCommandTest`) shows the pattern.
 
-### #48 associations rewritten every commit
+### #48 associations rewritten every commit - deferred
 
 Measured on flipperzero-firmware after the storage changes of 2026-10-13: writing the association files is about 14% of the time spent storing. They are all written again because their counters change with every commit. The tree of an association changes far less often than its counters. Option: store the counters in the association file and the tree in a file of its own (or in the packs, like artifacts), each written only when its bytes change. This changes the storage format, so it needs the same treatment as FR-P4: old files read the old way, converted on the next write, older builds refuse.
 
-### #49 serializing unchanged artifacts
+### #49 serializing unchanged artifacts - deferred
+
+Measured 2026-10-14: of 629,000 artifacts checked in a commit, at most 23 had changed (partial order graphs of ordered parents), and the check took 1.6 of 5.6 s spent storing. Deferred by choice.
 
 To skip an unchanged artifact, a commit serializes it and compares the digest with the stored one (since 2026-10-13 keyed by artifact id). That serialization is about half of the remaining time spent storing. Options: a dirty flag set where artifact data actually changes (risky: data adopts metadata in several places, `adoptMetadataFrom`), or a cheaper digest over the fields that are written. Characterize first: count how many touched artifacts change per commit on a Git import.
 
-### #50 Java files the Java (AST) adapter cannot read
+### #50 Java files the Java (AST) adapter cannot read - done 2026-10-14
 
 7 of ECCO's own Java files fail to read. Since AD-11 they are committed by the text adapter with a warning, so nothing is lost, but they are traced by lines. Next step: collect the 7 errors and see whether they are JavaParser limits or ECCO's transformation.
 
-### #51 plain-token LilyPond NPE
+### #51 plain-token LilyPond NPE - done 2026-10-14
 
 4 corpus files throw a `NullPointerException` in `LilyEccoTransformer` when read without musical tokens - #40's failure, reproduced in that mode only. Like #50, AD-11 now commits them by the text adapter. Start from the vocal score #40 describes and the stack trace in plain mode.
+
+
+## Gaps noted 2026-10-14 and 2026-10-15
+
+Found by round-trip and equality tests of the adapters, by headless GUI view tests and by replaying tinycc and flipperzero-firmware. The fixed ones (#57-#62) are listed in `requirements.md`; open:
+
+### #52 Java comments in parts of statements
+
+Call arguments, try resources, catch and constructor parameters and case labels are stored as text printed without comments; module directives keep their comments on read but the writer does not attach them. Statements already keep their inner comments as metadata outside their identity (`JavaASTData#getTextWithComments`, #10); the same can be done for these parts, so old repositories are not split. The disabled cases in `JavaASTRoundTripTest` are the acceptance tests. Low risk, comments only.
+
+### #53 mixed line separators
+
+Keeping each line's own separator would need a separator per line artifact (part of its identity or metadata). Rare outside test files; leave documented unless a user needs it.
+
+### #54 whole-file conflicts in a combined checkout
+
+Decide what a checkout should do when combined variants hold different versions of a file stored whole: write neither and report a conflict warning, or write the newest. Either way the other files should be written. Needs a decision.
+
+### #55 image adapter limits
+
+Refusing a truncated JPEG is small (check the decoder's warnings). 16-bit channels would need another pixel format in the artifacts (a format change). The others are a JDK bug or invisible. Do the JPEG check when the adapter is next touched.
+
+### #56 first C++ format, `case` blocks
+
+Checkout-only data from before d9ce686c, and the old build loses the same code. Fixing it would change how old repositories check out; leave unless such a repository is in use.
+
+### #63 leftover error dialog in GUI tests
+
+Find which GUI test leaves an error dialog ("Service is not initialized") behind: run the GUI tests one class at a time and list open windows after each. If a view runs background work after its repository closed, guard it like `DependencyGraphView` (cbb09e62).
 
 
 ## Ongoing - #17 documentation
@@ -147,8 +180,12 @@ To skip an unchanged artifact, a commit serializes it and compares the digest wi
 | 4 | #3 measured; done another way 2026-10-13 (read-tree reuse) | done | - |
 | 5 | #6, #8, #13 after decisions | done | - |
 | 6 | #10 | done | - |
-| 7 | #7 characterized; algorithm unchanged | done | - |
-| 8 | #47 rollback on `Error` in the other services | under a day | low |
-| 9 | #48, #49 storing cost | 1-2 days each | medium (storage format) |
-| 10 | #50, #51 adapter read failures | open-ended; characterize first | low (AD-11 keeps commits working) |
+| 7 | #7 characterized 2026-10-03; exponential cost below the cap removed 2026-10-15 | done | - |
+| 8 | #47 rollback on `Error` in the other services | done | - |
+| 9 | #48, #49 storing cost | deferred | medium (storage format) |
+| 10 | #50, #51 adapter read failures | done | - |
+| 11 | #52 Java comments in parts of statements | under a day | low |
+| 12 | #54 whole-file conflicts in a combined checkout | after a decision | low |
+| 13 | #63 leftover dialog in GUI tests | under a day | low |
+| later | #53, #55, #56 | when needed | low to medium |
 | ongoing | #17 | with every commit | none |
