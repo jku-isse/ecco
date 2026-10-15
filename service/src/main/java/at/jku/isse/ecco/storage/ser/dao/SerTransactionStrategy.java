@@ -55,6 +55,9 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Arrays;
@@ -92,6 +95,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * (build.gradle); -Decco.verifyUnchangedArtifacts=true for a replay.
 	 */
 	static final boolean VERIFY_UNCHANGED_ARTIFACTS = Boolean.getBoolean("ecco.verifyUnchangedArtifacts");
+	/**
+	 * Serialize the associations a write leaves alone (not added again since they were read), and
+	 * fail if one differs from what is stored - a change made without Repository.Op#addAssociation()
+	 * would otherwise not be stored, as the retroactive conditions of untouched associations were
+	 * not (ReopenEquivalenceTest). On in the tests (build.gradle); -Decco.verifyUnchangedAssociations=true for a replay.
+	 */
+	static final boolean VERIFY_UNCHANGED_ASSOCIATIONS = Boolean.getBoolean("ecco.verifyUnchangedAssociations");
 	/** Once a write would leave more packs than this, the smallest are merged down to half of it. */
 	private static final int MAX_PACKS = 20;
 	private static final String PACK_ARTIFACTS_ENTRY = "artifacts";
@@ -129,6 +139,13 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	// written by this process - lets endReadWrite() skip entities whose bytes didn't change. Cleared
 	// by reset(); rebuilt by the full reload that follows.
 	private final Map<Path, byte[]> persistedDigests = new HashMap<>();
+	/**
+	 * Only with {@link #VERIFY_UNCHANGED_ASSOCIATIONS}: the digest of each association as serialized
+	 * when it was last read or written. Not the file's: an association read back serializes to the
+	 * same content in different bytes (a boxed property value its file shares by reference is its
+	 * own object after reading).
+	 */
+	private final Map<String, byte[]> verifiedAssociationDigests = new HashMap<>();
 	// the same for artifacts, by their id: a path per artifact - built, hashed and compared for every
 	// artifact of every write - took longer than the comparison it was for
 	private final Map<String, byte[]> artifactDigests = new HashMap<>();
@@ -203,6 +220,27 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			return;
 		writeStoredBytes(bytes, stableFile.resolveSibling(stableFile.getFileName() + pendingSuffix));
 		staged.put(stableFile, digest);
+	}
+
+	/** See {@link #VERIFY_UNCHANGED_ASSOCIATIONS}: before anything is written, so a failure leaves the repository as it was. */
+	private void verifyUnchangedAssociations(SerRepository repo) throws IOException {
+		Set<Association.Op> dirty = Collections.newSetFromMap(new IdentityHashMap<>());
+		dirty.addAll(repo.getDirtyAssociations());
+		for (Association.Op association : repo.getAssociations()) {
+			if (dirty.contains(association))
+				continue;
+			byte[] stored = this.verifiedAssociationDigests.get(association.getId());
+			if (stored == null)
+				throw new IllegalStateException("Association " + association.getId() + " is neither stored nor marked to be written (Repository.Op#addAssociation).");
+			if (!Arrays.equals(stored, digest(serializeAssociation(association))))
+				throw new IllegalStateException("Association " + association.getId() + " changed without being marked to be written (Repository.Op#addAssociation) - the change would not be stored.");
+		}
+	}
+
+	/** See {@link #verifiedAssociationDigests}: records [associations] as they serialize now. */
+	private void recordVerifiedDigests(Collection<? extends Association> associations) throws IOException {
+		for (Association association : associations)
+			this.verifiedAssociationDigests.put(association.getId(), digest(serializeAssociation(association)));
 	}
 
 	private static void writeStoredBytes(byte[] serializedBytes, Path file) throws IOException {
@@ -583,11 +621,17 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// references (that's what makes it safe to leave everything else out of the "core" write
 		// below). Staged under pending names like the artifacts above, never over the stable files
 		// the still-current core loads.
+		if (VERIFY_UNCHANGED_ASSOCIATIONS)
+			this.verifyUnchangedAssociations(repo);
 		if (!repo.getDirtyAssociations().isEmpty()) {
 			Files.createDirectories(this.associationsDir);
 		}
 		for (Association association : repo.getDirtyAssociations()) {
 			this.stageIfChanged(association, this.associationsDir.resolve(association.getId() + DB_FILE_SUFFIX), pendingSuffix, staged);
+		}
+		if (VERIFY_UNCHANGED_ASSOCIATIONS) {
+			this.recordVerifiedDigests(repo.getDirtyAssociations());
+			this.verifiedAssociationDigests.keySet().removeAll(repo.getRemovedAssociationIds());
 		}
 
 		// serialize to new db file
@@ -905,6 +949,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private void reset() {
 		this.persistedDigests.clear();
 		this.artifactDigests.clear();
+		this.verifiedAssociationDigests.clear();
 		this.id = null;
 		this.dbFile = null;
 		this.database = null;
@@ -1095,6 +1140,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// by the right ones. An association whose conditions were outdated is marked dirty - the
 		// next write stores the corrected ones (ReopenEquivalenceTest).
 		repo.setRetroactiveConditions();
+		if (VERIFY_UNCHANGED_ASSOCIATIONS) {
+			this.verifiedAssociationDigests.clear();
+			Set<Association.Op> dirty = Collections.newSetFromMap(new IdentityHashMap<>());
+			dirty.addAll(repo.getDirtyAssociations());
+			this.recordVerifiedDigests(repo.getAssociations().stream().filter(a -> !dirty.contains(a)).toList());
+		}
 
 		// SerRepository.mainTree is purely derived from associations (see buildMainTree()) but
 		// isn't transient, so a freshly-loaded repository initially holds whatever copy was

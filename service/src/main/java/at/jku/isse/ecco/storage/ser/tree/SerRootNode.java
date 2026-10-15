@@ -69,6 +69,15 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 		return true;
 	}
 
+	/**
+	 * A root is always unique ({@link #isUnique()}): Trees.slice() setting it non-unique changed
+	 * only the stored field - the same association then serialized differently without having
+	 * changed, and was not written (see SerTransactionStrategy#verifyUnchangedAssociations).
+	 */
+	@Override
+	public void setUnique(boolean unique) {
+	}
+
 	@Override
 	public boolean isAtomic() {
 		return false;

@@ -108,6 +108,10 @@ public class SerNode implements Node, Node.Op {
 	private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
 		if (this.children != null)
 			this.updateNumberOfChildren();
+		// no properties are written as none, whether the map was never made or getProperties() made
+		// it to read: the same node serializes to the same bytes (a read changed them)
+		if (this.properties != null && this.properties.isEmpty())
+			this.properties = null;
 		out.defaultWriteObject();
 	}
 

@@ -121,3 +121,9 @@ tasks.register('fatJar', Jar) {
 }
 
 bundle.dependsOn += copyScripts
+
+tasks.withType(Test).configureEach {
+	// headless like the command line itself (Main sets it): without it, which test ran first decided
+	// whether the adapters tried to load their JavaFX viewers, which are not on this classpath
+	systemProperty 'ecco.headless', 'true'
+}

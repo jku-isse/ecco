@@ -85,8 +85,12 @@ public class MinimizedConditionValidityTest {
 
             // the shape persisted before fingerprints existed
             Association.Op any = (Association.Op) service.getRepository().getAssociations().iterator().next();
+            String condition = any.getMinimizedCondition(), basis = any.getMinimizedConditionBasis();
             any.setMinimizedCondition("A");
             assertFalse(service.validMinimizedConditions().containsKey(any.getId()));
+            // changed only to look at, outside a write: as it was before the next write
+            // (which would refuse to leave a changed association unwritten - verifyUnchangedAssociations)
+            any.setMinimizedCondition(condition, basis);
 
             service.acceptConstraint(ConstraintMiner.Kind.REQUIRES, "B", "A");
             assertTrue(service.validMinimizedConditions().isEmpty(), "the feature model changed");
