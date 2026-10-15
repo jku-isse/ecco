@@ -234,9 +234,11 @@ public interface Association extends Persistable {
 			this.addObservation(moduleRevision, 1);
 		}
 
-		default void setRetroactiveConditions(){
+		/** Sets the retroactive condition of its unique nodes; whether any of them changed. */
+		default boolean setRetroactiveConditions(){
 			RetroactiveConditionSetterVisitor visitor = new RetroactiveConditionSetterVisitor(this);
 			this.getRootNode().traverse(visitor);
+			return visitor.changedAny();
 		}
 	}
 

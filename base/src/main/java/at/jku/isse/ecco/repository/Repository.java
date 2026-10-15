@@ -259,8 +259,17 @@ public interface Repository extends Persistable {
 
 		EntityFactory getEntityFactory();
 
+		/**
+		 * Sets the retroactive conditions of every association's unique nodes. An association's
+		 * condition depends on how often each feature combination was committed in the whole
+		 * repository, so a commit changes those of associations it did not touch: each whose nodes
+		 * changed is added again, which marks it for writing - unwritten, a reopened repository
+		 * checked out by the old conditions (ReopenEquivalenceTest).
+		 */
 		default void setRetroactiveConditions(){
-			this.getAssociations().forEach(Association.Op::setRetroactiveConditions);
+			for (Association.Op association : new ArrayList<>(this.getAssociations()))
+				if (association.setRetroactiveConditions())
+					this.addAssociation(association);
 		}
 
 		void buildMainTree();
