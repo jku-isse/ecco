@@ -58,15 +58,7 @@ class CheckoutService {
         // read inside a transaction like every other read: outside of one, load() returns whatever
         // database the last transaction left loaded - none right after open() (NPE), or a stale one
         // if another process committed since (see ReadWithoutTransactionTest)
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-            Checkout checkout = this.composeInTransaction(configuration);
-            owner.transactionStrategy.end();
-            return checkout;
-        } catch (RuntimeException | Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        }
+        return owner.readTransaction(null, () -> this.composeInTransaction(configuration));
     }
     private Checkout composeInTransaction(Configuration configuration) {
         Repository.Op repository = owner.repositoryDao.load();

@@ -101,26 +101,14 @@ public class RemoteSyncService {
     public Remote addRemote(String name, String address, Remote.Type type) {
         owner.checkInitialized();
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
+        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error adding remote.", () -> {
             if (this.getRemote(name) != null)
                 throw new EccoException("Remote with this name already exists.");
 
             Remote remote = owner.entityFactory.createRemote(name, address, type);
             remote = owner.remoteDao.storeRemote(remote);
-
-            owner.transactionStrategy.end();
-
             return remote;
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error adding remote.", e);
-        }
+        });
     }
 
     /**
@@ -145,9 +133,7 @@ public class RemoteSyncService {
             }
         }
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
+        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, null, () -> {
             Remote remote = owner.remoteDao.loadRemote(name);
             if (remote == null)
                 throw new EccoException("Remote '" + name + "' does not exist.");
@@ -159,82 +145,35 @@ public class RemoteSyncService {
             remote.setAddress(address);
             remote.setType(type);
             remote = owner.remoteDao.storeRemote(remote);
-
-            owner.transactionStrategy.end();
-
             return remote;
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (EccoException e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error changing remote.", e);
-        }
+        });
     }
 
     public void removeRemote(String name) {
         owner.checkInitialized();
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
+        owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing remote.", () -> {
             owner.remoteDao.removeRemote(name);
-
-            owner.transactionStrategy.end();
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error removing remote.", e);
-        }
+            return null;
+        });
     }
 
     public Remote getRemote(String name) {
         owner.checkInitialized();
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-
+        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error retrieving remote.", () -> {
             Remote remote = owner.remoteDao.loadRemote(name);
-
-            owner.transactionStrategy.end();
-
             return remote;
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error retrieving remote.", e);
-        }
+        });
     }
 
     public Collection<Remote> getRemotes() {
         owner.checkInitialized();
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-
+        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error retrieving remotes.", () -> {
             Collection<Remote> remotes = owner.remoteDao.loadAllRemotes();
-
-            owner.transactionStrategy.end();
-
             return remotes;
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error retrieving remotes.", e);
-        }
+        });
     }
 
 

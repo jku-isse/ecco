@@ -588,21 +588,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized Repository getRepository() {
         this.checkInitialized();
 
-        try {
+        return this.readTransaction("Error when retrieving repository.", () -> {
             this.repositoryDao.init();
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-            Repository repository = this.repositoryDao.load();
-            this.transactionStrategy.end();
-            return repository;
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        } catch (EccoException e) {
-            // a begin() that failed leaves no transaction: rollback() then threw "No transaction
-            // active" and hid the real reason (e.g. the repository's files could not be read)
-            this.rollbackIfTransactionActive();
-            throw new EccoException("Error when retrieving repository.", e);
-        }
+            return this.repositoryDao.load();
+        });
     }
 
     /**
@@ -1033,15 +1022,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
 
     /** The plugins whose files this repository holds - in a read-only transaction of its own. */
     Set<String> pluginsWithFiles() {
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-            Set<String> plugins = pluginsWithFiles(this.repositoryDao.load());
-            this.transactionStrategy.end();
-            return plugins;
-        } catch (RuntimeException | Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        }
+        return this.readTransaction(null, () -> pluginsWithFiles(this.repositoryDao.load()));
     }
 
     /**
@@ -1208,25 +1189,52 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     synchronized void writeTransaction(String errorMessage, java.util.function.Function<Repository.Op, Repository.Op> transaction) {
         this.listeners.setWriteInProgress(true);
         try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-            Repository.Op repository = this.repositoryDao.load();
-
-            repository = transaction.apply(repository);
-
-            this.repositoryDao.store(repository);
-            this.transactionStrategy.end();
-
+            this.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, errorMessage, () -> {
+                this.repositoryDao.store(transaction.apply(this.repositoryDao.load()));
+                return null;
+            });
             this.listeners.fireStatusChangedEvent();
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            this.rollbackIfTransactionActive();
-
-            throw new EccoException(errorMessage, e);
         } finally {
             this.listeners.setWriteInProgress(false);
         }
+    }
+
+    /** Work done in a transaction - see {@link #inTransaction}. */
+    @FunctionalInterface
+    interface TransactionWork<T> {
+        T run() throws Exception;
+    }
+
+    /**
+     * Runs {@code work} in a transaction of {@code kind}: ends it when the work is done, rolls it back
+     * if anything fails - also an Error, also when begin() itself failed (quietly then, see
+     * {@link #rollbackIfTransactionActive}). A failure is reported as an EccoException saying
+     * {@code errorMessage}, with the failure as its cause; with no message, a runtime exception or
+     * Error is passed on as it is. The one place the begin/end/rollback sequence is written.
+     */
+    <T> T inTransaction(TransactionStrategy.TRANSACTION kind, String errorMessage, TransactionWork<T> work) {
+        try {
+            this.transactionStrategy.begin(kind);
+            T result = work.run();
+            this.transactionStrategy.end();
+            return result;
+        } catch (Error e) {
+            this.rollbackIfTransactionActive();
+            throw e;
+        } catch (RuntimeException e) {
+            this.rollbackIfTransactionActive();
+            if (errorMessage == null)
+                throw e;
+            throw new EccoException(errorMessage, e);
+        } catch (Exception e) {
+            this.rollbackIfTransactionActive();
+            throw new EccoException(errorMessage != null ? errorMessage : "Error in a repository transaction.", e);
+        }
+    }
+
+    /** {@link #inTransaction} reading the repository. */
+    <T> T readTransaction(String errorMessage, TransactionWork<T> work) {
+        return this.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, errorMessage, work);
     }
 
     /**
@@ -1386,21 +1394,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     public synchronized void store() {
         this.checkInitialized();
 
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = this.repositoryDao.load();
-            this.repositoryDao.store(repository);
-            this.transactionStrategy.end();
-
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            this.rollbackIfTransactionActive();
-
-            throw new EccoException("Store error", e);
-        }
+        this.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Store error", () -> {
+            this.repositoryDao.store(this.repositoryDao.load());
+            return null;
+        });
     }
 
 
@@ -1750,28 +1747,21 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
      * @return the number of associations a condition was stored for
      */
     public int minimizeConditionsForCheckout() {
-        Map<String, String> bases;
-        List<ConstraintMiner.Suggestion> trusted;
-        List<Association> associations;
-        List<Feature> features;
+        record Read(Map<String, String> bases, List<ConstraintMiner.Suggestion> trusted, List<Association> associations, List<Feature> features) {
+        }
+        Read read;
         synchronized (this) {
             this.checkInitialized();
-            try {
-                this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+            read = this.readTransaction("Error reading the repository for minimization.", () -> {
                 Repository.Op repository = this.repositoryDao.load();
-                bases = CheckoutConditions.bases(repository);
-                trusted = this.acceptedSuggestions(repository);
-                associations = new ArrayList<>(repository.getAssociations());
-                features = new ArrayList<>(repository.getFeatures());
-                this.transactionStrategy.end();
-            } catch (Error e) {
-                this.rollbackIfTransactionActive();
-                throw e;
-            } catch (RuntimeException e) {
-                this.rollbackIfTransactionActive();
-                throw new EccoException("Error reading the repository for minimization.", e);
-            }
+                return new Read(CheckoutConditions.bases(repository), this.acceptedSuggestions(repository),
+                        new ArrayList<>(repository.getAssociations()), new ArrayList<>(repository.getFeatures()));
+            });
         }
+        Map<String, String> bases = read.bases();
+        List<ConstraintMiner.Suggestion> trusted = read.trusted();
+        List<Association> associations = read.associations();
+        List<Feature> features = read.features();
         Map<String, LogicCondition> minimized = CheckoutConditions.minimize(associations, trusted, features);
         this.writeTransaction("Error persisting checkout conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
@@ -1790,15 +1780,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     /** The stored checkout conditions that are still valid, by association id - see {@link CheckoutConditions#valid}. */
     public synchronized Map<String, LogicCondition> validCheckoutConditions() {
         this.checkInitialized();
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-            Map<String, LogicCondition> valid = CheckoutConditions.valid(this.repositoryDao.load());
-            this.transactionStrategy.end();
-            return valid;
-        } catch (RuntimeException | Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        }
+        return this.readTransaction(null, () -> CheckoutConditions.valid(this.repositoryDao.load()));
     }
 
     /**
@@ -1931,9 +1913,7 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
         checkNotNull(paths);
         checkArgument(!paths.isEmpty());
 
-        try {
-            this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-
+        return this.readTransaction("Error during map.", () -> {
             Repository.Op repository = this.repositoryDao.load();
 
             Set<Node.Op> nodes = this.reader.readSpecificFiles(this.baseDir, paths.toArray(new Path[0]));
@@ -1944,18 +1924,8 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
             }
 
             repository.map(rootNode);
-
-            this.transactionStrategy.end();
-
             return rootNode;
-        } catch (Error e) {
-            this.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            this.rollbackIfTransactionActive();
-
-            throw new EccoException("Error during map.", e);
-        }
+        });
     }
 
 

@@ -58,9 +58,8 @@ class ConfigurationParser {
             return owner.entityFactory.createConfiguration(new FeatureRevision[0]);
         }
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-
+        String text = configurationString;
+        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing configuration string: " + configurationString, () -> {
             Repository.Op repository = owner.repositoryDao.load();
 
             Set<FeatureRevision> featureRevisions = new HashSet<>();
@@ -117,19 +116,9 @@ class ConfigurationParser {
             }
 
             Configuration configuration = owner.entityFactory.createConfiguration(featureRevisions.toArray(new FeatureRevision[0]));
-            configuration.setOriginalConfigString(configurationString);
-
-            owner.transactionStrategy.end();
-
+            configuration.setOriginalConfigString(text);
             return configuration;
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error parsing configuration string: " + configurationString, e);
-        }
+        });
     }
 
     /**
@@ -210,13 +199,10 @@ class ConfigurationParser {
             throw new EccoException("Invalid feature revisions string provided.");
         }
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-
+        return owner.inTransaction(TransactionStrategy.TRANSACTION.READ_ONLY, "Error parsing feature revisions string: " + featureRevisionsString, () -> {
             Collection<FeatureRevision> featureRevisions = new ArrayList<>();
 
             if (entries.isEmpty()) {
-                owner.transactionStrategy.end();
                 return featureRevisions;
             }
 
@@ -254,17 +240,7 @@ class ConfigurationParser {
                     throw new EccoException("Feature revision with id does not exist: " + featureRevisionId);
                 }
             }
-
-            owner.transactionStrategy.end();
-
             return featureRevisions;
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error parsing feature revisions string: " + featureRevisionsString, e);
-        }
+        });
     }
 }

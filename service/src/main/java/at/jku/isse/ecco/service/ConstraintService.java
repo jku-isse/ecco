@@ -1,8 +1,6 @@
 package at.jku.isse.ecco.service;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Constraint;
-import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.mining.AcceptedConstraints;
 import at.jku.isse.ecco.mining.ConfigurationBridge;
@@ -203,18 +201,12 @@ public class ConstraintService {
         checkNotNull(configuration);
         if (!owner.constraintViolationWarningsEnabled) return List.of();
         // inside a transaction, like EccoService.compose() - see ReadWithoutTransactionTest
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
+        return owner.readTransaction(null, () -> {
             Repository.Op repository = owner.repositoryDao.load();
             List<ConstraintMiner.Suggestion> acceptedSuggestions = acceptedSuggestions(repository);
             Set<String> selectedFeatures = ConfigurationBridge.tokensOf(configuration);
-            List<String> violations = ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
-            owner.transactionStrategy.end();
-            return violations;
-        } catch (RuntimeException | Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        }
+            return ConstraintViolationChecker.checkViolations(selectedFeatures, acceptedSuggestions);
+        });
     }
 
 }

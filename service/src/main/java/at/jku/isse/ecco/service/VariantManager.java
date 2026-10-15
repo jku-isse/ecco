@@ -1,6 +1,5 @@
 package at.jku.isse.ecco.service;
 
-import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.core.Variant;
 import at.jku.isse.ecco.dao.TransactionStrategy;
 import at.jku.isse.ecco.feature.Configuration;
@@ -33,12 +32,7 @@ public class VariantManager {
         owner.checkInitialized();
 
         checkNotNull(configuration);
-
-        owner.listeners.setWriteInProgress(true);
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = owner.repositoryDao.load();
+        owner.writeTransaction("Error during adding a variant.", repository -> {
             ArrayList<Variant> variants = repository.getVariants();
 
             //storing new variant
@@ -55,21 +49,8 @@ public class VariantManager {
             }
             //
 
-            owner.repositoryDao.store(repository);
-
-            owner.transactionStrategy.end();
-
-            owner.listeners.fireStatusChangedEvent();
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error during adding a variant.", e);
-        } finally {
-            owner.listeners.setWriteInProgress(false);
-        }
+            return repository;
+        });
     }
 
     public void removeVariant(String id) {
@@ -108,42 +89,21 @@ public class VariantManager {
         owner.checkInitialized();
 
         checkNotNull(configuration);
-
-        owner.listeners.setWriteInProgress(true);
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
-            Repository.Op repository = owner.repositoryDao.load();
+        owner.writeTransaction("Error updating the variant.", repository -> {
             Variant variant = repository.getVariant(id);
             if (variant != null) {
                 repository.updateVariant(variant, configuration, name);
             }
             //
 
-            owner.repositoryDao.store(repository);
-
-            owner.transactionStrategy.end();
-
-            owner.listeners.fireStatusChangedEvent();
-
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error during adding a variant.", e);
-        } finally {
-            owner.listeners.setWriteInProgress(false);
-        }
+            return repository;
+        });
     }
 
     public void updateFeatureRevision(FeatureRevision featureRevision, String featureRevisionUpdate, String id) {
         owner.checkInitialized();
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
+        owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error changing a feature revision of the variant.", () -> {
             Repository.Op repository = owner.repositoryDao.load();
 
             Variant variant = owner.getRepository().getVariant(id);
@@ -169,22 +129,14 @@ public class VariantManager {
             variant.setConfiguration(owner.entityFactory.createConfiguration(newFeatureRevisions));
 
             owner.repositoryDao.store(repository);
-            owner.transactionStrategy.end();
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-            throw new EccoException("Error during adding a variant.", e);
-        }
+            return null;
+        });
     }
 
     public void removeFeatureRevision(FeatureRevision featureRevision, String id) {
         owner.checkInitialized();
 
-        try {
-            owner.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_WRITE);
-
+        owner.inTransaction(TransactionStrategy.TRANSACTION.READ_WRITE, "Error removing a feature revision from the variant.", () -> {
             Repository.Op repository = owner.repositoryDao.load();
 
             Variant variant = owner.getRepository().getVariant(id);
@@ -205,17 +157,8 @@ public class VariantManager {
             variant.setConfiguration(newConfiguration);
 
             owner.repositoryDao.store(repository);
-
-            owner.transactionStrategy.end();
-
-        } catch (Error e) {
-            owner.rollbackIfTransactionActive();
-            throw e;
-        } catch (Exception e) {
-            owner.rollbackIfTransactionActive();
-
-            throw new EccoException("Error during adding a variant.", e);
-        }
+            return null;
+        });
     }
 
 }
