@@ -1,28 +1,28 @@
 package at.jku.isse.ecco.storage.ser.featuretrace;
 
-import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.Configuration;
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
-import at.jku.isse.ecco.logic.FormulaFactoryProvider;
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.tree.Node;
-import org.logicng.formulas.Formula;
 
 import java.util.Objects;
-
-import static at.jku.isse.ecco.logic.LogicUtils.parseString;
 
 public class SerFeatureTrace implements FeatureTrace {
 
     private static final long serialVersionUID = 1621713735051207581L;
     private Node node;
+    // the proactive condition's text - stored as a string, as in files written before LogicCondition
     private String proactiveCondition;
+    // ... and as a condition (derived from the text, made when first asked for)
+    private transient LogicCondition proactive;
     // derived from the association's counters (Association.Op#setRetroactiveConditions, after every
     // commit and merge and when a repository is read) - not stored: stored, it went stale whenever a
     // commit changed the condition of an association it did not write (ReopenEquivalenceTest), it
     // repeated the condition on every unique node, and a changed condition rewrote the association.
-    // Files written before carry it; it is ignored on read.
-    private transient String retroactiveCondition;
+    // Files written before carry it (as a string); it is ignored on read.
+    private transient LogicCondition retroactiveCondition;
 
     public SerFeatureTrace(Node node){
         this.node = node;
@@ -30,7 +30,7 @@ public class SerFeatureTrace implements FeatureTrace {
 
     @Override
     public boolean holds(Configuration configuration, EvaluationStrategy evaluationStrategy){
-        return evaluationStrategy.holds(configuration, this.proactiveCondition, this.retroactiveCondition);
+        return evaluationStrategy.holds(configuration, this.getProactiveCondition(), this.retroactiveCondition);
     }
 
     @Override
@@ -49,118 +49,88 @@ public class SerFeatureTrace implements FeatureTrace {
     }
 
     @Override
-    public void addProactiveCondition(String proactiveCondition){
+    public void addProactiveCondition(LogicCondition proactiveCondition){
         if (proactiveCondition == null){ return; }
-        this.proactiveCondition = this.combineConditions(this.proactiveCondition, proactiveCondition);
+        this.setProactiveCondition(LogicCondition.or(this.getProactiveCondition(), sanitized(proactiveCondition)));
     }
 
     @Override
     public void removeProactiveCondition(){
-        this.proactiveCondition = null;
+        this.setProactiveCondition((LogicCondition) null);
     }
 
     @Override
-    public void addRetroactiveCondition(String retroactiveCondition){
-        this.retroactiveCondition = this.combineConditions(this.retroactiveCondition, retroactiveCondition);
-    }
-
-    private String combineConditions(String currentCondition, String newCondition){
-        if (newCondition == null) { return currentCondition; }
-        newCondition = this.sanitizeFormulaString(newCondition);
-        if (currentCondition == null){
-            return newCondition;
-        } else {
-            Formula currentFormula = parseString(currentCondition);
-            Formula newFormula = parseString(newCondition);
-            Formula combinedFormula = FormulaFactoryProvider.getFormulaFactory().or(currentFormula, newFormula);
-            return combinedFormula.toString();
-        }
+    public void addRetroactiveCondition(LogicCondition retroactiveCondition){
+        this.retroactiveCondition = LogicCondition.or(this.retroactiveCondition, sanitized(retroactiveCondition));
     }
 
     @Override
     public void buildProactiveConditionConjunction(String proactiveCondition) {
         if (proactiveCondition == null) { return; }
-        proactiveCondition = this.sanitizeFormulaString(proactiveCondition);
-        if (this.proactiveCondition == null){
-            this.proactiveCondition = proactiveCondition;
-        } else {
-            Formula currentCondition = parseString(this.proactiveCondition);
-            Formula additionalCondition = parseString(proactiveCondition);
-            Formula newCondition = FormulaFactoryProvider.getFormulaFactory().and(currentCondition, additionalCondition);
-            this.proactiveCondition = newCondition.toString();
-        }
+        this.setProactiveCondition(LogicCondition.and(this.getProactiveCondition(), LogicCondition.of(FeatureLiterals.sanitize(proactiveCondition))));
     }
 
     @Override
-    public String getProactiveConditionString() {
-        return this.proactiveCondition;
+    public LogicCondition getProactiveCondition() {
+        if (this.proactive == null && this.proactiveCondition != null)
+            this.proactive = LogicCondition.of(this.proactiveCondition);
+        return this.proactive;
     }
 
     @Override
-    public String getRetroactiveConditionString() {
+    public LogicCondition getRetroactiveCondition() {
         return this.retroactiveCondition;
     }
 
     @Override
     public void fuseFeatureTrace(FeatureTrace featureTrace) {
-        if (!(featureTrace instanceof SerFeatureTrace)){
-            throw new RuntimeException("Cannot fuse MemFeatureTrace with non-MemFeatureTrace.");
+        if (!(featureTrace instanceof SerFeatureTrace serFeatureTrace)){
+            throw new RuntimeException("Cannot fuse SerFeatureTrace with non-SerFeatureTrace.");
         }
-        SerFeatureTrace serFeatureTrace = (SerFeatureTrace) featureTrace;
         this.addRetroactiveCondition(serFeatureTrace.retroactiveCondition);
-        this.addProactiveCondition(serFeatureTrace.proactiveCondition);
+        this.addProactiveCondition(serFeatureTrace.getProactiveCondition());
     }
 
     @Override
-    public String getOverallConditionString(EvaluationStrategy evaluationStrategy) {
+    public LogicCondition getOverallCondition(EvaluationStrategy evaluationStrategy) {
         if (this.retroactiveCondition == null && this.proactiveCondition == null){
             throw new RuntimeException("Neither retroactive nor proactive condition exists.");
         } else  {
-            return evaluationStrategy.getOverallConditionString(this.proactiveCondition, this.retroactiveCondition);
+            return evaluationStrategy.getOverallCondition(this.getProactiveCondition(), this.retroactiveCondition);
         }
     }
 
     @Override
-    public void setRetroactiveCondition(String retroactiveConditionString) {
-        this.retroactiveCondition = retroactiveConditionString;
+    public void setRetroactiveCondition(LogicCondition retroactiveCondition) {
+        this.retroactiveCondition = retroactiveCondition;
     }
 
     @Override
     public void setProactiveCondition(String proactiveConditionString) {
-        proactiveConditionString = this.sanitizeFormulaString(proactiveConditionString);
-        this.proactiveCondition = proactiveConditionString;
+        this.setProactiveCondition(LogicCondition.of(proactiveConditionString == null ? null : FeatureLiterals.sanitize(proactiveConditionString)));
     }
 
-    private String sanitizeFormulaString(String formulaString){
-        // "." and "-" cannot be parsed by FormulaFactory
-        // conditions replace "." with "_" for indication of feature-revision-id
-        // as opposed to documentation, "#" and "@" do not parse, which is why only "_" is used
-        // conditions replace "-" with "_" for UUIDs (Feature-revision-IDs)
-        // (sanitized for every node on every main-tree fusion - FeatureLiterals.sanitize() has the
-        // fast path for the clean strings most are)
-        if (formulaString == null) { return null; }
-        return FeatureLiterals.sanitize(formulaString);
+    @Override
+    public void setProactiveCondition(LogicCondition proactiveCondition) {
+        this.proactive = sanitized(proactiveCondition);
+        this.proactiveCondition = this.proactive == null ? null : this.proactive.text();
+    }
+
+    // "." and "-" cannot be parsed by LogicNG: feature names and revision ids are written with "_"
+    // (FeatureLiterals) - so are conditions from outside ECCO
+    private static LogicCondition sanitized(LogicCondition condition) {
+        if (condition == null) { return null; }
+        String text = FeatureLiterals.sanitize(condition.text());
+        return text.equals(condition.text()) ? condition : LogicCondition.of(text);
     }
 
     @Override
     public boolean equals(Object o){
         if (this == o) return true;
-        if (!(o instanceof SerFeatureTrace)) return false;
-        SerFeatureTrace serFeatureTrace = (SerFeatureTrace) o;
-
-        if (this.node == null){
-            if (serFeatureTrace.node != null) { return false; }
-        } else if (!this.node.equals(serFeatureTrace.node)) { return false; }
-
-        if (this.proactiveCondition == null){
-            if (serFeatureTrace.proactiveCondition != null) { return false; }
-        } else if (!(this.proactiveCondition.equals(serFeatureTrace.proactiveCondition))) { return false; }
-
-        if (this.retroactiveCondition == null){
-            if (serFeatureTrace.retroactiveCondition != null) { return false; }
-        } else if (!(this.retroactiveCondition.equals(serFeatureTrace.retroactiveCondition))) { return false; }
-
-        return true;
+        if (!(o instanceof SerFeatureTrace serFeatureTrace)) return false;
+        return Objects.equals(this.node, serFeatureTrace.node)
+                && Objects.equals(this.proactiveCondition, serFeatureTrace.proactiveCondition)
+                && Objects.equals(this.retroactiveCondition, serFeatureTrace.retroactiveCondition);
     }
 
     @Override

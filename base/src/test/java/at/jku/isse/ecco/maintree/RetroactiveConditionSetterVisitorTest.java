@@ -22,6 +22,6 @@ public class RetroactiveConditionSetterVisitorTest {
         node.setUnique(true);
         assertNull(node.getFeatureTrace(), "precondition: no feature trace");
 
-        assertDoesNotThrow(() -> new RetroactiveConditionSetterVisitor("A").visit(node));
+        assertDoesNotThrow(() -> new RetroactiveConditionSetterVisitor(at.jku.isse.ecco.logic.LogicCondition.of("A")).visit(node));
     }
 }

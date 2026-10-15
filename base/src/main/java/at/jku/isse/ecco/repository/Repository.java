@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.repository;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
 import at.jku.isse.ecco.EccoUtil;
@@ -802,7 +803,7 @@ public interface Repository extends Persistable {
 		 * That main tree is built for this checkout only; the cached one is not touched. Which
 		 * associations count as selected, and the warnings, still come from their own conditions.
 		 */
-		default Checkout compose(Configuration configuration, Map<String, String> retroactiveConditions) {
+		default Checkout compose(Configuration configuration, Map<String, LogicCondition> retroactiveConditions) {
 			checkNotNull(configuration);
 			checkNotNull(retroactiveConditions);
 

@@ -127,7 +127,7 @@ public class CppRoundTripPropertyTest {
         for (Node child : node.getChildren()) {
             if (child.getArtifact().getData() instanceof SourceLineArtifactData line) {
                 FeatureTrace trace = ((Node.Op) child).getFeatureTrace();
-                String condition = trace == null ? null : trace.getProactiveConditionString();
+                String condition = trace == null || trace.getProactiveCondition() == null ? null : trace.getProactiveCondition().text();
                 conditions.put(line.getLine(), condition == null || condition.isEmpty() ? null : condition);
             }
             collectConditions(child, conditions);

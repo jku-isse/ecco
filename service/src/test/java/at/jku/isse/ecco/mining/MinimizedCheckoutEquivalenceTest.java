@@ -53,9 +53,9 @@ public class MinimizedCheckoutEquivalenceTest {
             assertFalse(service.acceptedSuggestions(service.getRepository()).isEmpty(), "the test needs trusted constraints");
 
             assertEquals(service.getRepository().getAssociations().size(), service.minimizeConditionsForCheckout());
-            Map<String, String> valid = service.validCheckoutConditions();
+            Map<String, at.jku.isse.ecco.logic.LogicCondition> valid = service.validCheckoutConditions();
             assertEquals(service.getRepository().getAssociations().size(), valid.size());
-            assertTrue(service.getRepository().getAssociations().stream().anyMatch(a -> valid.get(a.getId()).length() < a.computeCondition().toLogicString().length()),
+            assertTrue(service.getRepository().getAssociations().stream().anyMatch(a -> valid.get(a.getId()).text().length() < a.computeCondition().toLogicString().length()),
                     "at least one condition must actually get simpler, or the comparison proves nothing");
 
             // every model-consistent combination, with either revision of A, plus the committed ones

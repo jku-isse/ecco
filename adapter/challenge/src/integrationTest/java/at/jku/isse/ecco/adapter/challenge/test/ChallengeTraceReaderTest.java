@@ -347,7 +347,7 @@ public class ChallengeTraceReaderTest {
     }
 
     private static void checkNodeTrace(Node.Op node, String featureTrace){
-        String parsedTrace = node.getFeatureTrace().getProactiveConditionString();
+        String parsedTrace = java.util.Objects.toString(node.getFeatureTrace().getProactiveCondition(), null);
         assertEquals(parsedTrace, featureTrace);
     }
 

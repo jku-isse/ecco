@@ -1,20 +1,21 @@
 package at.jku.isse.ecco.maintree.retroactive.condition.setter;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.tree.Node;
 import at.jku.isse.ecco.tree.RootNode;
 
 public class RetroactiveConditionSetterVisitor implements Node.Op.NodeVisitor{
 
-    String retroactiveConditionString;
+    private final LogicCondition retroactiveCondition;
     private boolean changed;
 
-    public RetroactiveConditionSetterVisitor(String retroactiveConditionString){
-        this.retroactiveConditionString = retroactiveConditionString;
+    public RetroactiveConditionSetterVisitor(LogicCondition retroactiveCondition){
+        this.retroactiveCondition = retroactiveCondition;
     }
 
     public RetroactiveConditionSetterVisitor(Association association){
-        this.retroactiveConditionString = association.computeCondition().toLogicString();
+        this.retroactiveCondition = association.computeCondition().toLogicCondition();
     }
 
     @Override
@@ -23,9 +24,9 @@ public class RetroactiveConditionSetterVisitor implements Node.Op.NodeVisitor{
         // a node without a feature trace has nothing to set - skipped like in SerNode's own trace
         // methods and BoostVisitor (this used to NPE and fail the commit)
         if (node.isUnique() && node.getFeatureTrace() != null){
-            if (!retroactiveConditionString.equals(node.getFeatureTrace().getRetroactiveConditionString()))
+            if (!retroactiveCondition.equals(node.getFeatureTrace().getRetroactiveCondition()))
                 changed = true;
-            node.getFeatureTrace().setRetroactiveCondition(retroactiveConditionString);
+            node.getFeatureTrace().setRetroactiveCondition(retroactiveCondition);
         }
     }
 

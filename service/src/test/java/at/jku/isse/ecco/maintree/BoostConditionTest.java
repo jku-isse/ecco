@@ -40,7 +40,7 @@ public class BoostConditionTest {
     public void oneConditionIsBoosted() {
         BoostConditionVisitor visitor = visit(this.association("A", null, "A"));
         assertTrue(visitor.isBoostPossible());
-        assertEquals("A", visitor.getBoostCondition());
+        assertEquals("A", visitor.getBoostCondition().text());
     }
 
     @Test

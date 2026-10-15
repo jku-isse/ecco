@@ -1,13 +1,14 @@
 package at.jku.isse.ecco.maintree.building;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.tree.Node;
 
 public class BoostVisitor implements Node.Op.NodeVisitor{
 
-    private final String boostCondition;
+    private final LogicCondition boostCondition;
 
-    public BoostVisitor(String boostCondition){
+    public BoostVisitor(LogicCondition boostCondition){
         this.boostCondition = boostCondition;
     }
 

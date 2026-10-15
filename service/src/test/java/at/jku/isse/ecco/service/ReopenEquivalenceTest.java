@@ -69,7 +69,7 @@ public class ReopenEquivalenceTest {
             // what an older build could leave behind: every node's stored condition outdated
             service.writeTransaction(repository -> {
                 for (Association.Op association : repository.getAssociations()) {
-                    ((Node.Op) association.getRootNode()).traverse(new at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor("$false"));
+                    ((Node.Op) association.getRootNode()).traverse(new at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor(at.jku.isse.ecco.logic.LogicCondition.FALSE));
                     repository.addAssociation(association);
                 }
                 return repository;
@@ -145,7 +145,7 @@ public class ReopenEquivalenceTest {
 
     private static void collect(Node.Op node, Set<String> retroactive) {
         if (node.isUnique() && node.getFeatureTrace() != null)
-            retroactive.add(String.valueOf(node.getFeatureTrace().getRetroactiveConditionString()));
+            retroactive.add(String.valueOf(node.getFeatureTrace().getRetroactiveCondition()));
         for (Node.Op child : node.getChildren())
             collect(child, retroactive);
     }

@@ -173,8 +173,8 @@ public class Trees {
 		copy.setUnique(node.isUnique());
 		copy.putProperties(node.getProperties());
 		if (node.getFeatureTrace() != null) {
-			copy.getFeatureTrace().setProactiveCondition(node.getFeatureTrace().getProactiveConditionString());
-			copy.getFeatureTrace().setRetroactiveCondition(node.getFeatureTrace().getRetroactiveConditionString());
+			copy.getFeatureTrace().setProactiveCondition(node.getFeatureTrace().getProactiveCondition());
+			copy.getFeatureTrace().setRetroactiveCondition(node.getFeatureTrace().getRetroactiveCondition());
 		}
 		for (Node.Op child : node.getChildren()) {
 			Node.Op copiedChild = copyRead(child, entityFactory);
@@ -870,7 +870,7 @@ public class Trees {
 		if (source.isUnique())
 			target.getFeatureTrace().fuseFeatureTrace(source.getFeatureTrace());
 		else
-			target.getFeatureTrace().addProactiveCondition(source.getFeatureTrace().getProactiveConditionString());
+			target.getFeatureTrace().addProactiveCondition(source.getFeatureTrace().getProactiveCondition());
 	}
 
 	public static Node.Op treeFusion(Node.Op mainTree, Node.Op fusionNode){

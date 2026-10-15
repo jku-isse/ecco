@@ -73,8 +73,8 @@ public class RepositoryOpMiscTest {
         Association.Op association = repository.getAssociations().iterator().next();
         Node.Op fileNode = association.getRootNode().getChildren().iterator().next();
         assertTrue(fileNode.isUnique());
-        assertNotNull(fileNode.getFeatureTrace().getRetroactiveConditionString());
-        assertEquals(association.computeCondition().toLogicString(), fileNode.getFeatureTrace().getRetroactiveConditionString());
+        assertNotNull(fileNode.getFeatureTrace().getRetroactiveCondition());
+        assertEquals(association.computeCondition().toLogicCondition(), fileNode.getFeatureTrace().getRetroactiveCondition());
     }
 
     @Test

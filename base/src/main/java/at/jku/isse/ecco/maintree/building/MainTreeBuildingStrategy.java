@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.maintree.building;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
 import at.jku.isse.ecco.tree.Node;
@@ -24,7 +25,7 @@ public interface MainTreeBuildingStrategy {
      * nodes instead of its own (in a copy - the associations are not changed). Used to check out with
      * minimized conditions, which are equivalent under the accepted feature model.
      */
-    default Node.Op buildMainTree(Collection<Association.Op> associations, ProactiveTraceCheck traceCheck, Map<String, String> retroactiveConditions) {
+    default Node.Op buildMainTree(Collection<Association.Op> associations, ProactiveTraceCheck traceCheck, Map<String, LogicCondition> retroactiveConditions) {
         if (retroactiveConditions.isEmpty())
             return this.buildMainTree(associations, traceCheck);
         throw new UnsupportedOperationException(this.getClass().getSimpleName() + " cannot replace retroactive conditions.");

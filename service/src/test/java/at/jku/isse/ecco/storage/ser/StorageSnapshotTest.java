@@ -157,8 +157,8 @@ public class StorageSnapshotTest {
             out.append(" [ordered]");
         if (!node.getProperties().isEmpty())
             out.append(" ").append(new TreeMap<>(node.getProperties()));
-        if (node.isUnique() && node.getFeatureTrace() != null && node.getFeatureTrace().getRetroactiveConditionString() != null)
-            out.append(" | ").append(condition(node.getFeatureTrace().getRetroactiveConditionString(), literals));
+        if (node.isUnique() && node.getFeatureTrace() != null && node.getFeatureTrace().getRetroactiveCondition() != null)
+            out.append(" | ").append(condition(node.getFeatureTrace().getRetroactiveCondition().text(), literals));
         out.append('\n');
         for (Node.Op child : node.getChildren())
             tree(child, indent + "  ", out, literals);

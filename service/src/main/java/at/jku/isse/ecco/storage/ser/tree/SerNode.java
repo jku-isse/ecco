@@ -65,8 +65,8 @@ public class SerNode implements Node, Node.Op {
 		newNode.setUnique(this.unique);
 		newNode.putProperties(this.getProperties());
 		if (this.featureTrace != null) {
-			newNode.getFeatureTrace().setProactiveCondition(this.featureTrace.getProactiveConditionString());
-			newNode.getFeatureTrace().setRetroactiveCondition(this.featureTrace.getRetroactiveConditionString());
+			newNode.getFeatureTrace().setProactiveCondition(this.featureTrace.getProactiveCondition());
+			newNode.getFeatureTrace().setRetroactiveCondition(this.featureTrace.getRetroactiveCondition());
 		}
 		return newNode;
 	}
@@ -128,7 +128,7 @@ public class SerNode implements Node, Node.Op {
 		if (this.featureTrace == null || other.getFeatureTrace() == null) {
 			return;
 		}
-		this.featureTrace.addProactiveCondition(other.getFeatureTrace().getProactiveConditionString());
+		this.featureTrace.addProactiveCondition(other.getFeatureTrace().getProactiveCondition());
 	}
 
 	@Override

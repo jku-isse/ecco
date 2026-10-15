@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.ser.core;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.module.Condition;
@@ -117,8 +118,8 @@ public class SerAssociation implements Association, Association.Op {
 	}
 
 	@Override
-	public String getCheckoutCondition() {
-		return this.checkoutCondition;
+	public LogicCondition getCheckoutCondition() {
+		return LogicCondition.of(this.checkoutCondition); // stored as its text
 	}
 
 	@Override
@@ -127,8 +128,8 @@ public class SerAssociation implements Association, Association.Op {
 	}
 
 	@Override
-	public void setCheckoutCondition(String condition, String basis) {
-		this.checkoutCondition = condition;
+	public void setCheckoutCondition(LogicCondition condition, String basis) {
+		this.checkoutCondition = condition == null ? null : condition.text();
 		this.checkoutConditionBasis = condition == null ? null : basis;
 	}
 

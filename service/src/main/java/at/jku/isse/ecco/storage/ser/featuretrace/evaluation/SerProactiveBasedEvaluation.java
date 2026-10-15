@@ -1,11 +1,8 @@
 package at.jku.isse.ecco.storage.ser.featuretrace.evaluation;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.ProactiveBasedEvaluation;
-import at.jku.isse.ecco.logic.FormulaFactoryProvider;
-import org.logicng.datastructures.Assignment;
-import org.logicng.formulas.Formula;
 
 import java.io.Serializable;
 
@@ -13,27 +10,19 @@ public class SerProactiveBasedEvaluation implements ProactiveBasedEvaluation, Se
 
     private static final long serialVersionUID = 6215009445454827750L;
 
+    // the proactive condition where there is one, otherwise the retroactive one
     @Override
     public boolean holds(Configuration configuration,
-                         String proactiveCondition,
-                         String retroactiveCondition) {
-        Assignment assignment = configuration.toAssignment();
-        String overallConditionString = this.getOverallConditionString(proactiveCondition, retroactiveCondition);
-        Formula formula = LogicUtils.parseString(overallConditionString);
-        boolean x = formula.evaluate(assignment);
-        return x;
+                         LogicCondition proactiveCondition,
+                         LogicCondition retroactiveCondition) {
+        return this.getOverallCondition(proactiveCondition, retroactiveCondition).evaluate(configuration.toAssignment());
     }
 
     @Override
-    public String getOverallConditionString(String proactiveCondition, String retroactiveCondition) {
-        if (proactiveCondition == null && retroactiveCondition == null){
-            Formula falseFormula = FormulaFactoryProvider.getFormulaFactory().constant(false);
-            return falseFormula.toString();
-        } else if (proactiveCondition == null){
-            return retroactiveCondition;
-        } else {
+    public LogicCondition getOverallCondition(LogicCondition proactiveCondition, LogicCondition retroactiveCondition) {
+        if (proactiveCondition != null)
             return proactiveCondition;
-        }
+        return retroactiveCondition != null ? retroactiveCondition : LogicCondition.FALSE;
     }
 
     @Override

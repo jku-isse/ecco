@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.core;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.counter.AssociationCounter;
 import at.jku.isse.ecco.counter.ModuleCounter;
 import at.jku.isse.ecco.counter.ModuleRevisionCounter;
@@ -129,7 +130,7 @@ public interface Association extends Persistable {
 		 * ({@code CheckoutConditions} in the {@code service} module), or null if none is stored.
 		 * Unlike {@link #getMinimizedCondition()}, which is feature-level and only for display.
 		 */
-		default String getCheckoutCondition() {
+		default LogicCondition getCheckoutCondition() {
 			return null;
 		}
 
@@ -139,10 +140,10 @@ public interface Association extends Persistable {
 		}
 
 		/**
-		 * @param condition The checkout condition (a LogicNG formula string), or null to clear it.
+		 * @param condition The checkout condition, or null to clear it.
 		 * @param basis     A fingerprint of what it was computed from; it is only used while that matches.
 		 */
-		default void setCheckoutCondition(String condition, String basis) {
+		default void setCheckoutCondition(LogicCondition condition, String basis) {
 			// no-op by default
 		}
 

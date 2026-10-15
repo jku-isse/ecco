@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.featuretrace.RejectedTrace;
 import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.*;
@@ -69,7 +70,7 @@ class CheckoutService {
     }
     private Checkout composeInTransaction(Configuration configuration) {
         Repository.Op repository = owner.repositoryDao.load();
-        Map<String, String> minimized = owner.minimizedConditionsInCheckout ? CheckoutConditions.valid(repository) : Map.of();
+        Map<String, LogicCondition> minimized = owner.minimizedConditionsInCheckout ? CheckoutConditions.valid(repository) : Map.of();
         if (owner.minimizedConditionsInCheckout)
             LOGGER.info("Checking out with minimized conditions for " + minimized.size() + " of " + repository.getAssociations().size() + " associations.");
         Checkout checkout = repository.compose(configuration, minimized);

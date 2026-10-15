@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.service;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.core.Constraint;
 import at.jku.isse.ecco.*;
 import at.jku.isse.ecco.adapter.*;
@@ -1771,10 +1772,10 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
                 throw new EccoException("Error reading the repository for minimization.", e);
             }
         }
-        Map<String, String> minimized = CheckoutConditions.minimize(associations, trusted, features);
+        Map<String, LogicCondition> minimized = CheckoutConditions.minimize(associations, trusted, features);
         this.writeTransaction("Error persisting checkout conditions.", repository -> {
             for (Association.Op association : repository.getAssociations()) {
-                String condition = minimized.get(association.getId());
+                LogicCondition condition = minimized.get(association.getId());
                 String basis = bases.get(association.getId());
                 if (condition != null && basis != null) {
                     association.setCheckoutCondition(condition, basis);
@@ -1787,11 +1788,11 @@ public class EccoService implements ProgressInputStream.ProgressListener, Progre
     }
 
     /** The stored checkout conditions that are still valid, by association id - see {@link CheckoutConditions#valid}. */
-    public synchronized Map<String, String> validCheckoutConditions() {
+    public synchronized Map<String, LogicCondition> validCheckoutConditions() {
         this.checkInitialized();
         try {
             this.transactionStrategy.begin(TransactionStrategy.TRANSACTION.READ_ONLY);
-            Map<String, String> valid = CheckoutConditions.valid(this.repositoryDao.load());
+            Map<String, LogicCondition> valid = CheckoutConditions.valid(this.repositoryDao.load());
             this.transactionStrategy.end();
             return valid;
         } catch (RuntimeException | Error e) {

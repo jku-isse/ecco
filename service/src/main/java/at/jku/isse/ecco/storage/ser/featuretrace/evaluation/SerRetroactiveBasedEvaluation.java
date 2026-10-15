@@ -1,11 +1,8 @@
 package at.jku.isse.ecco.storage.ser.featuretrace.evaluation;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.RetroactiveBasedEvaluation;
-import at.jku.isse.ecco.logic.FormulaFactoryProvider;
-import org.logicng.datastructures.Assignment;
-import org.logicng.formulas.Formula;
 
 import java.io.Serializable;
 
@@ -13,24 +10,17 @@ public class SerRetroactiveBasedEvaluation implements RetroactiveBasedEvaluation
 
     private static final long serialVersionUID = -1655533145028115988L;
 
+    // the retroactive condition only
     @Override
     public boolean holds(Configuration configuration,
-                         String proactiveCondition,
-                         String retroactiveCondition){
-        Assignment assignment = configuration.toAssignment();
-        if (retroactiveCondition == null){ return false; }
-        Formula retroactiveFormula = LogicUtils.parseString(retroactiveCondition);
-        return retroactiveFormula.evaluate(assignment);
+                         LogicCondition proactiveCondition,
+                         LogicCondition retroactiveCondition){
+        return retroactiveCondition != null && retroactiveCondition.evaluate(configuration.toAssignment());
     }
 
     @Override
-    public String getOverallConditionString(String proactiveCondition, String retroactiveCondition) {
-        if (retroactiveCondition == null){
-            Formula falseFormula = FormulaFactoryProvider.getFormulaFactory().constant(false);
-            return falseFormula.toString();
-        } else {
-            return retroactiveCondition;
-        }
+    public LogicCondition getOverallCondition(LogicCondition proactiveCondition, LogicCondition retroactiveCondition) {
+        return retroactiveCondition != null ? retroactiveCondition : LogicCondition.FALSE;
     }
 
     @Override

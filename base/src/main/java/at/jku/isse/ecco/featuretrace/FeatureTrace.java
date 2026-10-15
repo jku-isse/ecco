@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.featuretrace;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.featuretrace.evaluation.EvaluationStrategy;
@@ -22,26 +23,22 @@ public interface FeatureTrace extends Persistable {
     void setNode(Node node);
 
     boolean containsProactiveCondition();
-
-    void setRetroactiveCondition(String retroactiveConditionString);
+    void setRetroactiveCondition(LogicCondition retroactiveCondition);
+    /** The proactive condition, from text written outside ECCO (a trace) - feature names sanitized. */
 
     void setProactiveCondition(String proactiveConditionString);
-
-    void addProactiveCondition(String proactiveCondition);
+    void setProactiveCondition(LogicCondition proactiveCondition);
+    void addProactiveCondition(LogicCondition proactiveCondition);
 
     void removeProactiveCondition();
-
-    void addRetroactiveCondition(String retroactiveCondition);
+    void addRetroactiveCondition(LogicCondition retroactiveCondition);
 
     void buildProactiveConditionConjunction(String newCondition);
-
-    String getProactiveConditionString();
-
-    String getRetroactiveConditionString();
+    LogicCondition getProactiveCondition();
+    LogicCondition getRetroactiveCondition();
 
     void fuseFeatureTrace(FeatureTrace featureTrace);
-
-    String getOverallConditionString(EvaluationStrategy evaluationStrategy);
+    LogicCondition getOverallCondition(EvaluationStrategy evaluationStrategy);
 
     @Override
     boolean equals(Object obj);

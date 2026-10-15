@@ -35,7 +35,8 @@ dependencies {
 	implementation libs.javaparser.core
     implementation libs.logicng.core
     implementation libs.logicng.parser.j11
-    implementation project(':ecco-logic')
+    // LogicCondition is part of base's API (feature traces, evaluation strategies, conditions)
+    api project(':ecco-logic')
 
 	testImplementation project(':ecco-adapter-c')
 	//testImplementation project(':ecco-adapter-file')

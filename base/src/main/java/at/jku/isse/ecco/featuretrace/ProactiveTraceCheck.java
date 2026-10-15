@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.featuretrace;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
@@ -67,10 +68,10 @@ public class ProactiveTraceCheck {
 
 	private void check(Node.Op node, boolean[] present) {
 		FeatureTrace trace = node.getFeatureTrace();
-		if (trace == null || !node.isUnique() || trace.getProactiveConditionString() == null)
+		if (trace == null || !node.isUnique() || trace.getProactiveCondition() == null)
 			return;
-		String condition = trace.getProactiveConditionString();
-		int contradicting = this.firstContradiction(LogicUtils.parseString(condition), present);
+		LogicCondition condition = trace.getProactiveCondition();
+		int contradicting = this.firstContradiction(condition.formula(), present);
 		if (contradicting < 0)
 			return;
 		trace.removeProactiveCondition();
@@ -78,7 +79,7 @@ public class ProactiveTraceCheck {
 		this.rejected.add(new RejectedTrace(
 				describeLocation(node),
 				String.valueOf(node.getArtifact()),
-				condition,
+				condition.text(),
 				present[contradicting] ? RejectedTrace.Direction.TOO_NARROW : RejectedTrace.Direction.TOO_BROAD,
 				"\"" + commit.getCommitMessage() + "\" (" + commit.getConfiguration() + ")",
 				this.suggest(present)));

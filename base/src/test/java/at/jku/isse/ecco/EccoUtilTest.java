@@ -100,7 +100,7 @@ public class EccoUtilTest {
         Node.Op copiedChild = copy.getChildren().iterator().next();
 
         assertNotNull(copiedChild.getFeatureTrace(), "a copied unique node must have a FeatureTrace, like a freshly-read one would");
-        assertDoesNotThrow(() -> new RetroactiveConditionSetterVisitor("someCondition").visit(copiedChild));
+        assertDoesNotThrow(() -> new RetroactiveConditionSetterVisitor(at.jku.isse.ecco.logic.LogicCondition.of("someCondition")).visit(copiedChild));
     }
 
     @Test

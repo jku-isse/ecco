@@ -1,11 +1,8 @@
 package at.jku.isse.ecco.storage.ser.featuretrace.evaluation;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.feature.Configuration;
-import at.jku.isse.ecco.logic.LogicUtils;
 import at.jku.isse.ecco.featuretrace.evaluation.ProactiveSubtractionEvaluation;
-import at.jku.isse.ecco.logic.FormulaFactoryProvider;
-import org.logicng.datastructures.Assignment;
-import org.logicng.formulas.Formula;
 
 import java.io.Serializable;
 
@@ -13,34 +10,19 @@ public class SerProactiveSubtractionEvaluation implements ProactiveSubtractionEv
 
     private static final long serialVersionUID = -8243167417859486003L;
 
+    // the retroactive condition, narrowed by the proactive one where there is one
     @Override
     public boolean holds (Configuration configuration,
-                          String proactiveCondition,
-                          String retroactiveCondition){
-        Assignment assignment = configuration.toAssignment();
-        Formula overallFormula = this.getOverallFormula(proactiveCondition, retroactiveCondition);
-        return overallFormula.evaluate(assignment);
-    }
-
-    private Formula getOverallFormula(String proactiveCondition, String retroactiveCondition) {
-        Formula retroactiveFormula = null;
-        Formula proactiveFormula = null;
-        if (retroactiveCondition != null){ retroactiveFormula = LogicUtils.parseString(retroactiveCondition); }
-        if (proactiveCondition != null){ proactiveFormula = LogicUtils.parseString(proactiveCondition); }
-
-        if (retroactiveFormula == null){
-            return FormulaFactoryProvider.getFormulaFactory().constant(false);
-        } else if (proactiveFormula != null){
-            return FormulaFactoryProvider.getFormulaFactory().and(retroactiveFormula, proactiveFormula);
-        } else {
-            return retroactiveFormula;
-        }
+                          LogicCondition proactiveCondition,
+                          LogicCondition retroactiveCondition){
+        return this.getOverallCondition(proactiveCondition, retroactiveCondition).evaluate(configuration.toAssignment());
     }
 
     @Override
-    public String getOverallConditionString(String proactiveCondition, String retroactiveCondition) {
-        Formula overallFormula = this.getOverallFormula(proactiveCondition, retroactiveCondition);
-        return overallFormula.toString();
+    public LogicCondition getOverallCondition(LogicCondition proactiveCondition, LogicCondition retroactiveCondition) {
+        if (retroactiveCondition == null)
+            return LogicCondition.FALSE;
+        return LogicCondition.and(retroactiveCondition, proactiveCondition);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.maintree.building;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.featuretrace.FeatureTrace;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import at.jku.isse.ecco.logic.LogicUtils;
@@ -15,7 +16,7 @@ public class BoostConditionVisitor implements Node.Op.NodeVisitor {
     // there must be a user condition and no other contradicting user condition in the association
     private boolean boostPossible = false;
     private boolean contradicted = false;
-    String conditionCandidate;
+    LogicCondition conditionCandidate;
 
     // todo: create a visitor pattern that may stop visiting at some point
     @Override
@@ -27,7 +28,7 @@ public class BoostConditionVisitor implements Node.Op.NodeVisitor {
         if (featureTrace == null){
             return;
         }
-        String userCondition = featureTrace.getProactiveConditionString();
+        LogicCondition userCondition = featureTrace.getProactiveCondition();
         if (userCondition == null){
             return;
         } else if (this.conditionCandidate == null) {
@@ -40,10 +41,10 @@ public class BoostConditionVisitor implements Node.Op.NodeVisitor {
         }
     }
 
-    private static boolean equivalent(String a, String b) {
+    private static boolean equivalent(LogicCondition a, LogicCondition b) {
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
-        Formula formulaA = LogicUtils.parseString(a);
-        Formula formulaB = LogicUtils.parseString(b);
+        Formula formulaA = a.formula();
+        Formula formulaB = b.formula();
         SATSolver solver = MiniSat.miniSat(f);
         solver.add(f.not(f.equivalence(formulaA, formulaB)));
         return solver.sat() == Tristate.FALSE;
@@ -53,7 +54,7 @@ public class BoostConditionVisitor implements Node.Op.NodeVisitor {
         return this.boostPossible;
     }
 
-    public String getBoostCondition(){
+    public LogicCondition getBoostCondition(){
         if (!this.boostPossible){
             throw new RuntimeException("Boost condition may not be fetched if boost is not possible.");
         }

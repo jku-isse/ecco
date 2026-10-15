@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.module;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
@@ -96,6 +97,11 @@ public interface Condition extends Persistable {
 			terms.add(literals.size() == 1 ? literals.first() : "(" + String.join(" & ", literals) + ")");
 		}
 		return String.join(" | ", terms);
+	}
+
+	/** {@link #toLogicString()} as a condition - what the nodes of an association carry. */
+	default LogicCondition toLogicCondition() {
+		return LogicCondition.of(this.toLogicString());
 	}
 
 	/**

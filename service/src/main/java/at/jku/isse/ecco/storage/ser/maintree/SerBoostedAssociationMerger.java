@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.ser.maintree;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.maintree.retroactive.condition.setter.RetroactiveConditionSetterVisitor;
 import at.jku.isse.ecco.featuretrace.ProactiveTraceCheck;
 
@@ -32,7 +33,7 @@ public class SerBoostedAssociationMerger implements BoostedAssociationMerger, Pe
     }
 
     @Override
-    public Node.Op buildMainTree(Collection<Association.Op> associations, ProactiveTraceCheck traceCheck, Map<String, String> retroactiveConditions) {
+    public Node.Op buildMainTree(Collection<Association.Op> associations, ProactiveTraceCheck traceCheck, Map<String, LogicCondition> retroactiveConditions) {
         Node.Op mergedTree = null;
         for (Association association : associations){
             Node.Op boostedAssociationTree = this.createBoostedAssociationTree(association, traceCheck, retroactiveConditions.get(association.getId()));
@@ -41,7 +42,7 @@ public class SerBoostedAssociationMerger implements BoostedAssociationMerger, Pe
         return mergedTree;
     }
 
-    private Node.Op createBoostedAssociationTree(Association association, ProactiveTraceCheck traceCheck, String retroactiveCondition){
+    private Node.Op createBoostedAssociationTree(Association association, ProactiveTraceCheck traceCheck, LogicCondition retroactiveCondition){
         Node.Op associationTree = (Node.Op) association.getRootNode();
         Node.Op associationTreeCopy = associationTree.copyTree(true);
 

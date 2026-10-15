@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.logic.LogicCondition;
 import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.core.Commit;
 import at.jku.isse.ecco.feature.Configuration;
@@ -63,8 +64,8 @@ public final class CheckoutConditions {
     }
 
     /** The stored checkout conditions whose fingerprint still matches, by association id. */
-    public static Map<String, String> valid(Repository repository) {
-        Map<String, String> valid = new HashMap<>();
+    public static Map<String, LogicCondition> valid(Repository repository) {
+        Map<String, LogicCondition> valid = new HashMap<>();
         String repositoryBasis = null;
         for (Association association : repository.getAssociations()) {
             Association.Op op = (Association.Op) association;
@@ -82,15 +83,15 @@ public final class CheckoutConditions {
      * Minimizes every association's condition under the revision-aware feature model built from
      * {@code trustedSuggestions}; association id -&gt; LogicNG condition string.
      */
-    public static Map<String, String> minimize(Collection<? extends Association> associations,
+    public static Map<String, LogicCondition> minimize(Collection<? extends Association> associations,
                                                List<ConstraintMiner.Suggestion> trustedSuggestions,
                                                Collection<? extends Feature> features) {
         Formula featureModel = FeatureModelFormula.compileRevisionAware(trustedSuggestions, features);
-        Map<String, String> result = new HashMap<>();
+        Map<String, LogicCondition> result = new HashMap<>();
         for (Association association : associations) {
             List<PresenceConditionMinimizer.Term> terms = ModuleConditionBridge.toRevisionTerms(association.computeCondition());
             List<PresenceConditionMinimizer.Term> minimized = PresenceConditionMinimizer.minimize(featureModel, terms);
-            result.put(association.getId(), PresenceConditionMinimizer.toFormula(minimized).toString());
+            result.put(association.getId(), LogicCondition.of(PresenceConditionMinimizer.toFormula(minimized)));
         }
         return result;
     }

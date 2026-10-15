@@ -45,8 +45,8 @@ public class SerBoostedAssociationMergerTest {
         Node.Op mainTree = merger.buildMainTree(associations);
 
         List<? extends Node.Op> mainTreeNodes = mainTree.getChildren();
-        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getProactiveConditionString());
-        assertEquals("FeatureA", mainTreeNodes.get(1).getFeatureTrace().getProactiveConditionString());
+        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getProactiveCondition().text());
+        assertEquals("FeatureA", mainTreeNodes.get(1).getFeatureTrace().getProactiveCondition().text());
     }
 
     @Test
@@ -79,7 +79,7 @@ public class SerBoostedAssociationMergerTest {
         Node.Op mainTree = merger.buildMainTree(associations);
 
         List<? extends Node.Op> mainTreeNodes = mainTree.getChildren();
-        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getProactiveConditionString());
-        assertEquals("FeatureB", mainTreeNodes.get(1).getFeatureTrace().getProactiveConditionString());
+        assertEquals("FeatureA", mainTreeNodes.get(0).getFeatureTrace().getProactiveCondition().text());
+        assertEquals("FeatureB", mainTreeNodes.get(1).getFeatureTrace().getProactiveCondition().text());
     }
 }
