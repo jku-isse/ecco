@@ -115,7 +115,7 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 		TableColumn<AssociationInfo, String> idAssociationsCol = new TableColumn<>("Id");
 		TableColumn<AssociationInfo, String> conditionAssociationsCol = new TableColumn<>("Simplified Condition");
-		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
+		TableColumn<AssociationInfo, Integer> numArtifactsAssociationsCol = new TableColumn<>("Artifacts");
 		TableColumn<AssociationInfo, String> associationsCol = new TableColumn<>("Associations");
 
 		associationsCol.getColumns().setAll(idAssociationsCol, conditionAssociationsCol, numArtifactsAssociationsCol);
@@ -125,6 +125,28 @@ public class AssociationsView extends BorderPane implements EccoListener {
 		// a live property, not a one-shot computed string: cells update on their own as
 		// "Minimize Presence Conditions" fills each association in, no manual table refresh needed.
 		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> param.getValue().simplifiedConditionProperty());
+		// until minimized the column was empty - looking broken; says so instead, the condition
+		// itself is in the details
+		conditionAssociationsCol.setCellFactory(col -> new TableCell<>() {
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				if (empty) {
+					setText(null);
+					setTooltip(null);
+					getStyleClass().remove("not-minimized");
+				} else if (item == null || item.isEmpty()) {
+					setText("not minimized");
+					setTooltip(new Tooltip("Minimize Presence Conditions (Features) simplifies it; the condition is in the details."));
+					if (!getStyleClass().contains("not-minimized"))
+						getStyleClass().add("not-minimized");
+				} else {
+					setText(item);
+					setTooltip(new Tooltip(item));
+					getStyleClass().remove("not-minimized");
+				}
+			}
+		});
 		numArtifactsAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, Integer> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getNumArtifacts()));
 		numArtifactsAssociationsCol.setCellFactory(col -> new TableCell<AssociationInfo, Integer>() {
 			private final Region track = new Region();
@@ -171,8 +193,8 @@ public class AssociationsView extends BorderPane implements EccoListener {
 
 		associationsTable.setItems(sortedData);
 
-		TableColumns.defaultWidth(idAssociationsCol, 90);
-		TableColumns.controlWidth(numArtifactsAssociationsCol);
+		TableColumns.shortIds(idAssociationsCol, sortedData);
+		TableColumns.barWidth(numArtifactsAssociationsCol, BAR_WIDTH);
 		TableColumns.growToFill(associationsTable, conditionAssociationsCol);
 
 

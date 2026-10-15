@@ -75,7 +75,7 @@ public class CommitDetailView extends BorderPane {
 
 		associationsTable.setItems(this.associationsData);
 
-		TableColumns.defaultWidth(idAssociationsCol, 90);
+		TableColumns.shortIds(idAssociationsCol, associationsTable.getItems());
 		TableColumns.growToFill(associationsTable, conditionAssociationsCol);
 
 		Label associationsLabel = new Label("Associations:");

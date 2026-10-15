@@ -356,7 +356,6 @@ public class VariantsView extends BorderPane implements EccoListener {
         // random UUIDs, and a Variant is deduplicated across commits sharing a configuration) --
         // this matches by Configuration.equals() at display time instead (see describeMatchingCommits).
         matchingCommitsCol.setCellValueFactory(param -> param.getValue().matchingCommitsProperty());
-        matchingCommitsCol.setCellFactory(TableColumns.wrappingCellFactory());
 
 
         selectedVariantCol.setCellValueFactory(new PropertyValueFactory<>("selected"));
@@ -368,8 +367,10 @@ public class VariantsView extends BorderPane implements EccoListener {
         sortedData.comparatorProperty().bind(variantsTable.comparatorProperty());
         variantsTable.setItems(sortedData);
 
-        TableColumns.defaultWidth(idCol, 90);
+        TableColumns.shortIds(idCol, sortedData);
+        TableColumns.shortIds(matchingCommitsCol, sortedData);
         TableColumns.fitToContent(nameCol, sortedData);
+        TableColumns.fitToContent(warningCol, sortedData);
         TableColumns.controlWidth(selectedVariantCol);
         TableColumns.growToFill(variantsTable, configCol);
 

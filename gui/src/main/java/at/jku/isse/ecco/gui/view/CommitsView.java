@@ -34,6 +34,10 @@ import java.util.List;
 
 public class CommitsView extends BorderPane implements EccoListener {
 
+	/** Sortable and short: "Thu Oct 15 08:54:22 CEST 2026" was cut off at the column's edge. */
+	private static final java.time.format.DateTimeFormatter DATE_FORMAT = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(java.time.ZoneId.systemDefault());
+
+
 	private EccoService service;
 
 	final ObservableList<CommitInfo> commitsData = FXCollections.observableArrayList();
@@ -95,7 +99,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 		TableColumn<CommitInfo, String> idCol = new TableColumn<>("Id");
 		TableColumn<CommitInfo, Boolean> selectedCommitCol = new TableColumn<>("Selected");
 		TableColumn<CommitInfo, String> commitMessage = new TableColumn<>("Commit Message");
-		TableColumn<CommitInfo, String> commiter = new TableColumn<>("Commiter");
+		TableColumn<CommitInfo, String> commiter = new TableColumn<>("Committer");
 		TableColumn<CommitInfo, String> date = new TableColumn<>("Date");
 		TableColumn<CommitInfo, String> commitsCol = new TableColumn<>("Commits");		//Table Title
 
@@ -105,7 +109,7 @@ public class CommitsView extends BorderPane implements EccoListener {
 		idCol.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getId()));
 		commitMessage.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getCommitMessage()));
 		commiter.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getUsername()));
-		date.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getDate() == null ? "" : param.getValue().getCommit().getDate().toString()));  //TODO do better
+		date.setCellValueFactory((TableColumn.CellDataFeatures<CommitInfo, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue().getCommit().getDate() == null ? "" : DATE_FORMAT.format(param.getValue().getCommit().getDate().toInstant())));
 
 		selectedCommitCol.setCellFactory(column -> new CheckBoxTableCell<>());
 		selectedCommitCol.setCellValueFactory(cellData -> {
@@ -124,10 +128,10 @@ public class CommitsView extends BorderPane implements EccoListener {
 		});
 		commitsTable.setItems(this.commitsData);
 
-		TableColumns.defaultWidth(idCol, 90);
+		TableColumns.shortIds(idCol, this.commitsData);
 		TableColumns.controlWidth(selectedCommitCol);
 		TableColumns.fitToContent(commiter, this.commitsData);
-		TableColumns.defaultWidth(date, 150);
+		TableColumns.fitToContent(date, this.commitsData);
 		TableColumns.growToFill(commitsTable, commitMessage);
 
 		// commit details view

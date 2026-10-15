@@ -166,7 +166,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         TableColumn<AssociationInfoImpl, String> idAssociationsCol = new TableColumn<>("Id");
         TableColumn<AssociationInfoImpl, String> conditionAssociationsCol = new TableColumn<>("Condition");
-        TableColumn<AssociationInfoImpl, Integer> numArtifactsAssociationsCol = new TableColumn<>("NumArtifacts");
+        TableColumn<AssociationInfoImpl, Integer> numArtifactsAssociationsCol = new TableColumn<>("Artifacts");
 
         TableColumn<AssociationInfoImpl, Boolean> selectedAssocationCol = new TableColumn<>("Selected");
 
@@ -302,8 +302,8 @@ public class ArtifactsView extends BorderPane implements EccoListener {
 
         associationsTable.setItems(sortedData);
 
-        TableColumns.defaultWidth(idAssociationsCol, 90);
-        TableColumns.controlWidth(numArtifactsAssociationsCol);
+        TableColumns.shortIds(idAssociationsCol, associationsTable.getItems());
+        TableColumns.barWidth(numArtifactsAssociationsCol, BAR_WIDTH);
         TableColumns.controlWidth(selectedAssocationCol);
         TableColumns.controlWidth(highlightedAssocationCol);
         TableColumns.growToFill(associationsTable, conditionAssociationsCol);

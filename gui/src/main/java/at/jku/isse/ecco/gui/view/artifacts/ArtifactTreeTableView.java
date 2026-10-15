@@ -176,6 +176,9 @@ public class ArtifactTreeTableView extends TreeTableView<ArtifactTreeTableView.N
 		TableColumns.controlWidth(atomicNodeCol);
 		TableColumns.controlWidth(uniqueNodeCol);
 		TableColumns.controlWidth(isSelectedNodeCol);
+		// sized by their content when a tree is shown; until then by their headers
+		TableColumns.defaultWidth(snNodeCol, 0);
+		TableColumns.defaultWidth(associationNodeCol, 0);
 		TableColumns.growToFill(this, labelNodeCol);
 	}
 

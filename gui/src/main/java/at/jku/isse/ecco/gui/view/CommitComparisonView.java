@@ -45,8 +45,8 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         TableColumn<Tuple2<Association, Association>, String> oldAssociation = new TableColumn<>("Condition");
         TableColumn<Tuple2<Association, Association>, String> newId = new TableColumn<>("Id");
         TableColumn<Tuple2<Association, Association>, String> newAssociation = new TableColumn<>("Condition");
-        TableColumn<Tuple2<Association, Association>, String> oldCommitCol = new TableColumn<>("Commit: " + oldCommit.getId().substring(0, 9) + "...");        //Table Title
-        TableColumn<Tuple2<Association, Association>, String> newCommitCol = new TableColumn<>("Commit: " + newCommit.getId().substring(0, 9) + "...");        //Table Title
+        TableColumn<Tuple2<Association, Association>, String> oldCommitCol = new TableColumn<>("Commit " + TableColumns.shortIds(oldCommit.getId()));        //Table Title
+        TableColumn<Tuple2<Association, Association>, String> newCommitCol = new TableColumn<>("Commit " + TableColumns.shortIds(newCommit.getId()));        //Table Title
 
         oldCommitCol.getColumns().addAll(oldId, oldAssociation);
         newCommitCol.getColumns().addAll(newId, newAssociation);
@@ -65,8 +65,8 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         fillCompasisonData(oldCommit, newCommit);
         commitsTable.setItems(comparisonData);
 
-        TableColumns.defaultWidth(oldId, 90);
-        TableColumns.defaultWidth(newId, 90);
+        TableColumns.shortIds(oldId, commitsTable.getItems());
+        TableColumns.shortIds(newId, commitsTable.getItems());
         TableColumns.growToFill(commitsTable, oldAssociation);
         TableColumns.growToFill(commitsTable, newAssociation);
 

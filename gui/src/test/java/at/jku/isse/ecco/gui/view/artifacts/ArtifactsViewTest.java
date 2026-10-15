@@ -215,7 +215,7 @@ public class ArtifactsViewTest {
             });
 
             Set<String> counts = onFx(() -> table(view).lookupAll(".table-cell").stream()
-                    .filter(n -> n instanceof TableCell<?, ?> c && !c.isEmpty() && "NumArtifacts".equals(c.getTableColumn().getText()))
+                    .filter(n -> n instanceof TableCell<?, ?> c && !c.isEmpty() && "Artifacts".equals(c.getTableColumn().getText()))
                     .map(n -> ((Label) ((javafx.scene.layout.HBox) ((TableCell<?, ?>) n).getGraphic()).getChildren().get(1)).getText())
                     .collect(Collectors.toSet()));
             assertEquals(onFx(() -> table(view).getItems().stream().map(r -> String.valueOf(r.getNumArtifacts())).collect(Collectors.toSet())), counts);

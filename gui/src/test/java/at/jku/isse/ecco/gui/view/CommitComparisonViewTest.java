@@ -45,7 +45,7 @@ public class CommitComparisonViewTest {
             assertSame(base, association(older, "BASE"), "the shared association");
 
             CommitComparisonView view = onFx(() -> new CommitComparisonView(service, older, newer));
-            assertEquals(List.of("Commit: " + older.getId().substring(0, 9) + "...", "Commit: " + newer.getId().substring(0, 9) + "..."),
+            assertEquals(List.of("Commit " + older.getId().substring(0, 8), "Commit " + newer.getId().substring(0, 8)),
                     onFx(() -> table(view).getColumns().stream().map(TableColumn::getText).toList()));
             assertEquals(List.of(
                     List.of(base.getId(), simple(base), base.getId(), simple(base)),

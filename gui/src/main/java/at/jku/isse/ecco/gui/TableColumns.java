@@ -9,6 +9,7 @@ import javafx.scene.control.Cell;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeTableCell;
 import javafx.scene.control.TreeTableColumn;
@@ -51,7 +52,11 @@ public final class TableColumns {
 	// long outlier values wrap (see wrappingCellFactory()) and grow the row instead of the column
 	// growing without bound
 	private static final double MAX_AUTO_WIDTH = 400;
-	private static final double GROW_FUDGE = 20; // scrollbar/border slop, so growToFill doesn't trigger a spurious horizontal scrollbar
+	private static final double GROW_FUDGE = 20; // scrollbar/border slop, until the table's skin tells the width rows have
+	private static final double MIN_GROW_WIDTH = 160;
+	private static final double SORT_ARROW_WIDTH = 18; // a header shows the arrow once its column is sorted by
+	/** An id is shown by its first characters, as on the command line; the cell's tooltip has all of it. */
+	public static final int SHORT_ID_LENGTH = 8;
 
 	private static final Map<TableView<?>, List<TableColumn<?, ?>>> tableGrowColumns = new WeakHashMap<>();
 	private static final Map<TreeTableView<?>, List<TreeTableColumn<?, ?>>> treeGrowColumns = new WeakHashMap<>();
@@ -71,7 +76,7 @@ public final class TableColumns {
 		boolean[] pending = {false};
 		Runnable resize = () -> {
 			pending[0] = false;
-			double max = measure(column.getText());
+			double max = 0;
 			for (S item : items) {
 				ObservableValue<?> cellValue = column.getCellObservableValue(item);
 				Object value = cellValue == null ? null : cellValue.getValue();
@@ -79,7 +84,7 @@ public final class TableColumns {
 					max = Math.max(max, measure(String.valueOf(value)));
 				}
 			}
-			column.setPrefWidth(clamp(max + TEXT_PADDING));
+			column.setPrefWidth(Math.max(headerWidth(column.getText()), clamp(max + TEXT_PADDING)));
 		};
 		resize.run();
 		items.addListener((ListChangeListener<S>) change -> {
@@ -97,7 +102,7 @@ public final class TableColumns {
 	 * cell value would be meaningless or wrong.
 	 */
 	public static void controlWidth(TableColumn<?, ?> column) {
-		column.setPrefWidth(Math.max(CONTROL_COLUMN_WIDTH, measure(column.getText()) + TEXT_PADDING));
+		column.setPrefWidth(Math.max(CONTROL_COLUMN_WIDTH, headerWidth(column.getText())));
 	}
 
 	/**
@@ -107,7 +112,66 @@ public final class TableColumns {
 	 * want to (e.g. to see a full id that happens to be longer than usual).
 	 */
 	public static void defaultWidth(TableColumn<?, ?> column, double width) {
-		column.setPrefWidth(width);
+		column.setPrefWidth(Math.max(width, headerWidth(column.getText())));
+	}
+
+	/**
+	 * Shows the ids in {@code column} - one, or several separated by ", " - by their first
+	 * {@link #SHORT_ID_LENGTH} characters, the whole in the cell's tooltip, and sizes the column to
+	 * that: a UUID cut off at the column's edge ("3511d296-...") told less than its prefix and took
+	 * more room. The cell value stays the whole id, for sorting and copying.
+	 */
+	public static <S> void shortIds(TableColumn<S, String> column, ObservableList<S> items) {
+		column.setCellFactory(c -> new TableCell<>() {
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				if (empty || item == null || item.isEmpty()) {
+					setText(null);
+					setTooltip(null);
+				} else {
+					setText(shortIds(item));
+					setTooltip(item.equals(getText()) ? null : new Tooltip(item));
+				}
+			}
+		});
+		boolean[] pending = {false};
+		Runnable resize = () -> {
+			pending[0] = false;
+			double max = measure("0".repeat(SHORT_ID_LENGTH));
+			for (S item : items) {
+				ObservableValue<String> cellValue = column.getCellObservableValue(item);
+				if (cellValue != null && cellValue.getValue() != null)
+					max = Math.max(max, measure(shortIds(cellValue.getValue())));
+			}
+			column.setPrefWidth(Math.max(headerWidth(column.getText()), clamp(max + TEXT_PADDING)));
+		};
+		resize.run();
+		items.addListener((ListChangeListener<S>) change -> {
+			if (!pending[0]) {
+				pending[0] = true;
+				Platform.runLater(resize);
+			}
+		});
+	}
+
+	/** {@code ids} ("7f1aff21-643b-..., ec044fd8-...") with each id cut to its first {@link #SHORT_ID_LENGTH} characters. */
+	public static String shortIds(String ids) {
+		StringBuilder shown = new StringBuilder();
+		for (String id : ids.split(", ", -1)) {
+			if (!shown.isEmpty())
+				shown.append(", ");
+			shown.append(id.length() > SHORT_ID_LENGTH ? id.substring(0, SHORT_ID_LENGTH) : id);
+		}
+		return shown.toString();
+	}
+
+	/**
+	 * Sizes a column of bars [barWidth] wide, each followed by its count (up to seven digits) - sized
+	 * by its header, the counts were cut off ("8...").
+	 */
+	public static void barWidth(TableColumn<?, ?> column, double barWidth) {
+		column.setPrefWidth(Math.max(headerWidth(column.getText()), barWidth + 6 + measure("0000000") + TEXT_PADDING));
 	}
 
 	/**
@@ -146,6 +210,7 @@ public final class TableColumns {
 		if (firstTimeForThisTable) {
 			table.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run());
 			leaves(table).forEach(leaf -> leaf.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run()));
+			whenRowsWidthKnown(table, recompute);
 		}
 		Platform.runLater(recompute);
 	}
@@ -157,10 +222,10 @@ public final class TableColumns {
 		}
 		List<TableColumn<?, ?>> siblings = leaves(table).filter(column -> !grown.contains(column)).toList();
 		double siblingsWidth = siblings.stream().mapToDouble(TableColumn::getWidth).sum();
-		double leftover = Math.max(0, table.getWidth() - siblingsWidth - GROW_FUDGE);
-		double share = leftover / grown.size();
+		double leftover = Math.max(0, rowsWidth(table) - siblingsWidth);
+		double share = Math.floor(leftover / grown.size());
 		for (TableColumn<?, ?> grow : grown) {
-			grow.setPrefWidth(Math.max(share, MIN_TEXT_WIDTH));
+			grow.setPrefWidth(Math.max(share, minGrowWidth(grow.getText())));
 		}
 	}
 
@@ -211,9 +276,7 @@ public final class TableColumns {
 	 * in place; call this again after rebuilding.
 	 */
 	public static <S> void fitToContent(TreeTableColumn<S, ?> column, TreeItem<S> root) {
-		double max = measure(column.getText());
-		max = Math.max(max, measureTree(column, root));
-		column.setPrefWidth(clamp(max + TEXT_PADDING));
+		column.setPrefWidth(Math.max(headerWidth(column.getText()), clamp(measureTree(column, root) + TEXT_PADDING)));
 	}
 
 	private static <S> double measureTree(TreeTableColumn<S, ?> column, TreeItem<S> item) {
@@ -231,12 +294,12 @@ public final class TableColumns {
 
 	/** Same as {@link #controlWidth(TableColumn)}, for a {@link TreeTableColumn}. */
 	public static void controlWidth(TreeTableColumn<?, ?> column) {
-		column.setPrefWidth(Math.max(CONTROL_COLUMN_WIDTH, measure(column.getText()) + TEXT_PADDING));
+		column.setPrefWidth(Math.max(CONTROL_COLUMN_WIDTH, headerWidth(column.getText())));
 	}
 
 	/** Same as {@link #defaultWidth(TableColumn, double)}, for a {@link TreeTableColumn}. */
 	public static void defaultWidth(TreeTableColumn<?, ?> column, double width) {
-		column.setPrefWidth(width);
+		column.setPrefWidth(Math.max(width, headerWidth(column.getText())));
 	}
 
 	/** Same as {@link #fixedWidth(TableColumn, double)}, for a {@link TreeTableColumn}. */
@@ -261,6 +324,7 @@ public final class TableColumns {
 		if (firstTimeForThisTable) {
 			table.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run());
 			treeLeaves(table).forEach(leaf -> leaf.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run()));
+			whenRowsWidthKnown(table, recompute);
 		}
 		Platform.runLater(recompute);
 	}
@@ -272,10 +336,10 @@ public final class TableColumns {
 		}
 		List<TreeTableColumn<?, ?>> siblings = treeLeaves(table).filter(column -> !grown.contains(column)).toList();
 		double siblingsWidth = siblings.stream().mapToDouble(TreeTableColumn::getWidth).sum();
-		double leftover = Math.max(0, table.getWidth() - siblingsWidth - GROW_FUDGE);
-		double share = leftover / grown.size();
+		double leftover = Math.max(0, rowsWidth(table) - siblingsWidth);
+		double share = Math.floor(leftover / grown.size());
 		for (TreeTableColumn<?, ?> grow : grown) {
-			grow.setPrefWidth(Math.max(share, MIN_TEXT_WIDTH));
+			grow.setPrefWidth(Math.max(share, minGrowWidth(grow.getText())));
 		}
 	}
 
@@ -324,6 +388,61 @@ public final class TableColumns {
 	private static Stream<TreeTableColumn<?, ?>> treeLeavesOf(TreeTableColumn<?, ?> column) {
 		return column.getColumns().isEmpty() ? Stream.of(column)
 				: column.getColumns().stream().flatMap(child -> treeLeavesOf((TreeTableColumn<?, ?>) child));
+	}
+
+	/**
+	 * The width the rows of [table] have: its viewport (".clipped-container"), without the vertical
+	 * scroll bar and the borders - once the skin is there; until then the table's width less some
+	 * slop. Grown columns filled the table's width less a guess, which left an empty strip after the
+	 * last column, or a horizontal scroll bar.
+	 */
+	private static double rowsWidth(javafx.scene.control.Control table) {
+		javafx.scene.Node rows = table.lookup(".clipped-container");
+		if (rows instanceof javafx.scene.layout.Region region && region.getWidth() > 0)
+			return region.getWidth();
+		return table.getWidth() - GROW_FUDGE;
+	}
+
+	/** Runs [recompute] whenever the width of [table]'s rows changes - also when its vertical scroll bar comes or goes. */
+	private static void whenRowsWidthKnown(javafx.scene.control.Control table, Runnable recompute) {
+		Runnable listen = () -> Platform.runLater(() -> {
+			javafx.scene.Node rows = table.lookup(".clipped-container");
+			if (rows instanceof javafx.scene.layout.Region region) {
+				region.widthProperty().addListener((observable, oldValue, newValue) -> recompute.run());
+				recompute.run();
+			}
+		});
+		if (table.getSkin() != null)
+			listen.run();
+		else
+			table.skinProperty().addListener(new javafx.beans.value.ChangeListener<>() {
+				@Override
+				public void changed(ObservableValue<? extends javafx.scene.control.Skin<?>> observable, javafx.scene.control.Skin<?> oldSkin, javafx.scene.control.Skin<?> newSkin) {
+					if (newSkin != null) {
+						table.skinProperty().removeListener(this);
+						listen.run();
+					}
+				}
+			});
+	}
+
+	/**
+	 * The least a growing column gets when the others take the table's width: squeezed to 50 px, a
+	 * configuration wrapped after every few letters ("LongF / eature / Name.1"); a horizontal scroll
+	 * bar is the better choice.
+	 */
+	private static double minGrowWidth(String header) {
+		return Math.max(MIN_GROW_WIDTH, headerWidth(header));
+	}
+
+	/** The width a header needs for [text]: headers are bold, and a sorted column shows its arrow beside it. */
+	private static double headerWidth(String text) {
+		if (text == null || text.isEmpty())
+			return MIN_TEXT_WIDTH;
+		Font font = Font.getDefault();
+		Text measuring = new Text(text);
+		measuring.setFont(Font.font(font.getFamily(), javafx.scene.text.FontWeight.BOLD, font.getSize()));
+		return measuring.getLayoutBounds().getWidth() + TEXT_PADDING + SORT_ARROW_WIDTH;
 	}
 
 	private static double measure(String text) {
