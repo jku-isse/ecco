@@ -3,6 +3,7 @@ package at.jku.isse.ecco.module;
 import at.jku.isse.ecco.dao.Persistable;
 import at.jku.isse.ecco.feature.Configuration;
 import at.jku.isse.ecco.feature.Feature;
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.FeatureRevision;
 
 
@@ -65,8 +66,8 @@ public interface Condition extends Persistable {
 
 	/**
 	 * The condition as a LogicNG-parsable formula: the disjunction of its module revisions, each
-	 * the conjunction of its positive feature revisions and the negation of every revision of its
-	 * negative features (see {@link ModuleRevision#getConditionString()}).
+	 * the conjunction of its positive feature revisions and the negation of its negative features -
+	 * true for a configuration exactly when {@link #holds} is (FormulaConsistencyTest).
 	 * <p>
 	 * Module revisions made redundant by another one with a subset of its literals are left out
 	 * ({@code X | X & Y = X}, an identity - the formula is equivalent to the disjunction of all of
@@ -85,9 +86,11 @@ public interface Condition extends Persistable {
 			SortedSet<String> literals = new TreeSet<>();
 			for (FeatureRevision featureRevision : moduleRevision.getPos())
 				literals.add(featureRevision.getLogicLiteralRepresentation());
+			// a negative feature is absent in every revision - also one this condition was not written
+			// with ("B'" checks out a new one), as holds() decides: its feature variable, which a
+			// configuration sets for whichever revision it selects (FeatureLiterals.assignment)
 			for (Feature feature : moduleRevision.getNeg())
-				for (FeatureRevision featureRevision : feature.getRevisions())
-					literals.add("~" + featureRevision.getLogicLiteralRepresentation());
+				literals.add("~" + FeatureLiterals.featureVariable(feature));
 			if (literals.isEmpty())
 				return "$true"; // an empty module revision always holds
 			terms.add(literals.size() == 1 ? literals.first() : "(" + String.join(" & ", literals) + ")");

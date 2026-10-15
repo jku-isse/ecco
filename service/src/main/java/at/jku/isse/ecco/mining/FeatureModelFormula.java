@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
@@ -27,11 +28,16 @@ public final class FeatureModelFormula {
     }
 
     public static Formula compile(List<ConstraintMiner.Suggestion> acceptedSuggestions) {
+        return compile(acceptedSuggestions, java.util.function.UnaryOperator.identity());
+    }
+
+    /** {@link #compile} with each feature name as [variable] names it. */
+    private static Formula compile(List<ConstraintMiner.Suggestion> acceptedSuggestions, java.util.function.UnaryOperator<String> variable) {
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
         List<Formula> clauses = new ArrayList<>();
         for (ConstraintMiner.Suggestion suggestion : acceptedSuggestions) {
             if (!suggestion.isHard()) continue;
-            clauses.add(suggestion.kind.clause(f, suggestion.a, suggestion.b));
+            clauses.add(suggestion.kind.clause(f, variable.apply(suggestion.a), suggestion.b == null ? null : variable.apply(suggestion.b)));
         }
         return clauses.isEmpty() ? f.verum() : f.and(clauses);
     }
@@ -62,13 +68,15 @@ public final class FeatureModelFormula {
                                                 Collection<? extends Feature> allFeatures) {
         FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
         List<Formula> clauses = new ArrayList<>();
-        clauses.add(compile(acceptedSuggestions));
+        // feature variables as conditions name them (FeatureLiterals: "shopping-cart" is
+        // shopping_cart), so this model, the revision terms and checkout speak of the same variables
+        clauses.add(compile(acceptedSuggestions, FeatureLiterals::sanitize));
         for (Feature feature : allFeatures) {
             List<? extends FeatureRevision> revisions = new ArrayList<>(feature.getRevisions());
             for (FeatureRevision revision : revisions) {
                 // r -> f, i.e. ~r | f
                 clauses.add(f.or(f.literal(revision.getLogicLiteralRepresentation(), false),
-                        f.literal(feature.getName(), true)));
+                        f.literal(FeatureLiterals.featureVariable(feature), true)));
             }
             for (int i = 0; i < revisions.size(); i++) {
                 for (int j = i + 1; j < revisions.size(); j++) {

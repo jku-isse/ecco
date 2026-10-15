@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.mining;
 
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.module.Condition;
@@ -64,8 +65,10 @@ public final class ModuleConditionBridge {
             positive.add(featureRevision.getLogicLiteralRepresentation());
         }
         Set<String> negative = new HashSet<>();
+        // the feature variable (FeatureLiterals): absent in every revision, as holds() decides - the
+        // same variable checkout evaluates and FeatureModelFormula#compileRevisionAware links revisions to
         for (Feature feature : moduleRevision.getNeg()) {
-            negative.add(feature.getName());
+            negative.add(FeatureLiterals.featureVariable(feature));
         }
         return new PresenceConditionMinimizer.Term(positive, negative);
     }

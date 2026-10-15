@@ -88,27 +88,10 @@ public final class CheckoutConditions {
         Formula featureModel = FeatureModelFormula.compileRevisionAware(trustedSuggestions, features);
         Map<String, String> result = new HashMap<>();
         for (Association association : associations) {
-            List<PresenceConditionMinimizer.Term> terms = revisionTerms(association.computeCondition());
+            List<PresenceConditionMinimizer.Term> terms = ModuleConditionBridge.toRevisionTerms(association.computeCondition());
             List<PresenceConditionMinimizer.Term> minimized = PresenceConditionMinimizer.minimize(featureModel, terms);
             result.put(association.getId(), PresenceConditionMinimizer.toFormula(minimized).toString());
         }
         return result;
-    }
-
-    static List<PresenceConditionMinimizer.Term> revisionTerms(Condition condition) {
-        List<PresenceConditionMinimizer.Term> terms = new ArrayList<>();
-        for (Collection<ModuleRevision> moduleRevisions : condition.getModules().values()) {
-            for (ModuleRevision moduleRevision : moduleRevisions) {
-                Set<String> positive = new HashSet<>();
-                for (FeatureRevision featureRevision : moduleRevision.getPos())
-                    positive.add(featureRevision.getLogicLiteralRepresentation());
-                Set<String> negative = new HashSet<>();
-                for (Feature feature : moduleRevision.getNeg())
-                    for (FeatureRevision featureRevision : feature.getRevisions())
-                        negative.add(featureRevision.getLogicLiteralRepresentation());
-                terms.add(new PresenceConditionMinimizer.Term(positive, negative));
-            }
-        }
-        return terms;
     }
 }

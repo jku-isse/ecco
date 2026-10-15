@@ -11,6 +11,7 @@ import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * getConditionString()'s negative-feature handling used to only negate a feature's LATEST revision
@@ -40,13 +41,14 @@ public class SerModuleRevisionNegativeFeatureTest {
 		FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
 		// FeatureA selected, FeatureB present via its OLDER revision (not the latest) - the module's
-		// "excludes FeatureB" requirement is violated, so the condition must evaluate to false.
-		Assignment assignment = new Assignment();
-		assignment.addLiteral(f.literal(revA.getLogicLiteralRepresentation(), true));
-		assignment.addLiteral(f.literal(revB1.getLogicLiteralRepresentation(), true));
-		assignment.addLiteral(f.literal(revB2.getLogicLiteralRepresentation(), false));
-
-		assertFalse(condition.evaluate(assignment),
+		// "excludes FeatureB" requirement is violated, so the condition must evaluate to false. Evaluated
+		// with the assignment a configuration gives (FeatureLiterals: its revisions and their features).
+		Assignment older = new at.jku.isse.ecco.storage.ser.feature.SerConfiguration(new FeatureRevision[]{revA, revB1}).toAssignment();
+		assertFalse(condition.evaluate(older),
 				"FeatureB is present (via its older revision) so the module's exclusion of FeatureB must not be satisfied");
+		// ... and via a revision the condition was not written with ("FeatureB'"), as holds() decides
+		Assignment newer = new at.jku.isse.ecco.storage.ser.feature.SerConfiguration(new FeatureRevision[]{revA, featureB.addRevision("revB3")}).toAssignment();
+		assertFalse(condition.evaluate(newer), "a new revision of FeatureB is FeatureB present too");
+		assertTrue(condition.evaluate(new at.jku.isse.ecco.storage.ser.feature.SerConfiguration(new FeatureRevision[]{revA}).toAssignment()), "without FeatureB it holds");
 	}
 }

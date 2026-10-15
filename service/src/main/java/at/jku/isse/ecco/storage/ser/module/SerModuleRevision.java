@@ -1,5 +1,6 @@
 package at.jku.isse.ecco.storage.ser.module;
 
+import at.jku.isse.ecco.feature.FeatureLiterals;
 import at.jku.isse.ecco.feature.Feature;
 import at.jku.isse.ecco.feature.FeatureRevision;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
@@ -125,16 +126,10 @@ public class SerModuleRevision implements ModuleRevision {
 		Collection<Formula> formulas = new LinkedList<>();
 		for (Feature feature : this.neg){
 			// neg is feature-wide (Feature[], not FeatureRevision[]) - matching
-			// ModuleRevision.holds(Configuration)'s actual semantics, which disqualifies the module
-			// on ANY revision of the feature being present, not just its latest one. One disjunct
-			// per revision here, all OR'd together in getNegativeFormula() and then negated as a
-			// whole in getConditionString() (NOT(OR(...)) = AND(NOT(rev)) for every revision via De
-			// Morgan's) - excluding every revision, not just whichever happens to be latest right now.
-			for (FeatureRevision featureRevision : feature.getRevisions()) {
-				String conditionString = featureRevision.getLogicLiteralRepresentation();
-				Formula condition = parseString(conditionString);
-				formulas.add(condition);
-			}
+			// ModuleRevision.holds(Configuration), which disqualifies the module on ANY revision of
+			// the feature being present, also one not known yet: the feature variable, as
+			// Condition.toLogicString() writes it (FeatureLiterals)
+			formulas.add(parseString(FeatureLiterals.featureVariable(feature)));
 		}
 		return formulas;
 	}

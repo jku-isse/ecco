@@ -73,11 +73,10 @@ public class FormulaConsistencyTest {
     }
 
     /**
-     * Formula review 2026-10-15 #1 (harmonization H5): a configuration with a revision of a negated
-     * feature the condition was not stored with - "B'", a new revision - is not selected (holds()
-     * false), but the logic string, which lists the negated feature's revisions it knew, is true.
+     * A configuration with a revision of a negated feature the condition was not stored with - "B'",
+     * a new revision - is not selected (holds() false), and the logic string agrees: it negates the
+     * feature, not the revisions it knew (formula review 2026-10-15 #1, decided for holds()).
      */
-    @Disabled("known disagreement, formula review 2026-10-15 #1 - enable when holds() and the logic string agree (H5)")
     @Test
     @Timeout(60)
     public void aNewRevisionOfANegatedFeature(@TempDir Path tmp) throws Exception {
