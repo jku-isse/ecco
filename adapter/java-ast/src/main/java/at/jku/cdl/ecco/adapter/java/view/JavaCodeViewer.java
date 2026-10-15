@@ -33,6 +33,7 @@ import javafx.util.Callback;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -109,7 +110,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		for (Node fileNode : fileNodes) {
 			List<JavaCodeLine> built = new ArrayList<>();
 			Map<Node, Integer> indexByNode = new HashMap<>();
-			for (Node child : fileNode.getChildren()) {
+			for (Node child : inWrittenOrder(fileNode.getChildren())) {
 				renderNode(child, 0, built, indexByNode);
 			}
 
@@ -139,6 +140,28 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 	@Override
 	public String getPluginId() {
 		return JavaASTPlugin.class.getName();
+	}
+
+	/**
+	 * A file's parts in the order a checkout writes them (JavaASTWriteHandler#toJavaSource): the
+	 * package, the imports, then the types. They are unordered children of the file's node, which a
+	 * composition of several associations gives in the order it took the associations - a file was
+	 * shown with its package after its class.
+	 */
+	static List<Node> inWrittenOrder(Collection<? extends Node> parts) {
+		List<Node> ordered = new ArrayList<>(parts);
+		ordered.sort(Comparator.comparingInt(JavaCodeViewer::writtenRank));
+		return ordered;
+	}
+
+	private static int writtenRank(Node part) {
+		if (part.getArtifact() != null && part.getArtifact().getData() instanceof JavaASTData data) {
+			if (data.getType() == ASTNodeType.PACKAGEDECLARATION)
+				return 0;
+			if (data.getType() == ASTNodeType.IMPORT_DECLARATION)
+				return 1;
+		}
+		return 2;
 	}
 
 	private void collectFileNodes(Node n, List<Node> result) {
