@@ -137,7 +137,7 @@ To skip an unchanged artifact, a commit serializes it and compares the digest wi
 
 ## Gaps noted 2026-10-14 and 2026-10-15
 
-Found by round-trip and equality tests of the adapters, by headless GUI view tests and by replaying tinycc and flipperzero-firmware. The fixed ones (#57-#62) are listed in `requirements.md`; open:
+Found by round-trip and equality tests of the adapters, by headless GUI view tests and by replaying tinycc and flipperzero-firmware. The fixed ones (#57-#62) are among the closed gaps in `requirements.md`; open:
 
 ### #52 Java comments in parts of statements
 
@@ -158,6 +158,10 @@ Refusing a truncated JPEG is small (check the decoder's warnings). 16-bit channe
 ### #56 first C++ format, `case` blocks
 
 Checkout-only data from before d9ce686c, and the old build loses the same code. Fixing it would change how old repositories check out; leave unless such a repository is in use.
+
+### #64 identical initializer blocks in a Java class
+
+Split from #50: two equal initializer blocks are equal children of the unordered class node, which refuses them, so the file goes to the text adapter. The enum constants had a similar collision and were fixed by giving them an ordered group of their own (bd1f3662); initializer blocks could be grouped the same way, or kept apart by their position among the members. That changes the tree shape for every class with an initializer: needs the same care as the enum change (old data still written, existing repositories see a change once).
 
 ### #63 leftover error dialog in GUI tests
 
@@ -187,5 +191,5 @@ Find which GUI test leaves an error dialog ("Service is not initialized") behind
 | 11 | #52 Java comments in parts of statements | under a day | low |
 | 12 | #54 whole-file conflicts in a combined checkout | after a decision | low |
 | 13 | #63 leftover dialog in GUI tests | under a day | low |
-| later | #53, #55, #56 | when needed | low to medium |
+| later | #53, #55, #56, #64 | when needed | low to medium |
 | ongoing | #17 | with every commit | none |
