@@ -439,8 +439,16 @@ public class MainView extends BorderPane implements EccoListener {
 	}
 
 
+	// the repository the synchronized-folder warning was shown for: once each time one is opened
+	private java.nio.file.Path warnedRepository;
+
 	private void updateView() {
 		boolean initialized = this.eccoService.isInitialized();
+
+		java.nio.file.Path repository = initialized ? this.eccoService.getRepositoryDir() : null;
+		if (repository != null && !repository.equals(this.warnedRepository))
+			at.jku.isse.ecco.service.SyncedFolders.warning(repository).ifPresent(Notifications::info);
+		this.warnedRepository = repository;
 
 		this.newButton.setDisable(initialized);
 		this.openButton.setDisable(initialized);

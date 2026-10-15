@@ -13,7 +13,7 @@ public class ExceptionAlert extends Alert {
 	public ExceptionAlert(Throwable ex) {
 		super(AlertType.ERROR);
 
-		this.setContentText(ex.getMessage());
+		this.setContentText(describe(ex));
 
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
@@ -36,4 +36,21 @@ public class ExceptionAlert extends Alert {
 		this.getDialogPane().setExpandableContent(expContent);
 	}
 
+
+	/**
+	 * The messages of {@code ex} and its causes, one per line - the top one alone often only said
+	 * what failed ("Error when retrieving repository."), and why was hidden in the details; a
+	 * message already contained in an earlier one is left out.
+	 */
+	static String describe(Throwable ex) {
+		java.util.List<String> messages = new java.util.ArrayList<>();
+		for (Throwable t = ex; t != null; t = t.getCause()) {
+			String message = t.getMessage() == null ? null : t.getMessage().strip();
+			if (message == null || message.isEmpty())
+				continue;
+			if (messages.stream().noneMatch(earlier -> earlier.contains(message)))
+				messages.add(message);
+		}
+		return messages.isEmpty() ? ex.toString() : String.join("\n", messages);
+	}
 }

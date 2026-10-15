@@ -1,6 +1,7 @@
 package at.jku.isse.ecco.storage.ser.dao;
 
 import at.jku.isse.ecco.EccoException;
+import at.jku.isse.ecco.service.SyncedFolders;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactReference;
 import at.jku.isse.ecco.core.Association;
@@ -406,7 +407,9 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			else if (transaction == TRANSACTION.READ_WRITE)
 				this.beginReadWrite();
 			this.transactionCounter++;
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (IOException e) {
+			throw new EccoException(this.ioFailure("read", e), e);
+		} catch (ClassNotFoundException e) {
 			throw new EccoException("Error beginning transaction.", e);
 		}
 	}
@@ -428,11 +431,22 @@ public class SerTransactionStrategy implements TransactionStrategy {
 				else if (this.transaction == TRANSACTION.READ_WRITE)
 					this.endReadWrite();
 			} catch (IOException e) {
-				throw new EccoException("Error ending transaction.", e);
+				throw new EccoException(this.ioFailure("write", e), e);
 			}
 		}
 	}
 
+
+	/**
+	 * Says which repository could not be read or written, and why - "Error beginning transaction"
+	 * with the system's "Operation timed out" left the user guessing - and, for a repository in a
+	 * folder a cloud service synchronizes (the usual cause of that timeout), what to do.
+	 */
+	private String ioFailure(String operation, IOException e) {
+		String message = "Could not " + operation + " the repository " + this.repositoryDir.toAbsolutePath().normalize() + ": "
+				+ (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()) + ".";
+		return SyncedFolders.warning(this.repositoryDir).map(warning -> message + " " + warning).orElse(message);
+	}
 
 	private void beginReadOnly() throws IOException, ClassNotFoundException {
 		if (this.transaction == TRANSACTION.READ_ONLY) // nothing to do, we already have a read transaction going

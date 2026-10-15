@@ -23,6 +23,7 @@ import at.jku.isse.ecco.cli.command.suggestconstraints.ConstraintDecisionCommand
 import at.jku.isse.ecco.cli.command.suggestconstraints.SuggestConstraintsCommand;
 import at.jku.isse.ecco.cli.command.traces.TracesCommand;
 import at.jku.isse.ecco.service.EccoService;
+import at.jku.isse.ecco.service.SyncedFolders;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.*;
@@ -77,6 +78,10 @@ public class Main {
             Map<String, Object> attributes = new HashMap<>(parsed.getAttrs());
             attributes.put(ProgramConstants.START_DIR, startDir);
             commandRegister.run(command, new Namespace(attributes));
+            // a repository in a synchronized folder fails to read now and then ("Operation timed
+            // out"): say so where a repository is made or looked at, not on every command
+            if (InitCommand.INIT.equals(command) || ForkCommand.FORK.equals(command) || StatusCommand.STATUS.equals(command))
+                SyncedFolders.warning(eccoService.getRepositoryDir()).ifPresent(warning -> System.err.println("WARNING: " + warning));
             return 0;
         } catch (ArgumentParserException e) {
             parser.handleError(e);

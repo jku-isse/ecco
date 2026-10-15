@@ -158,6 +158,8 @@ Holds the repository. Everything in it is managed by ECCO except two files, whic
 
 The rest is the storage: a core file (`<id>.ser.zip`, current one named by the file `id`) with the repository's features, commits and modules and the order of the artifact packs, one file per association in `associations/`, and the artifacts in packs in `artifacts/` - each write adds a pack with the artifacts it changed, and loading reads the packs in order, a later copy superseding an earlier one. A core that still lists every artifact (written before 2026-10-13) is converted by the next write, which puts all artifacts into one pack. Commits are atomic: a crash during a commit leaves the previous state or the new one. The storage format evolves: repositories written by a newer ECCO cannot always be opened by an older one, and repositories from before the per-association storage format are rejected with an explanation.
 
+**Keep repositories outside folders a cloud service synchronizes** - iCloud Drive (on a Mac often the Desktop and Documents folders too), Dropbox, OneDrive, Google Drive. Such services can remove a file's content from the disk and fetch it again when it is read; when that takes too long, reading the repository fails with "Operation timed out". They can also upload a repository while ECCO is writing it, and lock files less reliably. `init`, `fork` and `status` warn about a repository in such a folder, and so does the GUI when one is opened; a failed read names the repository and the reason. If it has to be in such a folder, keep it downloaded (Finder: *Keep Downloaded*).
+
 ### Working directory
 
 Holds the files of one variant. `commit` reads it with the artifact adapters; `checkout` writes into it. ECCO maintains three files there:

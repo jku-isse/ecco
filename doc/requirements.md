@@ -1236,6 +1236,7 @@ None of these were written as targets; they are recovered from refusals in the c
 | NFR-R4 | Distinct artifacts with equal content shall stay distinct through persistence. | History c288ed2d, da14de14 |
 | NFR-R5 | Errors shall surface, not be dropped: missing associations throw instead of being skipped; a rollback never follows a successful commit. | History c6bb7561 |
 | NFR-R6 | Write-time pruning of associations shall not be used; it loses data on fork-and-merge. | History (reproduced, closed) |
+| NFR-R7 | A failed read or write of the repository shall name the repository and the system's reason; for a repository in a folder a cloud service synchronizes (iCloud Drive, also a synced Desktop or Documents folder; Dropbox, OneDrive, Google Drive), it shall say that such folders can time out reading and what to do. `init`, `fork` and `status`, and the GUI when it opens a repository, shall warn about such a folder. | Code `SyncedFolders`, `SerTransactionStrategy#ioFailure`, `ExceptionAlert#describe`; Test `SyncedFoldersTest`, `SyncedFolderWarningTest`, `ExceptionAlertTest`; README |
 
 ### Performance (recorded baselines)
 
