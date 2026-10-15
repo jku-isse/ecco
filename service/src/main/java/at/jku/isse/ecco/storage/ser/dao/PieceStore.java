@@ -75,7 +75,7 @@ final class PieceStore {
 		}
 	}
 
-	/** Association [associationId] is read: the pieces it refers to are those read for it (none, for a file written before pieces). */
+	/** Association [associationId] is read: the pieces it refers to are those read for it. */
 	void reading(String associationId) {
 		this.piecesOf.put(associationId, new HashSet<>());
 	}

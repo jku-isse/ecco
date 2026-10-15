@@ -10,7 +10,6 @@ import at.jku.isse.ecco.cli.command.features.ListFeaturesCommand;
 import at.jku.isse.ecco.cli.command.fetch.FetchCommand;
 import at.jku.isse.ecco.cli.command.fork.ForkCommand;
 import at.jku.isse.ecco.cli.command.init.InitCommand;
-import at.jku.isse.ecco.cli.command.convert.ConvertCommand;
 import at.jku.isse.ecco.cli.command.minimize.MinimizeCommand;
 import at.jku.isse.ecco.cli.command.minimizepreview.MinimizePreviewCommand;
 import at.jku.isse.ecco.cli.command.order.OrderCommand;
@@ -147,9 +146,6 @@ public class Main {
         registerMinimizePreviewCommand(commandParser);
         registerMinimizeCommand(commandParser);
         registerOrderCommand(commandParser);
-        commandParser.addParser(ConvertCommand.CONVERT).help("write the whole repository again in the current storage layout")
-                .setDefault(ProgramConstants.COMMAND, ConvertCommand.CONVERT);
-        commandRegister.register(ConvertCommand.CONVERT, new ConvertCommand(eccoService));
     }
 
     private static void registerOrderCommand(Subparsers commandParser) {

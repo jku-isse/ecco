@@ -17,9 +17,6 @@ public class SerNode implements Node, Node.Op {
 
 	public static final long serialVersionUID = 1L;
 
-	// Files written before carry a random id and a location per node, which nothing read (the id
-	// was a quarter of an association file's bytes, and made equal subtrees differ); ignored on read.
-
 	private boolean unique = true;
 
 	private transient List<Op> children = new ArrayList<>();

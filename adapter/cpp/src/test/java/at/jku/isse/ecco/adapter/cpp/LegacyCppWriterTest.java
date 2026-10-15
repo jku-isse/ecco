@@ -204,7 +204,7 @@ public class LegacyCppWriterTest {
 
     /**
      * How the legacy writer is reached: a checkout of a repository committed with the first adapter.
-     * resources/retired-format-repository/ecco is such a repository, made with the CLI of d9ce686c^
+     * resources/retired-format-repository/ecco is such a repository, made with the CLI of d9ce686c^ (its storage converted to the current layout with 4473766d)
      * (the last version with the first adapter): main.cpp committed as variant A, then as B (another
      * include, condition and loop). The expected files are what that CLI checked out - the format's
      * own reordering, re-indentation and loss of the comment included; the current version must

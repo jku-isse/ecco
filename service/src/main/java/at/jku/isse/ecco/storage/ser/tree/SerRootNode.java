@@ -27,9 +27,9 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 	}
 
 	/**
-	 * How the tree below is written: 0 (files written before - the field is absent there), the
-	 * nodes breadth first; 1, each node followed by where its children are - null for the nodes
-	 * that follow, or the {@link PieceRef} of the piece they are (see {@link TreePieces}).
+	 * How the tree below is written: 1, the nodes breadth first, each followed by where its children
+	 * are - null for the nodes that follow, or the {@link PieceRef} of the piece they are (see
+	 * {@link TreePieces}).
 	 */
 	private int treeFormat;
 
@@ -62,7 +62,8 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
-		boolean tagged = this.treeFormat >= 1;
+		if (this.treeFormat != 1)
+			throw new StreamCorruptedException("An association tree in format " + this.treeFormat + " - this version of ECCO reads format 1.");
 		Queue<Node.Op> currentLevel = new LinkedList<>();
 		currentLevel.add(this);
 		Queue<Node.Op> nextLevel = new LinkedList<>();
@@ -73,7 +74,7 @@ public class SerRootNode extends SerNode implements RootNode, RootNode.Op {
 				for(int i = 0; i < node.getNumberOfChildren(); i++){
 					Node.Op child = (Node.Op) in.readObject();
 					node.addChildWithoutNumberUpdate(child);
-					Object where = tagged ? in.readObject() : null;
+					Object where = in.readObject();
 					if (where instanceof PieceRef piece) {
 						if (!(in instanceof PieceSource source))
 							throw new StreamCorruptedException("A tree refers to a piece (" + piece.digest() + "), but is not read from a repository's storage.");

@@ -15,8 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The associations a write changed go into one pack (see AssociationStore): a commit writes one
- * file for them however many it changed, many commits leave few packs, and a repository written
- * before - a file per association - still opens, its files replaced by packs as commits write them.
+ * file for them however many it changed, and many commits leave few packs.
  */
 public class AssociationPacksTest {
 
@@ -51,42 +50,6 @@ public class AssociationPacksTest {
             service.checkout("A.30, B");
         }
         assertEquals(text.toString(), Files.readString(out.resolve("f.txt")));
-    }
-
-    /** A repository with a file per association (before-pack-order, 2026-10-13) opens; a commit puts what it writes into a pack. */
-    @Test
-    @Timeout(120)
-    public void filesOfTheirOwnAreReadAndReplacedByPacks(@TempDir Path tmp) throws Exception {
-        Path repo = tmp.resolve("old/.ecco");
-        Path fixture = Path.of("src/test/resources/repositories/before-pack-order/.ecco");
-        try (Stream<Path> walk = Files.walk(fixture)) {
-            for (Path p : walk.sorted().toList()) {
-                Path target = repo.resolve(fixture.relativize(p).toString());
-                if (Files.isDirectory(p)) Files.createDirectories(target); else Files.copy(p, target);
-            }
-        }
-        long ownFiles = files(repo.resolve("associations")).stream().filter(p -> p.getFileName().toString().endsWith(".ser.zip")).count();
-        assertTrue(ownFiles > 0, "precondition: files of their own");
-        try (EccoService service = new EccoService()) {
-            service.setRepositoryDir(repo);
-            service.open();
-            Path v = Files.createDirectories(tmp.resolve("v"));
-            Files.writeString(v.resolve("a.txt"), "one\nthree\nfour\n");
-            Files.writeString(v.resolve("b.txt"), "b2\n");
-            service.setBaseDir(v);
-            service.commit("v", "BASE, V");
-        }
-        List<Path> after = files(repo.resolve("associations"));
-        assertEquals(1, after.stream().filter(p -> p.getFileName().toString().startsWith("pack-")).count(), after.toString());
-        assertTrue(after.stream().filter(p -> p.getFileName().toString().endsWith(".ser.zip")).count() < ownFiles, "files of their own written into the pack are gone: " + after);
-        Path out = Files.createDirectories(tmp.resolve("out"));
-        try (EccoService service = new EccoService()) {
-            service.setRepositoryDir(repo);
-            service.open();
-            service.setBaseDir(out);
-            service.checkout("BASE, V");
-        }
-        assertEquals("one\nthree\nfour\n", Files.readString(out.resolve("a.txt")));
     }
 
     private static List<Path> files(Path dir) throws Exception {

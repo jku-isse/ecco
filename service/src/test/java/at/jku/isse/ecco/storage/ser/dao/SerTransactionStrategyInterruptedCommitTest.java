@@ -77,21 +77,11 @@ public class SerTransactionStrategyInterruptedCommitTest {
             assertDoesNotThrow(() -> service.commit("commit 2 retried", "A.2"));
         }
 
-        try (Stream<Path> leftovers = Files.walk(repoDir)) {
-            assertTrue(leftovers.noneMatch(p -> p.getFileName().toString().endsWith(".pending")),
-                    "no pending files may survive a successful commit");
-        }
     }
 
     /**
-     * Crash after the id-file swap but before the staged files were renamed into place: the stable
-     * file is gone/stale and the authoritative version is still "<name>.<currentId>.pending". The
-     * next load must roll it forward.
-     */
-    /**
-     * A failure after the id swap - here, a staged association file cannot be moved over its stable
-     * name - concerns a commit that is in: it is not reported as failed (a retry would commit it
-     * again), and the next read finishes it.
+     * A failure after the id swap - here, the superseded association packs cannot be deleted -
+     * concerns a commit that is in: it is not reported as failed (a retry would commit it again).
      */
     @Test
     @Timeout(60)
@@ -133,86 +123,7 @@ public class SerTransactionStrategyInterruptedCommitTest {
             Path checkoutDir = Files.createDirectories(workDir.resolve("checkout"));
             service.setBaseDir(checkoutDir);
             service.checkout("A.2");
-            assertEquals("a\nx\nb\n", Files.readString(checkoutDir.resolve("file.txt")), "the second commit's content, rolled forward on open");
+            assertEquals("a\nx\nb\n", Files.readString(checkoutDir.resolve("file.txt")), "the second commit's content");
         }
-        try (Stream<Path> leftovers = Files.walk(repoDir)) {
-            assertTrue(leftovers.noneMatch(p -> p.getFileName().toString().endsWith(".pending")), "no pending files left");
-        }
-    }
-
-    @Test
-    @Timeout(60)
-    public void pendingFilesOfTheCurrentTransactionAreRolledForwardOnLoad() throws IOException {
-        Path workDir = Files.createTempDirectory("ser-transaction-strategy-roll-forward");
-        Path repoDir = workDir.resolve(".ecco");
-        Path contentDir = workDir.resolve("content");
-        Files.createDirectories(contentDir);
-        Files.writeString(contentDir.resolve("file.txt"), "a\nb\n");
-
-        try (EccoService service = new EccoService()) {
-            service.setRepositoryDir(repoDir);
-            service.init();
-            service.setBaseDir(contentDir);
-            service.commit("commit 1", "A");
-        }
-
-        String currentId = Files.readString(repoDir.resolve("id")).trim();
-        Path associationsDir = repoDir.resolve("associations");
-        Path stable;
-        try (Stream<Path> files = Files.list(associationsDir)) {
-            stable = files.findFirst().orElseThrow();
-        }
-        Path pending = stable.resolveSibling(stable.getFileName() + "." + currentId + ".pending");
-        Files.move(stable, pending);
-
-        try (EccoService service = new EccoService()) {
-            service.setRepositoryDir(repoDir);
-            service.open();
-            assertEquals(1, service.getRepository().getCommits().size());
-        }
-        assertTrue(Files.exists(stable), "the pending file must have been rolled forward to its stable name");
-        assertTrue(Files.notExists(pending));
-    }
-
-    /**
-     * Pending files of a transaction that never reached its swap are garbage: readers must ignore
-     * them (never load or delete them - they could be a concurrent writer's), and the next writer
-     * discards them.
-     */
-    @Test
-    @Timeout(60)
-    public void pendingFilesOfAnAbortedTransactionAreIgnoredAndDiscardedByTheNextWriter() throws IOException {
-        Path workDir = Files.createTempDirectory("ser-transaction-strategy-aborted-pending");
-        Path repoDir = workDir.resolve(".ecco");
-        Path contentDir = workDir.resolve("content");
-        Files.createDirectories(contentDir);
-        Files.writeString(contentDir.resolve("file.txt"), "a\nb\n");
-
-        try (EccoService service = new EccoService()) {
-            service.setRepositoryDir(repoDir);
-            service.init();
-            service.setBaseDir(contentDir);
-            service.commit("commit 1", "A");
-        }
-
-        Path associationsDir = repoDir.resolve("associations");
-        Path stable;
-        try (Stream<Path> files = Files.list(associationsDir)) {
-            stable = files.findFirst().orElseThrow();
-        }
-        Path aborted = stable.resolveSibling(stable.getFileName() + ".00000000-0000-0000-0000-000000000000.pending");
-        Files.writeString(aborted, "not a zip - must never be loaded");
-
-        try (EccoService service = new EccoService()) {
-            service.setRepositoryDir(repoDir);
-            service.open();
-            assertEquals(1, service.getRepository().getCommits().size());
-            assertTrue(Files.exists(aborted), "a reader must not delete another transaction's pending files");
-
-            Files.writeString(contentDir.resolve("file.txt"), "a\nx\nb\n");
-            service.setBaseDir(contentDir);
-            service.commit("commit 2", "A.2");
-        }
-        assertTrue(Files.notExists(aborted), "the next writer must discard an aborted transaction's pending files");
     }
 }

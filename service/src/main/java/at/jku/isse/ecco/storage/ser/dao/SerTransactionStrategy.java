@@ -42,6 +42,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @Singleton
 public class SerTransactionStrategy implements TransactionStrategy {
 
+	/** The last commit whose ECCO reads the older storage layouts - and converts them ('ecco convert'). */
+	static final String CONVERTING_VERSION = "4473766d";
+
+
 	private static final Logger LOGGER = Logger.getLogger(SerTransactionStrategy.class.getName());
 
 
@@ -78,7 +82,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private FileLock writeFileLock;
 	// the parts of the storage - the strategy itself holds the transactions, the locks and the core,
 	// and the order of the steps of reading and writing
-	private final CommitJournal journal;
 	private final AssociationStore associations;
 	private final PieceStore pieces;
 	private final ArtifactPackStore packs;
@@ -93,7 +96,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		this.writeLockFile = repositoryDir.resolve(WRITELOCK_FILENAME);
 		this.associationsDir = repositoryDir.resolve(ASSOCIATIONS_DIRNAME);
 		this.artifactsDir = repositoryDir.resolve(ARTIFACTS_DIRNAME);
-		this.journal = new CommitJournal(this.associationsDir, this.artifactsDir);
 		this.pieces = new PieceStore(repositoryDir.resolve(PIECES_DIRNAME));
 		this.associations = new AssociationStore(this.associationsDir, this.pieces);
 		this.packs = new ArtifactPackStore(this.artifactsDir);
@@ -227,21 +229,17 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 	/**
-	 * Persists the transaction with a small roll-forward journal, so that a failure or crash at any
-	 * point leaves either the old or the new state loadable, never a mix of both:
+	 * Persists the transaction so that a failure or crash at any point leaves either the old or the
+	 * new state loadable, never a mix of both:
 	 * <ol>
-	 * <li>every dirty artifact/association is written to {@code <stable name>.<newId>.pending}, never
-	 * over its stable file - those are still what the current core loads;</li>
-	 * <li>the new core is written to {@code <newId>.ser.zip};</li>
+	 * <li>the changed artifacts, associations and tree pieces are written into new packs, under their
+	 * final names - nothing refers to them yet;</li>
+	 * <li>the new core, which refers to them, is written to {@code <newId>.ser.zip};</li>
 	 * <li>the id file is switched to {@code newId} - the commit point;</li>
-	 * <li>the pending files are renamed over their stable names.</li>
+	 * <li>once no reader holds the previous core, the packs nothing refers to anymore are deleted.</li>
 	 * </ol>
-	 * Dirty entities that already existed used to be rewritten in place in step 1, so failing before
-	 * step 3 left the old core loading some new files (e.g. an artifact whose containing node or POG
-	 * now referenced things only the new core knows about) - an unopenable repository. See
-	 * SerTransactionStrategyInterruptedCommitTest. A failure before step 3 now just leaves pending
-	 * files behind, discarded by the next writer; a failure during step 4 is finished by the next
-	 * {@link #loadDatabase()}.
+	 * A failure before step 3 leaves packs nothing refers to, deleted by a later write; a failure
+	 * after it is logged and leaves the commit in place (see SerTransactionStrategyInterruptedCommitTest).
 	 */
 	private void endReadWrite() throws IOException {
 		// check if we still have exclusive write lock and take it
@@ -264,16 +262,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// need to already exist for the resolution pass to find - writing them first is not itself
 		// required for crash-safety (nothing points at them until the id-file swap below, same as
 		// associations), just keeps the two writes in the same order load reads them back in.
-		// compute the new core id up front: every dirty file below is staged under a name tagged with
-		// it, so that the id-file swap further down is the single commit point for the whole
-		// transaction (see the javadoc on this method)
+		// the new core's id names the packs of this write too (see the javadoc on this method)
 		String newId = UUID.randomUUID().toString();
-		// discard leftovers of earlier transactions that failed before their swap - safe here, we
-		// hold the exclusive write lock, so no other writer can have files in flight
-		this.journal.recoverPendingFiles(this.id, true);
 
 		Map<String, byte[]> stagedArtifacts = new HashMap<>();
-		Set<String> looseArtifactFiles = this.packs.write(repo, newId, stagedArtifacts);
+		this.packs.write(repo, newId, stagedArtifacts);
 
 		// then the associations it touched, in a pack of their own (see AssociationStore#stage)
 		AssociationStore.Staged staged = this.associations.stage(repo, newId);
@@ -322,7 +315,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// failed - the user would retry, and a retried commit is a second commit. The next load
 		// finishes what is left (loadDatabase() rolls pending files forward).
 		try {
-			this.finishCommitted(repo, newId, staged, stagedArtifacts, oldCoreReleased, looseArtifactFiles);
+			this.finishCommitted(repo, newId, staged, stagedArtifacts, oldCoreReleased);
 		} catch (IOException | RuntimeException e) {
 			LOGGER.log(Level.WARNING, "The write to " + this.repositoryDir + " is committed, but finishing it failed; the next read of the repository finishes it.", e);
 			// nothing held in memory is trusted: the next transaction reads the repository again
@@ -339,17 +332,15 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	}
 
 	/**
-	 * After the commit point of {@link #endReadWrite()}: moves files staged by writes before packs
-	 * over their stable names, deletes the files the new core no longer references, and records what
-	 * is stored now.
+	 * After the commit point of {@link #endReadWrite()}: deletes the files the new core no longer
+	 * references, and records what is stored now.
 	 */
 	private void finishCommitted(SerRepository repo, String newId, AssociationStore.Staged staged, Map<String, byte[]> stagedArtifacts,
-								 boolean oldCoreReleased, Set<String> looseArtifactFiles) throws IOException {
-		this.journal.recoverPendingFiles(newId, false);
+								 boolean oldCoreReleased) throws IOException {
 		this.associations.committed(repo, staged, oldCoreReleased);
 		this.packs.committed(stagedArtifacts);
 		if (oldCoreReleased) {
-			this.packs.deleteSupersededArtifactFiles(repo, looseArtifactFiles);
+			this.packs.deleteSupersededPacks(repo);
 			this.pieces.deleteUnreferenced(repo.getAssociationIds());
 		}
 		// stored as they are now: unchanged until changed again
@@ -448,6 +439,12 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					if (loaded.getStorageFormat() > Database.STORAGE_FORMAT)
 						throw new EccoException("This repository (" + this.repositoryDir + ") was written by a newer version of ECCO (storage format "
 								+ loaded.getStorageFormat() + "; this version reads up to " + Database.STORAGE_FORMAT + "). Open it with that version or a later one.");
+					// older layouts - a file per artifact or association, the artifact index in the
+					// core - are no longer read; ECCO up to CONVERTING_VERSION reads all of them
+					if (loaded.getStorageFormat() < Database.STORAGE_FORMAT || !((SerRepository) loaded.getRepository()).isCurrentLayout())
+						throw new EccoException("This repository (" + this.repositoryDir + ") is stored in an older layout that this version of ECCO"
+								+ " no longer reads. Convert it with ECCO built from commit " + CONVERTING_VERSION + ": run 'ecco convert' in"
+								+ " its folder, which writes it in the current layout.");
 					this.database = loaded;
 				}
 
@@ -469,20 +466,6 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		}
 
 		SerRepository repo = (SerRepository) this.database.getRepository();
-
-		// repositories written before associations (12330811) and then artifacts (3e2b04d6) got their
-		// own files deserialize without these id sets. Their embedded content lives in fields that are
-		// transient now, so they can't be migrated here - say so instead of failing with an NPE.
-		if (repo.isOldStorageFormat()) {
-			throw new EccoException("This repository (" + this.repositoryDir + ") was written in an older storage format "
-					+ "(before " + (repo.hasAssociationIds() ? "artifacts" : "associations") + " were stored in their own files) "
-					+ "that this version of ECCO cannot read. Open it with the ECCO version that created it to export its variants.");
-		}
-
-		// finish a committed transaction whose staged files weren't all moved into place yet (see
-		// endReadWrite()); pending files of aborted transactions are only discarded while holding
-		// the write lock, as they might belong to a concurrent writer otherwise
-		this.journal.recoverPendingFiles(this.id, this.transaction == TRANSACTION.READ_WRITE && this.writeFileLock != null);
 
 		// the artifacts before any association (see ArtifactPackStore#load)
 		this.packs.load(repo);

@@ -36,7 +36,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.DB_FILE_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.TMP_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.digest;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.serialize;
@@ -82,30 +81,9 @@ final class ArtifactPackStore {
 	 */
 	void load(SerRepository repo) throws IOException, ClassNotFoundException {
 		Map<String, Artifact.Op<?>> loadedById = new HashMap<>();
-		if (repo.hasLegacyArtifactIndex()) {
-			// a core written before packs were ordered holds the index itself
-			Map<String, List<String>> idsByPack = new LinkedHashMap<>();
-			for (String artifactId : repo.legacyArtifactIds()) {
-				String pack = repo.legacyArtifactPack(artifactId);
-				if (pack == null) {
-					StorageFiles.Read read = StorageFiles.readZipped(this.artifactFile(artifactId));
-					loadedById.put(artifactId, (Artifact.Op<?>) read.object());
-					this.artifactDigests.put(artifactId, Arrays.copyOf(read.digest(), ARTIFACT_DIGEST_LENGTH));
-					repo.addLooseArtifact(artifactId);
-				}
-				else
-					idsByPack.computeIfAbsent(pack, p -> new ArrayList<>()).add(artifactId);
-			}
-			for (Map.Entry<String, List<String>> pack : idsByPack.entrySet()) {
-				this.readPack(this.dir.resolve(pack.getKey()), pack.getValue(), loadedById);
-				for (String artifactId : pack.getValue())
-					repo.setArtifactPack(artifactId, pack.getKey());
-			}
-		} else {
-			// the packs in the order they were written: a later pack's copy is the current one
-			for (String pack : repo.getPackOrder())
-				this.readOrderedPack(pack, loadedById, repo);
-		}
+		// the packs in the order they were written: a later pack's copy is the current one
+		for (String pack : repo.getPackOrder())
+			this.readOrderedPack(pack, loadedById, repo);
 		List<Artifact.Op<?>> loadedArtifacts = new ArrayList<>(repo.getArtifactIds().size());
 		for (String artifactId : repo.getArtifactIds())
 			loadedArtifacts.add(loadedById.get(artifactId));
@@ -238,15 +216,12 @@ final class ArtifactPackStore {
 	 * half of the artifacts are still current are compacted: their current artifacts go into the new
 	 * pack too, and the old pack is deleted once nothing references it; so are the smallest packs once
 	 * there are more than {@link #MAX_PACKS}.
-	 *
-	 * @return the ids of artifacts with a file of their own, written into the new pack: their files go once committed
 	 */
-	Set<String> write(SerRepository repo, String newId, Map<String, byte[]> staged) throws IOException {
+	void write(SerRepository repo, String newId, Map<String, byte[]> staged) throws IOException {
 		if (!repo.getDirtyArtifacts().isEmpty())
 			Files.createDirectories(this.dir);
 		// the artifacts of the new pack, with the digest of each one's serialization - not the
-		// serialization itself: held for every artifact of a repository converted to ordered packs
-		// (below), that took as much memory as the artifacts' bytes, besides the artifacts
+		// serialization itself, which would hold as much memory as the artifacts again
 		Map<String, byte[]> entries = new LinkedHashMap<>();
 		// whether each pack still exists, asked once per pack rather than once per artifact
 		Map<String, Boolean> packExists = new HashMap<>();
@@ -268,23 +243,6 @@ final class ArtifactPackStore {
 						+ artifact + " (" + artifact.getData().getClass().getName() + ")");
 			entries.put(id, digest);
 			staged.put(id, digest);
-		}
-
-		// a core written before packs were ordered: every current artifact goes into the new pack, so
-		// that its packs need no order (see SerRepository.hasLegacyArtifactIndex()); the files of
-		// artifacts that had one of their own go too
-		Set<String> looseFiles = new HashSet<>();
-		boolean legacy = repo.hasLegacyArtifactIndex();
-		if (legacy) {
-			for (String id : repo.getArtifactIds()) {
-				if (repo.getArtifactPack(id) == null)
-					looseFiles.add(id);
-				if (!entries.containsKey(id) && repo.getArtifact(id) != null) {
-					byte[] digest = artifactDigest(serialize(repo.getArtifact(id)));
-					entries.put(id, digest);
-					staged.put(id, digest);
-				}
-			}
 		}
 
 		// how many current artifacts each pack keeps once the new one supersedes those it holds
@@ -312,8 +270,6 @@ final class ArtifactPackStore {
 				this.repack(repo, this.stillCurrent(repo, pack, entries), entries, staged);
 		}
 
-		if (legacy)
-			repo.dropLegacyArtifactIndex();
 		if (!entries.isEmpty()) {
 			String packName = PACK_PREFIX + newId + PACK_SUFFIX;
 			writePack(repo, entries, this.dir.resolve(packName));
@@ -324,7 +280,6 @@ final class ArtifactPackStore {
 		}
 		// packs nothing is current in anymore leave the order (their files go once committed)
 		repo.dropEmptyPacks();
-		return looseFiles;
 	}
 
 	/** The artifacts [pack] holds the current copy of that the new pack does not supersede. */
@@ -395,26 +350,18 @@ final class ArtifactPackStore {
 		return Arrays.copyOf(digest(bytes), ARTIFACT_DIGEST_LENGTH);
 	}
 
-	/** The file an artifact had of its own before packs - also the key of its digest. */
-	private Path artifactFile(String artifactId) {
-		return this.dir.resolve(artifactId + DB_FILE_SUFFIX);
-	}
-
 	private boolean isArtifactStored(SerRepository repo, String artifactId, Map<String, Boolean> packExists) {
 		String pack = repo.getArtifactPack(artifactId);
 		if (pack == null)
-			return Files.exists(this.artifactFile(artifactId));
+			return false;
 		return packExists.computeIfAbsent(pack, p -> Files.exists(this.dir.resolve(p)));
 	}
 
 	/**
-	 * After a committed write: deletes the files of the artifacts just packed that still had a file
-	 * of their own, and every pack nothing is in anymore (also one left by a crashed write). Only
-	 * called when no reader holds the previous core, which may still reference them.
+	 * After a committed write: deletes every pack nothing is in anymore (also one left by a crashed
+	 * write). Only called when no reader holds the previous core, which may still reference them.
 	 */
-	void deleteSupersededArtifactFiles(SerRepository repo, Set<String> looseFiles) throws IOException {
-		for (String id : looseFiles)
-			Files.deleteIfExists(this.artifactFile(id));
+	void deleteSupersededPacks(SerRepository repo) throws IOException {
 		if (!Files.isDirectory(this.dir))
 			return;
 		Set<String> referenced = new HashSet<>(repo.getPackOrder());

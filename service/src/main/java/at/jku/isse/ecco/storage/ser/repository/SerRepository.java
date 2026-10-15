@@ -70,24 +70,19 @@ public final class SerRepository implements Repository, Repository.Op {
 	// Artifacts are stored in pack files (see SerTransactionStrategy), and the core lists the packs in
 	// the order they were written (packOrder). Which artifacts there are and which pack holds each is
 	// not in the core: loading reads the packs in that order, a later pack's copy of an artifact
-	// superseding an earlier one's. The core used to hold that index - two entries per artifact, two
-	// million for a large repository, written again with every commit; artifactIds and artifactPacks
-	// are those fields, still read from cores written before (packOrder null), and null since.
-	private Set<String> artifactIds;
-	private Map<String, String> artifactPacks;
+	// superseding an earlier one's.
 	private List<String> packOrder = new ArrayList<>();
 	// the association packs in the order they were written - a later pack's copy of an association
-	// is the current one (SerTransactionStrategy); null in a core written before them, whose
-	// associations each have a file of their own
+	// is the current one (SerTransactionStrategy)
 	private List<String> associationPackOrder;
 	// the module revisions association counters refer to by index (CompactCounters, version 2):
-	// append-only, so an index once written stays valid; null in a core written before
+	// append-only, so an index once written stays valid
 	private List<SerModuleRevision> countedRevisions;
 	// ... and the index of each (made when first asked for)
 	private transient Map<SerModuleRevision, Integer> countedIndex;
 	private transient Map<String, Artifact.Op<?>> artifactsById = new LinkedHashMap<>();
-	// the index, built when loading: every artifact's id, the pack holding its current copy (none: a
-	// file of its own, from before packs), how many current artifacts each pack holds
+	// the index, built when loading: every artifact's id, the pack holding its current copy, how many
+	// current artifacts each pack holds
 	private transient Set<String> liveArtifactIds;
 	private transient Map<String, String> livePacks;
 	private transient Map<String, Integer> currentPerPack;
@@ -97,7 +92,7 @@ public final class SerRepository implements Repository, Repository.Op {
 	// Trees.java's newIdentitySet() already uses for the same reason): SerArtifact.equals()/
 	// hashCode() are deliberately data-based (Trees.slice() relies on it), so a plain
 	// content-equality Set here would silently drop a genuinely distinct artifact (different
-	// storageId, already recorded in artifactIds) whenever its DATA happens to match one already
+	// storageId, already known) whenever its DATA happens to match one already
 	// in the set - its id would then have no file ever written for it, a real bug this caught via
 	// a many-commits-with-repeated-content benchmark (NoSuchFileException on the next reload).
 	private transient Set<Artifact.Op<?>> dirtyArtifacts = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -212,34 +207,13 @@ public final class SerRepository implements Repository, Repository.Op {
 	}
 
 	/**
-	 * Whether this repository was deserialized from a storage format that predates per-association
-	 * (12330811) or per-artifact (3e2b04d6) files - the id sets didn't exist then.
+	 * Whether this core is in the current layout: it has association ids and the artifact pack order,
+	 * and its associations are in packs. Cores written before - a file per artifact or association,
+	 * the artifact index in the core - are no longer read (see SerTransactionStrategy).
 	 */
-	public boolean isOldStorageFormat() {
-		return this.associationIds == null || (this.artifactIds == null && this.packOrder == null);
-	}
-
-	/**
-	 * Whether this core was written before packs were ordered: its artifact index is in the core
-	 * ({@link #legacyArtifactIds()}), and the packs cannot be read in an order that resolves which
-	 * copy of an artifact is current - the next write puts all of them into one new pack.
-	 */
-	public boolean hasLegacyArtifactIndex() {
-		return this.packOrder == null && this.artifactIds != null;
-	}
-
-	/** The artifact ids a core written before packs were ordered holds; see {@link #hasLegacyArtifactIndex()}. */
-	public Set<String> legacyArtifactIds() {
-		return this.artifactIds == null ? Set.of() : Collections.unmodifiableSet(this.artifactIds);
-	}
-
-	/** The pack a core written before packs were ordered records for an artifact, or null. */
-	public String legacyArtifactPack(String artifactId) {
-		return this.artifactPacks == null ? null : this.artifactPacks.get(artifactId);
-	}
-
-	public boolean hasAssociationIds() {
-		return this.associationIds != null;
+	public boolean isCurrentLayout() {
+		return this.associationIds != null && this.packOrder != null
+				&& (this.associationIds.isEmpty() || (this.associationPackOrder != null && !this.associationPackOrder.isEmpty()));
 	}
 
 	/** The full set of association IDs that should have a file on disk - what {@link #restoreAssociations} needs loaded. */
@@ -329,38 +303,18 @@ public final class SerRepository implements Repository, Repository.Op {
 
 	/** The packs in the order they were written: a later one's copy of an artifact is current. */
 	public List<String> getPackOrder() {
-		return this.packOrder == null ? List.of() : this.packOrder;
+		return this.packOrder;
 	}
 
 	/** Adds a pack, written now, at the end of {@link #getPackOrder()}. */
 	public void addPack(String pack) {
-		if (this.packOrder == null)
-			this.packOrder = new ArrayList<>();
 		this.packOrder.add(pack);
 	}
 
 	/** Takes packs that hold no current artifact anymore out of {@link #getPackOrder()} and the sizes. */
 	public void dropEmptyPacks() {
-		if (this.packOrder != null)
-			this.packOrder.removeIf(pack -> this.currentArtifacts(pack) == 0);
+		this.packOrder.removeIf(pack -> this.currentArtifacts(pack) == 0);
 		this.getPackSizes().keySet().retainAll(this.getPackOrder());
-	}
-
-	/** Records an artifact with a file of its own (from before packs). */
-	public void addLooseArtifact(String artifactId) {
-		this.liveArtifactIds().add(artifactId);
-	}
-
-	/**
-	 * Called when a core written before packs were ordered is rewritten: from now on its packs are
-	 * ordered (the write puts every current artifact into one new pack first), and the index is not
-	 * written into the core anymore.
-	 */
-	public void dropLegacyArtifactIndex() {
-		this.artifactIds = null;
-		this.artifactPacks = null;
-		if (this.packOrder == null)
-			this.packOrder = new ArrayList<>();
 	}
 
 	/** Pack file -> the number of artifacts written into it. */
@@ -649,7 +603,7 @@ public final class SerRepository implements Repository, Repository.Op {
 		return this.mainTree;
 	 }
 
-	/** The association packs, oldest first (none in a core written before them). */
+	/** The association packs, oldest first. */
 	public List<String> getAssociationPackOrder() {
 		return this.associationPackOrder == null ? List.of() : Collections.unmodifiableList(this.associationPackOrder);
 	}

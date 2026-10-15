@@ -5,7 +5,6 @@ import at.jku.isse.ecco.core.Association;
 import at.jku.isse.ecco.storage.ser.repository.SerRepository;
 import at.jku.isse.ecco.storage.ser.tree.TreePieces;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -32,10 +31,8 @@ import java.util.UUID;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.DB_FILE_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.TMP_SUFFIX;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.digest;
 import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.serializeAssociation;
@@ -48,9 +45,7 @@ import static at.jku.isse.ecco.storage.ser.dao.StorageFiles.serializeAssociation
  * a later pack's copy of an association is the current one; an association whose bytes did not
  * change is not written. Packs of which less than half is current are compacted, the smallest
  * merged once there are too many; packs no longer in the order are deleted once no reader holds the
- * previous core. Repositories written before have a file per association
- * ({@code associations/<id>.ser.zip}): read where no pack holds the association, deleted once one
- * does.
+ * previous core.
  */
 final class AssociationStore {
 
@@ -116,14 +111,12 @@ final class AssociationStore {
 			List<Association.Op> associations = new ArrayList<>(repo.getAssociationIds().size());
 			for (String id : repo.getAssociationIds()) {
 				String pack = latest.get(id);
+				if (pack == null)
+					throw new EccoException("The association " + id + " is in no association pack - the repository is damaged.");
 				byte[] bytes;
-				if (pack != null) {
-					ZipFile zip = zips.get(pack);
-					try (InputStream in = zip.getInputStream(zip.getEntry(id))) {
-						bytes = in.readAllBytes();
-					}
-				} else {
-					bytes = readOwnFile(this.file(id));
+				ZipFile zip = zips.get(pack);
+				try (InputStream in = zip.getInputStream(zip.getEntry(id))) {
+					bytes = in.readAllBytes();
 				}
 				this.storedDigests.put(id, digest(bytes));
 				this.packOf.put(id, pack);
@@ -226,8 +219,7 @@ final class AssociationStore {
 
 	/**
 	 * After the commit point: the associations written are stored now. When no reader holds the
-	 * previous core ([oldCoreReleased]), the packs no longer in the order go, and the files of their
-	 * own of associations that are gone or in a pack now.
+	 * previous core ([oldCoreReleased]), the packs no longer in the order go.
 	 */
 	void committed(SerRepository repo, Staged staged, boolean oldCoreReleased) throws IOException {
 		for (Map.Entry<String, byte[]> written : staged.digests().entrySet()) {
@@ -251,11 +243,6 @@ final class AssociationStore {
 						gone.add(file); // superseded, or left by a crashed write
 				} else if (name.startsWith(PACK_PREFIX) && name.endsWith(TMP_SUFFIX)) {
 					gone.add(file); // being written when a write crashed (none is now: this one holds the lock)
-				} else if (name.endsWith(DB_FILE_SUFFIX)) {
-					String id = name.substring(0, name.length() - DB_FILE_SUFFIX.length());
-					// a file of its own an association no longer reads from
-					if (!this.packOf.containsKey(id) || this.packOf.get(id) != null)
-						gone.add(file);
 				}
 			}
 		}
@@ -300,23 +287,6 @@ final class AssociationStore {
 		} finally {
 			Files.deleteIfExists(tmpFile);
 		}
-	}
-
-	/** The file an association had of its own before packs. */
-	private Path file(String id) {
-		return this.dir.resolve(id + DB_FILE_SUFFIX);
-	}
-
-	private static byte[] readOwnFile(Path file) throws IOException {
-		if (!Files.exists(file))
-			throw new EccoException("The association file " + file.getFileName() + " is missing - the repository is damaged.");
-		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)))) {
-			ZipEntry e;
-			while ((e = zis.getNextEntry()) != null)
-				if (e.getName().equals(StorageFiles.ZIP_ENTRY_NAME))
-					return zis.readAllBytes();
-		}
-		throw new EccoException("No " + StorageFiles.ZIP_ENTRY_NAME + " entry found in " + file);
 	}
 
 	/** See {@link #VERIFY_UNCHANGED_ASSOCIATIONS}: before anything is written, so a failure leaves the repository as it was. */

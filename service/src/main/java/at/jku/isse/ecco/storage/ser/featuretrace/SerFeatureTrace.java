@@ -13,7 +13,7 @@ public class SerFeatureTrace implements FeatureTrace {
 
     private static final long serialVersionUID = 1621713735051207581L;
     private Node node;
-    // the proactive condition's text - stored as a string, as in files written before LogicCondition
+    // the proactive condition's text, as stored
     private String proactiveCondition;
     // ... and as a condition (derived from the text, made when first asked for)
     private transient LogicCondition proactive;
@@ -21,7 +21,6 @@ public class SerFeatureTrace implements FeatureTrace {
     // commit and merge and when a repository is read) - not stored: stored, it went stale whenever a
     // commit changed the condition of an association it did not write (ReopenEquivalenceTest), it
     // repeated the condition on every unique node, and a changed condition rewrote the association.
-    // Files written before carry it (as a string); it is ignored on read.
     private transient LogicCondition retroactiveCondition;
 
     public SerFeatureTrace(Node node){

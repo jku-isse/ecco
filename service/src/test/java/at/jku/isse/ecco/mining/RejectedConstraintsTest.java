@@ -119,28 +119,6 @@ public class RejectedConstraintsTest {
 
     @Test
     @Timeout(30)
-    public void aRepositoryWrittenBeforeRejectionsWereStoredGainsThem(@TempDir Path tmp) throws Exception {
-        // an empty repository an earlier build wrote (2026-08-05): its core file has no rejected-constraints field
-        Path old = Path.of("src/test/resources/repositories/before-rejected-constraints/.ecco");
-        Path repo = tmp.resolve("old");
-        try (var paths = Files.walk(old)) {
-            for (Path p : paths.toList()) {
-                Path target = repo.resolve(".ecco").resolve(old.relativize(p).toString());
-                if (Files.isDirectory(p)) Files.createDirectories(target);
-                else Files.copy(p, target);
-            }
-        }
-        try (EccoService service = reopen(repo)) {
-            assertEquals(Set.of(), signatures(service.getRepository().getRejectedConstraints()));
-            service.rejectConstraints(List.of(MANDATORY_A));
-        }
-        try (EccoService service = reopen(repo)) {
-            assertEquals(Set.of(signature(MANDATORY_A)), signatures(service.getRepository().getRejectedConstraints()));
-        }
-    }
-
-    @Test
-    @Timeout(30)
     public void mergeCopiesRejectionsLikeAcceptedConstraints() {
         Repository.Op source = new at.jku.isse.ecco.storage.ser.repository.SerRepository();
         Repository.Op target = new at.jku.isse.ecco.storage.ser.repository.SerRepository();
