@@ -73,6 +73,7 @@ class CheckoutService {
         if (owner.minimizedConditionsInCheckout)
             LOGGER.info("Checking out with minimized conditions for " + minimized.size() + " of " + repository.getAssociations().size() + " associations.");
         Checkout checkout = repository.compose(configuration, minimized);
+        WholeFileConflicts.find(checkout, repository);
         if (owner.surplusAbsorptionEnabled && !checkout.getSurplusModules().isEmpty()) {
             try {
                 SurplusLatticeAbsorber.suppressAbsorbed(checkout, repository);
@@ -159,6 +160,9 @@ class CheckoutService {
                                 .append(" (current order: ").append(ArtifactDiagnostics.describeChildren(orderNode)).append(")")
                                 .append(" -- suggested fix: ").append(ArtifactDiagnostics.suggestOrderFix(orderNode))
                                 .append(System.lineSeparator());
+                    }
+                    for (String conflict : checkout.getConflicts()) {
+                        sb.append("CONFLICT: ").append(conflict).append(System.lineSeparator());
                     }
                     for (Association association : checkout.getUnresolvedAssociations()) {
                         sb.append("UNRESOLVED: ").append(association).append(System.lineSeparator());

@@ -48,10 +48,11 @@ public class FileWriterTest {
      * discarding both. Since adapter-file is the catch-all handler for any file no more specific
      * adapter claims, and checkout/compose can merge content from multiple associations into one tree,
      * this wasn't purely a malformed-hand-built-tree scenario. Fixed to throw instead of silently
-     * losing data.
+     * losing data; since gap #54 such a file is not written and the checkout reports it as a
+     * CONFLICT, instead of failing as a whole.
      */
     @Test
-    public void writeThrowsWhenThePluginNodeHasMoreThanOneChild() throws IOException {
+    public void aFileWithMoreThanOneVersionIsNotWritten() throws IOException {
         Path baseDir = Files.createTempDirectory("file-writer-multi-children");
         Files.writeString(baseDir.resolve("a.bin"), "hello");
         Files.writeString(baseDir.resolve("b.bin"), "world");
@@ -63,7 +64,10 @@ public class FileWriterTest {
 
         Path outputDir = Files.createTempDirectory("file-writer-multi-children-out");
 
-        assertThrows(EccoException.class, () -> writer.write(outputDir, Set.<Node>of(pluginNode)));
+        // neither version, and no failure: a checkout combining variants writes the other files and
+        // reports this one as a CONFLICT (see WholeFileConflicts in the service)
+        assertEquals(0, writer.write(outputDir, Set.<Node>of(pluginNode)).length);
+        assertFalse(Files.exists(outputDir.resolve("out.bin")));
     }
 
     @Test

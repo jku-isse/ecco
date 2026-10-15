@@ -17,6 +17,8 @@ import java.util.Set;
 
 public class FileWriter implements ArtifactWriter<Set<Node>, Path> {
 
+	private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(FileWriter.class.getName());
+
 	public FileWriter() {
 
 	}
@@ -40,7 +42,12 @@ public class FileWriter implements ArtifactWriter<Set<Node>, Path> {
 			Path outputPath = base.resolve(pluginArtifact.getPath()); // TODO: this resolve might not be necessary as the artifact stores the relative path anyway.
 			output.add(outputPath);
 
-			if (node.getChildren().size() != 1) {
+			if (node.getChildren().size() > 1) {
+				// several versions of the file in a checkout combining variants: nothing to merge; not
+				// written, the checkout reports it as a CONFLICT (it used to fail the whole checkout)
+				LOGGER.warning("Not written, " + node.getChildren().size() + " versions combined: " + outputPath);
+				output.remove(outputPath);
+			} else if (node.getChildren().size() != 1) {
 				// A plugin node produced by FileReader always has exactly one FileArtifactData child;
 				// anything else is malformed input (e.g. a composed/merged checkout tree that ended up
 				// with more than one contributor for the same file) - failing loudly beats silently

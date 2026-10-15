@@ -184,7 +184,7 @@ An adapter reads files of one kind into artifact trees and writes them back. The
 | Python | `*.py`, `*.ipynb`, `*.json` | Python syntax tree (libcst), notebook cells, JSON values. **Needs `python` 3 with the modules `libcst` and `py4j` on the `PATH`** |
 | LilyPond | `*.ly`, `*.ily` | LilyPond tokens; in a repository created since musical tokens (the default), a note, rest or chord end is one token that goes by the music it means, however it is spelled, and each top-level variable (a voice) is a context of its name. **Needs `python` 3 with the modules `tree-sitter` and `py4j`, and lymodel, the lilypond-idea-plugin's `python/` package** (`python -m pip install <lilypond-idea-plugin>/python`, or `LYPYTHON` set to that directory), whose tree-sitter parse reads the files; a repository created before it (read with parce) checks out, but takes no more commits; rendering scores in the GUI needs LilyPond (see [its README](adapter/lilypond/README.md)) |
 | Image | `*.png`, `*.jpg`, `*.jpeg`, `*.bmp`, `*.gif` | pixels, one artifact each, 8 bits per channel (a 16-bit image loses its low bits; JPEG is encoded again on checkout): for large images, see [Images](#images) |
-| File | everything else | whole files (binary); a checkout that combines variants with different versions of such a file fails ("Expected exactly one child node"), since there is nothing to compose |
+| File | everything else | whole files (binary); a checkout that combines variants with different versions of such a file writes the other files and reports this one as a `CONFLICT` naming the commits of each version, since there is nothing to compose |
 
 ### Images
 

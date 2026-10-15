@@ -48,11 +48,12 @@ public class CheckoutCommandTest {
     public void summarizesWarnings() {
         checkout.getConstraintWarnings().add("featureA excludes featureB");
         checkout.getConstraintWarnings().add("featureB requires featureC");
+        checkout.getConflicts().add("data.bin has 2 versions in this combination, not written");
         CheckoutCommand command = new CheckoutCommand(service, writer);
 
         command.run(new Namespace(Map.of("c", "featureA.1,featureB.1")));
 
         assertEquals(List.of("Checked out featureA.1, featureB.1",
-                "Warnings: 2 CONSTRAINT -- details in .warnings"), writer.getLines());
+                "Warnings: 1 CONFLICT, 2 CONSTRAINT -- details in .warnings"), writer.getLines());
     }
 }

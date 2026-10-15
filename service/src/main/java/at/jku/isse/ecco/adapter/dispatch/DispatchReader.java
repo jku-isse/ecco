@@ -434,7 +434,7 @@ public class DispatchReader implements ArtifactReader<Path, Set<Node.Op>> {
 	}
 
 	static final String TEXT_PLUGIN_ID = "at.jku.isse.ecco.adapter.text.TextPlugin";
-	static final String FILE_PLUGIN_ID = "at.jku.isse.ecco.adapter.file.FilePlugin";
+	public static final String FILE_PLUGIN_ID = "at.jku.isse.ecco.adapter.file.FilePlugin";
 
 	/**
 	 * [files] read by [reader] - and where it fails, each file it cannot read by another adapter

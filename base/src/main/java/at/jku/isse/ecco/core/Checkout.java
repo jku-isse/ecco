@@ -23,6 +23,9 @@ public class Checkout {
 
 	private List<String> constraintWarnings;
 
+	/** Files stored whole of which this checkout combines several versions, not written (see WholeFileConflicts). */
+	private List<String> conflicts;
+
 	private List<RejectedTrace> rejectedTraces;
 
 	private Node node;
@@ -35,6 +38,7 @@ public class Checkout {
 		this.unresolvedAssociations = new HashSet<>();
 		this.selectedAssociations = new HashSet<>();
 		this.constraintWarnings = new ArrayList<>();
+		this.conflicts = new ArrayList<>();
 		this.rejectedTraces = new ArrayList<>();
 		this.node = null;
 	}
@@ -89,6 +93,10 @@ public class Checkout {
 
 	public List<String> getConstraintWarnings() {
 		return this.constraintWarnings;
+	}
+
+	public List<String> getConflicts() {
+		return this.conflicts;
 	}
 
 	/** Proactive feature traces that were not used because they contradict the commit history. */

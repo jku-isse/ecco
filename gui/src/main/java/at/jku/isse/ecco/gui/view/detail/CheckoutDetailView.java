@@ -225,6 +225,11 @@ public class CheckoutDetailView extends BorderPane {
 						orderWarningNode));
 			}
 
+			// files stored whole with several versions in this combination, not written (see WholeFileConflicts)
+			for (String conflict : checkout.getConflicts()) {
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("CONFLICT", conflict, "", "", null));
+			}
+
 			// show constraint-violation diagnostics (see EccoService.compose()) -- advisory only (no
 			// Apply Fix action, suggestedConfigurationString == null hides the button), but still a
 			// real thing the user may want to act on outside this GUI (reconsider their configuration

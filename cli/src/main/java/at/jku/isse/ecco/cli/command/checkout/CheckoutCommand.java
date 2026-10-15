@@ -48,6 +48,7 @@ public class CheckoutCommand implements Command {
         add(parts, checkout.getMissing().size(), "MISSING");
         add(parts, checkout.getSurplusModules().size(), "SURPLUS");
         add(parts, checkout.getOrderWarnings().size(), "ORDER");
+        add(parts, checkout.getConflicts().size(), "CONFLICT");
         add(parts, checkout.getUnresolvedAssociations().size(), "UNRESOLVED");
         add(parts, checkout.getConstraintWarnings().size(), "CONSTRAINT");
         add(parts, checkout.getRejectedTraces().size(), "TRACE");
