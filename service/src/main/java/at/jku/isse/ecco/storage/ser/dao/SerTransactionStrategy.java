@@ -622,6 +622,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		// and SerCommit.associations are both ID-only now (see their javadocs), so the only things
 		// actually reachable from `database` here are IDs, commit/feature/module metadata, and
 		// similar - not the (large, POG-heavy) association trees themselves.
+		this.database.recordStorageFormat();
 		writeStored(this.database, newDbFile);
 
 		// whether no reader holds the previous core anymore - only then may files it references go
@@ -997,6 +998,9 @@ public class SerTransactionStrategy implements TransactionStrategy {
 					// used to leave the previous (or no) database in place and fail later with an NPE
 					if (loaded == null)
 						throw new EccoException("Repository core file " + dbFile + " is damaged: it has no " + ZIP_ENTRY_NAME + " entry.");
+					if (loaded.getStorageFormat() > Database.STORAGE_FORMAT)
+						throw new EccoException("This repository (" + this.repositoryDir + ") was written by a newer version of ECCO (storage format "
+								+ loaded.getStorageFormat() + "; this version reads up to " + Database.STORAGE_FORMAT + "). Open it with that version or a later one.");
 					this.database = loaded;
 				}
 

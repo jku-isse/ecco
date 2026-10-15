@@ -12,6 +12,16 @@ public class Database implements Serializable {
 
 	public static final long serialVersionUID = 1L;
 
+	/**
+	 * The storage format this version writes. Raise it when a repository written in the new format
+	 * cannot be read by older versions - they then say so instead of failing somewhere in loading
+	 * (versions from before this field ignore it).
+	 */
+	public static final int STORAGE_FORMAT = 1;
+
+	// the format the core was written in: 0 for one written before the format was recorded
+	private int storageFormat;
+
 
 	private final Repository.Op repository;
 
@@ -21,10 +31,20 @@ public class Database implements Serializable {
 
 	public Database() {
 		this.repository = new SerRepository();
+		this.storageFormat = STORAGE_FORMAT;
 
 		this.remoteIndex = Maps.mutable.empty();
 	}
 
+
+	public int getStorageFormat() {
+		return this.storageFormat;
+	}
+
+	/** Before a write: the core is written in this version's format. */
+	public void recordStorageFormat() {
+		this.storageFormat = STORAGE_FORMAT;
+	}
 
 	public Repository.Op getRepository() {
 		return this.repository;
