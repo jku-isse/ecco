@@ -88,6 +88,28 @@ public class ArtifactPackTest {
         assertEquals("a\nb\n", checkout(repoDir, work.resolve("out"), "A.2"));
     }
 
+    /** A pack still being written when a write crashed (or failed, e.g. out of disk space) stayed in the artifacts folder for good. */
+    @Test
+    @Timeout(120)
+    public void aPackLeftUnfinishedIsDeleted() throws Exception {
+        Path work = Files.createTempDirectory("artifact-packs-unfinished");
+        Path repoDir = work.resolve(".ecco");
+        Path content = Files.createDirectories(work.resolve("content"));
+        try (EccoService service = new EccoService()) {
+            service.setRepositoryDir(repoDir);
+            service.init();
+            service.setBaseDir(content);
+            Files.writeString(content.resolve("f.txt"), "a\n");
+            service.commit("one", "A");
+            Files.writeString(repoDir.resolve("artifacts").resolve("pack-crashed.zip.0b5c7e1a-4f1e-4a8e-9a43-1f2d3c4b5a69.tmp"), "partial");
+            Files.writeString(content.resolve("f.txt"), "a\nb\n");
+            service.commit("two", "A.2");
+        }
+        assertEquals(List.of(), otherArtifactFiles(repoDir));
+        assertTrue(packs(repoDir).stream().noneMatch(p -> p.getFileName().toString().endsWith(".tmp")), packs(repoDir).toString());
+        assertEquals("a\nb\n", checkout(repoDir, work.resolve("out"), "A.2"));
+    }
+
     @Test
     @Timeout(120)
     public void aMissingPackIsReportedAsDamage() throws Exception {

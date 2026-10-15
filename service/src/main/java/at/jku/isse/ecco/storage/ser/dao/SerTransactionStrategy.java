@@ -80,6 +80,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	private static final String ARTIFACTS_DIRNAME = "artifacts";
 	private static final String PACK_PREFIX = "pack-";
 	private static final String PACK_SUFFIX = ".zip";
+	private static final String TMP_SUFFIX = ".tmp";
 	/** Once a write would leave more packs than this, the smallest are merged down to half of it. */
 	private static final int MAX_PACKS = 20;
 	private static final String PACK_ARTIFACTS_ENTRY = "artifacts";
@@ -655,6 +656,9 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * @return the ids of artifacts with a file of their own, written into the new pack: their files go once committed
 	 */
 	private Set<String> writeArtifactPack(SerRepository repo, String newId, Map<String, byte[]> staged) throws IOException {
+		// the artifacts of the new pack, with the digest of each one's serialization - not the
+		// serialization itself: held for every artifact of a repository converted to ordered packs
+		// (below), that took as much memory as the artifacts' bytes, besides the artifacts
 		Map<String, byte[]> entries = new LinkedHashMap<>();
 		// whether each pack still exists, asked once per pack rather than once per artifact
 		Map<String, Boolean> packExists = new HashMap<>();
@@ -665,7 +669,7 @@ public class SerTransactionStrategy implements TransactionStrategy {
 			byte[] digest = artifactDigest(bytes);
 			if (Arrays.equals(digest, this.artifactDigests.get(id)) && this.isArtifactStored(repo, id, packExists))
 				continue;
-			entries.put(id, bytes);
+			entries.put(id, digest);
 			staged.put(id, digest);
 		}
 
@@ -679,9 +683,9 @@ public class SerTransactionStrategy implements TransactionStrategy {
 				if (repo.getArtifactPack(id) == null)
 					looseFiles.add(id);
 				if (!entries.containsKey(id) && repo.getArtifact(id) != null) {
-					byte[] bytes = serialize(repo.getArtifact(id));
-					entries.put(id, bytes);
-					staged.put(id, artifactDigest(bytes));
+					byte[] digest = artifactDigest(serialize(repo.getArtifact(id)));
+					entries.put(id, digest);
+					staged.put(id, digest);
 				}
 			}
 		}
@@ -738,9 +742,9 @@ public class SerTransactionStrategy implements TransactionStrategy {
 		if (artifactIds.stream().anyMatch(id -> repo.getArtifact(id) == null))
 			return false;
 		for (String id : artifactIds) {
-			byte[] bytes = serialize(repo.getArtifact(id));
-			entries.put(id, bytes);
-			staged.put(id, artifactDigest(bytes));
+			byte[] digest = artifactDigest(serialize(repo.getArtifact(id)));
+			entries.put(id, digest);
+			staged.put(id, digest);
 		}
 		return true;
 	}
@@ -754,26 +758,39 @@ public class SerTransactionStrategy implements TransactionStrategy {
 	 * instead; they are still read.
 	 */
 	private static void writePack(SerRepository repo, Map<String, byte[]> entries, Path pack) throws IOException {
-		ByteArrayOutputStream artifacts = new ByteArrayOutputStream();
-		ByteArrayOutputStream digests = new ByteArrayOutputStream();
-		try (ObjectOutputStream out = new ObjectOutputStream(artifacts)) {
-			out.writeInt(entries.size());
-			for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
-				out.writeObject(repo.getArtifact(entry.getKey()));
-				digests.write(artifactDigest(entry.getValue()));
+		Path tmpFile = pack.resolveSibling(pack.getFileName() + "." + UUID.randomUUID() + TMP_SUFFIX);
+		try {
+			try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW), 1 << 16))) {
+				zos.setLevel(Deflater.BEST_SPEED);
+				zos.putNextEntry(new ZipEntry(PACK_ARTIFACTS_ENTRY));
+				// serialized straight into the compressed entry: it was serialized into memory first, a
+				// second copy of every artifact's bytes - of all of them when a repository was converted
+				ObjectOutputStream out = new ObjectOutputStream(new FilterOutputStream(zos) {
+					@Override
+					public void write(byte[] b, int off, int len) throws IOException {
+						this.out.write(b, off, len);
+					}
+
+					@Override
+					public void close() throws IOException {
+						this.flush(); // the zip entry stays open
+					}
+				});
+				out.writeInt(entries.size());
+				for (String id : entries.keySet())
+					out.writeObject(repo.getArtifact(id));
+				out.close();
+				zos.closeEntry();
+				zos.putNextEntry(new ZipEntry(PACK_DIGESTS_ENTRY));
+				for (byte[] digest : entries.values())
+					zos.write(digest);
+				zos.closeEntry();
 			}
+			Files.move(tmpFile, pack, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+		} finally {
+			// a write that failed (e.g. out of memory or disk space) left it behind for good
+			Files.deleteIfExists(tmpFile);
 		}
-		Path tmpFile = pack.resolveSibling(pack.getFileName() + "." + UUID.randomUUID() + ".tmp");
-		try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile, StandardOpenOption.CREATE_NEW), 1 << 16))) {
-			zos.setLevel(Deflater.BEST_SPEED);
-			zos.putNextEntry(new ZipEntry(PACK_ARTIFACTS_ENTRY));
-			artifacts.writeTo(zos);
-			zos.closeEntry();
-			zos.putNextEntry(new ZipEntry(PACK_DIGESTS_ENTRY));
-			digests.writeTo(zos);
-			zos.closeEntry();
-		}
-		Files.move(tmpFile, pack, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	/** A digest of an artifact's own serialization - the first half of its SHA-256, to keep packs small. */
@@ -809,6 +826,11 @@ public class SerTransactionStrategy implements TransactionStrategy {
 				if (!referenced.contains(pack.getFileName().toString()))
 					Files.deleteIfExists(pack);
 			}
+		}
+		// packs being written when a write crashed (none is being written now: this write holds the lock)
+		try (DirectoryStream<Path> unfinished = Files.newDirectoryStream(this.artifactsDir, PACK_PREFIX + "*" + PACK_SUFFIX + ".*" + TMP_SUFFIX)) {
+			for (Path pack : unfinished)
+				Files.deleteIfExists(pack);
 		}
 	}
 
