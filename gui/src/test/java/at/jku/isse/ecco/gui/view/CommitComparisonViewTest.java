@@ -75,16 +75,16 @@ public class CommitComparisonViewTest {
 
     private static Association association(Commit commit, String feature) {
         return commit.getAssociations().stream()
-                .filter(a -> simple(a).contains(feature + "."))
-                .findFirst().orElseThrow();
+                .filter(a -> List.of(simple(a).split(" \\| ")).contains(feature)) // e.g. "A | BASE & !B"
+                .findFirst().orElseThrow(() -> new AssertionError(feature + " in " + commit.getAssociations().stream().map(CommitComparisonViewTest::simple).toList()));
     }
 
     private static String simple(Association association) {
-        return association.computeCondition().getSimpleModuleRevisionConditionString();
+        return association.computeCondition().toDisplayString(false);
     }
 
     private static String full(Association association) {
-        return association.computeCondition().getModuleRevisionConditionString();
+        return association.computeCondition().toDisplayString();
     }
 
     @SuppressWarnings("unchecked")

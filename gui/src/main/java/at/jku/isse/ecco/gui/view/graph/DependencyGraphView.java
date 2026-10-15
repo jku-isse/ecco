@@ -251,9 +251,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 				if (from == null) {
 					from = this.graph.addNode(String.valueOf(dep.getFrom().getId()));
 					if (simplifyLabels)
-						from.setAttribute("label", "[" + depFromCondition.getSimpleModuleRevisionConditionString() + "]");
+						from.setAttribute("label", "[" + depFromCondition.toDisplayString(false) + "]");
 					else
-						from.setAttribute("label", "[" + depFromCondition.getModuleRevisionConditionString() + "]");
+						from.setAttribute("label", "[" + depFromCondition.toDisplayString() + "]");
 //				from.setAttribute("implied", implied);
 //				if (implied)
 //					from.setAttribute("hide");
@@ -266,9 +266,9 @@ public class DependencyGraphView extends BorderPane implements EccoListener, Tab
 				if (to == null) {
 					to = this.graph.addNode(String.valueOf(dep.getTo().getId()));
 					if (simplifyLabels)
-						to.setAttribute("label", "[" + depToCondition.getSimpleModuleRevisionConditionString() + "]");
+						to.setAttribute("label", "[" + depToCondition.toDisplayString(false) + "]");
 					else
-						to.setAttribute("label", "[" + depToCondition.getModuleRevisionConditionString() + "]");
+						to.setAttribute("label", "[" + depToCondition.toDisplayString() + "]");
 //				to.setAttribute("implied", implied);
 //				if (implied)
 //					to.setAttribute("hide");

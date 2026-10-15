@@ -55,11 +55,11 @@ public class CommitComparisonView extends OperationView implements EccoListener 
         oldId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue()._1 == null ? "" : param.getValue()._1.getId()));
         newId.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new ReadOnlyObjectWrapper<>(param.getValue()._2 == null ? "" : param.getValue()._2.getId()));
         oldAssociation.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty())
-                .then(param.getValue()._1 == null ? "" : param.getValue()._1.computeCondition().getSimpleModuleRevisionConditionString())
-                .otherwise(param.getValue()._1 == null ? "" : param.getValue()._1.computeCondition().getModuleRevisionConditionString()));
+                .then(param.getValue()._1 == null ? "" : param.getValue()._1.computeCondition().toDisplayString(false))
+                .otherwise(param.getValue()._1 == null ? "" : param.getValue()._1.computeCondition().toDisplayString()));
         newAssociation.setCellValueFactory((TableColumn.CellDataFeatures<Tuple2<Association, Association>, String> param) -> new When(useSimplifiedLabelsCheckBox.selectedProperty())
-                .then(param.getValue()._2 == null ? "" : param.getValue()._2.computeCondition().getSimpleModuleRevisionConditionString())
-                .otherwise(param.getValue()._2 == null ? "" : param.getValue()._2.computeCondition().getModuleRevisionConditionString()));
+                .then(param.getValue()._2 == null ? "" : param.getValue()._2.computeCondition().toDisplayString(false))
+                .otherwise(param.getValue()._2 == null ? "" : param.getValue()._2.computeCondition().toDisplayString()));
 
 
         fillCompasisonData(oldCommit, newCommit);

@@ -34,7 +34,7 @@ public class TracesCommand implements Command {
 
         for (Association association : eccoService.getRepository().getAssociations()) {
             if (id == null || association.getId().equals(id)) {
-                writer.println("[" + association.getId() + "] " + association.computeCondition().getModuleRevisionConditionString());
+                writer.println("[" + association.getId() + "] " + association.computeCondition().toDisplayString());
                 if (id != null) {
                     Trees.print(association.getRootNode());
                 }

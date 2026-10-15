@@ -152,7 +152,7 @@ class CheckoutService {
                         sb.append(System.lineSeparator());
                     }
                     for (Map.Entry<ModuleRevision, String> mr : checkout.getSurplusModules().entrySet()) {
-                        sb.append("SURPLUS: ").append(mr.getKey()).append(" trace id: ")
+                        sb.append("SURPLUS: ").append(ModuleRevisions.describe(mr.getKey())).append(" trace id: ")
                                 .append(mr.getValue()).append(System.lineSeparator());
                     }
                     for (Node orderNode : checkout.getOrderWarnings()) {

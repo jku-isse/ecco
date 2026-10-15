@@ -617,7 +617,7 @@ public class JavaCodeViewer extends BorderPane implements AssociationInfoArtifac
 		}
 
 		Condition c = a.computeCondition();
-		taInfo.setText(a.getId().concat(" (").concat(c.getSimpleModuleRevisionConditionString()).concat(")\n").concat(c.getModuleRevisionConditionString()));
+		taInfo.setText(a.getId().concat(" (").concat(c.toDisplayString(false)).concat(")\n").concat(c.toDisplayString()));
 	}
 
 	@Override

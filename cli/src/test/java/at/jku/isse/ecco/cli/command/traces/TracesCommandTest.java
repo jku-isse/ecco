@@ -35,7 +35,7 @@ public class TracesCommandTest {
         Condition condition = mock(Condition.class);
         when(association.getId()).thenReturn("assoc-1");
         when(association.computeCondition()).thenReturn(condition);
-        when(condition.getModuleRevisionConditionString()).thenReturn("featureA.1");
+        when(condition.toDisplayString()).thenReturn("featureA.1");
         when(service.getRepository()).thenReturn(repository);
         doReturn(List.of(association)).when(repository).getAssociations();
 
@@ -60,7 +60,7 @@ public class TracesCommandTest {
         RootNode rootNode = mock(RootNode.class);
         when(association.getId()).thenReturn("assoc-1");
         when(association.computeCondition()).thenReturn(condition);
-        when(condition.getModuleRevisionConditionString()).thenReturn("featureA.1");
+        when(condition.toDisplayString()).thenReturn("featureA.1");
         when(association.getRootNode()).thenReturn(rootNode);
         when(rootNode.isAtomic()).thenReturn(true);
         when(service.getRepository()).thenReturn(repository);

@@ -194,7 +194,7 @@ public class CheckoutDetailView extends BorderPane {
 						ModuleRevisions.suggestedConfigurationString(missingModuleRevision, checkout.getConfiguration())));
 			}
 			for (java.util.Map.Entry<ModuleRevision, String> surplusEntry : checkout.getSurplusModules().entrySet()) {
-				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("SURPLUS", surplusEntry.getKey().toString(), surplusEntry.getValue(), "", null));
+				CheckoutDetailView.this.warningsData.add(new DiagnosticInfo("SURPLUS", ModuleRevisions.describe(surplusEntry.getKey()), surplusEntry.getValue(), "", null));
 			}
 
 			// show order diagnostics (see Repository.Op.compose()) -- Reorder... opens

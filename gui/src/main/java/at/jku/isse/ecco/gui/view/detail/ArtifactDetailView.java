@@ -186,7 +186,7 @@ public class ArtifactDetailView extends BorderPane implements EccoListener {
 					return impl.getMinimizedCondition();
 		if (this.service.isWriteInProgress())
 			return null;
-		return association.computeCondition().getModuleRevisionConditionString();
+		return association.computeCondition().toDisplayString();
 	}
 
 	private void updatePartialOrderGraphTab(Node node) {

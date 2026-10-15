@@ -268,7 +268,7 @@ public class LilypondCodeViewer extends BorderPane implements AssociationInfoArt
 		if (taInfo == null || a == null) return;
 
 		Condition c = a.computeCondition();
-		taInfo.setText(a.getId().concat(" (").concat(c.getSimpleModuleRevisionConditionString()).concat(")\n").concat(c.getModuleRevisionConditionString()));
+		taInfo.setText(a.getId().concat(" (").concat(c.toDisplayString(false)).concat(")\n").concat(c.toDisplayString()));
 	}
 
 	@Override

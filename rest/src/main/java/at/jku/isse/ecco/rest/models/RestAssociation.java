@@ -14,6 +14,6 @@ public class RestAssociation {
     }
 
     public String getSimpleModuleRevisionCondition() {
-        return association.computeCondition().getSimpleModuleRevisionConditionString();
+        return association.computeCondition().toDisplayString();
     }
 }

@@ -195,7 +195,7 @@ public class ArtifactsView extends BorderPane implements EccoListener {
             // row with real data as soon as the write actually finishes.
             String rawCondition = ArtifactsView.this.service.isWriteInProgress()
                     ? "…"
-                    : param.getValue().getAssociation().computeCondition().getModuleRevisionConditionString();
+                    : param.getValue().getAssociation().computeCondition().toDisplayString();
             // simplified: the minimized condition where there is one - the full one until then; the
             // column was empty until someone minimized the conditions (Feature Model tab)
             StringProperty minimized = param.getValue().minimizedConditionProperty();

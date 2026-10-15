@@ -219,7 +219,7 @@ public class ArtifactsViewTest {
             assertEquals("A", onFx(() -> conditionColumn(view).getCellObservableValue(row).getValue()), "simplified labels are on by default");
 
             onFx(() -> checkBox(view, "Use Simplified Labels").setSelected(false));
-            assertEquals(row.getAssociation().computeCondition().getModuleRevisionConditionString(),
+            assertEquals(row.getAssociation().computeCondition().toDisplayString(),
                     onFx(() -> conditionColumn(view).getCellObservableValue(row).getValue()));
 
             onFx(() -> minimization.getMinimizedByAssociationId().remove(id));
@@ -237,7 +237,7 @@ public class ArtifactsViewTest {
 
             assertTrue(onFx(() -> checkBox(view, "Use Simplified Labels").isSelected()));
             String shown = onFx(() -> conditionColumn(view).getCellObservableValue(row).getValue());
-            assertEquals(row.getAssociation().computeCondition().getModuleRevisionConditionString(), shown);
+            assertEquals(row.getAssociation().computeCondition().toDisplayString(), shown);
             assertFalse(shown.isEmpty());
         }
     }

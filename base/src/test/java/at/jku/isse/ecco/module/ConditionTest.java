@@ -105,6 +105,25 @@ public class ConditionTest {
 
         assertEquals(moduleA.toString(), condition.getModuleConditionString());
         assertEquals("[" + moduleRevisionA + "]", condition.getModuleRevisionConditionString());
-        assertTrue(condition.toString().contains(moduleRevisionA.toString()));
+        assertEquals(condition.toDisplayString(), condition.toString(), "shown as people read conditions");
+    }
+
+    /** As conditions read everywhere (ConditionText): absorbed, sorted, "!" for a negative feature, with or without revisions. */
+    @Test
+    public void theDisplayStringIsTheAbsorbedConditionForPeople() {
+        FeatureRevision a = revisionOf("A"), b = revisionOf("B");
+        Module moduleA = repository.addModule(new Feature[]{a.getFeature()}, new Feature[0]);
+        Module moduleAB = repository.addModule(new Feature[]{a.getFeature()}, new Feature[]{b.getFeature()});
+        Module moduleB = repository.addModule(new Feature[]{b.getFeature()}, new Feature[0]);
+        Condition condition = new SerCondition();
+        condition.setType(Condition.TYPE.OR);
+        condition.addModuleRevision(moduleAB.addRevision(new FeatureRevision[]{a}, new Feature[]{b.getFeature()}));
+        condition.addModuleRevision(moduleA.addRevision(new FeatureRevision[]{a}, new Feature[0]));
+        condition.addModuleRevision(moduleB.addRevision(new FeatureRevision[]{b}, new Feature[0]));
+        assertEquals(a.getFeatureRevisionString() + " | " + b.getFeatureRevisionString(), condition.toDisplayString(), "A & !B absorbed by A");
+        assertEquals("A | B", condition.toDisplayString(false));
+        assertEquals("false", new SerCondition().toDisplayString());
+        assertEquals("A & !B | C", ConditionText.join(java.util.List.of(java.util.List.of("C"), java.util.List.of("!B", "A"), java.util.List.of("C", "D"))));
+        assertEquals("true", ConditionText.join(java.util.List.of(java.util.List.of("A"), java.util.List.of())));
     }
 }

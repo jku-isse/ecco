@@ -139,7 +139,7 @@ public class AssociationDetailView extends BorderPane {
 
 			// show details
 			this.associationId.setText(String.valueOf(association.getId()));
-			this.associationPC.setText(association.computeCondition().toString());
+			this.associationPC.setText(association.computeCondition().toDisplayString());
 
 			// show containment table
 			this.artifactTreeView.setRootNode(association.getRootNode());

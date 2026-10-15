@@ -77,6 +77,42 @@ public interface Condition extends Persistable {
 	 * literals are sorted, so an unchanged condition gives an identical string.
 	 */
 	default String toLogicString(){
+		List<ModuleRevision> kept = this.absorbedModuleRevisions();
+		if (kept.isEmpty())
+			return "$false";
+		SortedSet<String> terms = new TreeSet<>();
+		for (ModuleRevision moduleRevision : kept) {
+			SortedSet<String> literals = new TreeSet<>();
+			for (FeatureRevision featureRevision : moduleRevision.getPos())
+				literals.add(featureRevision.getLogicLiteralRepresentation());
+			for (Feature feature : moduleRevision.getNeg())
+				for (FeatureRevision featureRevision : feature.getRevisions())
+					literals.add("~" + featureRevision.getLogicLiteralRepresentation());
+			if (literals.isEmpty())
+				return "$true"; // an empty module revision always holds
+			terms.add(literals.size() == 1 ? literals.first() : "(" + String.join(" & ", literals) + ")");
+		}
+		return String.join(" | ", terms);
+	}
+
+	/**
+	 * The condition for people, as {@link ConditionText} writes conditions: the module revisions of
+	 * {@link #toLogicString()} (absorbed, sorted), each feature with its displayed revision.
+	 */
+	default String toDisplayString() {
+		return this.toDisplayString(true);
+	}
+
+	/** {@link #toDisplayString()}, with the features' revisions or by their names only. */
+	default String toDisplayString(boolean withRevisions) {
+		List<SortedSet<String>> terms = new ArrayList<>();
+		for (ModuleRevision moduleRevision : this.absorbedModuleRevisions())
+			terms.add(ConditionText.literals(moduleRevision, withRevisions));
+		return ConditionText.join(terms);
+	}
+
+	/** The module revisions no other one absorbs (one with a subset of its literals: X | X & Y = X). */
+	private List<ModuleRevision> absorbedModuleRevisions() {
 		List<ModuleRevision> moduleRevisions = new ArrayList<>();
 		for (Collection<ModuleRevision> revisions : this.getModules().values())
 			moduleRevisions.addAll(revisions);
@@ -96,22 +132,7 @@ public interface Condition extends Persistable {
 			if (!absorbed)
 				kept.add(candidate);
 		}
-
-		if (kept.isEmpty())
-			return "$false";
-		SortedSet<String> terms = new TreeSet<>();
-		for (ModuleRevision moduleRevision : kept) {
-			SortedSet<String> literals = new TreeSet<>();
-			for (FeatureRevision featureRevision : moduleRevision.getPos())
-				literals.add(featureRevision.getLogicLiteralRepresentation());
-			for (Feature feature : moduleRevision.getNeg())
-				for (FeatureRevision featureRevision : feature.getRevisions())
-					literals.add("~" + featureRevision.getLogicLiteralRepresentation());
-			if (literals.isEmpty())
-				return "$true"; // an empty module revision always holds
-			terms.add(literals.size() == 1 ? literals.first() : "(" + String.join(" & ", literals) + ")");
-		}
-		return String.join(" | ", terms);
+		return kept;
 	}
 
 	private static boolean containsAll(Object[] larger, Object[] smaller) {

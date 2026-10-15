@@ -70,7 +70,7 @@ public class CommitDetailView extends BorderPane {
 		associationsTable.getColumns().setAll(idAssociationsCol, conditionAssociationsCol);
 
 		idAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().getId()));
-		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().toString()));
+		conditionAssociationsCol.setCellValueFactory((TableColumn.CellDataFeatures<AssociationInfo, String> param) -> new ReadOnlyStringWrapper(param.getValue().getAssociation().computeCondition().toDisplayString()));
 		conditionAssociationsCol.setCellFactory(TableColumns.wrappingCellFactory());
 
 		associationsTable.setItems(this.associationsData);

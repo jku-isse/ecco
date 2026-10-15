@@ -57,7 +57,7 @@ public class SerCondition implements Condition {
 
 	@Override
 	public String toString() {
-		return this.getModuleRevisionConditionString();
+		return this.toDisplayString();
 	}
 
 }

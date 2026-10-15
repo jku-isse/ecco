@@ -47,17 +47,22 @@ public final class PresenceConditionMinimizer {
             List<String> parts = new ArrayList<>();
             positive.stream().sorted().forEach(parts::add);
             negative.stream().sorted().forEach(n -> parts.add("!" + n));
-            return parts.isEmpty() ? "TRUE" : String.join(" & ", parts);
+            return parts.isEmpty() ? "true" : String.join(" & ", parts);
         }
     }
 
     private PresenceConditionMinimizer() {
     }
 
-    /** Renders a DNF as {@code "T1  OR  T2  OR  ..."} (or {@code "FALSE"} if empty). */
+    /** Renders a DNF for people, as conditions are shown everywhere: {@code "A & !B | C"}, "true", "false" (see ConditionText). */
     public static String format(List<Term> terms) {
-        if (terms.isEmpty()) return "FALSE";
-        return terms.stream().map(Object::toString).collect(Collectors.joining("  OR  "));
+        List<List<String>> literals = new ArrayList<>();
+        for (Term term : terms) {
+            List<String> termLiterals = new ArrayList<>(term.positive);
+            term.negative.forEach(n -> termLiterals.add("!" + n));
+            literals.add(termLiterals);
+        }
+        return at.jku.isse.ecco.module.ConditionText.join(literals);
     }
 
     /** Converts a DNF (OR of {@link Term}s) into a LogicNG {@link Formula}. */
